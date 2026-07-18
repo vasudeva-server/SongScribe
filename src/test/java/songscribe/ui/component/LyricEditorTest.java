@@ -27,6 +27,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -53,6 +54,7 @@ import songscribe.message.mutation.ElementModification;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.ViewScale;
 
 @SuppressWarnings({ "OverlyBroadThrowsClause", "DataFlowIssue" })
@@ -61,6 +63,12 @@ class LyricEditorTest extends LyricEditorTestSupport {
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final LyricRenderMetrics LYRIC_METRICS =
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+
+    /** Narrow enough that a wide lyric overflows it but the bare notes still fit. */
+    private static final double NARROW_LINE_WIDTH_SS = 40;
+
+    /** A lyric wide enough to overflow {@link #NARROW_LINE_WIDTH_SS} once it must clear its neighbour. */
+    private static final int WIDE_LYRIC_CHARS = 300;
 
     private Song song;
     private ScoreView score;
@@ -162,6 +170,94 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         verifyNoSongDidChange();
         assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ho");
+    }
+
+    @Test
+    void testCommitRefusesLyricTooWideForLine() {
+        var element = crotchet();
+        var neighbour = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> {
+            line.addElement(element);
+            line.addElement(neighbour);
+            song.setLineWidthSs(NARROW_LINE_WIDTH_SS);
+        });
+
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("m".repeat(WIDE_LYRIC_CHARS));
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+
+        try (var dialogs = mockStatic(OptionDialogs.class)) {
+            editor.commit();
+            dialogs.verify(() -> OptionDialogs.showErrorMessage(any(), any(), any()));
+        }
+
+        // The overflowing edit is refused: no mutation is emitted and the lyric is not written.
+        verifyNoSongDidChange();
+        assertThat(element.getMainLyric()).isNull();
+    }
+
+    @Test
+    void testRefusedLyricShowsSingleAlertDespiteFocusReentry() {
+        var element = crotchet();
+        var neighbour = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> {
+            line.addElement(element);
+            line.addElement(neighbour);
+            song.setLineWidthSs(NARROW_LINE_WIDTH_SS);
+        });
+
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("m".repeat(WIDE_LYRIC_CHARS));
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+
+        try (var dialogs = mockStatic(OptionDialogs.class)) {
+            // The real alert is modal and steals focus, firing focusLost, which re-enters the commit
+            // path while the alert is up. Simulate that re-entry and assert only one alert is shown.
+            dialogs.when(() -> OptionDialogs.showErrorMessage(any(), any(), any()))
+                .thenAnswer(invocation -> {
+                    editor.commit();
+                    return null;
+                });
+
+            editor.commit();
+
+            dialogs.verify(() -> OptionDialogs.showErrorMessage(any(), any(), any()), times(1));
+        }
+    }
+
+    @Test
+    void testAlreadyOverflowingLineDoesNotBlockFurtherEdit() {
+        var element = crotchet();
+        var neighbour = crotchet();
+        var line = song.getLine(0);
+        var overflowLyric = "m".repeat(WIDE_LYRIC_CHARS);
+        song.withoutMutationTracking(() -> {
+            line.addElement(element);
+            line.addElement(neighbour);
+            // Pre-fill a wide lyric so the line ALREADY overflows before this edit.
+            setMainLyric(element, overflowLyric);
+            song.setLineWidthSs(NARROW_LINE_WIDTH_SS);
+        });
+
+        var editor = new LyricEditor(score, line, element);
+        // Still overflowing after the edit: an already-full line must not be blocked, so the user
+        // can keep editing toward a shorter lyric that fits.
+        editor.setText(overflowLyric + "x");
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+
+        try (var dialogs = mockStatic(OptionDialogs.class)) {
+            editor.commit();
+            dialogs.verifyNoInteractions();
+        }
+
+        // The edit was written and a mutation emitted — the overflowing pre-state did not block it.
+        captureSingleDidChange();
+        assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo(overflowLyric + "x");
     }
 
     // -----------------------------------------------------------------------

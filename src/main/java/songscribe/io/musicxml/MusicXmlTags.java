@@ -302,6 +302,7 @@ final class MusicXmlTags {
     static final String MISC_SUB_ATTRIBUTION_FONT      = "sub-attribution-font";
     static final String MISC_SUB_ATTRIBUTION_FONT_SIZE = "sub-attribution-font-size";
     static final String MISC_ROW_HEIGHT_ADJUSTMENT     = "row-height-adjustment";
+    static final String MISC_DEFAULT_REST_LENGTH       = "default-rest-length";
 
     // Rights/copyright format string (write-forward, ignored on read).
     // %d is substituted with the current year.

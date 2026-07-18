@@ -42,7 +42,6 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
-import songscribe.dom.StaffElement;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.InsertionSpacingCalculator;
@@ -369,10 +368,10 @@ class GraceModeManagerTest extends UnitTest {
 
             // EditModeManager.getPreviewElement() is static — must mock statically.
             // No accidental on hostPreview → hostLeftExtentSs = 0.
-            // Expected = xSs + rightExtentSs + GRACE_NOTE_GAP_SS + |hostLeftExtentSs|
+            // Expected = xSs + rightExtentSs + GRACE_HOST_REST_SS + |hostLeftExtentSs|
             try (var emMock = mockStatic(EditModeManager.class)) {
                 emMock.when(EditModeManager::getPreviewElement).thenReturn(hostPreview);
-                var expected = 3.0 + 1.5 + HorizontalSpacingCalculator.GRACE_NOTE_GAP_SS + 0.0;
+                var expected = 3.0 + 1.5 + HorizontalSpacingCalculator.GRACE_HOST_REST_SS + 0.0;
                 assertThat(manager.getLockedInsertionXSs()).isEqualTo(expected);
             }
         }
@@ -399,7 +398,7 @@ class GraceModeManagerTest extends UnitTest {
             // EditModeManager.getPreviewElement() is static — must mock statically.
             try (var emMock = mockStatic(EditModeManager.class)) {
                 emMock.when(EditModeManager::getPreviewElement).thenReturn(null);
-                var expected = 4.0 + 2.0 + HorizontalSpacingCalculator.GRACE_NOTE_GAP_SS;
+                var expected = 4.0 + 2.0 + HorizontalSpacingCalculator.GRACE_HOST_REST_SS;
                 assertThat(manager.getLockedInsertionXSs()).isEqualTo(expected);
             }
         }
@@ -544,7 +543,7 @@ class GraceModeManagerTest extends UnitTest {
 
                 previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
                 calcMock.when(
-                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any())
+                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any(), any())
                 ).thenReturn(false);
 
                 var line = mock(Line.class);
@@ -570,7 +569,7 @@ class GraceModeManagerTest extends UnitTest {
 
                 previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
                 calcMock.when(
-                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any())
+                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any(), any())
                 ).thenReturn(true);
 
                 // Real line with one element; enterGraceNote reads it at index 0
@@ -1022,7 +1021,7 @@ class GraceModeManagerTest extends UnitTest {
             var mockResult = mock(InsertionSpacingCalculator.InsertionResult.class);
             when(mockResult.fitsWithinLine(anyDouble())).thenReturn(false);
             calcMock.when(() -> InsertionSpacingCalculator.calculateInsertion(
-                any(), any(), anyInt(), any()
+                any(), any(), anyInt(), any(), any()
             )).thenReturn(mockResult);
 
             // Set state and fields to trigger enterGraceNoteInsert via click (mouseReleased)
@@ -1397,7 +1396,7 @@ class GraceModeManagerTest extends UnitTest {
             // already points at the mock. No save/restore needed.
             try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
                 calcMock.when(
-                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any())
+                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any(), any())
                 ).thenReturn(true);
 
                 var line = lineWith(ElementType.GRACE_QUAVER);
@@ -1502,7 +1501,7 @@ class GraceModeManagerTest extends UnitTest {
 
             try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
                 calcMock.when(
-                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any())
+                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any(), any())
                 ).thenReturn(true);
 
                 var line = lineWith(ElementType.GRACE_QUAVER);

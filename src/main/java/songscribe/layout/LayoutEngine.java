@@ -52,9 +52,11 @@ import songscribe.shape.BezierBow;
  * containing positioned elements ready for rendering. The pipeline executes in this order:
  * <ol>
  *   <li>{@link ElementColumnBuilder} - Creates note columns from the line's notes</li>
- *   <li>{@link HorizontalSpacingCalculator} - Positions columns horizontally (lyric-driven)</li>
+ *   <li>{@link HorizontalSpacingCalculator} - Builds one {@link Spring} per adjacent column pair</li>
+ *   <li>{@link LyricLift} - Stretches the springs' rests so syllables clear each other</li>
+ *   <li>{@link SpringSpacer} - Solves the spring chain to fit the staff width, compressing gaps
+ *       in proportion to their compliance; an unfittable line fails the layout</li>
  *   <li>{@link VerticalStackingCalculator} - Positions elements vertically (layer-by-layer)</li>
- *   <li>{@link LineJustificationCalculator} - Compresses spacing if line exceeds margin</li>
  * </ol>
  * <p>
  * Usage:
@@ -151,11 +153,17 @@ public class LayoutEngine {
     private final double staffRightMarginSs;
     private final DocumentFontsHolder fonts;
 
+    /**
+     * Reported via {@link #getLastError()} when the spring solver cannot fit the line even with
+     * every gap compressed to its collision floor. Diagnostic only — the user-facing warning
+     * lives in the UI layer, which keys off the null layout result.
+     */
+    private static final String LINE_TOO_FULL_ERROR =
+        "Line cannot fit within the staff margin while maintaining minimum spacing";
+
     // Calculators
     private final ElementColumnBuilder columnBuilder;
-    private final HorizontalSpacingCalculator horizontalCalculator;
     private final VerticalStackingCalculator verticalCalculator;
-    private final LineJustificationCalculator justificationCalculator;
 
     // Error tracking
     @Nullable
@@ -177,9 +185,7 @@ public class LayoutEngine {
 
         // Initialize calculators
         columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
-        horizontalCalculator = new HorizontalSpacingCalculator();
         verticalCalculator = new VerticalStackingCalculator();
-        justificationCalculator = new LineJustificationCalculator();
 
         lastError = null;
     }
@@ -276,22 +282,46 @@ public class LayoutEngine {
             return emptyBuilder.build();
         }
 
-        // Step 2: Calculate horizontal positions
-        horizontalCalculator.calculatePositions(columns, line);
+        // Step 2 & 3: Build the springs, lift their rests so syllables clear each other, anchor the
+        // chain, and solve it against the staff width — all through the shared solve the insertion
+        // pre-check also runs, so a line the pre-check accepts is one this layout can always place.
+        // The line rest drives the base rests and the lift cap.
+        var lineRestSs = line.getSong().getDefaultRestLengthSs();
+        var solution = HorizontalSpacingCalculator.solveLine(columns, line, staffRightMarginSs);
+        var springs = solution.springs();
 
-        // Step 3: Apply line justification (compression if needed)
-        var justificationResult = justificationCalculator.justifyLine(columns, staffRightMarginSs);
+        // DEBUG (#330 spring spacing): trace columns + per-gap lifted springs. Remove once verified.
+        logSpringColumns(columns, lineRestSs);
+        logSprings("lifted", columns, springs);
 
-        if (!justificationResult.isSuccess()) {
-            // Line cannot fit within margin while maintaining minimum spacing
-            lastError = justificationResult.getErrorMessage();
+        if (solution.isInfeasible()) {
+            // Every gap is frozen at its collision floor and the line still overflows the margin.
+            lastError = LINE_TOO_FULL_ERROR;
             return null;
         }
+
+        // Anchor the first column at the solved chain's origin, then lay the solved gaps out from it.
+        var firstColumn = columns.getFirst();
+        firstColumn.setXSs(solution.firstXSs());
+
+        var gapLengthsSs = solution.result().gapLengthsSs();
+
+        if (gapLengthsSs == null) {
+            throw new IllegalStateException("solve succeeded but gapLengthsSs is null");
+        }
+
+        for (var i = 1; i < columns.size(); i++) {
+            columns.get(i).setXSs(columns.get(i - 1).getXSs() + gapLengthsSs[i - 1]);
+        }
+
+        // DEBUG (#330): per-gap solved length (compare against the lifted rests above — a lift eaten
+        // by compression shows up here as a solved length back down near the strut) + final X.
+        logSolvedGaps(columns, springs, gapLengthsSs);
 
         // Step 3b: Pin the terminal flush-right on the last line.
         // Layout is the sole writer of the terminal's x position.
         if (isLastLine) {
-            positionTerminalFlushRight(columns);
+            positionTerminalFlushRight(columns, lineRestSs);
         }
 
         var builder = LayoutResult.builder();
@@ -321,6 +351,69 @@ public class LayoutEngine {
         return buildLayoutResult(columns, line, builder);
     }
 
+    // ==== DEBUG (#330 spring spacing) ===============================================
+    // Temporary tracing for the spring-and-strut engine. Enable with --log-level=debug.
+    // Remove this whole block once the engine is verified (Phase 6 sign-off).
+
+    /** Formats a staff-space value compactly for trace lines. */
+    private static String fmt(double ss) {
+        return String.format("%.3f", ss);
+    }
+
+    /** Dumps each column's identity, extents, and syllable data — the raw inputs to the springs. */
+    private void logSpringColumns(List<ElementColumn> columns, double lineRestSs) {
+        if (!LOG.isDebugEnabled()) {
+            return;
+        }
+
+        LOG.debug("[spring] ===== line: {} columns, lineRestSs={} =====", columns.size(), fmt(lineRestSs));
+
+        for (var i = 0; i < columns.size(); i++) {
+            var column = columns.get(i);
+            LOG.debug(
+                "[spring] col[{}] type={} leftExtentSs={} rightExtentSs={} rightExclAugSs={}"
+                    + " hasSyllable={} syllable='{}' syllableWidthSs={} minGapToNextSyllableSs={}",
+                i, column.getElement().getType(), fmt(column.getLeftExtentSs()),
+                fmt(column.getRightExtentSs()), fmt(column.getRightExtentExcludingAugmentationSs()),
+                column.hasSyllable(), column.hasSyllable() ? column.getSyllable() : "",
+                fmt(column.getSyllableWidthSs()), fmt(column.getMinGapToNextSyllableSs()));
+        }
+    }
+
+    /** Dumps each gap's spring (rest/strut/compliance) at a named pipeline stage. */
+    private void logSprings(String stage, List<ElementColumn> columns, List<Spring> springs) {
+        if (!LOG.isDebugEnabled()) {
+            return;
+        }
+
+        for (var i = 0; i < springs.size(); i++) {
+            var spring = springs.get(i);
+            LOG.debug(
+                "[spring] gap[{}] {}: restSs={} strutSs={} complianceSs={} (factor={})",
+                i, stage, fmt(spring.restSs()), fmt(spring.strutSs()), fmt(spring.complianceSs()),
+                fmt(HorizontalSpacingCalculator.restFactorFor(columns.get(i), columns.get(i + 1))));
+        }
+    }
+
+    /** Dumps the solver's per-gap length vs. the lifted rest, plus the resulting column X. */
+    private void logSolvedGaps(List<ElementColumn> columns, List<Spring> springs, double[] gapLengthsSs) {
+        if (!LOG.isDebugEnabled()) {
+            return;
+        }
+
+        LOG.debug("[spring] col[0] X={}", fmt(columns.getFirst().getXSs()));
+
+        for (var i = 0; i < gapLengthsSs.length; i++) {
+            var spring = springs.get(i);
+            LOG.debug(
+                "[spring] gap[{}] solved: lengthSs={} (liftedRestSs={} strutSs={}) -> col[{}] X={}",
+                i, fmt(gapLengthsSs[i]), fmt(spring.restSs()), fmt(spring.strutSs()),
+                i + 1, fmt(columns.get(i + 1).getXSs()));
+        }
+    }
+
+    // ==== END DEBUG (#330) ==========================================================
+
     private void buildLyricLayout(
         List<ElementColumn> columns,
         LayoutResult.Builder builder,
@@ -343,7 +436,7 @@ public class LayoutEngine {
         builder.setHasTrailingLyricContinuation(lyricResult.hasTrailingContinuation());
     }
 
-    private void positionTerminalFlushRight(List<ElementColumn> columns) {
+    private void positionTerminalFlushRight(List<ElementColumn> columns, double lineRestSs) {
         if (columns.isEmpty()) {
             return;
         }
@@ -353,9 +446,23 @@ public class LayoutEngine {
         var lastColumn = columns.getLast();
         var lastType = lastColumn.getElement().getType();
 
-        if (lastType.isValidTerminal()) {
-            lastColumn.setXSs(ElementType.terminalFlushRightXSs(staffRightMarginSs, lastType));
+        if (!lastType.isValidTerminal()) {
+            return;
         }
+
+        var flushRightXSs = ElementType.terminalFlushRightXSs(staffRightMarginSs, lastType);
+
+        // Snapping to the margin moves the terminal independently of the solved chain, so on a
+        // line whose content already reaches the margin it could land on top of — or left of —
+        // the preceding column. Its strut is the collision floor the solver would have honoured.
+        if (columns.size() > 1) {
+            var prevColumn = columns.get(columns.size() - 2);
+            var strutXSs = prevColumn.getXSs()
+                + HorizontalSpacingCalculator.buildSpring(prevColumn, lastColumn, lineRestSs).strutSs();
+            flushRightXSs = Math.max(flushRightXSs, strutXSs);
+        }
+
+        lastColumn.setXSs(flushRightXSs);
     }
 
     /**

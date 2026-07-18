@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 
 import java.awt.Dimension;
 import java.awt.event.MouseEvent;
+import java.util.List;
 
 import javax.swing.JPanel;
 
@@ -604,8 +605,9 @@ class LineComponentTest extends UnitTest {
         void testReturnsShiftedFrameWhenThisIsActiveGraceLineWithPreview() {
             final double shiftSs = 3.5;
             final int insertionIndex = 2;
-            // InsertionResult(insertedXSs, shiftSs, newWidthSs)
-            var preview = new InsertionResult(0.0, shiftSs, 0.0);
+            // Only the shift is read here; the projected spring chain the fit gate would
+            // solve is irrelevant to the preview frame, so an empty chain stands in for it.
+            var preview = new InsertionResult(0.0, shiftSs, 0.0, List.of(), 0.0, 0.0);
 
             var graceMock = mock(GraceModeManager.class);
             when(graceMock.getGraceLineComponent()).thenReturn(lc);

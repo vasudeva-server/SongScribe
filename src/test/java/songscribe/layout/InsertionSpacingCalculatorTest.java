@@ -22,13 +22,17 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
+import module java.desktop;
+
 import java.util.Collections;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +42,7 @@ import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.font.DocumentFonts;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.ElementColumnBuilder;
 import songscribe.layout.HorizontalSpacingCalculator;
@@ -54,10 +59,67 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     /** Staff-space offset by which a test layout reports an element to the right of its xOffset. */
     private static final double LAYOUT_SHIFT_SS = 10;
 
-    /** Returns a minimal song mock with the given line width stubbed. */
-    private static Song songWithLineWidth(double lineWidthSs) {
+    /** Staff spaces either side of a fit boundary, clear of float dust in the solver. */
+    private static final double BOUNDARY_SLACK_SS = 1;
+
+    /** Staff spaces by which a compress-to-fit margin undercuts the uncompressed width. */
+    private static final double NARROWER_MARGIN_SS = 1;
+
+    /** Right margin for the preview-vs-committed {@link LayoutEngine}, wide enough that a few crotchets never overflow. */
+    private static final double PREVIEW_STAFF_RIGHT_MARGIN_SS = 100.0;
+
+    /** Float tolerance for comparing preview and committed X positions (Ss). */
+    private static final double PREVIEW_TOLERANCE_SS = 0.001;
+
+    /**
+     * Returns the narrowest margin an insertion can still be laid out within: every projected gap
+     * frozen on its strut, anchored at the projected first X, with the last column's right extent
+     * inside the margin. This is the boundary {@code fitsWithinLine} solves against.
+     */
+    private static double fullyCompressedWidthSs(InsertionSpacingCalculator.InsertionResult result) {
+        var strutSpanSs = result.projectedSprings().stream().mapToDouble(Spring::strutSs).sum();
+        return result.projectedFirstXSs() + strutSpanSs + result.projectedLastRightExtentSs();
+    }
+
+    /**
+     * Real lyric-render metrics for the preview-vs-committed equality test — shared by
+     * {@link #layoutEngine} and the direct {@code calculateInsertion} preview call, so both see
+     * identical metrics.
+     */
+    private static LyricRenderMetrics lyricRenderMetrics() {
+        var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
+        var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-").value();
+        var spaceWidthSs = ScaleContext.textWidthSs(lyricsFont, " ").value();
+        return new LyricRenderMetrics(lyricsFont, ScaleContext.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
+    }
+
+    /** A {@link LayoutEngine} with real lyric-render metrics, for the preview-vs-committed equality test. */
+    private static LayoutEngine layoutEngine() {
+        return new LayoutEngine(lyricRenderMetrics(), PREVIEW_STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
+    }
+
+    /** Asserts value is not null and returns it non-null for NullAway. */
+    @SuppressWarnings("NullAway")
+    private static LayoutResult requireLayout(@Nullable LayoutResult result) {
+        assertThat(result).isNotNull();
+        return result;
+    }
+
+    /**
+     * A minimal song mock that behaves like a default song for the layout inputs the insertion
+     * path reads: mutation tracking suspended and the default line rest (so derived base rests are
+     * realistic rather than the {@code 0} a bare mock would return).
+     */
+    private static Song songMock() {
         var song = mock(Song.class);
         when(song.isMutationTrackingSuspended()).thenReturn(true);
+        when(song.getDefaultRestLengthSs()).thenReturn(Song.DEFAULT_REST_LENGTH_SS);
+        return song;
+    }
+
+    /** Returns a minimal song mock with the given line width stubbed. */
+    private static Song songWithLineWidth(double lineWidthSs) {
+        var song = songMock();
         when(song.getLineWidthSs()).thenReturn(lineWidthSs);
         return song;
     }
@@ -77,7 +139,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     private static Line lineWithCrotchets(int count, Line line) {
         for (var i = 0; i < count; i++) {
             var element = crotchet();
-            var xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, element, null);
+            var xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, element, null, null);
             element.setXOffsetPx(ScaleContext.ssToRoundedPx(xSs));
             line.addElement(element);
         }
@@ -100,7 +162,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     private static Line lineWithGraceAtIndex(int numCrotchetsBefore, Line line) {
         lineWithCrotchets(numCrotchetsBefore, line);
         var grace = ElementType.GRACE_QUAVER.newInstance();
-        var xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, grace, null);
+        var xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, grace, null, null);
         grace.setXOffsetPx(ScaleContext.ssToRoundedPx(xSs));
         line.addElement(grace);
         return line;
@@ -173,7 +235,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         void testNegativeIndexThrowsIllegalArgumentException() {
             var line = lineWithCrotchets(2);
             assertThatIllegalArgumentException()
-                .isThrownBy(() -> InsertionSpacingCalculator.calculateInsertion(line, crotchet(), -1, null));
+                .isThrownBy(() -> InsertionSpacingCalculator.calculateInsertion(line, crotchet(), -1, null, null));
         }
 
         @Test
@@ -181,7 +243,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var line = lineWithCrotchets(2);
             var beyondCount = line.elementCount() + 1;
             assertThatIllegalArgumentException()
-                .isThrownBy(() -> InsertionSpacingCalculator.calculateInsertion(line, crotchet(), beyondCount, null));
+                .isThrownBy(() -> InsertionSpacingCalculator.calculateInsertion(line, crotchet(), beyondCount, null, null));
         }
 
         @Test
@@ -190,7 +252,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var line = lineWithCrotchets(1);
             var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
 
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 0, null);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 0, null, null);
 
             assertThat(result.insertedElementXSs()).isEqualTo(expectedXSs);
         }
@@ -209,7 +271,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var insertedCrotchet = crotchet();
             var expectedShiftSs = expectedShiftFromInsertAtZero(insertedCrotchet, insertedXSs, existingElement, existingXSs);
 
-            var result = InsertionSpacingCalculator.calculateInsertion(line, insertedCrotchet, 0, null);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, insertedCrotchet, 0, null, null);
 
             assertThat(result.shiftForSubsequentElementsSs()).isEqualTo(expectedShiftSs);
         }
@@ -225,45 +287,49 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // calculateFirstElementXSs for the line's key-accidental count.
             var line = lineWithCrotchets(0);
             var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
-            var actualXSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, crotchet(), null);
+            var actualXSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, crotchet(), null, null);
             assertThat(actualXSs).isEqualTo(expectedXSs);
         }
 
         @Test
         void testAppendToEmptyLineFitsWithinLargeLine() {
             var line = lineWithCrotchets(0);
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 0, null);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 0, null, null);
             assertThat(result.fitsWithinLine(WIDE_LINE_SS)).isTrue();
         }
 
         @Test
-        void testInsertExactGapBoundaryFitsWhenMarginEqualsWidthPlusGap() {
-            // Row 36: margin == newLineWidthSs + DEFAULT_COLUMN_GAP_SS is the exact passing boundary.
+        void testInsertIntoNearlyFullLineCompressesToFit() {
+            // Compress-to-fit: a margin narrower than the element's uncompressed projected width
+            // is accepted, because the line's gaps still hold slack above their struts. The
+            // retired fixed-margin rule rejected exactly this case.
             var line = lineWithCrotchets(2);
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null);
-            var exactPassingMarginSs = result.newLineWidthSs() + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
-            assertThat(result.fitsWithinLine(exactPassingMarginSs)).isTrue();
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null, null);
+            assertThat(result.fitsWithinLine(result.newLineWidthSs() - NARROWER_MARGIN_SS)).isTrue();
         }
 
         @Test
-        void testInsertExactGapBoundaryFailsWhenMarginIsLineWidthAlone() {
-            // Row 36: margin == newLineWidthSs (no budget for the required gap) must return false.
+        void testInsertFitsJustAboveFullyCompressedBoundary() {
+            // The passing boundary is the fully compressed line: every gap at its strut, anchored
+            // at the projected first X, with room for the last column's own glyph.
             var line = lineWithCrotchets(2);
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null);
-            assertThat(result.fitsWithinLine(result.newLineWidthSs())).isFalse();
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null, null);
+            assertThat(result.fitsWithinLine(fullyCompressedWidthSs(result) + BOUNDARY_SLACK_SS)).isTrue();
         }
 
         @Test
-        void testInsertIntoNearlyFullLine() {
+        void testInsertRejectedJustBelowFullyCompressedBoundary() {
+            // One staff space below the fully compressed width, even freezing every gap on its
+            // collision floor overflows the margin — the only case that now rejects an insert.
             var line = lineWithCrotchets(2);
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null);
-            assertThat(result.fitsWithinLine(result.newLineWidthSs() - 1)).isFalse();
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null, null);
+            assertThat(result.fitsWithinLine(fullyCompressedWidthSs(result) - BOUNDARY_SLACK_SS)).isFalse();
         }
 
         @Test
         void testInsertWithPlentyOfRoom() {
             var line = lineWithCrotchets(2);
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null, null);
             assertThat(result.fitsWithinLine(WIDE_LINE_SS)).isTrue();
         }
     }
@@ -275,25 +341,39 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         @Test
         void testEmptyLine() {
             var line = lineWithCrotchets(0, songWithLineWidth(WIDE_LINE_SS));
-            assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(line, 0, null)).isTrue();
+            assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(line, 0, null, null)).isTrue();
         }
 
         @Test
-        void testLineExactlyFull() {
-            var song = mock(Song.class);
-            when(song.isMutationTrackingSuspended()).thenReturn(true);
+        void testLineExactlyFullCompressesToFitTheGraceNote() {
+            // A margin at the line's current right edge leaves no room at rest, but the crotchet
+            // gaps still hold slack above their struts, so the grace note is admitted.
+            var song = songMock();
             var line = lineWithCrotchets(3, song);
-            var currentWidthSs = lastElementRightEdgeSs(line);
-            when(song.getLineWidthSs()).thenReturn(currentWidthSs);
+            when(song.getLineWidthSs()).thenReturn(lastElementRightEdgeSs(line));
 
             assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(
-                line, line.elementCount(), null)).isFalse();
+                line, line.elementCount(), null, null)).isTrue();
+        }
+
+        @Test
+        void testLineTooNarrowEvenFullyCompressed() {
+            // Below the fully compressed width there is nowhere left to take space from.
+            var song = songMock();
+            var line = lineWithCrotchets(3, song);
+            var graceNote = ElementType.GRACE_QUAVER.getInstance();
+            var projection = InsertionSpacingCalculator.calculateInsertion(
+                line, graceNote, line.elementCount(), null, null);
+            when(song.getLineWidthSs()).thenReturn(fullyCompressedWidthSs(projection) - BOUNDARY_SLACK_SS);
+
+            assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(
+                line, line.elementCount(), null, null)).isFalse();
         }
 
         @Test
         void testLineWithPlentyOfRoom() {
             var line = lineWithCrotchets(2, songWithLineWidth(WIDE_LINE_SS));
-            assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(line, 1, null)).isTrue();
+            assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(line, 1, null, null)).isTrue();
         }
     }
 
@@ -304,21 +384,21 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         @Test
         void testPlentyOfRoom() {
             var line = lineWithGraceAtIndex(0, songWithLineWidth(WIDE_LINE_SS));
-            assertThat(InsertionSpacingCalculator.hasRoomForHostNoteAfterGrace(line, 0)).isTrue();
+            assertThat(InsertionSpacingCalculator.hasRoomForHostNoteAfterGrace(line, 0, null)).isTrue();
         }
 
         @Test
         void testNoRoomForHost() {
-            var song = mock(Song.class);
-            when(song.isMutationTrackingSuspended()).thenReturn(true);
+            // Below the fully compressed width the host note cannot be squeezed in at any gap.
+            var song = songMock();
             var line = lineWithGraceAtIndex(2, song);
             var graceIndex = line.elementCount() - 1;
-            var currentWidthSs = lastElementRightEdgeSs(line);
+            var hostNote = ElementType.CROTCHET.getInstance();
+            var projection = InsertionSpacingCalculator.calculateInsertion(
+                line, hostNote, graceIndex + 1, null, null);
+            when(song.getLineWidthSs()).thenReturn(fullyCompressedWidthSs(projection) - BOUNDARY_SLACK_SS);
 
-            // Width exactly at grace note's right edge — no room for a host note
-            when(song.getLineWidthSs()).thenReturn(currentWidthSs);
-
-            assertThat(InsertionSpacingCalculator.hasRoomForHostNoteAfterGrace(line, graceIndex)).isFalse();
+            assertThat(InsertionSpacingCalculator.hasRoomForHostNoteAfterGrace(line, graceIndex, null)).isFalse();
         }
     }
 
@@ -360,7 +440,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var secondXSs = firstXSs + largeGapSs;
             var line = lineWithWidelySpacedCrotchets(secondXSs);
 
-            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null, null);
 
             assertThat(result.shiftForSubsequentElementsSs()).isEqualTo(0.0);
         }
@@ -409,7 +489,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // Must be positive (elements are tightly packed — inserting requires a real shift)
             assertThat(expectedShiftSs).isGreaterThan(0.0);
 
-            var result = InsertionSpacingCalculator.calculateInsertion(line, inserted, 1, null);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, inserted, 1, null, null);
 
             assertThat(result.shiftForSubsequentElementsSs()).isEqualTo(expectedShiftSs);
         }
@@ -466,7 +546,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var line = lineWithCrotchets(3);
             var inserted = crotchet();
 
-            var result = InsertionSpacingCalculator.calculateInsertion(line, inserted, 1, null);
+            var result = InsertionSpacingCalculator.calculateInsertion(line, inserted, 1, null, null);
 
             // Recompute the inserted element's column right edge from scratch.
             var insertedLeftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(inserted);
@@ -518,8 +598,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         void testFallAtLastElementFitsAtExactBoundary() {
             // Source is the last element: the fall extends its own right edge only. Margin set to
             // exactly (fall right edge + required gap) is the passing boundary.
-            var song = mock(Song.class);
-            when(song.isMutationTrackingSuspended()).thenReturn(true);
+            var song = songMock();
             var line = lineWithCrotchets(3, song);
             var lastIndex = line.elementCount() - 1;
             var lastElement = line.getElement(lastIndex);
@@ -536,8 +615,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         @Test
         void testFallAtLastElementDoesNotFitJustBelowBoundary() {
             // One staff space short of the passing boundary must fail.
-            var song = mock(Song.class);
-            when(song.isMutationTrackingSuspended()).thenReturn(true);
+            var song = songMock();
             var line = lineWithCrotchets(3, song);
             var lastIndex = line.elementCount() - 1;
             var lastElement = line.getElement(lastIndex);
@@ -556,8 +634,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // Source is not the last element: the fall's wider right extent shifts following
             // elements right. With the margin set to exactly fit the line as-is (no fall), that
             // shift pushes the last element past the margin.
-            var song = mock(Song.class);
-            when(song.isMutationTrackingSuspended()).thenReturn(true);
+            var song = songMock();
             var line = lineWithCrotchets(3, song);
             var snugWidthSs = lastElementRightEdgeSs(line) + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
             when(song.getLineWidthSs()).thenReturn(snugWidthSs);
@@ -574,8 +651,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // its current right edge fails once the fall shifts the line right. Were the projection
             // wrongly applied to the immediate next element, its shifted edge would stay inside the
             // margin and the check would wrongly pass.
-            var song = mock(Song.class);
-            when(song.isMutationTrackingSuspended()).thenReturn(true);
+            var song = songMock();
             var line = lineWithCrotchets(4, song);
             var snugWidthSs = lastElementRightEdgeSs(line) + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
             when(song.getLineWidthSs()).thenReturn(snugWidthSs);
@@ -591,8 +667,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // (shiftSs == 0), so the result must depend only on the source's own fall right edge.
             // If the last-element projection ran regardless of shift, the distant element would
             // overflow the margin and the check would wrongly fail.
-            var song = mock(Song.class);
-            when(song.isMutationTrackingSuspended()).thenReturn(true);
+            var song = songMock();
             var line = lineWithCrotchets(3, song);
 
             var source = line.getElement(1);
@@ -623,8 +698,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // With a non-null layout the source X comes from the layout map, not xOffsetPx. A layout
             // position to the right of the element's xOffset pushes the fall's right edge past a
             // margin that the xOffset position would clear, proving the layout drives the geometry.
-            var song = mock(Song.class);
-            when(song.isMutationTrackingSuspended()).thenReturn(true);
+            var song = songMock();
             var line = lineWithCrotchets(3, song);
             var lastIndex = line.elementCount() - 1;
             var lastElement = line.getElement(lastIndex);
@@ -667,6 +741,51 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
             assertThat(source.hasGlissando()).as("original glissando restored").isTrue();
             assertThat(source.hasFall()).as("fall not left in place").isFalse();
+        }
+    }
+
+    /**
+     * Phase 7 task 4: a compress-to-fit insertion preview must be pixel-equal to what the
+     * committed layout actually assigns once the element is really inserted and the line is laid
+     * out again — otherwise the preview shown to the user could disagree with the result of
+     * accepting it. Drives {@link InsertionSpacingCalculator#calculateInsertion} and
+     * {@link LayoutEngine#layout(Line)} through the identical line, so both answer the same
+     * question the same way.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class PreviewMatchesCommittedLayout {
+
+        private static final int PREVIEW_INSERT_INDEX = 1;
+
+        @Test
+        void testInsertedElementPreviewXMatchesCommittedX() {
+            var line = detachedLine();
+            var engine = layoutEngine();
+
+            line.addElement(crotchet());
+            var shiftedElement = crotchet();
+            line.addElement(shiftedElement);
+            line.addElement(crotchet());
+
+            var beforeLayout = requireLayout(engine.layout(line));
+            var beforeShiftedXSs = beforeLayout.getElementXSs(shiftedElement);
+
+            var inserted = crotchet();
+            var preview = InsertionSpacingCalculator.calculateInsertion(
+                line, inserted, PREVIEW_INSERT_INDEX, beforeLayout, lyricRenderMetrics());
+
+            line.addElement(PREVIEW_INSERT_INDEX, inserted);
+            var afterLayout = requireLayout(engine.layout(line));
+
+            assertThat(afterLayout.getElementXSs(inserted))
+                .as("committed X for the inserted element must match the preview")
+                .isCloseTo(preview.insertedElementXSs(), within(PREVIEW_TOLERANCE_SS));
+
+            var afterShiftedXSs = afterLayout.getElementXSs(shiftedElement);
+            assertThat(afterShiftedXSs - beforeShiftedXSs)
+                .as("the actual shift applied to the following element must match the preview's projected shift")
+                .isCloseTo(preview.shiftForSubsequentElementsSs(), within(PREVIEW_TOLERANCE_SS));
         }
     }
 }

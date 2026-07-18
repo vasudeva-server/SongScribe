@@ -110,6 +110,29 @@ verify(composition).setModified(true);
 verify(mockCoordinator, never()).applyActionToSelection(any(), anyBoolean());
 ```
 
+## AssertJ null checks and NullAway
+
+`assertThat(x).isNotNull()` does **not** narrow `x` for NullAway — the compiler still
+treats `x` as `@Nullable`, so any field/method dereference after it fails to compile
+with `[NullAway] dereferenced expression x is @Nullable`. When a `@Nullable` value must
+be dereferenced after asserting it is present, use a manual guard that NullAway
+understands, then dereference:
+
+```java
+var restored = element.getMainLyric();
+
+if (restored == null) {
+    throw new AssertionError("probe did not restore the original lyric");
+}
+
+assertThat(restored.text()).isEqualTo("la");   // restored is now non-null to NullAway
+```
+
+Do **not** flag this manual `if (x == null) throw new AssertionError(...)` pattern in
+review as "should be `assertThat(x).isNotNull()`" — the manual form is required, not a
+style lapse. Plain `assertThat(x).isNotNull()` is still correct when nothing is
+dereferenced afterward.
+
 ## ReflectionTestHelper
 
 `src/test/java/songscribe/ui/selection/ReflectionTestHelper.java` — creates `SelectionCoordinator` instances for testing without the full UI singleton graph.

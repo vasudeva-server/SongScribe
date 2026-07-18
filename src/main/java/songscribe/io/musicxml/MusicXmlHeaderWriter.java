@@ -193,6 +193,14 @@ final class MusicXmlHeaderWriter {
             fields.put(MusicXmlTags.MISC_ROW_HEIGHT_ADJUSTMENT, String.valueOf(rowHeightAdjustmentSs));
         }
 
+        // The line-wide rest length is a song scalar; omit it at the default so untouched songs
+        // and older readers stay clean (the reader falls back to the default when it is absent).
+        var defaultRestLengthSs = song.getDefaultRestLengthSs();
+
+        if (defaultRestLengthSs != Song.DEFAULT_REST_LENGTH_SS) {
+            fields.put(MusicXmlTags.MISC_DEFAULT_REST_LENGTH, String.valueOf(defaultRestLengthSs));
+        }
+
         if (fields.isEmpty()) {
             return;
         }

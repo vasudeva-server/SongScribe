@@ -1352,7 +1352,7 @@ public final class ScoreView
             lyricsFont,
             ScaleContext.scaleFont(lyricsFont),
             ScaleContext.textWidthSs(lyricsFont, "-").value(),
-            ScaleContext.textWidthSs(lyricsFont, "  ").value());
+            ScaleContext.textWidthSs(lyricsFont, " ").value());
     }
 
     @Nullable

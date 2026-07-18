@@ -20,7 +20,6 @@
 
 package songscribe.layout;
 
-import java.text.BreakIterator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -28,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeSet;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -200,7 +200,8 @@ public final class LyricLayoutBuilder {
             var widthSs = (verse == 1)
                 ? column.getSyllableWidthSs()
                 : lyricRenderMetrics.lyricBoxWidthSs(text);
-            var boxXSs = computeLyricBoxLeftXSs(column, text, widthSs, lyricRenderMetrics);
+            var hostColumn = columnIndex + 1 < columns.size() ? columns.get(columnIndex + 1) : null;
+            var boxXSs = computeLyricBoxLeftXSs(column, hostColumn, text, widthSs, lyricRenderMetrics);
             var box = new LyricBoxLayout(boxXSs, widthSs, verse, text);
             boxesByElement.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
 
@@ -320,50 +321,44 @@ public final class LyricLayoutBuilder {
     /**
      * Returns the left-edge X (staff spaces) at which to place a syllable's lyric box.
      * <p>
-     * Normal notes / rests: centre the entire syllable's advance width on the column's
-     * right-extent centre, excluding augmentation dots (the established Gould/Ross rule —
-     * dots are not part of the notehead and must not shift the lyric position).
+     * Normal notes / rests: centre the entire syllable's advance width on the notehead centre,
+     * excluding the flag and augmentation dots (the established Gould/Ross rule — neither the flag
+     * nor the dots are part of the notehead and must not shift the lyric position).
      * <p>
-     * Grace notes: centre only the <strong>first grapheme cluster</strong> of the syllable
-     * on the grace note's notehead centre. This deliberately differs from the normal-note
-     * rule — a grace is transitory, so centring the whole syllable on it would push too
-     * much text to the left of the grace's onset and visually anchor the lyric to the host.
-     * Do not "fix" this to use the normal-note centring helper.
-     * <p>
-     * No notehead-offset correction is applied for graces: graces are always rendered
-     * stem-up (see {@code NoteRenderer}), so {@code NoteGeometry.getNoteheadXOffsetSs}
-     * would always return zero for them.
+     * Grace notes, by syllable advance width relative to the grace notehead and the grace→host
+     * notehead union:
+     * <ul>
+     *   <li>narrower than the grace notehead → centre on the grace notehead (a lone narrow glyph
+     *       such as "I" must sit under the notehead, not left-anchored where it reads off-centre);
+     *   <li>at least the notehead width but within the union → left-anchor on the grace notehead's
+     *       left edge (the lyric flows rightward toward the host);
+     *   <li>wider than the union → centre on the union so it overhangs each side equally (see
+     *       {@link HorizontalSpacingCalculator#graceLyricOverhangSs(double, ElementColumn, ElementColumn)}).
+     * </ul>
+     * The grace and its host are treated as one unioned column for lyric layout: the grace carries
+     * the lyric, the host never does, and {@code hostColumn} is the column immediately after the
+     * grace. The first two regimes keep the syllable's ink within the notehead→host footprint, so
+     * they impose no extra neighbour reservation (the spacing extents stay zero).
      */
+    @SuppressWarnings("NullAway") // a grace always has its host at the next column, so hostColumn is non-null here
     private static double computeLyricBoxLeftXSs(
         ElementColumn column,
+        @Nullable ElementColumn hostColumn,
         String text,
         double widthSs,
         LyricRenderMetrics lyricRenderMetrics) {
 
         var element = column.getElement();
 
-        if (element.getType().isGraceNote()) {
-            var noteheadCenterXSs = column.getXSs() + element.getType().getElementCenterXSs();
-            var firstGlyph = text.substring(0, firstGraphemeClusterEndIndex(text));
-            var firstGlyphWidthSs = lyricRenderMetrics.lyricBoxWidthSs(firstGlyph);
-            return noteheadCenterXSs - firstGlyphWidthSs / 2.0;
+        // A grace lyric at least as wide as the grace notehead spans toward the host: anchor on the
+        // grace notehead left edge when it fits the grace→host union, else centre on that union.
+        if (element.getType().isGraceNote() && widthSs >= column.getNoteheadWidthSs()) {
+            return column.getXSs() - HorizontalSpacingCalculator.graceLyricOverhangSs(widthSs, column, hostColumn);
         }
 
-        var centerXSs = column.getNoteheadCenterXSs();
-        return centerXSs - widthSs / 2.0;
-    }
-
-    /**
-     * Returns the end index (exclusive) of the first grapheme cluster in {@code text}.
-     * This correctly handles surrogate pairs, combining marks, and Indic scripts (e.g.
-     * Bengali matras and conjuncts) where a single visible character may span multiple
-     * code points.
-     */
-    private static int firstGraphemeClusterEndIndex(String text) {
-        var iterator = BreakIterator.getCharacterInstance();
-        iterator.setText(text);
-        var end = iterator.next();
-        return end == BreakIterator.DONE ? text.length() : end;
+        // Narrow grace lyric or any normal note/rest: centre the syllable on the notehead, which
+        // excludes the flag and augmentation dots (getNoteheadCenterXSs) so neither shifts the lyric.
+        return column.getNoteheadCenterXSs() - widthSs / 2.0;
     }
 
     private static boolean isHostOfPairedGraceColumn(List<ElementColumn> columns, int index) {

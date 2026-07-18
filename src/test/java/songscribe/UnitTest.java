@@ -203,6 +203,7 @@ public abstract class UnitTest {
     public static Song minimalSongMock() {
         var songMock = mock(Song.class);
         when(songMock.isMutationTrackingSuspended()).thenReturn(true);
+        when(songMock.getDefaultRestLengthSs()).thenReturn(Song.DEFAULT_REST_LENGTH_SS);
         doAnswer(inv -> { ((Runnable) inv.getArgument(0)).run(); return null; })
             .when(songMock).withModification(any(Runnable.class));
         doAnswer(inv -> { ((Runnable) inv.getArgument(1)).run(); return null; })

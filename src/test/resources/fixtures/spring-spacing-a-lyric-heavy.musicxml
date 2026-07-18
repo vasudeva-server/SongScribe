@@ -1,0 +1,295 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <movement-title></movement-title>
+  <identification>
+    <creator type="composer">Sri Chinmoy</creator>
+    <creator type="lyricist">Sri Chinmoy</creator>
+    <rights>Copyright © 2026 Sri Chinmoy Centre, Creative Commons BY-NC-ND 4.0</rights>
+    <encoding>
+      <software>SongScribe 2.0.0</software>
+      <encoding-date>2026-07-18</encoding-date>
+      <supports element="accidental" type="yes" />
+      <supports element="beam" type="yes" />
+      <supports element="stem" type="yes" />
+    </encoding>
+    <miscellaneous>
+      <miscellaneous-field name="lyrics-source">LYRICIST</miscellaneous-field>
+      <miscellaneous-field name="sub-attribution-font">Source Sans 3 SongScribe</miscellaneous-field>
+      <miscellaneous-field name="sub-attribution-font-size">15</miscellaneous-field>
+    </miscellaneous>
+  </identification>
+  <defaults>
+    <scaling>
+      <millimeters>7</millimeters>
+      <tenths>40</tenths>
+    </scaling>
+    <page-layout>
+      <page-height>1596</page-height>
+      <page-width>1020.00</page-width>
+    </page-layout>
+    <staff-layout>
+      <staff-distance>0</staff-distance>
+    </staff-layout>
+    <music-font font-family="Bravura" font-size="32" />
+    <word-font font-family="Source Sans 3 SongScribe" font-size="16" />
+    <lyric-font font-family="Source Sans 3 SongScribe" font-size="18" />
+    <lyric-language xml:lang="en" />
+  </defaults>
+  <credit>
+    <credit-type>composer</credit-type>
+    <credit-words font-family="Source Sans 3 SongScribe" font-size="16" font-weight="normal" font-style="normal" relative-y="0.00">Sri Chinmoy</credit-words>
+  </credit>
+  <credit>
+    <credit-type>lyricist</credit-type>
+    <credit-words font-family="Source Sans 3 SongScribe" font-size="16" font-weight="normal" font-style="normal" relative-y="0.00">Sri Chinmoy</credit-words>
+  </credit>
+  <credit>
+    <credit-type>rights</credit-type>
+    <credit-words font-family="Source Sans 3 SongScribe" font-size="16" font-weight="normal" font-style="normal" relative-y="0.00">Copyright © 2026 Sri Chinmoy Centre, Creative Commons BY-NC-ND 4.0</credit-words>
+  </credit>
+  <part-list>
+    <score-part id="P1"><part-name></part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <print new-system="yes" />
+      <attributes>
+        <divisions>480</divisions>
+        <key><fifths>0</fifths></key>
+        <time print-object="no"><senza-misura/></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note default-x="0.00">
+        <pitch>
+          <step>C</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>Strength</text>
+        </lyric>
+      </note>
+      <note default-x="0.00">
+        <pitch>
+          <step>D</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>Rise</text>
+        </lyric>
+      </note>
+      <note default-x="0.00">
+        <pitch>
+          <step>E</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>Walk</text>
+        </lyric>
+      </note>
+      <note default-x="0.00">
+        <pitch>
+          <step>F</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>Talk</text>
+        </lyric>
+      </note>
+      <note default-x="0.00">
+        <pitch>
+          <step>G</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>Feel</text>
+        </lyric>
+      </note>
+      <note default-x="0.00">
+        <pitch>
+          <step>A</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>Live</text>
+        </lyric>
+      </note>
+      <note default-x="0.00">
+        <pitch>
+          <step>B</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>Give</text>
+        </lyric>
+      </note>
+      <note default-x="0.00">
+        <pitch>
+          <step>C</step>
+          <octave>6</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>Care</text>
+        </lyric>
+      </note>
+      <note default-x="0.00" relative-x="341.25">
+        <pitch>
+          <step>C</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>one</text>
+        </lyric>
+      </note>
+      <note default-x="0.00" relative-x="377.50">
+        <pitch>
+          <step>E</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>two</text>
+        </lyric>
+      </note>
+      <note default-x="0.00" relative-x="413.75">
+        <pitch>
+          <step>B</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>three</text>
+        </lyric>
+      </note>
+      <note default-x="0.00" relative-x="448.75">
+        <pitch>
+          <step>D</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>four</text>
+        </lyric>
+      </note>
+      <note default-x="0.00" relative-x="483.75">
+        <pitch>
+          <step>G</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>give</text>
+        </lyric>
+      </note>
+      <note default-x="0.00" relative-x="521.25">
+        <pitch>
+          <step>C</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>me</text>
+        </lyric>
+      </note>
+      <note default-x="0.00" relative-x="557.50">
+        <pitch>
+          <step>C</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>a</text>
+        </lyric>
+      </note>
+      <note default-x="0.00" relative-x="583.75">
+        <pitch>
+          <step>A</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>break</text>
+        </lyric>
+      </note>
+      <note default-x="0.00" relative-x="871.25">
+        <pitch>
+          <step>G</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>please</text>
+        </lyric>
+      </note>
+      <note default-x="0.00" relative-x="917.50">
+        <pitch>
+          <step>F</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>will</text>
+        </lyric>
+      </note>
+      <note default-x="0.00" relative-x="970.00">
+        <pitch>
+          <step>F</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <lyric number="1">
+          <syllabic>single</syllabic>
+          <text>you</text>
+        </lyric>
+      </note>
+      <barline location="right">
+        <bar-style>light-heavy</bar-style>
+      </barline>
+    </measure>
+  </part>
+</score-partwise>

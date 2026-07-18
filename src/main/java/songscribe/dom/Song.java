@@ -100,6 +100,18 @@ public final class Song {
     public static final int DEFAULT_KEY_ACCIDENTAL_COUNT = 5;
     public static final KeyType DEFAULT_KEY_TYPE = KeyType.FLATS;
 
+    /**
+     * Default line-wide rest length (delta-X Ss between adjacent column origins) from which every
+     * gap's ideal spacing is derived. Matches the legacy default column gap; a song may override it
+     * to loosen or tighten the whole score proportionally (#330).
+     */
+    public static final double DEFAULT_REST_LENGTH_SS = 2.5;
+    /**
+     * Lower clamp for {@link #defaultRestLengthSs}: no rest is ever derived from a line rest tighter
+     * than this. Tunable first cut.
+     */
+    public static final double MIN_DEFAULT_REST_LENGTH_SS = 1.0;
+
     // Sentinel passed to addLine(int, Line) meaning "append after the last line"
     private static final int APPEND = -1;
 
@@ -164,6 +176,10 @@ public final class Song {
     private KeyType defaultKeyType = DEFAULT_KEY_TYPE;
 
     private double rowHeightAdjustmentSs = 0;
+
+    // Line-wide rest length driving derived column spacing (#330); persisted in the MusicXML
+    // header. Clamped to at least MIN_DEFAULT_REST_LENGTH_SS on every set.
+    private double defaultRestLengthSs = DEFAULT_REST_LENGTH_SS;
 
     // The width of a staff line in staff-space units
     private double lineWidthSs = defaultLineWidthProvider.getAsDouble();
@@ -652,6 +668,10 @@ public final class Song {
         return rowHeightAdjustmentSs;
     }
 
+    public double getDefaultRestLengthSs() {
+        return defaultRestLengthSs;
+    }
+
     public double getLineWidthSs() {
         return lineWidthSs;
     }
@@ -776,6 +796,15 @@ public final class Song {
             LayoutField.ROW_HEIGHT_ADJUSTMENT_SS, rowHeightAdjustmentSs, rowHeightAdjustment,
             () -> rowHeightAdjustmentSs = rowHeightAdjustment
         );
+    }
+
+    /**
+     * Sets the line-wide rest length, clamped to at least {@link #MIN_DEFAULT_REST_LENGTH_SS}.
+     * There is no mutation record: nothing edits this interactively yet (song-settings UI is #569),
+     * so it is written only by document load.
+     */
+    public void setDefaultRestLengthSs(double defaultRestLength) {
+        defaultRestLengthSs = Math.max(MIN_DEFAULT_REST_LENGTH_SS, defaultRestLength);
     }
 
     /**

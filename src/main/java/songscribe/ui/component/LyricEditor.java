@@ -32,6 +32,7 @@ import javax.swing.text.Element;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.error.RuntimeError;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.TextEditingDidChangeNotification;
@@ -42,10 +43,12 @@ import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.EditLyricAction;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.undo.OpNames;
 import songscribe.layout.InsetsSs;
+import songscribe.layout.LyricEditFitCalculator;
 import songscribe.util.UIUtils;
 
 /**
@@ -204,6 +207,13 @@ public final class LyricEditor extends MyJTextField {
     private boolean suppressDismissAdjustment;
 
     /**
+     * Guards against a stacked duplicate of the "lyric will not fit" alert. The alert is modal and
+     * steals focus, which fires {@link #focusLost} and re-enters {@link #ensureLyricFits}; while the
+     * alert is up this stays {@code true} so the re-entrant check refuses without a second dialog.
+     */
+    private boolean showingLyricFitAlert;
+
+    /**
      * Constructs a {@link LyricEditor} on {@code element}, attaches it to {@code score},
      * and gives it focus. Used by both {@link EditLyricAction} and
      * {@link #advance()} so the open sequence is centralized.
@@ -317,6 +327,20 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private record CommitSpec(CommitKind kind, Lyric.Extend extend) {}
+
+    /**
+     * The three spacing-relevant booleans a {@code (kind, extend)} pair implies. Derived in one
+     * place so {@link #ensureLyricFits} (fit pre-check) and {@link #commitInner} (the actual write)
+     * cannot drift apart if the {@link CommitKind}/{@link Lyric.Extend} mapping ever changes.
+     */
+    private record CommitIntent(boolean wantsCarrier, boolean wantsContinues, boolean wantsCompound) {
+        static CommitIntent of(CommitKind kind, Lyric.Extend extend) {
+            return new CommitIntent(
+                extend == Lyric.Extend.STOP || extend == Lyric.Extend.CONTINUE,
+                kind != CommitKind.WORD_FINAL,
+                kind == CommitKind.WORD_CONTINUING_COMPOUND);
+        }
+    }
 
     /**
      * Text-field UI used only by the lyric overlay so we can customize its Swing text
@@ -450,6 +474,14 @@ public final class LyricEditor extends MyJTextField {
 
             focused = false;
             var commitSpec = navigationCommitSpec();
+
+            if (!ensureLyricFits(commitSpec.kind(), commitSpec.extend())) {
+                // Keep the editor open and focused so the user can shorten the too-long lyric.
+                focused = true;
+                requestFocusInWindow();
+                return;
+            }
+
             line.withModification(commitOpName(), () -> {
                 commitInner(commitSpec.kind(), commitSpec.extend());
                 applyDismissAdjustment();
@@ -552,6 +584,12 @@ public final class LyricEditor extends MyJTextField {
 
         bindKey(KeyEvent.VK_ENTER, ACTION_KEY_ENTER, () -> {
             var commitSpec = navigationCommitSpec();
+
+            if (!ensureLyricFits(commitSpec.kind(), commitSpec.extend())) {
+                // Keep the editor open (it retains focus) so the user can shorten the lyric.
+                return;
+            }
+
             line.withModification(commitOpName(), () -> {
                 commitInner(commitSpec.kind(), commitSpec.extend());
                 applyDismissAdjustment();
@@ -675,7 +713,76 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private void commit(CommitKind kind, Lyric.Extend extend) {
+        if (!ensureLyricFits(kind, extend)) {
+            return;
+        }
+
         line.withModification(commitOpName(), () -> commitInner(kind, extend));
+    }
+
+    /**
+     * Returns whether committing the current text as {@code kind}/{@code extend} keeps the line
+     * layout feasible. A wider syllable can force spacing past the staff margin, and committing it
+     * anyway leaves the line unable to lay out (issue #449); when that would happen this warns the
+     * user, leaves the model untouched, and returns false so the caller aborts the commit and keeps
+     * the editor open for the user to shorten the lyric.
+     *
+     * <p>An already-overflowing line is never blocked, so the user can still shorten a too-long
+     * syllable to recover; only an edit that turns a fitting line into one that cannot lay out is
+     * refused.
+     */
+    private boolean ensureLyricFits(CommitKind kind, Lyric.Extend extend) {
+        if (showingLyricFitAlert) {
+            // The alert's focus-steal re-entered this check; refuse without stacking a second alert.
+            return false;
+        }
+
+        var intent = CommitIntent.of(kind, extend);
+
+        // The candidate syllabic only needs the correct continues-status: that is the sole part of
+        // the committed syllabic that affects horizontal spacing (see LyricEditFitCalculator).
+        var probeSyllabic = deriveProbeSyllabic(intent);
+
+        var metrics = score.getLyricRenderMetrics();
+        var marginSs = line.getSong().getLineWidthSs();
+
+        if (!LyricEditFitCalculator.lineFits(line, metrics, marginSs)) {
+            return true;
+        }
+
+        var index = line.getElementIndex(element);
+        var candidate = new Lyric(CURRENT_VERSE, getText(), extend, probeSyllabic, intent.wantsCompound());
+
+        if (LyricEditFitCalculator.lyricEditFits(line, index, candidate, metrics, marginSs)) {
+            return true;
+        }
+
+        showingLyricFitAlert = true;
+
+        try {
+            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_LINE_TOO_FULL, Strings.ERROR_LINE_FULL_LYRIC);
+        } finally {
+            showingLyricFitAlert = false;
+        }
+
+        return false;
+    }
+
+    /**
+     * The syllabic to probe the fit-check with: {@code null} for a melisma carrier, {@code BEGIN}
+     * for a word-continuing syllable (reserves the hyphen cell), {@code SINGLE} otherwise. Only the
+     * continues-status matters to horizontal spacing (see {@link LyricEditFitCalculator}).
+     */
+    private static Lyric.@Nullable Syllabic deriveProbeSyllabic(CommitIntent intent) {
+        if (intent.wantsCarrier()) {
+            return null;
+        }
+
+        if (intent.wantsContinues()) {
+            return Lyric.Syllabic.BEGIN;
+        }
+
+        return Lyric.Syllabic.SINGLE;
     }
 
     /**
@@ -714,9 +821,7 @@ public final class LyricEditor extends MyJTextField {
         var existingLyric = element.getLyricForVerse(CURRENT_VERSE);
 
         var existingText = existingLyric != null ? existingLyric.text() : "";
-        var wantsCarrier = extend == Lyric.Extend.STOP || extend == Lyric.Extend.CONTINUE;
-        var wantsContinues = kind != CommitKind.WORD_FINAL;
-        var wantsCompound = kind == CommitKind.WORD_CONTINUING_COMPOUND;
+        var intent = CommitIntent.of(kind, extend);
         var existingSyllabic = existingLyric != null ? existingLyric.syllabic() : null;
         var existingContinues = existingSyllabic == Lyric.Syllabic.BEGIN
             || existingSyllabic == Lyric.Syllabic.MIDDLE;
@@ -725,8 +830,8 @@ public final class LyricEditor extends MyJTextField {
         if (text.equals(existingText)
                 && existingLyric != null
                 && existingLyric.extend() == extend
-                && existingContinues == wantsContinues
-                && existingCompound == wantsCompound) {
+                && existingContinues == intent.wantsContinues()
+                && existingCompound == intent.wantsCompound()) {
             return;
         }
 
@@ -735,12 +840,12 @@ public final class LyricEditor extends MyJTextField {
         }
 
         var index = line.getElementIndex(element);
-        var placeholderSyllabic = wantsCarrier ? null : Lyric.Syllabic.SINGLE;
+        var placeholderSyllabic = intent.wantsCarrier() ? null : Lyric.Syllabic.SINGLE;
 
         line.modifyElement(index, ElementField.LYRIC, () ->
             element.setLyricForVerse(CURRENT_VERSE, placeholderSyllabic, false, text, extend));
 
-        if (!text.isEmpty() && !wantsCarrier) {
+        if (!text.isEmpty() && !intent.wantsCarrier()) {
             line.setSyllableBoundary(index, CURRENT_VERSE, kind == CommitKind.WORD_FINAL, kind == CommitKind.WORD_CONTINUING_COMPOUND);
         }
     }
@@ -774,6 +879,10 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private void advanceWithIndex(CommitKind kind, Lyric.Extend extend, int nextIndex) {
+        if (!ensureLyricFits(kind, extend)) {
+            return;
+        }
+
         line.withModification(commitOpName(), () -> {
             commitInner(kind, extend);
             applyDismissAdjustment();
@@ -783,6 +892,10 @@ public final class LyricEditor extends MyJTextField {
 
     // Must NOT be inside an open modification bracket — opens its own.
     private void breakChainCommitAndAdvance(CommitKind kind, int nextIndex) {
+        if (!ensureLyricFits(kind, Lyric.Extend.NONE)) {
+            return;
+        }
+
         var currentIndex = line.getElementIndex(element);
         line.withModification(commitOpName(), () -> {
             breakChainAtCurrentElement(currentIndex);
@@ -1040,6 +1153,16 @@ public final class LyricEditor extends MyJTextField {
 
         focused = false;
         var commitSpec = navigationCommitSpec();
+
+        if (!ensureLyricFits(commitSpec.kind(), commitSpec.extend())) {
+            // Keep the editor open and focused; re-arm the outside-click listener (the caller
+            // removed it) so a later click can dismiss the editor once the lyric fits.
+            focused = true;
+            installOutsideClickListener();
+            requestFocusInWindow();
+            return;
+        }
+
         line.withModification(commitOpName(), () -> {
             commitInner(commitSpec.kind(), commitSpec.extend());
             applyDismissAdjustment();

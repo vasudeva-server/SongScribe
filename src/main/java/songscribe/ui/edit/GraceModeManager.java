@@ -238,7 +238,7 @@ public final class GraceModeManager {
 
         return graceColumn.getXSs()
             + graceColumn.getRightExtentSs()
-            + HorizontalSpacingCalculator.GRACE_NOTE_GAP_SS
+            + HorizontalSpacingCalculator.GRACE_HOST_REST_SS
             + Math.abs(hostLeftExtentSs);
     }
 
@@ -335,7 +335,8 @@ public final class GraceModeManager {
         }
 
         var result = InsertionSpacingCalculator.calculateInsertion(
-            graceLine, previewElement, graceNoteIndex + 1, graceLineComponent.getLayoutResult()
+            graceLine, previewElement, graceNoteIndex + 1,
+            graceLineComponent.getLayoutResult(), graceLineComponent.getLyricRenderMetrics()
         );
 
         if (!result.fitsWithinLine(graceLine.getSong().getLineWidthSs())) {
@@ -384,7 +385,8 @@ public final class GraceModeManager {
             return false;
         }
 
-        if (!InsertionSpacingCalculator.hasRoomForGraceNote(line, xIndex, lineComponent.getLayoutResult())) {
+        if (!InsertionSpacingCalculator.hasRoomForGraceNote(
+                line, xIndex, lineComponent.getLayoutResult(), lineComponent.getLyricRenderMetrics())) {
             OptionDialogs.showErrorMessage(
                 SwingUtilities.getWindowAncestor(lineComponent),
                 Strings.ALERT_TITLE_GRACE_NOTE_ERROR,

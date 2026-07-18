@@ -20,26 +20,42 @@
 
 package songscribe.layout;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 
 /**
- * Spacing calculations for element insertion operations using layout2 algorithms.
+ * Spacing calculations for element insertion operations.
  * <p>
- * This class provides simplified spacing calculations for interactive editing operations
- * (adding elements, inserting elements) without requiring full layout recalculation. It creates
- * lightweight ElementColumns internally to leverage the standard spacing algorithms from
- * {@link HorizontalSpacingCalculator}.
+ * This class answers two questions for interactive editing (adding or inserting an element)
+ * without committing to a full relayout:
  * <ul>
- *   <li>Append element to end of line: {@link #calculateAppendPositionSs(Line, StaffElement, LayoutResult)}</li>
- *   <li>Insert element in middle: {@link #calculateInsertionShiftSs(Line, StaffElement, int, LayoutResult)}</li>
+ *   <li><b>Where does the element go?</b> — the natural (uncompressed) length of the
+ *       {@link Spring} on either side of the insertion point, measured from the neighbours'
+ *       <em>current</em> positions, so only the elements after the insertion point move.</li>
+ *   <li><b>Does it still fit?</b> — {@link InsertionResult#fitsWithinLine} runs the identical
+ *       {@link HorizontalSpacingCalculator#solveChain solve} the layout engine runs, over the same
+ *       projected columns {@link LayoutEngine} would build after the commit — every column with the
+ *       new one spliced in, <em>including the auto-maintained terminal barline</em>, anchored by the
+ *       shared {@link HorizontalSpacingCalculator#calculateAnchorXSs}. Solving the exact chain the
+ *       layout will solve is what guarantees the two agree: an insert the gate accepts always lays
+ *       out. An insert is refused only when even full compression to every gap's strut overflows the
+ *       margin; a line with slack simply compresses to absorb the new element.</li>
  * </ul>
+ * <p>
+ * The columns surrounding the insertion point carry their real syllable widths whenever a
+ * {@link LyricRenderMetrics} is supplied, so previews are spaced by the same lyric rules as the
+ * committed layout. Callers with no lyric metrics to hand (file load, where the positions are
+ * bootstrap values the first layout overwrites) may pass {@code null}, which falls back to
+ * syllable-less columns.
  */
 public final class InsertionSpacingCalculator {
 
@@ -48,31 +64,65 @@ public final class InsertionSpacingCalculator {
      * inserted element, the shift amount for subsequent elements, and the projected
      * line width after the insertion.
      *
-     * @param insertedElementXSs          X position where the inserted element should be placed
+     * @param insertedElementXSs           X position where the inserted element should be placed
      * @param shiftForSubsequentElementsSs Amount to shift all elements after the insertion point (always >= 0)
-     * @param newLineWidthSs              Projected line width after the insertion
+     * @param newLineWidthSs               Projected line width after the insertion
+     * @param projectedSprings             The lyric-stretched spring chain of the line as LayoutEngine
+     *                                     will build it after the commit — every column with the new
+     *                                     one spliced in, including the terminal barline — what
+     *                                     {@link #fitsWithinLine} solves
+     * @param projectedFirstXSs            X the projected chain is anchored at
+     *                                     ({@link HorizontalSpacingCalculator#calculateAnchorXSs})
+     * @param projectedLastRightExtentSs   Right extent of the projected chain's last column, so the
+     *                                     solve leaves room for its glyph inside the margin
      */
     public record InsertionResult(
         double insertedElementXSs,
         double shiftForSubsequentElementsSs,
-        double newLineWidthSs
+        double newLineWidthSs,
+        List<Spring> projectedSprings,
+        double projectedFirstXSs,
+        double projectedLastRightExtentSs
     ) {
+        public InsertionResult {
+            projectedSprings = List.copyOf(projectedSprings);
+        }
+
         /**
-         * Returns whether the insertion fits within the given right margin.
-         * Requires at least the default column gap after the last element
-         * so notes don't butt up against the end of the line.
+         * Returns whether the insertion fits within the given right margin — compress-to-fit:
+         * the line is free to give up slack to absorb the new element, and only a chain that
+         * overflows with every gap frozen at its strut is rejected.
          *
          * @param staffRightMarginSs The maximum allowed line width in staff spaces
-         * @return {@code true} if the projected line width does not exceed the margin
+         * @return {@code true} unless the projected spring chain solves INFEASIBLE
          */
         public boolean fitsWithinLine(double staffRightMarginSs) {
-            return fitsWithinMarginSs(newLineWidthSs, staffRightMarginSs);
+            return !HorizontalSpacingCalculator.solveChain(
+                projectedSprings, projectedFirstXSs, projectedLastRightExtentSs, staffRightMarginSs)
+                .isInfeasible();
         }
     }
 
     /**
-     * The single line-fit rule: a projected width fits when it leaves at least the default
-     * column gap before the right margin, so elements don't butt up against the line end.
+     * The <em>positioning</em> chain for an insertion: every effective column (the terminal barline
+     * excluded, since it is pinned flush-right rather than shifted) in element order with the
+     * inserted column spliced in, plus the lyric-stretched spring chain over them. Drives where the
+     * inserted element lands and how far its successors shift. The separate <em>fit</em> chain that
+     * {@link InsertionResult#fitsWithinLine} solves is built in {@link #calculateInsertion} and does
+     * include the terminal, so it matches the committed layout exactly.
+     *
+     * @param columns     Projected columns in element order (never empty — it holds at least the
+     *                    inserted column)
+     * @param springs     One lyric-stretched spring per adjacent pair of {@code columns}
+     * @param insertIndex Index of the inserted column within {@code columns}
+     */
+    private record ProjectedLine(List<ElementColumn> columns, List<Spring> springs, int insertIndex) {}
+
+    /**
+     * The fall-fit rule: a projected width fits when it leaves at least the default column gap
+     * before the right margin, so the fall glyph doesn't butt up against the line end. Insertion
+     * uses the compress-to-fit gate in {@link InsertionResult#fitsWithinLine} instead; a fall
+     * widens a column rather than adding one, so it has no spring chain of its own to solve.
      */
     private static boolean fitsWithinMarginSs(double projectedWidthSs, double staffRightMarginSs) {
         return projectedWidthSs + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
@@ -89,37 +139,31 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
+     * The natural (uncompressed) delta-X a spring wants: its rest, floored by its strut so a gap
+     * whose glyphs already overlap at rest length is pushed apart rather than left colliding.
+     */
+    private static double naturalLengthSs(Spring spring) {
+        return Math.max(spring.restSs(), spring.strutSs());
+    }
+
+    /**
      * Calculates the X position for appending an element to the end of a line.
-     * <p>
-     * This method creates lightweight ElementColumns for the last existing element and the
-     * element to append, then uses the standard spacing algorithm to determine where the
-     * new element should be placed.
      *
-     * @param line            The line to append to
-     * @param elementToAppend The element being appended
-     * @param layout          Layout result for position lookup; null falls back to {@code xOffset}
+     * @param line               The line to append to
+     * @param elementToAppend    The element being appended
+     * @param layout             Layout result for position lookup; null falls back to {@code xOffset}
+     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
+     *                           line as if it had no lyrics
      * @return X position in staff spaces where the element should be placed
      */
     public static double calculateAppendPositionSs(
         Line line,
         StaffElement elementToAppend,
-        @Nullable LayoutResult layout) {
+        @Nullable LayoutResult layout,
+        @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
-        var effectiveCount = line.effectiveElementCount();
-
-        if (effectiveCount == 0) {
-            return HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
-        }
-
-        var lastElement = line.getElement(effectiveCount - 1);
-        var lastColumn = createLightweightColumn(lastElement);
-
-        var lastXSs = elementXSs(lastElement, layout);
-        lastColumn.setXSs(lastXSs);
-
-        var appendColumn = createLightweightColumn(elementToAppend);
-
-        return HorizontalSpacingCalculator.calculateNextColumnXSs(lastColumn, appendColumn);
+        return calculateInsertion(line, elementToAppend, line.elementCount(), layout, lyricRenderMetrics)
+            .insertedElementXSs();
     }
 
     /**
@@ -127,7 +171,8 @@ public final class InsertionSpacingCalculator {
      * using the current X position of {@code currentElement}.
      * <p>
      * This is useful for paste operations where elements have already been positioned and
-     * you need to determine where the next element in sequence should go.
+     * you need to determine where the next element in sequence should go. Neither element is
+     * looked up on a line, so the pair is spaced with no lyric context.
      *
      * @param currentElement An element with its X position already set
      * @param nextElement    The element to be placed after currentElement
@@ -137,7 +182,12 @@ public final class InsertionSpacingCalculator {
         var currentColumn = createLightweightColumn(currentElement);
         currentColumn.setXSs(elementXSs(currentElement, null));
         var nextColumn = createLightweightColumn(nextElement);
-        return HorizontalSpacingCalculator.calculateNextColumnXSs(currentColumn, nextColumn);
+
+        // No line is involved in this paste-position lookup, so there is no song line rest to read;
+        // the pair is spaced against the default line rest.
+        return currentColumn.getXSs()
+            + naturalLengthSs(HorizontalSpacingCalculator.buildSpring(
+                currentColumn, nextColumn, Song.DEFAULT_REST_LENGTH_SS));
     }
 
     /**
@@ -146,120 +196,165 @@ public final class InsertionSpacingCalculator {
      * This method must be called before the element is added to the line, since it examines the
      * line's current state to determine proper spacing.
      *
-     * @param line            The line being modified (before insertion)
-     * @param insertedElement The element being inserted
-     * @param insertIndex     The index where the element will be inserted (0-based)
-     * @param layout          Layout result for position lookup; null falls back to {@code xOffset}
-     * @return An {@link InsertionResult} with the element's X position and the shift for subsequent elements
+     * @param line               The line being modified (before insertion)
+     * @param insertedElement    The element being inserted
+     * @param insertIndex        The index where the element will be inserted (0-based)
+     * @param layout             Layout result for position lookup; null falls back to {@code xOffset}
+     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
+     *                           line as if it had no lyrics
+     * @return An {@link InsertionResult} with the element's X position, the shift for subsequent
+     *         elements, and the projected spring chain its fit gate solves
      */
     public static InsertionResult calculateInsertion(
         Line line,
         StaffElement insertedElement,
         int insertIndex,
-        @Nullable LayoutResult layout) {
+        @Nullable LayoutResult layout,
+        @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         var elementCount = line.elementCount();
 
-        // Validate index
         if (insertIndex < 0 || insertIndex > elementCount) {
             throw new IllegalArgumentException(
                 "insertIndex " + insertIndex + " out of bounds [0, " + elementCount + ']');
         }
 
-        // If inserting at end, no shift needed (use calculateAppendPosition instead)
-        if (insertIndex == elementCount) {
-            var appendXSs = calculateAppendPositionSs(line, insertedElement, layout);
-            var appendColumn = createLightweightColumn(insertedElement);
-            appendColumn.setXSs(appendXSs);
-            return new InsertionResult(appendXSs, 0, appendColumn.getRightEdgeXSs());
-        }
-
-        // Create column for inserted element
         var insertedColumn = createLightweightColumn(insertedElement);
 
-        double insertedElementXSs;
-        double requiredSpaceSs;
-
-        if (insertIndex == 0) {
-            // Inserting at beginning - calculate space from line start
-            insertedElementXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
-            var nextElement = line.getElement(0);
-            var nextColumn = createLightweightColumn(nextElement);
-
-            // Space needed: firstElementX → inserted element → existing first element
-            insertedColumn.setXSs(insertedElementXSs);
-            var insertedToNextSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
-                insertedColumn, nextColumn);
-
-            // Shift = (where first element needs to be) - (where it currently is)
-            requiredSpaceSs = insertedToNextSs - elementXSs(nextElement, layout);
-        } else {
-            // Inserting in middle - calculate space between prev and next
-            var prevElement = line.getElement(insertIndex - 1);
-            var nextElement = line.getElement(insertIndex);
-
-            var prevColumn = createLightweightColumn(prevElement);
-            var nextColumn = createLightweightColumn(nextElement);
-
-            prevColumn.setXSs(elementXSs(prevElement, layout));
-
-            // Calculate: prev → inserted → next
-            insertedElementXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
-                prevColumn, insertedColumn);
-            insertedColumn.setXSs(insertedElementXSs);
-
-            var insertedToNextSs = HorizontalSpacingCalculator.calculateNextColumnXSs(
-                insertedColumn, nextColumn);
-
-            // Shift = (where next needs to be) - (where it currently is)
-            requiredSpaceSs = insertedToNextSs - elementXSs(nextElement, layout);
+        if (lyricRenderMetrics != null) {
+            // A freshly inserted element carries no lyric, so ElementColumnBuilder would space it as
+            // a non-hyphenated, lyric-less column — one space width to the next syllable. Mirror that
+            // here so the fit solve below agrees with the layout that follows the commit.
+            insertedColumn.setMinGapToNextSyllableSs(lyricRenderMetrics.spaceWidthSs());
+            insertedColumn.setMinCollisionGapToNextSyllableSs(lyricRenderMetrics.spaceWidthSs());
         }
 
-        var shiftSs = Math.max(0, requiredSpaceSs);
+        var projected = projectLine(line, insertedColumn, insertIndex, lyricRenderMetrics);
+        var columns = projected.columns();
+        var springs = projected.springs();
+        var splicedIndex = projected.insertIndex();
 
-        // Compute projected line width: max of inserted element's right edge
-        // and the last real element's right edge shifted by the insertion shift.
-        // Exclude the auto-maintained FINAL_DOUBLE_BARLINE — its position is fixed.
+        // The element lands where its left neighbour's spring wants it, measured from that
+        // neighbour's *current* position — only what follows the insertion point moves.
+        double insertedElementXSs;
+
+        if (splicedIndex == 0) {
+            insertedElementXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+        } else {
+            var prevElement = columns.get(splicedIndex - 1).getElement();
+            insertedElementXSs = elementXSs(prevElement, layout) + naturalLengthSs(springs.get(splicedIndex - 1));
+        }
+
         insertedColumn.setXSs(insertedElementXSs);
+
+        var shiftSs = 0.0;
+
+        if (splicedIndex + 1 < columns.size()) {
+            var nextElement = columns.get(splicedIndex + 1).getElement();
+            var requiredNextXSs = insertedElementXSs + naturalLengthSs(springs.get(splicedIndex));
+            // Shift = (where next needs to be) - (where it currently is), never negative:
+            // a gap that is already wide enough stays as it is.
+            shiftSs = Math.max(0, requiredNextXSs - elementXSs(nextElement, layout));
+        }
+
+        // Projected line width: max of the inserted element's right edge and the last real
+        // element's right edge shifted by the insertion shift.
         var newLineWidthSs = projectedWidthWithLastShiftSs(line, insertedColumn.getRightEdgeXSs(), shiftSs, layout);
 
-        return new InsertionResult(insertedElementXSs, shiftSs, newLineWidthSs);
+        // The fit gate must solve the SAME chain LayoutEngine will after the commit — including the
+        // auto-maintained terminal barline, which the positioning chain above excludes (the terminal
+        // is pinned flush-right, not shifted). Appending it here, and anchoring with the shared
+        // calculateAnchorXSs, is what keeps the pre-check and the committed layout from disagreeing:
+        // without it a nearly-full line could pass the gate, commit, then fail to lay out.
+        var fitColumns = new ArrayList<>(columns);
+
+        if (line.effectiveElementCount() < elementCount) {
+            var terminalElement = line.getElement(elementCount - 1);
+            fitColumns.add(buildSurroundingColumn(terminalElement, line, lyricRenderMetrics));
+        }
+
+        var fitSprings = LyricLift.applyLyricLift(
+            HorizontalSpacingCalculator.buildSprings(fitColumns, line), fitColumns);
+        var fitFirstXSs = HorizontalSpacingCalculator.calculateAnchorXSs(fitColumns.getFirst(), line);
+
+        return new InsertionResult(
+            insertedElementXSs,
+            shiftSs,
+            newLineWidthSs,
+            fitSprings,
+            fitFirstXSs,
+            fitColumns.getLast().getRightExtentSs());
     }
 
     /**
-     * Calculates the horizontal shift amount needed when inserting an element at a given index.
+     * Builds the line as it would be after the insertion — the same column list and
+     * lyric-stretched spring chain {@link LayoutEngine} would build — so the fit gate asks the
+     * solver the identical question the committed layout will ask.
      * <p>
-     * This determines how much existing elements after the insertion point need to shift right
-     * to accommodate the inserted element with proper spacing.
-     *
-     * @param line            The line being modified
-     * @param insertedElement The element being inserted
-     * @param insertIndex     The index where the element is being inserted (0-based)
-     * @param layout          Layout result for position lookup; null falls back to {@code xOffset}
-     * @return Shift amount in staff spaces (positive = shift right)
+     * The auto-maintained terminal is excluded: layout pins it, so it is not the insertion's to
+     * space. An {@code insertIndex} past the last effective element appends.
      */
-    public static double calculateInsertionShiftSs(
+    private static ProjectedLine projectLine(
         Line line,
-        StaffElement insertedElement,
+        ElementColumn insertedColumn,
         int insertIndex,
-        @Nullable LayoutResult layout) {
+        @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
-        return calculateInsertion(line, insertedElement, insertIndex, layout).shiftForSubsequentElementsSs();
+        var effectiveCount = line.effectiveElementCount();
+        var splicedIndex = Math.min(insertIndex, effectiveCount);
+        var columns = new ArrayList<ElementColumn>(effectiveCount + 1);
+
+        for (var i = 0; i < effectiveCount; i++) {
+            if (i == splicedIndex) {
+                columns.add(insertedColumn);
+            }
+
+            columns.add(buildSurroundingColumn(line.getElement(i), line, lyricRenderMetrics));
+        }
+
+        if (splicedIndex == effectiveCount) {
+            columns.add(insertedColumn);
+        }
+
+        var springs = LyricLift.applyLyricLift(
+            HorizontalSpacingCalculator.buildSprings(columns, line), columns);
+
+        return new ProjectedLine(columns, springs, splicedIndex);
+    }
+
+    /**
+     * Builds the column for an element already on the line, carrying its real syllable width and
+     * beam membership so a preview is spaced by the same lyric rules as the committed layout.
+     * Falls back to a syllable-less column when the caller has no lyric metrics.
+     */
+    private static ElementColumn buildSurroundingColumn(
+        StaffElement element, Line line, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+
+        if (lyricRenderMetrics == null) {
+            return createLightweightColumn(element);
+        }
+
+        return new ElementColumnBuilder(lyricRenderMetrics).buildColumn(element, line);
     }
 
     /**
      * Determines whether a grace note will fit on a line when inserted at the given index.
      *
-     * @param line    The line to check (before insertion)
-     * @param atIndex The index where the grace note would be inserted
-     * @param layout  Layout result for position lookup; null falls back to {@code xOffset}
+     * @param line               The line to check (before insertion)
+     * @param atIndex            The index where the grace note would be inserted
+     * @param layout             Layout result for position lookup; null falls back to {@code xOffset}
+     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
+     *                           line as if it had no lyrics
      * @return {@code true} if the grace note fits on the line
      */
-    public static boolean hasRoomForGraceNote(Line line, int atIndex, @Nullable LayoutResult layout) {
+    public static boolean hasRoomForGraceNote(
+        Line line, int atIndex, @Nullable LayoutResult layout, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+
         var staffRightMarginSs = line.getSong().getLineWidthSs();
         // Shared singleton is safe: calculateInsertion only reads geometry from the element.
         var graceNote = ElementType.GRACE_QUAVER.getInstance();
-        return calculateInsertion(line, graceNote, atIndex, layout).fitsWithinLine(staffRightMarginSs);
+        return calculateInsertion(line, graceNote, atIndex, layout, lyricRenderMetrics)
+            .fitsWithinLine(staffRightMarginSs);
     }
 
     /**
@@ -268,15 +363,20 @@ public final class InsertionSpacingCalculator {
      * <p>
      * Uses element xOffset values since the layout may be stale after grace note insertion.
      *
-     * @param line           The line containing the grace note (after insertion)
-     * @param graceNoteIndex The index of the grace note already in the line
+     * @param line               The line containing the grace note (after insertion)
+     * @param graceNoteIndex     The index of the grace note already in the line
+     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
+     *                           line as if it had no lyrics
      * @return {@code true} if a host note fits after the grace note
      */
-    public static boolean hasRoomForHostNoteAfterGrace(Line line, int graceNoteIndex) {
+    public static boolean hasRoomForHostNoteAfterGrace(
+        Line line, int graceNoteIndex, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+
         var staffRightMarginSs = line.getSong().getLineWidthSs();
         // Shared singleton is safe: calculateInsertion only reads geometry from the element.
         var hostNote = ElementType.CROTCHET.getInstance();
-        return calculateInsertion(line, hostNote, graceNoteIndex + 1, null).fitsWithinLine(staffRightMarginSs);
+        return calculateInsertion(line, hostNote, graceNoteIndex + 1, null, lyricRenderMetrics)
+            .fitsWithinLine(staffRightMarginSs);
     }
 
     /**
@@ -352,8 +452,10 @@ public final class InsertionSpacingCalculator {
     /**
      * Creates a lightweight ElementColumn for spacing calculations.
      * <p>
-     * This column has accurate geometric extents but no syllable information, since
-     * insertion operations typically happen during editing before lyrics are finalized.
+     * This column has accurate geometric extents but no syllable information — correct for the
+     * element being inserted, which carries no lyric yet, and for an element that is not on a line
+     * at all. Columns already on the line are built by {@link #buildSurroundingColumn} instead, so
+     * they bring their real syllable widths to the spacing.
      *
      * @param element The element to create a column for
      * @return An ElementColumn with geometric extents but no syllable data

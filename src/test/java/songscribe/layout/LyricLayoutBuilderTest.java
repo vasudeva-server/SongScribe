@@ -63,6 +63,9 @@ class LyricLayoutBuilderTest extends UnitTest {
     private static final double FAR_FOLLOWING_SYLLABLE_GAP_SS = 20.0;
     // Arbitrary dot width used in tests that need rightExtentSs > rightExtentExcludingAugmentationSs.
     private static final double FAKE_DOT_EXTENT_SS = 2.0;
+    // Arbitrary flag width used in tests that need a note whose flag pushes the augmentation-excluded
+    // right extent past the notehead (an unbeamed flagged note).
+    private static final double FAKE_FLAG_EXTENT_SS = 1.0;
 
     private Song song;
     private Line line;
@@ -310,6 +313,48 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         assertThat(boxes.getFirst().xSs())
             .as("dotted note: lyric box must be centred on notehead centre, not shifted right by the dot")
+            .isCloseTo(expectedBoxLeftXSs, within(TOLERANCE));
+    }
+
+    // Flagged note (unbeamed quaver/semiquaver): the flag folds into the augmentation-excluded right
+    // extent (max of notehead and flag right edge), reaching past the notehead — but the lyric box
+    // must stay centred on the notehead, not shifted right by the flag. The Gould/Ross rule that
+    // already excludes dots, extended to the flag.
+    @Test
+    void testFlaggedNoteLyricBoxIgnoresFlag() {
+        var n1 = note();
+        var syllableText = "heart";
+        // Use verse 2 so the builder measures width on the fly via lyricBoxWidthSs.
+        n1.lyrics.add(new Lyric(2, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        addToLine(n1);
+
+        var noteXSs = 10.0;
+        var noteheadWidthSs = SMuFLConstants.NOTE_HEAD_WIDTH_SS;
+        var flagInflatedRightExtentSs = noteheadWidthSs + FAKE_FLAG_EXTENT_SS;
+
+        // rightExtentExcludingAugmentationSs is flag-inflated (past the notehead), but the builder
+        // sets the notehead width to the head alone; model that with setNoteheadWidthSs.
+        var col = new ElementColumn(
+            n1,
+            Collections.emptyList(),
+            0.0,
+            flagInflatedRightExtentSs,
+            flagInflatedRightExtentSs,
+            0.0, 0.0, null, 0.0, false);
+        col.setNoteheadWidthSs(noteheadWidthSs);
+        col.setXSs(noteXSs);
+
+        var result = LyricLayoutBuilder.build(List.of(col), LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var boxes = boxesOf(result.boxes(), n1);
+        assertThat(boxes).as("expected exactly one box for flagged note").hasSize(1);
+
+        var syllableWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
+        var noteCenterXSs = noteXSs + noteheadWidthSs / 2.0;
+        var expectedBoxLeftXSs = noteCenterXSs - syllableWidthSs / 2.0;
+
+        assertThat(boxes.getFirst().xSs())
+            .as("flagged note: lyric box must be centred on notehead centre, not shifted right by the flag")
             .isCloseTo(expectedBoxLeftXSs, within(TOLERANCE));
     }
 
@@ -787,53 +832,6 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(result.boxes()).containsOnlyKeys(n1, n5, n8);
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER)).isEmpty();
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.HYPHEN)).hasSize(2);
-    }
-
-    // firstGraphemeClusterEndIndex: correctly identifies multi-codepoint grapheme clusters.
-    // Tested via the grace-note code path, which centres the first grapheme cluster (not
-    // the first Java char) of the lyric text on the grace notehead.
-    // (a) combining mark: "é" (base + combining acute = "é") is one cluster (2 Java chars).
-    // (b) surrogate pair: "😀" (U+1F600) is one cluster (2 Java chars, code point > 0xFFFF).
-    // A naive charAt(0) implementation would produce firstGlyph="e" or firstGlyph="\uD83D",
-    // resulting in a different (wrong) box position.
-    @Test
-    void testFirstGraphemeClusterEndIndexHandlesMultiCodepointClusters() {
-        // Use a grace note element so that computeLyricBoxLeftXSs follows the grace path
-        // and calls firstGraphemeClusterEndIndex on the lyric text.
-        var grace = ElementType.GRACE_QUAVER.newInstance();
-        grace.setGlissando();
-        var host = note();
-        addToLine(grace, host);
-
-        var graceXSs = 5.0;
-        // Use NOTE_HEAD_WIDTH_SS as the right extent (approximation sufficient for this test).
-        var graceCol = columnAt(grace, graceXSs);
-        var hostCol = columnAt(host, graceXSs + COLUMN_SPACING_SS);
-        var noteheadCenterXSs = graceXSs + grace.getType().getElementCenterXSs();
-
-        // (a) Combining mark: "é" + "la" — first grapheme cluster = "é" (2 Java chars)
-        var combiningText = "éla";
-        grace.lyrics.clear();
-        grace.lyrics.add(new Lyric(1, combiningText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
-        var resultCombining = LyricLayoutBuilder.build(List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
-        var combiningBox = boxesOf(resultCombining.boxes(), grace).getFirst();
-        var firstClusterCombining = "é";
-        var expectedCombiningXSs = noteheadCenterXSs - LYRIC_METRICS.lyricBoxWidthSs(firstClusterCombining) / 2.0;
-        assertThat(combiningBox.xSs())
-            .as("combining mark: box must be centred on first grapheme cluster 'e\\u0301', not just 'e'")
-            .isCloseTo(expectedCombiningXSs, within(TOLERANCE));
-
-        // (b) Surrogate pair: "😀" (U+1F600, 2 Java chars) + "la" — first grapheme cluster = "😀"
-        var surrogateText = "😀la";
-        grace.lyrics.clear();
-        grace.lyrics.add(new Lyric(1, surrogateText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
-        var resultSurrogate = LyricLayoutBuilder.build(List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
-        var surrogateBox = boxesOf(resultSurrogate.boxes(), grace).getFirst();
-        var firstClusterSurrogate = "😀";
-        var expectedSurrogateXSs = noteheadCenterXSs - LYRIC_METRICS.lyricBoxWidthSs(firstClusterSurrogate) / 2.0;
-        assertThat(surrogateBox.xSs())
-            .as("surrogate pair: box must be centred on emoji grapheme cluster, not the lone surrogate")
-            .isCloseTo(expectedSurrogateXSs, within(TOLERANCE));
     }
 
     // REST + STOP: extender ends STOP_MELISMA_OVERSHOOT_SS past the rest's right edge —

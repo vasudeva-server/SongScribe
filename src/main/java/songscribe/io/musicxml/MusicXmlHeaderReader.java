@@ -577,6 +577,16 @@ final class MusicXmlHeaderReader {
                     MusicXmlUnits.parseDoubleOrThrow(MusicXmlTags.MISC_ROW_HEIGHT_ADJUSTMENT, text)
                 );
             }
+        } else if (MusicXmlTags.MISC_DEFAULT_REST_LENGTH.equals(name)) {
+            // A staff-space line rest stored verbatim (the writer omits it at the default); the
+            // setter clamps it, and an absent field leaves the song's default in place.
+            var song = reader.songOrNull();
+
+            if (song != null) {
+                song.setDefaultRestLengthSs(
+                    MusicXmlUnits.parseDoubleOrThrow(MusicXmlTags.MISC_DEFAULT_REST_LENGTH, text)
+                );
+            }
         } else if (MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT.equals(name)) {
             subAttributionFontFamily = text;
             applySubAttributionFont();

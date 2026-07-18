@@ -1040,9 +1040,13 @@ public final class PreviewElementManager {
 
     /**
      * Calculates the insertion result for adding an element to a line.
-     * If the element would not fit within the line width, shows an error
-     * message and returns null.
+     * <p>
+     * The line is free to compress to absorb the new element, so the error fires only when the
+     * spring solver reports the line INFEASIBLE — it overflows the margin even with every gap
+     * squeezed down to its collision floor. This runs <em>before</em> any mutation, so a rejected
+     * insert leaves the line exactly as it was; there is nothing half-applied to compensate for.
      *
+     * @param lc      The LineComponent whose line is being inserted into
      * @param line    The line to insert into
      * @param element The element to insert
      * @param index   The insertion index
@@ -1050,9 +1054,10 @@ public final class PreviewElementManager {
      * @return The insertion result, or null if the line is full
      */
     private static InsertionSpacingCalculator.@Nullable InsertionResult calculateInsertionOrShowError(
-        Line line, StaffElement element, int index, @Nullable LayoutResult layout
+        LineComponent lc, Line line, StaffElement element, int index, @Nullable LayoutResult layout
     ) {
-        var insertion = InsertionSpacingCalculator.calculateInsertion(line, element, index, layout);
+        var insertion = InsertionSpacingCalculator.calculateInsertion(
+            line, element, index, layout, lc.getLyricRenderMetrics());
         var song = line.getSong();
 
         if (!insertion.fitsWithinLine(song.getLineWidthSs())) {
@@ -1087,7 +1092,7 @@ public final class PreviewElementManager {
             return;
         }
 
-        var insertion = calculateInsertionOrShowError(line, previewElement, elementCount, lc.getLayoutResult());
+        var insertion = calculateInsertionOrShowError(lc, line, previewElement, elementCount, lc.getLayoutResult());
 
         if (insertion == null) {
             return;
@@ -1131,7 +1136,7 @@ public final class PreviewElementManager {
             line.removeTuplet(tuplet);
         }
 
-        var insertion = calculateInsertionOrShowError(line, previewElement, xIndex, lc.getLayoutResult());
+        var insertion = calculateInsertionOrShowError(lc, line, previewElement, xIndex, lc.getLayoutResult());
 
         if (insertion == null) {
             return;

@@ -141,6 +141,13 @@ public class ElementColumnBuilder {
             beamed
         );
 
+        // Lyric centring must use the notehead alone, not the (possibly flag-inflated) right extent,
+        // so a flag never shifts the syllable off the notehead. Non-note columns keep the default
+        // (their augmentation-excluded right extent).
+        if (element.getType().isNote()) {
+            column.setNoteheadWidthSs(getNoteheadRightExtent(element.getType()));
+        }
+
         var mainLyric = element.getMainLyric();
         var syllabic = mainLyric != null ? mainLyric.syllabic() : null;
         var isHyphenated = Lyric.syllabicContinues(syllabic);
@@ -149,6 +156,12 @@ public class ElementColumnBuilder {
         // reserve the hyphen cell width instead.
         column.setMinGapToNextSyllableSs(isHyphenated
             ? lyricRenderMetrics.preferredHyphenCellWidthSs()
+            : lyricRenderMetrics.spaceWidthSs());
+        // The hard collision floor is narrower than the comfortable gap above: a non-hyphenated
+        // pair (including melisma carriers) may compress to a single space width, a hyphenated
+        // pair only to the bare hyphen glyph width — no closer, so lyrics never touch.
+        column.setMinCollisionGapToNextSyllableSs(isHyphenated
+            ? lyricRenderMetrics.hyphenWidthSs()
             : lyricRenderMetrics.spaceWidthSs());
         // Tag the column with its beam group (anchor index) so adjacent beam groups stay
         // distinct and the spacing calculator does not merge them.
@@ -263,6 +276,11 @@ public class ElementColumnBuilder {
         return rightExtentSs;
     }
 
+    /**
+     * Returns the notehead's own width in staff spaces for a note {@code type} — the reduced grace
+     * notehead for grace notes, the standard notehead otherwise — excluding stem, flag, and
+     * augmentation dots. Only meaningful for note types; callers gate on {@link ElementType#isNote()}.
+     */
     private static double getNoteheadRightExtent(ElementType type) {
         return type.isGraceNote()
             ? NOTE_HEAD_SMALL_WIDTH_SS

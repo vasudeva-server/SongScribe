@@ -38,6 +38,7 @@ import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.component.ScoreView;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.SongLayoutMetrics;
 import songscribe.engraving.Staff;
 import songscribe.ui.renderer.ElementFrame;
@@ -752,6 +753,15 @@ public class LineComponent extends ScoreComponent
         }
 
         return scoreView;
+    }
+
+    /**
+     * Returns the lyric render metrics this line is laid out with. The view is populated with
+     * them before any line is laid out or interacted with, so a live line component always has
+     * them; insertion spacing uses them to measure the syllables the new element must clear.
+     */
+    public LyricRenderMetrics getLyricRenderMetrics() {
+        return getScoreView().getLyricRenderMetrics();
     }
 
     private GraceModeManager getGraceModeManager() {

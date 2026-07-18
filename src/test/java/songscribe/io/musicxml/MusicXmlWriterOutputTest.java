@@ -475,6 +475,31 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
             .isCloseTo(expectedStopYTenths, Offset.offset(0.01));
     }
 
+    /**
+     * A glissando from a grace note into its host note must emit both slide
+     * ends: {@code <slide type="start">} on the grace note and
+     * {@code <slide type="stop">} on the host. The writer previously nulled
+     * out the start side for any grace note, so only the stop was written.
+     */
+    @Test
+    void testGraceNoteGlissandoWritesBothSlideStartAndStop() throws Exception {
+        var song = buildSong(line -> {
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            graceNote.setGlissando();
+            line.addElement(graceNote);
+            line.addElement(ElementType.CROTCHET.newInstance());
+        });
+
+        var xml = writeToString(song);
+
+        assertThat(slideAttribute(xml, "start", "type"))
+            .as("grace note must emit <slide type=\"start\">")
+            .isNotNull();
+        assertThat(slideAttribute(xml, "stop", "type"))
+            .as("host note must emit <slide type=\"stop\">")
+            .isNotNull();
+    }
+
     // Phase 4 spot-check: a crotchet (quarter note) on B4 produces schema-valid output.
     @Test
     void testSingleNoteWriterOutputIsSchemaValid() throws Exception {

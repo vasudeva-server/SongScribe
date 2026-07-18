@@ -36,7 +36,7 @@ import songscribe.util.GraphicUtils;
  * @param scaledLyricsFont the lyrics font scaled to staff-space units; used by renderers
  *                         that draw inside the staff-space coordinate transform
  * @param hyphenWidthSs    width of a hyphen glyph in staff-space units
- * @param spaceWidthSs     width of two space characters in staff-space units; used as the
+ * @param spaceWidthSs     width of one space character in staff-space units; used as the
  *                         gap between non-hyphenated syllables
  */
 public record LyricRenderMetrics(
@@ -45,9 +45,6 @@ public record LyricRenderMetrics(
     double hyphenWidthSs,
     double spaceWidthSs
 ) {
-
-    /** Absolute minimum syllable gap during line-justification compression. */
-    public static final double COMPRESSED_MIN_SYLLABLE_GAP_SS = 0.125;  // 1px
 
     /** Preferred hyphen cell width as a multiple of the "-" glyph width. */
     public static final double HYPHEN_WIDENING_FACTOR = 1.75;

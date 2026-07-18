@@ -49,6 +49,10 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
     // misc-field, so any value with an exact Double.toString round-trip works.
     private static final double ROW_HEIGHT_ADJUSTMENT_SS = 3.5;
 
+    // A non-default line rest (staff spaces). Stored verbatim as a misc-field,
+    // omitted at the default, and clamped on read (well above the minimum here).
+    private static final double DEFAULT_REST_LENGTH_SS = 3.25;
+
     // Distinct family/size pairs for the four round-tripping roles, chosen so a
     // role mix-up (e.g. word ↔ lyric) is caught: the sizes differ, so even in a
     // test environment where every family resolves to the same fallback face the
@@ -149,6 +153,35 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
         assertThat(reloaded.getRowHeightAdjustmentSs())
             .as("row-height adjustment reloads from its misc-field")
             .isEqualTo(ROW_HEIGHT_ADJUSTMENT_SS);
+    }
+
+    @Test
+    void testDefaultRestLengthRoundTrips() throws Exception {
+        var song = singleNoteSong();
+        song.setDefaultRestLengthSs(DEFAULT_REST_LENGTH_SS);
+
+        var reloaded = roundTrip(song);
+
+        assertThat(reloaded.getDefaultRestLengthSs())
+            .as("default rest length reloads from its misc-field")
+            .isEqualTo(DEFAULT_REST_LENGTH_SS);
+    }
+
+    @Test
+    void testAbsentDefaultRestLengthReadsBackTheDefault() throws Exception {
+        // A song at the default line rest omits the field entirely; the reader must fall back to
+        // the default rather than leaving the song at some other value.
+        var xml = writeToString(singleNoteSong());
+
+        assertThat(xml)
+            .as("the writer omits the field at the default line rest")
+            .doesNotContain(MusicXmlTags.MISC_DEFAULT_REST_LENGTH);
+
+        var reloaded = parse(xml);
+
+        assertThat(reloaded.getDefaultRestLengthSs())
+            .as("an absent field reads back the default line rest")
+            .isEqualTo(Song.DEFAULT_REST_LENGTH_SS);
     }
 
     @Test

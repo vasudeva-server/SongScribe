@@ -43,14 +43,17 @@ import songscribe.dom.StaffElement;
 import songscribe.engraving.SMuFLConstants;
 
 /**
- * Phase 4 of the grace-note-lyric feature: a lyric on a grace note centres its
- * first glyph on the grace's notehead centre (deliberately different from the
- * normal-note rule), and the host of the paired grace contributes no column to
- * the lyric verse output.
+ * Grace-note-lyric layout: a lyric narrower than the grace notehead centres on that
+ * notehead (excluding the flag), a wider lyric anchors/overhangs against the grace→host
+ * notehead union, and the host of the paired grace contributes no column to the lyric
+ * verse output.
  */
 class LyricLayoutBuilderGraceNoteTest extends UnitTest {
 
     private static final double POSITION_TOLERANCE_SS = 0.0001;
+    // A real unbeamed grace quaver's right extent reaches past the small notehead to the flag tip;
+    // double the notehead width stands in for that so a notehead-vs-flag centring bug is detectable.
+    private static final double FLAG_INFLATED_GRACE_RIGHT_EXTENT_SS = ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS * 2;
     private static final double GRACE_X_SS = 5.0;
     private static final double HOST_X_SS = 9.0;
     private static final double NEXT_X_SS = 13.0;
@@ -132,19 +135,37 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         return column;
     }
 
-    // (a) The first glyph of a grace note's lyric is centred on the grace's notehead
-    // centre — NOT the whole syllable, by design. Do not refactor this to use the
-    // normal-note centring helper.
+    // (a) A grace lyric narrower than the grace notehead centres on the notehead itself, NOT on the
+    // flag-inflated right extent (getRightExtentExcludingAugmentationSs() folds in the flag, which
+    // would push a narrow syllable such as "I" off the notehead to the right).
     // (b) The host of the paired grace produces no lyric box.
     @Test
-    void testGraceLyricFirstGlyphCentredOnGraceNoteheadAndHostHasNoBox() {
+    void testNarrowGraceLyricCentresOnNoteheadNotFlag() {
         var grace = graceQuaver();
-        setLyric(grace, Lyric.Syllabic.SINGLE, "la");
+        setLyric(grace, Lyric.Syllabic.SINGLE, "I");
         var host = crotchet();
         addToLine(grace, host);
 
-        var columns = List.of(graceColumn(grace, GRACE_X_SS), normalColumn(host, HOST_X_SS));
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        // Precondition: "I" is narrower than the grace notehead, so it takes the centre-on-notehead path.
+        var widthSs = LYRIC_METRICS.lyricBoxWidthSs("I");
+        assertThat(widthSs)
+            .as("the syllable must be narrower than the grace notehead to exercise the centring path")
+            .isLessThan(ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS);
+
+        // Grace column whose right extent reaches past the small notehead to the flag tip, but whose
+        // notehead width is the small head (as ElementColumnBuilder sets it). If centring used the
+        // right extent instead of the notehead width, the syllable would shift right.
+        var graceCol = new ElementColumn(
+            grace,
+            Collections.emptyList(),
+            0.0,
+            FLAG_INFLATED_GRACE_RIGHT_EXTENT_SS,
+            FLAG_INFLATED_GRACE_RIGHT_EXTENT_SS,
+            0.0, 0.0, null, widthSs, false);
+        graceCol.setNoteheadWidthSs(ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS);
+        graceCol.setXSs(GRACE_X_SS);
+        var hostCol = normalColumn(host, HOST_X_SS);
+        var result = LyricLayoutBuilder.build(List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes())
             .as("host of paired grace must contribute no lyric box")
@@ -153,15 +174,11 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         var graceBoxes = boxesOf(result, grace);
         assertThat(graceBoxes).hasSize(1);
 
+        var noteheadCenterXSs = GRACE_X_SS + ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS / 2.0;
         var graceBox = graceBoxes.getFirst();
-        var firstGlyph = "l";
-        var firstGlyphWidthSs = LYRIC_METRICS.lyricBoxWidthSs(firstGlyph);
-        var noteheadCenterXSs = GRACE_X_SS + ElementType.GRACE_QUAVER.getElementCenterXSs();
-        var firstGlyphCenterXSs = graceBox.xSs() + firstGlyphWidthSs / 2.0;
-
-        assertThat(firstGlyphCenterXSs)
-            .as("grace lyric's first-glyph centre must sit on the grace notehead centre")
-            .isCloseTo(noteheadCenterXSs, within(POSITION_TOLERANCE_SS));
+        assertThat(graceBox.xSs())
+            .as("narrow grace lyric centres on the notehead, ignoring the flag-inflated right extent")
+            .isCloseTo(noteheadCenterXSs - widthSs / 2.0, within(POSITION_TOLERANCE_SS));
     }
 
     // (c) A hyphen opened on the grace lyric reaches the next lyric-bearing element

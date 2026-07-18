@@ -64,12 +64,24 @@ public final class ElementColumn {
     // left edge. Always set by ElementColumnBuilder: lyric space width for non-hyphenated or
     // lyric-less columns, hyphen cell width for hyphenated ones.
     private double minGapToNextSyllableSs;
+    // Hard collision floor for the gap to the next syllable — the closest two syllables may ever
+    // come, honoured by the spring strut so lyrics never touch. Always set by ElementColumnBuilder:
+    // one lyric space width for non-hyphenated or lyric-less columns (including melisma carriers),
+    // the bare hyphen glyph width for hyphenated ones. Distinct from minGapToNextSyllableSs, which
+    // is the wider comfortable/preferred gap the rest aims for.
+    private double minCollisionGapToNextSyllableSs;
     // Identifies which beam group this column belongs to (the beam's anchor element index),
     // or NO_BEAM_GROUP when not beamed. Set by ElementColumnBuilder so the spacing calculator
     // can keep adjacent beam groups separate rather than merging them.
     private int beamGroupId = NO_BEAM_GROUP;
     // Computed X position of element head left edge (set by HorizontalSpacingCalculator)
     private double xSs = 0;
+    // Notehead-only width (grace-reduced or standard head) in staff spaces, excluding stem, flag,
+    // and augmentation dots. Used for lyric centring so neither a flag nor a dot shifts the syllable
+    // off the notehead. Defaults to the augmentation-excluded right extent — correct for non-notes,
+    // and for synthetic test columns that carry no flag — but ElementColumnBuilder overrides it with
+    // the true notehead width for note columns (whose right extent may be flag-inflated).
+    private double noteheadWidthSs;
 
     /**
      * Creates a new ElementColumn.
@@ -103,6 +115,7 @@ public final class ElementColumn {
         this.leftExtentSs = leftExtentSs;
         this.rightExtentSs = rightExtentSs;
         this.rightExtentExcludingAugmentationSs = rightExtentExcludingAugmentationSs;
+        this.noteheadWidthSs = rightExtentExcludingAugmentationSs;
         this.stemTopSs = stemTopSs;
         this.stemBottomSs = stemBottomSs;
         this.syllable = syllable;
@@ -230,12 +243,31 @@ public final class ElementColumn {
     }
 
     /**
-     * Returns the absolute X of the notehead centre, excluding augmentation dots.
-     * Used to horizontally anchor lyrics so dots do not shift the lyric position.
+     * Returns the notehead's own width in staff spaces — the reduced notehead for grace notes, the
+     * standard notehead for other notes — excluding the stem, flag, and augmentation dots. Lyric
+     * centring uses this so neither a flag nor a dot shifts the syllable off the notehead (the
+     * Gould/Ross rule, which already excluded dots, extended to the flag). Set by
+     * {@link ElementColumnBuilder} for note columns; otherwise the augmentation-excluded right extent.
+     */
+    public double getNoteheadWidthSs() {
+        return noteheadWidthSs;
+    }
+
+    /**
+     * Sets the notehead-only width. Called by {@link ElementColumnBuilder} for note columns so lyric
+     * centring uses the head width rather than the flag-inflated right extent.
+     */
+    public void setNoteheadWidthSs(double noteheadWidthSs) {
+        this.noteheadWidthSs = noteheadWidthSs;
+    }
+
+    /**
+     * Returns the absolute X of the notehead centre, excluding the flag and augmentation dots.
+     * Used to horizontally anchor lyrics so neither a flag nor a dot shifts the lyric position.
      * Only valid after X position has been set by the spacing calculator.
      */
     public double getNoteheadCenterXSs() {
-        return xSs + rightExtentExcludingAugmentationSs / 2.0;
+        return xSs + getNoteheadWidthSs() / 2.0;
     }
 
     // ==========================================================================
@@ -307,6 +339,21 @@ public final class ElementColumn {
 
     void setMinGapToNextSyllableSs(double minGapToNextSyllableSs) {
         this.minGapToNextSyllableSs = minGapToNextSyllableSs;
+    }
+
+    /**
+     * Returns the hard collision floor for the gap to the next syllable — the closest two
+     * syllables may ever come. Equals one lyric space width for non-hyphenated or lyric-less
+     * columns (including melisma carriers); equals the bare hyphen glyph width for hyphenated
+     * ones. Narrower than {@link #getMinGapToNextSyllableSs()}, the comfortable gap the rest aims
+     * for; the spring strut honours this floor so lyrics never touch.
+     */
+    public double getMinCollisionGapToNextSyllableSs() {
+        return minCollisionGapToNextSyllableSs;
+    }
+
+    void setMinCollisionGapToNextSyllableSs(double minCollisionGapToNextSyllableSs) {
+        this.minCollisionGapToNextSyllableSs = minCollisionGapToNextSyllableSs;
     }
 
     // ==========================================================================
