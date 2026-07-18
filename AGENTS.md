@@ -1,10 +1,11 @@
-SongScribe is a Java-based music notation application. SongScribe files use the `.mssw` extension.
+SongScribe is a Java-based music notation application. The current storage format is MusicXML (`.musicxml`); the older `.mssw` (SongWriter) format is legacy read-only, supported only for migrating old files.
 
 GitHub repo: `vasudeva-server/SongScribe`
 
 ### Non-obvious Packages
 
 - smufl/ — SMuFL glyph registry: codepoints, names, and font-metric lookups
+- io/ — `io/musicxml/` (`MusicXmlWriter`/`MusicXmlReader`) is the **current** storage mechanism; `SongIO` and the other legacy-format classes in `io/` are **legacy read-only** (migration of old files). Never add new persisted fields to the legacy path — they go in the MusicXML writer/reader.
 
 ### Key Entry Points
 
