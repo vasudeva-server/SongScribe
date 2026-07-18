@@ -2,6 +2,10 @@
 
 Feature branches are based on `develop`, not `main`. Before any operation that references a base branch (diff, checkout, rebase, PR creation), verify the actual parent with `git log --oneline --graph` or `git merge-base`. Never assume `main`.
 
+## ripgrep (`rg`) — `-r` is NOT recursive
+
+`rg` is recursive by **default** and `-r` is `--replace`, not recursion. So `rg -rn "pattern"` silently rewrites every match to `n` in the output instead of erroring — do not carry the `grep -rn` habit to `rg`. Use `rg -n "pattern" path/`.
+
 ## Null Handling
 
 - Never use `Objects.requireNonNull` / `Objects.requireNonNullElse`.
