@@ -134,11 +134,13 @@ public class MenuController {
 
         menu.addSeparator();
 
-        menu.add(ExportMidiAction.createAction(mainFrame));
-        menu.add(ExportImageAction.createAction(mainFrame));
-        menu.add(ExportPDFAction.createAction(mainFrame));
-        menu.add(ExportSVGAction.createAction(mainFrame));
-        menu.add(ExportABCAction.createAction(mainFrame));
+        var exportMenu = new JMenu(Strings.get(Strings.MENU_FILE_EXPORT));
+        exportMenu.add(ExportPDFAction.createAction(mainFrame));
+        exportMenu.add(ExportSVGAction.createAction(mainFrame));
+        exportMenu.add(ExportImageAction.createAction(mainFrame));
+        exportMenu.add(ExportMidiAction.createAction(mainFrame));
+        exportMenu.add(ExportABCAction.createAction(mainFrame));
+        menu.add(exportMenu);
 
         menu.addSeparator();
 
