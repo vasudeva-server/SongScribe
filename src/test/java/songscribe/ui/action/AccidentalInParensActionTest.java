@@ -80,4 +80,26 @@ class AccidentalInParensActionTest extends MainFrameMockTest {
         action.applyToElement(note, true);
         assertThat(note.isAccidentalInParentheses()).isFalse();
     }
+
+    @Test
+    void testAppliesToReturnsFalseForNoteWithNoAccidental() {
+        var note = ElementType.CROTCHET.newInstance();
+
+        assertThat(action.appliesTo(note)).isFalse();
+    }
+
+    @Test
+    void testAppliesToReturnsTrueForNoteWithAccidental() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setAccidental(StaffElement.Accidental.SHARP);
+
+        assertThat(action.appliesTo(note)).isTrue();
+    }
+
+    @Test
+    void testAppliesToReturnsFalseForNonNoteElement() {
+        var rest = ElementType.CROTCHET_REST.newInstance();
+
+        assertThat(action.appliesTo(rest)).isFalse();
+    }
 }

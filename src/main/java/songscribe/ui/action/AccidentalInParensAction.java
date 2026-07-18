@@ -50,6 +50,11 @@ public final class AccidentalInParensAction extends NoteOnlyAction {
     }
 
     @Override
+    public boolean appliesTo(StaffElement element) {
+        return super.appliesTo(element) && element.getAccidental() != null;
+    }
+
+    @Override
     public boolean matchesElement(StaffElement element) {
         return element.isAccidentalInParentheses();
     }

@@ -33,6 +33,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
+import songscribe.ui.action.AccidentalInParensAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
@@ -54,6 +55,7 @@ class ReflectionIntegrationTest extends UnitTest {
     private DotAction doubleDotAction;
     private FermataAction fermataAction;
     private DurationArticulationAction staccatoAction;
+    private AccidentalInParensAction accidentalInParensAction;
 
     @BeforeEach
     void setUp() {
@@ -66,6 +68,7 @@ class ReflectionIntegrationTest extends UnitTest {
         doubleDotAction = DotAction.createDoubleDotAction(MOCK_FRAME);
         fermataAction = FermataAction.createAction(MOCK_FRAME);
         staccatoAction = DurationArticulationAction.createStaccatoAction(MOCK_FRAME);
+        accidentalInParensAction = AccidentalInParensAction.createAction(MOCK_FRAME);
     }
 
     private List<UIAction.Reflectable> allActions() {
@@ -73,7 +76,8 @@ class ReflectionIntegrationTest extends UnitTest {
             crotchetAction, minimAction, barlineAction,
             sharpAction, flatAction,
             dotAction, doubleDotAction,
-            fermataAction, staccatoAction
+            fermataAction, staccatoAction,
+            accidentalInParensAction
         );
     }
 
@@ -102,6 +106,7 @@ class ReflectionIntegrationTest extends UnitTest {
         assertSelected(doubleDotAction, false);
         assertSelected(fermataAction, false);
         assertSelected(staccatoAction, false);
+        assertSelected(accidentalInParensAction, false);
     }
 
     @Test
@@ -126,6 +131,7 @@ class ReflectionIntegrationTest extends UnitTest {
         assertSelected(doubleDotAction, false);
         assertSelected(fermataAction, false);
         assertSelected(staccatoAction, false);
+        assertSelected(accidentalInParensAction, false);
     }
 
     @Test
@@ -150,6 +156,7 @@ class ReflectionIntegrationTest extends UnitTest {
         assertSelected(doubleDotAction, false);
         assertSelected(fermataAction, true);
         assertSelected(staccatoAction, false);
+        assertSelected(accidentalInParensAction, false);
     }
 
     @Test
@@ -172,6 +179,7 @@ class ReflectionIntegrationTest extends UnitTest {
         assertSelected(doubleDotAction, false);
         assertSelected(fermataAction, false);
         assertSelected(staccatoAction, false);
+        assertSelected(accidentalInParensAction, false);
     }
 
     @Test
@@ -196,6 +204,7 @@ class ReflectionIntegrationTest extends UnitTest {
         assertSelected(doubleDotAction, false);
         assertSelected(fermataAction, false);
         assertSelected(staccatoAction, false);
+        assertSelected(accidentalInParensAction, false);
     }
 
     @Test
@@ -218,5 +227,41 @@ class ReflectionIntegrationTest extends UnitTest {
         assertSelected(doubleDotAction, false);
         assertSelected(fermataAction, false);
         assertSelected(staccatoAction, false);
+        assertSelected(accidentalInParensAction, false);
+    }
+
+    @Test
+    void testAccidentalInParensNotSelectedWhenOnlyOneParenthesized() {
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setAccidental(StaffElement.Accidental.SHARP);
+        note1.setAccidentalInParentheses(true);
+        var note2 = ElementType.MINIM.newInstance();
+        note2.setAccidental(StaffElement.Accidental.SHARP);
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(note1, note2), List.of(accidentalInParensAction)
+        );
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+        coordinator.triggerReflection();
+
+        assertSelected(accidentalInParensAction, false);
+    }
+
+    @Test
+    void testAccidentalInParensSelectedWhenAllParenthesized() {
+        var note1 = ElementType.CROTCHET.newInstance();
+        note1.setAccidental(StaffElement.Accidental.SHARP);
+        note1.setAccidentalInParentheses(true);
+        var note2 = ElementType.MINIM.newInstance();
+        note2.setAccidental(StaffElement.Accidental.SHARP);
+        note2.setAccidentalInParentheses(true);
+
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(note1, note2), List.of(accidentalInParensAction)
+        );
+        ReflectionTestHelper.selectRange(coordinator, 0, 1);
+        coordinator.triggerReflection();
+
+        assertSelected(accidentalInParensAction, true);
     }
 }

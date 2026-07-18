@@ -41,6 +41,7 @@ import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
+import songscribe.ui.action.AccidentalInParensAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
@@ -67,6 +68,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
     private DotAction DOT_ACTION;
     private FermataAction FERMATA_ACTION;
     private DurationArticulationAction STACCATO_ACTION;
+    private AccidentalInParensAction ACCIDENTAL_IN_PARENS_ACTION;
 
     @BeforeEach
     void setUp() {
@@ -80,6 +82,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         DOT_ACTION = DotAction.createDotAction(mainFrame);
         FERMATA_ACTION = FermataAction.createAction(mainFrame);
         STACCATO_ACTION = DurationArticulationAction.createStaccatoAction(mainFrame);
+        ACCIDENTAL_IN_PARENS_ACTION = AccidentalInParensAction.createAction(mainFrame);
     }
 
     private SelectionCoordinator createCoordinator(
@@ -139,6 +142,25 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
             assertThat(line.getElement(1).getAccidental()).isNull();
             assertThat(line.getElement(2).getAccidental()).isNull();
+        }
+
+        @Test
+        void testAccidentalInParensAppliedToAccidentalNotesOnlyInMixedSelection() {
+            var accidentalNote = ElementType.CROTCHET.newInstance();
+            accidentalNote.setAccidental(StaffElement.Accidental.SHARP);
+            var plainNote = ElementType.CROTCHET.newInstance();
+
+            var coordinator = createCoordinator(
+                List.of(accidentalNote, plainNote),
+                List.of(ACCIDENTAL_IN_PARENS_ACTION)
+            );
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+            coordinator.applyActionToSelection(ACCIDENTAL_IN_PARENS_ACTION, true, null);
+
+            assertThat(line.getElement(0).isAccidentalInParentheses()).isTrue();
+            assertThat(line.getElement(1).isAccidentalInParentheses()).isFalse();
         }
 
         @Test
@@ -407,6 +429,38 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
                 .isFalse();
             assertThat(coordinator.isApplicableToSelection(DOT_ACTION))
                 .as("dot applicable to rest-only selection (durations)")
+                .isTrue();
+        }
+
+        @Test
+        void testAccidentalFreeSelectionDisablesAccidentalInParensAction() {
+            var coordinator = createCoordinator(
+                List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET_REST.newInstance()),
+                List.of(ACCIDENTAL_IN_PARENS_ACTION)
+            );
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            assertThat(coordinator.isApplicableToSelection(ACCIDENTAL_IN_PARENS_ACTION))
+                .as("accidental-in-parens not applicable when no selected note has an accidental")
+                .isFalse();
+        }
+
+        @Test
+        void testMixedAccidentalSelectionEnablesAccidentalInParensAction() {
+            var accidentalNote = ElementType.CROTCHET.newInstance();
+            accidentalNote.setAccidental(StaffElement.Accidental.SHARP);
+            var plainNote = ElementType.QUAVER.newInstance();
+
+            var coordinator = createCoordinator(
+                List.of(accidentalNote, plainNote),
+                List.of(ACCIDENTAL_IN_PARENS_ACTION)
+            );
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            assertThat(coordinator.isApplicableToSelection(ACCIDENTAL_IN_PARENS_ACTION))
+                .as("accidental-in-parens applicable when at least one selected note has an accidental")
                 .isTrue();
         }
     }
