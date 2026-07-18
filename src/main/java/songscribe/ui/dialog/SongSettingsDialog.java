@@ -1857,11 +1857,7 @@ public class SongSettingsDialog extends StandardDialog {
                     width = Math.max(width, metrics.stringWidth(line));
                 }
 
-                // Tight box: ascent + descent per line, with the font's leading
-                // inserted only between lines, never below the last descender.
-                var lineCount = lines.size();
-                var glyphHeight = metrics.getAscent() + metrics.getDescent();
-                var height = lineCount * glyphHeight + (lineCount - 1) * metrics.getLeading();
+                var height = GraphicUtils.getTextBlockHeight(metrics, lines.size());
 
                 return new Dimension(width, height);
             }

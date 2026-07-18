@@ -34,6 +34,7 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.net.URL;
 import java.util.Arrays;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -532,6 +533,16 @@ public final class GraphicUtils {
     }
 
     /**
+     * Returns the tight height of a text block with {@code lineCount} lines in the
+     * given {@code metrics}: each line is ascent + descent tall, with the font's
+     * leading inserted only between lines, never below the last descender.
+     */
+    public static int getTextBlockHeight(FontMetrics metrics, int lineCount) {
+        var glyphHeight = metrics.getAscent() + metrics.getDescent();
+        return lineCount * glyphHeight + (lineCount - 1) * metrics.getLeading();
+    }
+
+    /**
      * Returns the ink height above the baseline for a glyph's visual bounds.
      * <p>
      * Visual bounds extend upward from the baseline into negative Y, so the
@@ -560,5 +571,77 @@ public final class GraphicUtils {
         }
 
         return font.createGlyphVector(SCREEN_FRC, text).getPixelBounds(SCREEN_FRC, 0, 0);
+    }
+
+    /**
+     * Extra padding beyond the font's nominal ascent/descent, needed so glyph ink
+     * that overshoots those metrics is not clipped by a text component's bounds.
+     */
+    public record InkPadding(int top, int bottom) {
+        public static final InkPadding NONE = new InkPadding(0, 0);
+    }
+
+    /**
+     * Extra ink above the baseline that overshoots the font's nominal {@code ascent},
+     * or 0 when {@code lineBounds} is null (empty line) or the ink stays within it.
+     */
+    public static int extraInkAbove(@Nullable Rectangle lineBounds, int ascent) {
+        if (lineBounds == null) {
+            return 0;
+        }
+
+        return Math.max(0, (int) inkHeight(lineBounds) - ascent);
+    }
+
+    /**
+     * Extra ink below the baseline that overshoots the font's nominal {@code descent},
+     * or 0 when {@code lineBounds} is null (empty line) or the ink stays within it.
+     */
+    public static int extraInkBelow(@Nullable Rectangle lineBounds, int descent) {
+        if (lineBounds == null) {
+            return 0;
+        }
+
+        return Math.max(0, (lineBounds.y + lineBounds.height) - descent);
+    }
+
+    /**
+     * Some fonts (e.g. script fonts like Sign Painter) render glyph ink beyond the
+     * font's nominal ascent/descent — a "y" descender extending past
+     * {@link FontMetrics#getDescent()}, for instance. Since only the first and last
+     * lines of a text block sit at its top and bottom edges, only their ink can be
+     * clipped; excess ink on interior lines bleeds into the inter-line gap instead.
+     */
+    public static InkPadding inkPadding(List<String> textLines, FontMetrics metrics) {
+        if (textLines.isEmpty()) {
+            return InkPadding.NONE;
+        }
+
+        var font = metrics.getFont();
+        var firstLineBounds = inkBounds(textLines.getFirst(), font);
+
+        // A single line is both first and last; reuse its bounds rather than
+        // building the same glyph vector twice.
+        var lastLineBounds = textLines.size() == 1
+            ? firstLineBounds
+            : inkBounds(textLines.getLast(), font);
+
+        return new InkPadding(
+            extraInkAbove(firstLineBounds, metrics.getAscent()),
+            extraInkBelow(lastLineBounds, metrics.getDescent())
+        );
+    }
+
+    /**
+     * The top half of {@link #inkPadding} for callers that only position the text
+     * baseline, so the last line's glyph vector is not built unnecessarily.
+     */
+    public static int topInkPadding(List<String> textLines, FontMetrics metrics) {
+        if (textLines.isEmpty()) {
+            return 0;
+        }
+
+        var firstLineBounds = inkBounds(textLines.getFirst(), metrics.getFont());
+        return extraInkAbove(firstLineBounds, metrics.getAscent());
     }
 }

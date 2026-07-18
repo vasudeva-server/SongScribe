@@ -22,10 +22,14 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.GraphicsEnvironment;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.util.Arrays;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -33,6 +37,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
+import songscribe.util.GraphicUtils;
 
 /**
  * Unit tests for {@link TitleComponent}, {@link SubtitleComponent},
@@ -63,6 +68,32 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
      * component under test avoids that without adding FlatLaf-specific setup.
      */
     private static final Font TEST_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
+
+    /**
+     * A script family (issue #573) whose descenders — e.g. the tail of a "y" —
+     * extend below the font's nominal {@link java.awt.FontMetrics#getDescent()}.
+     * Not installed on every platform, so tests using it skip via {@code assumeTrue}
+     * when unavailable.
+     */
+    private static final String DESCENDER_OVERSHOOT_FONT_FAMILY = "SignPainter";
+
+    /**
+     * Point size large enough for {@link #DESCENDER_OVERSHOOT_FONT_FAMILY}'s
+     * descenders to overshoot the nominal descent by whole pixels.
+     */
+    private static final int DESCENDER_FONT_SIZE = 48;
+
+    // Synthetic ascent/descent and a deliberate overshoot for the font-independent
+    // ink-padding tests, which feed hand-built bounds rather than a real font.
+    private static final int SAMPLE_ASCENT = 40;
+    private static final int SAMPLE_DESCENT = 10;
+    private static final int OVERSHOOT_PX = 5;
+
+    private static boolean isFontFamilyAvailable(String family) {
+        return Arrays.asList(
+            GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames()
+        ).contains(family);
+    }
 
     // -------------------------------------------------------------------------
     // TitleComponent — rows 5-7
@@ -211,6 +242,128 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
             assertThat(size.height)
                 .as("number prefix in getNumberedTitle() causes non-zero height even when title is empty")
                 .isGreaterThan(0);
+        }
+
+        /**
+         * Issue #573: a script font whose descenders (e.g. the tail of a "y") extend
+         * below {@link java.awt.FontMetrics#getDescent()} must not have its ink clipped.
+         * {@link BaseTitleComponent#getPreferredSize()} must report a height that covers
+         * the title's actual rendered ink, not just the font's nominal descent.
+         *
+         * <p>Secondary, integration-level smoke test: it needs a real overshooting font
+         * and so is skipped where that font is absent (e.g. Linux CI). The font-independent
+         * arithmetic is covered unconditionally by {@link InkPadding}.
+         */
+        @Test
+        void testPreferredSizeHeightCoversDescenderOvershoot() {
+            assumeTrue(
+                isFontFamilyAvailable(DESCENDER_OVERSHOOT_FONT_FAMILY),
+                DESCENDER_OVERSHOOT_FONT_FAMILY + " is not installed on this system"
+            );
+
+            var title = "Satya";
+            var song = new Song();
+            var current = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                title, current.number(), current.place(), current.year(),
+                current.month(), current.day(),
+                current.composer(), current.lyricist(),
+                current.lyricsSource(), current.arrangement(), current.unofficialTranslation(),
+                current.subtitle(), "", 0, 0
+            ));
+            var component = new TitleComponent();
+            var font = new Font(DESCENDER_OVERSHOOT_FONT_FAMILY, Font.PLAIN, DESCENDER_FONT_SIZE);
+            component.setFont(font);
+            component.setSong(song);
+
+            var metrics = component.getFontMetrics(font);
+            var inkBounds = GraphicUtils.inkBounds(title, font);
+
+            // Explicit guard rather than assertThat(...).isNotNull(): NullAway does not
+            // treat the AssertJ call as a null check, so it would flag the uses below.
+            if (inkBounds == null) {
+                throw new AssertionError("ink bounds for '" + title + "' must not be null");
+            }
+
+            // Precondition: confirm this font/size actually overshoots the nominal
+            // descent here, otherwise the assertion below would hold trivially.
+            var inkBottomFromBaseline = inkBounds.y + inkBounds.height;
+            assumeTrue(
+                inkBottomFromBaseline > metrics.getDescent(),
+                title + " in " + DESCENDER_OVERSHOOT_FONT_FAMILY + " does not overshoot the descent here"
+            );
+
+            // The bottom of the rendered ink, relative to the top of the text block,
+            // is ascent (baseline offset) + how far the ink descends below the baseline.
+            var inkBottomFromTop = metrics.getAscent() + inkBottomFromBaseline;
+
+            assertThat(component.getPreferredSize().height)
+                .as("preferred height must cover the descender ink, not just the nominal descent")
+                .isGreaterThanOrEqualTo(inkBottomFromTop);
+        }
+
+        /**
+         * Font-independent coverage of the ink-padding arithmetic
+         * ({@link GraphicUtils#extraInkAbove} / {@link GraphicUtils#extraInkBelow}),
+         * using hand-built bounds so it runs identically on every platform — unlike the
+         * {@code SignPainter}-gated smoke test above.
+         */
+        @Nested
+        class InkPadding {
+
+            @Test
+            void testExtraInkAboveNullBoundsIsZero() {
+                assertThat(GraphicUtils.extraInkAbove(null, SAMPLE_ASCENT))
+                    .as("null line bounds contribute no top padding")
+                    .isZero();
+            }
+
+            @Test
+            void testExtraInkAboveWithinAscentIsZero() {
+                // Ink rises exactly to the ascent (inkHeight == -y == ascent): no overshoot.
+                var bounds = new Rectangle(0, -SAMPLE_ASCENT, SAMPLE_ASCENT, SAMPLE_ASCENT);
+
+                assertThat(GraphicUtils.extraInkAbove(bounds, SAMPLE_ASCENT))
+                    .as("ink within the ascent needs no top padding")
+                    .isZero();
+            }
+
+            @Test
+            void testExtraInkAboveOvershootIsExcess() {
+                // Ink rises OVERSHOOT_PX above the ascent (inkHeight == ascent + overshoot).
+                var bounds = new Rectangle(0, -(SAMPLE_ASCENT + OVERSHOOT_PX), SAMPLE_ASCENT, SAMPLE_ASCENT);
+
+                assertThat(GraphicUtils.extraInkAbove(bounds, SAMPLE_ASCENT))
+                    .as("ink above the ascent is padded by exactly the overshoot")
+                    .isEqualTo(OVERSHOOT_PX);
+            }
+
+            @Test
+            void testExtraInkBelowNullBoundsIsZero() {
+                assertThat(GraphicUtils.extraInkBelow(null, SAMPLE_DESCENT))
+                    .as("null line bounds contribute no bottom padding")
+                    .isZero();
+            }
+
+            @Test
+            void testExtraInkBelowWithinDescentIsZero() {
+                // Ink drops exactly to the descent (y + height == descent): no overshoot.
+                var bounds = new Rectangle(0, 0, SAMPLE_DESCENT, SAMPLE_DESCENT);
+
+                assertThat(GraphicUtils.extraInkBelow(bounds, SAMPLE_DESCENT))
+                    .as("ink within the descent needs no bottom padding")
+                    .isZero();
+            }
+
+            @Test
+            void testExtraInkBelowOvershootIsExcess() {
+                // Ink drops OVERSHOOT_PX below the descent (y + height == descent + overshoot).
+                var bounds = new Rectangle(0, 0, SAMPLE_DESCENT, SAMPLE_DESCENT + OVERSHOOT_PX);
+
+                assertThat(GraphicUtils.extraInkBelow(bounds, SAMPLE_DESCENT))
+                    .as("ink below the descent is padded by exactly the overshoot")
+                    .isEqualTo(OVERSHOOT_PX);
+            }
         }
     }
 

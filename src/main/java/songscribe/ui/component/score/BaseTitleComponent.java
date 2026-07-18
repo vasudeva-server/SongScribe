@@ -25,6 +25,7 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Ss;
+import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
 import songscribe.util.StringUtils;
 
@@ -160,7 +161,8 @@ public abstract class BaseTitleComponent extends ScoreComponent {
 
             // Draw each line, offset by topGapPx so the gap appears above the text block
             var lineHeight = metrics.getHeight();
-            var y = topGapPx() + metrics.getAscent();
+            var topPadding = GraphicUtils.topInkPadding(textLines, metrics);
+            var y = topGapPx() + topPadding + metrics.getAscent();
 
             for (var textLine : textLines) {
                 var textLineWidth = metrics.stringWidth(textLine);
@@ -189,14 +191,14 @@ public abstract class BaseTitleComponent extends ScoreComponent {
         // Wrap the text to calculate height
         var textLines = StringUtils.wrapText(text, metrics, lineWidthPx());
 
-        // Tight bounding box: each line is ascent + descent tall, with the font's
-        // leading inserted only *between* lines, never below the last descender.
-        var lineCount = textLines.size();
-        var glyphHeight = metrics.getAscent() + metrics.getDescent();
-        var textBlockHeight = lineCount * glyphHeight + (lineCount - 1) * metrics.getLeading();
+        var textBlockHeight = GraphicUtils.getTextBlockHeight(metrics, textLines.size());
+
+        // Some fonts render ink beyond the nominal ascent/descent (e.g. deep script
+        // descenders); pad the block so that ink is not clipped by the component bounds.
+        var padding = GraphicUtils.inkPadding(textLines, metrics);
 
         // Top gap only applies when there is text to display.
-        var height = topGapPx() + textBlockHeight;
+        var height = topGapPx() + padding.top() + textBlockHeight + padding.bottom();
 
         return new Dimension(lineWidthPx(), height);
     }
