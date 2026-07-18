@@ -988,8 +988,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
 
         var titleFont = DocumentFonts.defaultFonts().getFont(FontKey.TITLE);
         assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
-            .as("title credit font-family")
-            .isEqualTo(titleFont.getFamily());
+            .as("title credit font-family carries the PostScript name")
+            .isEqualTo(titleFont.getPSName());
         assertThat(titleWords.getAttribute(MusicXmlTags.ATTR_FONT_SIZE))
             .as("title credit font-size")
             .isEqualTo(String.valueOf(titleFont.getSize()));
@@ -1010,8 +1010,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
 
         var subtitleFont = DocumentFonts.defaultFonts().getFont(FontKey.SUBTITLE);
         assertThat(subtitleWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
-            .as("subtitle credit font-family")
-            .isEqualTo(subtitleFont.getFamily());
+            .as("subtitle credit font-family carries the PostScript name")
+            .isEqualTo(subtitleFont.getPSName());
     }
 
     /**
@@ -1042,8 +1042,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
                 .as("%s credit relative-y", creditType)
                 .isCloseTo(expectedRelativeYTenths, Offset.offset(0.01));
             assertThat(words.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
-                .as("%s credit font-family", creditType)
-                .isEqualTo(attributionFont.getFamily());
+                .as("%s credit font-family carries the PostScript name", creditType)
+                .isEqualTo(attributionFont.getPSName());
         }
 
         assertThat(requireCreditWordsForType(xml, MusicXmlTags.CREDIT_COMPOSER).getTextContent())
@@ -1084,8 +1084,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
             .as("underlyrics credit text")
             .isEqualTo(CREDIT_TEST_UNDERLYRICS);
         assertThat(underLyricsWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
-            .as("underlyrics credit font-family")
-            .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.LYRICS).getFamily());
+            .as("underlyrics credit font-family carries the PostScript name")
+            .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.LYRICS).getPSName());
 
         var banglaWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_BANGLA_LYRICS);
         assertThat(banglaWords.getTextContent())
@@ -1095,8 +1095,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
             .as("bangla-lyrics credit xml:lang")
             .isEqualTo(MusicXmlTags.CREDIT_LANGUAGE_BANGLA);
         assertThat(banglaWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
-            .as("bangla-lyrics credit font-family")
-            .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.BANGLA).getFamily());
+            .as("bangla-lyrics credit font-family carries the PostScript name")
+            .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.BANGLA).getPSName());
 
         var translationWords = requireCreditWordsForType(xml, MusicXmlTags.CREDIT_TRANSLATION);
         assertThat(translationWords.getTextContent())
@@ -1108,8 +1108,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
             .as("footnotes credit text")
             .isEqualTo(CREDIT_TEST_FOOTNOTES);
         assertThat(footnotesWords.getAttribute(MusicXmlTags.ATTR_FONT_FAMILY))
-            .as("footnotes credit font-family")
-            .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.FOOTNOTE).getFamily());
+            .as("footnotes credit font-family carries the PostScript name")
+            .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.FOOTNOTE).getPSName());
     }
 
     /**

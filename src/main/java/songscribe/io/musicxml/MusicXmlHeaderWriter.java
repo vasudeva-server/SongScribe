@@ -180,7 +180,10 @@ final class MusicXmlHeaderWriter {
         // <defaults> element carries a sub-attribution role); it is always
         // emitted so the reader can recover it.
         var subAttributionFont = fonts.getFont(FontKey.SUB_ATTRIBUTION);
-        fields.put(MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT, subAttributionFont.getFamily());
+        // The PostScript name is the font's canonical identity here: the reader
+        // resolves it via MyFontUtils.createFont, which is keyed on PS name (the
+        // family name would not resolve). Mirrors the native format (ViewIO).
+        fields.put(MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT, subAttributionFont.getPSName());
         fields.put(MusicXmlTags.MISC_SUB_ATTRIBUTION_FONT_SIZE, String.valueOf(subAttributionFont.getSize()));
 
         // Row-height adjustment is a delta from the computed base; omit when 0.
@@ -275,12 +278,16 @@ final class MusicXmlHeaderWriter {
      * {@code <lyric-font>}) carrying the role's {@code font-family} and
      * {@code font-size}. Weight/style are not emitted — the reader recovers only
      * family and size back into the {@code DocumentFonts} result.
+     * <p>
+     * {@code font-family} carries the PostScript name, not the display family:
+     * the reader resolves it via {@link songscribe.util.MyFontUtils#createFont},
+     * which is keyed on PS name. Mirrors the native format ({@code ViewIO}).
      */
     private static void writeDocumentFont(PrintWriter pw, String tag, Font font) {
         XML.writeEmptyTag(
             pw,
             tag,
-            MusicXmlTags.ATTR_FONT_FAMILY, font.getFamily(),
+            MusicXmlTags.ATTR_FONT_FAMILY, font.getPSName(),
             MusicXmlTags.ATTR_FONT_SIZE, String.valueOf(font.getSize())
         );
     }
@@ -366,7 +373,9 @@ final class MusicXmlHeaderWriter {
         var font = fonts.getFont(fontKey);
         var creditWordsAttrs = new ArrayList<String>();
         creditWordsAttrs.add(MusicXmlTags.ATTR_FONT_FAMILY);
-        creditWordsAttrs.add(font.getFamily());
+        // The PostScript name, not the display family: the reader resolves it via
+        // MyFontUtils.createFont (keyed on PS name). Mirrors the native format.
+        creditWordsAttrs.add(font.getPSName());
         creditWordsAttrs.add(MusicXmlTags.ATTR_FONT_SIZE);
         creditWordsAttrs.add(String.valueOf(font.getSize()));
         creditWordsAttrs.add(MusicXmlTags.ATTR_FONT_WEIGHT);

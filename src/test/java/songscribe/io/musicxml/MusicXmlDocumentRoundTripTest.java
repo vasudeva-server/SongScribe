@@ -82,17 +82,22 @@ class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
     private static final double LINE_WIDTH_SS            = 130.0;
     private static final double ROW_HEIGHT_ADJUSTMENT_SS = 2.5;
 
-    // -- Custom fonts: the three roles that round-trip (annotation, lyrics,
-    // sub-attribution). Distinct sizes so a role mix-up is caught.
+    // -- Custom fonts: the five roles that round-trip (annotation, lyrics,
+    // sub-attribution, title, subtitle). Distinct sizes so a role mix-up is
+    // caught.
     private static final String WORD_FONT_FAMILY            = "Full Round-Trip Word Family";
     private static final int    WORD_FONT_SIZE              = 34;
     private static final String LYRIC_FONT_FAMILY           = "Full Round-Trip Lyric Family";
     private static final int    LYRIC_FONT_SIZE             = 36;
     private static final String SUB_ATTRIBUTION_FONT_FAMILY = "Full Round-Trip Sub-Attribution Family";
     private static final int    SUB_ATTRIBUTION_FONT_SIZE   = 38;
+    private static final String TITLE_FONT_FAMILY           = "Full Round-Trip Title Family";
+    private static final int    TITLE_FONT_SIZE             = 54;
+    private static final String SUBTITLE_FONT_FAMILY        = "Full Round-Trip Subtitle Family";
+    private static final int    SUBTITLE_FONT_SIZE          = 56;
 
     private static final FontKey[] ROUND_TRIP_FONT_ROLES = {
-        FontKey.ANNOTATION, FontKey.LYRICS, FontKey.SUB_ATTRIBUTION
+        FontKey.ANNOTATION, FontKey.LYRICS, FontKey.SUB_ATTRIBUTION, FontKey.TITLE, FontKey.SUBTITLE
     };
 
     // -- Tempo --
@@ -142,27 +147,30 @@ class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
         return annotation;
     }
 
-    /** Default fonts with the three round-tripping roles overridden to distinct values. */
+    /** Default fonts with the five round-tripping roles overridden to distinct values. */
     private static DocumentFonts customFonts() {
         var fonts = DocumentFonts.defaultFonts();
         fonts.setFont(FontKey.ANNOTATION, WORD_FONT_FAMILY, WORD_FONT_SIZE);
         fonts.setFont(FontKey.LYRICS, LYRIC_FONT_FAMILY, LYRIC_FONT_SIZE);
         fonts.setFont(FontKey.SUB_ATTRIBUTION, SUB_ATTRIBUTION_FONT_FAMILY, SUB_ATTRIBUTION_FONT_SIZE);
+        fonts.setFont(FontKey.TITLE, TITLE_FONT_FAMILY, TITLE_FONT_SIZE);
+        fonts.setFont(FontKey.SUBTITLE, SUBTITLE_FONT_FAMILY, SUBTITLE_FONT_SIZE);
         return fonts;
     }
 
     /**
      * The {@link DocumentFonts} the reader must produce for a document written
      * with {@code source}: the default set with each round-tripping role
-     * rebuilt from {@code source}'s family/size — mirrors
-     * {@code MusicXmlDefaultsRoundTripTest.expectedRecoveredFonts}.
+     * rebuilt from {@code source}'s PostScript name/size (the writer emits the PS
+     * name, which the reader resolves via {@code MyFontUtils.createFont}) —
+     * mirrors {@code MusicXmlDefaultsRoundTripTest.expectedRecoveredFonts}.
      */
     private static DocumentFonts expectedRecoveredFonts(DocumentFonts source) {
         var expected = DocumentFonts.defaultFonts();
 
         for (var role : ROUND_TRIP_FONT_ROLES) {
             var font = source.getFont(role);
-            expected.setFont(role, font.getFamily(), font.getSize());
+            expected.setFont(role, font.getPSName(), font.getSize());
         }
 
         return expected;
@@ -260,8 +268,8 @@ class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
         var result = roundTrip(song, fonts);
 
         assertThat(result.fonts())
-            .as("DocumentFonts equality: word/lyric/sub-attribution fonts reload; "
-                + "the other five roles (write-forward, credit-words only) stay default")
+            .as("DocumentFonts equality: word/lyric/sub-attribution/title/subtitle fonts "
+                + "reload; the other three roles (write-forward, credit-words only) stay default")
             .isEqualTo(expectedRecoveredFonts(fonts));
     }
 

@@ -49,7 +49,7 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
     // misc-field, so any value with an exact Double.toString round-trip works.
     private static final double ROW_HEIGHT_ADJUSTMENT_SS = 3.5;
 
-    // Distinct family/size pairs for the three round-tripping roles, chosen so a
+    // Distinct family/size pairs for the four round-tripping roles, chosen so a
     // role mix-up (e.g. word ↔ lyric) is caught: the sizes differ, so even in a
     // test environment where every family resolves to the same fallback face the
     // recovered sizes still discriminate.
@@ -59,12 +59,20 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
     private static final int    LYRIC_FONT_SIZE              = 43;
     private static final String SUB_ATTRIBUTION_FONT_FAMILY  = "Round-Trip Sub-Attribution Family";
     private static final int    SUB_ATTRIBUTION_FONT_SIZE    = 47;
+    private static final String TITLE_FONT_FAMILY            = "Round-Trip Title Family";
+    private static final int    TITLE_FONT_SIZE              = 51;
 
     // The three roles the writer persists under <defaults> / the miscellaneous
-    // block; the other five are write-forward (credit-words only) and reload at
-    // their defaults.
+    // block, plus TITLE: singleNoteSong()'s title defaults to non-blank
+    // (Song's DOCUMENT_UNTITLED default), so its credit is always written and
+    // its font always round-trips too (via the credit's own font-family/
+    // font-size — see MusicXmlCreditRoundTripTest for the dedicated coverage).
+    // SUBTITLE is excluded: the default subtitle is blank, so no credit is
+    // written and the role never leaves its literal default. The remaining
+    // four roles are write-forward (credit-words only) and reload at their
+    // defaults.
     private static final FontKey[] ROUND_TRIP_FONT_ROLES = {
-        FontKey.ANNOTATION, FontKey.LYRICS, FontKey.SUB_ATTRIBUTION
+        FontKey.ANNOTATION, FontKey.LYRICS, FontKey.SUB_ATTRIBUTION, FontKey.TITLE
     };
 
     // Write-forward values overwritten by hand to prove the reader ignores them.
@@ -92,12 +100,13 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
         return song;
     }
 
-    /** Default fonts with the three round-tripping roles overridden to distinct values. */
+    /** Default fonts with the four round-tripping roles overridden to distinct values. */
     private static DocumentFonts customFonts() {
         var fonts = DocumentFonts.defaultFonts();
         fonts.setFont(FontKey.ANNOTATION, WORD_FONT_FAMILY, WORD_FONT_SIZE);
         fonts.setFont(FontKey.LYRICS, LYRIC_FONT_FAMILY, LYRIC_FONT_SIZE);
         fonts.setFont(FontKey.SUB_ATTRIBUTION, SUB_ATTRIBUTION_FONT_FAMILY, SUB_ATTRIBUTION_FONT_SIZE);
+        fonts.setFont(FontKey.TITLE, TITLE_FONT_FAMILY, TITLE_FONT_SIZE);
         return fonts;
     }
 
@@ -105,20 +114,21 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
      * The {@link DocumentFonts} the reader must produce for a document written
      * with {@code source}: it starts from the default set and rebuilds each
      * round-tripping role from the {@code font-family}/{@code font-size} the
-     * writer emitted — exactly {@code getFamily()}/{@code getSize()} of the source
-     * font. Mirroring the reader's own {@code setFont(role, family, size)} here
-     * isolates the serialization round-trip (family + size carried through the
-     * XML) from the font system's family → font resolution, which is applied
-     * identically on the read side and here — so an exact {@code DocumentFonts}
-     * equality holds without depending on that resolution being an idempotent
-     * fixed point across the {@code getFamily()} round-trip.
+     * writer emitted — exactly {@code getPSName()}/{@code getSize()} of the source
+     * font (the writer emits the PostScript name, which the reader resolves via
+     * {@code MyFontUtils.createFont}). Mirroring the reader's own
+     * {@code setFont(role, psName, size)} here isolates the serialization
+     * round-trip (PS name + size carried through the XML) from the font system's
+     * PS-name → font resolution, which is applied identically on the read side and
+     * here — so an exact {@code DocumentFonts} equality holds without depending on
+     * that resolution being an idempotent fixed point across the round-trip.
      */
     private static DocumentFonts expectedRecoveredFonts(DocumentFonts source) {
         var expected = DocumentFonts.defaultFonts();
 
         for (var role : ROUND_TRIP_FONT_ROLES) {
             var font = source.getFont(role);
-            expected.setFont(role, font.getFamily(), font.getSize());
+            expected.setFont(role, font.getPSName(), font.getSize());
         }
 
         return expected;
@@ -149,7 +159,8 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
         var result = roundTrip(song, fonts);
 
         assertThat(result.fonts())
-            .as("word / lyric / sub-attribution fonts reload from <defaults> + misc-fields")
+            .as("word / lyric / sub-attribution reload from <defaults> + misc-fields; "
+                + "title from its own credit")
             .isEqualTo(expectedRecoveredFonts(fonts));
 
         // The recovered point sizes are carried verbatim regardless of how the
@@ -168,18 +179,59 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testNoDefaultsFontsReadsBackDefaultFonts() throws Exception {
         // Strip the <defaults> block and the sub-attribution misc-fields so the
-        // document carries no font information at all; the reader must then fall
-        // back to the canonical default set.
-        var xml = writeToString(songWithLayout(), customFonts());
+        // document carries no <defaults>/misc-field font information; the reader
+        // must then fall back to the canonical default set for ANNOTATION/LYRICS/
+        // SUB_ATTRIBUTION. TITLE is unaffected by the strip — its custom font
+        // rides home on the (un-stripped) title credit's own font-family/
+        // font-size, so it must still round-trip to that custom value while the
+        // stripped roles revert to their defaults.
+        var fonts = customFonts();
+        var xml = writeToString(songWithLayout(), fonts);
         var stripped = xml
             .replaceAll("(?s)\\s*<defaults>.*?</defaults>", "")
             .replaceAll("(?m)^.*name=\"sub-attribution-font.*\\R?", "");
 
         var result = parseResult(stripped);
 
+        // Every stripped role reverts to its default; TITLE alone survives,
+        // recovered from its credit (mirroring the reader's setFont resolution).
+        var expected = DocumentFonts.defaultFonts();
+        var titleFont = fonts.getFont(FontKey.TITLE);
+        expected.setFont(FontKey.TITLE, titleFont.getPSName(), titleFont.getSize());
+
         assertThat(result.fonts())
-            .as("a document with no <defaults>/sub-attribution fonts reads back the defaults")
-            .isEqualTo(DocumentFonts.defaultFonts());
+            .as("a document with no <defaults>/sub-attribution fonts reads back the defaults, "
+                + "except TITLE which still round-trips through its own credit")
+            .isEqualTo(expected);
+    }
+
+    @Test
+    void testWordFontMissingFontFamilyLeavesRoleAtDefault() throws Exception {
+        // setDocumentFont's defensive guard: a hand-edited <word-font> missing
+        // font-family recovers no font, leaving ANNOTATION at its default. The
+        // writer always emits font-family, so this is only reachable by tampering.
+        var xml = writeToString(singleNoteSong(), customFonts());
+
+        // Strip the font-family from the single <word-font> element, leaving the
+        // <lyric-font> intact.
+        var wordFontFamily = "<" + MusicXmlTags.WORD_FONT + " " + MusicXmlTags.ATTR_FONT_FAMILY + "=\"[^\"]*\"";
+        var tampered = xml.replaceAll(wordFontFamily, "<" + MusicXmlTags.WORD_FONT);
+
+        assertThat(xml)
+            .as("precondition: the <word-font> carried a font-family")
+            .containsPattern(wordFontFamily);
+        assertThat(tampered)
+            .as("tamper removed the <word-font>'s font-family")
+            .doesNotContainPattern(wordFontFamily);
+
+        var result = parseResult(tampered);
+
+        assertThat(result.fonts().getFont(FontKey.ANNOTATION))
+            .as("a <word-font> missing font-family recovers no font (stays default)")
+            .isEqualTo(DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION));
+        assertThat(result.fonts().getFont(FontKey.LYRICS).getSize())
+            .as("the untampered <lyric-font> still recovers its font")
+            .isEqualTo(LYRIC_FONT_SIZE);
     }
 
     @Test

@@ -130,13 +130,19 @@ public final class MyFontUtils {
     }
 
     /*
-      This method attempts to create a font from the given PS name and size. If the font is
-      not found, the method tries to find the closest Source Sans 3 SongScribe weight based
-      on the requested name (preserving weight and italic). If that also fails, the label font
-      is returned as the last resort.
+      This method attempts to create a font from the given PS name and size. If no font
+      matches the PS name, it is next tried as a family name (a hand-edited or older
+      document may store a display family such as "SignPainter" rather than a PostScript
+      name). Failing that, the method finds the closest Source Sans 3 SongScribe weight
+      based on the requested name (preserving weight and italic). If that also fails, the
+      label font is returned as the last resort.
     */
     public static Font createFont(String psName, int size) {
         var font = getPSFonts().get(psName);
+
+        if (font == null) {
+            font = findFamilyFont(psName);
+        }
 
         if (font == null) {
             font = findClosestSourceSans3Font(psName);
@@ -147,6 +153,22 @@ public final class MyFontUtils {
         }
 
         return font.deriveFont((float) size);
+    }
+
+    /*
+      Resolves a font by family name when the PS-name lookup misses — a hand-edited or
+      older document may store a display family (e.g. "SignPainter") rather than a
+      PostScript name. Returns a kerned PLAIN face of that family, or null when the family
+      is not installed. Only the family is known here (weight/style are not carried), so
+      the PLAIN face is used.
+    */
+    @Nullable
+    private static Font findFamilyFont(String family) {
+        if (!getFamilyNames().contains(family)) {
+            return null;
+        }
+
+        return deriveKernedFont(new Font(family, Font.PLAIN, 1));
     }
 
     /*

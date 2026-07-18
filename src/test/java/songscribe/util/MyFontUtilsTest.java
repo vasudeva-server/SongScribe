@@ -21,10 +21,12 @@
 package songscribe.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.awt.Font;
+import java.util.HashSet;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -163,6 +165,44 @@ class MyFontUtilsTest extends UnitTest {
             assertThat(font).isNotNull();
             assertThat(font.getSize()).isEqualTo(24);
             assertThat(font.getPSName()).isEqualTo("SourceSans3SongScribe-Bold");
+        }
+
+        @Test
+        void testUnknownPsNameThatIsAnInstalledFamilyResolvesToThatFamily() {
+            // A hand-edited or older document may store a display family (e.g.
+            // "SignPainter") rather than a PostScript name. When the PS-name lookup
+            // misses but the name IS an installed family, createFont must resolve to
+            // that family — not the Source Sans 3 approximation. Pick any installed
+            // non-Source-Sans-3 family that is not also a PS name, so the family
+            // branch (not the PS branch) is exercised and, without the fallback, the
+            // name would resolve to the Source Sans 3 family instead.
+            var psNames = new HashSet<String>();
+
+            for (var font : MyFontUtils.getAllFonts()) {
+                psNames.add(font.getPSName());
+            }
+
+            String family = null;
+
+            for (var font : MyFontUtils.getAllFonts()) {
+                var candidate = font.getFamily();
+
+                if (!candidate.equals(SourceSans3Font.FAMILY) && !psNames.contains(candidate)) {
+                    family = candidate;
+                    break;
+                }
+            }
+
+            if (family == null) {
+                assumeTrue(false, "no installed non-Source-Sans-3 family available to exercise the fallback");
+                return;
+            }
+
+            var font = MyFontUtils.createFont(family, 18);
+            assertThat(font.getFamily())
+                .as("an installed family name resolves to that family, not the Source Sans 3 approximation")
+                .isEqualTo(family);
+            assertThat(font.getSize()).isEqualTo(18);
         }
 
         @Test

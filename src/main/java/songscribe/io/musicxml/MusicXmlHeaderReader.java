@@ -88,6 +88,15 @@ final class MusicXmlHeaderReader {
     @Nullable
     private String creditWordsRelativeYRaw = null;
 
+    // The raw font-family/font-size attributes of the current <credit-words>.
+    // Every credit carries them (see MusicXmlHeaderWriter.writeCredit), but only
+    // the title/subtitle credits are canonical for their FontKey — the rest are
+    // recovered from <defaults>/<miscellaneous> instead (see dispatchCredit).
+    @Nullable
+    private String creditWordsFontFamily = null;
+    @Nullable
+    private String creditWordsFontSizeRaw = null;
+
     // The subtitle recovered from the subtitle credit; empty when the document
     // carries no subtitle credit (a blank subtitle is never written, so absent
     // and empty are indistinguishable). Folded into SongMetadata at
@@ -174,6 +183,8 @@ final class MusicXmlHeaderReader {
         creditType = "";
         creditWords = "";
         creditWordsRelativeYRaw = null;
+        creditWordsFontFamily = null;
+        creditWordsFontSizeRaw = null;
         reader.setWhere(Where.CREDIT);
     }
 
@@ -236,10 +247,14 @@ final class MusicXmlHeaderReader {
         if (qName.equals(MusicXmlTags.CREDIT_TYPE)) {
             reader.setWhere(Where.CREDIT_TYPE);
         } else if (qName.equals(MusicXmlTags.CREDIT_WORDS)) {
-            // relative-y is captured here from the attributes; the text
-            // arrives at </credit-words>. Font attributes are write-forward
-            // (recovered from <defaults>) and are not read.
+            // relative-y and the font attributes are captured here; the text
+            // arrives at </credit-words>. Only the title/subtitle credits
+            // apply the recovered font (see dispatchCredit) — every other
+            // role's font is write-forward, recovered from <defaults>/
+            // <miscellaneous> instead.
             creditWordsRelativeYRaw = attributes.getValue(MusicXmlTags.ATTR_RELATIVE_Y);
+            creditWordsFontFamily = attributes.getValue(MusicXmlTags.ATTR_FONT_FAMILY);
+            creditWordsFontSizeRaw = attributes.getValue(MusicXmlTags.ATTR_FONT_SIZE);
             reader.setWhere(Where.CREDIT_WORDS);
         }
     }
@@ -453,7 +468,10 @@ final class MusicXmlHeaderReader {
             // Canonical — the subtitle has no <movement-*> equivalent, so the
             // credit is its source of truth. Held until </score-partwise>, where
             // it is folded into SongMetadata (there is no setSubtitle mutator).
-            case MusicXmlTags.CREDIT_SUBTITLE -> subtitle = creditWords;
+            case MusicXmlTags.CREDIT_SUBTITLE -> {
+                subtitle = creditWords;
+                setCreditFont(FontKey.SUBTITLE);
+            }
 
             // Canonical — the four score-below text blocks are standalone Song
             // fields with direct setters.
@@ -473,8 +491,12 @@ final class MusicXmlHeaderReader {
                  MusicXmlTags.CREDIT_RIGHTS,
                  MusicXmlTags.CREDIT_PLACE -> readAttributionOffsetOnce(parsedSong);
 
-            // Display-only — the title is re-derived from <movement-*>; ignored.
-            // Unknown credit-types are skipped for the same reason.
+            // Display-only text, canonical font — the title text is re-derived
+            // from <movement-*>, but the credit is still the font's source of
+            // truth (see MusicXmlHeaderWriter.writeCredit).
+            case MusicXmlTags.CREDIT_TITLE -> setCreditFont(FontKey.TITLE);
+
+            // Display-only — unknown credit-types are skipped.
             default -> {
                 // no read state
             }
@@ -566,15 +588,28 @@ final class MusicXmlHeaderReader {
 
     /**
      * Recovers a document-font role from a {@code <word-font>}/{@code <lyric-font>}
-     * element's {@code font-family}/{@code font-size} attributes into
-     * {@link #documentFonts}. Weight/style are write-forward (not emitted, not
-     * read). An element missing either attribute is left at its default — defensive
-     * only, since the writer always emits both.
+     * element's {@code font-family}/{@code font-size} attributes. See
+     * {@link #applyFont}.
      */
     private void setDocumentFont(FontKey key, Attributes attributes) throws SAXException {
-        var family = attributes.getValue(MusicXmlTags.ATTR_FONT_FAMILY);
-        var sizeRaw = attributes.getValue(MusicXmlTags.ATTR_FONT_SIZE);
+        applyFont(key, attributes.getValue(MusicXmlTags.ATTR_FONT_FAMILY), attributes.getValue(MusicXmlTags.ATTR_FONT_SIZE));
+    }
 
+    /**
+     * Recovers a document-font role from the current {@code <credit-words>}'s
+     * captured {@code font-family}/{@code font-size}. See {@link #applyFont}.
+     */
+    private void setCreditFont(FontKey key) throws SAXException {
+        applyFont(key, creditWordsFontFamily, creditWordsFontSizeRaw);
+    }
+
+    /**
+     * Stores a document-font {@code key} from a raw {@code font-family}/
+     * {@code font-size} pair into {@link #documentFonts}. Weight/style are
+     * write-forward (not emitted, not read). Left at its default when either value
+     * is absent — defensive only, since the writer always emits both.
+     */
+    private void applyFont(FontKey key, @Nullable String family, @Nullable String sizeRaw) throws SAXException {
         if (family == null || sizeRaw == null) {
             return;
         }
