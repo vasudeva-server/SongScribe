@@ -93,7 +93,6 @@ public class MenuController {
         menuBar.add(initFileMenu());
         menuBar.add(initEditMenu());
         menuBar.add(new NotationMenu(mainFrame));
-        menuBar.add(initSongMenu());
         //        menuBar.add(initModeMenu());
 
         if (SystemInfo.isMacOS) {
@@ -131,6 +130,10 @@ public class MenuController {
         menu.add(SaveAction.createAction(mainFrame));
         menu.add(SaveAsAction.createAction(mainFrame));
         menu.add(RevertToSavedAction.createAction(mainFrame));
+
+        menu.addSeparator();
+
+        menu.add(Actions.SONG_SETTINGS_ACTION);
 
         menu.addSeparator();
 
@@ -268,7 +271,7 @@ public class MenuController {
         return pathStr;
     }
 
-    static JMenu initEditMenu() {
+    JMenu initEditMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_EDIT));
 
         menu.add(Actions.UNDO_ACTION);
@@ -281,6 +284,14 @@ public class MenuController {
         menu.add(Actions.DELETE_ACTION);
         menu.add(Actions.SELECT_LINE_ACTION);
         menu.add(Actions.DESELECT_ACTION);
+
+        menu.addSeparator();
+
+        var lineMenu = new JMenu(Strings.get(Strings.MENU_SONG_LINE));
+        lineMenu.add(InsertLineAction.createAddLineAction(mainFrame));
+        lineMenu.add(InsertLineAction.createInsertLineBeforeAction(mainFrame));
+        lineMenu.add(InsertLineAction.createInsertLineAfterAction(mainFrame));
+        menu.add(lineMenu);
 
         menu.addSeparator();
 
@@ -307,19 +318,5 @@ public class MenuController {
 //
 //        return menu;
 //    }
-
-    private JMenu initSongMenu() {
-        var menu = new JMenu(Strings.get(Strings.MENU_SONG));
-
-        var lineMenu = new JMenu(Strings.get(Strings.MENU_SONG_LINE));
-        lineMenu.add(InsertLineAction.createAddLineAction(mainFrame));
-        lineMenu.add(InsertLineAction.createInsertLineBeforeAction(mainFrame));
-        lineMenu.add(InsertLineAction.createInsertLineAfterAction(mainFrame));
-        menu.add(lineMenu);
-        menu.addSeparator();
-
-        menu.add(Actions.SONG_SETTINGS_ACTION);
-        return menu;
-    }
 
 }
