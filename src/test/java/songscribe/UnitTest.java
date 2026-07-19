@@ -103,12 +103,21 @@ public abstract class UnitTest {
         // during a post in this test — MBassador swallows the error and silently aborts
         // delivery to the post's remaining subscribers, so nothing else reports it.
         MessageCenterTestHelper.assertNoPublicationErrors();
+
+        // Also last: fail loudly if a background thread (e.g. PlayThread, a poll thread)
+        // threw and nothing joined it — the JVM's default handler would otherwise just
+        // print the stack trace and let the test pass.
+        UncaughtExceptionTestHelper.assertNoUncaughtExceptions();
     }
 
     @BeforeEach
     void resetRuntimeError() {
         RuntimeErrorTestHelper.reset();
         MessageCenterTestHelper.clearPublicationErrors();
+
+        // Reinstalled every test: some tests (e.g. SongScribeTest's main() tests) call
+        // Thread.setDefaultUncaughtExceptionHandler themselves, replacing this probe.
+        UncaughtExceptionTestHelper.install();
     }
 
     /**
