@@ -43,7 +43,7 @@ import songscribe.util.UIUtils;
  * a plain-language description of the current preview element (the element
  * that will be inserted next), left-aligned across the bar.
  */
-public final class StatusBar extends JComponent {
+public final class StatusBar extends JPanel {
 
     private static final String EMPTY_CONTENT = " ";
     private static final double ACCIDENTAL_FONT_SIZE_FACTOR = 1.2;
@@ -105,7 +105,6 @@ public final class StatusBar extends JComponent {
     public StatusBar() {
         setLayout(new GridBagLayout());
         setOpaque(true);
-        setBackground(FlatLafProps.getColor(FlatLafKey.STATUS_BAR_BACKGROUND));
         setBorder(UIUtils.spacingBorder(FlatLafKey.STATUS_BAR_PADDING));
 
         accidentalLabel.setFont(MyFontUtils.getLocalFont("Bravura.otf",
@@ -137,6 +136,14 @@ public final class StatusBar extends JComponent {
         add(new ZoomStatusBarPanel(), zoomConstraints);
 
         MessageCenter.subscribe(this);
+    }
+
+    @Override
+    public void updateUI() {
+        // setUI() (called by super) triggers updateUI() before our fields are initialized
+        super.updateUI();
+
+        setBackground(FlatLafProps.getColor(FlatLafKey.STATUS_BAR_BACKGROUND));
     }
 
     @Handler
