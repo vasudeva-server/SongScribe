@@ -33,7 +33,7 @@ import module java.desktop;
 public final class AccentShape {
 
     /** Target wedge width, in staff spaces, that the raw SVG path is scaled to. */
-    private static final double WEDGE_WIDTH_SS = 1.48;
+    private static final double WEDGE_WIDTH_SS = 1.43;
 
     private static final Shape ACCENT = build();
 
