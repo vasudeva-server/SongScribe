@@ -64,26 +64,12 @@ public class PreferencesDialog extends BaseDialog {
     public PreferencesDialog(MainFrame mainFrame) {
         super(mainFrame, Strings.get(Strings.DIALOG_PREFERENCES_TITLE), false, DialogCategory.EXCLUSIVE);
 
-        var tabbedPane = createTabbedPane();
-        addTab(
-            tabbedPane,
-            Strings.get(Strings.LABEL_PREFS_TAB_GENERAL),
-            new GeneralTab()
-        );
-        addTab(
-            tabbedPane,
-            Strings.get(Strings.LABEL_PREFS_TAB_PLAY),
-            new PlayTab()
-        );
+        var tabbedContent = createTabbedContent();
+        addTab(new GeneralTab());
+        addTab(new PlayTab());
+        addTab(new InstrumentsTab());
 
-        var instrumentsTab = new InstrumentsTab(tabbedPane);
-        addTab(
-            tabbedPane,
-            Strings.get(Strings.LABEL_PREFS_TAB_INSTRUMENTS),
-            instrumentsTab
-        );
-
-        contentPanel.add(BorderLayout.CENTER, tabbedPane);
+        contentPanel.add(BorderLayout.CENTER, tabbedContent);
     }
 
     @Override
@@ -229,6 +215,7 @@ public class PreferencesDialog extends BaseDialog {
         );
 
         GeneralTab() {
+            super(Strings.get(Strings.LABEL_PREFS_TAB_GENERAL));
             build();
         }
 
@@ -499,6 +486,7 @@ public class PreferencesDialog extends BaseDialog {
             };
 
         PlayTab() {
+            super(Strings.get(Strings.LABEL_PREFS_TAB_PLAY));
             build();
             addChangeListeners();
         }
@@ -586,17 +574,9 @@ public class PreferencesDialog extends BaseDialog {
         private final ScaleAction scaleAction = new ScaleAction();
         private final JButton scaleButton = new JButton(scaleAction);
 
-        InstrumentsTab(JTabbedPane tabbedPane) {
+        InstrumentsTab() {
+            super(Strings.get(Strings.LABEL_PREFS_TAB_INSTRUMENTS));
             build();
-
-            tabbedPane.addChangeListener(_ -> {
-                if (tabbedPane.getSelectedComponent() == this) {
-                    PlaybackController.stop();
-                    instrumentList.requestFocusInWindow();
-                } else {
-                    scaleAction.stop();
-                }
-            });
 
             addChangeListener();
             addClickListener();
@@ -667,6 +647,8 @@ public class PreferencesDialog extends BaseDialog {
 
         @Override
         protected void tabWillShow() {
+            PlaybackController.stop();
+
             ensureInstrumentsLoaded();
 
             var instrumentIndex = programToIndex(
@@ -675,6 +657,7 @@ public class PreferencesDialog extends BaseDialog {
             instrumentList.setListData(instrumentStrings);
             instrumentList.setSelectedIndex(instrumentIndex);
             instrumentList.ensureIndexIsVisible(instrumentIndex);
+            instrumentList.requestFocusInWindow();
         }
 
         @Override

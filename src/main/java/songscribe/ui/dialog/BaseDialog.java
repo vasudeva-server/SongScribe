@@ -26,6 +26,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.formdev.flatlaf.FlatClientProperties;
+
 import net.engio.mbassy.listener.Handler;
 
 import org.intellij.lang.annotations.MagicConstant;
@@ -42,6 +44,7 @@ import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.ThemeAwareMatteBorder;
 import songscribe.util.GraphicUtils;
 import songscribe.util.UIUtils;
 
@@ -72,7 +75,19 @@ public abstract class BaseDialog {
     private final DialogCategory category;
     protected final JPanel contentPanel = new JPanel(new BorderLayout());
     private final List<Tab> tabs = new ArrayList<>();
-    private @Nullable JTabbedPane tabbedPane;
+
+    // Declaration order matters: buildTabbedContent() reads tabListModel, tabList,
+    // tabCards, and tabContentArea, so they must be initialized before tabbedContent.
+    private final DefaultListModel<String> tabListModel = new DefaultListModel<>();
+    private final JList<String> tabList = buildTabList();
+    private final JPanel tabCards = new JPanel(new CardLayout());
+    // The column to the right of the full-height sidebar: holds the tab cards and,
+    // for a StandardDialog, its button panel — so the sidebar spans the full dialog
+    // height while the buttons sit only under the content (macOS System Settings look).
+    private final JPanel tabContentArea = new JPanel(new BorderLayout());
+    private final JComponent tabbedContent = buildTabbedContent();
+    private boolean hasSidebar;
+
     private @Nullable Component savedFocusOwner;
 
     @SuppressWarnings("NullAway.Init")
@@ -136,38 +151,86 @@ public abstract class BaseDialog {
         return tabs;
     }
 
-    /** Package-private: allows tests to read the registered top-level tabbed pane without full dialog setup. */
-    @Nullable JTabbedPane getTabbedPane() {
-        return tabbedPane;
+    /** Package-private: allows tests to read the sidebar/card composite without full dialog setup. */
+    JComponent getTabbedContent() {
+        return tabbedContent;
     }
 
-    protected JTabbedPane createTabbedPane() {
-        var pane = new JTabbedPane();
+    /**
+     * The container a subclass's button panel should attach to. With a sidebar,
+     * that is the content column to the right of the full-height sidebar, so the
+     * sidebar reaches the bottom of the dialog while the buttons sit only under
+     * the content. Without a sidebar, it is the content pane itself.
+     */
+    protected Container getButtonPanelContainer() {
+        return hasSidebar ? tabContentArea : contentPanel;
+    }
 
-        // Add a little padding at the top, above the tabs
-        var tabsMarginTop = FlatLafProps.getInt(FlatLafKey.DIALOG_TABS_MARGIN_TOP);
-        pane.setBorder(BorderFactory.createEmptyBorder(tabsMarginTop, 0, 0, 0));
+    /** Package-private: allows tests to read the sidebar list without full dialog setup. */
+    JList<String> getTabList() {
+        return tabList;
+    }
 
-        // Only the first call registers this as the dialog's top-level tabbed pane.
-        // Subsequent calls (e.g. from inner tabs creating nested sub-panes) must not
-        // overwrite it or attach the tab lifecycle listener.
-        if (tabbedPane == null) {
-            tabbedPane = pane;
+    private JList<String> buildTabList() {
+        var list = new JList<String>(tabListModel) {
+            @Override
+            public void updateUI() {
+                // Fired from JComponent's ctor (via setUI) BEFORE our init runs —
+                // reference no instance fields; the static lookup is safe.
+                super.updateUI();
+                setBackground(FlatLafProps.getColor(FlatLafKey.DIALOG_SIDEBAR_BACKGROUND));
+            }
+        };
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        list.setOpaque(true);
+        list.setFixedCellHeight(FlatLafProps.getInt(FlatLafKey.DIALOG_LIST_CELL_HEIGHT));
+        list.setBorder(UIUtils.spacingBorder(FlatLafKey.DIALOG_SIDEBAR_PADDING));
+        list.putClientProperty(
+            FlatClientProperties.STYLE,
+            "selectionArc: " + FlatLafProps.getInt(FlatLafKey.DIALOG_LIST_SELECTION_ARC)
+        );
+        return list;
+    }
 
-            pane.addChangeListener(_ -> {
-                var selectedComponent = pane.getSelectedComponent();
+    private JComponent buildTabbedContent() {
+        // Full-height sidebar: opaque, theme-live background, 1px right divider.
+        var sidebar = new JPanel(new BorderLayout()) {
+            @Override
+            public void updateUI() {
+                // Fired from JComponent's ctor (via setUI) BEFORE our init runs —
+                // reference no instance fields; the static lookup is safe.
+                super.updateUI();
+                setBackground(UIManager.getColor("TabbedPane.background"));
+            }
+        };
+        sidebar.setOpaque(true);
 
-                for (var tab : tabs) {
-                    if (tab == selectedComponent) {
-                        tab.tabWillShow();
-                    } else {
-                        tab.tabWillHide();
-                    }
-                }
-            });
-        }
+        // The divider sits on the sidebar panel, outside the list's internal padding.
+        sidebar.setBorder(new ThemeAwareMatteBorder(
+            0, 0, 0, 1, FlatLafKey.DIALOG_SIDEBAR_BORDER_COLOR.key()
+        ));
+        sidebar.add(tabList, BorderLayout.CENTER);
 
-        return pane;
+        tabContentArea.add(tabCards, BorderLayout.CENTER);
+
+        var composite = new JPanel(new BorderLayout());
+        composite.add(sidebar, BorderLayout.WEST);
+        composite.add(tabContentArea, BorderLayout.CENTER);
+
+        tabList.addListSelectionListener(event -> {
+            if (event.getValueIsAdjusting()) {
+                return;
+            }
+
+            selectTab(tabList.getSelectedIndex());
+        });
+
+        return composite;
+    }
+
+    protected JComponent createTabbedContent() {
+        hasSidebar = true;
+        return tabbedContent;
     }
 
     /**
@@ -178,12 +241,58 @@ public abstract class BaseDialog {
     }
 
     /**
-     * Convenience method that adds a tab to a {@link JTabbedPane} and
-     * registers it for lifecycle callbacks.
+     * Adds a tab to the sidebar/card composite and registers it for lifecycle
+     * callbacks. The tab's title (from {@link Tab#getTitle()}) becomes its
+     * sidebar row; its card name is its insertion index.
      */
-    protected void addTab(JTabbedPane pane, String title, Tab tab) {
-        pane.addTab(title, tab);
+    protected void addTab(Tab tab) {
+        tabCards.add(tab, String.valueOf(getTabs().size()));
+        tabListModel.addElement(tab.getTitle());
         registerTab(tab);
+    }
+
+    /*
+     * Selection / lifecycle flow
+     *
+     * setVisible(true) ──► hasSidebar ?
+     *      │                    │
+     *      │ no                 │ yes
+     *      ▼                    ▼
+     *  tabWillShow          tabList.getSelectedIndex() == 0 ?
+     *  on ALL tabs          ├─ yes ─► selectTab(0)            (no-op setSelectedIndex fires no event → call directly)
+     *  + content padding    └─ no  ─► setSelectedIndex(0) ──► ListSelectionListener
+     *                                                               │ valueIsAdjusting? ─ yes ─► return
+     *                                                               └─ no ─► selectTab(idx)
+     *
+     * selectTab(index):
+     *      index < 0 ? ─ yes ─► return
+     *      └─ no ─► for each registered tab t at position i:
+     *                   i == index ? t.tabWillShow() : t.tabWillHide()   ← hide fires on ALL others (incl. already-hidden)
+     *               CardLayout.show(tabCards, String.valueOf(index))
+     *
+     * setVisible(false) ──► tabWillHide on ALL tabs (unchanged)
+     *
+     * INVARIANT (append-only): tabs-list index  ==  list-model index  ==  CardLayout card name (String.valueOf(index)).
+     *   addTab only appends, keeping all three in lockstep. Removing/reordering a tab would break card lookup silently.
+     * NOTE: selectTab(0) at initial show now fires tabWillHide on the non-selected tabs (unified show+hide path); the
+     *   old code fired show-only at initial show. Hides are idempotent for the current tabs. Covered by test H (Phase 4).
+     */
+    private void selectTab(int index) {
+        if (index < 0) {
+            return;
+        }
+
+        for (var i = 0; i < tabs.size(); i++) {
+            var tab = tabs.get(i);
+
+            if (i == index) {
+                tab.tabWillShow();
+            } else {
+                tab.tabWillHide();
+            }
+        }
+
+        ((CardLayout) tabCards.getLayout()).show(tabCards, String.valueOf(index));
     }
 
     public static void addLabeledField(
@@ -331,14 +440,13 @@ public abstract class BaseDialog {
                 return;
             }
 
-            if (tabbedPane != null) {
-                tabbedPane.setSelectedIndex(0);
-                var selectedTab = tabbedPane.getSelectedComponent();
-
-                for (var tab : tabs) {
-                    if (tab == selectedTab) {
-                        tab.tabWillShow();
-                    }
+            if (hasSidebar) {
+                // Force selection to the first tab. A no-op setSelectedIndex(0)
+                // fires no event, so drive selectTab directly in that case.
+                if (tabList.getSelectedIndex() == 0) {
+                    selectTab(0);
+                } else {
+                    tabList.setSelectedIndex(0);
                 }
             } else {
                 for (var tab : tabs) {
@@ -346,7 +454,7 @@ public abstract class BaseDialog {
                 }
             }
 
-            if (tabbedPane == null) {
+            if (!hasSidebar) {
                 var paddingKey = getContentPaddingKey();
 
                 if (paddingKey != null) {
@@ -604,13 +712,16 @@ public abstract class BaseDialog {
         protected final GridBagConstraints constraints =
             new GridBagConstraints();
 
+        private final String title;
+
         private boolean hasFillItem = false;
 
-        protected Tab() {
-            this(hasButtons() ? FlatLafKey.DIALOG_STD_BUTTONS_PADDING : FlatLafKey.DIALOG_STD_PADDING);
+        protected Tab(String title) {
+            this(title, hasButtons() ? FlatLafKey.DIALOG_STD_BUTTONS_PADDING : FlatLafKey.DIALOG_STD_PADDING);
         }
 
-        protected Tab(FlatLafKey paddingKey) {
+        protected Tab(String title, FlatLafKey paddingKey) {
+            this.title = title;
             setLayout(new GridBagLayout());
 
             // Add inner padding to the panel
@@ -623,6 +734,10 @@ public abstract class BaseDialog {
             constraints.fill = GridBagConstraints.HORIZONTAL;
             constraints.weightx = 1.0;
             constraints.weighty = 0;
+        }
+
+        String getTitle() {
+            return title;
         }
 
         protected void build() {

@@ -107,29 +107,13 @@ public class SongSettingsDialog extends StandardDialog {
     public SongSettingsDialog(MainFrame mainFrame) {
         super(mainFrame, Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
 
-        var tabbedPane = createTabbedPane();
-        addTab(
-            tabbedPane,
-            Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_TITLE),
-            textTab
-        );
-        addTab(
-            tabbedPane,
-            Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION),
-            attributionTab
-        );
-        addTab(
-            tabbedPane,
-            Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_MUSIC),
-            new MusicTab()
-        );
-        addTab(
-            tabbedPane,
-            Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_FONTS),
-            fontTab
-        );
+        var tabbedContent = createTabbedContent();
+        addTab(textTab);
+        addTab(attributionTab);
+        addTab(new MusicTab());
+        addTab(fontTab);
 
-        contentPanel.add(BorderLayout.CENTER, tabbedPane);
+        contentPanel.add(BorderLayout.CENTER, tabbedContent);
 
         // Let Cancel bypass the range-validating fields' InputVerifiers so the
         // user can always dismiss the dialog without first fixing the value.
@@ -465,6 +449,8 @@ public class SongSettingsDialog extends StandardDialog {
         private boolean subtitlePreviewEmpty = true;
 
         private TitleTab() {
+            super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_TITLE));
+
             titleField.setInputVerifier(new NonEmptyGuard(
                 titleField,
                 contentPanel,
@@ -819,6 +805,8 @@ public class SongSettingsDialog extends StandardDialog {
         private Font subAttributionFont;
 
         private AttributionTab() {
+            super(Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_ATTRIBUTION));
+
             sourceCombo.setEditable(false);
             composerField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Song.SRI_CHINMOY);
             lyricistField.putClientProperty(FlatClientProperties.PLACEHOLDER_TEXT, Song.SRI_CHINMOY);
@@ -1525,6 +1513,8 @@ public class SongSettingsDialog extends StandardDialog {
         private final JLabel unitLabel = new JLabel();
 
         private MusicTab() {
+            super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_MUSIC));
+
             keyCombo.setRenderer(new KeyCellRenderer());
             keyCombo.setMaximumRowCount(7);
 
@@ -1753,7 +1743,7 @@ public class SongSettingsDialog extends StandardDialog {
         );
 
         private FontTab() {
-            super(FlatLafKey.DIALOG_SONG_SETTINGS_FONT_PADDING);
+            super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_FONTS), FlatLafKey.DIALOG_SONG_SETTINGS_FONT_PADDING);
 
             var pageBackground = FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND);
 

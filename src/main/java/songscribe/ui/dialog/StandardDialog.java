@@ -116,7 +116,7 @@ public abstract class StandardDialog extends BaseDialog {
     @Override
     public void setVisible(boolean visible) {
         if (visible && !buttonPanelAttached) {
-            contentPanel.add(buttonPanel, modifyButtonPanel());
+            getButtonPanelContainer().add(buttonPanel, modifyButtonPanel());
             buttonPanelAttached = true;
         }
 

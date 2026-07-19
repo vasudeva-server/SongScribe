@@ -60,11 +60,11 @@ Override `initContents()` to add components. `add(c)` auto-applies constraints. 
 
 Lifecycle: `getData()` (populate, return false to cancel show), `setData()` (commit, StandardDialog only), `isValidData()`, `tabWillShow()`, `tabWillHide()`.
 
-Registration: `addTab(tabbedPane, title, tab)` (adds + registers) or `registerTab(tab)` (no pane).
+Registration: `addTab(tab)` (adds + registers) or `registerTab(tab)` (no pane). The `Tab` owns its own title now — pass it to `super(title)` (or `super(title, paddingKey)`) in the subclass constructor rather than supplying it at `addTab()` call sites.
 
 ### Tabbed dialogs
 
-Build the pane with `createTabbedPane()` — NOT `new JTabbedPane()`. Only the first call registers the dialog's top-level pane and attaches the `tabWillShow()`/`tabWillHide()` lifecycle listener; nested sub-panes call it again but don't overwrite that registration. A reviewer should flag any tabbed dialog that constructs `JTabbedPane` directly — its tab lifecycle callbacks won't fire.
+Build the container with `createTabbedContent()` — NOT `new JTabbedPane()`. It returns a sidebar-style `JComponent`: a `JList` of tab titles down the side driving a `CardLayout` of tab panels via a `ListSelectionListener`, which is what fires `tabWillShow()`/`tabWillHide()` on selection change. Only the first call registers the dialog's top-level container and attaches that listener; nested sub-panes call it again but don't overwrite that registration. A reviewer should flag any tabbed dialog that constructs `JTabbedPane` directly — its tab lifecycle callbacks won't fire.
 
 Canonical examples: `PreferencesDialog`, `SongSettingsDialog`.
 
