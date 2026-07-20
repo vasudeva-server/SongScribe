@@ -431,6 +431,7 @@ class LayoutResultTest extends UnitTest {
     void testCalculateInsertionXSsAfterLastUsesSpacingCalculator() {
         var first = ElementType.CROTCHET.newInstance();
         var line = lineWithElements(first);
+        line.getSong().setLineWidthSs(WIDE_LINE_WIDTH_SS);
         var preview = ElementType.CROTCHET.newInstance();
         var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
         var result = LayoutResult.builder()
@@ -464,6 +465,7 @@ class LayoutResultTest extends UnitTest {
         var line = lineWithElements(first);
         var song = line.getSong();
         song.withoutMutationTracking(() -> song.setDefaultRestLengthSs(LOOSENED_LINE_REST_SS));
+        song.setLineWidthSs(WIDE_LINE_WIDTH_SS);
 
         var preview = ElementType.CROTCHET.newInstance();
         var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
@@ -480,6 +482,203 @@ class LayoutResultTest extends UnitTest {
         assertThat(actual - lastColumn.getXSs())
             .as("a loosened rest must space the preview wider than the default would")
             .isGreaterThan(HEAD_RIGHT_EXTENT_SS + Song.DEFAULT_REST_LENGTH_SS);
+    }
+
+    // On an interior line — which carries no auto-maintained terminal — the staff margin is the
+    // boundary. When the line is full enough that the preview's default spacing would overflow
+    // that margin, the preview centres in the room that remains rather than sitting flush against
+    // the margin (refs #608).
+    @Test
+    void testCalculateInsertionXSsAfterLastCentersAgainstMarginOnInteriorLine() {
+        var first = ElementType.CROTCHET.newInstance();
+        var line = interiorLineWithElements(first);
+        var song = line.getSong();
+
+        assertThat(line.effectiveElementCount())
+            .as("an interior line must have no auto-maintained terminal, leaving the margin as the boundary")
+            .isEqualTo(line.elementCount());
+
+        var preview = ElementType.CROTCHET.newInstance();
+        var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
+        var result = LayoutResult.builder()
+            .putElementColumn(first, lastColumn)
+            .build();
+
+        var previewColumn = previewColumnFor(preview);
+        var naturalXSs = naturalPreviewXSs(lastColumn, previewColumn, song);
+
+        // Shrink the margin so it lands between the last element's right edge and the preview's
+        // natural (uncompressed) right edge — the line is full, but some room still remains.
+        var marginSs = midpointOf(lastColumn.getRightEdgeXSs(), naturalXSs + previewColumn.getRightExtentSs());
+        song.setLineWidthSs(marginSs);
+
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(preview);
+        var expected = centeredInRoom(lastColumn.getRightEdgeXSs(), marginSs, noteheadWidthSs);
+
+        assertThat(actual).isCloseTo(expected, within(TOLERANCE));
+        assertThat(actual).isGreaterThan(lastColumn.getRightEdgeXSs());
+        assertThat(actual).isLessThan(naturalXSs);
+    }
+
+    // When the line ends with the auto-maintained terminal, the terminal's own column — not the
+    // far staff margin — is the boundary the preview centres against, since the terminal can sit
+    // well short of the margin (refs #608).
+    @Test
+    void testCalculateInsertionXSsAfterLastCentersAgainstTerminalWhenLineHasOne() {
+        var first = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first);
+        var terminal = line.getElement(line.elementCount() - 1);
+        var song = line.getSong();
+        song.setLineWidthSs(WIDE_LINE_WIDTH_SS);
+
+        var preview = ElementType.CROTCHET.newInstance();
+        var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
+
+        var previewColumn = previewColumnFor(preview);
+        var naturalXSs = naturalPreviewXSs(lastColumn, previewColumn, song);
+
+        // Put the terminal well short of the wide margin — between the last note's right edge
+        // and the preview's natural (uncompressed) right edge — so the terminal, not the margin,
+        // is what the preview would overflow.
+        var terminalXSs = midpointOf(lastColumn.getRightEdgeXSs(), naturalXSs + previewColumn.getRightExtentSs());
+        var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
+
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(preview);
+        var expected = centeredInRoom(lastColumn.getRightEdgeXSs(), terminalXSs, noteheadWidthSs);
+
+        assertThat(actual).isCloseTo(expected, within(TOLERANCE));
+        assertThat(actual)
+            .as("the terminal, not the far margin, must bound the preview")
+            .isLessThan(centeredInRoom(lastColumn.getRightEdgeXSs(), WIDE_LINE_WIDTH_SS, noteheadWidthSs));
+    }
+
+    // The centering ignores the preview's flag, accidental, and augmentation dots — only the
+    // notehead itself is centred in the remaining room, so a wide unbeamed quaver with an
+    // accidental and a dot lands further right than centering its full footprint would put it
+    // (refs #608).
+    @Test
+    void testCalculateInsertionXSsAfterLastCentersOnlyTheNoteheadIgnoringFlagAccidentalAndDots() {
+        var first = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first);
+        var terminal = line.getElement(line.elementCount() - 1);
+        var song = line.getSong();
+        song.setLineWidthSs(WIDE_LINE_WIDTH_SS);
+
+        // calculateInsertionXSs itself measures the preview's accidental (for the left extent of
+        // its internal working column), so accidental metadata must be initialized even though
+        // this test only asserts on the right side.
+        NoteGeometry.initializeAccidentalWidths();
+
+        var preview = ElementType.QUAVER.newInstance();
+        preview.setAccidental(StaffElement.Accidental.SHARP);
+        preview.setDotCount(1);
+        var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
+
+        var previewFootprintColumn = previewColumnFor(preview);
+        var footprintWidthSs = previewFootprintColumn.getRightExtentSs();
+        var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(preview);
+        assertThat(footprintWidthSs)
+            .as("the quaver's flag/dot footprint must be wider than its bare notehead for this test to be meaningful")
+            .isGreaterThan(noteheadWidthSs);
+
+        var naturalXSs = naturalPreviewXSs(lastColumn, previewFootprintColumn, song);
+        var terminalXSs = midpointOf(lastColumn.getRightEdgeXSs(), naturalXSs + footprintWidthSs);
+        var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
+
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var lastEdgeSs = lastColumn.getRightEdgeXSs();
+
+        assertThat(actual).isCloseTo(centeredInRoom(lastEdgeSs, terminalXSs, noteheadWidthSs), within(TOLERANCE));
+
+        // The wider footprint would centre the preview further left; regressing to footprint-based
+        // centering would leave the notehead visibly hugging the last element.
+        assertThat(actual)
+            .as("centering must measure the notehead, not the full flag/accidental/dot footprint")
+            .isGreaterThan(centeredInRoom(lastEdgeSs, terminalXSs, footprintWidthSs));
+    }
+
+    // A non-note preview (here a rest) has no notehead, so its full element width — not a SMuFL
+    // notehead bounding box — is what gets centred in the remaining room (refs #608).
+    @Test
+    void testCalculateInsertionXSsAfterLastCentersNonNotePreviewByElementWidth() {
+        var first = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first);
+        var terminal = line.getElement(line.elementCount() - 1);
+        var song = line.getSong();
+        song.setLineWidthSs(WIDE_LINE_WIDTH_SS);
+
+        var previewType = ElementType.CROTCHET_REST;
+        assertThat(previewType.isNote())
+            .as("this test must exercise the non-note branch of the centering width")
+            .isFalse();
+
+        var preview = previewType.newInstance();
+        var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
+
+        var previewColumn = previewColumnFor(preview);
+        var naturalXSs = naturalPreviewXSs(lastColumn, previewColumn, song);
+        var terminalXSs = midpointOf(lastColumn.getRightEdgeXSs(), naturalXSs + previewColumn.getRightExtentSs());
+        var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
+
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var expected = centeredInRoom(lastColumn.getRightEdgeXSs(), terminalXSs, previewType.getElementWidthSs());
+
+        assertThat(actual).isCloseTo(expected, within(TOLERANCE));
+        assertThat(actual).isGreaterThan(lastColumn.getRightEdgeXSs());
+    }
+
+    // When the room left before the boundary is narrower than the preview's own notehead, the
+    // midpoint would fall left of the last element and the preview would overlap it. It sits
+    // flush against the last element instead (refs #608).
+    @Test
+    void testCalculateInsertionXSsAfterLastSitsFlushWhenRoomIsNarrowerThanNotehead() {
+        var first = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first);
+        var terminal = line.getElement(line.elementCount() - 1);
+        var song = line.getSong();
+        song.setLineWidthSs(WIDE_LINE_WIDTH_SS);
+
+        var preview = ElementType.CROTCHET.newInstance();
+        var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
+        var lastEdgeSs = lastColumn.getRightEdgeXSs();
+
+        var terminalXSs = lastEdgeSs + SUB_NOTEHEAD_ROOM_SS;
+        assertThat(SUB_NOTEHEAD_ROOM_SS)
+            .as("the room left must be narrower than the notehead for this test to be meaningful")
+            .isLessThan(NoteGeometry.getNoteheadRightEdgeSs(preview));
+
+        var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+
+        assertThat(actual).isCloseTo(lastEdgeSs, within(TOLERANCE));
+    }
+
+    // The boundary check is an overflow check, not a fit check: a preview whose natural right edge
+    // lands exactly on the boundary still uses its natural spacing rather than being re-centred
+    // (refs #608).
+    @Test
+    void testCalculateInsertionXSsAfterLastKeepsNaturalSpacingWhenPreviewExactlyMeetsBoundary() {
+        var first = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first);
+        var terminal = line.getElement(line.elementCount() - 1);
+        var song = line.getSong();
+        song.setLineWidthSs(WIDE_LINE_WIDTH_SS);
+
+        var preview = ElementType.CROTCHET.newInstance();
+        var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
+
+        var previewColumn = previewColumnFor(preview);
+        var naturalXSs = naturalPreviewXSs(lastColumn, previewColumn, song);
+
+        // Put the terminal exactly on the preview's natural right edge — nothing overflows.
+        var terminalXSs = naturalXSs + previewColumn.getRightExtentSs();
+        var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
+
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+
+        assertThat(actual).isCloseTo(naturalXSs, within(TOLERANCE));
     }
 
     // Between two element heads, the preview is placed at the midpoint of their X positions.
@@ -669,6 +868,11 @@ class LayoutResultTest extends UnitTest {
     private static final double MOUSE_IN_GAP_SS = 14.0;
     private static final double MOUSE_BEFORE_FIRST_SS = 5.0;
     private static final double MOUSE_AFTER_LAST_SS = 25.0;
+    // Wide enough that the preview's default spacing never overflows it, so tests unrelated to
+    // the margin-overflow behavior can ignore it.
+    private static final double WIDE_LINE_WIDTH_SS = 1000.0;
+    // Narrower than any notehead, so centering would place the preview left of the last element.
+    private static final double SUB_NOTEHEAD_ROOM_SS = 0.25;
     private static final double TERMINAL_X_SS = 20.0;
     private static final double TERMINAL_RIGHT_EXTENT_SS = 3.0;
     // Midpoint of FIRST_ELEMENT_X_SS and SECOND_ELEMENT_X_SS.
@@ -686,6 +890,52 @@ class LayoutResultTest extends UnitTest {
             }
         });
         return line;
+    }
+
+    // Builds a two-line song and returns its first line, carrying the given elements. The terminal
+    // invariant applies only to the last line, so line 0 has no auto-maintained terminal — the
+    // state in which the staff margin, not a terminal column, bounds the preview.
+    private static Line interiorLineWithElements(StaffElement... elements) {
+        var line = lineWithElements(elements);
+        var song = line.getSong();
+        song.addLine(new Line(song));
+        return line;
+    }
+
+    // Mirrors the working column calculateInsertionXSs builds internally for the preview element,
+    // so tests can derive the same natural spacing the production code will.
+    private static ElementColumn previewColumnFor(StaffElement preview) {
+        return new ElementColumn(
+            preview,
+            Collections.emptyList(),
+            ElementColumnBuilder.calculateLeftExtentSs(preview),
+            ElementColumnBuilder.calculateRightExtentSs(preview, false, StaffElement.Direction.UP),
+            0.0, 0.0, null, 0.0, false);
+    }
+
+    // The X the preview would take from the spring engine alone, before any boundary clamping.
+    private static double naturalPreviewXSs(ElementColumn lastColumn, ElementColumn previewColumn, Song song) {
+        return lastColumn.getXSs()
+            + HorizontalSpacingCalculator.buildSpring(
+                lastColumn, previewColumn, song.getDefaultRestLengthSs()).naturalLengthSs();
+    }
+
+    private static double midpointOf(double lowSs, double highSs) {
+        return (lowSs + highSs) / 2;
+    }
+
+    // Where an element of the given width lands when centred between a left edge and a boundary.
+    private static double centeredInRoom(double leftEdgeSs, double boundarySs, double widthSs) {
+        return leftEdgeSs + (boundarySs - leftEdgeSs - widthSs) / 2;
+    }
+
+    private static LayoutResult resultWithTerminal(
+        StaffElement lastElement, ElementColumn lastColumn, StaffElement terminal, double terminalXSs) {
+
+        return LayoutResult.builder()
+            .putElementColumn(lastElement, lastColumn)
+            .putElementColumn(terminal, columnAt(terminal, terminalXSs, TERMINAL_RIGHT_EXTENT_SS))
+            .build();
     }
 
     private static ElementColumn columnAt(StaffElement element, double xSs, double rightExtentSs) {

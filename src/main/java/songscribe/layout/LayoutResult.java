@@ -934,11 +934,47 @@ public final class LayoutResult {
                 false
             );
 
+            var song = line.getSong();
+
             // Space the pair through the spring engine the committed layout uses, so the preview
             // honours the song's line rest instead of a fixed default gap.
-            return lastColumn.getXSs()
+            var naturalXSs = lastColumn.getXSs()
                 + HorizontalSpacingCalculator.buildSpring(
-                    lastColumn, insertionColumn, line.getSong().getDefaultRestLengthSs()).naturalLengthSs();
+                    lastColumn, insertionColumn, song.getDefaultRestLengthSs()).naturalLengthSs();
+
+            // The line can already be visually full — its committed elements compressed to fit —
+            // so the preview's default spacing can overrun what room is actually left. The nearest
+            // hard boundary is the auto-maintained terminal (excluded from elementCount above) when
+            // the line has one, otherwise the staff margin itself. Splitting the remaining room
+            // between the last real element and that boundary reads as the preview floating past
+            // the end of the line, rather than pinned flush against the boundary (refs #608).
+            var boundarySs = song.getLineWidthSs();
+            var terminalColumn = line.elementCount() > elementCount
+                ? elementColumns.get(line.getElement(elementCount))
+                : null;
+
+            if (terminalColumn != null) {
+                boundarySs = terminalColumn.getXSs();
+            }
+
+            if (naturalXSs + insertionColumn.getRightExtentSs() > boundarySs) {
+                // Center the preview's own notehead in the remaining room, not its full spacing
+                // footprint (flag, accidental, dots) or just its origin — an origin-only midpoint,
+                // or one measured to the full footprint, leaves the notehead itself sitting much
+                // closer to the boundary than to the last element.
+                var previewType = previewElement.getType();
+                var noteheadWidthSs = previewType.isNote()
+                    ? NoteGeometry.getNoteheadRightEdgeSs(previewElement)
+                    : previewType.getElementWidthSs();
+                var lastElementRightEdgeSs = lastColumn.getRightEdgeXSs();
+                var remainingRoomSs = boundarySs - lastElementRightEdgeSs;
+
+                // When the room left is narrower than the bare notehead, the midpoint falls left of
+                // the last element and the preview would overlap it. Sit flush against it instead.
+                return lastElementRightEdgeSs + Math.max(0, (remainingRoomSs - noteheadWidthSs) / 2);
+            }
+
+            return naturalXSs;
         }
 
         // Between elements - use midpoint
