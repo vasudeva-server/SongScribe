@@ -110,19 +110,20 @@ class TiedScriptStackingTest extends UnitTest {
 
         // What this very case yields when the accent stacks as its bounding box — the behaviour before
         // ACCENT_PROFILE existed, reproducible by passing Profile.flat(widthSs) at the accent's
-        // placeAndReserveClamped call. LilyPond driven with a box stencil lands within 1.8% of it,
+        // placeAndReserveClamped call. LilyPond driven with a box stencil lands within 3.4% of it,
         // which is what identified the bounding box — not the tie, not the padding — as the culprit.
-        private static final double FLAT_BOX_PUSH_SS = 0.6190;
+        private static final double FLAT_BOX_PUSH_SS = 0.6091;
 
         // The wedge must recover at least half of what the box gave away. A guard, not a measurement:
         // the flat-box regression scores 1.0 here and cannot squeak past.
         private static final double MAX_FRACTION_OF_BOX_PUSH = 0.5;
 
-        // Our wedge is 1.480 x 0.843 ss against Feta's 1.500 x 0.840 — the same glyph, aspect within
-        // 1.5% — so the absolute push transfers between engines, and the wedge/box ratio more tightly
-        // still, since the ratio divides out the tie geometry the two engines do not share exactly.
+        // Our wedge is 1.430 x 0.815 ss against Feta's 1.500 x 0.840 — the same glyph, narrower than
+        // before (#580) — so the absolute push still transfers between engines, but the wedge/box
+        // ratio, which divides out the tie geometry the two engines do not share exactly, now needs a
+        // wider berth: narrowing the glyph shrank the box baseline faster than the wedge's own push.
         private static final double ABSOLUTE_PUSH_TOLERANCE_SS = 0.02;
-        private static final double PUSH_RATIO_TOLERANCE = 0.01;
+        private static final double PUSH_RATIO_TOLERANCE = 0.019;
 
         /**
          * Lays out {@code e'4-> ~ e'4-.} — the accent alone on the first note, so nothing but the

@@ -57,8 +57,10 @@ class NoteAttachedStackerTest extends UnitTest {
 
     // The accent-clears-arc contact lands on a piecewise wedge profile, so the exact push is a
     // sub-pixel, non-linear function of where the accent centres on the notehead — not worth pinning
-    // at 1e-9. This tolerance (well under a device pixel) still catches any gross regression.
-    private static final double WEDGE_CONTACT_TOLERANCE_SS = 0.02;
+    // at 1e-9. This tolerance (well under a device pixel) still catches any gross regression. The
+    // narrower wedge from #580 shifted where the arc meets the profile's piecewise breakpoints,
+    // widening the sub-pixel slack slightly.
+    private static final double WEDGE_CONTACT_TOLERANCE_SS = 0.025;
 
     // What yGet reports for a footprint with nothing reserved under it: the middle staff line.
     private static final double UNRESERVED_EXTENT_SS = 0.0;
