@@ -21,8 +21,6 @@
 package songscribe.layout;
 
 import java.util.List;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Solves a chain of {@link Spring}s against an available span by weighted water-filling: it drains
@@ -53,10 +51,6 @@ import org.slf4j.LoggerFactory;
  * rest/strut by the spring builder and the lyric lift.
  */
 public final class SpringSpacer {
-
-    // DEBUG (#330 spring spacing): temporary tracing for the solver. Enable with
-    // --log-level=debug. Remove once the engine is verified (Phase 6 sign-off).
-    private static final Logger LOG = LoggerFactory.getLogger(SpringSpacer.class);
 
     private SpringSpacer() {
     }
@@ -111,21 +105,8 @@ public final class SpringSpacer {
         var naturalSpanSs = 0.0;
 
         for (var i = 0; i < gapCount; i++) {
-            var spring = springs.get(i);
-            lengthsSs[i] = Math.max(spring.restSs(), spring.strutSs());
+            lengthsSs[i] = springs.get(i).naturalLengthSs();
             naturalSpanSs += lengthsSs[i];
-        }
-
-        // DEBUG (#330): natural (post-lift) width vs. the space available decides whether the even
-        // lift survives (fits path) or gets water-filled down toward the struts (compress path).
-        if (LOG.isDebugEnabled()) {
-            LOG.debug(
-                "[solve] gapCount={} naturalSpanSs={} availableSpanSs={} -> {}",
-                gapCount, String.format("%.3f", naturalSpanSs), String.format("%.3f", availableSpanSs),
-                naturalSpanSs <= availableSpanSs
-                    ? "FITS (lift preserved, ragged right)"
-                    : "COMPRESS (deficit " + String.format("%.3f", naturalSpanSs - availableSpanSs)
-                        + " — water-fill to even out the gaps)");
         }
 
         // Fast path: the chain fits, so leave it at rest. Lines are ragged right — the solver
@@ -180,7 +161,10 @@ public final class SpringSpacer {
             return SpringSolveResult.infeasible();
         }
 
-        // Nothing to level (all gaps rigid): they already sit at their defaults.
+        // Defensive: unreachable under the current invariants. An all-rigid chain has
+        // floorSumSs == naturalSpanSs, and compress() is only entered when naturalSpanSs exceeds
+        // availableSpanSs, so the infeasibility check above always returns first. Kept because it
+        // is the only thing standing between a broken invariant and a 0/0 unit level below.
         if (freeCount == 0) {
             return SpringSolveResult.solved(lengthsSs);
         }
@@ -205,8 +189,9 @@ public final class SpringSpacer {
                 // The gap's weighted share of the level. Below its strut floor -> it holds more than
                 // its share (clamp up to the strut). Above its natural length -> compress-only
                 // forbids stretching (clamp down to natural).
-                var targetSs = springs.get(i).weight() * unitLevelSs;
-                var belowStrutSs = springs.get(i).strutSs() - targetSs;
+                var spring = springs.get(i);
+                var targetSs = spring.weight() * unitLevelSs;
+                var belowStrutSs = spring.strutSs() - targetSs;
                 var aboveNaturalSs = targetSs - naturalSs[i];
 
                 if (belowStrutSs > worstViolationSs) {
@@ -230,20 +215,15 @@ public final class SpringSpacer {
                     }
                 }
 
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug(
-                        "[solve] water-filled unitLevelSs={} freeGaps={} clampedGaps={}",
-                        String.format("%.3f", unitLevelSs), freeCount, gapCount - freeCount);
-                }
-
                 return SpringSolveResult.solved(lengthsSs);
             }
 
             // A strut clamp pins the gap on its floor; a natural clamp leaves it at its natural length.
-            lengthsSs[worstGap] = worstAtStrut ? springs.get(worstGap).strutSs() : naturalSs[worstGap];
+            var worstSpring = springs.get(worstGap);
+            lengthsSs[worstGap] = worstAtStrut ? worstSpring.strutSs() : naturalSs[worstGap];
 
             budgetSs -= lengthsSs[worstGap];
-            freeWeight -= springs.get(worstGap).weight();
+            freeWeight -= worstSpring.weight();
             clamped[worstGap] = true;
             freeCount--;
         }

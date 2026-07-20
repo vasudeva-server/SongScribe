@@ -102,6 +102,19 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     private static final int SINGLE_GAP = 1;
     private static final int TWO_GAPS = 2;
 
+    /** A normal accidental, narrow enough to sit inside the comfortable gap. */
+    private static final double ACCIDENTAL_LEFT_EXTENT_SS = -0.625;
+
+    /** A staff position low enough to need ledger lines, so the base extent exceeds the notehead. */
+    private static final int TWO_LEDGERS_BELOW_SP = 8;
+    /** A negative (leftward) target extent, so the glissando floor exceeds the comfortable rest. */
+    private static final double TARGET_LEFT_EXTENT_SS = -2.0;
+
+    /** Wide enough that a three-column line solves without any compression. */
+    private static final double GENEROUS_MARGIN_SS = 100.0;
+    /** Narrower than the anchor alone, so not even the struts fit. */
+    private static final double IMPOSSIBLE_MARGIN_SS = 1.0;
+
     private static ElementColumn column(
         ElementType type,
         double leftExtentSs,
@@ -526,5 +539,354 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         var springs = HorizontalSpacingCalculator.buildSprings(Collections.emptyList(), detachedLine());
 
         assertThat(springs).isEmpty();
+    }
+
+    // ==========================================================================
+    // Comfortable-vs-collision crossover (ported from the retired greedy path's tests)
+    // ==========================================================================
+
+    /**
+     * The delta-X this pair takes at rest — {@code max(rest, strut)}, the gap layout lays out when
+     * the line has room. The comfortable rest measures to the notehead (accidentals and
+     * augmentation excluded) while the collision strut uses the full extents, so these tests pin
+     * which of the two governs, and that the loser still leaves the glyphs clear.
+     */
+    private static double naturalGapSs(ElementColumn prev, ElementColumn curr) {
+        return HorizontalSpacingCalculator.buildSpring(prev, curr, DEFAULT_LINE_REST_SS).naturalLengthSs();
+    }
+
+    /** A column with the plain head and the given left extent (negative for an accidental). */
+    private static ElementColumn columnWithLeftExtent(double leftExtentSs) {
+        return column(ElementType.CROTCHET, leftExtentSs, HEAD_RIGHT_EXTENT_SS, null, 0.0, false);
+    }
+
+    /**
+     * A column whose full right extent includes augmentation (a dot or fall) but whose comfortable
+     * extent stops at the notehead.
+     */
+    private static ElementColumn dottedColumn(double rightExtentSs) {
+        return new ElementColumn(
+            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            NO_LEFT_EXTENT_SS, rightExtentSs, HEAD_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false);
+    }
+
+    /** An accidental narrow enough to sit inside the comfortable gap must not shift the head (refs #418). */
+    @Test
+    void testAccidentalWithinTheComfortableGapDoesNotShiftTheHead() {
+        var accidentalGapSs = naturalGapSs(plainColumn(), columnWithLeftExtent(ACCIDENTAL_LEFT_EXTENT_SS));
+
+        assertThat(accidentalGapSs)
+            .as("an accidental absorbed by the comfortable gap leaves the head where a plain column sits")
+            .isCloseTo(naturalGapSs(plainColumn(), plainColumn()), within(TOLERANCE));
+    }
+
+    /**
+     * A wide accidental makes the collision strut govern: the head shifts by exactly the overflow
+     * and the accidental ends up {@link HorizontalSpacingCalculator#MIN_COLUMN_GAP_SS} clear of the
+     * previous column's right edge (refs #418).
+     */
+    @Test
+    void testWideAccidentalMakesTheCollisionStrutGovern() {
+        var wideGapSs = naturalGapSs(plainColumn(), columnWithLeftExtent(WIDE_GLYPH_LEFT_EXTENT_SS));
+
+        var comfortableGapSs = HEAD_RIGHT_EXTENT_SS + DEFAULT_LINE_REST_SS;
+        var collisionGapSs = HEAD_RIGHT_EXTENT_SS
+            + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS
+            + Math.abs(WIDE_GLYPH_LEFT_EXTENT_SS);
+
+        assertThat(wideGapSs)
+            .as("the collision strut governs once it exceeds the comfortable rest")
+            .isCloseTo(collisionGapSs, within(TOLERANCE));
+        assertThat(wideGapSs - comfortableGapSs)
+            .as("the head shifts by exactly the collision overflow")
+            .isCloseTo(collisionGapSs - comfortableGapSs, within(TOLERANCE));
+        assertThat(wideGapSs + WIDE_GLYPH_LEFT_EXTENT_SS)
+            .as("the accidental's left edge clears the previous right edge by the minimum gap")
+            .isCloseTo(
+                HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
+    }
+
+    /**
+     * The crossover itself: at the left extent where the collision strut exactly equals the
+     * comfortable rest, the head still lands at the comfortable position and the accidental is
+     * exactly clear. Pins the {@code max(rest, strut)} decision at its tipping point (refs #418).
+     */
+    @Test
+    void testAccidentalAtTheCrossoverLeavesTheAccidentalExactlyClear() {
+        var boundaryLeftExtentSs = -(DEFAULT_LINE_REST_SS - HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS);
+
+        var boundaryGapSs = naturalGapSs(plainColumn(), columnWithLeftExtent(boundaryLeftExtentSs));
+
+        assertThat(boundaryGapSs)
+            .as("rest and strut coincide, so the head sits at the comfortable gap")
+            .isCloseTo(HEAD_RIGHT_EXTENT_SS + DEFAULT_LINE_REST_SS, within(TOLERANCE));
+        assertThat(boundaryGapSs + boundaryLeftExtentSs)
+            .as("the accidental's left edge is exactly the minimum gap clear")
+            .isCloseTo(
+                HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
+    }
+
+    /** A dot absorbed by the comfortable gap must not shift the next head (refs #441). */
+    @Test
+    void testDotWithinTheComfortableGapDoesNotShiftTheNextHead() {
+        var dottedGapSs = naturalGapSs(
+            dottedColumn(HEAD_RIGHT_EXTENT_SS + NoteGeometry.DOT_SPACING_SS), plainColumn());
+
+        assertThat(dottedGapSs)
+            .as("augmentation is excluded from the comfortable rest, so the next head does not move")
+            .isCloseTo(naturalGapSs(plainColumn(), plainColumn()), within(TOLERANCE));
+    }
+
+    /**
+     * A dot wide enough that the collision strut (augmentation included) exceeds the comfortable
+     * rest shifts the next head by exactly the overflow, leaving the dot the minimum gap clear
+     * (refs #441).
+     */
+    @Test
+    void testWideDotMakesTheCollisionStrutGovern() {
+        var wideDotRightExtentSs = HEAD_RIGHT_EXTENT_SS + DEFAULT_LINE_REST_SS;
+
+        var dottedGapSs = naturalGapSs(dottedColumn(wideDotRightExtentSs), plainColumn());
+
+        var collisionGapSs = wideDotRightExtentSs + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS;
+        assertThat(dottedGapSs).isCloseTo(collisionGapSs, within(TOLERANCE));
+        assertThat(dottedGapSs - wideDotRightExtentSs)
+            .as("the dot's right edge clears the next head by the minimum gap")
+            .isCloseTo(HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
+    }
+
+    /**
+     * The dot-side crossover, mirroring the accidental one: where the collision strut exactly
+     * equals the comfortable rest, the next head lands at the comfortable position and the dot is
+     * exactly clear (refs #441).
+     */
+    @Test
+    void testDotAtTheCrossoverLeavesTheDotExactlyClear() {
+        var dotWidthSs = DEFAULT_LINE_REST_SS - HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS;
+        var dotRightExtentSs = HEAD_RIGHT_EXTENT_SS + dotWidthSs;
+
+        var dottedGapSs = naturalGapSs(dottedColumn(dotRightExtentSs), plainColumn());
+
+        assertThat(dottedGapSs)
+            .as("rest and strut coincide, so the next head sits at the comfortable gap")
+            .isCloseTo(HEAD_RIGHT_EXTENT_SS + DEFAULT_LINE_REST_SS, within(TOLERANCE));
+        assertThat(dottedGapSs - dotRightExtentSs)
+            .as("the dot's right edge is exactly the minimum gap clear")
+            .isCloseTo(HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
+    }
+
+    /**
+     * A glissando from a grace to a host bearing an accidental widens the otherwise-fixed grace→host
+     * gap, so the glissando still reaches its minimum visible length against the accidental's edge
+     * (refs #443).
+     */
+    @Test
+    void testGraceGlissandoToAnAccidentalHostReservesGlissandoRoom() {
+        var graceElement = ElementType.GRACE_QUAVER.newInstance();
+        graceElement.setGlissando();
+        var graceColumn = new ElementColumn(
+            graceElement, Collections.emptyList(),
+            NO_LEFT_EXTENT_SS, GRACE_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false);
+        var plainGraceColumn = column(
+            ElementType.GRACE_QUAVER, NO_LEFT_EXTENT_SS, GRACE_RIGHT_EXTENT_SS, null, 0.0, false);
+        var hostColumn = columnWithLeftExtent(ACCIDENTAL_LEFT_EXTENT_SS);
+
+        var glissandoGapSs = naturalGapSs(graceColumn, hostColumn);
+        var plainGapSs = naturalGapSs(plainGraceColumn, hostColumn);
+
+        var reservedSs = glissandoGapSs + ACCIDENTAL_LEFT_EXTENT_SS - GRACE_RIGHT_EXTENT_SS;
+        assertThat(reservedSs)
+            .as("the gap to the accidental's edge holds the minimum glissando reservation")
+            .isGreaterThanOrEqualTo(NoteGeometry.MIN_GLISSANDO_RESERVATION_SS - TOLERANCE);
+        assertThat(glissandoGapSs)
+            .as("the glissando is what widens the gap — without it the host packs tighter")
+            .isGreaterThan(plainGapSs);
+    }
+
+    // ==========================================================================
+    // Anchoring and the whole-line solve
+    // ==========================================================================
+
+    /** Returns the solved gap lengths, failing with a clear message rather than an NPE. */
+    private static double[] solvedGapLengthsSs(SpringSolveResult result) {
+        var gapLengthsSs = result.gapLengthsSs();
+
+        if (gapLengthsSs == null) {
+            throw new AssertionError("expected a solved result, but the solver reported infeasible");
+        }
+
+        return gapLengthsSs;
+    }
+
+    /**
+     * The anchor places the first column's leftmost glyph — not its origin — at the first-note
+     * offset, so an accidental pushes the origin right instead of crowding the key signature
+     * (refs #121).
+     */
+    @Test
+    void testAnchorPlacesFirstColumnLeftEdgeAtFirstNoteOffset() {
+        var line = detachedLine();
+        var accidentalColumn = column(
+            ElementType.CROTCHET, WIDE_GLYPH_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS, null, 0.0, false);
+
+        var anchorXSs = HorizontalSpacingCalculator.calculateAnchorXSs(accidentalColumn, line);
+
+        assertThat(anchorXSs + accidentalColumn.getLeftExtentSs())
+            .as("the column's left edge, accidental included, sits at the first-note offset")
+            .isCloseTo(HorizontalSpacingCalculator.calculateFirstNoteXSs(line), within(TOLERANCE));
+    }
+
+    /**
+     * A first syllable wide enough to overhang the staff header pushes the anchor right, so the
+     * lyric does not collide with the clef or key signature.
+     */
+    @Test
+    void testAnchorIsPushedRightByAWideFirstSyllable() {
+        var line = detachedLine();
+        var wideSyllableColumn = syllableColumn(HEAD_RIGHT_EXTENT_SS, LONE_SYLLABLE_WIDTH_SS);
+
+        var plainAnchorXSs = HorizontalSpacingCalculator.calculateAnchorXSs(plainColumn(), line);
+        var syllableAnchorXSs = HorizontalSpacingCalculator.calculateAnchorXSs(wideSyllableColumn, line);
+
+        assertThat(syllableAnchorXSs)
+            .as("a wide first syllable pushes the anchor past the plain-column anchor")
+            .isGreaterThan(plainAnchorXSs);
+    }
+
+    /** A narrow first syllable that clears the header on its own leaves the anchor untouched. */
+    @Test
+    void testAnchorIgnoresANarrowFirstSyllable() {
+        var line = detachedLine();
+        var narrowSyllableColumn = syllableColumn(WIDE_HEAD_RIGHT_EXTENT_SS, 0.0);
+
+        assertThat(HorizontalSpacingCalculator.calculateAnchorXSs(narrowSyllableColumn, line))
+            .isCloseTo(
+                HorizontalSpacingCalculator.calculateAnchorXSs(plainColumn(), line), within(TOLERANCE));
+    }
+
+    /**
+     * The whole-line solve wires build → lift → anchor → solve together: on a line with room to
+     * spare every gap keeps its natural length, and the columns lay out from the anchor. This is
+     * the seam the per-stage tests above cannot cover.
+     */
+    @Test
+    void testSolveLineLaysOutUncompressedColumnsFromTheAnchor() {
+        var line = detachedLine();
+        var columns = List.of(plainColumn(), plainColumn(), plainColumn());
+
+        var solution = HorizontalSpacingCalculator.solveLine(columns, line, GENEROUS_MARGIN_SS);
+
+        assertThat(solution.isInfeasible()).isFalse();
+        assertThat(solution.firstXSs())
+            .isCloseTo(HorizontalSpacingCalculator.calculateAnchorXSs(columns.getFirst(), line), within(TOLERANCE));
+
+        var gapLengthsSs = solvedGapLengthsSs(solution.result());
+        assertThat(gapLengthsSs).hasSize(TWO_GAPS);
+
+        var naturalGapSs = HEAD_RIGHT_EXTENT_SS + DEFAULT_LINE_REST_SS;
+        assertThat(gapLengthsSs[0]).isCloseTo(naturalGapSs, within(TOLERANCE));
+        assertThat(gapLengthsSs[1]).isCloseTo(naturalGapSs, within(TOLERANCE));
+    }
+
+    /** A margin too narrow for even the struts makes the whole-line solve report infeasible. */
+    @Test
+    void testSolveLineReportsInfeasibleWhenTheMarginCannotHoldTheStruts() {
+        var columns = List.of(plainColumn(), plainColumn(), plainColumn());
+
+        var solution = HorizontalSpacingCalculator.solveLine(columns, detachedLine(), IMPOSSIBLE_MARGIN_SS);
+
+        assertThat(solution.isInfeasible()).isTrue();
+        assertThat(solution.result().gapLengthsSs()).isNull();
+    }
+
+    /**
+     * A glissando leaving a ledger-line note reserves against the column's own right extent, not
+     * the wider ledger base extent — ledger lines are drawn through the gap and must not push the
+     * next note away (refs #443).
+     */
+    @Test
+    void testGlissandoFromALedgerNoteReservesAgainstTheColumnExtentNotTheLedger() {
+        var ledgerElement = ElementType.CROTCHET.newInstance();
+        ledgerElement.setGlissando();
+        ledgerElement.setStaffPosition(TWO_LEDGERS_BELOW_SP);
+
+        var ledgerRightSs = NoteGeometry.getLedgerLineBaseExtentSs(ledgerElement).rightSs();
+        // Half the ledger base right: narrower, so the two candidate floors are distinguishable,
+        // while staying a valid (positive) right extent.
+        var columnRightExtentSs = ledgerRightSs / 2;
+
+        var glissandoColumn = new ElementColumn(
+            ledgerElement, Collections.emptyList(),
+            NO_LEFT_EXTENT_SS, columnRightExtentSs, 0.0, 0.0, null, 0.0, false);
+        var targetColumn = column(
+            ElementType.CROTCHET, TARGET_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS, null, 0.0, false);
+
+        var spring = HorizontalSpacingCalculator.buildSpring(
+            glissandoColumn, targetColumn, DEFAULT_LINE_REST_SS);
+
+        var columnFloorSs =
+            columnRightExtentSs - TARGET_LEFT_EXTENT_SS + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
+        var ledgerInflatedFloorSs =
+            ledgerRightSs - TARGET_LEFT_EXTENT_SS + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
+
+        assertThat(spring.strutSs()).isCloseTo(columnFloorSs, within(TOLERANCE));
+        assertThat(spring.strutSs())
+            .as("the ledger base extent must not inflate the glissando reservation")
+            .isLessThan(ledgerInflatedFloorSs);
+    }
+
+    /**
+     * A glissando arriving at a ledger-line note reserves against that column's own left extent,
+     * not the wider ledger base extent (refs #443).
+     */
+    @Test
+    void testGlissandoIntoALedgerNoteReservesAgainstTheColumnExtentNotTheLedger() {
+        var glissandoElement = ElementType.CROTCHET.newInstance();
+        glissandoElement.setGlissando();
+
+        var ledgerElement = ElementType.CROTCHET.newInstance();
+        ledgerElement.setStaffPosition(TWO_LEDGERS_BELOW_SP);
+
+        // Left extents are negative; half the ledger base keeps the sign while making the floors
+        // differ, so the test can tell which extent governed.
+        var ledgerLeftSs = NoteGeometry.getLedgerLineBaseExtentSs(ledgerElement).leftSs();
+        var columnLeftExtentSs = ledgerLeftSs / 2;
+
+        var glissandoColumn = new ElementColumn(
+            glissandoElement, Collections.emptyList(),
+            NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false);
+        var ledgerColumn = new ElementColumn(
+            ledgerElement, Collections.emptyList(),
+            columnLeftExtentSs, HEAD_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false);
+
+        var spring = HorizontalSpacingCalculator.buildSpring(
+            glissandoColumn, ledgerColumn, DEFAULT_LINE_REST_SS);
+
+        var columnFloorSs =
+            HEAD_RIGHT_EXTENT_SS - columnLeftExtentSs + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
+        var ledgerInflatedFloorSs =
+            HEAD_RIGHT_EXTENT_SS - ledgerLeftSs + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
+
+        assertThat(spring.strutSs()).isCloseTo(columnFloorSs, within(TOLERANCE));
+        assertThat(spring.strutSs())
+            .as("the ledger base extent must not inflate the glissando reservation")
+            .isLessThan(ledgerInflatedFloorSs);
+    }
+
+    /**
+     * An unpaired grace — the line's last column, before its host is entered — has no grace→host
+     * union to spill past, so only its own extent bounds the overhang (guards against dereferencing
+     * a null host).
+     */
+    @Test
+    void testGraceLyricOverhangTreatsAMissingHostAsNoUnion() {
+        var grace = graceSyllableColumn(WIDE_GRACE_SYLLABLE_WIDTH_SS);
+
+        var overhangSs = HorizontalSpacingCalculator.graceLyricOverhangSs(
+            WIDE_GRACE_SYLLABLE_WIDTH_SS, grace, null);
+
+        var unionWithoutHostSs = GRACE_RIGHT_EXTENT_SS + GRACE_HOST_REST_SS;
+        assertThat(overhangSs)
+            .isCloseTo((WIDE_GRACE_SYLLABLE_WIDTH_SS - unionWithoutHostSs) / 2, within(TOLERANCE));
     }
 }

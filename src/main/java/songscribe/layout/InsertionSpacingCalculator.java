@@ -139,14 +139,6 @@ public final class InsertionSpacingCalculator {
     }
 
     /**
-     * The natural (uncompressed) delta-X a spring wants: its rest, floored by its strut so a gap
-     * whose glyphs already overlap at rest length is pushed apart rather than left colliding.
-     */
-    private static double naturalLengthSs(Spring spring) {
-        return Math.max(spring.restSs(), spring.strutSs());
-    }
-
-    /**
      * Calculates the X position for appending an element to the end of a line.
      *
      * @param line               The line to append to
@@ -186,8 +178,8 @@ public final class InsertionSpacingCalculator {
         // No line is involved in this paste-position lookup, so there is no song line rest to read;
         // the pair is spaced against the default line rest.
         return currentColumn.getXSs()
-            + naturalLengthSs(HorizontalSpacingCalculator.buildSpring(
-                currentColumn, nextColumn, Song.DEFAULT_REST_LENGTH_SS));
+            + HorizontalSpacingCalculator.buildSpring(
+                currentColumn, nextColumn, Song.DEFAULT_REST_LENGTH_SS).naturalLengthSs();
     }
 
     /**
@@ -242,7 +234,7 @@ public final class InsertionSpacingCalculator {
             insertedElementXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
         } else {
             var prevElement = columns.get(splicedIndex - 1).getElement();
-            insertedElementXSs = elementXSs(prevElement, layout) + naturalLengthSs(springs.get(splicedIndex - 1));
+            insertedElementXSs = elementXSs(prevElement, layout) + springs.get(splicedIndex - 1).naturalLengthSs();
         }
 
         insertedColumn.setXSs(insertedElementXSs);
@@ -251,7 +243,7 @@ public final class InsertionSpacingCalculator {
 
         if (splicedIndex + 1 < columns.size()) {
             var nextElement = columns.get(splicedIndex + 1).getElement();
-            var requiredNextXSs = insertedElementXSs + naturalLengthSs(springs.get(splicedIndex));
+            var requiredNextXSs = insertedElementXSs + springs.get(splicedIndex).naturalLengthSs();
             // Shift = (where next needs to be) - (where it currently is), never negative:
             // a gap that is already wide enough stays as it is.
             shiftSs = Math.max(0, requiredNextXSs - elementXSs(nextElement, layout));
@@ -269,8 +261,10 @@ public final class InsertionSpacingCalculator {
         var fitColumns = new ArrayList<>(columns);
 
         if (line.effectiveElementCount() < elementCount) {
-            var terminalElement = line.getElement(elementCount - 1);
-            fitColumns.add(buildSurroundingColumn(terminalElement, line, lyricRenderMetrics));
+            var terminalIndex = elementCount - 1;
+            var columnBuilder = lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null;
+            fitColumns.add(
+                buildSurroundingColumn(line.getElement(terminalIndex), line, terminalIndex, columnBuilder));
         }
 
         var fitSprings = LyricLift.applyLyricLift(
@@ -303,13 +297,16 @@ public final class InsertionSpacingCalculator {
         var effectiveCount = line.effectiveElementCount();
         var splicedIndex = Math.min(insertIndex, effectiveCount);
         var columns = new ArrayList<ElementColumn>(effectiveCount + 1);
+        // One builder for the whole projection, and each element's index passed down, so this pass
+        // stays linear — it runs on every insertion, including per-keystroke note entry.
+        var columnBuilder = lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null;
 
         for (var i = 0; i < effectiveCount; i++) {
             if (i == splicedIndex) {
                 columns.add(insertedColumn);
             }
 
-            columns.add(buildSurroundingColumn(line.getElement(i), line, lyricRenderMetrics));
+            columns.add(buildSurroundingColumn(line.getElement(i), line, i, columnBuilder));
         }
 
         if (splicedIndex == effectiveCount) {
@@ -328,13 +325,13 @@ public final class InsertionSpacingCalculator {
      * Falls back to a syllable-less column when the caller has no lyric metrics.
      */
     private static ElementColumn buildSurroundingColumn(
-        StaffElement element, Line line, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+        StaffElement element, Line line, int elementIndex, @Nullable ElementColumnBuilder columnBuilder) {
 
-        if (lyricRenderMetrics == null) {
+        if (columnBuilder == null) {
             return createLightweightColumn(element);
         }
 
-        return new ElementColumnBuilder(lyricRenderMetrics).buildColumn(element, line);
+        return columnBuilder.buildColumn(element, line, elementIndex);
     }
 
     /**
@@ -417,7 +414,11 @@ public final class InsertionSpacingCalculator {
             var nextElement = line.getElement(sourceIndex + 1);
             var nextColumn = createLightweightColumn(nextElement);
             var currentNextXSs = elementXSs(nextElement, layout);
-            var requiredNextXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(sourceColumnWithFall, nextColumn);
+            // Space the pair through the spring engine the committed layout uses, so the fall-fit
+            // gate honours the song's line rest instead of a fixed default gap.
+            var requiredNextXSs = sourceColumnWithFall.getXSs()
+                + HorizontalSpacingCalculator.buildSpring(
+                    sourceColumnWithFall, nextColumn, line.getSong().getDefaultRestLengthSs()).naturalLengthSs();
             var shiftSs = Math.max(0, requiredNextXSs - currentNextXSs);
 
             if (shiftSs > 0) {

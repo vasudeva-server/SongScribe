@@ -88,7 +88,9 @@ class SlideRendererTest extends UnitTest {
         var targetLeftSs = ElementColumnBuilder.calculateLeftExtentSs(target);
         var sourceColumn = new ElementColumn(source, List.of(), 0.0, sourceRightSs, sourceRightSs, 0, 0, null, 0, false);
         var targetColumn = new ElementColumn(target, List.of(), targetLeftSs, targetRightSs, targetRightSs, 0, 0, null, 0, false);
-        var targetXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(sourceColumn, targetColumn);
+        var targetXSs = sourceColumn.getXSs()
+            + HorizontalSpacingCalculator.buildSpring(
+                sourceColumn, targetColumn, Song.DEFAULT_REST_LENGTH_SS).naturalLengthSs();
 
         // Source note: elementXSs = 0 (LayoutResult returns 0 when not in the map)
         var sourceExtent = NoteColumnGeometry.extentSs(source, false);

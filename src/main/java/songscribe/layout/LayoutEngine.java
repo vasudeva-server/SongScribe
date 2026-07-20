@@ -288,11 +288,6 @@ public class LayoutEngine {
         // The line rest drives the base rests and the lift cap.
         var lineRestSs = line.getSong().getDefaultRestLengthSs();
         var solution = HorizontalSpacingCalculator.solveLine(columns, line, staffRightMarginSs);
-        var springs = solution.springs();
-
-        // DEBUG (#330 spring spacing): trace columns + per-gap lifted springs. Remove once verified.
-        logSpringColumns(columns, lineRestSs);
-        logSprings("lifted", columns, springs);
 
         if (solution.isInfeasible()) {
             // Every gap is frozen at its collision floor and the line still overflows the margin.
@@ -313,10 +308,6 @@ public class LayoutEngine {
         for (var i = 1; i < columns.size(); i++) {
             columns.get(i).setXSs(columns.get(i - 1).getXSs() + gapLengthsSs[i - 1]);
         }
-
-        // DEBUG (#330): per-gap solved length (compare against the lifted rests above — a lift eaten
-        // by compression shows up here as a solved length back down near the strut) + final X.
-        logSolvedGaps(columns, springs, gapLengthsSs);
 
         // Step 3b: Pin the terminal flush-right on the last line.
         // Layout is the sole writer of the terminal's x position.
@@ -350,69 +341,6 @@ public class LayoutEngine {
         // Step 8: Build final LayoutResult
         return buildLayoutResult(columns, line, builder);
     }
-
-    // ==== DEBUG (#330 spring spacing) ===============================================
-    // Temporary tracing for the spring-and-strut engine. Enable with --log-level=debug.
-    // Remove this whole block once the engine is verified (Phase 6 sign-off).
-
-    /** Formats a staff-space value compactly for trace lines. */
-    private static String fmt(double ss) {
-        return String.format("%.3f", ss);
-    }
-
-    /** Dumps each column's identity, extents, and syllable data — the raw inputs to the springs. */
-    private void logSpringColumns(List<ElementColumn> columns, double lineRestSs) {
-        if (!LOG.isDebugEnabled()) {
-            return;
-        }
-
-        LOG.debug("[spring] ===== line: {} columns, lineRestSs={} =====", columns.size(), fmt(lineRestSs));
-
-        for (var i = 0; i < columns.size(); i++) {
-            var column = columns.get(i);
-            LOG.debug(
-                "[spring] col[{}] type={} leftExtentSs={} rightExtentSs={} rightExclAugSs={}"
-                    + " hasSyllable={} syllable='{}' syllableWidthSs={} minGapToNextSyllableSs={}",
-                i, column.getElement().getType(), fmt(column.getLeftExtentSs()),
-                fmt(column.getRightExtentSs()), fmt(column.getRightExtentExcludingAugmentationSs()),
-                column.hasSyllable(), column.hasSyllable() ? column.getSyllable() : "",
-                fmt(column.getSyllableWidthSs()), fmt(column.getMinGapToNextSyllableSs()));
-        }
-    }
-
-    /** Dumps each gap's spring (rest/strut/compliance) at a named pipeline stage. */
-    private void logSprings(String stage, List<ElementColumn> columns, List<Spring> springs) {
-        if (!LOG.isDebugEnabled()) {
-            return;
-        }
-
-        for (var i = 0; i < springs.size(); i++) {
-            var spring = springs.get(i);
-            LOG.debug(
-                "[spring] gap[{}] {}: restSs={} strutSs={} complianceSs={} (factor={})",
-                i, stage, fmt(spring.restSs()), fmt(spring.strutSs()), fmt(spring.complianceSs()),
-                fmt(HorizontalSpacingCalculator.restFactorFor(columns.get(i), columns.get(i + 1))));
-        }
-    }
-
-    /** Dumps the solver's per-gap length vs. the lifted rest, plus the resulting column X. */
-    private void logSolvedGaps(List<ElementColumn> columns, List<Spring> springs, double[] gapLengthsSs) {
-        if (!LOG.isDebugEnabled()) {
-            return;
-        }
-
-        LOG.debug("[spring] col[0] X={}", fmt(columns.getFirst().getXSs()));
-
-        for (var i = 0; i < gapLengthsSs.length; i++) {
-            var spring = springs.get(i);
-            LOG.debug(
-                "[spring] gap[{}] solved: lengthSs={} (liftedRestSs={} strutSs={}) -> col[{}] X={}",
-                i, fmt(gapLengthsSs[i]), fmt(spring.restSs()), fmt(spring.strutSs()),
-                i + 1, fmt(columns.get(i + 1).getXSs()));
-        }
-    }
-
-    // ==== END DEBUG (#330) ==========================================================
 
     private void buildLyricLayout(
         List<ElementColumn> columns,

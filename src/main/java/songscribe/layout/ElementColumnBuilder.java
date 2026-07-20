@@ -91,9 +91,7 @@ public class ElementColumnBuilder {
         var columns = new ArrayList<ElementColumn>(elementCount);
 
         for (var i = 0; i < elementCount; i++) {
-            var element = line.getElement(i);
-            var column = buildColumn(element, line);
-            columns.add(column);
+            columns.add(buildColumn(line.getElement(i), line, i));
         }
 
         return columns;
@@ -107,8 +105,19 @@ public class ElementColumnBuilder {
      * @return The constructed ElementColumn
      */
     public ElementColumn buildColumn(StaffElement element, Line line) {
+        return buildColumn(element, line, line.getElementIndex(element));
+    }
+
+    /**
+     * Builds a single ElementColumn for an element whose index on the line is already known.
+     *
+     * @param element      The element to process
+     * @param line         The line containing the element (for beaming lookup)
+     * @param elementIndex {@code element}'s index on {@code line}
+     * @return The constructed ElementColumn
+     */
+    public ElementColumn buildColumn(StaffElement element, Line line, int elementIndex) {
         // Determine beam membership first — needed for right extent calculation
-        var elementIndex = line.getElementIndex(element);
         var beam = line.findBeamAt(elementIndex);
         var beamed = beam != null;
 
@@ -260,7 +269,7 @@ public class ElementColumnBuilder {
         // A fall's glyph hangs off the note's right edge, one gap past the column edge. Reserve that
         // gap plus the glyph's advance width so the next element (or a barline / end-of-line) does
         // not overlap it. Unlike a connecting glissando — whose room is reserved between two notes by
-        // HorizontalSpacingCalculator.ensureGlissandoSpacing — a fall has no following note, so its
+        // HorizontalSpacingCalculator's glissando reservation — a fall has no following note, so its
         // own column must carry the reservation.
         // Gated on includeAugmentation (like dots) so the fall only expands the minimum-spacing
         // extent, not the comfortable-spacing extent — the next element shifts only when the minimum

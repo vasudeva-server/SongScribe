@@ -23,8 +23,6 @@ package songscribe.layout;
 import java.util.ArrayList;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * The lyric lift pass: widens the rest gaps of a line's springs so adjacent syllables clear each
@@ -34,10 +32,6 @@ import org.slf4j.LoggerFactory;
  * springs are still free to compress back down in the solver.
  */
 public final class LyricLift {
-
-    // DEBUG (#330 spring spacing): temporary tracing for the lyric lift. Enable with
-    // --log-level=debug. Remove once the engine is verified (Phase 6 sign-off).
-    private static final Logger LOG = LoggerFactory.getLogger(LyricLift.class);
 
     /** A gap whose flanking columns do not both bear a syllable imposes no lyric requirement. */
     private static final double NO_LYRIC_REQUIREMENT_SS = 0.0;
@@ -89,14 +83,15 @@ public final class LyricLift {
      */
     public static List<Spring> applyLyricLift(List<Spring> springs, List<ElementColumn> columns) {
 
-        var debug = LOG.isDebugEnabled();
         var requirementsSs = new double[springs.size()];
         var liftSs = NO_LIFT_SS;
 
         for (var i = 0; i < springs.size(); i++) {
+            var spring = springs.get(i);
+
             // A rigid gap (grace→host) never lifts: it keeps its default rest and imposes no lyric
             // requirement, so it neither spikes nor drives the line-wide even lift.
-            if (springs.get(i).rigid()) {
+            if (spring.rigid()) {
                 requirementsSs[i] = NO_LYRIC_REQUIREMENT_SS;
                 continue;
             }
@@ -109,19 +104,8 @@ public final class LyricLift {
             // The absolute shortfall: how far this gap's ideal rest falls short of its requirement.
             // The largest shortfall on the line becomes the even lift; a tight beam gap contributes
             // only its own small shortfall, so it never inflates the whole line.
-            var shortfallSs = requirementSs - springs.get(i).restSs();
+            var shortfallSs = requirementSs - spring.restSs();
             liftSs = Math.max(liftSs, shortfallSs);
-
-            if (debug) {
-                LOG.debug(
-                    "[lift] gap[{}] requirementSs={} baseRestSs={} shortfallSs={} (bothSyllable={})",
-                    i, fmt(requirementSs), fmt(springs.get(i).restSs()), fmt(shortfallSs),
-                    columns.get(i).hasSyllable() && columns.get(i + 1).hasSyllable());
-            }
-        }
-
-        if (debug) {
-            LOG.debug("[lift] even liftSs={} (uncapped — whole line lifts evenly)", fmt(liftSs));
         }
 
         var lifted = new ArrayList<Spring>(springs.size());
@@ -141,13 +125,6 @@ public final class LyricLift {
             var evenRestSs = spring.restSs() + factor * liftSs;
             var newRestSs = Math.max(evenRestSs, requirementsSs[i]);
             lifted.add(spring.withRestSs(newRestSs));
-
-            if (debug) {
-                LOG.debug(
-                    "[lift] gap[{}] factor={} restSs {} -> even {} -> final {} {}",
-                    i, fmt(factor), fmt(spring.restSs()), fmt(evenRestSs), fmt(newRestSs),
-                    newRestSs > evenRestSs ? "(SPIKE to requirement)" : "");
-            }
         }
 
         return lifted;
@@ -168,20 +145,7 @@ public final class LyricLift {
         ElementColumn prev, ElementColumn curr,
         @Nullable ElementColumn beforePrev, @Nullable ElementColumn afterCurr) {
 
-        var right = HorizontalSpacingCalculator.lyricRightExtentSs(prev, beforePrev);
-        var left = HorizontalSpacingCalculator.lyricLeftExtentSs(curr, afterCurr);
-
-        if (right <= 0 && left <= 0) {
-            return NO_LYRIC_REQUIREMENT_SS;
-        }
-
-        var gapSource = beforePrev != null && beforePrev.getElement().getType().isGraceNote() ? beforePrev : prev;
-
-        return right + gapSource.getMinGapToNextSyllableSs() + left;
-    }
-
-    /** DEBUG (#330): compact staff-space formatting for trace lines. Remove with the tracing. */
-    private static String fmt(double ss) {
-        return String.format("%.3f", ss);
+        return HorizontalSpacingCalculator.lyricGapRequirementSs(
+            prev, curr, beforePrev, afterCurr, ElementColumn::getMinGapToNextSyllableSs);
     }
 }

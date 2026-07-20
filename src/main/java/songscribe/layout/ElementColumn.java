@@ -41,7 +41,8 @@ import songscribe.engraving.Staff;
  * </ul>
  * <p>
  * Construction is two-phase: {@link ElementColumnBuilder} creates the column and immediately sets
- * {@link #minGapToNextSyllableSs} and {@link #beamGroupId}, then
+ * {@link #minGapToNextSyllableSs}, {@link #minCollisionGapToNextSyllableSs},
+ * {@link #noteheadWidthSs} (note columns only) and {@link #beamGroupId}, then
  * {@link HorizontalSpacingCalculator} sets {@link #xSs} once positions are computed.
  * Every other field is immutable. Use {@link ElementColumnBuilder} to create instances.
  */
@@ -167,6 +168,13 @@ public final class ElementColumn {
      */
     public boolean isBarline() {
         return element.getType().isBarLine();
+    }
+
+    /**
+     * Returns whether this column represents a grace note.
+     */
+    public boolean isGraceNote() {
+        return element.getType().isGraceNote();
     }
 
     // ==========================================================================

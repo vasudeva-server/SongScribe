@@ -746,14 +746,16 @@ public final class LyricEditor extends MyJTextField {
         var metrics = score.getLyricRenderMetrics();
         var marginSs = line.getSong().getLineWidthSs();
 
-        if (!LyricEditFitCalculator.lineFits(line, metrics, marginSs)) {
-            return true;
-        }
-
         var index = line.getElementIndex(element);
         var candidate = new Lyric(CURRENT_VERSE, getText(), extend, probeSyllabic, intent.wantsCompound());
 
+        // Probe the candidate first: it accepts almost every real edit, and returning here spares the
+        // already-overflowing check below its own full rebuild-and-solve of the line.
         if (LyricEditFitCalculator.lyricEditFits(line, index, candidate, metrics, marginSs)) {
+            return true;
+        }
+
+        if (!LyricEditFitCalculator.lineFits(line, metrics, marginSs)) {
             return true;
         }
 

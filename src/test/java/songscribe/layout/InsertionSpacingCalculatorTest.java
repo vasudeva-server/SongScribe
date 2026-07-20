@@ -77,8 +77,12 @@ class InsertionSpacingCalculatorTest extends UnitTest {
      * inside the margin. This is the boundary {@code fitsWithinLine} solves against.
      */
     private static double fullyCompressedWidthSs(InsertionSpacingCalculator.InsertionResult result) {
-        var strutSpanSs = result.projectedSprings().stream().mapToDouble(Spring::strutSs).sum();
-        return result.projectedFirstXSs() + strutSpanSs + result.projectedLastRightExtentSs();
+        // A rigid gap (grace→host) is pinned to its natural length, not its strut — mirroring
+        // SpringSpacer.compress, so this is the solver's true floor rather than an underestimate.
+        var floorSpanSs = result.projectedSprings().stream()
+            .mapToDouble(spring -> spring.rigid() ? spring.naturalLengthSs() : spring.strutSs())
+            .sum();
+        return result.projectedFirstXSs() + floorSpanSs + result.projectedLastRightExtentSs();
     }
 
     /**
@@ -169,10 +173,19 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     }
 
     /**
+     * The X the spring engine gives {@code curr} when placed after {@code prev} at its current X —
+     * the same derivation the production insertion path runs.
+     */
+    private static double springNextColumnXSs(ElementColumn prev, ElementColumn curr) {
+        return prev.getXSs()
+            + HorizontalSpacingCalculator.buildSpring(prev, curr, Song.DEFAULT_REST_LENGTH_SS).naturalLengthSs();
+    }
+
+    /**
      * Computes the expected shift when inserting {@code insertedElement} at index 0, using
      * the same column construction path that InsertionSpacingCalculator uses internally.
      * <p>
-     * Shift = calculateNextColumnXSs(insertedColumn@insertedXSs, existingColumn) - existingXSs.
+     * Shift = springNextColumnXSs(insertedColumn@insertedXSs, existingColumn) - existingXSs.
      */
     private static double expectedShiftFromInsertAtZero(
         StaffElement insertedElement, double insertedXSs,
@@ -193,7 +206,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             existingElement, Collections.emptyList(),
             existingLeftExtentSs, existingRightExtentSs, 0, 0, null, 0, false);
 
-        var insertedToNextSs = HorizontalSpacingCalculator.calculateNextColumnXSs(insertedColumn, existingColumn);
+        var insertedToNextSs = springNextColumnXSs(insertedColumn, existingColumn);
         return Math.max(0, insertedToNextSs - existingXSs);
     }
 
@@ -472,7 +485,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
                 inserted, Collections.emptyList(),
                 insertedLeftExtentSs, insertedRightExtentSs, 0, 0, null, 0, false);
 
-            var insertedXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(prevColumn, insertedColumn);
+            var insertedXSs = springNextColumnXSs(prevColumn, insertedColumn);
             insertedColumn.setXSs(insertedXSs);
 
             var nextLeftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(nextElement);
@@ -482,7 +495,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
                 nextElement, Collections.emptyList(),
                 nextLeftExtentSs, nextRightExtentSs, 0, 0, null, 0, false);
 
-            var insertedToNextSs = HorizontalSpacingCalculator.calculateNextColumnXSs(insertedColumn, nextColumn);
+            var insertedToNextSs = springNextColumnXSs(insertedColumn, nextColumn);
             var nextXSs = ScaleContext.pxToSs(nextElement.getXOffsetPx());
             var expectedShiftSs = Math.max(0, insertedToNextSs - nextXSs);
 
@@ -495,15 +508,15 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         }
     }
 
-    // Row 41: calculateNextElementXSs delegates to HorizontalSpacingCalculator.calculateNextColumnXSs.
+    // Row 41: calculateNextElementXSs delegates to the spring engine's natural gap.
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class CalculateNextElementXSs {
 
         @Test
-        void testDelegatesEquivalentToCalculateNextColumnXSs() {
+        void testDelegatesEquivalentToSpringNextColumnXSs() {
             // Row 41: calculateNextElementXSs(current, next) must equal
-            // HorizontalSpacingCalculator.calculateNextColumnXSs(equivalentColumn, nextColumn)
+            // springNextColumnXSs(equivalentColumn, nextColumn)
             // for the same elements and positions — pinned to the delegate's exact output.
             var line = lineWithCrotchets(2);
             var currentElement = line.getElement(0);
@@ -525,7 +538,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
                 nextElement, Collections.emptyList(),
                 nextLeftExtentSs, nextRightExtentSs, 0, 0, null, 0, false);
 
-            var expectedXSs = HorizontalSpacingCalculator.calculateNextColumnXSs(currentColumn, nextColumn);
+            var expectedXSs = springNextColumnXSs(currentColumn, nextColumn);
 
             var actualXSs = InsertionSpacingCalculator.calculateNextElementXSs(currentElement, nextElement);
 
@@ -745,18 +758,25 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     }
 
     /**
-     * Phase 7 task 4: a compress-to-fit insertion preview must be pixel-equal to what the
-     * committed layout actually assigns once the element is really inserted and the line is laid
-     * out again — otherwise the preview shown to the user could disagree with the result of
-     * accepting it. Drives {@link InsertionSpacingCalculator#calculateInsertion} and
-     * {@link LayoutEngine#layout(Line)} through the identical line, so both answer the same
-     * question the same way.
+     * An insertion preview must land where the committed layout will actually place the element,
+     * so accepting the preview does not make the note jump. Drives
+     * {@link InsertionSpacingCalculator#calculateInsertion} and {@link LayoutEngine#layout(Line)}
+     * through the identical line, so both answer the same question the same way.
+     *
+     * <p>This equality holds only while the line has room to sit at its natural gaps. The preview
+     * positions the element locally — off its left neighbour's current X, with only what follows
+     * the insertion point shifting — whereas committing re-solves the whole chain and re-flows
+     * every gap. Once the line compresses, no local preview can be pixel-equal to that global
+     * re-flow, and exact agreement is deliberately not claimed. What {@link
+     * InsertionSpacingCalculator#calculateInsertion} does still guarantee under compression is the
+     * fit verdict: a line the pre-check accepts is one the layout can always place.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class PreviewMatchesCommittedLayout {
 
         private static final int PREVIEW_INSERT_INDEX = 1;
+
 
         @Test
         void testInsertedElementPreviewXMatchesCommittedX() {

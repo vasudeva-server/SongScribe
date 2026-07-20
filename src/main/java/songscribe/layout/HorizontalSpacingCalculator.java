@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.ToDoubleFunction;
 
 import org.jspecify.annotations.Nullable;
 
@@ -82,8 +83,7 @@ public class HorizontalSpacingCalculator {
     /**
      * Fixed gap between a grace note and its host note. The grace note always packs against its host
      * at this distance, independent of the song's line rest — the one gap that never varies. Shared
-     * by every path: the spring path ({@link #buildSpring}), the retired greedy path
-     * ({@link #calculateNextColumnXSs}), and the grace-insertion lock preview.
+     * by the spring path ({@link #buildSpring}) and the grace-insertion lock preview.
      */
     public static final double GRACE_HOST_REST_SS = 2.0;  // 16px
     /**
@@ -147,56 +147,6 @@ public class HorizontalSpacingCalculator {
     // ==========================================================================
 
     /**
-     * Calculates the X position for the next column based on the previous column.
-     * <p>
-     * The retired greedy path that full layout once ran. Only {@link LayoutResult}'s
-     * append-position lookup still uses it; every spacing decision that reaches the rendered
-     * score goes through {@link #buildSpring}.
-     *
-     * @param prevColumn Previous column (must have X position already set)
-     * @param currColumn Current column
-     * @return X position for current column
-     */
-    public static double calculateNextColumnXSs(
-        ElementColumn prevColumn,
-        ElementColumn currColumn) {
-
-        double spacingSs;
-
-        if (prevColumn.getElement().getType().isGraceNote()) {
-            // Grace note → host note: use tight grace note spacing. The comfortable gap is measured
-            // to the host note head — the accidental is excluded so it does not widen the gap — while
-            // the geometric minimum, which does use the full left extent, acts as a hard floor to
-            // ensure no overlap (refs #418).
-            var comfortableSpacingSs = prevColumn.getRightExtentSs() + GRACE_HOST_REST_SS;
-            var minimumSpacingSs = calculateMinimumColumnSpacingSs(prevColumn, currColumn);
-            spacingSs = Math.max(comfortableSpacingSs, minimumSpacingSs);
-        } else {
-            // Calculate minimum spacing (from previous column's right extent)
-            var minimumSpacingSs = calculateMinimumColumnSpacingSs(prevColumn, currColumn);
-
-            // Calculate lyric-driven spacing requirement
-            var lyricSpacingSs = calculateLyricSpacingSs(prevColumn, currColumn);
-
-            // Use default comfortable spacing as a floor, then expand further if lyrics require it.
-            // This prevents the case where only one side has a lyric from producing
-            // tighter-than-default note-head-to-note-head spacing. The minimum-spacing floor (which
-            // uses the full left extent, accidental included) already keeps MIN_COLUMN_GAP to the
-            // current column's leftmost glyph, so a note shifts right only when its accidental would
-            // otherwise crowd the previous element — no separate accidental push is needed.
-            var defaultSpacingSs = calculateDefaultColumnSpacingSs(prevColumn);
-            spacingSs = Math.max(minimumSpacingSs, Math.max(defaultSpacingSs, lyricSpacingSs));
-        }
-
-        // Ensure enough horizontal room for a connecting glissando. This applies to both grace→host
-        // and regular note→note pairs: a glissando on the previous note must clear the next note's
-        // left-side glyphs (accidental included) and still keep its minimum visible length (refs #443).
-        spacingSs = ensureGlissandoSpacing(prevColumn, currColumn, spacingSs);
-
-        return prevColumn.getXSs() + spacingSs;
-    }
-
-    /**
      * Calculates minimum spacing between columns based on geometric extents.
      *
      * @param prevColumn Previous column
@@ -210,78 +160,6 @@ public class HorizontalSpacingCalculator {
         // Distance from previous column's center to current column's center
         // = previous column's right extent + MIN_COLUMN_GAP + abs(current column's left extent)
         return prevColumn.getRightExtentSs() + MIN_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
-    }
-
-    /**
-     * Calculates spacing requirement driven by lyric syllables.
-     * <p>
-     * Formula: (prevSyllableWidth / 2) + prevColumn.minGapToNextSyllable + (currSyllableWidth / 2)
-     *
-     * @param prevColumn Previous column
-     * @param currColumn Current column
-     * @return Lyric spacing in ss, or 0 if no syllables
-     */
-    private static double calculateLyricSpacingSs(
-        ElementColumn prevColumn,
-        ElementColumn currColumn) {
-
-        if (!prevColumn.hasSyllable() && !currColumn.hasSyllable()) {
-            return 0;
-        }
-
-        var prevHalfWidthSs = prevColumn.hasSyllable() ? prevColumn.getSyllableWidthSs() / 2.0 : 0;
-        var currHalfWidthSs = currColumn.hasSyllable() ? currColumn.getSyllableWidthSs() / 2.0 : 0;
-        // Every column reserves a gap to the next syllable (the lyric space width, or the hyphen
-        // cell width for hyphenated syllables), so this holds even when the previous element
-        // carries no lyric of its own.
-        var gapSs = prevColumn.getMinGapToNextSyllableSs();
-
-        return prevHalfWidthSs + gapSs + currHalfWidthSs;
-    }
-
-    /**
-     * Calculates default spacing for columns when no lyrics are present.
-     * <p>
-     * Uses DEFAULT_COLUMN_GAP to provide comfortable spacing without lyrics. The comfortable
-     * gap is measured to the current note head, not to its accidental or augmentation dots,
-     * so neither pushes the next element beyond the comfortable default. The minimum-spacing
-     * floor — which uses the full right extent including dots — takes over and shifts the
-     * next element only when the dot would otherwise come closer than {@link #MIN_COLUMN_GAP_SS}
-     * to it. This mirrors how accidentals on the left are handled (refs #418, #441).
-     *
-     * @param prevColumn Previous column
-     * @return Default spacing in ss
-     */
-    private static double calculateDefaultColumnSpacingSs(ElementColumn prevColumn) {
-        return prevColumn.getRightExtentExcludingAugmentationSs() + DEFAULT_COLUMN_GAP_SS;
-    }
-
-    /**
-     * Ensures minimum horizontal spacing for a glissando between two columns.
-     * Returns the input spacing unchanged if no glissando or if there is already enough room.
-     * <p>
-     * Computes: {@code gap = spacingSs + currLeft - prevRight}. If
-     * {@code gap < }{@link NoteGeometry#MIN_GLISSANDO_RESERVATION_SS}, spacing is widened
-     * to close the difference. Ledger lines are excluded from both extents.
-     */
-    private static double ensureGlissandoSpacing(
-        ElementColumn prev, ElementColumn curr, double spacingSs
-    ) {
-        if (!prev.hasGlissando()) {
-            return spacingSs;
-        }
-
-        var prevGlissRight = prev.getRightExtentSs();
-        var currGlissLeft = curr.getLeftExtentSs();
-
-        var gap = spacingSs + currGlissLeft - prevGlissRight;
-        var needed = NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
-
-        if (gap < needed) {
-            spacingSs += (needed - gap);
-        }
-
-        return spacingSs;
     }
 
     // ==========================================================================
@@ -362,7 +240,7 @@ public class HorizontalSpacingCalculator {
         // tight beam-internal gap (both notes shorter than an eighth) keeps its reduction factor as
         // the solver weight, so it stays proportionally tighter than a normal gap under compression,
         // not only at rest.
-        var rigid = prev.getElement().getType().isGraceNote();
+        var rigid = prev.isGraceNote();
         var weight = isTightBeamGap(prev, curr) ? BEAM_GROUP_INTERNAL_REST_FACTOR : Spring.NORMAL_WEIGHT;
 
         return Spring.of(restSs, strutSs, weight, rigid);
@@ -497,10 +375,15 @@ public class HorizontalSpacingCalculator {
      * syllable fits the union (it then left-anchors on the grace notehead and imposes no neighbour
      * constraint).
      */
-    public static double graceLyricOverhangSs(double syllableWidthSs, ElementColumn grace, ElementColumn host) {
+    public static double graceLyricOverhangSs(
+        double syllableWidthSs, ElementColumn grace, @Nullable ElementColumn host) {
+
+        // An unpaired grace (the line's last column, before its host is entered) has no union to
+        // spill past — only its own extent reserves space.
+        var hostNoteheadWidthSs = host != null ? host.getNoteheadWidthSs() : 0;
         var unionWidthSs = grace.getRightExtentSs()
             + GRACE_HOST_REST_SS
-            + host.getNoteheadWidthSs();
+            + hostNoteheadWidthSs;
         return Math.max(0, (syllableWidthSs - unionWidthSs) / 2);
     }
 
@@ -511,7 +394,7 @@ public class HorizontalSpacingCalculator {
      * never scales with the line rest.
      */
     private static double baseRestSs(ElementColumn prev, ElementColumn curr, double lineRestSs) {
-        if (prev.getElement().getType().isGraceNote()) {
+        if (prev.isGraceNote()) {
             // Grace note → host note: a fixed absolute gap that never varies with the song's line
             // rest — the grace note always packs against its host at the same distance. The gap is
             // measured to the host note head, so the host's accidental does not widen it; the
@@ -540,7 +423,7 @@ public class HorizontalSpacingCalculator {
             return BEAM_GROUP_INTERNAL_REST_FACTOR;
         }
 
-        return 1;
+        return Spring.NORMAL_WEIGHT;
     }
 
     /**
@@ -575,6 +458,30 @@ public class HorizontalSpacingCalculator {
         @Nullable ElementColumn beforePrev,
         @Nullable ElementColumn afterCurr) {
 
+        return lyricGapRequirementSs(
+            prev, curr, beforePrev, afterCurr, ElementColumn::getMinCollisionGapToNextSyllableSs);
+    }
+
+    /**
+     * Returns the delta-X this gap needs for the flanking syllables to clear each other by
+     * {@code gapAccessor}'s floor, or 0 when neither column's lyric reaches into the gap.
+     *
+     * <p>Each side contributes the part of its syllable that overhangs toward the gap, measured from
+     * the notehead (accidentals and augmentation dots excluded), so a lone syllable still reserves
+     * its footprint against an unlyriced neighbour. {@code gapAccessor} selects which inter-syllable
+     * floor applies: the collision floor for a strut, or the comfortable gap for a lifted rest.
+     *
+     * <p>When {@code prev} hosts a grace, the grace column carries the syllable and its hyphen or
+     * space, so the floor comes from the grace rather than the empty host — the grace and its host
+     * behave as one unioned column for lyric layout.
+     */
+    static double lyricGapRequirementSs(
+        ElementColumn prev,
+        ElementColumn curr,
+        @Nullable ElementColumn beforePrev,
+        @Nullable ElementColumn afterCurr,
+        ToDoubleFunction<ElementColumn> gapAccessor) {
+
         var right = lyricRightExtentSs(prev, beforePrev);
         var left = lyricLeftExtentSs(curr, afterCurr);
 
@@ -582,18 +489,9 @@ public class HorizontalSpacingCalculator {
             return 0;
         }
 
-        // When prev hosts a grace, the grace column carries the syllable and its hyphen/space, so the
-        // collision gap to the next syllable comes from the grace, not the empty host.
-        var gapSource = beforePrev != null && isGraceNote(beforePrev) ? beforePrev : prev;
+        var gapSource = beforePrev != null && beforePrev.isGraceNote() ? beforePrev : prev;
 
-        return right + gapSource.getMinCollisionGapToNextSyllableSs() + left;
-    }
-
-    /**
-     * Returns whether a column is a grace note.
-     */
-    private static boolean isGraceNote(ElementColumn column) {
-        return column.getElement().getType().isGraceNote();
+        return right + gapAccessor.applyAsDouble(gapSource) + left;
     }
 
     /**
@@ -603,7 +501,7 @@ public class HorizontalSpacingCalculator {
      * reaches half its width minus the notehead-centre offset; anything else reaches nothing.
      */
     static double lyricLeftExtentSs(ElementColumn column, @Nullable ElementColumn afterColumn) {
-        if (isGraceNote(column) && afterColumn != null) {
+        if (column.isGraceNote() && afterColumn != null) {
             return graceLyricOverhangSs(column.getSyllableWidthSs(), column, afterColumn);
         }
 
@@ -622,11 +520,11 @@ public class HorizontalSpacingCalculator {
      * half its width plus the notehead-centre offset; anything else reaches nothing.
      */
     static double lyricRightExtentSs(ElementColumn column, @Nullable ElementColumn beforeColumn) {
-        if (isGraceNote(column)) {
+        if (column.isGraceNote()) {
             return 0;
         }
 
-        if (beforeColumn != null && isGraceNote(beforeColumn)) {
+        if (beforeColumn != null && beforeColumn.isGraceNote()) {
             var syllableWidthSs = beforeColumn.getSyllableWidthSs();
             var overhangSs = graceLyricOverhangSs(syllableWidthSs, beforeColumn, column);
             var graceHostGapSs = beforeColumn.getRightExtentSs() + GRACE_HOST_REST_SS;
@@ -643,9 +541,9 @@ public class HorizontalSpacingCalculator {
     /**
      * Returns the delta-X a connecting glissando needs to clear the next column's left-side glyphs
      * (accidental included) and still keep its minimum visible length, or 0 when the previous
-     * column has no glissando. Inverts {@link #ensureGlissandoSpacing}'s
-     * {@code gap = spacingSs + currLeft - prevRight} so the reservation becomes a hard floor rather
-     * than a post-applied widening (refs #443).
+     * column has no glissando. Inverts the retired greedy path's
+     * {@code gap = spacingSs + currLeft - prevRight} so the reservation is a hard floor on the
+     * spring's strut rather than a post-applied widening (refs #443).
      */
     private static double glissandoReservationFloorSs(ElementColumn prev, ElementColumn curr) {
         if (!prev.hasGlissando()) {

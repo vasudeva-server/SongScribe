@@ -1,3 +1,23 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 package songscribe.layout;
 
 /**
@@ -40,6 +60,14 @@ public record Spring(double restSs, double strutSs, double complianceSs, double 
      */
     public static Spring of(double restSs, double strutSs, double weight, boolean rigid) {
         return new Spring(restSs, strutSs, Math.max(0, restSs - strutSs), weight, rigid);
+    }
+
+    /**
+     * The uncompressed delta-X this gap wants: its rest, floored by its strut so a gap whose glyphs
+     * would already collide at rest length starts pushed apart rather than overlapping.
+     */
+    public double naturalLengthSs() {
+        return Math.max(restSs, strutSs);
     }
 
     /**

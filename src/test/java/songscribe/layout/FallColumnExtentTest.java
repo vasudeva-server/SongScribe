@@ -36,7 +36,7 @@ import songscribe.smufl.SMuFLMetadata;
  * Verifies that a note with a fall reserves trailing room in its own column. Because
  * {@link ElementColumnBuilder#calculateRightExtentSs} depends only on the element itself, the
  * reservation holds with no following note — the last-element / before-a-barline case that the
- * between-notes {@code HorizontalSpacingCalculator.ensureGlissandoSpacing} cannot cover.
+ * between-notes glissando reservation in {@code HorizontalSpacingCalculator} cannot cover.
  */
 class FallColumnExtentTest extends UnitTest {
 

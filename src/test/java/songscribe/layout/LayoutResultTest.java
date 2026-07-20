@@ -425,8 +425,8 @@ class LayoutResultTest extends UnitTest {
             .isCloseTo(expected, within(TOLERANCE));
     }
 
-    // Past the last real element, the preview is spaced via the shared
-    // HorizontalSpacingCalculator.calculateNextColumnXSs rather than snapped.
+    // Past the last real element, the preview is spaced through the same spring engine the
+    // committed layout uses rather than snapped.
     @Test
     void testCalculateInsertionXSsAfterLastUsesSpacingCalculator() {
         var first = ElementType.CROTCHET.newInstance();
@@ -443,12 +443,43 @@ class LayoutResultTest extends UnitTest {
             ElementColumnBuilder.calculateLeftExtentSs(preview),
             ElementColumnBuilder.calculateRightExtentSs(preview, false, StaffElement.Direction.UP),
             0.0, 0.0, null, 0.0, false);
-        var expected = HorizontalSpacingCalculator.calculateNextColumnXSs(lastColumn, previewColumn);
+        var expected = lastColumn.getXSs()
+            + HorizontalSpacingCalculator.buildSpring(
+                lastColumn, previewColumn, line.getSong().getDefaultRestLengthSs()).naturalLengthSs();
 
         var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
 
         assertThat(actual).isCloseTo(expected, within(TOLERANCE));
         assertThat(actual).isGreaterThan(lastColumn.getRightEdgeXSs());
+    }
+
+    /**
+     * The append preview must scale with the song's line rest. The retired greedy path this used to
+     * run through was pinned to a fixed default gap, so a song with a loosened or tightened rest got
+     * a preview that disagreed with where the note would actually land (refs #330).
+     */
+    @Test
+    void testCalculateInsertionXSsAfterLastHonoursANonDefaultLineRest() {
+        var first = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first);
+        var song = line.getSong();
+        song.withoutMutationTracking(() -> song.setDefaultRestLengthSs(LOOSENED_LINE_REST_SS));
+
+        var preview = ElementType.CROTCHET.newInstance();
+        var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
+        var result = LayoutResult.builder()
+            .putElementColumn(first, lastColumn)
+            .build();
+
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+
+        assertThat(actual - lastColumn.getXSs())
+            .as("the preview gap follows the song's line rest, not a fixed default gap")
+            .isCloseTo(
+                HEAD_RIGHT_EXTENT_SS + LOOSENED_LINE_REST_SS, within(TOLERANCE));
+        assertThat(actual - lastColumn.getXSs())
+            .as("a loosened rest must space the preview wider than the default would")
+            .isGreaterThan(HEAD_RIGHT_EXTENT_SS + Song.DEFAULT_REST_LENGTH_SS);
     }
 
     // Between two element heads, the preview is placed at the midpoint of their X positions.
@@ -630,6 +661,8 @@ class LayoutResultTest extends UnitTest {
 
     private static final double HEAD_RIGHT_EXTENT_SS = 1.0;
     private static final double FIRST_ELEMENT_X_SS = 10.0;
+    /** A line rest well above the default, so a fixed-gap regression is unmistakable. */
+    private static final double LOOSENED_LINE_REST_SS = 4.0;
     private static final double SECOND_ELEMENT_X_SS = 20.0;
     private static final double MOUSE_OVER_FIRST_HEAD_SS = 10.5;
     private static final double MOUSE_OVER_SECOND_HEAD_SS = 20.5;

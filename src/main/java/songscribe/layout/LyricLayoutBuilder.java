@@ -340,7 +340,6 @@ public final class LyricLayoutBuilder {
      * grace. The first two regimes keep the syllable's ink within the notehead→host footprint, so
      * they impose no extra neighbour reservation (the spacing extents stay zero).
      */
-    @SuppressWarnings("NullAway") // a grace always has its host at the next column, so hostColumn is non-null here
     private static double computeLyricBoxLeftXSs(
         ElementColumn column,
         @Nullable ElementColumn hostColumn,
@@ -352,7 +351,7 @@ public final class LyricLayoutBuilder {
 
         // A grace lyric at least as wide as the grace notehead spans toward the host: anchor on the
         // grace notehead left edge when it fits the grace→host union, else centre on that union.
-        if (element.getType().isGraceNote() && widthSs >= column.getNoteheadWidthSs()) {
+        if (column.isGraceNote() && widthSs >= column.getNoteheadWidthSs()) {
             return column.getXSs() - HorizontalSpacingCalculator.graceLyricOverhangSs(widthSs, column, hostColumn);
         }
 

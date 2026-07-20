@@ -934,8 +934,11 @@ public final class LayoutResult {
                 false
             );
 
-            // Use the same spacing calculation as HorizontalSpacingCalculator
-            return HorizontalSpacingCalculator.calculateNextColumnXSs(lastColumn, insertionColumn);
+            // Space the pair through the spring engine the committed layout uses, so the preview
+            // honours the song's line rest instead of a fixed default gap.
+            return lastColumn.getXSs()
+                + HorizontalSpacingCalculator.buildSpring(
+                    lastColumn, insertionColumn, line.getSong().getDefaultRestLengthSs()).naturalLengthSs();
         }
 
         // Between elements - use midpoint
