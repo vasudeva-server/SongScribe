@@ -23,6 +23,10 @@ MANDATORY: Never invoke the `/run` or `/verify` skill (via the Skill tool or oth
 
 Before writing tests, read the relevant guide (not auto-loaded): [testing-common.md](../guides/testing-common.md), [testing-unit.md](../guides/testing-unit.md), [testing-e2e.md](../guides/testing-e2e.md).
 
+## Javadoc References to Constants
+
+Never write a named constant's raw literal value in a Javadoc comment. Use `{@link ClassName#CONSTANT_NAME}` instead, so the doc stays correct if the value changes. Exception: illustrating an example calculation/formula, where a literal is needed to show the math — link the constant elsewhere in the same doc if possible.
+
 ## Generated Files
 
 Never edit files in `build/generated-sources/`.
