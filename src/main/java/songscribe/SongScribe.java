@@ -195,8 +195,15 @@ public final class SongScribe {
         // properties above, these are read during AWT/Swing initialization, so they
         // must be set on the main thread before the toolkit starts. macOS ignores
         // them, but other platforms rely on them for quality text rendering.
+        var aaSetting = "on";  // safe default
+
+        if (SystemInfo.isMacOS) {  // or check System.getProperty("os.name")
+            aaSetting = "lcd";
+        }
+
         System.setProperty("swing.aatext", "true");
-        System.setProperty("awt.useSystemAAFontSettings", "lcd");
+        System.setProperty("awt.useSystemAAFontSettings", aaSetting);
+        System.setProperty("apple.awt.textantialiasing", "true");
 
         // Allow Swing components to handle a property change with a null property name,
         // which indicates more than one property has changed.
