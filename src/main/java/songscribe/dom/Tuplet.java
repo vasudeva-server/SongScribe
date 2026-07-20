@@ -89,6 +89,13 @@ public class Tuplet extends RangeElement {
     }
 
     @Override
+    protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+        var copy = new Tuplet(newAnchor, newEnd, grade);
+        copy.setVerticalPositionSs(verticalPositionSs);
+        return copy;
+    }
+
+    @Override
     public int getElementCount() {
         // For tuplets, the note count is the grade (e.g., 3 for triplet)
         return grade;

@@ -119,6 +119,64 @@ public final class InsertionSpacingCalculator {
     private record ProjectedLine(List<ElementColumn> columns, List<Spring> springs, int insertIndex) {}
 
     /**
+     * An element range {@code begin} through {@code end} (both inclusive) that a
+     * paste-replace will delete before inserting a fragment at {@code begin}.
+     * Callers pass the <em>effective</em> range (already extended past a trailing
+     * breath mark) so the fit check sees exactly what the deletion will remove.
+     *
+     * @param begin The index of the first element to be deleted
+     * @param end   The index of the last element to be deleted
+     */
+    public record DeletedRange(int begin, int end) {
+    }
+
+    /**
+     * Result of a fragment insertion spacing calculation: the X position of every fragment clone,
+     * the single shift to apply to all surviving elements after the fragment, and the projected
+     * spring chain its fit gate solves. The multi-element analogue of {@link InsertionResult}.
+     *
+     * @param cloneXPositionsSs            X position for each fragment clone, in fragment order
+     * @param shiftForSubsequentElementsSs Amount to shift every surviving element after the
+     *                                     fragment (negative when a paste-replace pulls the
+     *                                     tail left)
+     * @param projectedSprings             The lyric-stretched spring chain of the line as LayoutEngine
+     *                                     will build it after the operation — the surviving columns
+     *                                     with the fragment's clones spliced in, including the terminal
+     *                                     barline — what {@link #fitsWithinLine} solves
+     * @param projectedFirstXSs            X the projected chain is anchored at
+     *                                     ({@link HorizontalSpacingCalculator#calculateAnchorXSs})
+     * @param projectedLastRightExtentSs   Right extent of the projected chain's last column, so the
+     *                                     solve leaves room for its glyph inside the margin
+     */
+    public record FragmentInsertionResult(
+        List<Double> cloneXPositionsSs,
+        double shiftForSubsequentElementsSs,
+        List<Spring> projectedSprings,
+        double projectedFirstXSs,
+        double projectedLastRightExtentSs
+    ) {
+        public FragmentInsertionResult {
+            cloneXPositionsSs = List.copyOf(cloneXPositionsSs);
+            projectedSprings = List.copyOf(projectedSprings);
+        }
+
+        /**
+         * Returns whether the fragment insertion fits within the given right margin — compress-to-fit,
+         * the identical gate single-element insertion uses: the line is free to give up slack to
+         * absorb the clones, and only a chain that overflows with every gap frozen at its strut is
+         * rejected.
+         *
+         * @param staffRightMarginSs The maximum allowed line width in staff spaces
+         * @return {@code true} unless the projected spring chain solves INFEASIBLE
+         */
+        public boolean fitsWithinLine(double staffRightMarginSs) {
+            return !HorizontalSpacingCalculator.solveChain(
+                projectedSprings, projectedFirstXSs, projectedLastRightExtentSs, staffRightMarginSs)
+                .isInfeasible();
+        }
+    }
+
+    /**
      * The fall-fit rule: a projected width fits when it leaves at least the default column gap
      * before the right margin, so the fall glyph doesn't butt up against the line end. Insertion
      * uses the compress-to-fit gate in {@link InsertionResult#fitsWithinLine} instead; a fall
@@ -332,6 +390,144 @@ public final class InsertionSpacingCalculator {
         }
 
         return columnBuilder.buildColumn(element, line, elementIndex);
+    }
+
+    /**
+     * Calculates positions and fit for inserting a multi-element fragment at {@code insertIndex},
+     * optionally replacing a deleted range (paste-replace). Pure measurement — the line and the
+     * fragment elements are never mutated; all positioning happens on lightweight columns.
+     * <p>
+     * The multi-element analogue of {@link #calculateInsertion}: it builds the projected line the
+     * commit will produce — surviving predecessors, the fragment's clones, then the surviving
+     * successors — spaces the clones by the natural spring lengths from the predecessor's current
+     * position, and derives the single trailing shift for the tail. Fit is the same compress-to-fit
+     * solve over the same chain the layout engine runs, including the terminal barline, so an insert
+     * the gate accepts always lays out.
+     * <p>
+     * The surrounding columns are spaced without lyric context (lightweight, syllable-less), so the
+     * fit gate does not yet account for the surrounding elements' syllable widths — matching the
+     * fragment's own clones, which carry no lyric.
+     *
+     * @param fragment    The elements to be inserted, in order (must be non-empty)
+     * @param insertIndex The index where the fragment's first element will land
+     *                    (must equal {@code deleteRange.begin()} when a range is given)
+     * @param deleteRange The effective range a paste-replace deletes first, or null for pure insertion
+     * @param layout      Layout result for position lookup; null falls back to {@code xOffset}
+     * @return A {@link FragmentInsertionResult} with per-clone X positions, the trailing shift,
+     *         and the projected spring chain its fit gate solves
+     */
+    public static FragmentInsertionResult calculateFragmentInsertion(
+        Line line,
+        List<StaffElement> fragment,
+        int insertIndex,
+        @Nullable DeletedRange deleteRange,
+        @Nullable LayoutResult layout) {
+
+        if (fragment.isEmpty()) {
+            throw new IllegalArgumentException("fragment must not be empty");
+        }
+
+        var effectiveCount = line.effectiveElementCount();
+
+        if (insertIndex < 0 || insertIndex > effectiveCount) {
+            throw new IllegalArgumentException(
+                "insertIndex " + insertIndex + " out of bounds [0, " + effectiveCount + ']');
+        }
+
+        if (deleteRange != null) {
+            if (deleteRange.begin() < 0
+                    || deleteRange.begin() > deleteRange.end()
+                    || deleteRange.end() >= effectiveCount) {
+                throw new IllegalArgumentException("invalid deleteRange " + deleteRange);
+            }
+
+            if (insertIndex != deleteRange.begin()) {
+                throw new IllegalArgumentException(
+                    "insertIndex " + insertIndex + " must equal deleteRange.begin() " + deleteRange.begin());
+            }
+        }
+
+        // The positioning chain, terminal barline excluded (layout pins it flush-right rather
+        // than shifting it): surviving predecessors, the fragment's clones, then the surviving
+        // successors — the line as it will read after delete+insert. A paste-replace drops the
+        // deleted range by skipping straight from the predecessors to the element past the range.
+        var successorIndex = deleteRange == null ? insertIndex : deleteRange.end() + 1;
+        var columns = new ArrayList<ElementColumn>();
+
+        for (var i = 0; i < insertIndex; i++) {
+            columns.add(createLightweightColumn(line.getElement(i)));
+        }
+
+        var fragmentStart = columns.size();
+
+        for (var element : fragment) {
+            columns.add(createLightweightColumn(element));
+        }
+
+        for (var i = successorIndex; i < effectiveCount; i++) {
+            columns.add(createLightweightColumn(line.getElement(i)));
+        }
+
+        // Natural spring lengths drive where each clone lands, measured from the predecessor's
+        // CURRENT position so only what follows the insertion point moves — the same rule
+        // calculateInsertion uses for a single element, chained across the fragment's clones.
+        var springs = LyricLift.applyLyricLift(
+            HorizontalSpacingCalculator.buildSprings(columns, line), columns);
+        var cloneXPositionsSs = new ArrayList<Double>(fragment.size());
+        double cloneXSs;
+
+        if (fragmentStart == 0) {
+            cloneXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+        } else {
+            var predecessor = columns.get(fragmentStart - 1).getElement();
+            cloneXSs = elementXSs(predecessor, layout) + springs.get(fragmentStart - 1).naturalLengthSs();
+        }
+
+        cloneXPositionsSs.add(cloneXSs);
+
+        for (var k = 1; k < fragment.size(); k++) {
+            cloneXSs += springs.get(fragmentStart + k - 1).naturalLengthSs();
+            cloneXPositionsSs.add(cloneXSs);
+        }
+
+        // The single trailing shift for every surviving successor: where the first survivor must
+        // sit (last clone position + its spring) minus where it currently sits. A pure insertion
+        // only ever pushes the tail right; a paste-replace may pull it left when the fragment is
+        // narrower than the deleted range.
+        var lastCloneIndex = fragmentStart + fragment.size() - 1;
+        var shiftSs = 0.0;
+
+        if (lastCloneIndex + 1 < columns.size()) {
+            var successor = columns.get(lastCloneIndex + 1).getElement();
+            var requiredSuccessorXSs = cloneXSs + springs.get(lastCloneIndex).naturalLengthSs();
+            shiftSs = requiredSuccessorXSs - elementXSs(successor, layout);
+
+            if (deleteRange == null) {
+                shiftSs = Math.max(0, shiftSs);
+            }
+        }
+
+        // The fit gate solves the SAME chain LayoutEngine will after the commit — the positioning
+        // columns PLUS the auto-maintained terminal barline (excluded above because layout pins it
+        // flush-right, not shifted). Anchoring with the shared calculateAnchorXSs and lyric-lifting
+        // the springs keeps the pre-check and the committed layout from disagreeing, exactly as
+        // calculateInsertion does for a single element.
+        var fitColumns = new ArrayList<>(columns);
+
+        if (effectiveCount < line.elementCount()) {
+            fitColumns.add(createLightweightColumn(line.getElement(line.elementCount() - 1)));
+        }
+
+        var fitSprings = LyricLift.applyLyricLift(
+            HorizontalSpacingCalculator.buildSprings(fitColumns, line), fitColumns);
+        var fitFirstXSs = HorizontalSpacingCalculator.calculateAnchorXSs(fitColumns.getFirst(), line);
+
+        return new FragmentInsertionResult(
+            cloneXPositionsSs,
+            shiftSs,
+            fitSprings,
+            fitFirstXSs,
+            fitColumns.getLast().getRightExtentSs());
     }
 
     /**

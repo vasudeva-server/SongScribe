@@ -139,6 +139,13 @@ public class Ending extends RangeElement {
         super(anchorElement, endElement);
     }
 
+    @Override
+    protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+        var copy = new Ending(newAnchor, newEnd);
+        copy.setYPositionSs(yPositionSs);
+        return copy;
+    }
+
     /**
      * Returns the user-adjustable Y offset for this ending bracket.
      */

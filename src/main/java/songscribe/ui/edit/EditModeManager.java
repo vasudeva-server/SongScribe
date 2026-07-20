@@ -32,6 +32,7 @@ import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.dom.Articulation;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -54,13 +55,16 @@ public final class EditModeManager {
      * @param clipboardManager The clipboard manager for paste operations
      * @param selectionCoordinator The selection coordinator for selection operations
      * @param scoreActions Callback interface for ScoreView actions
+     * @param scoreView The owning ScoreView, held by PasteModeManager to reach the
+     *     ScoreViewController once it exists
      */
     public static void init(
         ClipboardManager clipboardManager,
         SelectionCoordinator selectionCoordinator,
-        ScoreActions scoreActions
+        ScoreActions scoreActions,
+        ScoreView scoreView
     ) {
-        INSTANCE = new EditModeManager(clipboardManager, selectionCoordinator, scoreActions);
+        INSTANCE = new EditModeManager(clipboardManager, selectionCoordinator, scoreActions, scoreView);
     }
 
     /** Returns the initialized instance; throws if {@link #init} has not been called. */
@@ -79,6 +83,7 @@ public final class EditModeManager {
 
     private final ScoreActions scoreActions;
     private final GraceModeManager graceModeManager;
+    private final PasteModeManager pasteModeManager;
 
     // Whether the preview element is visible (based on mouse position in mouse mode)
     private boolean previewElementIsVisible = false;
@@ -93,10 +98,12 @@ public final class EditModeManager {
     private EditModeManager(
         ClipboardManager clipboardManager,
         SelectionCoordinator selectionCoordinator,
-        ScoreActions scoreActions
+        ScoreActions scoreActions,
+        ScoreView scoreView
     ) {
         this.scoreActions = scoreActions;
         graceModeManager = new GraceModeManager(this, selectionCoordinator);
+        pasteModeManager = new PasteModeManager(clipboardManager, scoreView);
     }
 
     /**
@@ -104,6 +111,13 @@ public final class EditModeManager {
      */
     public static GraceModeManager getGraceModeManager() {
         return instance().graceModeManager;
+    }
+
+    /**
+     * Returns the PasteModeManager that manages clipboard-fragment placement.
+     */
+    public static PasteModeManager getPasteModeManager() {
+        return instance().pasteModeManager;
     }
 
     // -------------------------------------------------------------------------

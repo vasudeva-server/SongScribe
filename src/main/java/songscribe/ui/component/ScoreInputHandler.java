@@ -64,6 +64,12 @@ public final class ScoreInputHandler extends KeyAdapter
             return;
         }
 
+        // A click on the ScoreView itself (not on any line) cancels paste mode —
+        // per-line clicks are handled and consumed by LineComponent.
+        if (EditModeManager.getPasteModeManager().isInProgress()) {
+            EditModeManager.getPasteModeManager().cancel();
+        }
+
         callback.requestFocusInWindow();
     }
 
@@ -145,6 +151,10 @@ public final class ScoreInputHandler extends KeyAdapter
         } else if (e.getKeyCode() == KeyEvent.VK_ESCAPE) {
             if (EditModeManager.getGraceModeManager().isInProgress()) {
                 EditModeManager.getGraceModeManager().keyPressed(e);
+            } else if (EditModeManager.getPasteModeManager().isInProgress()) {
+                // First Escape cancels paste mode and leaves any selection intact;
+                // a second Escape then falls through to DeselectCommand below.
+                EditModeManager.getPasteModeManager().cancel();
             } else if (callback.getMode() == Mode.SELECT) {
                 var window = callback.getWindow();
 
@@ -235,6 +245,14 @@ public final class ScoreInputHandler extends KeyAdapter
 
         @Override
         public void actionPerformed(ActionEvent e) {
+            // Return/Enter places the clipboard fragment at the tracked insertion point
+            // while paste mode is active; with no tracked point it is a no-op and the
+            // paste stays pending. Outside paste mode the binding remains a no-op.
+            if (code == KeyEvent.VK_ENTER) {
+                EditModeManager.getPasteModeManager().place();
+                return;
+            }
+
             var coordinator = callback.getSelectionCoordinator();
             var selection = coordinator.getSelection();
 

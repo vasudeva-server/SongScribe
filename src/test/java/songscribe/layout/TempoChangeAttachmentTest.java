@@ -120,7 +120,14 @@ class TempoChangeAttachmentTest extends UnitTest {
             assertThat(copy).isNotSameAs(original);
             assertThat(copy).isExactlyInstanceOf(TempoChangeAttachment.class);
             assertThat(copy.getOwnerElement()).isSameAs(newOwner);
-            assertThat(((TempoChangeAttachment) copy).getTempo()).isSameAs(tempo);
+            // The tempo must be deep-copied, not shared, so copy() means one thing across
+            // the Attachment hierarchy regardless of whether a mutator exists today.
+            var copiedTempo = ((TempoChangeAttachment) copy).getTempo();
+            assertThat(copiedTempo).isNotSameAs(tempo);
+            assertThat(copiedTempo.getVisibleTempo()).isEqualTo(tempo.getVisibleTempo());
+            assertThat(copiedTempo.getTempoType()).isEqualTo(tempo.getTempoType());
+            assertThat(copiedTempo.getTempoDescription()).isEqualTo(tempo.getTempoDescription());
+            assertThat(copiedTempo.shouldShowTempo()).isEqualTo(tempo.shouldShowTempo());
         }
     }
 }

@@ -20,88 +20,70 @@
 
 package songscribe.ui.clipboard;
 
-import java.util.ArrayList;
+import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.ElementType;
-import songscribe.dom.StaffElement;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.ClipboardDidChangeNotification;
 
 /**
  * Manages clipboard state for copy/paste operations.
+ *
+ * <p>This is app-global: it is constructed once ({@code ScoreView.java:251}) and
+ * {@code ScoreView} is never recreated, only its {@code song} swapped, so it is
+ * not cleared on document close. A clone's {@code line} back-reference keeps
+ * that one {@code Song} reachable until the next copy replaces it — bounded,
+ * harmless, and pre-existing.
  */
 public final class ClipboardManager {
 
-    // Copied elements waiting to be pasted
-    private final ArrayList<StaffElement> pasteboard = new ArrayList<>();
+    // The last-captured fragment, or null if the clipboard is empty
+    private @Nullable Fragment fragment;
 
     // -------------------------------------------------------------------------
-    // Pasteboard accessors
+    // Fragment accessors
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the number of elements in the pasteboard.
+     * Returns the current fragment, or {@code null} if the clipboard is empty.
+     */
+    public @Nullable Fragment getFragment() {
+        return fragment;
+    }
+
+    /**
+     * Returns the number of elements in the current fragment, or 0 if the
+     * clipboard is empty.
      */
     public int getSize() {
-        return pasteboard.size();
+        return fragment == null ? 0 : fragment.elements().size();
     }
 
     /**
-     * Returns whether the pasteboard is empty.
+     * Returns whether the clipboard is empty.
      */
     public boolean isEmpty() {
-        return pasteboard.isEmpty();
-    }
-
-    /**
-     * Returns the element at the specified index.
-     *
-     * @param index The index of the element to retrieve
-     * @return The element at the specified index
-     */
-    public StaffElement getElement(int index) {
-        return pasteboard.get(index);
-    }
-
-    /**
-     * Returns the first element in the pasteboard.
-     *
-     * @return The first element
-     */
-    public StaffElement getFirstElement() {
-        return pasteboard.getFirst();
-    }
-
-    /**
-     * Returns the last element in the pasteboard.
-     *
-     * @return The last element
-     */
-    public StaffElement getLastElement() {
-        return pasteboard.getLast();
+        return fragment == null;
     }
 
     // -------------------------------------------------------------------------
-    // Pasteboard mutators
+    // Fragment mutators
     // -------------------------------------------------------------------------
 
     /**
-     * Clears the pasteboard and prepares for a new copy operation.
+     * Replaces the current fragment with {@code fragment}.
+     *
+     * @param fragment The newly captured fragment
+     */
+    public void setFragment(Fragment fragment) {
+        this.fragment = fragment;
+        MessageCenter.post(new ClipboardDidChangeNotification());
+    }
+
+    /**
+     * Clears the clipboard.
      */
     public void clear() {
-        pasteboard.clear();
-    }
-
-    /**
-     * Adds an element to the pasteboard. Any {@code FINAL_DOUBLE_BARLINE} is
-     * normalized to {@code DOUBLE_BARLINE} so pasting clipboard content can
-     * never violate the song-owned invariant.
-     *
-     * @param element The element to add
-     */
-    public void addElement(StaffElement element) {
-        if (element.getType() == ElementType.FINAL_DOUBLE_BARLINE) {
-            element = ElementType.DOUBLE_BARLINE.newInstance();
-        }
-
-        pasteboard.add(element);
+        fragment = null;
+        MessageCenter.post(new ClipboardDidChangeNotification());
     }
 }

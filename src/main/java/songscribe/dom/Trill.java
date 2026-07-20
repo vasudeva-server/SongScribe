@@ -63,6 +63,13 @@ public class Trill extends RangeElement {
         this(anchorElement, anchorElement);
     }
 
+    @Override
+    protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+        var copy = new Trill(newAnchor, newEnd);
+        copy.setYPositionSs(yPositionSs);
+        return copy;
+    }
+
     /**
      * Returns the user-adjustable Y offset for this trill.
      */

@@ -49,7 +49,7 @@ public class TempoChangeAttachment extends MetronomeAttachment {
 
     @Override
     public Attachment copy(StaffElement newOwner) {
-        return new TempoChangeAttachment(newOwner, tempo);
+        return new TempoChangeAttachment(newOwner, tempo.copy());
     }
 
     public Tempo getTempo() {

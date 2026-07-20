@@ -80,4 +80,12 @@ public class Tempo {
         this.showTempo = showTempo;
     }
 
+    /**
+     * Returns a deep copy of this tempo, so a clone and its original hold independent state
+     * even if a future mutator starts changing this tempo's fields in place.
+     */
+    public Tempo copy() {
+        return new Tempo(visibleTempo, tempoType, tempoDescription, showTempo);
+    }
+
 }

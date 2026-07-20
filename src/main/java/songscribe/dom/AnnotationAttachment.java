@@ -73,7 +73,7 @@ public class AnnotationAttachment extends Attachment {
 
     @Override
     public Attachment copy(StaffElement newOwner) {
-        return new AnnotationAttachment(newOwner, annotation);
+        return new AnnotationAttachment(newOwner, annotation.copy());
     }
 
     /**

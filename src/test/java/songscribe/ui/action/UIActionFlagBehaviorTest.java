@@ -31,6 +31,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.action.DialogOpenActionTest.StubDialog;
 import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 
@@ -402,6 +403,30 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
 
             var action = createActionWithFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE);
             assertThat(action.enableFromGraceModeState()).isFalse();
+        }
+    }
+
+    // -- enableFromPasteMode: blanket disable, no flag required --
+
+    @Test
+    void testEnableFromPasteModeReturnsFalseForAnyActionWhilePasteModeIsActive() {
+        try (var pasteModeMock = mockStatic(PasteModeManager.class)) {
+            pasteModeMock.when(PasteModeManager::isActive).thenReturn(true);
+
+            // No flags at all — enableFromPasteMode is unconditional, unlike the
+            // per-action DISABLE_IN_GRACE_MODE / DISABLE_WHEN_EDITING_TEXT flags.
+            var action = createActionWithFlag();
+            assertThat(action.enableFromPasteMode()).isFalse();
+        }
+    }
+
+    @Test
+    void testEnableFromPasteModeReturnsTrueWhenPasteModeIsInactive() {
+        try (var pasteModeMock = mockStatic(PasteModeManager.class)) {
+            pasteModeMock.when(PasteModeManager::isActive).thenReturn(false);
+
+            var action = createActionWithFlag();
+            assertThat(action.enableFromPasteMode()).isTrue();
         }
     }
 

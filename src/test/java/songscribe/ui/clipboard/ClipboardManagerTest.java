@@ -22,12 +22,12 @@ package songscribe.ui.clipboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 
 class ClipboardManagerTest extends UnitTest {
@@ -39,115 +39,47 @@ class ClipboardManagerTest extends UnitTest {
         clipboardManager = new ClipboardManager();
     }
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class AddElement {
-
-        @Test
-        void testDoubleBarlinePassedThrough() {
-            var barline = ElementType.DOUBLE_BARLINE.newInstance();
-            clipboardManager.addElement(barline);
-            assertThat(clipboardManager.getElement(0)).isSameAs(barline);
-        }
-
-        @Test
-        void testFinalDoubleBarlineNormalizedToDoubleBarline() {
-            clipboardManager.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());
-            assertThat(clipboardManager.getElement(0).getType()).isEqualTo(ElementType.DOUBLE_BARLINE);
-        }
-
-        @Test
-        void testNotePassedThrough() {
-            var note = ElementType.CROTCHET.newInstance();
-            clipboardManager.addElement(note);
-            assertThat(clipboardManager.getElement(0)).isSameAs(note);
-        }
-    }
-
-    // Verifies that normalizing a copied final barline does not affect the
-    // song's own invariant-owned final barline.
     @Test
-    void testSongFinalBarlineUntouched() {
-        var song = new Song();
-        var lastLine = song.getLine(song.lineCount() - 1);
-        var lastIdx = lastLine.elementCount() - 1;
-
-        // Simulate what handleCopy does: clone then add to clipboard
-        clipboardManager.addElement(lastLine.getElement(lastIdx).clone());
-
-        assertThat(clipboardManager.getElement(0).getType())
-            .isEqualTo(ElementType.DOUBLE_BARLINE);
-        assertThat(lastLine.getElement(lastIdx).getType())
-            .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
-    }
-
-    // Parallels testSongFinalBarlineUntouched for a REPEAT_RIGHT terminal.
-    // REPEAT_RIGHT is structurally valid as an interior element, so it passes through
-    // the clipboard unchanged; the song's terminal remains in place.
-    @Test
-    void testSongRightRepeatTerminalUntouched() {
-        var song = new Song();
-        song.replaceTerminal(ElementType.REPEAT_RIGHT);
-        var lastLine = song.getLine(song.lineCount() - 1);
-        var lastIdx = lastLine.elementCount() - 1;
-
-        clipboardManager.addElement(lastLine.getElement(lastIdx).clone());
-
-        assertThat(clipboardManager.getElement(0).getType())
-            .isEqualTo(ElementType.REPEAT_RIGHT);
-        assertThat(lastLine.getElement(lastIdx).getType())
-            .isEqualTo(ElementType.REPEAT_RIGHT);
-    }
-
-    // -- getSize --
-
-    @Test
-    void testGetSizeReturnsCorrectCountAfterAdds() {
-        assertThat(clipboardManager.getSize()).isEqualTo(0);
-
-        clipboardManager.addElement(ElementType.CROTCHET.newInstance());
-        assertThat(clipboardManager.getSize()).isEqualTo(1);
-
-        clipboardManager.addElement(ElementType.QUAVER.newInstance());
-        assertThat(clipboardManager.getSize()).isEqualTo(2);
-    }
-
-    // -- isEmpty --
-
-    @Test
-    void testIsEmptyReturnsTrueInitiallyAndFalseAfterAdd() {
+    void testIsEmptyReturnsTrueForANewlyCreatedManager() {
         assertThat(clipboardManager.isEmpty()).isTrue();
+        assertThat(clipboardManager.getFragment()).isNull();
+        assertThat(clipboardManager.getSize()).isEqualTo(0);
+    }
 
-        clipboardManager.addElement(ElementType.CROTCHET.newInstance());
+    @Test
+    void testSetFragmentReplacesTheCurrentFragment() {
+        var note = ElementType.CROTCHET.newInstance();
+        var fragment = new Fragment(List.of(note), List.of());
 
+        clipboardManager.setFragment(fragment);
+
+        assertThat(clipboardManager.getFragment()).isSameAs(fragment);
+        assertThat(clipboardManager.getSize()).isEqualTo(1);
         assertThat(clipboardManager.isEmpty()).isFalse();
     }
 
-    // -- getFirstElement / getLastElement --
-
     @Test
-    void testGetFirstElementAndGetLastElementReturnCorrectElementsFromMultiElementPasteboard() {
-        var first = ElementType.CROTCHET.newInstance();
-        var middle = ElementType.QUAVER.newInstance();
-        var last = ElementType.MINIM.newInstance();
-        clipboardManager.addElement(first);
-        clipboardManager.addElement(middle);
-        clipboardManager.addElement(last);
+    void testSetFragmentAgainReplacesThePreviousOne() {
+        var first = new Fragment(List.of(ElementType.CROTCHET.newInstance()), List.of());
+        var second = new Fragment(
+            List.of(ElementType.QUAVER.newInstance(), ElementType.MINIM.newInstance()), List.of()
+        );
 
-        assertThat(clipboardManager.getFirstElement()).isSameAs(first);
-        assertThat(clipboardManager.getLastElement()).isSameAs(last);
+        clipboardManager.setFragment(first);
+        clipboardManager.setFragment(second);
+
+        assertThat(clipboardManager.getFragment()).isSameAs(second);
+        assertThat(clipboardManager.getSize()).isEqualTo(2);
     }
 
-    // -- clear --
-
     @Test
-    void testClearEmpasteboardAndIsEmptyReturnsTrue() {
-        clipboardManager.addElement(ElementType.CROTCHET.newInstance());
-        clipboardManager.addElement(ElementType.QUAVER.newInstance());
+    void testClearEmptiesTheClipboard() {
+        clipboardManager.setFragment(new Fragment(List.of(ElementType.CROTCHET.newInstance()), List.of()));
 
         clipboardManager.clear();
 
         assertThat(clipboardManager.isEmpty()).isTrue();
+        assertThat(clipboardManager.getFragment()).isNull();
         assertThat(clipboardManager.getSize()).isEqualTo(0);
     }
 }

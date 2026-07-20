@@ -44,6 +44,11 @@ public class Tie extends RangeElement {
     }
 
     @Override
+    protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+        return new Tie(newAnchor, newEnd);
+    }
+
+    @Override
     public double getContentHeightSs() {
         return TIE_ARC_HEIGHT_SS;
     }

@@ -33,6 +33,7 @@ import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.PasteboardOpCommand;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.playback.PlaybackController;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -109,10 +110,21 @@ class PasteboardActionTest extends MainFrameMockTest {
             assertThat(action.isEnabled()).isFalse();
         }
 
-        // PasteAction.musicSelectionDidChange always disables paste (unimplemented, see #410)
         @Test
-        void testPasteAlwaysDisabledRegardlessOfPasteboardSize() {
+        void testPasteEnabledWhenPasteboardNonEmpty() {
             when(mockEnv().score().getPasteboardSize()).thenReturn(1);
+            var action = PasteAction.createAction(mainFrame());
+            action.setEnabled(false);
+
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+            assertThat(action.isEnabled()).isTrue();
+        }
+
+        @Test
+        void testPasteDisabledWhenPasteboardEmpty() {
+            when(mockEnv().score().getPasteboardSize()).thenReturn(0);
             var action = PasteAction.createAction(mainFrame());
             action.setEnabled(true);
 
@@ -182,6 +194,35 @@ class PasteboardActionTest extends MainFrameMockTest {
             messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
             assertThat(captor.getValue().getOperation())
                 .isEqualTo(PasteboardAction.Operation.PASTE);
+        }
+    }
+
+    // Row 3: PasteAction's modality flags — required so Cmd+V doesn't enter paste
+    // mode on top of an in-progress grace mode (phase 5 task 7). Nothing else
+    // covers this: LyricEditorActionAuditTest whitelists toolbar actions only.
+
+    @Nested
+    class PasteActionFlags {
+
+        @Test
+        void testPasteActionCarriesGraceModeAndTextEditingDisableFlags() {
+            var action = PasteAction.createAction(mainFrame());
+
+            assertThat(action.hasFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE)).isTrue();
+            assertThat(action.hasFlag(UIAction.Flag.DISABLE_WHEN_EDITING_TEXT)).isTrue();
+        }
+
+        @Test
+        void testPasteActionIsDisabledWhileGraceModeIsActive() {
+            try (var graceModeMock = mockStatic(GraceModeManager.class)) {
+                graceModeMock.when(GraceModeManager::isActive).thenReturn(true);
+
+                var action = PasteAction.createAction(mainFrame());
+                var result = action.updateEnabledState();
+
+                assertThat(result).isFalse();
+                assertThat(action.isEnabled()).isFalse();
+            }
         }
     }
 }

@@ -22,10 +22,7 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import net.engio.mbassy.listener.Handler;
-
 import songscribe.Strings;
-import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -43,14 +40,9 @@ public final class PasteAction extends PasteboardAction {
             "edit-paste",
             KeyEvent.VK_V,
             UIUtils.MENU_SHORTCUT_MASK,
-            Flag.DISABLE_WHEN_PLAYING
+            Flag.DISABLE_WHEN_PLAYING,
+            Flag.DISABLE_IN_GRACE_MODE,
+            Flag.DISABLE_WHEN_EDITING_TEXT
         );
-    }
-
-    @Override
-    @Handler
-    public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
-        // paste not yet implemented — see issue #410
-        setEnabled(false);
     }
 }

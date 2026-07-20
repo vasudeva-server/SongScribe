@@ -69,6 +69,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
 import songscribe.ui.component.score.PreviewElementManager;
+import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.component.toolbar.MainToolbarPanel;
 import songscribe.ui.dialog.PlatformFileDialog;
 import songscribe.ui.dialog.PropertiesStateStore;
@@ -550,6 +551,9 @@ public class MainFrame extends JFrame implements Printable {
 
     private void hidePreviewNote() {
         PreviewElementManager.hidePreviewElement(true);
+        // Backgrounding the app cancels a pending paste — both background paths
+        // (Desktop appMovedToBackground and the windowDeactivated fallback) call here.
+        EditModeManager.getPasteModeManager().cancel();
     }
 
     private void installDesktopHandlers() {

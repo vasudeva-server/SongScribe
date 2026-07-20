@@ -29,4 +29,9 @@ public final class Crescendo extends Hairpin {
     public Crescendo(StaffElement anchorElement, StaffElement endElement) {
         super(anchorElement, endElement);
     }
+
+    @Override
+    protected Hairpin createHairpin(StaffElement newAnchor, StaffElement newEnd) {
+        return new Crescendo(newAnchor, newEnd);
+    }
 }

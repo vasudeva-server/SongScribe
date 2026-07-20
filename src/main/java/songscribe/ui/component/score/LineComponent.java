@@ -35,6 +35,7 @@ import songscribe.ui.component.ComponentNames;
 import songscribe.ui.component.LyricEditor;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.component.ScoreView;
 import songscribe.layout.Ending;
 import songscribe.layout.LayoutEngine;
@@ -646,6 +647,12 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
+        // Paste mode tracks the insertion point under the mouse and suppresses the
+        // normal preview element. Returns true to consume the event.
+        if (getPasteModeManager().mouseMoved(this, e)) {
+            return;
+        }
+
         if (getScoreView().getMode() == Mode.EDIT && hitTestLyric(e.getPoint()) != null) {
             clearPreviewElement();
             setCursor(Cursor.getDefaultCursor());
@@ -679,6 +686,12 @@ public class LineComponent extends ScoreComponent
 
         // Grace mode handles its own click logic. Returns true to consume the event.
         if (getGraceModeManager().mouseClicked(this, e)) {
+            return;
+        }
+
+        // Paste mode places the clipboard fragment at the clicked insertion point.
+        // Returns true to consume the event.
+        if (getPasteModeManager().mouseClicked(this, e)) {
             return;
         }
 
@@ -787,6 +800,10 @@ public class LineComponent extends ScoreComponent
 
     private GraceModeManager getGraceModeManager() {
         return EditModeManager.getGraceModeManager();
+    }
+
+    private PasteModeManager getPasteModeManager() {
+        return EditModeManager.getPasteModeManager();
     }
 
     /** Returns the preview element from edit mode, or null if unavailable. */

@@ -29,4 +29,9 @@ public final class Diminuendo extends Hairpin {
     public Diminuendo(StaffElement anchorElement, StaffElement endElement) {
         super(anchorElement, endElement);
     }
+
+    @Override
+    protected Hairpin createHairpin(StaffElement newAnchor, StaffElement newEnd) {
+        return new Diminuendo(newAnchor, newEnd);
+    }
 }

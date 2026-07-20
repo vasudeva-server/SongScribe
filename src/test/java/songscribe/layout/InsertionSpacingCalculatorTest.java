@@ -30,7 +30,9 @@ import static songscribe.dom.StaffElementFactory.crotchet;
 
 import module java.desktop;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
@@ -806,6 +808,186 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             assertThat(afterShiftedXSs - beforeShiftedXSs)
                 .as("the actual shift applied to the following element must match the preview's projected shift")
                 .isCloseTo(preview.shiftForSubsequentElementsSs(), within(PREVIEW_TOLERANCE_SS));
+        }
+    }
+
+    /**
+     * The line width at which the projected fragment chain is fully compressed — every non-rigid
+     * gap frozen on its strut — the boundary {@link
+     * InsertionSpacingCalculator.FragmentInsertionResult#fitsWithinLine} solves against. The
+     * fragment analogue of {@link #fullyCompressedWidthSs(InsertionSpacingCalculator.InsertionResult)}.
+     */
+    private static double fullyCompressedWidthSs(
+        InsertionSpacingCalculator.FragmentInsertionResult result) {
+
+        var floorSpanSs = result.projectedSprings().stream()
+            .mapToDouble(spring -> spring.rigid() ? spring.naturalLengthSs() : spring.strutSs())
+            .sum();
+        return result.projectedFirstXSs() + floorSpanSs + result.projectedLastRightExtentSs();
+    }
+
+    /**
+     * Builds a lightweight {@link ElementColumn} for {@code element}, mirroring the syllable-less
+     * column construction {@code InsertionSpacingCalculator} uses internally for a fragment's clones.
+     */
+    private static ElementColumn lightweightColumn(StaffElement element) {
+        var leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(element);
+        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.getDirection());
+        return new ElementColumn(
+            element, Collections.emptyList(), leftExtentSs, rightExtentSs, 0, 0, null, 0, false);
+    }
+
+    /** Snapshots every element's identity and xOffsetPx, in order, including the terminal barline. */
+    private static List<Object> snapshotElements(Line line) {
+        var snapshot = new ArrayList<Object>();
+
+        for (var i = 0; i < line.elementCount(); i++) {
+            var element = line.getElement(i);
+            snapshot.add(element);
+            snapshot.add(element.getXOffsetPx());
+        }
+
+        return snapshot;
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class CalculateFragmentInsertion {
+
+        @Test
+        void testChainsNElementsWithExpectedColumnGaps() {
+            // Row: N-element chaining — each clone's X must advance from the previous
+            // clone by the same column gap the standard algorithm produces for two
+            // identical elements, since the gap depends only on geometry, not position.
+            var line = lineWithCrotchets(2, songWithLineWidth(WIDE_LINE_SS));
+            var fragment = List.<StaffElement>of(crotchet(), crotchet(), crotchet());
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fragment, line.effectiveElementCount(), null, null);
+
+            var positions = result.cloneXPositionsSs();
+            assertThat(positions).hasSize(3);
+
+            var firstColumn = lightweightColumn(crotchet());
+            firstColumn.setXSs(0);
+            var expectedGapSs = springNextColumnXSs(firstColumn, lightweightColumn(crotchet()));
+            assertThat(positions.get(1) - positions.get(0)).isEqualTo(expectedGapSs);
+            assertThat(positions.get(2) - positions.get(1)).isEqualTo(expectedGapSs);
+        }
+
+        @Test
+        void testSeedsFromFirstElementXWhenInsertingAtIndexZero() {
+            var line = lineWithCrotchets(0, songWithLineWidth(WIDE_LINE_SS));
+            var fragment = List.<StaffElement>of(crotchet());
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(line, fragment, 0, null, null);
+
+            var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            assertThat(result.cloneXPositionsSs().get(0)).isEqualTo(expectedXSs);
+        }
+
+        @Test
+        void testSeedsFromMidLinePredecessorMatchingSingleElementInsertion() {
+            // A single-element fragment must seed identically to calculateInsertion,
+            // since fragment insertion reuses the same predecessor-seeding rule.
+            var line = lineWithCrotchets(2, songWithLineWidth(WIDE_LINE_SS));
+            var fragmentElement = crotchet();
+
+            var fragmentResult = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, List.of(fragmentElement), 1, null, null);
+            var singleResult = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null, null);
+
+            assertThat(fragmentResult.cloneXPositionsSs().get(0)).isEqualTo(singleResult.insertedElementXSs());
+        }
+
+        @Test
+        void testDeleteRangeSeedsFromElementBeforeTheRangeNotFromWithinIt() {
+            var line = lineWithCrotchets(4, songWithLineWidth(WIDE_LINE_SS));
+            var predecessor = line.getElement(0);
+            var deleteRange = new InsertionSpacingCalculator.DeletedRange(1, 2);
+            var fragmentElement = crotchet();
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, List.of(fragmentElement), 1, deleteRange, null);
+
+            var predecessorColumn = lightweightColumn(predecessor);
+            predecessorColumn.setXSs(ScaleContext.pxToSs(predecessor.getXOffsetPx()));
+            var expectedSeedXSs = springNextColumnXSs(predecessorColumn, lightweightColumn(fragmentElement));
+            assertThat(result.cloneXPositionsSs().get(0)).isEqualTo(expectedSeedXSs);
+        }
+
+        @Test
+        void testDeleteRangeShiftsFromElementAfterTheRangeNotFromWithinIt() {
+            var line = lineWithCrotchets(4, songWithLineWidth(WIDE_LINE_SS));
+            var successor = line.getElement(3);
+            var deleteRange = new InsertionSpacingCalculator.DeletedRange(1, 2);
+            var fragmentElement = crotchet();
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, List.of(fragmentElement), 1, deleteRange, null);
+
+            var lastCloneColumn = lightweightColumn(fragmentElement);
+            lastCloneColumn.setXSs(result.cloneXPositionsSs().get(0));
+            var successorColumn = lightweightColumn(successor);
+            var requiredSuccessorXSs = springNextColumnXSs(lastCloneColumn, successorColumn);
+            var successorXSs = ScaleContext.pxToSs(successor.getXOffsetPx());
+
+            assertThat(result.shiftForSubsequentElementsSs()).isEqualTo(requiredSuccessorXSs - successorXSs);
+        }
+
+        @Test
+        void testFragmentThatJustFitsReturnsFitsVerdict() {
+            var line = lineWithCrotchets(3, songWithLineWidth(WIDE_LINE_SS));
+            var fittingFragment = List.<StaffElement>of(crotchet(), crotchet());
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fittingFragment, line.effectiveElementCount(), null, null);
+            var marginSs = fullyCompressedWidthSs(result) + BOUNDARY_SLACK_SS;
+
+            assertThat(result.fitsWithinLine(marginSs)).isTrue();
+        }
+
+        @Test
+        void testFragmentOneElementLargerReturnsLineFullVerdict() {
+            var line = lineWithCrotchets(3, songWithLineWidth(WIDE_LINE_SS));
+            var fittingFragment = List.<StaffElement>of(crotchet(), crotchet());
+            var fittingResult = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fittingFragment, line.effectiveElementCount(), null, null);
+            // A margin that just clears the two-element fragment's fully compressed floor.
+            var marginSs = fullyCompressedWidthSs(fittingResult) + BOUNDARY_SLACK_SS;
+
+            var oneElementLargerFragment = List.<StaffElement>of(crotchet(), crotchet(), crotchet());
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, oneElementLargerFragment, line.effectiveElementCount(), null, null);
+
+            // One more element raises the compressed floor past that margin, so it cannot fit.
+            assertThat(result.fitsWithinLine(marginSs)).isFalse();
+        }
+
+        @Test
+        void testDoesNotMutateLineOrElementsOnFits() {
+            var line = lineWithCrotchets(3, songWithLineWidth(WIDE_LINE_SS));
+            var before = snapshotElements(line);
+            var fragment = List.<StaffElement>of(crotchet(), crotchet());
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fragment, line.effectiveElementCount(), null, null);
+
+            assertThat(result.fitsWithinLine(WIDE_LINE_SS)).isTrue();
+            assertThat(snapshotElements(line)).isEqualTo(before);
+        }
+
+        @Test
+        void testDoesNotMutateLineOrElementsOnLineFull() {
+            var line = lineWithCrotchets(3, songWithLineWidth(0));
+            var before = snapshotElements(line);
+            var fragment = List.<StaffElement>of(crotchet(), crotchet());
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fragment, line.effectiveElementCount(), null, null);
+
+            assertThat(result.fitsWithinLine(line.getSong().getLineWidthSs())).isFalse();
+            assertThat(snapshotElements(line)).isEqualTo(before);
         }
     }
 }

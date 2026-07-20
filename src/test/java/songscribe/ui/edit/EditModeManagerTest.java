@@ -107,7 +107,8 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.init(
                 mock(ClipboardManager.class),
                 mock(SelectionCoordinator.class),
-                mock(ScoreActions.class)
+                mock(ScoreActions.class),
+                mock(ScoreView.class)
             );
             // If INSTANCE was set correctly, getGraceModeManager() returns non-null.
             assertThat(EditModeManager.getGraceModeManager()).isNotNull();
@@ -289,7 +290,8 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.init(
                 mock(ClipboardManager.class),
                 mock(SelectionCoordinator.class),
-                scoreActions
+                scoreActions,
+                mock(ScoreView.class)
             );
         }
 
@@ -364,7 +366,8 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.init(
                 mock(ClipboardManager.class),
                 mock(SelectionCoordinator.class),
-                scoreActions
+                scoreActions,
+                mock(ScoreView.class)
             );
             // These tests exercise non-playback behavior. Disable note playback so a real
             // PlayThread is never started (playInsertedNote is shared static state that a
@@ -420,7 +423,8 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.init(
                 mock(ClipboardManager.class),
                 mock(SelectionCoordinator.class),
-                mock(ScoreActions.class)
+                mock(ScoreActions.class),
+                mock(ScoreView.class)
             );
         }
 

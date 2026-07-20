@@ -33,6 +33,11 @@ public class Beam extends RangeElement {
     }
 
     @Override
+    protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+        return new Beam(newAnchor, newEnd);
+    }
+
+    @Override
     public double getContentHeightSs() {
         return 0;
     }

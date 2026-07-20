@@ -180,7 +180,9 @@ public class StaffElement extends LineElement implements Cloneable {
         isAccidentalInParentheses = source.isAccidentalInParentheses;
         line = source.line;
         direction = source.direction;
-        slide = source.slide;
+        // Deep-copy the slide so an original and its clone never share a Slide instance,
+        // whose transient render/hit-test caches would otherwise corrupt each other.
+        slide = source.slide == null ? null : source.slide.copy();
         stemDirectionAuto = source.stemDirectionAuto;
 
         // Copy LineElement hierarchy data
@@ -850,6 +852,15 @@ public class StaffElement extends LineElement implements Cloneable {
 
     // Marker base for a thing attached to a note (connecting glissando or trailing fall)
     public abstract static sealed class Slide permits Glissando, Fall {
+
+        /**
+         * Returns a fresh instance of this slide's concrete subtype, with none of its
+         * transient render/hit-test caches populated. Slides carry no persistent state
+         * beyond their type, so a shared instance between an original and its clone would
+         * corrupt hit-testing once both are on-screen and each render pass overwrites the
+         * other's cached geometry.
+         */
+        public abstract Slide copy();
     }
 
     public static final class Glissando extends Slide {
@@ -863,12 +874,22 @@ public class StaffElement extends LineElement implements Cloneable {
         public transient double cachedLength;
         public transient boolean hasCachedGeometry;
 
+        @Override
+        public Slide copy() {
+            return new Glissando();
+        }
+
     }
 
     public static final class Fall extends Slide {
 
         // A fall is independently clickable, so it caches the glyph's drawn rect for hit-testing
         public transient @Nullable Rectangle2D cachedHitBounds;
+
+        @Override
+        public Slide copy() {
+            return new Fall();
+        }
 
     }
 

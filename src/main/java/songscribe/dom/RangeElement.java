@@ -235,4 +235,36 @@ public abstract class RangeElement extends LineElement {
     public String toIndexString() {
         return getAnchorElementIndex() + "," + getEndElementIndex() + ";";
     }
+
+    /**
+     * Creates a copy of this range element anchored to the given elements, carrying over
+     * all {@link LineElement}-level user state (offsets, margins, position).
+     * <p>
+     * This is the single place LineElement-level state is copied, so a new subclass cannot
+     * forget it. Subclasses carry their own subclass-specific state in {@link #createCopy}.
+     * Does not set {@code parentLine} — {@code Line.addRangeElement} does that on insert —
+     * and does not copy derived caches.
+     *
+     * @param newAnchor The anchor element for the copy
+     * @param newEnd    The end element for the copy
+     * @return A new range element of the same concrete type as this one
+     */
+    public final RangeElement copy(StaffElement newAnchor, StaffElement newEnd) {
+        var copy = createCopy(newAnchor, newEnd);
+        copy.setUserXOffsetSs(getUserXOffsetSs());
+        copy.setUserYOffsetSs(getUserYOffsetSs());
+        copy.setMarginSs(getMarginTopSs(), getMarginRightSs(), getMarginBottomSs(), getMarginLeftSs());
+        copy.setPosition(getPositionSs());
+        return copy;
+    }
+
+    /**
+     * Creates a new instance of this range element's concrete subclass, anchored to the
+     * given elements and carrying over any subclass-specific state. Called only by
+     * {@link #copy}, which layers on the shared {@link LineElement}-level state.
+     *
+     * @param newAnchor The anchor element for the copy
+     * @param newEnd    The end element for the copy
+     */
+    protected abstract RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd);
 }

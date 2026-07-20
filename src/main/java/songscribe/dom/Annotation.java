@@ -78,4 +78,15 @@ public class Annotation {
     public void setUserYOffsetSs(double userYOffsetSs) {
         this.userYOffsetSs = userYOffsetSs;
     }
+
+    /**
+     * Returns a deep copy of this annotation, so mutating the copy (e.g. dragging it to a
+     * new vertical position) never affects the original.
+     */
+    public Annotation copy() {
+        var copy = new Annotation(annotation, xAlignment);
+        copy.setPlacement(placement);
+        copy.setUserYOffsetSs(userYOffsetSs);
+        return copy;
+    }
 }

@@ -65,6 +65,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.layout.Ending;
+import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
@@ -72,7 +73,9 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.clipboard.Fragment;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
@@ -458,6 +461,13 @@ public final class ScoreViewController {
 
     @Handler
     public void handlePasteboardOp(PasteboardOpCommand message) {
+        // Belt-and-braces: while paste mode is active all pasteboard operations are
+        // ignored. The action layer is already disabled via enableFromPasteMode; this
+        // covers any non-action dispatch path.
+        if (PasteModeManager.isActive()) {
+            return;
+        }
+
         // Make sure this component has focus
         if (!score.isFocusOwner()) {
             return;
@@ -472,8 +482,42 @@ public final class ScoreViewController {
     }
 
     private void handleCut() {
+        var state = selectionCoordinator.getActiveSelection();
+
+        if (state == null || !state.hasElementSelection()) {
+            return;
+        }
+
+        var line = state.getLine();
+        var begin = state.getSelectionBegin();
+        var end = state.getSelectionEnd();
+
+        // Confirm before discarding an ending invalidated by the deletion, and do
+        // it first: declining must leave both the clipboard and the score untouched.
+        if (line.hasEndingInvalidatedByDeletion(line.getElements(begin, end))) {
+            if (!EndingConfirms.confirmInvalidation(score)) {
+                return;
+            }
+        }
+
         handleCopy();
-        score.getSong().withModification(this::handleDelete);
+
+        // Clear the selection before removing elements so that action handlers
+        // reacting to SongDidChangeNotification (posted synchronously when the
+        // modification bracket closes) don't query selection indices that no
+        // longer exist on the shrunk line.
+        selectionCoordinator.clearSelection();
+
+        // One bracket for the deletion — the confirm above already ran, so
+        // deleteElementRange performs no further confirmation. The Cut action's op-name
+        // (Tier A) names this outermost step, so the inner range delete passes no label.
+        score.getSong().withModification(() -> deleteElementRange(line, begin, end, null));
+
+        // Discard saved action states — the song has changed, so restoring
+        // pre-selection states would be stale. Individual action handlers will
+        // re-evaluate their enabled state from the current context.
+        selectionCoordinator.clearSavedActionStates();
+        score.deselect();
     }
 
     void handleCopy() {
@@ -481,12 +525,9 @@ public final class ScoreViewController {
 
         if (state != null && state.hasElementSelection()) {
             var line = state.getLine();
-            clipboardManager.clear();
-
-            for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
-                clipboardManager.addElement(line.getElement(i).clone());
-            }
-
+            clipboardManager.setFragment(
+                Fragment.capture(line, state.getSelectionBegin(), state.getSelectionEnd())
+            );
         }
     }
 
@@ -541,58 +582,7 @@ public final class ScoreViewController {
             // longer exist on the shrunk line.
             selectionCoordinator.clearSelection();
 
-            // When the element immediately before the selection is a paired grace note,
-            // deleteNote must remove it along with the first selected note — a non-contiguous
-            // operation that cannot be expressed as a single range. Fall back to the per-element loop.
-            if (line.isHostOfPairedGraceNote(begin)) {
-                song.withModification(deleteLabel, () -> deleteSelection(begin, end, line));
-            } else {
-                // A breath mark immediately after the selection is positionally attached
-                // to the last selected element, so include it in the range to delete.
-                final int rangeEnd;
-
-                if (end + 1 < line.effectiveElementCount()
-                        && line.getElement(end + 1).getType().isBreathMark()) {
-                    rangeEnd = end + 1;
-                } else {
-                    rangeEnd = end;
-                }
-
-                // Contiguous range: clean up the element before the range, then batch-remove.
-                if (begin > 0) {
-                    var prevElement = line.getElement(begin - 1);
-
-                    if (prevElement.hasGlissando()) {
-                        prevElement.removeSlide();
-                    }
-                }
-
-                // Shift elements after the selection to fill the gap, mirroring the
-                // per-element xPos adjustment that deleteNote performs.
-                if (rangeEnd < line.effectiveElementCount() - 1) {
-                    var shift = line.getElement(begin).getXOffsetPx() - line.getElement(rangeEnd + 1).getXOffsetPx();
-
-                    for (var i = rangeEnd + 1; i < line.effectiveElementCount(); i++) {
-                        line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
-                    }
-                }
-
-                song.withModification(deleteLabel, () -> {
-                    // Mirror deleteNote: adjust syllable relations and melisma extends
-                    // on neighbors before removing. Both helpers require the target
-                    // elements to still be present in the list.
-                    line.adjustSyllablesForNeighborChange(begin - 1, line.getElement(begin));
-
-                    // When rangeEnd was extended to include a trailing breath mark, this
-                    // loop also runs over that breath mark. Breath marks carry no lyrics,
-                    // so adjustExtendsForDeletion is a harmless no-op for it.
-                    for (var i = begin; i <= rangeEnd; i++) {
-                        line.adjustExtendsForDeletion(i);
-                    }
-
-                    line.removeRange(begin, rangeEnd);
-                });
-            }
+            deleteElementRange(line, begin, end, deleteLabel);
         } else if (state != null && state.hasSlideSelection()) {
             var line = state.getLine();
             var elementIndex = state.getSelectedSlideElementIndex();
@@ -627,6 +617,90 @@ public final class ScoreViewController {
     }
 
     /**
+     * A breath mark immediately after {@code end} is positionally attached to the
+     * last selected element, so it must be included in a deletion or copy range that
+     * ends at {@code end}. Returns {@code end} extended past that trailing breath
+     * mark, or {@code end} unchanged if there is none. Pure query — mutates nothing.
+     */
+    public static int effectiveDeleteEnd(Line line, int begin, int end) {
+        if (end + 1 < line.effectiveElementCount() && line.getElement(end + 1).getType().isBreathMark()) {
+            return end + 1;
+        }
+
+        return end;
+    }
+
+    /**
+     * Deletes the element range {@code begin} through {@code end} on {@code line},
+     * naming the resulting undo step {@code label}. Confirmation-free: callers are
+     * responsible for any ending-invalidation confirm and for clearing the selection
+     * before calling this.
+     * <p>
+     * When invoked as the outermost modification (delete), {@code label} names the
+     * undo step. When invoked inside a caller's bracket (cut), the label is ignored —
+     * the op-name is captured only at the outermost bracket — so callers that already
+     * name their step pass {@code null}.
+     */
+    private void deleteElementRange(Line line, int begin, int end, @Nullable String label) {
+        // When the element immediately before the selection is a paired grace note,
+        // deleteNote must remove it along with the first selected note — a non-contiguous
+        // operation that cannot be expressed as a single range. Fall back to the per-element loop.
+        if (line.isHostOfPairedGraceNote(begin)) {
+            withModification(line, label, () -> deleteSelection(begin, end, line));
+        } else {
+            var rangeEnd = effectiveDeleteEnd(line, begin, end);
+
+            // Contiguous range: clean up the element before the range, then batch-remove.
+            if (begin > 0) {
+                var prevElement = line.getElement(begin - 1);
+
+                if (prevElement.hasGlissando()) {
+                    prevElement.removeSlide();
+                }
+            }
+
+            // Shift elements after the selection to fill the gap, mirroring the
+            // per-element xPos adjustment that deleteNote performs.
+            if (rangeEnd < line.effectiveElementCount() - 1) {
+                var shift = line.getElement(begin).getXOffsetPx() - line.getElement(rangeEnd + 1).getXOffsetPx();
+
+                for (var i = rangeEnd + 1; i < line.effectiveElementCount(); i++) {
+                    line.getElement(i).setXOffsetPx(line.getElement(i).getXOffsetPx() + shift);
+                }
+            }
+
+            withModification(line, label, () -> {
+                // Mirror deleteNote: adjust syllable relations and melisma extends
+                // on neighbors before removing. Both helpers require the target
+                // elements to still be present in the list.
+                line.adjustSyllablesForNeighborChange(begin - 1, line.getElement(begin));
+
+                // When rangeEnd was extended to include a trailing breath mark, this
+                // loop also runs over that breath mark. Breath marks carry no lyrics,
+                // so adjustExtendsForDeletion is a harmless no-op for it.
+                for (var i = begin; i <= rangeEnd; i++) {
+                    line.adjustExtendsForDeletion(i);
+                }
+
+                line.removeRange(begin, rangeEnd);
+            });
+        }
+    }
+
+    /**
+     * Opens a modification bracket for {@code body}, naming the undo step {@code label} when it is
+     * non-null and letting the pending op-name stand otherwise. Bridges the {@code @Nullable} label
+     * that {@link #deleteElementRange} threads to {@link Line}'s non-null labeled overload.
+     */
+    private static void withModification(Line line, @Nullable String label, Runnable body) {
+        if (label != null) {
+            line.withModification(label, body);
+        } else {
+            line.withModification(body);
+        }
+    }
+
+    /**
      * Deletes elements {@code begin} through {@code end} one at a time using
      * {@link #deleteNote}, which handles the paired-grace-note case. Must be
      * called inside a modification bracket.
@@ -641,8 +715,165 @@ public final class ScoreViewController {
         }
     }
 
+    /** Outcome of {@link #tryInsertFragment}. */
+    public enum FragmentInsertOutcome {
+        INSERTED,
+        LINE_FULL,
+        EMPTY
+    }
+
+    /**
+     * Inserts the clipboard fragment into {@code line} at {@code insertIndex},
+     * first deleting {@code deleteRange} when present (paste-replace). The fit
+     * check runs against the pre-delete line, so on {@code LINE_FULL} nothing has
+     * been mutated: the "line full" error is shown, a caller-opened bracket stays
+     * empty, and no notification is posted. Callers decide recovery.
+     *
+     * <p>Must be called inside a modification bracket — both paste-replace and
+     * paste-mode placement supply their own, so delete + insert form one undo step.
+     *
+     * @param line        The destination line
+     * @param insertIndex The index where the fragment's first element will land
+     * @param deleteRange The effective range to delete first, or null for pure insertion
+     * @return The outcome: {@code INSERTED}, {@code LINE_FULL}, or {@code EMPTY}
+     */
+    public FragmentInsertOutcome tryInsertFragment(
+        Line line, int insertIndex, InsertionSpacingCalculator.@Nullable DeletedRange deleteRange) {
+
+        var fragment = clipboardManager.getFragment();
+
+        if (fragment == null || fragment.elements().isEmpty()) {
+            return FragmentInsertOutcome.EMPTY;
+        }
+
+        var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+            line, fragment.elements(), insertIndex, deleteRange, null);
+
+        if (!result.fitsWithinLine(line.getSong().getLineWidthSs())) {
+            OptionDialogs.showErrorMessage(
+                null,
+                Strings.ALERT_TITLE_INSERT_ERROR,
+                Strings.ERROR_LINE_FULL_PASTE
+            );
+            return FragmentInsertOutcome.LINE_FULL;
+        }
+
+        // Capture the successor and its target X before any mutation: the trailing
+        // shift was measured against pre-delete positions, and deleteElementRange's
+        // gap-fill moves the tail before the clones go in.
+        var successorIndex = deleteRange == null ? insertIndex : deleteRange.end() + 1;
+        var successor = successorIndex < line.effectiveElementCount()
+            ? line.getElement(successorIndex)
+            : null;
+        var successorTargetXPx = successor != null
+            ? successor.getXOffsetPx() + ScaleContext.ssToRoundedPx(result.shiftForSubsequentElementsSs())
+            : 0;
+        var insertAt = insertIndex;
+
+        if (deleteRange != null) {
+            deleteElementRange(line, deleteRange.begin(), deleteRange.end(), null);
+
+            // The deletion may have removed elements before the range too (a paired
+            // grace note cascade), so re-derive the insertion index from what survived.
+            insertAt = successor != null ? line.getElementIndex(successor) : line.effectiveElementCount();
+        }
+
+        // Fresh clones every paste — the stored fragment is never itself inserted.
+        var instantiated = fragment.instantiate();
+        var clones = instantiated.elements();
+        var cloneCount = clones.size();
+
+        // Repair the lyric seams around the insertion point, mirroring the
+        // single-note insert path in PreviewElementManager.
+        line.adjustSyllablesForNeighborChange(insertAt - 1, null);
+        line.adjustExtendsForInsertion(insertAt);
+
+        // Hard ordering constraint: every clone must be inserted before the first
+        // addRangeElement. addRangeElement re-parents only the span, not its
+        // anchor/end, and getAnchorElementIndex() resolves through the anchor's
+        // own getLine() — a span added while its anchors still carry the source
+        // line's back-reference makes addElement's isInvalidatedByInsertion sweep
+        // evaluate it against the wrong line, yielding a wrong index or -1.
+        //
+        // Accepted loss: line.addElement removes a destination tuplet the insert
+        // point falls inside and drops endings invalidated by the inserted element
+        // types, so a paste into a tuplet destroys that tuplet. It happens inside
+        // the paste's own undo bracket, so a single undo restores it — the same
+        // behavior as any single-element insert, deliberately not special-cased.
+        for (var k = 0; k < cloneCount; k++) {
+            var clone = clones.get(k);
+            clone.setXOffsetPx(ScaleContext.ssToRoundedPx(result.cloneXPositionsSs().get(k)));
+            line.addElement(insertAt + k, clone);
+        }
+
+        line.adjustSyllablesForSuccessorAfterInsertion(insertAt + cloneCount - 1);
+
+        // Apply the single trailing shift to every surviving element after the
+        // fragment, mirroring the single-note insert path. The delta is re-derived
+        // from the successor's captured target X so it stays correct after the
+        // deletion gap-fill.
+        if (successor != null) {
+            var tailShiftPx = successorTargetXPx - successor.getXOffsetPx();
+
+            for (var i = insertAt + cloneCount; i < line.effectiveElementCount(); i++) {
+                var element = line.getElement(i);
+                element.setXOffsetPx(element.getXOffsetPx() + tailShiftPx);
+            }
+        }
+
+        for (var span : instantiated.spans()) {
+            line.addRangeElement(span);
+        }
+
+        return FragmentInsertOutcome.INSERTED;
+    }
+
     private void handlePaste() {
-        // TODO: Implement paste with proper insertion-point visual feedback
+        var fragment = clipboardManager.getFragment();
+
+        // Empty clipboard — nothing to paste.
+        if (fragment == null || fragment.elements().isEmpty()) {
+            return;
+        }
+
+        var state = selectionCoordinator.getActiveSelection();
+
+        if (state == null || !state.hasElementSelection()) {
+            // No selection: enter paste mode to place the fragment by clicking an
+            // insertion point. The score already has focus (handlePasteboardOp
+            // requires it) and the fragment is already known non-empty above.
+            EditModeManager.getPasteModeManager().enter();
+            return;
+        }
+
+        var line = state.getLine();
+        var begin = state.getSelectionBegin();
+        var deleteRange = new InsertionSpacingCalculator.DeletedRange(
+            begin, effectiveDeleteEnd(line, begin, state.getSelectionEnd()));
+
+        // One bracket for the whole replace — delete + insert is a single undo
+        // step. On LINE_FULL tryInsertFragment mutates nothing, so the bracket
+        // closes empty, posts no notification, and the selection stays intact.
+        var outcome = new FragmentInsertOutcome[1];
+
+        score.getSong().withModification(() -> {
+            outcome[0] = tryInsertFragment(line, begin, deleteRange);
+
+            if (outcome[0] == FragmentInsertOutcome.INSERTED) {
+                // Clear the selection before the bracket closes so action handlers
+                // reacting to SongDidChangeNotification don't query selection
+                // indices that no longer exist on the reshaped line.
+                selectionCoordinator.clearSelection();
+            }
+        });
+
+        if (outcome[0] == FragmentInsertOutcome.INSERTED) {
+            // Discard saved action states — the song has changed, so restoring
+            // pre-selection states would be stale. Individual action handlers will
+            // re-evaluate their enabled state from the current context.
+            selectionCoordinator.clearSavedActionStates();
+            score.deselect();
+        }
     }
 
     @Handler

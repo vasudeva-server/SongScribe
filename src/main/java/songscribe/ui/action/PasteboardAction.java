@@ -26,6 +26,7 @@ import module java.desktop;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.MessageCenter;
+import songscribe.message.notification.ClipboardDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.command.PasteboardOpCommand;
 import songscribe.ui.component.MainFrame;
@@ -69,6 +70,21 @@ public class PasteboardAction extends UIAction {
                 );
                 // DELETE is handled by DeleteAction.updateEnabledState() above.
                 case DELETE -> {}
+            }
+        }
+    }
+
+    @Handler
+    public void clipboardDidChange(ClipboardDidChangeNotification message) {
+        if (updateEnabledState()) {
+            switch (op) {
+                case PASTE -> {
+                    var scoreView = getScoreView();
+                    setEnabled(scoreView != null && scoreView.getPasteboardSize() > 0);
+                }
+                // COPY/CUT are gated by music selection, unaffected by clipboard content.
+                // DELETE is handled by DeleteAction.updateEnabledState() above.
+                case COPY, CUT, DELETE -> {}
             }
         }
     }

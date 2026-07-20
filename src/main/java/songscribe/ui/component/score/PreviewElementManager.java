@@ -55,6 +55,7 @@ import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.ScaleContext;
 import songscribe.message.notification.ModeDidChangeNotification;
+import songscribe.message.notification.PasteModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.engraving.Staff;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
@@ -145,6 +146,15 @@ public final class PreviewElementManager {
     @Handler
     public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
         if (PlaybackController.isPlaying()) {
+            clearPreviewElement();
+        } else {
+            restorePreviewElement(currentMouseLine);
+        }
+    }
+
+    @Handler
+    public void pasteModeDidChange(PasteModeDidChangeNotification message) {
+        if (message.isActive()) {
             clearPreviewElement();
         } else {
             restorePreviewElement(currentMouseLine);

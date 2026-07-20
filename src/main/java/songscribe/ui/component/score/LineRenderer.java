@@ -25,12 +25,15 @@ import module java.desktop;
 
 import songscribe.error.RuntimeError;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.edit.PasteModeManager;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.SlideZone;
@@ -82,6 +85,19 @@ class LineRenderer {
 
     /** Corner arc diameter for the rubber-band selection rectangle, in pixels. */
     private static final int SELECTION_RECT_ARC_PX = 2;
+
+    /** Half the staff height in staff-space — staff lines sit at {@code middleLineYSs ± 2}. */
+    private static final double STAFF_HALF_HEIGHT_SS = 2.0;
+
+    /** Margin, in staff-space, the insertion-point marker extends past the staff lines. */
+    private static final double INSERTION_POINT_MARGIN_SS = 1.0;
+
+    /**
+     * Stroke width for the paste-mode insertion-point marker, in logical pixels — constant
+     * across zoom levels, drawn in the stripped-transform pixel space (see
+     * {@link #renderInsertionPoint}).
+     */
+    private static final BasicStroke INSERTION_POINT_STROKE = new BasicStroke(3.0f);
 
     // ==========================================================================
     // Instance Fields
@@ -166,6 +182,7 @@ class LineRenderer {
         renderEndings(g2, invariants);
         renderAttachments(g2, invariants, lineFrame);
         renderPreviewElement(g2, invariants, lineFrame);
+        renderInsertionPoint(g2, invariants);
     }
 
     // ==========================================================================
@@ -700,6 +717,89 @@ class LineRenderer {
                 FermataRenderer.getInstance().render(invariants, frame, previewElement, g2);
             }
         }
+    }
+
+    /**
+     * Renders the paste-mode insertion-point marker when this line is the currently
+     * tracked placement target. Topmost — drawn last, still inside the single Ss
+     * transform {@code LineComponent.render} establishes.
+     * <p>
+     * Draws entirely in {@code Ss} except for the stroke width, which must stay a
+     * constant number of logical pixels across zoom: following the
+     * {@link songscribe.ui.renderer.LyricTextRenderer} recipe, this strips the
+     * outer staff-space transform (which also carries the current zoom factor) and
+     * re-derives pixel coordinates from the same zoomed scale, so only the line's
+     * position and height scale with zoom while the stroke does not.
+     *
+     * @param g2         Graphics context
+     * @param invariants Line invariants
+     */
+    private void renderInsertionPoint(Graphics2D g2, LineInvariants invariants) {
+        var pasteModeManager = PasteModeManager.getActiveInstance();
+
+        if (pasteModeManager == null || pasteModeManager.getTargetLineComponent() != lc) {
+            return;
+        }
+
+        var line = invariants.getCurrentLine();
+
+        if (line == null) {
+            return;
+        }
+
+        var xSs = calculateInsertionPointXSs(invariants.getLayoutResult(), line, pasteModeManager.getTargetIndex());
+        var middleLineYSs = invariants.getMiddleLineYSs();
+        var topYSs = middleLineYSs - STAFF_HALF_HEIGHT_SS - INSERTION_POINT_MARGIN_SS;
+        var bottomYSs = middleLineYSs + STAFF_HALF_HEIGHT_SS + INSERTION_POINT_MARGIN_SS;
+        var viewPxPerSs = invariants.getViewPixelsPerStaffSpace();
+
+        try (var ignored = GraphicsState.save(g2,
+                GraphicsState.Property.COLOR, GraphicsState.Property.STROKE, GraphicsState.Property.TRANSFORM)) {
+            g2.scale(1.0 / viewPxPerSs, 1.0 / viewPxPerSs);
+            g2.setColor(ScoreView.getPreviewElementColor());
+            g2.setStroke(INSERTION_POINT_STROKE);
+
+            var xPx = (int) Math.round(xSs * viewPxPerSs);
+            var topYPx = (int) Math.round(topYSs * viewPxPerSs);
+            var bottomYPx = (int) Math.round(bottomYSs * viewPxPerSs);
+            g2.drawLine(xPx, topYPx, xPx, bottomYPx);
+        }
+    }
+
+    /**
+     * Computes the insertion-point X, in staff-space, for the given index.
+     * <p>
+     * Over an existing element (index &lt; the line's effective element count), the
+     * marker sits half a column gap before that element's column X. For the append
+     * slot (index == effective element count), it sits half a column gap past the
+     * last effective element's right edge, or at the line's first-element position
+     * when the line has no effective elements yet.
+     * Package-private for testing.
+     *
+     * @param layoutResult The current layout result
+     * @param line         The line the index is relative to
+     * @param index        Insertion index (0 to effective element count, inclusive)
+     * @return Insertion-point X in staff-space
+     */
+    static double calculateInsertionPointXSs(LayoutResult layoutResult, Line line, int index) {
+        var effectiveElementCount = line.effectiveElementCount();
+        var halfColumnGapSs = HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS / 2;
+
+        if (index < effectiveElementCount) {
+            return layoutResult.getElementXSs(line.getElement(index)) - halfColumnGapSs;
+        }
+
+        if (effectiveElementCount == 0) {
+            return HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+        }
+
+        var lastElement = line.getElement(effectiveElementCount - 1);
+        var lastColumn = layoutResult.getElementColumn(lastElement);
+        var lastRightEdgeSs = lastColumn != null
+            ? lastColumn.getRightEdgeXSs()
+            : layoutResult.getElementXSs(lastElement);
+
+        return lastRightEdgeSs + halfColumnGapSs;
     }
 
     /**

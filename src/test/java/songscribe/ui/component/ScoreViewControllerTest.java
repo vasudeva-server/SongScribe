@@ -90,11 +90,13 @@ import songscribe.ui.action.ModeAction;
 import songscribe.ui.adjustment.HorizontalAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
 import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.clipboard.Fragment;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.LinePanel;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.StaffPanel;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -654,12 +656,19 @@ class ScoreViewControllerTest extends UnitTest {
 
             // Two elements should have been copied (indices 0..1 inclusive)
             assertThat(clipboardManager.getSize()).isEqualTo(2);
+            var fragment = clipboardManager.getFragment();
+            assertThat(fragment).isNotNull();
+
+            if (fragment == null) {
+                return; // unreachable — NullAway flow narrowing
+            }
+
             // Verify the copies are independent clones, not the originals
-            assertThat(clipboardManager.getElement(0)).isNotSameAs(noteA);
-            assertThat(clipboardManager.getElement(1)).isNotSameAs(noteB);
+            assertThat(fragment.elements().get(0)).isNotSameAs(noteA);
+            assertThat(fragment.elements().get(1)).isNotSameAs(noteB);
             // Verify the types match
-            assertThat(clipboardManager.getElement(0).getType()).isEqualTo(noteA.getType());
-            assertThat(clipboardManager.getElement(1).getType()).isEqualTo(noteB.getType());
+            assertThat(fragment.elements().get(0).getType()).isEqualTo(noteA.getType());
+            assertThat(fragment.elements().get(1).getType()).isEqualTo(noteB.getType());
         }
 
         @Test
@@ -749,42 +758,40 @@ class ScoreViewControllerTest extends UnitTest {
 
             // Clipboard must contain clones of the two selected elements.
             assertThat(clipboardManager.getSize()).isEqualTo(2);
-            assertThat(clipboardManager.getElement(0).getType()).isEqualTo(noteA.getType());
-            assertThat(clipboardManager.getElement(1).getType()).isEqualTo(noteB.getType());
+            var fragment = clipboardManager.getFragment();
+            assertThat(fragment).isNotNull();
+
+            if (fragment == null) {
+                return; // unreachable — NullAway flow narrowing
+            }
+
+            assertThat(fragment.elements().get(0).getType()).isEqualTo(noteA.getType());
+            assertThat(fragment.elements().get(1).getType()).isEqualTo(noteB.getType());
 
             // noteA and noteB must have been removed; only noteC (plus the terminal barline) remains.
             // The contiguous-range path in handleDelete removes [0..1], leaving noteC at index 0.
             assertThat(line.getElement(0)).isSameAs(noteC);
         }
-    }
 
-    // -----------------------------------------------------------------------
-    // handlePaste — row 24 (known defect: stub-only implementation)
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class HandlePaste {
-
-        /**
-         * Known defect: {@code handlePaste()} is a TODO-only stub. A
-         * {@code PasteboardOpCommand(PASTE)} is silently swallowed with no
-         * effect — clipboard contents are never inserted into the document.
-         * This test guards against the stub remaining once the real
-         * implementation lands: it will fail (and must be updated) as soon
-         * as paste actually inserts elements.
-         */
+        // Row 23 regression: a declined ending-invalidation confirm must leave both the
+        // clipboard and the score untouched. handleCut runs the confirm first, before
+        // copying or deleting anything.
         @Test
-        void testHandlePasteIsCurrentlyANoOpStub() {
-            // Set up a song with one line and one note, and pre-load the clipboard.
+        void testHandleCutLeavesClipboardAndScoreUntouchedWhenEndingInvalidationIsDeclined() {
             var song = new Song();
             var line = song.getLine(0);
-            var existingNote = ElementType.CROTCHET.newInstance();
-            song.withoutMutationTracking(() -> line.addElement(existingNote));
+            var noteA = ElementType.CROTCHET.newInstance();
+            var noteB = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+                line.addRangeElement(new Ending(noteA, noteB));
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);  // select noteA and noteB
 
             var clipboardManager = new ClipboardManager();
-            clipboardManager.addElement(ElementType.QUAVER.newInstance());
-
             var scoreMock = mock(ScoreView.class);
             when(scoreMock.getSong()).thenReturn(song);
             when(scoreMock.isFocusOwner()).thenReturn(true);
@@ -792,14 +799,141 @@ class ScoreViewControllerTest extends UnitTest {
             var controller = new ScoreViewController(
                 scoreMock,
                 mock(MusicEditOperations.class),
-                mock(SelectionCoordinator.class),
+                coordinator,
                 clipboardManager
             );
 
-            controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE));
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                endingConfirmsMock.when(() -> EndingConfirms.confirmInvalidation(any())).thenReturn(false);
 
-            // The line must still contain only the one original note (defect: paste is a no-op).
-            // effectiveElementCount() excludes the auto-maintained terminal barline.
+                controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.CUT));
+            }
+
+            // Nothing was copied — the decline must happen before handleCopy runs.
+            assertThat(clipboardManager.isEmpty()).isTrue();
+            // Nothing was deleted — both notes and the Ending remain.
+            assertThat(line.getElement(0)).isSameAs(noteA);
+            assertThat(line.getElement(1)).isSameAs(noteB);
+            assertThat(line.getRangeElements()).hasSize(1);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // effectiveDeleteEnd — pure query, must not mutate
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EffectiveDeleteEnd {
+
+        @Test
+        void testExtendsPastATrailingBreathMark() {
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            var breath = ElementType.BREATH_MARK.newInstance();
+            line.addElement(note);
+            line.addElement(breath);
+
+            var effectiveEnd = ScoreViewController.effectiveDeleteEnd(line, 0, 0);
+
+            assertThat(effectiveEnd).isEqualTo(1);
+        }
+
+        @Test
+        void testLeavesANonBreathMarkSuccessorAlone() {
+            var line = detachedLine();
+            var noteA = ElementType.CROTCHET.newInstance();
+            var noteB = ElementType.CROTCHET.newInstance();
+            line.addElement(noteA);
+            line.addElement(noteB);
+
+            var effectiveEnd = ScoreViewController.effectiveDeleteEnd(line, 0, 0);
+
+            assertThat(effectiveEnd).isEqualTo(0);
+        }
+
+        @Test
+        void testHandlesEndAtTheLastElement() {
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            line.addElement(note);
+
+            var effectiveEnd = ScoreViewController.effectiveDeleteEnd(line, 0, 0);
+
+            assertThat(effectiveEnd).isEqualTo(0);
+        }
+
+        @Test
+        void testMutatesNothing() {
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            var breath = ElementType.BREATH_MARK.newInstance();
+            line.addElement(note);
+            line.addElement(breath);
+
+            ScoreViewController.effectiveDeleteEnd(line, 0, 0);
+
+            assertThat(line.elementCount()).isEqualTo(2);
+            assertThat(line.getElement(0)).isSameAs(note);
+            assertThat(line.getElement(1)).isSameAs(breath);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handlePaste — row 24
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandlePaste {
+
+        /**
+         * With a non-empty clipboard and no element selection, paste enters
+         * paste mode (click-to-place) rather than inserting inline — so the
+         * document is left untouched until the user picks an insertion point.
+         */
+        @Test
+        void testHandlePasteWithNoSelectionEntersPasteMode() {
+            // Set up a song with one line and one note, and pre-load the clipboard.
+            var song = new Song();
+            var line = song.getLine(0);
+            var existingNote = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(existingNote));
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(
+                new Fragment(List.of(ElementType.QUAVER.newInstance()), List.of())
+            );
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+
+            // No element selection → the no-selection branch runs.
+            var selectionCoordinator = mock(SelectionCoordinator.class);
+            when(selectionCoordinator.getActiveSelection()).thenReturn(null);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                selectionCoordinator,
+                clipboardManager
+            );
+
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE));
+
+                // Paste mode was entered and nothing was inserted.
+                verify(pasteModeManager).enter();
+            }
+
+            // The line must still contain only the one original note — placement
+            // happens later, on click. effectiveElementCount() excludes the
+            // auto-maintained terminal barline.
             assertThat(line.effectiveElementCount()).isEqualTo(1);
         }
     }
@@ -1864,6 +1998,336 @@ class ScoreViewControllerTest extends UnitTest {
             controller.textEditingDidChange(new TextEditingDidChangeNotification(false));
 
             verify(scoreMock).setKeyBindingsEnabled(true);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // tryInsertFragment — lyric seam repair (task 1), repeated-paste
+    // independence (task 4), and span-add ordering (task 5, the regression
+    // test for the phase 4 task 3 ordering constraint).
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TryInsertFragment {
+
+        private static final double WIDE_LINE_WIDTH_SS = 500;
+
+        private static Song wideSong() {
+            var song = new Song();
+            song.withoutMutationTracking(() -> song.setLineWidthSs(WIDE_LINE_WIDTH_SS));
+            return song;
+        }
+
+        private static ScoreViewController buildController(Song song, ClipboardManager clipboardManager) {
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+
+            return new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                mock(SelectionCoordinator.class),
+                clipboardManager
+            );
+        }
+
+        @Test
+        void testPasteIntoHyphenatedWordLeavesValidSyllabicChainsAtBothSeams() {
+            // [begin(BEGIN), middle(MIDDLE), end(END)] — a 3-syllable word. Pasting
+            // between begin and middle must leave begin as a standalone word (SINGLE)
+            // and turn middle/end into a new, independently valid 2-syllable word.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var begin = ElementType.CROTCHET.newInstance();
+            var middle = ElementType.CROTCHET.newInstance();
+            var end = ElementType.CROTCHET.newInstance();
+            begin.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "be", Lyric.Extend.NONE);
+            middle.setLyricForVerse(1, Lyric.Syllabic.MIDDLE, false, "gin", Lyric.Extend.NONE);
+            end.setLyricForVerse(1, Lyric.Syllabic.END, false, "ning", Lyric.Extend.NONE);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(begin);
+                line.addElement(middle);
+                line.addElement(end);
+            });
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), List.of()));
+            var controller = buildController(song, clipboardManager);
+
+            song.withModification(() -> controller.tryInsertFragment(line, 1, null));
+
+            var beginLyric = begin.getLyricForVerse(1);
+            var middleLyric = middle.getLyricForVerse(1);
+            var endLyric = end.getLyricForVerse(1);
+            assertThat(beginLyric).isNotNull();
+            assertThat(middleLyric).isNotNull();
+            assertThat(endLyric).isNotNull();
+
+            if (beginLyric == null || middleLyric == null || endLyric == null) {
+                return; // unreachable — NullAway flow narrowing
+            }
+
+            assertThat(beginLyric.syllabic())
+                .as("severed predecessor becomes a standalone word")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(middleLyric.syllabic())
+                .as("severed successor starts a new word")
+                .isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(endLyric.syllabic())
+                .as("untouched far side of the new word is unchanged")
+                .isEqualTo(Lyric.Syllabic.END);
+        }
+
+        @Test
+        void testPasteIntoMelismaLeavesValidExtendChainsAtBothSeams() {
+            // [start(START), continueEl(CONTINUE), stop(STOP)] — a 3-note melisma.
+            // Pasting between start and continueEl severs the chain at its head, so
+            // nothing downstream of the severed START may keep a dangling
+            // CONTINUE/STOP — the whole remaining chain collapses to plain notes.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var start = ElementType.CROTCHET.newInstance();
+            var continueEl = ElementType.CROTCHET.newInstance();
+            var stop = ElementType.CROTCHET.newInstance();
+            start.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
+            continueEl.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+            stop.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(start);
+                line.addElement(continueEl);
+                line.addElement(stop);
+            });
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), List.of()));
+            var controller = buildController(song, clipboardManager);
+
+            song.withModification(() -> controller.tryInsertFragment(line, 1, null));
+
+            var startLyric = start.getLyricForVerse(1);
+            var continueLyric = continueEl.getLyricForVerse(1);
+            var stopLyric = stop.getLyricForVerse(1);
+            assertThat(startLyric).isNotNull();
+            assertThat(continueLyric).isNotNull();
+            assertThat(stopLyric).isNotNull();
+
+            if (startLyric == null || continueLyric == null || stopLyric == null) {
+                return; // unreachable — NullAway flow narrowing
+            }
+
+            assertThat(startLyric.extend()).as("severed predecessor's melisma is truncated")
+                .isEqualTo(Lyric.Extend.NONE);
+            assertThat(continueLyric.extend()).as("orphaned carrier cleared, not left dangling")
+                .isEqualTo(Lyric.Extend.NONE);
+            assertThat(continueLyric.syllabic()).as("orphaned carrier becomes a plain syllable")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(stopLyric.extend()).as("chain fully collapses past the severed head")
+                .isEqualTo(Lyric.Extend.NONE);
+            assertThat(stopLyric.syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
+        @Test
+        void testRepeatedPastesShareNoElementOrSpanInstancesAndAnchorToTheirOwnClones() {
+            var song = wideSong();
+            var line = song.getLine(0);
+            var anchorSource = ElementType.CROTCHET.newInstance();
+            var endSource = ElementType.CROTCHET.newInstance();
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(anchorSource, endSource),
+                List.of(new Tie(anchorSource, endSource))
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            song.withModification(() -> controller.tryInsertFragment(line, 0, null));
+            var firstSpans = List.copyOf(line.getRangeElements());
+            var firstAnchor = line.getElement(0);
+            var firstEnd = line.getElement(1);
+
+            song.withModification(() -> controller.tryInsertFragment(line, 2, null));
+            var secondAnchor = line.getElement(2);
+            var secondEnd = line.getElement(3);
+
+            assertThat(secondAnchor).isNotSameAs(firstAnchor);
+            assertThat(secondEnd).isNotSameAs(firstEnd);
+
+            assertThat(line.getRangeElements()).hasSize(2);
+            var secondSpan = line.getRangeElements().stream()
+                .filter(span -> !firstSpans.contains(span))
+                .findFirst()
+                .orElseThrow();
+
+            assertThat(secondSpan.getAnchorElement()).isSameAs(secondAnchor);
+            assertThat(secondSpan.getEndElement()).isSameAs(secondEnd);
+        }
+
+        @Test
+        void testPastedSpanIndicesResolveAgainstTheDestinationLine() {
+            var song = wideSong();
+            var line = song.getLine(0);
+            var existing = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(existing));
+
+            var anchorSource = ElementType.CROTCHET.newInstance();
+            var endSource = ElementType.CROTCHET.newInstance();
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(anchorSource, endSource),
+                List.of(new Tie(anchorSource, endSource))
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            song.withModification(() -> controller.tryInsertFragment(line, 1, null));
+
+            assertThat(line.getRangeElements()).hasSize(1);
+            var span = line.getRangeElements().get(0);
+            assertThat(span.getAnchorElementIndex()).isEqualTo(1);
+            assertThat(span.getEndElementIndex()).isEqualTo(2);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handlePaste — paste-replace atomicity (task 2) and empty/null-fragment
+    // no-op (task 8)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandlePasteAtomicityAndEmptyFragment {
+
+        private static final double WIDE_LINE_WIDTH_SS = 500;
+
+        // Narrow enough that even a single pasted quaver cannot fit.
+        private static final double NARROW_LINE_WIDTH_SS = 0;
+
+        private static ScoreViewController buildController(
+            Song song, SelectionCoordinator coordinator, ScoreView scoreMock, ClipboardManager clipboardManager) {
+
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+
+            return new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinator,
+                clipboardManager
+            );
+        }
+
+        private static int countSongDidChangeNotifications(Song song, Runnable body) {
+            var count = new int[1];
+            var listener = new Object() {
+                @Handler
+                void onSongDidChange(SongDidChangeNotification notification) {
+                    count[0]++;
+                }
+            };
+
+            MessageCenter.subscribe(listener);
+
+            try {
+                body.run();
+            } finally {
+                MessageCenter.unsubscribe(listener);
+            }
+
+            return count[0];
+        }
+
+        @Test
+        void testPasteReplaceProducesExactlyOneModificationBracket() {
+            var song = new Song();
+            song.withoutMutationTracking(() -> song.setLineWidthSs(WIDE_LINE_WIDTH_SS));
+            var line = song.getLine(0);
+            var noteA = ElementType.CROTCHET.newInstance();
+            var noteB = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 0); // select noteA
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), List.of()));
+
+            var controller = buildController(song, coordinator, mock(ScoreView.class), clipboardManager);
+
+            var notificationCount = countSongDidChangeNotifications(song, () ->
+                controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE)));
+
+            assertThat(notificationCount).isEqualTo(1);
+            // noteA was replaced by the pasted quaver; noteB survives, shifted after it.
+            assertThat(line.effectiveElementCount()).isEqualTo(2);
+            assertThat(line.getElement(1)).isSameAs(noteB);
+        }
+
+        @Test
+        void testOverflowBlockedPasteProducesNoModificationBracketAndLeavesSelectionIntact() {
+            var song = new Song();
+            song.withoutMutationTracking(() -> song.setLineWidthSs(NARROW_LINE_WIDTH_SS));
+            var line = song.getLine(0);
+            var noteA = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(noteA));
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 0);
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), List.of()));
+
+            var controller = buildController(song, coordinator, mock(ScoreView.class), clipboardManager);
+
+            var notificationCount = countSongDidChangeNotifications(song, () ->
+                controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE)));
+
+            assertThat(notificationCount).isEqualTo(0);
+            assertThat(line.effectiveElementCount()).isEqualTo(1);
+            assertThat(line.getElement(0)).isSameAs(noteA);
+            assertThat(coordinator.getActiveSelection()).isNotNull();
+        }
+
+        @Test
+        void testHandlePasteWithNullFragmentIsNoOp() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(noteA));
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 0);
+
+            var clipboardManager = new ClipboardManager(); // empty — no fragment ever set
+            var controller = buildController(song, coordinator, mock(ScoreView.class), clipboardManager);
+
+            controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE));
+
+            assertThat(line.effectiveElementCount()).isEqualTo(1);
+            assertThat(line.getElement(0)).isSameAs(noteA);
+        }
+
+        @Test
+        void testHandlePasteWithEmptyFragmentIsNoOp() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(noteA));
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 0);
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(List.of(), List.of()));
+            var controller = buildController(song, coordinator, mock(ScoreView.class), clipboardManager);
+
+            controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE));
+
+            assertThat(line.effectiveElementCount()).isEqualTo(1);
+            assertThat(line.getElement(0)).isSameAs(noteA);
         }
     }
 

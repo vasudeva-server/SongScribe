@@ -249,7 +249,7 @@ public final class ScoreView
 
         selectionCoordinator = new SelectionCoordinator(this::getSong);
         clipboardManager = new ClipboardManager();
-        EditModeManager.init(clipboardManager, selectionCoordinator, this);
+        EditModeManager.init(clipboardManager, selectionCoordinator, this, this);
 
         if (headless) {
             hierarchyNavigator = null;

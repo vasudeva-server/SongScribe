@@ -42,6 +42,7 @@ import songscribe.message.notification.DurationWasSelectedNotification;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.PasteModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
@@ -53,6 +54,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.undo.UndoController;
@@ -470,7 +472,8 @@ public class UIAction extends AbstractAction {
 
         var activeSelection = hasActiveSelection();
         var enable =
-            enableInAdjustmentMode(scoreView) &&
+            enableFromPasteMode() &&
+                enableInAdjustmentMode(scoreView) &&
                 enableInSelectMode(scoreView) &&
                 enableFromTextEditingState() &&
                 enableFromPlaybackState() &&
@@ -590,6 +593,15 @@ public class UIAction extends AbstractAction {
     protected boolean enableFromGraceModeState() {
         var result = !hasFlag(Flag.DISABLE_IN_GRACE_MODE) || !GraceModeManager.isActive();
         return result;
+    }
+
+    @Handler(priority = Message.MEDIUM_PRIORITY)
+    public void pasteModeDidChange(PasteModeDidChangeNotification message) {
+        updateEnabledState();
+    }
+
+    protected boolean enableFromPasteMode() {
+        return !PasteModeManager.isActive();
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

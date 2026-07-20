@@ -58,7 +58,11 @@ class AnnotationAttachmentTest extends UnitTest {
             assertThat(copy).isNotSameAs(original);
             assertThat(copy).isExactlyInstanceOf(AnnotationAttachment.class);
             assertThat(copy.getOwnerElement()).isSameAs(newOwner);
-            assertThat(((AnnotationAttachment) copy).getAnnotation()).isSameAs(annotation);
+            // The annotation must be deep-copied, not shared: VerticalAdjustment.adjustAnnotation
+            // mutates the Annotation in place, so a shared instance would let dragging the copy
+            // move the original too.
+            assertThat(((AnnotationAttachment) copy).getAnnotation()).isNotSameAs(annotation);
+            assertThat(((AnnotationAttachment) copy).getText()).isEqualTo(annotation.getAnnotation());
         }
     }
 

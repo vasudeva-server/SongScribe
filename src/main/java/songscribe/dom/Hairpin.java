@@ -56,6 +56,22 @@ public abstract sealed class Hairpin extends RangeElement
         super(anchorElement, endElement);
     }
 
+    /**
+     * Creates a new instance of the concrete hairpin subtype (Crescendo or Diminuendo),
+     * anchored to the given elements. Called by {@link #createCopy}, which then carries
+     * over the Hairpin fields shared by both subtypes in one place.
+     */
+    protected abstract Hairpin createHairpin(StaffElement newAnchor, StaffElement newEnd);
+
+    @Override
+    protected final RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+        var copy = createHairpin(newAnchor, newEnd);
+        copy.setX1ShiftSs(x1ShiftSs);
+        copy.setX2ShiftSs(x2ShiftSs);
+        copy.setYShiftSs(yShiftSs);
+        return copy;
+    }
+
     public double getX1ShiftSs() {
         return x1ShiftSs;
     }
