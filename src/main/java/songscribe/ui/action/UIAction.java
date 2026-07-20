@@ -105,7 +105,8 @@ public class UIAction extends AbstractAction {
         DISABLE_IN_GRACE_MODE(1 << 13),
         DISABLE_IN_SELECT_MODE(1 << 14),
         OPENS_DIALOG(1 << 15),
-        DISABLE_WHEN_MIDI_UNAVAILABLE(1 << 16);
+        DISABLE_WHEN_MIDI_UNAVAILABLE(1 << 16),
+        DISABLE_WHEN_LINE_SELECTED(1 << 17);
 
         private final int value;
 
@@ -481,6 +482,7 @@ public class UIAction extends AbstractAction {
                 enableFromBarSelection(activeSelection) &&
                 enableFromSelection(activeSelection, scoreView) &&
                 enableFromDurationSelection(activeSelection) &&
+                enableFromLineSelection(scoreView) &&
                 enableFromSongState();
         setEnabled(enable);
         return enable;
@@ -635,6 +637,18 @@ public class UIAction extends AbstractAction {
         }
 
         return true;
+    }
+
+    /**
+     * A whole-line selection reports itself as a selection of every element on the line,
+     * so element-level actions would otherwise appear applicable. Actions carrying this
+     * flag opt out of that.
+     */
+    protected boolean enableFromLineSelection(ScoreView scoreView) {
+        return (
+            !hasFlag(Flag.DISABLE_WHEN_LINE_SELECTED) ||
+                !scoreView.getSelectionCoordinator().hasLineSelection()
+        );
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

@@ -449,6 +449,13 @@ public final class SelectionCoordinator {
     }
 
     /**
+     * Returns whether any line has a line selection.
+     */
+    public boolean hasLineSelection() {
+        return getSelectedLine() != -1;
+    }
+
+    /**
      * Returns the elements in the active selection, or an empty list if nothing is selected.
      */
     public List<StaffElement> getSelectedElements() {
@@ -1026,6 +1033,24 @@ public final class SelectionCoordinator {
      */
     void triggerReflection() {
         var actions = getReflectableActions();
+        var state = getActiveSelection();
+
+        // A line selection selects the line as a whole, not its content, so no action
+        // applies. getSelection() synthesizes a full-line span for it, which would
+        // otherwise reflect as if the user had selected every element on the line.
+        if (state != null && state.isLineSelected()) {
+            // Null so the next content selection always re-reflects, even when its span
+            // happens to equal the synthesized full-line span.
+            lastReflectedSelection = null;
+
+            for (var reflectable : actions) {
+                reflectable.setSelected(false);
+            }
+
+            updateGraceNoteActionEnabled(false);
+            return;
+        }
+
         var selection = getSelection();
 
         // Selection cleared

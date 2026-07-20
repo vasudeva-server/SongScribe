@@ -40,6 +40,7 @@ import static songscribe.ui.action.Actions.TRILL_ACTION;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
 
 public class NotationMenu extends JMenu {
@@ -96,6 +97,8 @@ public class NotationMenu extends JMenu {
         // Group 6: Passage
         add(new JMenuItem(MAKE_ENDING_ACTION));
 
+        disableWhenLineSelected(this);
+
         addMenuListener(new MenuListener() {
             @Override
             public void menuSelected(MenuEvent e) {
@@ -117,6 +120,22 @@ public class NotationMenu extends JMenu {
             public void menuCanceled(MenuEvent e) {
             }
         });
+    }
+
+    /**
+     * Every action reachable from this menu operates on individual elements, so none of
+     * them apply when a whole line is selected. Tagging the built menu tree rather than
+     * each action at its construction site keeps the two from drifting apart, and catches
+     * the actions that submenus create inline rather than exposing via {@code Actions}.
+     */
+    private static void disableWhenLineSelected(MenuElement element) {
+        if (element instanceof JMenuItem menuItem && menuItem.getAction() instanceof UIAction action) {
+            action.setFlags(UIAction.Flag.DISABLE_WHEN_LINE_SELECTED);
+        }
+
+        for (var child : element.getSubElements()) {
+            disableWhenLineSelected(child);
+        }
     }
 
     private static JMenu createTupletMenu() {

@@ -732,8 +732,16 @@ public final class ScoreView
 
     @Override
     public void clearSelection() {
+        // Callers repaint the line they are acting on, not the one losing its selection,
+        // so the outgoing line would keep painting a stale highlight without this.
+        var deselectedLine = getLineComponent(selectionCoordinator.getActiveLineIndex());
+
         selectionCoordinator.clearSelection();
         selectionChanged();
+
+        if (deselectedLine != null) {
+            deselectedLine.repaint();
+        }
     }
 
     public void deselect() {

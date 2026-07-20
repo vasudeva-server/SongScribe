@@ -49,7 +49,14 @@ public final class FirstSecondEndingAction extends UIAction {
 
     public void validate(ScoreViewController ctrl) {
         cachedResult = ctrl.canMakeFirstSecondEnding();
-        setEnabled(cachedResult.isValid());
+
+        if (!cachedResult.isValid()) {
+            setEnabled(false);
+            return;
+        }
+
+        // Validity alone doesn't imply enablement, so defer to the standard chain.
+        updateEnabledState();
     }
 
     public @Nullable EndingValidationResult getCachedResult() {
