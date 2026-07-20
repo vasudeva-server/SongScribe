@@ -844,6 +844,34 @@ public final class SelectionCoordinator {
     }
 
     /**
+     * Restores only the selected state of all managed actions, leaving their enabled
+     * state untouched, then clears the saved state map.
+     * <p>
+     * This is the correct restore after a mutation such as a delete. The saved enabled
+     * states are stale — the song has changed, so each action must re-derive whether it
+     * applies to the new content. The saved selected states are not stale: they record
+     * which duration/bar button the user had chosen before selecting, which is user
+     * intent rather than a property of the song.
+     * <p>
+     * Discarding the selected states instead would latch both duration action groups
+     * empty for the rest of the session, because selection reflection deselects every
+     * duration button for a non-uniform selection and nothing else ever reselects one.
+     */
+    public void restoreSelectedActionStates() {
+        if (savedActionStates.isEmpty()) {
+            return;
+        }
+
+        for (var entry : savedActionStates.entrySet()) {
+            if (entry.getKey() instanceof UIAction.Selectable selectable) {
+                selectable.setSelected(entry.getValue().selected());
+            }
+        }
+
+        savedActionStates.clear();
+    }
+
+    /**
      * Clears saved action states without restoring them.
      * Used when the operation that saved states completes successfully
      * and the current state should be kept.

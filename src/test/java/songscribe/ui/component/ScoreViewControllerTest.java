@@ -1310,12 +1310,22 @@ class ScoreViewControllerTest extends UnitTest {
         // into other tests that share the JVM.
         private @org.jspecify.annotations.Nullable DurationActionGroup originalDurationActionGroup;
 
+        // Entering edit mode always delegates to EditModeManager.makePreviewElement(), which
+        // reads Actions constants this class does not initialize. Stub it out for the whole
+        // nested class; its own type-derivation logic is covered by EditModeManagerTest.
+        private MockedStatic<EditModeManager> editModeManagerMock;
+        private StaffElement previewElementStub;
+
         @BeforeEach
         void setUp() {
             scoreMock = mock(ScoreView.class);
             coordinatorMock = mock(SelectionCoordinator.class);
             originalDurationActionGroup = Actions.DURATION_ACTION_GROUP;
             Actions.DURATION_ACTION_GROUP = mock(DurationActionGroup.class);
+
+            previewElementStub = mock(StaffElement.class);
+            editModeManagerMock = mockStatic(EditModeManager.class);
+            editModeManagerMock.when(EditModeManager::makePreviewElement).thenReturn(previewElementStub);
 
             controller = new ScoreViewController(
                 scoreMock,
@@ -1331,6 +1341,7 @@ class ScoreViewControllerTest extends UnitTest {
         @SuppressWarnings("NullAway")
         @AfterEach
         void tearDown() {
+            editModeManagerMock.close();
             Actions.DURATION_ACTION_GROUP = originalDurationActionGroup;
         }
 
@@ -1354,22 +1365,17 @@ class ScoreViewControllerTest extends UnitTest {
             verify(scoreMock).clearSelection();
         }
 
+        /**
+         * Edit entry must delegate unconditionally to {@link EditModeManager#makePreviewElement()},
+         * which supplies a default type when no duration button is selected. A delete leaves both
+         * duration groups deselected, so a controller that skipped the call in that case would
+         * leave edit mode with no preview element and no way to ever recreate one.
+         */
         @Test
         void testModeDidChangeSyncsPreviewElementOnEditEntry() {
-            var mockAction = mock(ElementTypeAction.class);
-            when(mockAction.getType()).thenReturn(ElementType.CROTCHET);
-            when(Actions.DURATION_ACTION_GROUP.getSelected()).thenReturn(mockAction);
+            controller.modeDidChange(notificationFor(Mode.EDIT));
 
-            var mockPreviewElement = mock(StaffElement.class);
-
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
-                emm.when(() -> EditModeManager.makePreviewElement(ElementType.CROTCHET))
-                    .thenReturn(mockPreviewElement);
-
-                controller.modeDidChange(notificationFor(Mode.EDIT));
-            }
-
-            verify(scoreMock).setPreviewElement(mockPreviewElement);
+            verify(scoreMock).setPreviewElement(previewElementStub);
         }
 
         @Test

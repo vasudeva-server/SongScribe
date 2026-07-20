@@ -22,8 +22,6 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
-import java.util.Optional;
-
 import net.engio.mbassy.listener.Handler;
 
 import org.jspecify.annotations.Nullable;
@@ -146,12 +144,17 @@ public final class ScoreViewController {
         updatePreviewElement();
     }
 
+    /**
+     * Syncs the preview element with the selected duration or bar action.
+     * <p>
+     * Delegates to {@link EditModeManager#makePreviewElement()}, which prefers the selected
+     * action's type but falls back to a default type when neither action group has a selection.
+     * That fallback matters: a delete discards the saved action states, which can leave both
+     * groups deselected, and without it edit mode would be left with no preview element at all
+     * and no way to ever recreate one.
+     */
     private void syncPreviewElementWithSelectedDuration() {
-        var selected = Optional.ofNullable(Actions.DURATION_ACTION_GROUP.getSelected()).orElseGet(() -> Actions.NON_DURATION_ACTION_GROUP.getSelected());
-
-        if (selected != null) {
-            score.setPreviewElement(EditModeManager.makePreviewElement(selected.getType()));
-        }
+        score.setPreviewElement(EditModeManager.makePreviewElement());
     }
 
     private void updatePreviewElement() {
@@ -504,7 +507,7 @@ public final class ScoreViewController {
                 });
             }
 
-            selectionCoordinator.clearSavedActionStates();
+            selectionCoordinator.restoreSelectedActionStates();
             selectionCoordinator.clearLyricSelection();
             score.selectionChanged();
             score.repaint();
@@ -606,10 +609,10 @@ public final class ScoreViewController {
                 () -> song.removeLine(selectionCoordinator.getSelectedLine()));
         }
 
-        // Discard saved action states — the song has changed, so restoring
-        // pre-selection states would be stale. Individual action handlers will
-        // re-evaluate their enabled state from the current context.
-        selectionCoordinator.clearSavedActionStates();
+        // Restore the pre-selection selected states but not the enabled states — the song
+        // has changed, so individual action handlers must re-evaluate enablement from the
+        // current context, while the user's chosen duration button survives the delete.
+        selectionCoordinator.restoreSelectedActionStates();
         score.deselect();
     }
 
