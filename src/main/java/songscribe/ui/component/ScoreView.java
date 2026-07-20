@@ -74,6 +74,7 @@ import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.ScoreActions;
+import songscribe.layout.Ending;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.SongLayoutMetrics;
 import songscribe.layout.LyricRenderMetrics;
@@ -648,6 +649,11 @@ public final class ScoreView
     @Override
     public boolean isSlideSelected(int elementIndex, int lineIndex) {
         return selectionCoordinator.isSlideSelected(elementIndex, lineIndex);
+    }
+
+    @Override
+    public boolean isEndingSelected(Ending ending, int lineIndex) {
+        return selectionCoordinator.isEndingSelected(ending, lineIndex);
     }
 
     @Override

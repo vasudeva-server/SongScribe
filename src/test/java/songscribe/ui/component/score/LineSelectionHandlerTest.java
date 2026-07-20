@@ -25,12 +25,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -41,9 +43,11 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.layout.Ending;
 import songscribe.layout.LayoutResult;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.renderer.EndingRenderer;
 import songscribe.ui.renderer.SlideRenderer;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -61,6 +65,7 @@ class LineSelectionHandlerTest extends UnitTest {
 
     private MockedStatic<ElementHitTest> elementHitTestMock;
     private MockedStatic<SlideRenderer> slideRendererMock;
+    private MockedStatic<EndingRenderer> endingRendererMock;
     private MockedStatic<ScaleContext> scaleContextMock;
 
     private LineComponent lc;
@@ -71,6 +76,7 @@ class LineSelectionHandlerTest extends UnitTest {
     void setUp() {
         elementHitTestMock = mockStatic(ElementHitTest.class);
         slideRendererMock = mockStatic(SlideRenderer.class);
+        endingRendererMock = mockStatic(EndingRenderer.class);
         scaleContextMock = mockStatic(ScaleContext.class);
 
         lc = mock(LineComponent.class);
@@ -81,14 +87,37 @@ class LineSelectionHandlerTest extends UnitTest {
         when(lc.getLineSelectionState()).thenReturn(null);
         when(lc.getLine()).thenReturn(null);
 
+        // The hit-test cascade consults the ending renderer singleton, which is statically
+        // mocked here — give it a default no-hit stub so every test has a usable instance.
+        stubEndingHit(null);
+
         handler = new LineSelectionHandler(lc);
     }
 
     @AfterEach
     void tearDown() {
         scaleContextMock.close();
+        endingRendererMock.close();
         slideRendererMock.close();
         elementHitTestMock.close();
+    }
+
+    /**
+     * Stubs {@link EndingRenderer#getInstance} so its {@code hitTestEnding} returns
+     * {@code ending} (or no hit when null).
+     */
+    private void stubEndingHit(@Nullable Ending ending) {
+        var mockRenderer = mock(EndingRenderer.class);
+        endingRendererMock.when(EndingRenderer::getInstance).thenReturn(mockRenderer);
+        when(mockRenderer.hitTestEnding(anyDouble(), anyDouble(), any(), any(), anyDouble()))
+            .thenReturn(ending);
+    }
+
+    /**
+     * Builds a standalone {@link Ending}; hit results carry it by reference only.
+     */
+    private static Ending newEnding() {
+        return new Ending(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
     }
 
     // -------------------------------------------------------------------------
@@ -119,6 +148,71 @@ class LineSelectionHandlerTest extends UnitTest {
             var mockRenderer = mock(SlideRenderer.class);
             slideRendererMock.when(SlideRenderer::getInstance).thenReturn(mockRenderer);
             when(mockRenderer.hitTestSlide(anyDouble(), anyDouble(), any())).thenReturn(-1);
+        }
+
+        /**
+         * Registers a line with two notes as the component's selection state, so the
+         * hit-test cascade can reach the ending stage (which requires a non-null state).
+         */
+        private void givenLineWithSelectionState() {
+            var song = new Song();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> {
+                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(ElementType.CROTCHET.newInstance());
+            });
+            when(lc.getLineSelectionState()).thenReturn(new LineSelectionState(line));
+        }
+
+        @Test
+        void testPointAtEndingReturnsEnding() {
+            givenLineWithSelectionState();
+            var ending = newEnding();
+            stubEndingHit(ending);
+
+            var result = handler.hitTest(new Point(0, 0));
+
+            assertThat(result).isInstanceOf(HitResult.Ending.class);
+            assertThat(((HitResult.Ending) result).ending()).isSameAs(ending);
+        }
+
+        // The cascade checks slides before endings, so a point hitting both resolves to the slide.
+        @Test
+        void testPointAtBothSlideAndEndingReturnsSlide() {
+            givenLineWithSelectionState();
+            stubEndingHit(newEnding());
+
+            var mockRenderer = mock(SlideRenderer.class);
+            slideRendererMock.when(SlideRenderer::getInstance).thenReturn(mockRenderer);
+            when(mockRenderer.hitTestSlide(anyDouble(), anyDouble(), any())).thenReturn(1);
+
+            var result = handler.hitTest(new Point(0, 0));
+
+            assertThat(result).isInstanceOf(HitResult.Slide.class);
+        }
+
+        // The cascade checks endings before the staff line, so an ending over the staff
+        // line wins even at a Y that would otherwise register as a staff-line hit.
+        @Test
+        void testPointAtEndingOverStaffLineReturnsEnding() {
+            givenLineWithSelectionState();
+            var ending = newEnding();
+            stubEndingHit(ending);
+
+            var result = handler.hitTest(new Point(0, (int) MIDDLE_LINE_Y_SS));
+
+            assertThat(result).isInstanceOf(HitResult.Ending.class);
+        }
+
+        @Test
+        void testNoLineSelectionStateSkipsEndingHitTest() {
+            // getLineSelectionState() is null by default; the ending stage must be skipped
+            // rather than consulting the renderer, so the cascade falls through to Nothing.
+            stubEndingHit(newEnding());
+
+            var result = handler.hitTest(new Point(1000, 1000));
+
+            assertThat(result).isInstanceOf(HitResult.Nothing.class);
         }
 
         @Test
@@ -355,6 +449,86 @@ class LineSelectionHandlerTest extends UnitTest {
     // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
+
+    // -------------------------------------------------------------------------
+    // handlePress — HitResult.Ending arm
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testPressOnEndingSelectsItAndNotifiesScoreView() {
+        var song = new Song();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> {
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(ElementType.CROTCHET.newInstance());
+        });
+        var lineSelState = new LineSelectionState(line);
+        when(lc.getLineSelectionState()).thenReturn(lineSelState);
+        when(lc.getLineIndex()).thenReturn(0);
+        when(mockScoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+
+        scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble()))
+            .thenAnswer(inv -> inv.getArgument(0));
+        elementHitTestMock.when(() -> ElementHitTest.hitTestElement(any(), any())).thenReturn(-1);
+
+        var slideMockRenderer = mock(SlideRenderer.class);
+        slideRendererMock.when(SlideRenderer::getInstance).thenReturn(slideMockRenderer);
+        when(slideMockRenderer.hitTestSlide(anyDouble(), anyDouble(), any())).thenReturn(-1);
+
+        var ending = newEnding();
+        stubEndingHit(ending);
+
+        handler.handlePress(pressEvent(0, 0));
+
+        assertThat(lineSelState.isEndingSelected(ending))
+            .as("ending is selected after pressing on it")
+            .isTrue();
+        verify(mockScoreView).selectionChanged();
+    }
+
+    /**
+     * A press that selects an ending must be marked handled, so a rubber-band drag
+     * does not start and immediately replace the ending selection.
+     */
+    @Test
+    void testPressOnEndingSuppressesRubberBandDrag() {
+        var song = new Song();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> {
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(ElementType.CROTCHET.newInstance());
+        });
+        var lineSelState = new LineSelectionState(line);
+        when(lc.getLineSelectionState()).thenReturn(lineSelState);
+        when(lc.getLineIndex()).thenReturn(0);
+        when(lc.getWidth()).thenReturn(1000);
+        when(lc.getHeight()).thenReturn(1000);
+        when(mockScoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+
+        scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble()))
+            .thenAnswer(inv -> inv.getArgument(0));
+        elementHitTestMock.when(() -> ElementHitTest.hitTestElement(any(), any())).thenReturn(-1);
+
+        var slideMockRenderer = mock(SlideRenderer.class);
+        slideRendererMock.when(SlideRenderer::getInstance).thenReturn(slideMockRenderer);
+        when(slideMockRenderer.hitTestSlide(anyDouble(), anyDouble(), any())).thenReturn(-1);
+
+        var ending = newEnding();
+        stubEndingHit(ending);
+
+        handler.handlePress(pressEvent(0, 0));
+        handler.handleDrag(dragEvent(DRAG_TARGET_X, DRAG_TARGET_Y));
+
+        assertThat(lineSelState.isEndingSelected(ending))
+            .as("ending stays selected after a drag following the press")
+            .isTrue();
+        assertThat(lineSelState.hasElementSelection())
+            .as("no rubber-band element selection was started")
+            .isFalse();
+    }
+
+    private static final int DRAG_TARGET_X = 30;
+    private static final int DRAG_TARGET_Y = 30;
 
     private MouseEvent pressEvent(int x, int y) {
         // Use the 10-arg constructor that sets xAbs/yAbs (screen coords) so

@@ -62,6 +62,7 @@ public final class DeleteAction extends PasteboardAction {
             selection.hasLyricSelection() ||
                 selection.hasActiveSelection() ||
                 selection.hasSlideSelection() ||
+                selection.hasEndingSelection() ||
                 scoreView.canDeleteLine();
         setEnabled(isEnabled);
         return isEnabled;

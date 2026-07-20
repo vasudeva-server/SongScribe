@@ -168,6 +168,13 @@ public final class OpNames {
     }
 
     /**
+     * Names an ending deletion.
+     */
+    public static String deleteEndingLabel() {
+        return Strings.get(Strings.ACTION_EDIT_OP_DELETE_ENDING);
+    }
+
+    /**
      * Names a whole-line deletion.
      */
     public static String deleteLineLabel() {

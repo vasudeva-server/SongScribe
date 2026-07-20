@@ -99,6 +99,18 @@ class DeleteActionTest extends MainFrameMockTest {
     }
 
     @Test
+    void testDeleteEnabledForEndingSelection() {
+        when(mockEnv().coordinator().hasEndingSelection()).thenReturn(true);
+
+        var action = DeleteAction.createAction(mainFrame());
+        action.setEnabled(false);
+
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(action.isEnabled()).isTrue();
+    }
+
+    @Test
     void testDeleteEnabledWhenCanDeleteLine() {
         when(mockEnv().score().canDeleteLine()).thenReturn(true);
 

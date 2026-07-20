@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.layout.Ending;
 
 /**
  * Unit tests for the cross-line guard logic and per-state delegation in
@@ -197,6 +198,79 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
 
         assertThat(coordinator.isSlideSelected(ELEMENT_0, LINE_0))
             .as("isGlissandoSelected(0, line 0) when glissando at element 0 is selected")
+            .isTrue();
+    }
+
+    // -------------------------------------------------------------------------
+    // isEndingSelected / hasEndingSelection
+    // -------------------------------------------------------------------------
+
+    /**
+     * Builds a standalone {@link Ending}. Ending selection is tracked by reference
+     * identity, so the ending does not need to be attached to a line for these tests.
+     */
+    private static Ending newEnding() {
+        return new Ending(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
+    }
+
+    /**
+     * Cross-line guard: isEndingSelected returns false when the queried lineIndex
+     * does not match the active line — even though the active line has an ending selected.
+     */
+    @Test
+    void testIsEndingSelectedReturnsFalseForInactiveLine() {
+        var coordinator = twoLineCoordinator();
+        var ending = newEnding();
+
+        ReflectionTestHelper.selectEnding(coordinator, ending);
+
+        assertThat(coordinator.isEndingSelected(ending, LINE_1))
+            .as("isEndingSelected(ending, line 1) when line 0 is active and has that ending selected")
+            .isFalse();
+    }
+
+    /**
+     * Delegation: isEndingSelected delegates to the state for the active line and
+     * returns true when that state has the ending selected.
+     */
+    @Test
+    void testIsEndingSelectedDelegatesToStateForActiveLine() {
+        var coordinator = twoLineCoordinator();
+        var ending = newEnding();
+
+        ReflectionTestHelper.selectEnding(coordinator, ending);
+
+        assertThat(coordinator.isEndingSelected(ending, LINE_0))
+            .as("isEndingSelected(ending, line 0) when that ending is selected")
+            .isTrue();
+    }
+
+    /**
+     * A different ending on the active line is not reported as selected.
+     */
+    @Test
+    void testIsEndingSelectedReturnsFalseForDifferentEnding() {
+        var coordinator = twoLineCoordinator();
+
+        ReflectionTestHelper.selectEnding(coordinator, newEnding());
+
+        assertThat(coordinator.isEndingSelected(newEnding(), LINE_0))
+            .as("isEndingSelected(other ending, line 0) when a different ending is selected")
+            .isFalse();
+    }
+
+    @Test
+    void testHasEndingSelectionReflectsActiveLineState() {
+        var coordinator = twoLineCoordinator();
+
+        assertThat(coordinator.hasEndingSelection())
+            .as("hasEndingSelection() before anything is selected")
+            .isFalse();
+
+        ReflectionTestHelper.selectEnding(coordinator, newEnding());
+
+        assertThat(coordinator.hasEndingSelection())
+            .as("hasEndingSelection() after selecting an ending on the active line")
             .isTrue();
     }
 }

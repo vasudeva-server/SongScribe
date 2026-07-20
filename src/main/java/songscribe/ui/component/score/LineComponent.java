@@ -36,6 +36,7 @@ import songscribe.ui.component.LyricEditor;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.component.ScoreView;
+import songscribe.layout.Ending;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
@@ -94,6 +95,15 @@ public class LineComponent extends ScoreComponent
          * @return true if the slide is selected
          */
         boolean isSlideSelected(int elementIndex, int lineIndex);
+
+        /**
+         * Returns whether the given ending is selected.
+         *
+         * @param ending    The ending
+         * @param lineIndex The line index
+         * @return true if the ending is selected
+         */
+        boolean isEndingSelected(Ending ending, int lineIndex);
 
         boolean isLyricSelected(StaffElement element, int verse, int lineIndex);
     }

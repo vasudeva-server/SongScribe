@@ -25,8 +25,11 @@ import static songscribe.util.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.Line;
 import songscribe.layout.Ending;
+import songscribe.layout.LayoutResult;
 import songscribe.layout.LineEndingSupport;
 import songscribe.engraving.LineThickness;
 import songscribe.shape.EndingBracketShape;
@@ -89,27 +92,102 @@ public final class EndingRenderer {
 
             var yTopSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
 
+            // The color depends only on the ending, so resolve it once rather than per bracket.
+            var color = determineEndingColor(ending, invariants);
+
             for (var bracket : ending.getBracketRanges()) {
-                drawEnding(g2, invariants, ending, bracket, yTopSs);
+                drawEnding(g2, ending, bracket, yTopSs, color);
             }
         }
+    }
+
+    /**
+     * Hit-tests a click point against all endings on {@code line}, returning the ending
+     * whose bracket-and-margin-and-label bounding box (from its {@link
+     * LayoutResult.DecorationLayout}) contains the point, or {@code null} if none.
+     * <p>
+     * Containment follows {@link Rectangle2D#contains}, so the left and top edges are
+     * inclusive and the right and bottom edges are exclusive. When endings overlap, the
+     * first match in document order wins.
+     *
+     * @param clickXSs      Click X in staff spaces (line-local, same space as DecorationLayout.xSs)
+     * @param clickYSs      Click Y in staff spaces (component space, relative to the component top)
+     * @param line          The line
+     * @param layoutResult  The line's layout result, or null if layout has not run yet
+     * @param middleLineYSs The line's middle-staff-line Y in component space (staff spaces)
+     */
+    public @Nullable Ending hitTestEnding(
+        double clickXSs,
+        double clickYSs,
+        Line line,
+        @Nullable LayoutResult layoutResult,
+        double middleLineYSs
+    ) {
+        if (layoutResult == null) {
+            return null;
+        }
+
+        for (var ending : LineEndingSupport.findEndings(line)) {
+            var decorationLayout = layoutResult.getDecorationLayout(ending);
+
+            if (decorationLayout == null) {
+                continue;
+            }
+
+            var yTopSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), middleLineYSs);
+            var hitRect = new Rectangle2D.Double(
+                decorationLayout.xSs(),
+                yTopSs,
+                decorationLayout.widthSs(),
+                decorationLayout.heightSs() + decorationLayout.marginSs());
+
+            if (hitRect.contains(clickXSs, clickYSs)) {
+                return ending;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the selection color if {@code ending} is selected, otherwise the
+     * standard element color.
+     * <p>
+     * Package-private so it can be unit-tested directly, as with
+     * {@link SlideRenderer#determineSlideColor}.
+     */
+    Color determineEndingColor(Ending ending, LineInvariants invariants) {
+        // The selection provider is wired independently of edit mode, so it can report a
+        // selection while the score is not editable. Selection highlighting is an edit-mode
+        // affordance only, matching BeamGroupRenderer.getBeamHighlightColor.
+        if (!invariants.isEditMode()) {
+            return RenderingUtils.ELEMENT_COLOR;
+        }
+
+        var selectionProvider = invariants.getSelectionProvider();
+
+        if (selectionProvider != null && selectionProvider.isEndingSelected(ending, invariants.getLineIndex())) {
+            return invariants.getSelectionColor();
+        }
+
+        return RenderingUtils.ELEMENT_COLOR;
     }
 
     /**
      * Draws a single ending bracket.
      *
      * @param g2      Graphics context
-     * @param invariants     Line invariants
      * @param ending  The ending element
      * @param bracket The bracket range to draw
      * @param yTopSs  Top Y of the bracket in component staff-space units
+     * @param color   The color to draw the bracket and its label in
      */
     private void drawEnding(
         Graphics2D g2,
-        LineInvariants invariants,
         Ending ending,
         Ending.BracketRange bracket,
-        double yTopSs
+        double yTopSs,
+        Color color
     ) {
         var x1 = bracket.x1Ss();
         var x2 = bracket.x2Ss();
@@ -118,7 +196,7 @@ public final class EndingRenderer {
         var thicknessSs = LineThickness.VOLTA_BRACKET_SS;
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setColor(RenderingUtils.ELEMENT_COLOR);
+            g2.setColor(color);
 
             // Bracket as a single path so the top corners join cleanly: up the left leg, across
             // the top, and (when present) down the right leg.

@@ -31,6 +31,8 @@ sealed interface HitResult {
 
     record Slide(int elementIndex) implements HitResult {}
 
+    record Ending(songscribe.layout.Ending ending) implements HitResult {}
+
     record GraceGlissando() implements HitResult {}
 
     record StaffLine() implements HitResult {}

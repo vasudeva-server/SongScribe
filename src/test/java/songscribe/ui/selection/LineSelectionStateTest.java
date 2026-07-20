@@ -30,9 +30,18 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
+import songscribe.layout.Ending;
 import songscribe.ui.action.TupletAction;
 
 class LineSelectionStateTest extends UnitTest {
+
+    /**
+     * Builds an {@link Ending} spanning the line's first two elements. The line must
+     * already contain at least two elements.
+     */
+    private static Ending makeEnding(Line line) {
+        return new Ending(line.getElement(0), line.getElement(1));
+    }
 
     // -- clearSelection --
 
@@ -163,6 +172,146 @@ class LineSelectionStateTest extends UnitTest {
         state.selectSlide(0);
 
         assertThat(state.hasSlideSelection()).isTrue();
+    }
+
+    // -- selectEnding --
+
+    @Test
+    void testSelectEndingClearsSelectionAndSetsEndingAndFiresCallback() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var ending = makeEnding(line);
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+        state.setLineSelected(true);
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.selectEnding(ending);
+
+        assertThat(state.getSelectionBegin()).isEqualTo(-1);
+        assertThat(state.getSelectionEnd()).isEqualTo(-1);
+        assertThat(state.getSelectionAnchor()).isEqualTo(-1);
+        assertThat(state.isLineSelected()).isFalse();
+        assertThat(state.isEndingSelected(ending)).isTrue();
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    @Test
+    void testSelectEndingClearsSlideSelection() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var ending = makeEnding(line);
+        var state = new LineSelectionState(line);
+        state.selectSlide(0);
+        assertThat(state.hasSlideSelection()).isTrue();
+
+        state.selectEnding(ending);
+
+        assertThat(state.hasSlideSelection()).isFalse();
+        assertThat(state.isEndingSelected(ending)).isTrue();
+    }
+
+    @Test
+    void testSelectSlideClearsEndingSelection() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var ending = makeEnding(line);
+        var state = new LineSelectionState(line);
+        state.selectEnding(ending);
+        assertThat(state.hasEndingSelection()).isTrue();
+
+        state.selectSlide(0);
+
+        assertThat(state.hasEndingSelection()).isFalse();
+        assertThat(state.isSlideSelected(0)).isTrue();
+    }
+
+    // -- isEndingSelected --
+
+    @Test
+    void testIsEndingSelectedReturnsTrueOnlyForMatchingEnding() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var firstEnding = makeEnding(line);
+        var secondEnding = new Ending(line.getElement(2), line.getElement(3));
+        var state = new LineSelectionState(line);
+        state.selectEnding(firstEnding);
+
+        assertThat(state.isEndingSelected(firstEnding)).isTrue();
+        assertThat(state.isEndingSelected(secondEnding)).isFalse();
+    }
+
+    // -- getSelectedEnding --
+
+    @Test
+    void testGetSelectedEndingReturnsNullInitiallyAndEndingAfterSelectEnding() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var ending = makeEnding(line);
+        var state = new LineSelectionState(line);
+
+        assertThat(state.getSelectedEnding()).isNull();
+
+        state.selectEnding(ending);
+
+        assertThat(state.getSelectedEnding()).isSameAs(ending);
+    }
+
+    // -- hasEndingSelection --
+
+    @Test
+    void testHasEndingSelectionReturnsFalseInitiallyAndTrueAfterSelectEnding() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var ending = makeEnding(line);
+        var state = new LineSelectionState(line);
+
+        assertThat(state.hasEndingSelection()).isFalse();
+
+        state.selectEnding(ending);
+
+        assertThat(state.hasEndingSelection()).isTrue();
+    }
+
+    @Test
+    void testSetSelectionFromClickClearsEndingSelection() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var ending = makeEnding(line);
+        var state = new LineSelectionState(line);
+        state.selectEnding(ending);
+        assertThat(state.hasEndingSelection()).isTrue();
+
+        state.setSelectionFromClick(1);
+
+        assertThat(state.hasEndingSelection()).isFalse();
+    }
+
+    @Test
+    void testSetLineSelectedTrueClearsEndingSelection() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var ending = makeEnding(line);
+        var state = new LineSelectionState(line);
+        state.selectEnding(ending);
+        assertThat(state.hasEndingSelection()).isTrue();
+
+        state.setLineSelected(true);
+
+        assertThat(state.hasEndingSelection()).isFalse();
     }
 
     // -- canToggleTuplet --

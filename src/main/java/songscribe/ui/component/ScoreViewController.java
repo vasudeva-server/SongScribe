@@ -64,6 +64,7 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.layout.Ending;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
@@ -603,6 +604,15 @@ public final class ScoreViewController {
             if (slide != null) {
                 line.withModification(OpNames.deleteSlideLabel(slide), () -> line.modifyElement(
                     elementIndex, ElementField.SLIDE, slideElement::removeSlide));
+            }
+        } else if (state != null && state.hasEndingSelection()) {
+            var line = state.getLine();
+            var ending = state.getSelectedEnding();
+
+            // hasEndingSelection() guarantees an ending is present; guard anyway
+            // so the @Nullable getSelectedEnding() result is not passed on unchecked.
+            if (ending != null) {
+                line.withModification(OpNames.deleteEndingLabel(), () -> line.removeRangeElement(ending));
             }
         } else if (score.canDeleteLine()) {
             song.withModification(OpNames.deleteLineLabel(),

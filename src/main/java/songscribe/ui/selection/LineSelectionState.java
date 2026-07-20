@@ -28,6 +28,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
+import songscribe.layout.Ending;
 
 /**
  * Per-line selection state and query methods.
@@ -45,6 +46,8 @@ public final class LineSelectionState {
     private int selectionAnchor = -1;
     private boolean lineSelected = false;
     private int selectedSlideElementIndex = -1;
+    @Nullable
+    private Ending selectedEnding = null;
 
     @Nullable
     private Boolean canTie = null;
@@ -73,11 +76,23 @@ public final class LineSelectionState {
         return lineSelected;
     }
 
+    /**
+     * Clears the slide and ending selections.
+     * <p>
+     * Slides and endings are decorations selected on their own, mutually exclusive with
+     * each other and with any element or line selection. Every method that establishes a
+     * different selection clears both, so they are cleared together here.
+     */
+    private void clearDecorationSelections() {
+        selectedSlideElementIndex = -1;
+        selectedEnding = null;
+    }
+
     public void setLineSelected(boolean lineSelected) {
         this.lineSelected = lineSelected;
 
         if (lineSelected) {
-            selectedSlideElementIndex = -1;
+            clearDecorationSelections();
         }
 
         selectionChangeCallback.run();
@@ -102,6 +117,7 @@ public final class LineSelectionState {
      * clearing any element or line selection.
      */
     public void selectSlide(int elementIndex) {
+        clearDecorationSelections();
         selectedSlideElementIndex = elementIndex;
         selectionBegin = -1;
         selectionEnd = -1;
@@ -115,6 +131,41 @@ public final class LineSelectionState {
      */
     public boolean isSlideSelected(int elementIndex) {
         return selectedSlideElementIndex == elementIndex;
+    }
+
+    /**
+     * Returns whether an ending is selected on this line.
+     */
+    public boolean hasEndingSelection() {
+        return selectedEnding != null;
+    }
+
+    /**
+     * Returns the selected ending, or null if none.
+     */
+    @Nullable
+    public Ending getSelectedEnding() {
+        return selectedEnding;
+    }
+
+    /**
+     * Selects the given ending, clearing any element, line, or slide selection.
+     */
+    public void selectEnding(Ending ending) {
+        clearDecorationSelections();
+        selectedEnding = ending;
+        selectionBegin = -1;
+        selectionEnd = -1;
+        selectionAnchor = -1;
+        lineSelected = false;
+        selectionChangeCallback.run();
+    }
+
+    /**
+     * Returns whether the given ending is selected.
+     */
+    public boolean isEndingSelected(Ending ending) {
+        return selectedEnding == ending;
     }
 
     @Nullable
@@ -158,7 +209,7 @@ public final class LineSelectionState {
         selectionEnd = -1;
         selectionAnchor = -1;
         lineSelected = false;
-        selectedSlideElementIndex = -1;
+        clearDecorationSelections();
         selectionChangeCallback.run();
     }
 
@@ -176,7 +227,7 @@ public final class LineSelectionState {
         selectionBegin = 0;
         selectionEnd = end;
         selectionAnchor = 0;
-        selectedSlideElementIndex = -1;
+        clearDecorationSelections();
         selectionChangeCallback.run();
     }
 
@@ -245,7 +296,7 @@ public final class LineSelectionState {
         selectionBegin = elementIndex;
         selectionEnd = elementIndex;
         selectionAnchor = elementIndex;
-        selectedSlideElementIndex = -1;
+        clearDecorationSelections();
         selectionChangeCallback.run();
     }
 
@@ -274,7 +325,7 @@ public final class LineSelectionState {
 
         selectionBegin = Math.min(selectionAnchor, elementIndex);
         selectionEnd = Math.max(selectionAnchor, elementIndex);
-        selectedSlideElementIndex = -1;
+        clearDecorationSelections();
         selectionChangeCallback.run();
     }
 
@@ -288,7 +339,7 @@ public final class LineSelectionState {
         }
 
         selectionEnd = elementIndex;
-        selectedSlideElementIndex = -1;
+        clearDecorationSelections();
         selectionChangeCallback.run();
     }
 
@@ -301,7 +352,7 @@ public final class LineSelectionState {
         selectionBegin = begin;
         selectionEnd = end;
         selectionAnchor = begin;
-        selectedSlideElementIndex = -1;
+        clearDecorationSelections();
         selectionChangeCallback.run();
     }
 

@@ -51,6 +51,8 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
+import songscribe.layout.Ending;
+import songscribe.layout.LineEndingSupport;
 import songscribe.message.Message;
 import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.InsertLineCommand;
@@ -503,6 +505,41 @@ class ScoreViewControllerTest extends UnitTest {
             // relayout — a fall occupies horizontal space, so deleting it must reflow the line. A
             // bare removeSlide() leaves the song unmodified and the layout stale.
             assertThat(song.isModified()).isTrue();
+        }
+
+        // Ending selection removes the ending from the line and is recorded as a mutation
+        @Test
+        void testHandleDeleteEndingSelectionRemovesEndingFromLine() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = crotchet();
+            var split = ElementType.REPEAT_RIGHT.newInstance();
+            var noteB = crotchet();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(split);
+                line.addElement(noteB);
+            });
+
+            var ending = new Ending(noteA, noteB);
+            song.withoutMutationTracking(() -> line.addRangeElement(ending));
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectEnding(coordinator, ending);
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            assertThat(LineEndingSupport.findEndings(line)).doesNotContain(ending);
+            // The removal must be recorded as a mutation so undo restores the ending.
+            assertThat(song.isModified()).isTrue();
+            // The deleted ending must not stay selected, or Delete would remain enabled while
+            // pointing at an ending no longer in the line. ScoreView owns the actual clearing,
+            // so at this seam the controller's contract is that it asks for it.
+            verify(scoreMock).deselect();
         }
 
         // Row 19: no element/glissando selection, canDeleteLine() true → removes line

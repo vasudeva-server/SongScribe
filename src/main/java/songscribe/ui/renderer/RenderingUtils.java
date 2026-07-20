@@ -166,7 +166,21 @@ public final class RenderingUtils {
      * @return the Y coordinate in component space
      */
     static double layoutYToComponentYSs(double layoutYSs, LineInvariants invariants) {
-        return invariants.getMiddleLineYSs() + layoutYSs;
+        return layoutYToComponentYSs(layoutYSs, invariants.getMiddleLineYSs());
+    }
+
+    /**
+     * Converts a layout Y coordinate to component space, given the middle-line Y directly.
+     * <p>
+     * Hit-testing runs outside a render pass and so has no {@link LineInvariants} to hand;
+     * it calls this overload so hit geometry cannot drift from what was drawn.
+     *
+     * @param layoutYSs     the Y coordinate in layout space (from a DecorationLayout)
+     * @param middleLineYSs the line's middle-staff-line Y in component space
+     * @return the Y coordinate in component space
+     */
+    static double layoutYToComponentYSs(double layoutYSs, double middleLineYSs) {
+        return middleLineYSs + layoutYSs;
     }
 
     // ==========================================================================

@@ -28,6 +28,7 @@ import songscribe.UnitTest;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.layout.Ending;
 import songscribe.ui.action.UIAction;
 
 /**
@@ -172,6 +173,15 @@ public final class ReflectionTestHelper {
         coordinator.saveActionStates();
         var state = Objects.requireNonNull(coordinator.getActiveSelection());
         state.selectSlide(elementIndex);
+    }
+
+    /**
+     * Selects the given ending on the coordinator's active line.
+     */
+    public static void selectEnding(SelectionCoordinator coordinator, Ending ending) {
+        coordinator.saveActionStates();
+        var state = Objects.requireNonNull(coordinator.getActiveSelection());
+        state.selectEnding(ending);
     }
 
     /**

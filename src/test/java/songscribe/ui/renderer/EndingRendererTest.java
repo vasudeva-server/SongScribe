@@ -24,15 +24,18 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -43,10 +46,13 @@ import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.Ending;
 import songscribe.layout.LayoutResult;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 /**
- * Tests for {@link EndingRenderer#renderEndings}: verifies the skip path when no
- * DecorationLayout is present, and the Y-coordinate translation when one is.
+ * Tests for {@link EndingRenderer#renderEndings} (the skip path when no DecorationLayout is
+ * present, and the Y-coordinate translation when one is) and {@link EndingRenderer#hitTestEnding}
+ * (bracket/margin/label bounding-box containment).
  */
 class EndingRendererTest extends UnitTest {
 
@@ -158,5 +164,259 @@ class EndingRendererTest extends UnitTest {
         assertThat(placedShapes).isNotEmpty();
         var bracketBounds = placedShapes.getFirst().getBounds2D();
         assertThat(bracketBounds.getMinY()).isCloseTo(expectedTopYSs, within(TOLERANCE));
+    }
+
+    // ======================================================================
+    // hitTestEnding
+    // ======================================================================
+
+    private static final double DECORATION_X_SS = 2.0;
+    private static final double DECORATION_Y_SS = -2.0;
+    private static final double DECORATION_WIDTH_SS = 10.0;
+    private static final double DECORATION_HEIGHT_SS = 3.0;
+    private static final double DECORATION_MARGIN_SS = 1.0;
+    private static final double MIDDLE_LINE_Y_SS = 5.0;
+
+    /** Top of the hit box in component space, for the layout built by {@link #layoutResultWithDecoration}. */
+    private static final double HIT_BOX_TOP_Y_SS = MIDDLE_LINE_Y_SS + DECORATION_Y_SS;
+
+    /** Bottom of the hit box: the bracket content plus the margin band below it. */
+    private static final double HIT_BOX_BOTTOM_Y_SS =
+        HIT_BOX_TOP_Y_SS + DECORATION_HEIGHT_SS + DECORATION_MARGIN_SS;
+
+    private static final double HIT_BOX_RIGHT_X_SS = DECORATION_X_SS + DECORATION_WIDTH_SS;
+
+    private LayoutResult layoutResultWithDecoration(Ending ending, double ySs) {
+        return LayoutResult.builder()
+            .putDecorationLayout(ending, new LayoutResult.DecorationLayout(
+                DECORATION_X_SS, ySs, DECORATION_WIDTH_SS, DECORATION_HEIGHT_SS, DECORATION_MARGIN_SS))
+            .build();
+    }
+
+    @Test
+    void testHitTestEnding_pointInsideBracketBox_returnsEnding() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
+
+        var result = RENDERER.hitTestEnding(
+            DECORATION_X_SS + 1, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isSameAs(ending);
+    }
+
+    @Test
+    void testHitTestEnding_pointInMarginBandBelowBracket_returnsEnding() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
+        // Point below the bracket's content height but within the margin band.
+        var yInMarginSs = HIT_BOX_TOP_Y_SS + DECORATION_HEIGHT_SS + (DECORATION_MARGIN_SS / 2);
+
+        var result = RENDERER.hitTestEnding(
+            DECORATION_X_SS + 1, yInMarginSs, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isSameAs(ending);
+    }
+
+    @Test
+    void testHitTestEnding_pointBelowBox_returnsNull() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
+
+        var result = RENDERER.hitTestEnding(
+            DECORATION_X_SS + 1, HIT_BOX_BOTTOM_Y_SS + 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void testHitTestEnding_pointAboveBox_returnsNull() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
+
+        var result = RENDERER.hitTestEnding(
+            DECORATION_X_SS + 1, HIT_BOX_TOP_Y_SS - 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void testHitTestEnding_pointLeftOfBox_returnsNull() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
+
+        var result = RENDERER.hitTestEnding(
+            DECORATION_X_SS - 1, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void testHitTestEnding_pointRightOfBox_returnsNull() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
+
+        var result = RENDERER.hitTestEnding(
+            HIT_BOX_RIGHT_X_SS + 1, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isNull();
+    }
+
+    // Rectangle2D.contains is left/top inclusive, so a click exactly on the top-left corner hits.
+    @Test
+    void testHitTestEnding_pointOnTopLeftCorner_returnsEnding() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
+
+        var result = RENDERER.hitTestEnding(
+            DECORATION_X_SS, HIT_BOX_TOP_Y_SS, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isSameAs(ending);
+    }
+
+    // Rectangle2D.contains is right/bottom exclusive, so the far edges are misses.
+    @Test
+    void testHitTestEnding_pointOnRightEdge_returnsNull() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
+
+        var result = RENDERER.hitTestEnding(
+            HIT_BOX_RIGHT_X_SS, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void testHitTestEnding_pointOnBottomEdge_returnsNull() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
+
+        var result = RENDERER.hitTestEnding(
+            DECORATION_X_SS + 1, HIT_BOX_BOTTOM_Y_SS, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isNull();
+    }
+
+    // When two endings' hit boxes overlap, document order decides the winner.
+    @Test
+    void testHitTestEnding_overlappingEndings_returnsFirstInDocumentOrder() {
+        var line = detachedLine();
+        var note1 = ElementType.CROTCHET.newInstance();
+        var split = ElementType.REPEAT_RIGHT.newInstance();
+        var note2 = ElementType.CROTCHET.newInstance();
+        line.addElement(note1);
+        line.addElement(split);
+        line.addElement(note2);
+
+        var firstEnding = new Ending(note1, note2);
+        var secondEnding = new Ending(note1, note2);
+        line.addRangeElement(firstEnding);
+        line.addRangeElement(secondEnding);
+
+        // Identical geometry for both, so the point falls inside each one's box.
+        var decoration = new LayoutResult.DecorationLayout(
+            DECORATION_X_SS, DECORATION_Y_SS, DECORATION_WIDTH_SS, DECORATION_HEIGHT_SS, DECORATION_MARGIN_SS);
+        var layoutResult = LayoutResult.builder()
+            .putDecorationLayout(firstEnding, decoration)
+            .putDecorationLayout(secondEnding, decoration)
+            .build();
+
+        var result = RENDERER.hitTestEnding(
+            DECORATION_X_SS + 1, HIT_BOX_TOP_Y_SS + 1, line, layoutResult, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isSameAs(firstEnding);
+    }
+
+    @Test
+    void testHitTestEnding_nullLayoutResult_returnsNull() {
+        var pair = makeLineWithEnding();
+
+        var result = RENDERER.hitTestEnding(
+            DECORATION_X_SS, MIDDLE_LINE_Y_SS, pair.line(), null, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isNull();
+    }
+
+    @Test
+    void testHitTestEnding_noDecorationLayoutForEnding_returnsNull() {
+        var pair = makeLineWithEnding();
+        var layoutResult = LayoutResult.builder().build();
+
+        var result = RENDERER.hitTestEnding(
+            DECORATION_X_SS, MIDDLE_LINE_Y_SS, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+
+        assertThat(result).isNull();
+    }
+
+    // ======================================================================
+    // determineEndingColor
+    // ======================================================================
+
+    private LineInvariants invariantsFor(
+        Line line,
+        boolean editMode,
+        LineComponent.@Nullable SelectionProvider selectionProvider
+    ) {
+        return RenderContextTestHelper.newContext(new Song())
+            .setCurrentLine(line)
+            .setEditMode(editMode)
+            .setSelectionProvider(selectionProvider)
+            .build();
+    }
+
+    @Test
+    void testDetermineEndingColor_selectedInEditMode_returnsSelectionColor() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isEndingSelected(ending, 0)).thenReturn(true);
+
+        var color = RENDERER.determineEndingColor(ending, invariantsFor(pair.line(), true, selectionProvider));
+
+        assertThat(color).isEqualTo(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testDetermineEndingColor_notSelected_returnsElementColor() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isEndingSelected(ending, 0)).thenReturn(false);
+
+        var color = RENDERER.determineEndingColor(ending, invariantsFor(pair.line(), true, selectionProvider));
+
+        assertThat(color).isEqualTo(Color.BLACK);
+    }
+
+    // Selection highlighting is an edit-mode affordance: the selection provider is wired
+    // independently of edit mode, so a selected ending must still render unhighlighted
+    // when the score is not editable.
+    @Test
+    void testDetermineEndingColor_selectedOutsideEditMode_returnsElementColor() {
+        var pair = makeLineWithEnding();
+        var ending = pair.ending();
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isEndingSelected(ending, 0)).thenReturn(true);
+
+        var color = RENDERER.determineEndingColor(ending, invariantsFor(pair.line(), false, selectionProvider));
+
+        assertThat(color).isEqualTo(Color.BLACK);
+    }
+
+    @Test
+    void testDetermineEndingColor_noSelectionProvider_returnsElementColor() {
+        var pair = makeLineWithEnding();
+
+        var color = RENDERER.determineEndingColor(pair.ending(), invariantsFor(pair.line(), true, null));
+
+        assertThat(color).isEqualTo(Color.BLACK);
     }
 }

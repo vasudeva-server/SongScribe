@@ -323,6 +323,18 @@ public final class SelectionCoordinator {
         return (state != null) && state.isSlideSelected(elementIndex);
     }
 
+    /**
+     * Returns whether the given ending on the given line is selected.
+     */
+    public boolean isEndingSelected(Ending ending, int lineIndex) {
+        if (activeLineIndex != lineIndex) {
+            return false;
+        }
+
+        var state = lineStates.get(lineIndex);
+        return (state != null) && state.isEndingSelected(ending);
+    }
+
     public boolean isLyricSelected(StaffElement element, int verse, int lineIndex) {
         //noinspection SimplifiableIfStatement
         if (activeLineIndex != lineIndex || lyricSelection == null) {
@@ -338,6 +350,14 @@ public final class SelectionCoordinator {
     public boolean hasSlideSelection() {
         var state = getActiveSelection();
         return (state != null) && state.hasSlideSelection();
+    }
+
+    /**
+     * Returns whether an ending is selected on the active line.
+     */
+    public boolean hasEndingSelection() {
+        var state = getActiveSelection();
+        return (state != null) && state.hasEndingSelection();
     }
 
     private int findLineIndex(Line line) {
@@ -946,7 +966,10 @@ public final class SelectionCoordinator {
         var selection = getSelection();
 
         if (selection == null) {
-            if (hasSlideSelection()) {
+            // Slide and ending selections both null out the element selection, but they are
+            // still selections — freeze the action states rather than restoring them as if
+            // the selection had been cleared.
+            if (hasSlideSelection() || hasEndingSelection()) {
                 saveActionStates();
             } else {
                 restoreActionStates();

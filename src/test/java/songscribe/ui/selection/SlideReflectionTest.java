@@ -21,6 +21,8 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 
@@ -30,6 +32,9 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
+import songscribe.layout.Ending;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.DurationArticulationAction;
@@ -220,6 +225,40 @@ class SlideReflectionTest extends MainFrameMockTest {
             coordinator.restoreActionStates();
             assertThat(fermataAction.isEnabled()).isTrue();
             assertThat(fermataAction.isSelected()).isTrue();
+        }
+
+        /**
+         * An ending selection nulls out the element selection just as a slide selection
+         * does, so the save/restore handler must treat it as a selection (save) rather
+         * than as a cleared selection (restore) — otherwise selecting an ending snaps the
+         * toolbar back to whatever was last saved.
+         */
+        @Test
+        void testEndingSelectionSavesRatherThanRestoresActionStates() {
+            var coordinator = createCoordinatorWithGlissando();
+            var ending = new Ending(
+                ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
+
+            fermataAction.setEnabled(true);
+            fermataAction.setSelected(true);
+            ReflectionTestHelper.selectEnding(coordinator, ending);
+
+            // Drive the actions to a new state, as reflection would.
+            fermataAction.setEnabled(false);
+            fermataAction.setSelected(false);
+
+            var scoreView = mock(ScoreView.class);
+            when(scoreView.getSelectionSize()).thenReturn(0);
+            when(scoreView.getSelectionCoordinator()).thenReturn(coordinator);
+
+            coordinator.musicSelectionDidChangeSaveRestoreActionStates(
+                new MusicSelectionDidChangeNotification(scoreView));
+
+            // A restore here would resurrect the pre-selection state.
+            assertThat(fermataAction.isEnabled())
+                .as("action state is saved, not restored, while an ending is selected")
+                .isFalse();
+            assertThat(fermataAction.isSelected()).isFalse();
         }
     }
 }

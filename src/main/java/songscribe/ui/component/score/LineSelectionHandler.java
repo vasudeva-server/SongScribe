@@ -24,6 +24,8 @@ import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
@@ -31,10 +33,12 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
+import songscribe.layout.Ending;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.dom.ScaleContext;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
+import songscribe.ui.renderer.EndingRenderer;
 import songscribe.ui.renderer.SlideRenderer;
 
 /**
@@ -109,6 +113,12 @@ class LineSelectionHandler {
             return new HitResult.Slide(slideIndex);
         }
 
+        var ending = hitTestEndingAtPoint(clickXSs, clickYSs);
+
+        if (ending != null) {
+            return new HitResult.Ending(ending);
+        }
+
         if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS
                 && clickXSs <= headerRightEdgeSs()) {
             return new HitResult.StaffLine();
@@ -159,6 +169,15 @@ class LineSelectionHandler {
                 if (lineSelectionState != null) {
                     prepareSelection();
                     lineSelectionState.selectSlide(elementIndex);
+                    lc.getScoreView().selectionChanged();
+                    pressHandled = true;
+                }
+            }
+
+            case HitResult.Ending(var ending) -> {
+                if (lineSelectionState != null) {
+                    prepareSelection();
+                    lineSelectionState.selectEnding(ending);
                     lc.getScoreView().selectionChanged();
                     pressHandled = true;
                 }
@@ -366,6 +385,17 @@ class LineSelectionHandler {
         return SlideRenderer.getInstance().hitTestSlide(
             clickXSs, clickYSs, selState.getLine()
         );
+    }
+
+    private @Nullable Ending hitTestEndingAtPoint(double clickXSs, double clickYSs) {
+        var selState = lc.getLineSelectionState();
+
+        if (selState == null) {
+            return null;
+        }
+
+        return EndingRenderer.getInstance().hitTestEnding(
+            clickXSs, clickYSs, selState.getLine(), lc.getLayoutResult(), lc.getMiddleLineYSs());
     }
 
     private void buildElementHitRect(StaffElement element, Rectangle2D.Double out) {
