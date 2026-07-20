@@ -44,5 +44,6 @@ public final class PasteAction extends PasteboardAction {
             Flag.DISABLE_IN_GRACE_MODE,
             Flag.DISABLE_WHEN_EDITING_TEXT
         );
+        setUndoOpNameKey(Strings.ACTION_EDIT_OP_PASTE);
     }
 }

@@ -29,6 +29,7 @@ import javax.swing.JLayeredPane;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.ViewPx;
 import songscribe.message.MessageCenter;
@@ -39,6 +40,7 @@ import songscribe.ui.component.PasteOverlay;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.undo.UndoController;
 
 /**
  * Manages the paste-mode state machine — placement of a clipboard fragment by
@@ -339,7 +341,17 @@ public final class PasteModeManager {
         var index = targetIndex;
         var outcome = new ScoreViewController.FragmentInsertOutcome[1];
 
-        line.withModification(() -> outcome[0] = controller.tryInsertFragment(line, index, null));
+        // Placement bypasses UIAction.actionPerformed (it is driven by a mouse click
+        // or Return keypress, not a Cmd+V dispatch), so the Tier-A op-name capture
+        // that PasteAction relies on must be set here around the bracket instead.
+        var priorOpName = UndoController.getPendingOpName();
+        UndoController.setPendingOpName(Strings.get(Strings.ACTION_EDIT_OP_PASTE));
+
+        try {
+            line.withModification(() -> outcome[0] = controller.tryInsertFragment(line, index, null));
+        } finally {
+            UndoController.setPendingOpName(priorOpName);
+        }
 
         if (outcome[0] == ScoreViewController.FragmentInsertOutcome.INSERTED) {
             exit();
