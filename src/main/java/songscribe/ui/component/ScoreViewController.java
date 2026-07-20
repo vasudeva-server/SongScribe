@@ -528,6 +528,7 @@ public final class ScoreViewController {
             clipboardManager.setFragment(
                 Fragment.capture(line, state.getSelectionBegin(), state.getSelectionEnd())
             );
+            score.deselect();
         }
     }
 
