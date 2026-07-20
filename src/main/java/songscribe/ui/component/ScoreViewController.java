@@ -747,7 +747,7 @@ public final class ScoreViewController {
         }
 
         var result = InsertionSpacingCalculator.calculateFragmentInsertion(
-            line, fragment.elements(), insertIndex, deleteRange, null);
+            line, fragment.elements(), insertIndex, deleteRange, null, score.getLyricRenderMetrics());
 
         if (!result.fitsWithinLine(line.getSong().getLineWidthSs())) {
             OptionDialogs.showErrorMessage(

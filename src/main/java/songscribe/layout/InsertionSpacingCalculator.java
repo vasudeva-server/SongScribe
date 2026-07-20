@@ -404,15 +404,18 @@ public final class InsertionSpacingCalculator {
      * solve over the same chain the layout engine runs, including the terminal barline, so an insert
      * the gate accepts always lays out.
      * <p>
-     * The surrounding columns are spaced without lyric context (lightweight, syllable-less), so the
-     * fit gate does not yet account for the surrounding elements' syllable widths — matching the
-     * fragment's own clones, which carry no lyric.
+     * The surrounding columns and the fragment's own clones carry their real syllable widths
+     * whenever a {@link LyricRenderMetrics} is supplied, mirroring {@link #calculateInsertion}.
+     * Callers with no lyric metrics to hand may pass {@code null}, which falls back to
+     * syllable-less columns for both.
      *
-     * @param fragment    The elements to be inserted, in order (must be non-empty)
-     * @param insertIndex The index where the fragment's first element will land
-     *                    (must equal {@code deleteRange.begin()} when a range is given)
-     * @param deleteRange The effective range a paste-replace deletes first, or null for pure insertion
-     * @param layout      Layout result for position lookup; null falls back to {@code xOffset}
+     * @param fragment           The elements to be inserted, in order (must be non-empty)
+     * @param insertIndex        The index where the fragment's first element will land
+     *                           (must equal {@code deleteRange.begin()} when a range is given)
+     * @param deleteRange        The effective range a paste-replace deletes first, or null for pure insertion
+     * @param layout             Layout result for position lookup; null falls back to {@code xOffset}
+     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
+     *                           line as if it had no lyrics
      * @return A {@link FragmentInsertionResult} with per-clone X positions, the trailing shift,
      *         and the projected spring chain its fit gate solves
      */
@@ -421,7 +424,8 @@ public final class InsertionSpacingCalculator {
         List<StaffElement> fragment,
         int insertIndex,
         @Nullable DeletedRange deleteRange,
-        @Nullable LayoutResult layout) {
+        @Nullable LayoutResult layout,
+        @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         if (fragment.isEmpty()) {
             throw new IllegalArgumentException("fragment must not be empty");
@@ -453,19 +457,22 @@ public final class InsertionSpacingCalculator {
         // deleted range by skipping straight from the predecessors to the element past the range.
         var successorIndex = deleteRange == null ? insertIndex : deleteRange.end() + 1;
         var columns = new ArrayList<ElementColumn>();
+        var columnBuilder = lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null;
 
         for (var i = 0; i < insertIndex; i++) {
-            columns.add(createLightweightColumn(line.getElement(i)));
+            columns.add(buildSurroundingColumn(line.getElement(i), line, i, columnBuilder));
         }
 
         var fragmentStart = columns.size();
 
         for (var element : fragment) {
-            columns.add(createLightweightColumn(element));
+            columns.add(columnBuilder != null
+                ? columnBuilder.buildDetachedColumn(element)
+                : createLightweightColumn(element));
         }
 
         for (var i = successorIndex; i < effectiveCount; i++) {
-            columns.add(createLightweightColumn(line.getElement(i)));
+            columns.add(buildSurroundingColumn(line.getElement(i), line, i, columnBuilder));
         }
 
         // Natural spring lengths drive where each clone lands, measured from the predecessor's
@@ -515,7 +522,8 @@ public final class InsertionSpacingCalculator {
         var fitColumns = new ArrayList<>(columns);
 
         if (effectiveCount < line.elementCount()) {
-            fitColumns.add(createLightweightColumn(line.getElement(line.elementCount() - 1)));
+            var terminalIndex = line.elementCount() - 1;
+            fitColumns.add(buildSurroundingColumn(line.getElement(terminalIndex), line, terminalIndex, columnBuilder));
         }
 
         var fitSprings = LyricLift.applyLyricLift(

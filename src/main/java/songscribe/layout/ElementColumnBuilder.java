@@ -179,6 +179,56 @@ public class ElementColumnBuilder {
         return column;
     }
 
+    /**
+     * Builds a column for an element not attached to any line — a fragment clone about to be
+     * pasted. Carries the element's real syllable data (so a paste preview is spaced by the same
+     * lyric rules as the committed layout) but no beam membership, since beam grouping is
+     * determined by position on a line the element does not yet occupy.
+     *
+     * @param element The element to process (not necessarily on any line)
+     * @return The constructed ElementColumn, unbeamed
+     */
+    public ElementColumn buildDetachedColumn(StaffElement element) {
+        var leftExtentSs = calculateLeftExtentSs(element);
+        var rightExtentSs = calculateRightExtentSs(element, false, element.getDirection());
+        var rightExtentExcludingAugmentationSs = calculateRightExtentExcludingAugmentationSs(element, false, element.getDirection());
+
+        var stemTopSs = calculateStemTopSs(element);
+        var stemBottomSs = calculateStemBottomSs(element);
+
+        var syllable = getSyllable(element);
+        var syllableWidthSs = measureSyllableWidthSs(syllable);
+
+        var column = new ElementColumn(
+            element,
+            getGraceNotes(element),
+            leftExtentSs,
+            rightExtentSs,
+            rightExtentExcludingAugmentationSs,
+            stemTopSs,
+            stemBottomSs,
+            syllable,
+            syllableWidthSs,
+            false
+        );
+
+        if (element.getType().isNote()) {
+            column.setNoteheadWidthSs(getNoteheadRightExtent(element.getType()));
+        }
+
+        var mainLyric = element.getMainLyric();
+        var syllabic = mainLyric != null ? mainLyric.syllabic() : null;
+        var isHyphenated = Lyric.syllabicContinues(syllabic);
+        column.setMinGapToNextSyllableSs(isHyphenated
+            ? lyricRenderMetrics.preferredHyphenCellWidthSs()
+            : lyricRenderMetrics.spaceWidthSs());
+        column.setMinCollisionGapToNextSyllableSs(isHyphenated
+            ? lyricRenderMetrics.hyphenWidthSs()
+            : lyricRenderMetrics.spaceWidthSs());
+
+        return column;
+    }
+
     // ==========================================================================
     // Horizontal Extent Calculations
     // ==========================================================================

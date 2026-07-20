@@ -43,6 +43,7 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.ElementColumn;
@@ -863,7 +864,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var fragment = List.<StaffElement>of(crotchet(), crotchet(), crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
-                line, fragment, line.effectiveElementCount(), null, null);
+                line, fragment, line.effectiveElementCount(), null, null, null);
 
             var positions = result.cloneXPositionsSs();
             assertThat(positions).hasSize(3);
@@ -880,7 +881,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var line = lineWithCrotchets(0, songWithLineWidth(WIDE_LINE_SS));
             var fragment = List.<StaffElement>of(crotchet());
 
-            var result = InsertionSpacingCalculator.calculateFragmentInsertion(line, fragment, 0, null, null);
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(line, fragment, 0, null, null, null);
 
             var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
             assertThat(result.cloneXPositionsSs().get(0)).isEqualTo(expectedXSs);
@@ -894,7 +895,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var fragmentElement = crotchet();
 
             var fragmentResult = InsertionSpacingCalculator.calculateFragmentInsertion(
-                line, List.of(fragmentElement), 1, null, null);
+                line, List.of(fragmentElement), 1, null, null, null);
             var singleResult = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null, null);
 
             assertThat(fragmentResult.cloneXPositionsSs().get(0)).isEqualTo(singleResult.insertedElementXSs());
@@ -908,7 +909,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var fragmentElement = crotchet();
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
-                line, List.of(fragmentElement), 1, deleteRange, null);
+                line, List.of(fragmentElement), 1, deleteRange, null, null);
 
             var predecessorColumn = lightweightColumn(predecessor);
             predecessorColumn.setXSs(ScaleContext.pxToSs(predecessor.getXOffsetPx()));
@@ -924,7 +925,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var fragmentElement = crotchet();
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
-                line, List.of(fragmentElement), 1, deleteRange, null);
+                line, List.of(fragmentElement), 1, deleteRange, null, null);
 
             var lastCloneColumn = lightweightColumn(fragmentElement);
             lastCloneColumn.setXSs(result.cloneXPositionsSs().get(0));
@@ -941,7 +942,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var fittingFragment = List.<StaffElement>of(crotchet(), crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
-                line, fittingFragment, line.effectiveElementCount(), null, null);
+                line, fittingFragment, line.effectiveElementCount(), null, null, null);
             var marginSs = fullyCompressedWidthSs(result) + BOUNDARY_SLACK_SS;
 
             assertThat(result.fitsWithinLine(marginSs)).isTrue();
@@ -952,13 +953,13 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var line = lineWithCrotchets(3, songWithLineWidth(WIDE_LINE_SS));
             var fittingFragment = List.<StaffElement>of(crotchet(), crotchet());
             var fittingResult = InsertionSpacingCalculator.calculateFragmentInsertion(
-                line, fittingFragment, line.effectiveElementCount(), null, null);
+                line, fittingFragment, line.effectiveElementCount(), null, null, null);
             // A margin that just clears the two-element fragment's fully compressed floor.
             var marginSs = fullyCompressedWidthSs(fittingResult) + BOUNDARY_SLACK_SS;
 
             var oneElementLargerFragment = List.<StaffElement>of(crotchet(), crotchet(), crotchet());
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
-                line, oneElementLargerFragment, line.effectiveElementCount(), null, null);
+                line, oneElementLargerFragment, line.effectiveElementCount(), null, null, null);
 
             // One more element raises the compressed floor past that margin, so it cannot fit.
             assertThat(result.fitsWithinLine(marginSs)).isFalse();
@@ -971,7 +972,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var fragment = List.<StaffElement>of(crotchet(), crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
-                line, fragment, line.effectiveElementCount(), null, null);
+                line, fragment, line.effectiveElementCount(), null, null, null);
 
             assertThat(result.fitsWithinLine(WIDE_LINE_SS)).isTrue();
             assertThat(snapshotElements(line)).isEqualTo(before);
@@ -984,10 +985,52 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var fragment = List.<StaffElement>of(crotchet(), crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
-                line, fragment, line.effectiveElementCount(), null, null);
+                line, fragment, line.effectiveElementCount(), null, null, null);
 
             assertThat(result.fitsWithinLine(line.getSong().getLineWidthSs())).isFalse();
             assertThat(snapshotElements(line)).isEqualTo(before);
+        }
+
+        @Test
+        void testFragmentCloneSyllableWidensGapBetweenClonesWhenLyricMetricsSupplied() {
+            var line = lineWithCrotchets(1, songWithLineWidth(WIDE_LINE_SS));
+
+            var firstClone = crotchet();
+            firstClone.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "encouragement", Lyric.Extend.NONE);
+            var fragment = List.of(firstClone, crotchet());
+
+            var withMetrics = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fragment, line.effectiveElementCount(), null, null, lyricRenderMetrics());
+            var withoutMetrics = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fragment, line.effectiveElementCount(), null, null, null);
+
+            var gapWithMetricsSs = withMetrics.cloneXPositionsSs().get(1) - withMetrics.cloneXPositionsSs().get(0);
+            var gapWithoutMetricsSs = withoutMetrics.cloneXPositionsSs().get(1) - withoutMetrics.cloneXPositionsSs().get(0);
+
+            assertThat(gapWithMetricsSs)
+                .as("a wide syllable on a fragment clone must widen the gap to its neighbour")
+                .isGreaterThan(gapWithoutMetricsSs);
+        }
+
+        @Test
+        void testSurroundingPredecessorSyllableWidensGapToFragmentCloneWhenLyricMetricsSupplied() {
+            var line = new Line(songWithLineWidth(WIDE_LINE_SS));
+            var predecessor = crotchet();
+            predecessor.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "encouragement", Lyric.Extend.NONE);
+            var predecessorXSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, predecessor, null, null);
+            predecessor.setXOffsetPx(ScaleContext.ssToRoundedPx(predecessorXSs));
+            line.addElement(predecessor);
+
+            var fragment = List.<StaffElement>of(crotchet());
+
+            var withMetrics = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fragment, line.effectiveElementCount(), null, null, lyricRenderMetrics());
+            var withoutMetrics = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fragment, line.effectiveElementCount(), null, null, null);
+
+            assertThat(withMetrics.cloneXPositionsSs().get(0))
+                .as("a wide syllable on the predecessor must push the fragment's clone further right")
+                .isGreaterThan(withoutMetrics.cloneXPositionsSs().get(0));
         }
     }
 }
