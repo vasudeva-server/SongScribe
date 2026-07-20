@@ -25,7 +25,18 @@ Before writing tests, read the relevant guide (not auto-loaded): [testing-common
 
 ## Javadoc References to Constants
 
-Never write a named constant's raw literal value in a Javadoc comment. Use `{@link ClassName#CONSTANT_NAME}` instead, so the doc stays correct if the value changes. Exception: illustrating an example calculation/formula, where a literal is needed to show the math — link the constant elsewhere in the same doc if possible.
+Never write a named constant's raw literal value in a Javadoc comment — the doc silently rots the moment the constant changes.
+
+Prefer `{@value}`, which inlines the real value at render time, so the reader still sees the number without it being duplicated in the source:
+
+- Same class: `{@value #MAX_ZOOM_PERCENT}`
+- Another class: `{@value ViewScale#MAX_ZOOM_PERCENT}`
+
+Use `{@link ClassName#CONSTANT_NAME}` when the prose refers to the constant *as a thing* rather than quoting its value ("clamped by {@link ViewScale#MAX_ZOOM_PERCENT}"), or when `{@value}` is not legal.
+
+`{@value}` only works on a *constant variable* — `static final` of a primitive or `String` type, initialized with a compile-time constant expression. It does not work on `static final Color`, `Dimension`, arrays, enums, or anything computed at runtime; those must use `{@link}`.
+
+Exception: illustrating an example calculation/formula, where literals are needed to show the math — reference the constant elsewhere in the same doc if possible.
 
 ## Generated Files
 
