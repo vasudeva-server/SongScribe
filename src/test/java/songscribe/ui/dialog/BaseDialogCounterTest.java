@@ -308,7 +308,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
         class FailingTab extends Tab {
 
             FailingTab() {
-                super(FlatLafKey.DIALOG_STD_PADDING);
+                super("Failing Tab", FlatLafKey.DIALOG_STD_PADDING);
             }
 
             @Override
@@ -324,7 +324,7 @@ class BaseDialogCounterTest extends MainFrameMockTest {
         class SecondTab extends Tab {
 
             SecondTab() {
-                super(FlatLafKey.DIALOG_STD_PADDING);
+                super("Second Tab", FlatLafKey.DIALOG_STD_PADDING);
             }
 
             @Override

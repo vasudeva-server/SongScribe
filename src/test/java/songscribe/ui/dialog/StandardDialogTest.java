@@ -301,7 +301,7 @@ class StandardDialogTest extends MainFrameMockTest {
             int setDataCallCount = 0;
 
             ValidationTab(boolean valid) {
-                super(FlatLafKey.DIALOG_STD_PADDING);
+                super("Validation Tab", FlatLafKey.DIALOG_STD_PADDING);
                 this.valid = valid;
             }
 

@@ -293,7 +293,7 @@ class MenuControllerTest extends UnitTest {
 
         @Test
         void testInitEditMenuContainsPreferencesActionOnlyOnNonMacOS() {
-            var menu = MenuController.initEditMenu();
+            var menu = controller.initEditMenu();
 
             var hasPrefs = menuContainsAction(menu, Actions.PREFERENCES_ACTION);
             assertThat(hasPrefs).isEqualTo(!SystemInfo.isMacOS);

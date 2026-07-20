@@ -131,42 +131,33 @@ class BaseDialogTabsTest extends MainFrameMockTest {
         }
     }
 
-    // -- createTabbedPane --
+    // -- createTabbedContent --
 
     @Test
-    void testCreateTabbedPaneFirstCallRegistersTopLevelPane() {
+    void testCreateTabbedContentReturnsSameCompositeOnEveryCall() {
         var dialog = new TabbedTestDialog(mainFrame());
-        var firstPane = dialog.createTabbedPane();
+        var firstContent = dialog.createTabbedContent();
+        var secondContent = dialog.createTabbedContent();
 
-        // The first call must assign the dialog's top-level tabbedPane field
-        assertThat(dialog.getTabbedPane()).isSameAs(firstPane);
+        // There is a single sidebar/card composite per dialog — every call returns it.
+        assertThat(secondContent).isSameAs(firstContent);
+        assertThat(dialog.getTabbedContent()).isSameAs(firstContent);
     }
 
-    @Test
-    void testCreateTabbedPaneSecondCallDoesNotOverwriteFirstPane() {
-        var dialog = new TabbedTestDialog(mainFrame());
-        var firstPane = dialog.createTabbedPane();
-        var secondPane = dialog.createTabbedPane();
-
-        // The second call must return a new pane but NOT overwrite the registered field
-        assertThat(secondPane).isNotSameAs(firstPane);
-        assertThat(dialog.getTabbedPane()).isSameAs(firstPane);
-    }
-
-    // -- tab lifecycle via ChangeListener --
+    // -- tab lifecycle via sidebar selection --
 
     @Test
     void testTabWillShowAndTabWillHideFiredOnTabSwitch() {
         var dialog = new TabbedTestDialog(mainFrame());
-        var tabbedPane = dialog.createTabbedPane();
+        dialog.createTabbedContent();
 
-        var tab0 = dialog.new TrackingTab();
-        var tab1 = dialog.new TrackingTab();
-        dialog.addTab(tabbedPane, "Tab 0", tab0);
-        dialog.addTab(tabbedPane, "Tab 1", tab1);
+        var tab0 = dialog.new TrackingTab("Tab 0");
+        var tab1 = dialog.new TrackingTab("Tab 1");
+        dialog.addTab(tab0);
+        dialog.addTab(tab1);
 
-        // Switch from tab 0 to tab 1 — fires the ChangeListener
-        tabbedPane.setSelectedIndex(1);
+        // Switch from tab 0 to tab 1 — fires the sidebar's ListSelectionListener
+        dialog.getTabList().setSelectedIndex(1);
 
         assertThat(tab1.willShowCount).as("tab1.tabWillShow called on switch to tab1").isEqualTo(1);
         assertThat(tab0.willHideCount).as("tab0.tabWillHide called on switch away").isEqualTo(1);
@@ -180,13 +171,13 @@ class BaseDialogTabsTest extends MainFrameMockTest {
     void testTabWillShowFiredForInitiallySelectedTabOnShow() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
             var dialog = new TabbedTestDialog(mainFrame());
-            var tabbedPane = dialog.createTabbedPane();
+            var tabbedContent = dialog.createTabbedContent();
 
-            var tab0 = dialog.new TrackingTab();
-            var tab1 = dialog.new TrackingTab();
-            dialog.addTab(tabbedPane, "Tab 0", tab0);
-            dialog.addTab(tabbedPane, "Tab 1", tab1);
-            dialog.setContentTab(tabbedPane);
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            var tab1 = dialog.new TrackingTab("Tab 1");
+            dialog.addTab(tab0);
+            dialog.addTab(tab1);
+            dialog.setContentTab(tabbedContent);
 
             dialog.setVisible(true);
 
@@ -205,13 +196,13 @@ class BaseDialogTabsTest extends MainFrameMockTest {
     void testTabWillHideCalledForAllTabsOnHide() {
         try (var ignored = mockConstruction(JDialog.class, (d, ctx) -> configureMockDialog(d))) {
             var dialog = new TabbedTestDialog(mainFrame());
-            var tabbedPane = dialog.createTabbedPane();
+            var tabbedContent = dialog.createTabbedContent();
 
-            var tab0 = dialog.new TrackingTab();
-            var tab1 = dialog.new TrackingTab();
-            dialog.addTab(tabbedPane, "Tab 0", tab0);
-            dialog.addTab(tabbedPane, "Tab 1", tab1);
-            dialog.setContentTab(tabbedPane);
+            var tab0 = dialog.new TrackingTab("Tab 0");
+            var tab1 = dialog.new TrackingTab("Tab 1");
+            dialog.addTab(tab0);
+            dialog.addTab(tab1);
+            dialog.setContentTab(tabbedContent);
 
             dialog.setVisible(true);
             dialog.setVisible(false);
@@ -219,9 +210,13 @@ class BaseDialogTabsTest extends MainFrameMockTest {
             assertThat(tab0.willHideCount)
                 .as("tab0 gets tabWillHide on setVisible(false)")
                 .isEqualTo(1);
+
+            // tab1 is not initially selected, so the initial setVisible(true) already
+            // fires tabWillHide on it via selectTab(0); setVisible(false) fires it again.
+            final int expectedTab1HideCount = 2;
             assertThat(tab1.willHideCount)
-                .as("tab1 gets tabWillHide on setVisible(false)")
-                .isEqualTo(1);
+                .as("tab1 gets tabWillHide on initial show (not selected) and on setVisible(false)")
+                .isEqualTo(expectedTab1HideCount);
         }
     }
 
@@ -325,11 +320,11 @@ class BaseDialogTabsTest extends MainFrameMockTest {
         }
 
         /**
-         * Places the given tabbed pane into the dialog's content panel so that
-         * {@link #setVisible(boolean)} will treat it as a tabbed dialog.
+         * Places the given sidebar/card composite into the dialog's content panel so
+         * that {@link #setVisible(boolean)} will treat it as a tabbed dialog.
          */
-        void setContentTab(JTabbedPane pane) {
-            contentPanel.add(pane, BorderLayout.CENTER);
+        void setContentTab(JComponent tabbedContent) {
+            contentPanel.add(tabbedContent, BorderLayout.CENTER);
         }
 
         class TrackingTab extends Tab {
@@ -337,8 +332,8 @@ class BaseDialogTabsTest extends MainFrameMockTest {
             int willShowCount = 0;
             int willHideCount = 0;
 
-            TrackingTab() {
-                super(FlatLafKey.DIALOG_STD_PADDING);
+            TrackingTab(String title) {
+                super(title, FlatLafKey.DIALOG_STD_PADDING);
             }
 
             @Override
