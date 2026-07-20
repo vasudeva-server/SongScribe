@@ -58,7 +58,6 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
-import songscribe.ui.Control;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
@@ -245,7 +244,7 @@ public final class ScoreView
     public ScoreView(@Nullable Consumer<? super File> onFileOpened) {
         this.onFileOpened = onFileOpened;
         var headless = onFileOpened == null;
-        viewState = new ScoreViewState(Control.valueOf(Prefs.getString(PrefsKey.CONTROL)));
+        viewState = new ScoreViewState();
 
         selectionCoordinator = new SelectionCoordinator(this::getSong);
         clipboardManager = new ClipboardManager();
@@ -1013,15 +1012,6 @@ public final class ScoreView
 
     public ScoreViewState getViewState() {
         return viewState;
-    }
-
-    @Override
-    public Control getControl() {
-        return viewState.getControl();
-    }
-
-    public void setControl(Control control) {
-        viewState.setControl(control);
     }
 
     @Override

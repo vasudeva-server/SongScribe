@@ -80,9 +80,9 @@ class SelectableUIActionTest extends MainFrameMockTest {
 
     @Test
     void testPrefsKeyCtorSetsSelectedFromPrefs() {
-        prefsMock.when(() -> Prefs.getBoolean(PrefsKey.CONTROL)).thenReturn(true);
+        prefsMock.when(() -> Prefs.getBoolean(PrefsKey.LOOP_PLAYBACK)).thenReturn(true);
 
-        var action = new SelectableUIAction(mainFrame(), "Test", null, 0, "test-cmd", null, PrefsKey.CONTROL) {
+        var action = new SelectableUIAction(mainFrame(), "Test", null, 0, "test-cmd", null, PrefsKey.LOOP_PLAYBACK) {
             @Override
             protected void performAction(ActionEvent e) {}
         };

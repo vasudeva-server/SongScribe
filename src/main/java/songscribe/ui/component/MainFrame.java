@@ -487,7 +487,7 @@ public class MainFrame extends JFrame implements Printable {
         //   MainFrame.getInstance()        — constructs the singleton via InstanceHolder
         //     └─► MainFrame.initFrame()    — wires the UI; called from main()
         //           └─► Actions.initialize(this)  — populates all Actions.* constants
-        //                 └─► first constant use  — Actions.CONTROL_ACTION_GROUP.selectNext()
+        //                 └─► first constant use  — MenuController.init(this)
         Actions.initialize(this);
         PlaybackController.initialize(this);
 
@@ -504,9 +504,6 @@ public class MainFrame extends JFrame implements Printable {
 
         installDesktopHandlers();
         MenuController.init(this);
-
-        Actions.CONTROL_ACTION_GROUP.selectNext();
-
 
         // When the application goes to the background, hide the insertion note
         // and activate the glass pane so the reactivation click is consumed.

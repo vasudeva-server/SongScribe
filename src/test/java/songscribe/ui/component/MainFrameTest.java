@@ -1419,9 +1419,9 @@ class MainFrameTest extends UnitTest {
         void resetActionsBeforeTest() {
             // Other test classes may have left Actions initialized via initialize().
             // resetForTest() only clears mainFrame/appMenuActions, not the action constants
-            // themselves. Null out CONTROL_ACTION_GROUP directly so the pre-initialize
+            // themselves. Null out MODE_ACTION_GROUP directly so the pre-initialize
             // assertion below is valid regardless of prior test-class ordering.
-            Actions.CONTROL_ACTION_GROUP = null;
+            Actions.MODE_ACTION_GROUP = null;
         }
 
         @AfterEach
@@ -1438,14 +1438,14 @@ class MainFrameTest extends UnitTest {
          * <p>The test verifies the contract through {@link Actions#initialize} directly:
          * it starts with all constants null (no prior {@code initialize} call), invokes
          * {@code initialize} with a minimal mock frame, then asserts that
-         * {@code CONTROL_ACTION_GROUP} — the first constant used in {@code initFrame()} —
+         * {@code MODE_ACTION_GROUP} — a constant used in {@code initFrame()} —
          * is non-null.
          */
         @Test
-        void testControlActionGroupIsNonNullAfterInitialize() {
+        void testModeActionGroupIsNonNullAfterInitialize() {
             // All constants are null here — resetActionsBeforeTest() ensures this.
-            assertThat(Actions.CONTROL_ACTION_GROUP)
-                .as("CONTROL_ACTION_GROUP must be null before Actions.initialize() is called")
+            assertThat(Actions.MODE_ACTION_GROUP)
+                .as("MODE_ACTION_GROUP must be null before Actions.initialize() is called")
                 .isNull();
 
             when(frame.getRootPane()).thenReturn(mock(JRootPane.class, org.mockito.Mockito.RETURNS_DEEP_STUBS));
@@ -1453,8 +1453,8 @@ class MainFrameTest extends UnitTest {
             // initFrame() calls Actions.initialize(this) as its first statement.
             Actions.initialize(frame);
 
-            assertThat(Actions.CONTROL_ACTION_GROUP)
-                .as("CONTROL_ACTION_GROUP non-null after Actions.initialize() — as initFrame() guarantees")
+            assertThat(Actions.MODE_ACTION_GROUP)
+                .as("MODE_ACTION_GROUP non-null after Actions.initialize() — as initFrame() guarantees")
                 .isNotNull();
         }
     }

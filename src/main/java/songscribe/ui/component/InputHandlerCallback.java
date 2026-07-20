@@ -24,7 +24,6 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -34,8 +33,6 @@ import songscribe.ui.selection.SelectionCoordinator;
 public interface InputHandlerCallback {
 
     void repaint();
-
-    Control getControl();
 
     Mode getMode();
 

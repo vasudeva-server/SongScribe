@@ -30,14 +30,12 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.message.MessageCenter;
-import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PitchShifter;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
-import songscribe.engraving.Staff;
 import songscribe.message.command.DeselectCommand;
 import songscribe.util.UIUtils;
 
@@ -93,22 +91,14 @@ public final class ScoreInputHandler extends KeyAdapter
 
     @Override
     public void mouseEntered(MouseEvent e) {
-        if (
-            !EditModeManager.isPreviewElementVisible() &&
-                (callback.getControl() == Control.MOUSE) &&
-                (callback.getMode() == Mode.EDIT)
-        ) {
+        if (!EditModeManager.isPreviewElementVisible() && (callback.getMode() == Mode.EDIT)) {
             EditModeManager.setPreviewElementVisible(true);
         }
     }
 
     @Override
     public void mouseExited(MouseEvent e) {
-        if (
-            EditModeManager.isPreviewElementVisible() &&
-                (callback.getControl() == Control.MOUSE) &&
-                (callback.getMode() == Mode.EDIT)
-        ) {
+        if (EditModeManager.isPreviewElementVisible() && (callback.getMode() == Mode.EDIT)) {
             EditModeManager.setPreviewElementVisible(false);
             callback.repaint();
         }
@@ -217,7 +207,7 @@ public final class ScoreInputHandler extends KeyAdapter
     }
 
     /**
-     * Action for handling keyboard input in keyboard control mode.
+     * Action for handling arrow-key input on the score.
      */
     private static class KeyAction extends AbstractAction {
 
@@ -258,12 +248,9 @@ public final class ScoreInputHandler extends KeyAdapter
                 return;
             }
 
-            // With an active selection, arrow keys control that selection; otherwise
-            // fall through to the edit-mode preview-note nudge.
+            // With an active selection, arrow keys control that selection.
             if (selection != null) {
                 handleSelectionArrow(coordinator, selection);
-            } else {
-                handlePreviewNudge();
             }
         }
 
@@ -427,32 +414,6 @@ public final class ScoreInputHandler extends KeyAdapter
 
             callback.selectionChanged();
             callback.repaint();
-        }
-
-        /**
-         * Edit-mode preview-note nudge: with no active selection, Up/Down move the
-         * insertion preview note by one staff position within the valid range.
-         */
-        private void handlePreviewNudge() {
-            if ((callback.getMode() != Mode.EDIT) || (callback.getControl() != Control.KEYBOARD)) {
-                return;
-            }
-
-            var insertionNote = EditModeManager.getPreviewElement();
-
-            if (insertionNote != null) {
-                if (code == KeyEvent.VK_UP) {
-                    if (insertionNote.getStaffPosition() >= (-(Staff.STAFF_LINES_ABOVE + 2) * 2)) {
-                        insertionNote.setStaffPosition(insertionNote.getStaffPosition() - 1);
-                        callback.repaint();
-                    }
-                } else if (code == KeyEvent.VK_DOWN) {
-                    if (insertionNote.getStaffPosition() <= ((Staff.STAFF_LINES_BELOW + 2) * 2)) {
-                        insertionNote.setStaffPosition(insertionNote.getStaffPosition() + 1);
-                        callback.repaint();
-                    }
-                }
-            }
         }
     }
 }

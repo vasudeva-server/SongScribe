@@ -27,7 +27,6 @@ public class TutorialDialog extends HelpDialog {
         super(mainFrame, "Tutorial", false);
         addToList("Preparations", "Preparations.html");
         addToList("Typing with mouse", "Mouse.html");
-        addToList("Typing with keyboard", "Keyboard.html");
         addToList("Lyrics", "Lyrics.html");
         addToList("Adjustments", "Adjustments.html");
     }

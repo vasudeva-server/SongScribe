@@ -40,7 +40,6 @@ import songscribe.dom.Line;
 import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
-import songscribe.ui.Control;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.TempoChangeDialog;
@@ -960,7 +959,7 @@ public final class PreviewElementManager {
     /**
      * Returns whether preview element handling should be active for the given line.
      * <p>
-     * Requires: edit mode enabled, MOUSE control, NOTE_EDIT mode, and a preview element set.
+     * Requires: edit mode enabled, NOTE_EDIT mode, and a preview element set.
      */
     private static boolean shouldHandlePreviewElement(LineComponent lc) {
         if (!lc.isEditMode() || !EditModeManager.hasPreviewElement()) {
@@ -969,9 +968,7 @@ public final class PreviewElementManager {
 
         var scoreView = lc.getScoreView();
 
-        return scoreView.getControl() == Control.MOUSE
-            && scoreView.getMode() == Mode.EDIT
-            && !PlaybackController.isPlaying();
+        return scoreView.getMode() == Mode.EDIT && !PlaybackController.isPlaying();
     }
 
     /**

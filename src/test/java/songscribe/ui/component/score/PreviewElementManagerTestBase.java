@@ -36,7 +36,6 @@ import songscribe.message.MessageCenter;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
@@ -84,7 +83,6 @@ abstract class PreviewElementManagerTestBase extends UnitTest {
         when(lc.getScoreView()).thenReturn(score);
         when(lc.getViewScale()).thenReturn(ViewScale.IDENTITY);
         when(lc.getLine()).thenReturn(line);
-        when(score.getControl()).thenReturn(Control.MOUSE);
         when(score.getMode()).thenReturn(Mode.EDIT);
 
         editModeManagerMock.when(EditModeManager::hasPreviewElement).thenReturn(true);

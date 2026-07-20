@@ -57,7 +57,7 @@ import songscribe.util.UIUtils;
  * MainFrame.getInstance()
  *   └─► MainFrame.initFrame()
  *         └─► Actions.initialize(this)
- *               └─► first constant use (e.g. CONTROL_ACTION_GROUP.selectNext())
+ *               └─► first constant use (e.g. MODE_ACTION_GROUP.select(...))
  * </pre>
  */
 // The action constants are @NonNull but populated lazily by initialize() (which needs
@@ -73,13 +73,6 @@ public final class Actions {
     private static MainFrame mainFrame;
 
     private static final Logger LOG = LoggerFactory.getLogger(Actions.class);
-
-    //
-    // Control actions
-    //
-    public static ControlAction MOUSE_CONTROL_ACTION;
-    public static ControlAction KEYBOARD_CONTROL_ACTION;
-    public static ActionGroup<ControlAction> CONTROL_ACTION_GROUP;
 
     //
     // Mode actions
@@ -209,13 +202,6 @@ public final class Actions {
         MessageCenter.subscribe(RESET_HANDLER);
 
         UndoController.initialize();
-
-        //
-        // Control actions
-        //
-        MOUSE_CONTROL_ACTION = ControlAction.createMouseControlAction(mainFrame);
-        KEYBOARD_CONTROL_ACTION = ControlAction.createKeyboardControlAction(mainFrame);
-        CONTROL_ACTION_GROUP = new ActionGroup<>(MOUSE_CONTROL_ACTION, KEYBOARD_CONTROL_ACTION);
 
         //
         // Mode actions

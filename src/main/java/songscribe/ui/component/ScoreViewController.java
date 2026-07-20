@@ -53,7 +53,6 @@ import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.message.notification.ControlDidChangeNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
@@ -403,11 +402,6 @@ public final class ScoreViewController {
         }
 
         return false;
-    }
-
-    @Handler
-    public void controlDidChange(ControlDidChangeNotification message) {
-        score.setControl(message.getControl());
     }
 
     @Handler(priority = Message.HIGH_PRIORITY)

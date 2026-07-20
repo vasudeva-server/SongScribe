@@ -29,7 +29,6 @@ package songscribe.prefs;
 public enum PrefsKey {
     ALL("all"),
     APPEARANCE("appearance"),
-    CONTROL("control"),
     DIALOG_GEOMETRY("dialogGeometry"),
     EXPORT_DPI("exportDpi"),
     FIRST_RUN("firstRun"),

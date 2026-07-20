@@ -69,7 +69,6 @@ public final class Prefs {
         Map.entry("dpi", PrefsKey.EXPORT_DPI),
         Map.entry("showtip", PrefsKey.SHOW_TIPS),
         Map.entry("playcontinuously", PrefsKey.LOOP_PLAYBACK),
-        Map.entry("control", PrefsKey.CONTROL),
         Map.entry("imageexportfilter", PrefsKey.IMAGE_EXPORT_FILTER),
         Map.entry("durationshortitude", PrefsKey.PLAYBACK_NOTE_DURATION),
         Map.entry("instrument", PrefsKey.INSTRUMENT),

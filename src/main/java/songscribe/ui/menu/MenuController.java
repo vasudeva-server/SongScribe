@@ -293,17 +293,8 @@ public class MenuController {
         lineMenu.add(InsertLineAction.createInsertLineAfterAction(mainFrame));
         menu.add(lineMenu);
 
-        menu.addSeparator();
-
-        var controlMenu = new JMenu(Strings.get(Strings.MENU_EDIT_CONTROL));
-
-        for (var action : Actions.CONTROL_ACTION_GROUP.getActions()) {
-            controlMenu.add(new JRadioButtonMenuItem(action));
-        }
-
-        menu.add(controlMenu);
-
         if (!SystemInfo.isMacOS) {
+            menu.addSeparator();
             menu.add(Actions.PREFERENCES_ACTION);
         }
 

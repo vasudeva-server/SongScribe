@@ -22,9 +22,6 @@ package songscribe.ui.component;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.prefs.Prefs;
-import songscribe.prefs.PrefsKey;
-import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.adjustment.HorizontalAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
@@ -40,12 +37,10 @@ import songscribe.ui.adjustment.VerticalAdjustment;
 public class ScoreViewState {
 
     private Mode mode = Mode.EDIT;
-    private Control control;
     @Nullable private HorizontalAdjustment horizontalAdjustment;
     @Nullable private VerticalAdjustment verticalAdjustment;
 
-    ScoreViewState(Control control) {
-        this.control = control;
+    ScoreViewState() {
     }
 
     public Mode getMode() {
@@ -54,15 +49,6 @@ public class ScoreViewState {
 
     public void setMode(Mode mode) {
         this.mode = mode;
-    }
-
-    public Control getControl() {
-        return control;
-    }
-
-    public void setControl(Control control) {
-        this.control = control;
-        Prefs.put(PrefsKey.CONTROL, control.name());
     }
 
     public @Nullable HorizontalAdjustment getHorizontalAdjustment() {

@@ -64,7 +64,6 @@ import songscribe.message.command.DeselectCommand;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.ui.Control;
 import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.score.LineComponent;
@@ -350,159 +349,6 @@ class ScoreInputHandlerTest extends UnitTest {
 
                 lc.verify(() -> LineComponent.setAltPressed(false));
             }
-        }
-    }
-
-    // -------------------------------------------------------------------
-    // Rows 67-69: KeyAction.handlePitchAdjustment
-    // -------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class PitchAdjustment {
-
-        @Test
-        void testHandlePitchAdjustmentUpDecrementsStaffPosition() {
-            var callback = mockEditKeyboardCallback();
-            var handler = new ScoreInputHandler(callback);
-            var component = new JPanel();
-            handler.installKeyBindings(component);
-
-            var note = ElementType.CROTCHET.newInstance();
-            // default staffPosition = 0, well within upper bound of -10
-
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
-                emm.when(EditModeManager::getPreviewElement).thenReturn(note);
-
-                var upAction = component.getActionMap().get(
-                    component.getInputMap(JPanel.WHEN_FOCUSED).get(
-                        KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0)));
-                upAction.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
-            }
-
-            assertThat(note.getStaffPosition()).isEqualTo(-1);
-        }
-
-        @Test
-        void testHandlePitchAdjustmentUpIsNoOpAtUpperBound() {
-            var callback = mockEditKeyboardCallback();
-            var handler = new ScoreInputHandler(callback);
-            var component = new JPanel();
-            handler.installKeyBindings(component);
-
-            var note = ElementType.CROTCHET.newInstance();
-            // upper bound: staffPosition < -(STAFF_LINES_ABOVE + 2) * 2 = -10
-            final int upperBound = -(Staff.STAFF_LINES_ABOVE + 2) * 2;
-            note.setStaffPosition(upperBound - 1);
-
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
-                emm.when(EditModeManager::getPreviewElement).thenReturn(note);
-
-                var upAction = component.getActionMap().get(
-                    component.getInputMap(JPanel.WHEN_FOCUSED).get(
-                        KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0)));
-                upAction.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
-            }
-
-            // Position should remain unchanged — already past the upper bound
-            assertThat(note.getStaffPosition()).isEqualTo(upperBound - 1);
-        }
-
-        @Test
-        void testHandlePitchAdjustmentDownIncrementsStaffPosition() {
-            var callback = mockEditKeyboardCallback();
-            var handler = new ScoreInputHandler(callback);
-            var component = new JPanel();
-            handler.installKeyBindings(component);
-
-            var note = ElementType.CROTCHET.newInstance();
-            // default staffPosition = 0, well within lower bound of 12
-
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
-                emm.when(EditModeManager::getPreviewElement).thenReturn(note);
-
-                var downAction = component.getActionMap().get(
-                    component.getInputMap(JPanel.WHEN_FOCUSED).get(
-                        KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0)));
-                downAction.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
-            }
-
-            assertThat(note.getStaffPosition()).isEqualTo(1);
-        }
-
-        @Test
-        void testHandlePitchAdjustmentDownIsNoOpAtLowerBound() {
-            var callback = mockEditKeyboardCallback();
-            var handler = new ScoreInputHandler(callback);
-            var component = new JPanel();
-            handler.installKeyBindings(component);
-
-            var note = ElementType.CROTCHET.newInstance();
-            // lower bound: staffPosition > (STAFF_LINES_BELOW + 2) * 2 = 12
-            final int lowerBound = (Staff.STAFF_LINES_BELOW + 2) * 2;
-            note.setStaffPosition(lowerBound + 1);
-
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
-                emm.when(EditModeManager::getPreviewElement).thenReturn(note);
-
-                var downAction = component.getActionMap().get(
-                    component.getInputMap(JPanel.WHEN_FOCUSED).get(
-                        KeyStroke.getKeyStroke(KeyEvent.VK_DOWN, 0)));
-                downAction.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
-            }
-
-            // Position should remain unchanged — already past the lower bound
-            assertThat(note.getStaffPosition()).isEqualTo(lowerBound + 1);
-        }
-
-        @Test
-        void testHandlePitchAdjustmentIsNoOpWhenModeIsNotEdit() {
-            var callback = mock(InputHandlerCallback.class);
-            when(callback.getMode()).thenReturn(Mode.SELECT);
-            when(callback.getControl()).thenReturn(Control.KEYBOARD);
-            when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
-            var handler = new ScoreInputHandler(callback);
-            var component = new JPanel();
-            handler.installKeyBindings(component);
-
-            var note = ElementType.CROTCHET.newInstance();
-            final int initialPosition = note.getStaffPosition();
-
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
-                emm.when(EditModeManager::getPreviewElement).thenReturn(note);
-
-                var upAction = component.getActionMap().get(
-                    component.getInputMap(JPanel.WHEN_FOCUSED).get(
-                        KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0)));
-                upAction.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
-            }
-
-            assertThat(note.getStaffPosition()).isEqualTo(initialPosition);
-        }
-
-        @Test
-        void testHandlePitchAdjustmentIsNoOpWhenControlIsNotKeyboard() {
-            var callback = mock(InputHandlerCallback.class);
-            when(callback.getMode()).thenReturn(Mode.EDIT);
-            when(callback.getControl()).thenReturn(Control.MOUSE);
-            when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
-            var handler = new ScoreInputHandler(callback);
-            var component = new JPanel();
-            handler.installKeyBindings(component);
-
-            var note = ElementType.CROTCHET.newInstance();
-            final int initialPosition = note.getStaffPosition();
-
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
-                emm.when(EditModeManager::getPreviewElement).thenReturn(note);
-
-                var upAction = component.getActionMap().get(
-                    component.getInputMap(JPanel.WHEN_FOCUSED).get(
-                        KeyStroke.getKeyStroke(KeyEvent.VK_UP, 0)));
-                upAction.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
-            }
-
-            assertThat(note.getStaffPosition()).isEqualTo(initialPosition);
         }
     }
 
@@ -1028,15 +874,6 @@ class ScoreInputHandlerTest extends UnitTest {
         return new KeyEvent(
             mock(Component.class), KeyEvent.KEY_PRESSED, 0L, 0, keyCode, KeyEvent.CHAR_UNDEFINED
         );
-    }
-
-    private InputHandlerCallback mockEditKeyboardCallback() {
-        var callback = mock(InputHandlerCallback.class);
-        when(callback.getMode()).thenReturn(Mode.EDIT);
-        when(callback.getControl()).thenReturn(Control.KEYBOARD);
-        // No active selection, so arrow keys fall through to the preview-nudge path.
-        when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
-        return callback;
     }
 
     /**
