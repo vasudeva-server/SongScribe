@@ -827,17 +827,24 @@ public final class LayoutResult {
      * If the mouse is within the horizontal bounds of an element head, snaps to that element's position.
      * Otherwise, positions between elements or after the last element as appropriate.
      *
-     * @param insertionIndex   The insertion index (0 to elementCount inclusive)
-     * @param mouseXSs         Mouse X coordinate in staff-space units (used to detect if over an element head)
-     * @param previewElement The element to be inserted (used to calculate extents for after-last positioning)
-     * @param line             The line containing the elements
+     * @param insertionIndex      The insertion index (0 to elementCount inclusive)
+     * @param mouseXSs            Mouse X coordinate in staff-space units (used to detect if over an
+     *                            element head); ignored when {@code betweenElementsOnly} is true
+     * @param previewElement      The element to be inserted (used to calculate extents for after-last
+     *                            positioning)
+     * @param line                The line containing the elements
+     * @param betweenElementsOnly When true, skips the element-head snap check below and always
+     *                            returns a between-elements/before-first/after-last position — for
+     *                            callers (e.g. the paste-mode insertion marker) that never merge onto
+     *                            an existing element's own position
      * @return X position in staff-space units for rendering the preview element
      */
     public double calculateInsertionXSs(
         int insertionIndex,
         double mouseXSs,
         StaffElement previewElement,
-        Line line) {
+        Line line,
+        boolean betweenElementsOnly) {
 
         // Exclude the auto-maintained terminal from positioning decisions —
         // it sits at the line's right edge and must not be treated as a real
@@ -851,28 +858,30 @@ public final class LayoutResult {
 
         // Check if mouse is over any element head - if so, snap to that element's position.
         // Include the terminal so hovering over it snaps the preview to its position.
-        for (var i = 0; i < line.elementCount(); i++) {
-            var element = line.getElement(i);
-            var column = elementColumns.get(element);
+        if (!betweenElementsOnly) {
+            for (var i = 0; i < line.elementCount(); i++) {
+                var element = line.getElement(i);
+                var column = elementColumns.get(element);
 
-            if (column == null) {
-                continue;
-            }
-
-            var elementX = column.getXSs();
-
-            if (mouseXSs >= elementX && mouseXSs <= elementX + column.getRightExtentSs()) {
-                // Mouse is over this element head - snap to its position.
-                // For the terminal, right-align the preview to the terminal's right edge
-                // so a wider replacement (e.g. REPEAT_RIGHT replacing FINAL_DOUBLE_BARLINE)
-                // doesn't overflow the staff boundary.
-                if (line.getSong().isAutoMaintainedTerminal(element, line)) {
-                    var previewRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                            previewElement, false, StaffElement.Direction.UP);
-                    return elementX + column.getRightExtentSs() - previewRightExtentSs;
+                if (column == null) {
+                    continue;
                 }
 
-                return elementX;
+                var elementX = column.getXSs();
+
+                if (mouseXSs >= elementX && mouseXSs <= elementX + column.getRightExtentSs()) {
+                    // Mouse is over this element head - snap to its position.
+                    // For the terminal, right-align the preview to the terminal's right edge
+                    // so a wider replacement (e.g. REPEAT_RIGHT replacing FINAL_DOUBLE_BARLINE)
+                    // doesn't overflow the staff boundary.
+                    if (line.getSong().isAutoMaintainedTerminal(element, line)) {
+                        var previewRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
+                                previewElement, false, StaffElement.Direction.UP);
+                        return elementX + column.getRightExtentSs() - previewRightExtentSs;
+                    }
+
+                    return elementX;
+                }
             }
         }
 

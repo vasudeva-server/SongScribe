@@ -20,12 +20,14 @@
 
 package songscribe.ui.edit;
 
+import java.awt.MouseInfo;
 import java.awt.event.ComponentAdapter;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.awt.event.MouseEvent;
 
 import javax.swing.JLayeredPane;
+import javax.swing.SwingUtilities;
 
 import org.jspecify.annotations.Nullable;
 
@@ -41,6 +43,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.undo.UndoController;
+import songscribe.util.UIUtils;
 
 /**
  * Manages the paste-mode state machine — placement of a clipboard fragment by
@@ -173,6 +176,7 @@ public final class PasteModeManager {
         }
 
         setActive(true);
+        syncTargetToMouse();
 
         var layeredPane = MainFrame.getInstance().getLayeredPane();
         var newOverlay = new PasteOverlay(scoreView);
@@ -193,6 +197,31 @@ public final class PasteModeManager {
         layeredPane.add(newOverlay, JLayeredPane.PALETTE_LAYER);
         layeredPane.revalidate();
         layeredPane.repaint();
+    }
+
+    /**
+     * Locates the LineComponent currently under the mouse pointer, if any, and
+     * immediately tracks it as the insertion target so the marker appears the
+     * instant paste mode is entered rather than waiting for the first real
+     * {@code mouseMoved} event. Must run before the overlay pill is added to
+     * the layered pane: once added, its full-bleed bounds would be the topmost
+     * hit there, shadowing the score underneath from {@link UIUtils#getComponentUnderMouse}.
+     */
+    private void syncTargetToMouse() {
+        var component = UIUtils.getComponentUnderMouse();
+
+        if (!(component instanceof LineComponent lineComponent)) {
+            return;
+        }
+
+        var mousePosition = MouseInfo.getPointerInfo().getLocation();
+        SwingUtilities.convertPointFromScreen(mousePosition, lineComponent);
+
+        var syntheticEvent = new MouseEvent(
+            lineComponent, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(), 0,
+            mousePosition.x, mousePosition.y, 0, false);
+
+        updateTarget(lineComponent, syntheticEvent);
     }
 
     /**

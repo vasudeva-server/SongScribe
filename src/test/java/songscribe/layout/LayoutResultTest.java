@@ -384,7 +384,7 @@ class LayoutResultTest extends UnitTest {
 
         var expected = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
 
-        assertThat(result.calculateInsertionXSs(0, MOUSE_BEFORE_FIRST_SS, preview, line))
+        assertThat(result.calculateInsertionXSs(0, MOUSE_BEFORE_FIRST_SS, preview, line, false))
             .isCloseTo(expected, within(TOLERANCE));
     }
 
@@ -400,7 +400,7 @@ class LayoutResultTest extends UnitTest {
             .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
             .build();
 
-        assertThat(result.calculateInsertionXSs(1, MOUSE_OVER_SECOND_HEAD_SS, preview, line))
+        assertThat(result.calculateInsertionXSs(1, MOUSE_OVER_SECOND_HEAD_SS, preview, line, false))
             .isCloseTo(SECOND_ELEMENT_X_SS, within(TOLERANCE));
     }
 
@@ -421,7 +421,7 @@ class LayoutResultTest extends UnitTest {
             ElementColumnBuilder.calculateRightExtentSs(preview, false, StaffElement.Direction.UP);
         var expected = TERMINAL_X_SS + TERMINAL_RIGHT_EXTENT_SS - previewRightExtentSs;
 
-        assertThat(result.calculateInsertionXSs(1, TERMINAL_X_SS, preview, line))
+        assertThat(result.calculateInsertionXSs(1, TERMINAL_X_SS, preview, line, false))
             .isCloseTo(expected, within(TOLERANCE));
     }
 
@@ -448,7 +448,7 @@ class LayoutResultTest extends UnitTest {
             + HorizontalSpacingCalculator.buildSpring(
                 lastColumn, previewColumn, line.getSong().getDefaultRestLengthSs()).naturalLengthSs();
 
-        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
 
         assertThat(actual).isCloseTo(expected, within(TOLERANCE));
         assertThat(actual).isGreaterThan(lastColumn.getRightEdgeXSs());
@@ -473,7 +473,7 @@ class LayoutResultTest extends UnitTest {
             .putElementColumn(first, lastColumn)
             .build();
 
-        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
 
         assertThat(actual - lastColumn.getXSs())
             .as("the preview gap follows the song's line rest, not a fixed default gap")
@@ -693,7 +693,7 @@ class LayoutResultTest extends UnitTest {
             .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
             .build();
 
-        assertThat(result.calculateInsertionXSs(1, MOUSE_IN_GAP_SS, preview, line))
+        assertThat(result.calculateInsertionXSs(1, MOUSE_IN_GAP_SS, preview, line, false))
             .isCloseTo(EXPECTED_MIDPOINT_SS, within(TOLERANCE));
     }
 

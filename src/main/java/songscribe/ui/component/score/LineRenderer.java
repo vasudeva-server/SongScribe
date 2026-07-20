@@ -29,6 +29,8 @@ import songscribe.dom.Line;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.LineThickness;
+import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.Staff;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
@@ -85,12 +87,6 @@ class LineRenderer {
 
     /** Corner arc diameter for the rubber-band selection rectangle, in pixels. */
     private static final int SELECTION_RECT_ARC_PX = 2;
-
-    /** Half the staff height in staff-space — staff lines sit at {@code middleLineYSs ± 2}. */
-    private static final double STAFF_HALF_HEIGHT_SS = 2.0;
-
-    /** Margin, in staff-space, the insertion-point marker extends past the staff lines. */
-    private static final double INSERTION_POINT_MARGIN_SS = 1.0;
 
     /**
      * Stroke width for the paste-mode insertion-point marker, in logical pixels — constant
@@ -689,7 +685,8 @@ class LineRenderer {
             var line = lc.getLine();
 
             if (line != null) {
-                x = invariants.getLayoutResult().calculateInsertionXSs(currentXIndex, mouseX, previewElement, line);
+                x = invariants.getLayoutResult()
+                    .calculateInsertionXSs(currentXIndex, mouseX, previewElement, line, false);
             }
         }
 
@@ -747,10 +744,26 @@ class LineRenderer {
             return;
         }
 
-        var xSs = calculateInsertionPointXSs(invariants.getLayoutResult(), line, pasteModeManager.getTargetIndex());
+        var layoutResult = invariants.getLayoutResult();
+
+        // A crotchet stands in for the extents calculateInsertionXSs needs for
+        // after-last spacing — the clipboard fragment's actual shape doesn't matter
+        // here, only a plausible notehead width. The marker sits half a notehead
+        // width further right so it reads as "before the next element" rather than
+        // centered on the notehead of whatever would be inserted.
+        // mouseXSs is ignored here since betweenElementsOnly=true — paste placement
+        // never snaps onto an existing element's own position.
+        var previewElement = ElementType.CROTCHET.newInstance();
+        var xSs = layoutResult.calculateInsertionXSs(
+            pasteModeManager.getTargetIndex(), 0, previewElement, line, true)
+            + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
+
+        // Span every staff position a note could occupy, including ledger lines,
+        // rather than the staff band alone or the full line (which also includes
+        // lyrics/below-content).
         var middleLineYSs = invariants.getMiddleLineYSs();
-        var topYSs = middleLineYSs - STAFF_HALF_HEIGHT_SS - INSERTION_POINT_MARGIN_SS;
-        var bottomYSs = middleLineYSs + STAFF_HALF_HEIGHT_SS + INSERTION_POINT_MARGIN_SS;
+        var topYSs = middleLineYSs + Staff.spToSs(Staff.MIN_STAFF_POSITION_SP);
+        var bottomYSs = middleLineYSs + Staff.spToSs(Staff.MAX_STAFF_POSITION_SP);
         var viewPxPerSs = invariants.getViewPixelsPerStaffSpace();
 
         try (var ignored = GraphicsState.save(g2,
@@ -764,42 +777,6 @@ class LineRenderer {
             var bottomYPx = (int) Math.round(bottomYSs * viewPxPerSs);
             g2.drawLine(xPx, topYPx, xPx, bottomYPx);
         }
-    }
-
-    /**
-     * Computes the insertion-point X, in staff-space, for the given index.
-     * <p>
-     * Over an existing element (index &lt; the line's effective element count), the
-     * marker sits half a column gap before that element's column X. For the append
-     * slot (index == effective element count), it sits half a column gap past the
-     * last effective element's right edge, or at the line's first-element position
-     * when the line has no effective elements yet.
-     * Package-private for testing.
-     *
-     * @param layoutResult The current layout result
-     * @param line         The line the index is relative to
-     * @param index        Insertion index (0 to effective element count, inclusive)
-     * @return Insertion-point X in staff-space
-     */
-    static double calculateInsertionPointXSs(LayoutResult layoutResult, Line line, int index) {
-        var effectiveElementCount = line.effectiveElementCount();
-        var halfColumnGapSs = HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS / 2;
-
-        if (index < effectiveElementCount) {
-            return layoutResult.getElementXSs(line.getElement(index)) - halfColumnGapSs;
-        }
-
-        if (effectiveElementCount == 0) {
-            return HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
-        }
-
-        var lastElement = line.getElement(effectiveElementCount - 1);
-        var lastColumn = layoutResult.getElementColumn(lastElement);
-        var lastRightEdgeSs = lastColumn != null
-            ? lastColumn.getRightEdgeXSs()
-            : layoutResult.getElementXSs(lastElement);
-
-        return lastRightEdgeSs + halfColumnGapSs;
     }
 
     /**
