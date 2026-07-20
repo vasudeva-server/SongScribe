@@ -42,8 +42,9 @@ final class MusicXmlNotationsWriter {
         var isRest = type.isRest();
         var spanMarkers = ctx.spanMarkers();
 
-        // Glissando slides are not applicable to grace notes.
-        var startGlissando = isGrace ? null : note.getGlissando();
+        // A grace note's glissando must target its host note, but a glissando
+        // never terminates on a grace note (the stop always lands on the true host).
+        var startGlissando = note.getGlissando();
         var hasSlideStop = !isGrace && pendingStopGlissando != null;
         var hasSlideStart = startGlissando != null;
 
