@@ -360,13 +360,27 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
+     * Returns true when no layout result exists and its absence is not the expected
+     * outcome of the issue #449 does-not-fit state, which deliberately keeps the last
+     * good result (or none at all) rather than producing a new one.
+     */
+    private boolean layoutMissing() {
+        return layoutResult == null && !lineDoesNotFit;
+    }
+
+    /** Returns true when the layout must be recomputed before its results can be read. */
+    private boolean needsLayout() {
+        return layoutDirty || layoutMissing();
+    }
+
+    /**
      * Ensures the layout is up to date, computing it if dirty.
      * <p>
      * Called by {@link StaffPanel} before collecting
      * all layout results to build {@link SongLayoutMetrics}.
      */
     public void ensureLayout() {
-        if (song != null && line != null && (layoutDirty || (layoutResult == null && !lineDoesNotFit))) {
+        if (song != null && line != null && needsLayout()) {
             performLayout();
         }
     }
@@ -465,7 +479,7 @@ public class LineComponent extends ScoreComponent
         }
 
         // Perform layout if dirty
-        if (layoutDirty || (layoutResult == null && !lineDoesNotFit)) {
+        if (needsLayout()) {
             performLayout();
         }
 
@@ -531,33 +545,30 @@ public class LineComponent extends ScoreComponent
             return new Dimension(0, 0);
         }
 
-        if (layoutDirty || (layoutResult == null && !lineDoesNotFit)) {
+        if (needsLayout()) {
             performLayout();
         }
 
-        var result = layoutResult;
-        var metrics = getScoreView().getSongLayoutMetrics();
-        var factor = getViewScale().factor();
-
-        if (result == null) {
-            if (lineDoesNotFit) {
-                // First layout could not fit the content (issue #449) and there is no
-                // prior layout to size from. Report a zero-width line of the normal
-                // height so the scroll pane stays sane until a later layout fits.
-                return new Dimension(
-                    0, (int) Math.ceil(ScaleContext.ssToPx(metrics.totalLineHeightSs()) * factor));
-            }
-
+        if (layoutMissing()) {
+            // Sizing does not consult the layout, but a null one here still means the
+            // layout pass failed for a reason other than the fit failure of issue #449.
+            // The throw also guards the @Nullable getScoreView() dereference below.
             throw unexpectedNullLayout();
         }
 
+        var metrics = getScoreView().getSongLayoutMetrics();
+
+        // A line always spans the full document width, never just the extent of its last
+        // element: LineRenderer draws the staff lines out to song.getLineWidthSs(), and
+        // sizing the component any narrower clipped them there — an element-less line
+        // collapsed to zero width and vanished entirely (issue #578).
         return new Dimension(
-            (int) Math.ceil(ScaleContext.ssToPx(result.getLineWidthSs()) * factor),
-            (int) Math.ceil(ScaleContext.ssToPx(metrics.totalLineHeightSs()) * factor));
+            toViewPx(new Ss(song.getLineWidthSs())).ceilPx(),
+            toViewPx(new Ss(metrics.totalLineHeightSs())).ceilPx());
     }
 
     private double calculateMiddleLineYSs() {
-        if (layoutDirty || (layoutResult == null && !lineDoesNotFit)) {
+        if (needsLayout()) {
             performLayout();
         }
 

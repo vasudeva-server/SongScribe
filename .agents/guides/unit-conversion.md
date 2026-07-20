@@ -73,10 +73,10 @@ Hold and compute spatial values in `Ss`. Convert to `Px` only when (a) producing
 - **Positions** (coordinates) — round to nearest: `(int) Math.round(scale.ssToPx(xSs))`, or use `ssToRoundedPx`.
 
 ```java
-// LineComponent.getPreferredSize — sizes, ceil
+// LineComponent.getPreferredSize — sizes, ceil (via the ViewPx seam)
 return new Dimension(
-    (int) Math.ceil(scale.ssToPx(result.getLineWidthSs())),
-    (int) Math.ceil(scale.ssToPx(metrics.totalLineHeightSs())));
+    toViewPx(new Ss(song.getLineWidthSs())).ceilPx(),
+    toViewPx(new Ss(metrics.totalLineHeightSs())).ceilPx());
 
 // LineComponent.getMiddleLineYPx — position, round
 return (int) Math.round(ScaleContext.getInstance().ssToPx(getMiddleLineYSs()));

@@ -22,8 +22,10 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -234,13 +236,14 @@ class LineComponentTest extends UnitTest {
 
         /**
          * With song, line, and an injected layout result, {@code getPreferredSize()} computes
-         * ceiling-rounded pixel dimensions from the layout's line width and the song's total
-         * line height.
+         * ceiling-rounded pixel dimensions from the song's line width and total line height.
          */
         @Test
         void testNonNullInputsReturnCeilingRoundedDimension() {
-            final double pxPerSs = 10.0;
-            ScaleContext.setPixelsPerStaffSpace(pxPerSs);
+            // Sizing goes through the ViewScale seam, which scales by the fixed
+            // DEFAULT_PIXELS_PER_STAFF_SPACE times the zoom factor — deliberately not the
+            // mutable ScaleContext pps, so overriding that here would not affect the result.
+            final double pxPerSs = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
 
             final double totalLineHeightSs = 9.5;
             final double aboveStaffSs = 2.0;
@@ -258,30 +261,33 @@ class LineComponentTest extends UnitTest {
             // Set ScoreView before setting line (lineSelectionState is null → no coordinator call).
             lc.setScoreView(mockScoreView);
 
-            // Set a real song/line to pass the null guards.
-            var song = new Song();
+            // Set a real song/line to pass the null guards. The width is stubbed rather than
+            // left at its default: outside the running app that default is a page-derived
+            // value the test does not control (and is 0.0 when no provider is installed), so
+            // a derived expectation could match a width read from the wrong source entirely.
+            final double lineWidthSs = 42.5;
+            var song = spy(new Song());
+            doReturn(lineWidthSs).when(song).getLineWidthSs();
             lc.song = song;
 
             var line = song.getLine(0);
             // Use setLine so lineSelectionState is created.
             lc.setLine(line, 0);
 
-            // Inject a mock layout result so performLayout() is not called.
-            // getLineWidthSs() on an empty result returns 0.
-            var mockLayout = mock(LayoutResult.class);
-            when(mockLayout.getLineWidthSs()).thenReturn(0.0);
-            lc.layoutResult = mockLayout;
+            // Inject a mock layout result so performLayout() is not called. The layout has
+            // no bearing on the size — the width comes from the song, not from where the
+            // line's last element happens to sit (issue #578).
+            lc.layoutResult = mock(LayoutResult.class);
             lc.layoutDirty = false;
 
             var size = lc.getPreferredSize();
 
-            // ceil(ssToPx(0.0)) = 0, ceil(ssToPx(9.5)) = ceil(95.0) = 95
             assertThat(size.width)
-                .as("width = ceil(ssToPx(lineWidthSs))")
-                .isEqualTo((int) Math.ceil(pxPerSs * 0.0));
+                .as("width = ceil(song lineWidthSs → view px)")
+                .isEqualTo((int) Math.ceil(pxPerSs * lineWidthSs));
 
             assertThat(size.height)
-                .as("height = ceil(ssToPx(totalLineHeightSs))")
+                .as("height = ceil(totalLineHeightSs → view px)")
                 .isEqualTo((int) Math.ceil(pxPerSs * totalLineHeightSs));
         }
     }

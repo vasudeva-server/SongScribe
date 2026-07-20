@@ -704,27 +704,6 @@ public final class LayoutResult {
         return hasTrailingLyricContinuation;
     }
 
-    /**
-     * Returns the width of this line (rightmost X position).
-     * <p>
-     * Calculates the rightmost edge of all element columns in the line.
-     *
-     * @return Line width in staff-space units, or 0 if no columns
-     */
-    public double getLineWidthSs() {
-        double maxX = 0;
-
-        for (var column : elementColumns.values()) {
-            var rightEdge = column.getRightEdgeXSs();
-
-            if (rightEdge > maxX) {
-                maxX = rightEdge;
-            }
-        }
-
-        return maxX;
-    }
-
     // ==========================================================================
     // Preview Element Positioning (Edit Mode)
     // ==========================================================================
