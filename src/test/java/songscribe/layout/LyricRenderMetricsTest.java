@@ -198,6 +198,49 @@ class LyricRenderMetricsTest extends UnitTest {
             .isCloseTo(expectedWidthSs, within(TOLERANCE));
     }
 
+    // -----------------------------------------------------------------------
+    // forFont() — every component derived from the lyrics font alone
+    // -----------------------------------------------------------------------
+
+    /**
+     * The staff-to-lyrics gap is a baseline offset, not the visual gap: it must carry the
+     * font's above-baseline ink on top of the margin, or every verse in the song sits one
+     * ink-height too high.
+     */
+    @Test
+    void testForFontComposesStaffToLyricsGapFromMarginPlusAboveBaselineInk() {
+        var expectedGapSs =
+            LineSpacing.LYRICS_ROW_MARGIN_SS + LyricRenderMetrics.fontAboveBaselineSs(LYRICS_FONT);
+
+        assertThat(LyricRenderMetrics.forFont(LYRICS_FONT).staffToLyricsGapSs())
+            .isCloseTo(expectedGapSs, within(TOLERANCE));
+    }
+
+    /**
+     * The gap must exceed the bare margin — a regression that dropped the ink term would
+     * still satisfy a tolerance-based check against the margin alone.
+     */
+    @Test
+    void testForFontGapExceedsTheVisualMarginByTheInkHeight() {
+        assertThat(LyricRenderMetrics.forFont(LYRICS_FONT).staffToLyricsGapSs())
+            .isGreaterThan(LineSpacing.LYRICS_ROW_MARGIN_SS);
+    }
+
+    @Test
+    void testForFontDerivesFontsAndGlyphWidths() {
+        var metrics = LyricRenderMetrics.forFont(LYRICS_FONT);
+
+        assertAll(
+            () -> assertThat(metrics.lyricsFont()).isEqualTo(LYRICS_FONT),
+            () -> assertThat(metrics.scaledLyricsFont())
+                .isEqualTo(ScaleContext.scaleFont(LYRICS_FONT)),
+            () -> assertThat(metrics.hyphenWidthSs())
+                .isCloseTo(ScaleContext.textWidthSs(LYRICS_FONT, "-").value(), within(TOLERANCE)),
+            () -> assertThat(metrics.spaceWidthSs())
+                .isCloseTo(ScaleContext.textWidthSs(LYRICS_FONT, " ").value(), within(TOLERANCE))
+        );
+    }
+
     // ==========================================================================
     // Helpers
     // ==========================================================================

@@ -33,7 +33,6 @@ import songscribe.UnitTest;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
-import songscribe.dom.ScaleContext;
 import songscribe.dom.Tie;
 import songscribe.engraving.Staff;
 import songscribe.layout.stacking.StackingUtils;
@@ -59,14 +58,7 @@ class TiedScriptStackingTest extends UnitTest {
 
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
-        var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-").value();
-        var spaceWidthSs = ScaleContext.textWidthSs(lyricsFont, " ").value();
-        var metrics = new LyricRenderMetrics(
-            lyricsFont,
-            ScaleContext.scaleFont(lyricsFont),
-            hyphenWidthSs,
-            spaceWidthSs,
-            LineSpacing.LYRICS_ROW_MARGIN_SS + LyricRenderMetrics.fontAboveBaselineSs(lyricsFont));
+        var metrics = LyricRenderMetrics.forFont(lyricsFont);
         return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
     }
 

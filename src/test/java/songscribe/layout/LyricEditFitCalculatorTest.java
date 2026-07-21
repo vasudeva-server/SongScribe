@@ -34,7 +34,6 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
-import songscribe.dom.ScaleContext;
 import songscribe.font.SourceSans3Font;
 import songscribe.io.musicxml.MusicXmlReader;
 
@@ -233,12 +232,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
         var result = MusicXmlReader.read(musicXmlFixtureFile("spring-spacing-infeasible-lyric"));
         var song = result.song();
         var lyricsFont = result.fonts().getLyricsFont();
-        var lyricRenderMetrics = new LyricRenderMetrics(
-            lyricsFont,
-            ScaleContext.scaleFont(lyricsFont),
-            ScaleContext.textWidthSs(lyricsFont, "-").value(),
-            ScaleContext.textWidthSs(lyricsFont, " ").value(),
-            LineSpacing.LYRICS_ROW_MARGIN_SS + LyricRenderMetrics.fontAboveBaselineSs(lyricsFont));
+        var lyricRenderMetrics = LyricRenderMetrics.forFont(lyricsFont);
         var line = song.getLines().get(0);
         var lastNoteIndex = lastPitchedNoteIndex(line);
         var staffRightMarginSs = song.getLineWidthSs();

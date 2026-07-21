@@ -34,7 +34,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
-import songscribe.dom.ScaleContext;
 import songscribe.dom.Tie;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.Song;
@@ -180,14 +179,7 @@ class LayoutEngineTest extends UnitTest {
 
     private static LayoutEngine engine() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
-        var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-").value();
-        var spaceWidthSs = ScaleContext.textWidthSs(lyricsFont, " ").value();
-        var metrics = new LyricRenderMetrics(
-            lyricsFont,
-            ScaleContext.scaleFont(lyricsFont),
-            hyphenWidthSs,
-            spaceWidthSs,
-            LineSpacing.LYRICS_ROW_MARGIN_SS + LyricRenderMetrics.fontAboveBaselineSs(lyricsFont));
+        var metrics = LyricRenderMetrics.forFont(lyricsFont);
         return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
     }
 

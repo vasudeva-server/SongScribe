@@ -58,6 +58,26 @@ public record LyricRenderMetrics(
     /** Preferred hyphen cell width as a multiple of the "-" glyph width. */
     public static final double HYPHEN_WIDENING_FACTOR = 1.75;
 
+    /**
+     * Derives the full set of metrics from the lyrics font alone — every component is a
+     * function of it, so this is the only way they should be built outside tests that
+     * deliberately inject degenerate values.
+     * <p>
+     * In particular {@code staffToLyricsGapSs} is a <em>baseline</em> offset, not the visual
+     * gap: it is {@link LineSpacing#LYRICS_ROW_MARGIN_SS} plus the font's above-baseline ink,
+     * so a baseline placed at this distance puts the text's ink top one visual margin below
+     * the line's content. Getting that composition wrong shifts every verse in the song, which
+     * is why it lives here rather than at the call site.
+     */
+    public static LyricRenderMetrics forFont(Font lyricsFont) {
+        return new LyricRenderMetrics(
+            lyricsFont,
+            ScaleContext.scaleFont(lyricsFont),
+            ScaleContext.textWidthSs(lyricsFont, "-").value(),
+            ScaleContext.textWidthSs(lyricsFont, " ").value(),
+            LineSpacing.LYRICS_ROW_MARGIN_SS + fontAboveBaselineSs(lyricsFont));
+    }
+
     /** Returns the preferred cell width for a hyphen connector (glyph width × widening factor). */
     public double preferredHyphenCellWidthSs() {
         return HYPHEN_WIDENING_FACTOR * hyphenWidthSs;

@@ -77,7 +77,6 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.layout.Ending;
 import songscribe.layout.HorizontalSpacingCalculator;
-import songscribe.layout.LineSpacing;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
@@ -1403,12 +1402,7 @@ public final class ScoreView
             return;
         }
 
-        lyricRenderMetrics = new LyricRenderMetrics(
-            lyricsFont,
-            ScaleContext.scaleFont(lyricsFont),
-            ScaleContext.textWidthSs(lyricsFont, "-").value(),
-            ScaleContext.textWidthSs(lyricsFont, " ").value(),
-            LineSpacing.LYRICS_ROW_MARGIN_SS + LyricRenderMetrics.fontAboveBaselineSs(lyricsFont));
+        lyricRenderMetrics = LyricRenderMetrics.forFont(lyricsFont);
     }
 
     @Nullable
