@@ -550,10 +550,10 @@ class ArticulationStackingTest extends UnitTest {
             // up-stem note places them below the staff and must push that extent further down,
             // so lyrics clear the articulations.
             var noteWithout = createNote(UP_STEM_STAFF_POSITION, true);
-            var belowContentWithoutSs = stackSingleColumn(noteWithout).getBelowContentSs();
+            var belowContentWithoutSs = stackSingleColumn(noteWithout).getContentBelowStaffSs();
 
             var noteWith = createNote(UP_STEM_STAFF_POSITION, true, ArticulationType.STACCATO);
-            var belowContentWithSs = stackSingleColumn(noteWith).getBelowContentSs();
+            var belowContentWithSs = stackSingleColumn(noteWith).getContentBelowStaffSs();
 
             assertThat(belowContentWithSs).isGreaterThan(belowContentWithoutSs);
         }

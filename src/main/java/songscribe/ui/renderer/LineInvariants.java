@@ -37,7 +37,6 @@ import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
-import songscribe.layout.SongLayoutMetrics;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.dom.ScaleContext;
@@ -73,7 +72,6 @@ public final class LineInvariants {
     private final double middleLineYSs;
     private final int lineIndex;
     private final LayoutResult layoutResult;
-    private final SongLayoutMetrics songLayoutMetrics;
     private final LyricRenderMetrics lyricRenderMetrics;
     @Nullable
     private final StaffElement activelyEditedElement;
@@ -94,7 +92,6 @@ public final class LineInvariants {
     private LineInvariants(
         Builder b,
         LayoutResult layoutResult,
-        SongLayoutMetrics songLayoutMetrics,
         LyricRenderMetrics lyricRenderMetrics
     ) {
         song = b.song;
@@ -103,7 +100,6 @@ public final class LineInvariants {
         middleLineYSs = b.middleLineYSs;
         lineIndex = b.lineIndex;
         this.layoutResult = layoutResult;
-        this.songLayoutMetrics = songLayoutMetrics;
         this.lyricRenderMetrics = lyricRenderMetrics;
         activelyEditedElement = b.activelyEditedElement;
         selectionProvider = b.selectionProvider;
@@ -201,16 +197,6 @@ public final class LineInvariants {
      */
     public LayoutResult getLayoutResult() {
         return layoutResult;
-    }
-
-    /**
-     * Returns the song-wide layout metrics.
-     * <p>
-     * Used by lyric renderers to look up per-verse baseline Y positions that
-     * are uniform across every line in the song.
-     */
-    public SongLayoutMetrics getSongLayoutMetrics() {
-        return songLayoutMetrics;
     }
 
     /** Returns the song-wide lyric render metrics. */
@@ -468,8 +454,8 @@ public final class LineInvariants {
 
     /**
      * Accumulates the per-line fields and produces an immutable {@link LineInvariants}.
-     * The layout fields ({@code layoutResult}, {@code songLayoutMetrics},
-     * {@code lyricRenderMetrics}) are required and must be set before {@link #build()}.
+     * The layout fields ({@code layoutResult}, {@code lyricRenderMetrics}) are required
+     * and must be set before {@link #build()}.
      */
     public static final class Builder {
 
@@ -481,8 +467,6 @@ public final class LineInvariants {
         private int lineIndex;
         @Nullable
         private LayoutResult layoutResult;
-        @Nullable
-        private SongLayoutMetrics songLayoutMetrics;
         @Nullable
         private LyricRenderMetrics lyricRenderMetrics;
         @Nullable
@@ -516,11 +500,6 @@ public final class LineInvariants {
 
         public Builder setLayoutResult(LayoutResult layoutResult) {
             this.layoutResult = layoutResult;
-            return this;
-        }
-
-        public Builder setSongLayoutMetrics(SongLayoutMetrics songLayoutMetrics) {
-            this.songLayoutMetrics = songLayoutMetrics;
             return this;
         }
 
@@ -575,16 +554,15 @@ public final class LineInvariants {
          */
         public LineInvariants build() {
             var resolvedLayout = layoutResult;
-            var resolvedSongMetrics = songLayoutMetrics;
             var resolvedLyricMetrics = lyricRenderMetrics;
 
-            if (resolvedLayout == null || resolvedSongMetrics == null || resolvedLyricMetrics == null) {
+            if (resolvedLayout == null || resolvedLyricMetrics == null) {
                 throw new IllegalStateException(
-                    "LineInvariants requires layoutResult, songLayoutMetrics, and lyricRenderMetrics to be set"
+                    "LineInvariants requires layoutResult and lyricRenderMetrics to be set"
                 );
             }
 
-            return new LineInvariants(this, resolvedLayout, resolvedSongMetrics, resolvedLyricMetrics);
+            return new LineInvariants(this, resolvedLayout, resolvedLyricMetrics);
         }
     }
 }

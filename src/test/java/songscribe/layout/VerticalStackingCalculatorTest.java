@@ -226,7 +226,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 mock(DocumentFontsHolder.class));
 
             var result = builder.build();
-            assertThat(result.getAboveStaffSs())
+            assertThat(result.getContentAboveStaffSs())
                 .isGreaterThanOrEqualTo(Staff.MIN_ABOVE_STAFF_SS - EPSILON.value);
         }
 
@@ -244,7 +244,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 baseBuilder,
                 lineWidth,
                 mock(DocumentFontsHolder.class));
-            var baseAboveSs = baseBuilder.build().getAboveStaffSs();
+            var baseAboveSs = baseBuilder.build().getContentAboveStaffSs();
 
             // Now run with a tall attribution
             var tallAttribution = new Attribution();
@@ -259,7 +259,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 mock(DocumentFontsHolder.class),
                 tallAttribution);
 
-            var attrAboveSs = attrBuilder.build().getAboveStaffSs();
+            var attrAboveSs = attrBuilder.build().getContentAboveStaffSs();
             assertThat(attrAboveSs)
                 .describedAs("tall attribution must increase aboveStaffSs beyond baseline")
                 .isGreaterThan(baseAboveSs);
@@ -283,7 +283,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 lineWidth,
                 mock(DocumentFontsHolder.class),
                 noOffsetAttribution);
-            var noOffsetAboveSs = noOffsetBuilder.build().getAboveStaffSs();
+            var noOffsetAboveSs = noOffsetBuilder.build().getContentAboveStaffSs();
 
             // Same attribution shifted further up by a large negative Y offset
             var shiftedAttribution = new Attribution();
@@ -298,7 +298,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 lineWidth,
                 mock(DocumentFontsHolder.class),
                 shiftedAttribution);
-            var shiftedAboveSs = shiftedBuilder.build().getAboveStaffSs();
+            var shiftedAboveSs = shiftedBuilder.build().getContentAboveStaffSs();
 
             assertThat(shiftedAboveSs)
                 .describedAs("upward Y offset must grow aboveStaffSs")
@@ -324,7 +324,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 lineWidth,
                 mock(DocumentFontsHolder.class),
                 noOffsetAttribution);
-            var noOffsetAboveSs = noOffsetBuilder.build().getAboveStaffSs();
+            var noOffsetAboveSs = noOffsetBuilder.build().getContentAboveStaffSs();
 
             // Same attribution shifted down
             var shiftedAttribution = new Attribution();
@@ -339,7 +339,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 lineWidth,
                 mock(DocumentFontsHolder.class),
                 shiftedAttribution);
-            var shiftedAboveSs = shiftedBuilder.build().getAboveStaffSs();
+            var shiftedAboveSs = shiftedBuilder.build().getContentAboveStaffSs();
 
             assertThat(shiftedAboveSs)
                 .describedAs("downward Y offset must not grow aboveStaffSs beyond the natural position")

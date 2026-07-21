@@ -31,25 +31,19 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Song;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
-import songscribe.layout.SongLayoutMetricsBuilder;
 import songscribe.layout.LayoutResult;
-import songscribe.dom.ScaleContext;
-import songscribe.layout.SongLayoutMetrics;
+import songscribe.layout.LyricRenderMetrics;
 
 /**
  * Panel containing all staff lines of a song.
  * <p>
- * Uses BoxLayout.Y_AXIS to stack {@link LinePanel} components with
- * {@code LINE_MARGIN_BOTTOM_MU} spacing between them.
+ * Uses {@link StaffLinesLayout} to stack {@link LinePanel} components, which sizes each
+ * line to its own content and owns all spacing between them.
  * <p>
  * Note: Named StaffPanel to avoid conflict with ScoreView.ScorePanel inner class.
  */
 public class StaffPanel extends JPanel {
 
-    /**
-     * Margin between staff lines
-     */
-    public static final double LINE_MARGIN_BOTTOM_SS = 2.0;  // 16px
     /** The song model. */
     @Nullable
     private Song song;
@@ -65,7 +59,7 @@ public class StaffPanel extends JPanel {
      * Creates a new StaffPanel.
      */
     public StaffPanel() {
-        setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
+        setLayout(new StaffLinesLayout(this));
         setOpaque(false);
     }
 
@@ -75,13 +69,8 @@ public class StaffPanel extends JPanel {
     }
 
     /** The view zoom, or {@link ViewScale#IDENTITY} when detached. */
-    private ViewScale viewScale() {
+    ViewScale viewScale() {
         return scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY;
-    }
-
-    /** Spacing between staff lines, scaled to the current view zoom. */
-    private int lineMarginPx() {
-        return (int) Math.round(ScaleContext.ssToPx(LINE_MARGIN_BOTTOM_SS) * viewScale().factor());
     }
 
     /**
@@ -130,11 +119,6 @@ public class StaffPanel extends JPanel {
             linePanels.add(linePanel);
 
             add(linePanel);
-
-            // Add spacing after each line except the last
-            if (i < lineCount - 1) {
-                add(Box.createVerticalStrut(lineMarginPx()));
-            }
         }
 
         revalidate();
@@ -180,48 +164,13 @@ public class StaffPanel extends JPanel {
         return null;
     }
 
-    @Override
-    public Dimension getPreferredSize() {
-        if (isPreferredSizeSet()) {
-            return super.getPreferredSize();
-        }
-
-        if (song == null || linePanels.isEmpty()) {
-            return new Dimension(0, 0);
-        }
-
-        // Always recompute: live drag updates positions without firing a mutation, so we
-        // can't rely on a dirty-flag signal here. Each line's own ensureLayout is a no-op
-        // when its layout isn't dirty, so the cost of re-running this is bounded by the
-        // metrics aggregation.
-        updateSongMetrics();
-
-        var width = 0;
-        var height = 0;
-
-        for (var i = 0; i < linePanels.size(); i++) {
-            var size = linePanels.get(i).getPreferredSize();
-            width = Math.max(width, size.width);
-            height += size.height;
-
-            // Add spacing after each line except the last
-            if (i < linePanels.size() - 1) {
-                height += lineMarginPx();
-            }
-        }
-
-        return new Dimension(width, height);
-    }
-
     /**
-     * Forces all line layouts, builds {@link SongLayoutMetrics}
-     * from the results, and pushes the metrics onto the owning {@link ScoreView}
-     * so that all lines report a uniform preferred height.
+     * Forces every line's layout so that {@link StaffLinesLayout} can measure the results.
      * <p>
      * Package-private for testing: tests can spy on this method to avoid
      * the full ScoreView dependency.
      */
-    void updateSongMetrics() {
+    void ensureAllLineLayouts() {
         var scoreView = linePanels.getFirst().getLineComponent().getScoreView();
 
         // Ensure LyricRenderMetrics on ScoreView is up-to-date before any line layout runs.
@@ -232,11 +181,16 @@ public class StaffPanel extends JPanel {
         // Lay out each line in order, threading lyric-extender continuation across line
         // boundaries so that a melisma that runs off the end of one line reappears as a
         // leading stub on the next.
-        var layouts = getLayoutResults();
-        var lyricsFont = scoreView.getLyricsFont();
-        var lyricAscentSs = ScaleContext.fontAscentSs(lyricsFont).value();
-        var metrics = SongLayoutMetricsBuilder.build(layouts, lyricAscentSs);
-        scoreView.setSongLayoutMetrics(metrics);
+        getLayoutResults();
+    }
+
+    /**
+     * The lyric geometry every line is laid out against. Resolved through the first line
+     * component rather than this panel's own {@link ScoreView} back-reference, because the
+     * line components are given theirs first.
+     */
+    LyricRenderMetrics lyricRenderMetrics() {
+        return linePanels.getFirst().getLineComponent().getScoreView().getLyricRenderMetrics();
     }
 
     /**
@@ -260,10 +214,5 @@ public class StaffPanel extends JPanel {
             }
         }
         return layouts;
-    }
-
-    @Override
-    public Dimension getMaximumSize() {
-        return getPreferredSize();
     }
 }

@@ -187,7 +187,7 @@ class LineComponentTest extends UnitTest {
         void testReturnsAboveStaffSsPlusHalfStaff() {
             final double aboveStaffSs = 3.0;
             var mockLayout = mock(LayoutResult.class);
-            when(mockLayout.getAboveStaffSs()).thenReturn(aboveStaffSs);
+            when(mockLayout.getContentAboveStaffSs()).thenReturn(aboveStaffSs);
 
             // Inject layout state: result present and not dirty, so performLayout() is skipped.
             lc.layoutResult = mockLayout;

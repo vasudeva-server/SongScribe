@@ -26,7 +26,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.component.score.StaffPanel;
 import songscribe.dom.ScaleContext;
 
 public final class ComponentHierarchyNavigator {
@@ -161,11 +160,8 @@ public final class ComponentHierarchyNavigator {
             rowHeightPx = getActualLineMiddleYPx(1) - getActualLineMiddleYPx(0);
         } else {
             var linePanel = linePanels.getFirst();
-            // getHeight() is already view pixels, so scale the inter-line margin by the
-            // view zoom too rather than reading a document-scale value.
-            rowHeightPx = linePanel.getLineComponent().getHeight()
-                + (int) Math.round(
-                    ScaleContext.ssToPx(StaffPanel.LINE_MARGIN_BOTTOM_SS) * viewScale().factor());
+            // With a single line there is no inter-line spacing to add.
+            rowHeightPx = linePanel.getLineComponent().getHeight();
         }
 
         layoutUpdater.accept(new int[]{middleLineYPx, rowHeightPx});

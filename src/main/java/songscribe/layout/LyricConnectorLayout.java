@@ -31,7 +31,7 @@ package songscribe.layout;
  * {@link Kind#DANGLING_EXTENDER} is an extender that reaches the end of the line without
  * a closing element — it is anchored to the right edge of the last eligible element on
  * the line rather than the line width. The renderer reads Y from
- * {@link SongLayoutMetrics#verseYSsInLine(int)}.
+ * {@link LayoutResult#verseYSsInLine(int, LyricRenderMetrics)}.
  *
  * @param startXSs           left edge of the connector in staff spaces
  * @param endXSs             right edge of the connector in staff spaces

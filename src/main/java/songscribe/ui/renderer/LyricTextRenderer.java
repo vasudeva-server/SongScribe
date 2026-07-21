@@ -29,7 +29,6 @@ import module java.desktop;
 import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricBoxLayout;
-import songscribe.layout.SongLayoutMetrics;
 import songscribe.util.GraphicsState;
 
 /**
@@ -37,8 +36,7 @@ import songscribe.util.GraphicsState;
  * <p>
  * Reads {@link LyricBoxLayout} entries from the current
  * {@link LayoutResult} and draws each syllable at the verse
- * baseline provided by the song-wide
- * {@link SongLayoutMetrics}. Stateless.
+ * baseline provided by that line's own {@link LayoutResult}. Stateless.
  */
 public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
 
@@ -70,7 +68,6 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
             return;
         }
 
-        var metrics = invariants.getSongLayoutMetrics();
         var lyricRenderMetrics = invariants.getLyricRenderMetrics();
         // The zoomed scale: the outer transform (which we strip below) is pxPerSs × factor,
         // so we re-derive integer pixel coordinates from the same zoomed value.
@@ -92,7 +89,7 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
             for (var box : boxes) {
                 g2.setColor(invariants.getLyricColor(frame.currentElementIndex(), element, box.verseIndex()));
 
-                var baselineYSs = metrics.verseYSsInLine(box.verseIndex());
+                var baselineYSs = invariants.getLayoutResult().verseYSsInLine(box.verseIndex(), lyricRenderMetrics);
                 var xPx = (int) Math.round(box.xSs() * viewPxPerSs);
                 var yPx = (int) Math.round(baselineYSs * viewPxPerSs);
                 g2.drawString(box.text(), xPx, yPx);

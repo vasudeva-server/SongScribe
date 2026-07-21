@@ -41,7 +41,6 @@ import songscribe.layout.Ending;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.layout.SongLayoutMetrics;
 import songscribe.engraving.Staff;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.util.GraphicsState;
@@ -127,6 +126,9 @@ public class LineComponent extends ScoreComponent
     /** Y coordinate of the middle staff line (B line) in staff-space units. */
     private double middleLineYSs;
 
+    /** Whether {@link #middleLineYSs} reflects the current layout. */
+    private boolean middleLineYSsValid;
+
     /** Provider for checking note selection state. */
     @Nullable
     private SelectionProvider selectionProvider;
@@ -199,6 +201,7 @@ public class LineComponent extends ScoreComponent
         layoutDirty = true;
         layoutResult = null;
         lineDoesNotFit = false;
+        middleLineYSsValid = false;
 
         // Register with coordinator if score is available
         if (scoreView != null) {
@@ -247,8 +250,9 @@ public class LineComponent extends ScoreComponent
      * Lazily calculates the value if it hasn't been set yet.
      */
     public double getMiddleLineYSs() {
-        if (middleLineYSs == 0.0 && song != null) {
+        if (!middleLineYSsValid && song != null) {
             middleLineYSs = calculateMiddleLineYSs();
+            middleLineYSsValid = true;
         }
 
         return middleLineYSs;
@@ -343,6 +347,7 @@ public class LineComponent extends ScoreComponent
         layoutDirty = true;
         layoutResult = null;
         lineDoesNotFit = false;
+        middleLineYSsValid = false;
         revalidate();
         repaint();
     }
@@ -399,6 +404,7 @@ public class LineComponent extends ScoreComponent
         if (this.hasLeadingLyricContinuation != hasLeadingLyricContinuation) {
             this.hasLeadingLyricContinuation = hasLeadingLyricContinuation;
             layoutDirty = true;
+            middleLineYSsValid = false;
         }
     }
 
@@ -485,6 +491,7 @@ public class LineComponent extends ScoreComponent
         }
 
         middleLineYSs = calculateMiddleLineYSs();
+        middleLineYSsValid = true;
 
         // ── Paint pipeline: the zoom factor is applied EXACTLY ONCE ─────────────────
         //
@@ -557,15 +564,23 @@ public class LineComponent extends ScoreComponent
             throw unexpectedNullLayout();
         }
 
-        var metrics = getScoreView().getSongLayoutMetrics();
-
         // A line always spans the full document width, never just the extent of its last
         // element: LineRenderer draws the staff lines out to song.getLineWidthSs(), and
         // sizing the component any narrower clipped them there — an element-less line
         // collapsed to zero width and vanished entirely (issue #578).
+        double heightSs;
+
+        if (layoutResult != null) {
+            heightSs = layoutResult.lineHeightSs(getScoreView().getLyricRenderMetrics());
+        } else {
+            // Issue #449: the line has never had a fitting layout. Fall back to the same
+            // minimum extents StaffLinesLayout uses for a null LayoutResult.
+            heightSs = Staff.MIN_ABOVE_STAFF_SS + Staff.MIN_BELOW_STAFF_SS + Staff.STAFF_HEIGHT_SS;
+        }
+
         return new Dimension(
             toViewPx(new Ss(song.getLineWidthSs())).ceilPx(),
-            toViewPx(new Ss(metrics.totalLineHeightSs())).ceilPx());
+            toViewPx(new Ss(heightSs)).ceilPx());
     }
 
     private double calculateMiddleLineYSs() {
@@ -585,7 +600,7 @@ public class LineComponent extends ScoreComponent
             throw unexpectedNullLayout();
         }
 
-        return result.getAboveStaffSs() + Staff.STAFF_HALF_SS;
+        return result.staffTopYSsInLine() + Staff.STAFF_HALF_SS;
     }
 
     /**

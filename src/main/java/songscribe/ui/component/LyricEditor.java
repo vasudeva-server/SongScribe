@@ -658,11 +658,10 @@ public final class LyricEditor extends MyJTextField {
         }
 
         var lyricRenderMetrics = score.getLyricRenderMetrics();
-        var songLayoutMetrics = score.getSongLayoutMetrics();
         var text = getText();
         var boxMetrics = lyricRenderMetrics.lyricBoxMetricsSs(text);
         var advanceSs = Math.max(boxMetrics.advanceSs(), EMPTY_BOX_MIN_WIDTH_SS);
-        var anchor = layoutResult.getLyricAnchor(element, songLayoutMetrics);
+        var anchor = layoutResult.getLyricAnchor(element, lyricRenderMetrics);
 
         var advanceLeftSs = anchor.centerXSs() - advanceSs / 2.0;
         var heightSs = lyricRenderMetrics.lyricBoxHeightSs();

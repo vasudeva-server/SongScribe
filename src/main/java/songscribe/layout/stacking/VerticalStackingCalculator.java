@@ -33,7 +33,6 @@ import songscribe.layout.ElementColumn;
 import songscribe.layout.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.SongLayoutMetricsBuilder;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
 import songscribe.dom.Trill;
@@ -156,15 +155,15 @@ public class VerticalStackingCalculator {
         // Apply manual offsets post-layout (no collision re-run)
         applyManualOffsets(builder);
 
-        var lowestNoteBotSs = context.getLowestNoteBotSs();
-
         // Stacking coordinates put the middle staff line at y=0: staff top at
-        // y=-STAFF_HALF_SS, staff bottom at y=+STAFF_HALF_SS. aboveStaffSs and
-        // belowStaffSs are distances beyond the staff top/bottom respectively;
-        // both subtract STAFF_HALF_SS from the signed extent.
+        // y=-STAFF_HALF_SS, staff bottom at y=+STAFF_HALF_SS. The content extents are
+        // distances beyond the staff top/bottom respectively; both subtract
+        // STAFF_HALF_SS from the signed extent. They are the line's true content
+        // reach, unfloored — the inter-line gap is owned by the layout manager that
+        // positions the lines, so a floor here would only inflate the gap (refs #591).
         var topExtentSs = systemExtents.yGet(true, 0, lineWidthSs);
-        var aboveStaffSs = Math.max(
-            Staff.MIN_ABOVE_STAFF_SS,
+        var contentAboveStaffSs = Math.max(
+            0.0,
             -topExtentSs - Staff.STAFF_HALF_SS);
 
         // An upward user Y offset on the attribution can raise it above the naturally
@@ -178,37 +177,23 @@ public class VerticalStackingCalculator {
                 if (naturalLayout != null) {
                     var shiftedTopSs = naturalLayout.ySs() + userYOffsetSs;
                     var aboveFromAttribution = -shiftedTopSs - Staff.STAFF_HALF_SS;
-                    aboveStaffSs = Math.max(aboveStaffSs, aboveFromAttribution);
+                    contentAboveStaffSs = Math.max(contentAboveStaffSs, aboveFromAttribution);
                 }
             }
         }
 
-        var botExtentSs = Math.max(
-            Math.max(
-                noteAttachedExtents.yGet(false, 0, lineWidthSs),
-                structuralExtents.yGet(false, 0, lineWidthSs)),
-            Math.max(
-                systemExtents.yGet(false, 0, lineWidthSs),
-                lowestNoteBotSs));
-        var belowStaffSs = Math.max(
-            Staff.MIN_BELOW_STAFF_SS,
-            botExtentSs - Staff.STAFF_HALF_SS);
-
-        // True extent of staff-element content below the staff bottom — distinct from the
-        // sizing reservation above. Tracked in the context as elements seed their bounds
-        // (notes, downward ties), defaults to staff bottom for an empty line.
-        var belowContentSs = Math.max(
+        // True extent of content below the staff bottom, unfloored. Only the note-attached
+        // layer ever places anything below the staff — the structural and system layers
+        // (hairpins, dynamics, endings, tempo, annotations) always stack above it — so the
+        // note-attached content extent is the whole story. It tracks true ink (notehead and
+        // stem bottoms, downward ties, the outermost below-staff articulation) rather than
+        // reserved footprints, which is what lyrics must clear.
+        var contentBelowStaffSs = Math.max(
             0.0,
             context.getBotContentExtentSs() - Staff.STAFF_HALF_SS);
 
-        var lineHeightSs = Staff.STAFF_HEIGHT_SS
-            + aboveStaffSs
-            + belowStaffSs
-            + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
-
-        builder.setLineHeightSs(lineHeightSs);
-        builder.setAboveStaffSs(aboveStaffSs);
-        builder.setBelowContentSs(belowContentSs);
+        builder.setContentAboveStaffSs(contentAboveStaffSs);
+        builder.setContentBelowStaffSs(contentBelowStaffSs);
     }
 
     /**

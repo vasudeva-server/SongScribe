@@ -142,7 +142,6 @@ class LineRenderer {
             .setLineIndex(lineIndex)
             .setMiddleLineYSs(lc.getMiddleLineYSs())
             .setLayoutResult(layoutResult)
-            .setSongLayoutMetrics(score.getSongLayoutMetrics())
             .setLyricRenderMetrics(score.getLyricRenderMetrics())
             .setActivelyEditedElement(activeEditor != null ? activeEditor.getActiveElement() : null)
             .setSelectionProvider(lc.getSelectionProvider())

@@ -32,7 +32,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricConnectorLayout;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.layout.SongLayoutMetrics;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
 
@@ -41,8 +40,7 @@ import songscribe.util.GraphicsState;
  * <p>
  * Iterates the {@link LyricConnectorLayout} entries on the current
  * {@link LayoutResult}, reading each connector's verse baseline
- * Y from the song-wide
- * {@link SongLayoutMetrics}. Stateless.
+ * Y from that line's own {@link LayoutResult}. Stateless.
  * <p>
  * Following Gould/Ross engraving rules: hyphens mark syllable division only;
  * extenders mark duration only.
@@ -96,7 +94,6 @@ public final class LyricConnectorRenderer {
             return;
         }
 
-        var metrics = invariants.getSongLayoutMetrics();
         var lyricRenderMetrics = invariants.getLyricRenderMetrics();
         var hyphenGv = getHyphenGlyphVector(lyricRenderMetrics.scaledLyricsFont());
 
@@ -105,7 +102,7 @@ public final class LyricConnectorRenderer {
             g2.setStroke(EXTENDER_STROKE);
 
             for (var connector : connectors) {
-                var ySs = metrics.verseYSsInLine(connector.verseIndex());
+                var ySs = invariants.getLayoutResult().verseYSsInLine(connector.verseIndex(), lyricRenderMetrics);
                 g2.setColor(invariants.getLyricConnectorColor(connector.sourceElementIndex(), connector.verseIndex()));
 
                 switch (connector.kind()) {

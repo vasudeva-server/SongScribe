@@ -83,9 +83,8 @@ public final class LayoutResult {
     private final Clef clef;
     @Nullable
     private final KeySignature keySignature;
-    private final double lineHeightSs;
-    private final double aboveStaffSs;
-    private final double belowContentSs;
+    private final double contentAboveStaffSs;
+    private final double contentBelowStaffSs;
     private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
     private final List<LyricConnectorLayout> lyricConnectors;
     private final int verseCount;
@@ -101,11 +100,11 @@ public final class LayoutResult {
      * @param beamLayouts      Map of beam spans to their computed beam geometry
      * @param stemLayouts      Map of unbeamed notes to their computed stem geometry
      * @param tieLayouts       Map of tie spans to their computed tie geometry
-     * @param lineHeightSs       Total height of the line in staff spaces (including staff, elements, and lyrics)
-     * @param aboveStaffSs       Staff-space amount reserved above the staff top, i.e. the staff top's
-     *                           Y position within the line's local coordinate frame
-     * @param belowContentSs     Actual extent of staff-element content below the staff bottom, in staff spaces;
-     *                           the anchor for placing lyrics, distinct from the layout reservation
+     * @param contentAboveStaffSs True extent of this line's content above the staff top, in staff
+     *                           spaces, and also the staff top's Y position within the line's local
+     *                           coordinate frame
+     * @param contentBelowStaffSs True extent of this line's content below the staff bottom, in staff
+     *                           spaces; the anchor for placing this line's lyrics
      */
     private LayoutResult(
         Map<StaffElement, ElementColumn> elementColumns,
@@ -116,9 +115,8 @@ public final class LayoutResult {
         Map<LineElement, DecorationLayout> decorationLayouts,
         @Nullable Clef clef,
         @Nullable KeySignature keySignature,
-        double lineHeightSs,
-        double aboveStaffSs,
-        double belowContentSs,
+        double contentAboveStaffSs,
+        double contentBelowStaffSs,
         Map<StaffElement, List<LyricBoxLayout>> lyricBoxes,
         List<LyricConnectorLayout> lyricConnectors,
         int verseCount,
@@ -139,9 +137,8 @@ public final class LayoutResult {
         this.decorationLayouts = Map.copyOf(decorationLayouts);
         this.clef = clef;
         this.keySignature = keySignature;
-        this.lineHeightSs = lineHeightSs;
-        this.aboveStaffSs = aboveStaffSs;
-        this.belowContentSs = belowContentSs;
+        this.contentAboveStaffSs = contentAboveStaffSs;
+        this.contentBelowStaffSs = contentBelowStaffSs;
         var copiedBoxes = new HashMap<StaffElement, List<LyricBoxLayout>>(lyricBoxes.size() * 2);
 
         for (var entry : lyricBoxes.entrySet()) {
@@ -543,45 +540,92 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the total height of this line (staff + elements + lyrics), in staff spaces.
-     */
-    public double getLineHeightSs() {
-        return lineHeightSs;
-    }
-
-    /**
-     * Returns the staff-space amount reserved above the staff top.
+     * Returns the true extent of this line's content above the staff top, in staff spaces.
      * <p>
      * This is also the Y position of the staff top within the line's local coordinate
-     * frame (component top = y=0). Used by consumers to place the staff vertically
-     * within the allocated line height.
+     * frame (component top = y=0). Unfloored: a line with nothing above its staff
+     * returns 0.
      */
-    public double getAboveStaffSs() {
-        return aboveStaffSs;
+    public double getContentAboveStaffSs() {
+        return contentAboveStaffSs;
     }
 
     /**
-     * Returns the actual extent of staff-element content below the staff bottom, in staff spaces.
+     * Returns the true extent of this line's content below the staff bottom, in staff spaces.
      * <p>
      * This is the lyric-positioning anchor: the maximum distance below the staff bottom that
-     * any staff element (notehead, stem, decoration) reaches on this line. Distinct from the
-     * layout reservation embedded in {@link #getLineHeightSs()}, which floors at
-     * {@link Staff#MIN_BELOW_STAFF_SS} for ledger-line capacity.
+     * anything on this line reaches. Unfloored: a line with nothing below its staff returns 0.
      */
-    public double getBelowContentSs() {
-        return belowContentSs;
+    public double getContentBelowStaffSs() {
+        return contentBelowStaffSs;
     }
 
     /**
-     * Returns the below-staff reservation embedded in this line's height, in staff spaces.
-     * <p>
-     * Equals {@code lineHeightSs - aboveStaffSs - STAFF_HEIGHT_SS}: the part of the line that
-     * sits below the staff bottom including the {@link Staff#MIN_BELOW_STAFF_SS}
-     * floor and the inter-line margin. Use {@link #getBelowContentSs()} when you need the
-     * actual content extent without the floor or margin.
+     * Returns the distance from this line's staff midline to the top of its component,
+     * in staff spaces. The midline is the reference the parent layout manager spaces
+     * lines by, so this is the line's upward reach from that reference.
      */
-    public double getBelowStaffReservationSs() {
-        return lineHeightSs - aboveStaffSs - Staff.STAFF_HEIGHT_SS;
+    public double aboveMidlineSs() {
+        return Staff.STAFF_HALF_SS + contentAboveStaffSs;
+    }
+
+    /**
+     * Returns the distance from this line's staff midline to the bottom of its component,
+     * in staff spaces, including its own lyrics band.
+     */
+    public double belowMidlineSs(LyricRenderMetrics lyricRenderMetrics) {
+        return Staff.STAFF_HALF_SS + contentBelowStaffSs + lyricsBandHeightSs(lyricRenderMetrics);
+    }
+
+    /**
+     * Returns the total vertical space this line's verses occupy, in staff spaces,
+     * measured from this line's below-staff content down to the bottom of its last
+     * verse row. Zero when the line has no lyrics.
+     */
+    public double lyricsBandHeightSs(LyricRenderMetrics lyricRenderMetrics) {
+        if (verseCount == 0) {
+            return 0.0;
+        }
+
+        return lyricRenderMetrics.staffToLyricsGapSs() + verseCount * lyricRenderMetrics.lyricBoxHeightSs();
+    }
+
+    /**
+     * Returns the total height of this line's component, in staff spaces. Covers only this
+     * line's own content — the gap to the next line belongs to the parent layout manager.
+     */
+    public double lineHeightSs(LyricRenderMetrics lyricRenderMetrics) {
+        return aboveMidlineSs() + belowMidlineSs(lyricRenderMetrics);
+    }
+
+    /**
+     * Returns the Y position of the staff top within this line's local coordinate frame,
+     * in staff spaces.
+     */
+    public double staffTopYSsInLine() {
+        return contentAboveStaffSs;
+    }
+
+    /**
+     * Returns the Y position of the staff bottom within this line's local coordinate frame,
+     * in staff spaces.
+     */
+    public double staffBottomYSsInLine() {
+        return contentAboveStaffSs + Staff.STAFF_HEIGHT_SS;
+    }
+
+    /**
+     * Returns the baseline Y of a verse row within this line's local coordinate frame,
+     * in staff spaces. Driven by this line's own below-staff content, so verses hug each
+     * line individually rather than a song-wide maximum.
+     *
+     * @param verse the 1-based verse index
+     */
+    public double verseYSsInLine(int verse, LyricRenderMetrics lyricRenderMetrics) {
+        return staffBottomYSsInLine()
+            + contentBelowStaffSs
+            + lyricRenderMetrics.staffToLyricsGapSs()
+            + (verse - 1) * lyricRenderMetrics.lyricBoxHeightSs();
     }
 
     // ==========================================================================
@@ -641,7 +685,7 @@ public final class LayoutResult {
 
     // Package-private for direct unit testing of the formula.
     double lyricAreaBaseYSs() {
-        return aboveStaffSs + Staff.STAFF_HEIGHT_SS + belowContentSs + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS;
+        return contentAboveStaffSs + Staff.STAFF_HEIGHT_SS + contentBelowStaffSs + LineSpacing.LYRICS_ROW_MARGIN_SS;
     }
 
     /**
@@ -652,14 +696,14 @@ public final class LayoutResult {
      * {@link IllegalStateException} when neither a box nor a column is available — that indicates
      * a broken layout state, not a recoverable condition.
      *
-     * @param element           the element to anchor on
-     * @param songLayoutMetrics song-wide metrics providing the verse-1 baseline Y
+     * @param element            the element to anchor on
+     * @param lyricRenderMetrics song-wide lyric render metrics providing the verse-1 baseline Y
      * @return the lyric anchor for positioning the editor
      * @throws IllegalStateException if neither a lyric box nor an element column exists for the element
      */
-    public LyricAnchor getLyricAnchor(StaffElement element, SongLayoutMetrics songLayoutMetrics) {
+    public LyricAnchor getLyricAnchor(StaffElement element, LyricRenderMetrics lyricRenderMetrics) {
         var boxes = getLyricBoxes(element);
-        var baselineYSs = songLayoutMetrics.verseYSsInLine(1);
+        var baselineYSs = verseYSsInLine(1, lyricRenderMetrics);
 
         if (!boxes.isEmpty()) {
             var box = boxes.getFirst();
@@ -1016,9 +1060,8 @@ public final class LayoutResult {
         private Clef clef;
         @Nullable
         private KeySignature keySignature;
-        private double lineHeightSs = 0;
-        private double aboveStaffSs = 0;
-        private double belowContentSs = 0;
+        private double contentAboveStaffSs = 0;
+        private double contentBelowStaffSs = 0;
         private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
         private final List<LyricConnectorLayout> lyricConnectors;
         private int verseCount = 0;
@@ -1082,36 +1125,25 @@ public final class LayoutResult {
         }
 
         /**
-         * Sets the total line height.
+         * Sets the true extent of this line's content above the staff top.
          *
-         * @param lineHeightSs Height in staff-space units
+         * @param contentAboveStaffSs Distance above the staff top in staff-space units (i.e. the
+         *                            staff top's Y position within the line's local coordinate frame)
          * @return This builder for chaining
          */
-        public Builder setLineHeightSs(double lineHeightSs) {
-            this.lineHeightSs = lineHeightSs;
+        public Builder setContentAboveStaffSs(double contentAboveStaffSs) {
+            this.contentAboveStaffSs = contentAboveStaffSs;
             return this;
         }
 
         /**
-         * Sets the staff-space amount reserved above the staff top.
+         * Sets the true extent of this line's content below the staff bottom.
          *
-         * @param aboveStaffSs Staff-space amount above the staff top (i.e. the staff top's
-         *                     Y position within the line's local coordinate frame)
+         * @param contentBelowStaffSs Distance below the staff bottom in staff-space units
          * @return This builder for chaining
          */
-        public Builder setAboveStaffSs(double aboveStaffSs) {
-            this.aboveStaffSs = aboveStaffSs;
-            return this;
-        }
-
-        /**
-         * Sets the actual extent of staff-element content below the staff bottom.
-         *
-         * @param belowContentSs Distance below the staff bottom in staff-space units
-         * @return This builder for chaining
-         */
-        public Builder setBelowContentSs(double belowContentSs) {
-            this.belowContentSs = belowContentSs;
+        public Builder setContentBelowStaffSs(double contentBelowStaffSs) {
+            this.contentBelowStaffSs = contentBelowStaffSs;
             return this;
         }
 
@@ -1279,9 +1311,8 @@ public final class LayoutResult {
                 decorationLayouts,
                 clef,
                 keySignature,
-                lineHeightSs,
-                aboveStaffSs,
-                belowContentSs,
+                contentAboveStaffSs,
+                contentBelowStaffSs,
                 lyricBoxes,
                 lyricConnectors,
                 verseCount,
@@ -1302,12 +1333,12 @@ public final class LayoutResult {
     @Override
     public String toString() {
         return String.format(
-            "LayoutResult{columns=%d, elements=%d, decorations=%d, height=%.1f, aboveStaff=%.1f}",
+            "LayoutResult{columns=%d, elements=%d, decorations=%d, contentAbove=%.1f, contentBelow=%.1f}",
             elementColumns.size(),
             elementBounds.size(),
             decorationLayouts.size(),
-            lineHeightSs,
-            aboveStaffSs
+            contentAboveStaffSs,
+            contentBelowStaffSs
         );
     }
 

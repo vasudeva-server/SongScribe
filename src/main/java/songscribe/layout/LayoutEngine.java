@@ -271,13 +271,13 @@ public class LayoutEngine {
         var columns = columnBuilder.buildColumns(line);
 
         if (columns.isEmpty()) {
-            // Empty line — mirror the minimum content-fitted height from
-            // VerticalStackingCalculator so header elements (clef, key signature)
-            // have MIN_ABOVE_STAFF_SS room above the staff.
-            var emptyLineHeightSs = SongLayoutMetricsBuilder.MIN_LINE_HEIGHT_SS;
+            // Empty line — give it MIN_LINE_HEIGHT_SS so header elements (clef, key
+            // signature) still have room, splitting the shortfall evenly above and below
+            // so the staff sits centred in the component.
+            var emptyPaddingSs = (LineSpacing.MIN_LINE_HEIGHT_SS - Staff.STAFF_HEIGHT_SS) / 2.0;
             var emptyBuilder = LayoutResult.builder()
-                .setLineHeightSs(emptyLineHeightSs)
-                .setAboveStaffSs(Staff.MIN_ABOVE_STAFF_SS);
+                .setContentAboveStaffSs(emptyPaddingSs)
+                .setContentBelowStaffSs(emptyPaddingSs);
             createHeaderElements(line, emptyBuilder);
             return emptyBuilder.build();
         }

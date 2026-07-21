@@ -38,12 +38,18 @@ import songscribe.util.GraphicUtils;
  * @param hyphenWidthSs    width of a hyphen glyph in staff-space units
  * @param spaceWidthSs     width of one space character in staff-space units; used as the
  *                         gap between non-hyphenated syllables
+ * @param staffToLyricsGapSs distance in staff-space units from a line's below-staff content
+ *                         to the baseline of its first verse row. Equals
+ *                         {@link LineSpacing#LYRICS_ROW_MARGIN_SS} plus the lyrics font
+ *                         ascent, so a baseline placed at this distance puts the text
+ *                         <em>top</em> one visual gap below the content.
  */
 public record LyricRenderMetrics(
     Font lyricsFont,
     Font scaledLyricsFont,
     double hyphenWidthSs,
-    double spaceWidthSs
+    double spaceWidthSs,
+    double staffToLyricsGapSs
 ) {
 
     /** Preferred hyphen cell width as a multiple of the "-" glyph width. */

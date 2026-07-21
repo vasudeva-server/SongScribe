@@ -159,8 +159,8 @@ class LayoutResultTest extends UnitTest {
             + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS
             + ScaleContext.fontAscentSs(lyricsFont).value();
         var layoutResult = LayoutResult.builder()
-            .setAboveStaffSs(1.0)
-            .setBelowContentSs(0.5)
+            .setContentAboveStaffSs(1.0)
+            .setContentBelowStaffSs(0.5)
             .addLyricBox(element, box)
             .build();
 
@@ -187,8 +187,8 @@ class LayoutResultTest extends UnitTest {
         song.withoutMutationTracking(() -> line.addElement(0, element));
         var box = new LyricBoxLayout(3.0, 2.0, 1, "do");
         var layoutResult = LayoutResult.builder()
-            .setAboveStaffSs(1.0)
-            .setBelowContentSs(0.5)
+            .setContentAboveStaffSs(1.0)
+            .setContentBelowStaffSs(0.5)
             .addLyricBox(element, box)
             .build();
 
@@ -210,16 +210,16 @@ class LayoutResultTest extends UnitTest {
     @Test
     void testLyricAreaBaseYSsFollowsAboveStaffAndBelowContent() {
         var base = LayoutResult.builder()
-            .setAboveStaffSs(ABOVE_STAFF_SS)
-            .setBelowContentSs(BELOW_CONTENT_SS)
+            .setContentAboveStaffSs(ABOVE_STAFF_SS)
+            .setContentBelowStaffSs(BELOW_CONTENT_SS)
             .build();
         var raisedAbove = LayoutResult.builder()
-            .setAboveStaffSs(ABOVE_STAFF_SS + ABOVE_STAFF_DELTA_SS)
-            .setBelowContentSs(BELOW_CONTENT_SS)
+            .setContentAboveStaffSs(ABOVE_STAFF_SS + ABOVE_STAFF_DELTA_SS)
+            .setContentBelowStaffSs(BELOW_CONTENT_SS)
             .build();
         var raisedBelow = LayoutResult.builder()
-            .setAboveStaffSs(ABOVE_STAFF_SS)
-            .setBelowContentSs(BELOW_CONTENT_SS + BELOW_CONTENT_DELTA_SS)
+            .setContentAboveStaffSs(ABOVE_STAFF_SS)
+            .setContentBelowStaffSs(BELOW_CONTENT_SS + BELOW_CONTENT_DELTA_SS)
             .build();
 
         var expectedBase = ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS
@@ -732,7 +732,7 @@ class LayoutResultTest extends UnitTest {
     void testGetBelowStaffReservationSsSubtractsAboveStaffAndStaffHeight() {
         var result = LayoutResult.builder()
             .setLineHeightSs(RESERVATION_LINE_HEIGHT_SS)
-            .setAboveStaffSs(RESERVATION_ABOVE_STAFF_SS)
+            .setContentAboveStaffSs(RESERVATION_ABOVE_STAFF_SS)
             .build();
 
         assertThat(result.getBelowStaffReservationSs())

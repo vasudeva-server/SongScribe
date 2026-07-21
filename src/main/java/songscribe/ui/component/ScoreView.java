@@ -76,7 +76,7 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.layout.Ending;
 import songscribe.layout.HorizontalSpacingCalculator;
-import songscribe.layout.SongLayoutMetrics;
+import songscribe.layout.LineSpacing;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
@@ -209,12 +209,8 @@ public final class ScoreView
     // True after init() has been called (interactive mode only)
     private boolean initialized = false;
 
-    // Song-wide layout metrics shared across all line components.
-    // Set by StaffPanel.updateSongMetrics before any layout/paint runs.
-    private @Nullable SongLayoutMetrics songLayoutMetrics;
-
     // Song-wide lyric render metrics shared across all line components.
-    // Set by StaffPanel.updateSongMetrics before any layout/paint runs.
+    // Rebuilt by StaffPanel.ensureAllLineLayouts before any layout/paint runs.
     // Package-private so tests can observe the rebuildLyricRenderMetrics() no-op guards
     // without going through getLyricRenderMetrics(), which fatally exits when unset.
     @Nullable LyricRenderMetrics lyricRenderMetrics;
@@ -1320,19 +1316,6 @@ public final class ScoreView
         return selectionCoordinator.canDeleteLine();
     }
 
-    public SongLayoutMetrics getSongLayoutMetrics() {
-        if (songLayoutMetrics == null) {
-            throw RuntimeError.exit(
-                "SongLayoutMetrics accessed before StaffPanel populated it");
-        }
-
-        return songLayoutMetrics;
-    }
-
-    public void setSongLayoutMetrics(SongLayoutMetrics metrics) {
-        songLayoutMetrics = metrics;
-    }
-
     public LyricRenderMetrics getLyricRenderMetrics() {
         if (lyricRenderMetrics == null) {
             throw RuntimeError.exit(
@@ -1366,7 +1349,8 @@ public final class ScoreView
             lyricsFont,
             ScaleContext.scaleFont(lyricsFont),
             ScaleContext.textWidthSs(lyricsFont, "-").value(),
-            ScaleContext.textWidthSs(lyricsFont, " ").value());
+            ScaleContext.textWidthSs(lyricsFont, " ").value(),
+            LineSpacing.LYRICS_ROW_MARGIN_SS + ScaleContext.fontAscentSs(lyricsFont).value());
     }
 
     @Nullable

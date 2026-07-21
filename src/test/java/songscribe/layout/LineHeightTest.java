@@ -35,10 +35,6 @@ import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.layout.LayoutEngine;
-import songscribe.layout.LayoutResult;
-import songscribe.layout.LyricRenderMetrics;
-import songscribe.layout.SongLayoutMetricsBuilder;
 import songscribe.engraving.Staff;
 
 /**
@@ -129,7 +125,7 @@ class LineHeightTest extends UnitTest {
             .describedAs("staff position must exceed the above-staff floor")
             .isGreaterThan(Staff.MIN_ABOVE_STAFF_SS);
 
-        assertThat(result.getAboveStaffSs())
+        assertThat(result.getContentAboveStaffSs())
             .describedAs("above-staff reservation tracks the notehead top")
             .isCloseTo(expectedAboveStaffSs, within(TOLERANCE));
 
@@ -177,7 +173,7 @@ class LineHeightTest extends UnitTest {
 
         // A low note grows the line only below the staff; the above-staff
         // reservation stays at its floor.
-        assertThat(result.getAboveStaffSs())
+        assertThat(result.getContentAboveStaffSs())
             .describedAs("a low note must not change the above-staff reservation")
             .isCloseTo(Staff.MIN_ABOVE_STAFF_SS, within(TOLERANCE));
 

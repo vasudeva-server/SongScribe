@@ -41,7 +41,6 @@ import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
-import songscribe.layout.stacking.VerticalStackingCalculator;
 
 class VerticalStackingCalculatorTest extends UnitTest {
 
@@ -230,7 +229,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
             mock(DocumentFontsHolder.class));
 
         var result = builder.build();
-        assertThat(result.getBelowContentSs()).isEqualTo(expectedBelowContentSs);
+        assertThat(result.getContentBelowStaffSs()).isEqualTo(expectedBelowContentSs);
     }
 
     // ======================================================================

@@ -28,8 +28,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.layout.LayoutResult;
-import songscribe.layout.SongLayoutMetricsBuilder;
 import songscribe.engraving.Staff;
 
 class SongLayoutMetricsTest extends UnitTest {
@@ -44,9 +42,9 @@ class SongLayoutMetricsTest extends UnitTest {
     /** Builds a LayoutResult with the given above-staff, total height, and below-content values. */
     private static LayoutResult fakeLayout(double aboveStaffSs, double lineHeightSs, double belowContentSs) {
         return LayoutResult.builder()
-            .setAboveStaffSs(aboveStaffSs)
+            .setContentAboveStaffSs(aboveStaffSs)
             .setLineHeightSs(lineHeightSs)
-            .setBelowContentSs(belowContentSs)
+            .setContentBelowStaffSs(belowContentSs)
             .build();
     }
 
@@ -59,9 +57,9 @@ class SongLayoutMetricsTest extends UnitTest {
     private static LayoutResult fakeLayoutWithVerses(
         double aboveStaffSs, double lineHeightSs, double belowContentSs, int verseCount) {
         return LayoutResult.builder()
-            .setAboveStaffSs(aboveStaffSs)
+            .setContentAboveStaffSs(aboveStaffSs)
             .setLineHeightSs(lineHeightSs)
-            .setBelowContentSs(belowContentSs)
+            .setContentBelowStaffSs(belowContentSs)
             .setVerseCount(verseCount)
             .build();
     }
