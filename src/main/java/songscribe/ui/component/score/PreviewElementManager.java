@@ -757,7 +757,7 @@ public final class PreviewElementManager {
             var noteIndex = currentXIndex - 1;
 
             if (zone == SlideZone.FALL
-                    && !InsertionSpacingCalculator.hasRoomForFall(line, noteIndex, lc.getLayoutResult())) {
+                    && !InsertionSpacingCalculator.hasRoomForFall(line, noteIndex, lc.getLyricRenderMetrics())) {
                 OptionDialogs.showErrorMessage(
                     null,
                     Strings.ALERT_TITLE_INSERT_ERROR,

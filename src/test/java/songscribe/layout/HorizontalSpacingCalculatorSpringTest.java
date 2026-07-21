@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.Mockito.when;
 
 import java.util.Collections;
 import java.util.List;
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.Song;
 
 /**
@@ -115,6 +117,12 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     /** Narrower than the anchor alone, so not even the struts fit. */
     private static final double IMPOSSIBLE_MARGIN_SS = 1.0;
 
+    /**
+     * A step below a boundary margin, small enough that only the boundary itself separates the
+     * feasible solve from the infeasible one.
+     */
+    private static final double BELOW_BOUNDARY_NUDGE_SS = 0.125;
+
     private static ElementColumn column(
         ElementType type,
         double leftExtentSs,
@@ -137,6 +145,24 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     /** A plain, lyric-less, unbeamed crotchet column. */
     private static ElementColumn plainColumn() {
         return column(ElementType.CROTCHET, NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS, null, 0.0, false);
+    }
+
+    /** A lyric-less column of a line-terminating type, sized like a plain head. */
+    private static ElementColumn terminalColumn(ElementType type) {
+        return column(type, NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS, null, 0.0, false);
+    }
+
+    /**
+     * A line whose last element really is {@code terminalColumn}'s element and is the song's
+     * auto-maintained terminal. {@code trailingReservationSs} asks the song for that identity rather
+     * than merely testing the element's type, so a terminal-typed column that is not the line's own
+     * terminal — one ending a non-last line, or a projected clone — still owes the trailing rest.
+     */
+    private static Line lineTerminatedBy(ElementColumn terminalColumn) {
+        var line = detachedLine();
+        line.addElement(terminalColumn.getElement());
+        when(line.getSong().isAutoMaintainedTerminal(terminalColumn.getElement(), line)).thenReturn(true);
+        return line;
     }
 
     /** A beamed semiquaver column (beamCount 2, i.e. shorter than an eighth) in the given group. */
@@ -797,6 +823,143 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
 
         assertThat(solution.isInfeasible()).isTrue();
         assertThat(solution.result().gapLengthsSs()).isNull();
+    }
+
+    /**
+     * The narrowest margin a two-column line fits in: the anchor, the gap frozen on its strut, and
+     * whatever {@link HorizontalSpacingCalculator#trailingReservationSs} keeps clear past the last
+     * column's origin. Solving at this margin and a nudge below it brackets the reservation from
+     * both sides, so a reservation of the wrong <em>magnitude</em> — not merely a missing one —
+     * fails the test.
+     */
+    private static double narrowestFeasibleMarginSs(List<ElementColumn> columns, Line line) {
+        var strutGapSs = HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS;
+        return HorizontalSpacingCalculator.calculateAnchorXSs(columns.getFirst(), line)
+            + strutGapSs
+            + HorizontalSpacingCalculator.trailingReservationSs(columns.getLast(), line);
+    }
+
+    /**
+     * A non-terminal last element must stop a full line rest short of the margin rather than sitting
+     * flush against it (refs #617), so the line's narrowest feasible margin grows by exactly that
+     * rest. Bracketing it — feasible at the boundary, infeasible a nudge below — pins the
+     * reservation's magnitude, which the boundary alone would not.
+     */
+    @Test
+    void testSolveLineReservesALineRestAfterANonTerminalLastColumn() {
+        var line = detachedLine();
+        var columns = List.of(plainColumn(), plainColumn());
+        var strutGapSs = HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS;
+        var boundaryMarginSs = HorizontalSpacingCalculator.calculateAnchorXSs(columns.getFirst(), line)
+            + strutGapSs
+            + HEAD_RIGHT_EXTENT_SS
+            + DEFAULT_LINE_REST_SS;
+
+        assertThat(narrowestFeasibleMarginSs(columns, line))
+            .as("the reservation past a non-terminal last column is its extent plus a full line rest")
+            .isCloseTo(boundaryMarginSs, within(TOLERANCE));
+        assertThat(HorizontalSpacingCalculator.solveLine(columns, line, boundaryMarginSs).isInfeasible())
+            .isFalse();
+        assertThat(HorizontalSpacingCalculator
+            .solveLine(columns, line, boundaryMarginSs - BELOW_BOUNDARY_NUDGE_SS).isInfeasible())
+            .as("a margin below the reserved boundary must not fit")
+            .isTrue();
+    }
+
+    /**
+     * The same bracketing as {@link #testSolveLineReservesALineRestAfterANonTerminalLastColumn}, but
+     * the last column carries the auto-maintained terminal barline — it is pinned flush-right by
+     * {@code LayoutEngine.positionTerminalFlushRight} rather than reserved a gap here, so its
+     * boundary is its bare right extent, one full line rest tighter.
+     */
+    @Test
+    void testSolveLineDoesNotReserveAGapAfterATerminalLastColumn() {
+        var terminal = terminalColumn(ElementType.FINAL_DOUBLE_BARLINE);
+        var line = lineTerminatedBy(terminal);
+        var columns = List.of(plainColumn(), terminal);
+        var strutGapSs = HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS;
+        var boundaryMarginSs = HorizontalSpacingCalculator.calculateAnchorXSs(columns.getFirst(), line)
+            + strutGapSs
+            + HEAD_RIGHT_EXTENT_SS;
+
+        assertThat(narrowestFeasibleMarginSs(columns, line))
+            .as("a terminal last column reserves its bare right extent, with no line rest added")
+            .isCloseTo(boundaryMarginSs, within(TOLERANCE));
+        assertThat(HorizontalSpacingCalculator.solveLine(columns, line, boundaryMarginSs).isInfeasible())
+            .isFalse();
+        assertThat(HorizontalSpacingCalculator
+            .solveLine(columns, line, boundaryMarginSs - BELOW_BOUNDARY_NUDGE_SS).isInfeasible())
+            .as("a margin below the terminal's own extent must not fit")
+            .isTrue();
+    }
+
+    /**
+     * Both {@link ElementType#isValidTerminal} types must be recognised, not just the final double
+     * barline the boundary tests above use — a repeat sign ends a line just as flush.
+     */
+    @Test
+    void testTrailingReservationSsExcludesTheLineRestForEveryValidTerminal() {
+        for (var type : List.of(ElementType.FINAL_DOUBLE_BARLINE, ElementType.REPEAT_RIGHT)) {
+            var terminal = terminalColumn(type);
+
+            assertThat(HorizontalSpacingCalculator.trailingReservationSs(terminal, lineTerminatedBy(terminal)))
+                .as("%s is the line's auto-maintained terminal, so it reserves its extent alone", type)
+                .isCloseTo(HEAD_RIGHT_EXTENT_SS, within(TOLERANCE));
+        }
+    }
+
+    /**
+     * A terminal-typed column that is <em>not</em> the line's auto-maintained terminal — the shape a
+     * final barline takes on a non-last line — is not pinned flush-right, so it still owes the
+     * trailing rest. A bare {@code isValidTerminal()} type check would wrongly waive it.
+     */
+    @Test
+    void testTrailingReservationSsAddsTheLineRestForATerminalTypeThatIsNotTheLinesTerminal() {
+        var barline = terminalColumn(ElementType.FINAL_DOUBLE_BARLINE);
+
+        assertThat(HorizontalSpacingCalculator.trailingReservationSs(barline, detachedLine()))
+            .isCloseTo(HEAD_RIGHT_EXTENT_SS + DEFAULT_LINE_REST_SS, within(TOLERANCE));
+    }
+
+    /** Every non-terminal element type reserves a full line rest past its own extent. */
+    @Test
+    void testTrailingReservationSsAddsTheLineRestForANonTerminal() {
+        assertThat(HorizontalSpacingCalculator.trailingReservationSs(plainColumn(), detachedLine()))
+            .isCloseTo(HEAD_RIGHT_EXTENT_SS + DEFAULT_LINE_REST_SS, within(TOLERANCE));
+    }
+
+    /**
+     * The reservation is read off the song's line rest, not a fixed constant, so a song with a
+     * non-default rest reserves proportionally more.
+     */
+    @Test
+    void testTrailingReservationSsScalesWithTheSongsLineRest() {
+        var line = detachedLine();
+        when(line.getSong().getDefaultRestLengthSs()).thenReturn(SCALED_LINE_REST_SS);
+
+        assertThat(HorizontalSpacingCalculator.trailingReservationSs(plainColumn(), line))
+            .isCloseTo(HEAD_RIGHT_EXTENT_SS + SCALED_LINE_REST_SS, within(TOLERANCE));
+    }
+
+    /**
+     * A one-column line has no gaps to compress, so the reservation is the only thing standing
+     * between the anchor and the margin — the degenerate case the two-column boundary tests cannot
+     * reach.
+     */
+    @Test
+    void testSolveLineReservesALineRestOnASingleColumnLine() {
+        var line = detachedLine();
+        var columns = List.of(plainColumn());
+        var boundaryMarginSs = HorizontalSpacingCalculator.calculateAnchorXSs(columns.getFirst(), line)
+            + HEAD_RIGHT_EXTENT_SS
+            + DEFAULT_LINE_REST_SS;
+
+        assertThat(HorizontalSpacingCalculator.solveLine(columns, line, boundaryMarginSs).isInfeasible())
+            .isFalse();
+        assertThat(HorizontalSpacingCalculator
+            .solveLine(columns, line, boundaryMarginSs - BELOW_BOUNDARY_NUDGE_SS).isInfeasible())
+            .as("the lone column must still stop a full line rest short of the margin")
+            .isTrue();
     }
 
     /**

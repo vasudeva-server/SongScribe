@@ -33,6 +33,7 @@ import module java.desktop;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.ToDoubleFunction;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
@@ -56,8 +57,11 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     /** A line width wide enough that any insertion or fall comfortably fits. */
     private static final double WIDE_LINE_SS = 500;
 
-    /** Extra gap, in staff spaces, before the following element so a fall cannot push it. */
-    private static final double DISTANT_LAST_ELEMENT_GAP_SS = 50;
+    /**
+     * A line rest wider than {@link HorizontalSpacingCalculator#DEFAULT_COLUMN_GAP_SS}, so the two
+     * reservations can be told apart.
+     */
+    private static final double WIDE_LINE_REST_SS = 4.0;
 
     /** Staff-space offset by which a test layout reports an element to the right of its xOffset. */
     private static final double LAYOUT_SHIFT_SS = 10;
@@ -104,7 +108,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         var floorSpanSs = result.projectedSprings().stream()
             .mapToDouble(spring -> spring.rigid() ? spring.naturalLengthSs() : spring.strutSs())
             .sum();
-        return result.projectedFirstXSs() + floorSpanSs + result.projectedLastRightExtentSs();
+        return result.projectedFirstXSs() + floorSpanSs + result.projectedTrailingReservationSs();
     }
 
     /**
@@ -168,6 +172,22 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             line.addElement(element);
         }
 
+        return line;
+    }
+
+    /**
+     * Creates a line of crotchets closed by the song's auto-maintained terminal barline — the shape
+     * every real last line has. Without this the mock's default {@code isAutoMaintainedTerminal ==
+     * false} makes {@code effectiveElementCount() == elementCount()} on every fixture, leaving the
+     * terminal-append branch of the projection gates unexercised.
+     */
+    private static Line lineWithTerminal(int crotchetCount, Song song) {
+        var line = lineWithCrotchets(crotchetCount, song);
+        var terminal = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+        var xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, terminal, null, null);
+        terminal.setXOffsetPx(ScaleContext.ssToRoundedPx(xSs));
+        line.addElement(terminal);
+        when(song.isAutoMaintainedTerminal(terminal, line)).thenReturn(true);
         return line;
     }
 
@@ -245,19 +265,53 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     }
 
     /**
-     * Returns the right edge of {@code element} at {@code xSs} with a fall temporarily applied
-     * and then removed — the same fall reservation {@code hasRoomForFall} measures internally.
+     * The chain {@code hasRoomForFall} solves — every column with a fall-carrying clone in the
+     * source's place — reduced to the two margins a test can name: the natural width the line wants
+     * and the fully compressed floor below which no solve succeeds.
      */
-    private static double rightEdgeWithFallSs(StaffElement element, double xSs) {
-        element.setFall();
-        var leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(element);
-        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.getDirection());
-        element.removeSlide();
+    private record FallProjection(double anchorXSs, List<Spring> springs, double trailingReservationSs) {
 
-        var column = new ElementColumn(
-            element, Collections.emptyList(), leftExtentSs, rightExtentSs, 0, 0, null, 0, false);
-        column.setXSs(xSs);
-        return column.getRightEdgeXSs();
+        private double widthSs(ToDoubleFunction<Spring> gapSs) {
+            return anchorXSs + springs.stream().mapToDouble(gapSs).sum() + trailingReservationSs;
+        }
+
+        /** The width the chain occupies with every gap at its natural length — nothing compressed. */
+        double naturalWidthSs() {
+            return widthSs(Spring::naturalLengthSs);
+        }
+
+        /**
+         * The narrowest margin the chain can still be solved within: every gap frozen on its strut.
+         * A rigid gap is pinned to its natural length instead, mirroring {@code SpringSpacer.compress}.
+         */
+        double compressedFloorSs() {
+            return widthSs(spring -> spring.rigid() ? spring.naturalLengthSs() : spring.strutSs());
+        }
+    }
+
+    /** Builds the projected chain a fall at {@code sourceIndex} produces, as the gate builds it. */
+    private static FallProjection fallProjection(Line line, int sourceIndex) {
+        var sourceWithFall = line.getElement(sourceIndex).clone();
+        sourceWithFall.setFall();
+
+        var elementCount = line.elementCount();
+        var effectiveCount = line.effectiveElementCount();
+        var columns = new ArrayList<ElementColumn>(elementCount);
+
+        for (var i = 0; i < effectiveCount; i++) {
+            columns.add(lightweightColumn(i == sourceIndex ? sourceWithFall : line.getElement(i)));
+        }
+
+        // Mirror the gate's conditional terminal append rather than looping every element: the two
+        // coincide only while a line has no auto-maintained terminal.
+        if (effectiveCount < elementCount) {
+            columns.add(lightweightColumn(line.getElement(elementCount - 1)));
+        }
+
+        return new FallProjection(
+            HorizontalSpacingCalculator.calculateAnchorXSs(columns.getFirst(), line),
+            LyricLift.applyLyricLift(HorizontalSpacingCalculator.buildSprings(columns, line), columns),
+            HorizontalSpacingCalculator.trailingReservationSs(columns.getLast(), line));
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -335,10 +389,13 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         void testInsertIntoNearlyFullLineCompressesToFit() {
             // Compress-to-fit: a margin narrower than the element's uncompressed projected width
             // is accepted, because the line's gaps still hold slack above their struts. The
-            // retired fixed-margin rule rejected exactly this case.
+            // retired fixed-margin rule rejected exactly this case. The line's last column carries
+            // no terminal, so the margin must also grant the mandatory trailing line-rest gap
+            // (refs #617) — that reservation is fixed, not part of the slack under test.
             var line = lineWithCrotchets(2);
             var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null, null);
-            assertThat(result.fitsWithinLine(result.newLineWidthSs() - NARROWER_MARGIN_SS)).isTrue();
+            var marginSs = result.newLineWidthSs() + Song.DEFAULT_REST_LENGTH_SS - NARROWER_MARGIN_SS;
+            assertThat(result.fitsWithinLine(marginSs)).isTrue();
         }
 
         @Test
@@ -380,10 +437,14 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         @Test
         void testLineExactlyFullCompressesToFitTheGraceNote() {
             // A margin at the line's current right edge leaves no room at rest, but the crotchet
-            // gaps still hold slack above their struts, so the grace note is admitted.
+            // gaps still hold slack above their struts, so the grace note is admitted. The grace
+            // note becomes the line's last (non-terminal) column, so the margin must also grant
+            // the mandatory trailing line-rest gap (refs #617) — fixed, not part of the slack
+            // under test.
             var song = songMock();
             var line = lineWithCrotchets(3, song);
-            when(song.getLineWidthSs()).thenReturn(lastElementRightEdgeSs(line));
+            when(song.getLineWidthSs())
+                .thenReturn(lastElementRightEdgeSs(line) + Song.DEFAULT_REST_LENGTH_SS);
 
             assertThat(InsertionSpacingCalculator.hasRoomForGraceNote(
                 line, line.elementCount(), null, null)).isTrue();
@@ -627,94 +688,114 @@ class InsertionSpacingCalculatorTest extends UnitTest {
                 .isTrue();
         }
 
+        /**
+         * The bug behind refs #617: a line whose natural spacing leaves no room for a fall may still
+         * have slack in its springs, and the committed layout compresses that slack away. A gate that
+         * measures the uncompressed width rejects the fall the layout would have accepted — exactly
+         * what inserting a note at the end of the same line does not do, because insertion solves.
+         */
         @Test
-        void testFallAtLastElementFitsAtExactBoundary() {
-            // Source is the last element: the fall extends its own right edge only. Margin set to
-            // exactly (fall right edge + required gap) is the passing boundary.
+        void testFallFitsOnAFullLineWithRoomToCompress() {
             var song = songMock();
             var line = lineWithCrotchets(3, song);
-            var lastIndex = line.elementCount() - 1;
-            var lastElement = line.getElement(lastIndex);
-            var lastXSs = ScaleContext.pxToSs(lastElement.getXOffsetPx());
-            var fallRightEdgeSs = rightEdgeWithFallSs(lastElement, lastXSs);
-            var exactBoundarySs = fallRightEdgeSs + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
-            when(song.getLineWidthSs()).thenReturn(exactBoundarySs);
+            var projection = fallProjection(line, 1);
+            var marginSs = projection.compressedFloorSs() + BOUNDARY_SLACK_SS;
+            when(song.getLineWidthSs()).thenReturn(marginSs);
 
-            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, lastIndex, null))
-                .as("fall at last element fits when the margin equals its fall right edge plus the gap")
+            assertThat(marginSs)
+                .as("fixture is only meaningful if the margin is too narrow for the uncompressed line")
+                .isLessThan(projection.naturalWidthSs());
+
+            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, 1, null))
+                .as("a fall fits when the line's springs can compress to make room")
                 .isTrue();
         }
 
         @Test
-        void testFallAtLastElementDoesNotFitJustBelowBoundary() {
-            // One staff space short of the passing boundary must fail.
+        void testFallDoesNotFitBelowTheCompressedFloor() {
+            // Below the floor every gap is already on its strut, so no compression can save the fall.
             var song = songMock();
             var line = lineWithCrotchets(3, song);
-            var lastIndex = line.elementCount() - 1;
-            var lastElement = line.getElement(lastIndex);
-            var lastXSs = ScaleContext.pxToSs(lastElement.getXOffsetPx());
-            var fallRightEdgeSs = rightEdgeWithFallSs(lastElement, lastXSs);
-            var exactBoundarySs = fallRightEdgeSs + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
-            when(song.getLineWidthSs()).thenReturn(exactBoundarySs - 1);
-
-            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, lastIndex, null))
-                .as("fall at last element fails one staff space below the passing boundary")
-                .isFalse();
-        }
-
-        @Test
-        void testFallMidLinePushesLastElementOverMargin() {
-            // Source is not the last element: the fall's wider right extent shifts following
-            // elements right. With the margin set to exactly fit the line as-is (no fall), that
-            // shift pushes the last element past the margin.
-            var song = songMock();
-            var line = lineWithCrotchets(3, song);
-            var snugWidthSs = lastElementRightEdgeSs(line) + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
-            when(song.getLineWidthSs()).thenReturn(snugWidthSs);
-
-            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, 1, null))
-                .as("fall mid-line pushes the last element past a snug margin")
-                .isFalse();
-        }
-
-        @Test
-        void testFallProjectsLastElementNotImmediateNext() {
-            // Four elements with the fall at index 1: the immediate next (index 2) is not the last
-            // (index 3). The overflow projection must target the LAST element — a margin snug to
-            // its current right edge fails once the fall shifts the line right. Were the projection
-            // wrongly applied to the immediate next element, its shifted edge would stay inside the
-            // margin and the check would wrongly pass.
-            var song = songMock();
-            var line = lineWithCrotchets(4, song);
-            var snugWidthSs = lastElementRightEdgeSs(line) + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
-            when(song.getLineWidthSs()).thenReturn(snugWidthSs);
-
-            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, 1, null))
-                .as("fall shift is projected onto the last element, not the immediate next")
-                .isFalse();
-        }
-
-        @Test
-        void testFallMidLineWithoutPushIgnoresDistantLastElement() {
-            // The following element already sits far enough right that the fall cannot push it
-            // (shiftSs == 0), so the result must depend only on the source's own fall right edge.
-            // If the last-element projection ran regardless of shift, the distant element would
-            // overflow the margin and the check would wrongly fail.
-            var song = songMock();
-            var line = lineWithCrotchets(3, song);
-
-            var source = line.getElement(1);
-            var sourceFallRightEdgeSs = rightEdgeWithFallSs(source, ScaleContext.pxToSs(source.getXOffsetPx()));
-
-            var last = line.getElement(2);
-            last.setXOffsetPx(ScaleContext.ssToRoundedPx(sourceFallRightEdgeSs + DISTANT_LAST_ELEMENT_GAP_SS));
-
-            var marginSs = sourceFallRightEdgeSs + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+            var marginSs = fallProjection(line, 1).compressedFloorSs() - BOUNDARY_SLACK_SS;
             when(song.getLineWidthSs()).thenReturn(marginSs);
 
             assertThat(InsertionSpacingCalculator.hasRoomForFall(line, 1, null))
-                .as("no push (shiftSs == 0) fits on the source's own fall edge, ignoring the distant last element")
+                .as("a fall below the fully compressed floor cannot fit")
+                .isFalse();
+        }
+
+        /**
+         * The fall gate must reserve the same trailing span the committed solve reserves after a
+         * non-terminal last element, or it can accept a fall that then fails to lay out (refs #617).
+         * With a line rest wider than the flat default column gap the boundary moves out to the
+         * rest — a gate still keying off the flat gap would wrongly accept the narrower margin.
+         */
+        @Test
+        void testFallAtNonTerminalLastElementReservesTheSongsLineRest() {
+            var song = songMock();
+            when(song.getDefaultRestLengthSs()).thenReturn(WIDE_LINE_REST_SS);
+            var line = lineWithCrotchets(3, song);
+            var lastIndex = line.elementCount() - 1;
+            var floorSs = fallProjection(line, lastIndex).compressedFloorSs();
+
+            var flatGapMarginSs = floorSs - WIDE_LINE_REST_SS + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+            when(song.getLineWidthSs()).thenReturn(flatGapMarginSs);
+            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, lastIndex, null))
+                .as("the flat default column gap is too little once the song's line rest exceeds it")
+                .isFalse();
+
+            when(song.getLineWidthSs()).thenReturn(floorSs + BOUNDARY_SLACK_SS);
+            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, lastIndex, null))
+                .as("a margin granting the full line rest fits")
                 .isTrue();
+        }
+
+        /**
+         * A line closed by the auto-maintained terminal reserves only the terminal's own extent —
+         * layout pins it flush-right, so nothing owes a trailing rest past it. The gate must both
+         * include that column in the chain it solves and skip the rest, or it disagrees with the
+         * committed layout in one direction or the other (refs #617).
+         */
+        @Test
+        void testFallOnALineClosedByTheTerminalReservesNoTrailingRest() {
+            var song = songMock();
+            var line = lineWithTerminal(3, song);
+            var floorSs = fallProjection(line, 1).compressedFloorSs();
+
+            when(song.getLineWidthSs()).thenReturn(floorSs - BOUNDARY_SLACK_SS);
+            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, 1, null))
+                .as("the terminal's own column still consumes span, so below the floor nothing fits")
+                .isFalse();
+
+            when(song.getLineWidthSs()).thenReturn(floorSs + BOUNDARY_SLACK_SS);
+            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, 1, null))
+                .as("a terminal is pinned flush-right, so no line rest is owed past it")
+                .isTrue();
+        }
+
+        /**
+         * The sole production caller always supplies real lyric metrics, so the syllable-aware
+         * column path — not the syllable-less fallback every other test here takes — is the one that
+         * actually gates the user's click. A wide syllable widens the chain and must be able to turn
+         * a fitting fall into a non-fitting one.
+         */
+        @Test
+        void testWideSyllableCanDenyAFallThatFitsWithoutLyrics() {
+            var song = songMock();
+            var line = lineWithCrotchets(3, song);
+            line.getElement(1).setLyricForVerse(
+                1, Lyric.Syllabic.SINGLE, false, "indefatigability", Lyric.Extend.NONE);
+            // Hoisted: fallProjection reads the song mock, which Mockito forbids inside when(...).
+            var marginSs = fallProjection(line, 1).compressedFloorSs() + BOUNDARY_SLACK_SS;
+            when(song.getLineWidthSs()).thenReturn(marginSs);
+
+            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, 1, null))
+                .as("without lyric metrics the syllable is invisible and the fall fits")
+                .isTrue();
+
+            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, 1, lyricRenderMetrics()))
+                .as("measured, the syllable widens the chain past the same margin")
+                .isFalse();
         }
 
         @Test
@@ -726,27 +807,28 @@ class InsertionSpacingCalculatorTest extends UnitTest {
                 .isTrue();
         }
 
+        /**
+         * The gate re-solves the chain from the line's columns, so the elements' stored X positions —
+         * which after an edit may be stale, and are in any case the pre-fall spacing — must not move
+         * the verdict either way.
+         */
         @Test
-        void testFallUsesLayoutPositionWhenProvided() {
-            // With a non-null layout the source X comes from the layout map, not xOffsetPx. A layout
-            // position to the right of the element's xOffset pushes the fall's right edge past a
-            // margin that the xOffset position would clear, proving the layout drives the geometry.
+        void testFallVerdictIgnoresStoredElementPositions() {
             var song = songMock();
             var line = lineWithCrotchets(3, song);
-            var lastIndex = line.elementCount() - 1;
-            var lastElement = line.getElement(lastIndex);
-            var fallRightEdgeAtOffsetSs =
-                rightEdgeWithFallSs(lastElement, ScaleContext.pxToSs(lastElement.getXOffsetPx()));
-            var marginSs = fallRightEdgeAtOffsetSs + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS;
+            // Hoisted: fallProjection reads the song mock, which Mockito forbids inside when(...).
+            var marginSs = fallProjection(line, 1).compressedFloorSs() + BOUNDARY_SLACK_SS;
             when(song.getLineWidthSs()).thenReturn(marginSs);
 
-            var layout = mock(LayoutResult.class);
-            when(layout.getElementXSs(any())).thenAnswer(invocation ->
-                ScaleContext.pxToSs(((StaffElement) invocation.getArgument(0)).getXOffsetPx()) + LAYOUT_SHIFT_SS);
+            for (var i = 0; i < line.elementCount(); i++) {
+                var element = line.getElement(i);
+                element.setXOffsetPx(ScaleContext.ssToRoundedPx(
+                    ScaleContext.pxToSs(element.getXOffsetPx()) + LAYOUT_SHIFT_SS));
+            }
 
-            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, lastIndex, layout))
-                .as("layout position right of xOffset drives the fall geometry, overflowing the margin")
-                .isFalse();
+            assertThat(InsertionSpacingCalculator.hasRoomForFall(line, 1, null))
+                .as("shifting every stored position right does not change a solve-based verdict")
+                .isTrue();
         }
 
         @Test
@@ -841,7 +923,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         var floorSpanSs = result.projectedSprings().stream()
             .mapToDouble(spring -> spring.rigid() ? spring.naturalLengthSs() : spring.strutSs())
             .sum();
-        return result.projectedFirstXSs() + floorSpanSs + result.projectedLastRightExtentSs();
+        return result.projectedFirstXSs() + floorSpanSs + result.projectedTrailingReservationSs();
     }
 
     /**
@@ -849,10 +931,18 @@ class InsertionSpacingCalculatorTest extends UnitTest {
      * column construction {@code InsertionSpacingCalculator} uses internally for a fragment's clones.
      */
     private static ElementColumn lightweightColumn(StaffElement element) {
+        var direction = element.getDirection();
         var leftExtentSs = ElementColumnBuilder.calculateLeftExtentSs(element);
-        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, element.getDirection());
+        var rightExtentSs = ElementColumnBuilder.calculateRightExtentSs(element, false, direction);
+        // The augmentation-excluding extent must be passed explicitly, as production does: the
+        // shorter ctor defaults it to rightExtentSs, which for a fall-carrying column would inflate
+        // every natural gap after it and quietly diverge from the chain the gate actually solves.
+        var rightExtentExcludingAugmentationSs =
+            ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(element, false, direction);
+
         return new ElementColumn(
-            element, Collections.emptyList(), leftExtentSs, rightExtentSs, 0, 0, null, 0, false);
+            element, Collections.emptyList(), leftExtentSs, rightExtentSs,
+            rightExtentExcludingAugmentationSs, 0, 0, null, 0, false);
     }
 
     /** Snapshots every element's identity and xOffsetPx, in order, including the terminal barline. */
@@ -980,6 +1070,26 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
             // One more element raises the compressed floor past that margin, so it cannot fit.
             assertThat(result.fitsWithinLine(marginSs)).isFalse();
+        }
+
+        /**
+         * The fit-gate margins the two tests above derive from {@link #fullyCompressedWidthSs} read
+         * the projected reservation back off the result, so they move with whatever the production
+         * code returns and cannot catch a wrong reservation. This pins it independently: the
+         * fragment's last clone is a crotchet — no terminal — so the gate must keep its right extent
+         * plus a full line rest clear of the margin (refs #617).
+         */
+        @Test
+        void testProjectsATrailingLineRestAfterANonTerminalLastClone() {
+            var line = lineWithCrotchets(3, songWithLineWidth(WIDE_LINE_SS));
+            var fragment = List.<StaffElement>of(crotchet(), crotchet());
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fragment, line.effectiveElementCount(), null, null, null);
+
+            var lastCloneExtentSs = lightweightColumn(crotchet()).getRightExtentSs();
+            assertThat(result.projectedTrailingReservationSs())
+                .isEqualTo(lastCloneExtentSs + Song.DEFAULT_REST_LENGTH_SS);
         }
 
         @Test

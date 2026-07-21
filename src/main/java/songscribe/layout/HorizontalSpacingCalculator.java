@@ -325,24 +325,48 @@ public class HorizontalSpacingCalculator {
 
     /**
      * Solves a lyric-lifted spring chain against the staff width. The span the gaps may consume is
-     * the margin minus the anchor and minus the last column's right extent, so the last glyph lands
-     * its right edge — not its origin — at the margin. Shared by full layout and the insertion
+     * the margin minus the anchor and minus the trailing reservation, so the last glyph lands its
+     * right edge — not its origin — at or before the margin. Shared by full layout and the insertion
      * pre-check so both ask the solver the identical fit question.
      *
-     * @param springs                  the lyric-lifted spring chain
-     * @param firstXSs                 the anchor the chain grows from ({@link #calculateAnchorXSs})
-     * @param lastColumnRightExtentSs  the last column's right extent
-     * @param staffRightMarginSs       the maximum allowed line width in staff spaces
+     * @param springs               the lyric-lifted spring chain
+     * @param firstXSs              the anchor the chain grows from ({@link #calculateAnchorXSs})
+     * @param trailingReservationSs the span to keep clear past the last column's origin
+     *                              ({@link #trailingReservationSs})
+     * @param staffRightMarginSs    the maximum allowed line width in staff spaces
      * @return the solver's verdict
      */
     public static SpringSolveResult solveChain(
         List<Spring> springs,
         double firstXSs,
-        double lastColumnRightExtentSs,
+        double trailingReservationSs,
         double staffRightMarginSs) {
 
-        var availableSpanSs = staffRightMarginSs - firstXSs - lastColumnRightExtentSs;
+        var availableSpanSs = staffRightMarginSs - firstXSs - trailingReservationSs;
         return SpringSpacer.solve(springs, availableSpanSs);
+    }
+
+    /**
+     * Returns the span to reserve for {@code lastColumn} at the end of the solved chain: its own
+     * right extent, plus a full line rest when it does not carry the auto-maintained terminal
+     * barline. A terminal is pinned flush-right by {@code LayoutEngine.positionTerminalFlushRight},
+     * so its own extent already ends the line; any other last element must stop one line rest short
+     * of the margin instead of sitting flush against it (refs #617).
+     *
+     * @param lastColumn the chain's last column
+     * @param line       the line being solved (for the song's line rest)
+     * @return the span to pass as {@code trailingReservationSs} to {@link #solveChain}
+     */
+    public static double trailingReservationSs(ElementColumn lastColumn, Line line) {
+        var song = line.getSong();
+        // The song's own terminal-identity test, not a bare type check: a barline that merely looks
+        // like a terminal — one ending a non-last line, or a projected clone that is not the line's
+        // element — is not pinned flush-right, so it still owes the trailing rest.
+        var nonTerminalGapSs = song.isAutoMaintainedTerminal(lastColumn.getElement(), line)
+            ? 0.0
+            : song.getDefaultRestLengthSs();
+
+        return lastColumn.getRightExtentSs() + nonTerminalGapSs;
     }
 
     /**
@@ -360,7 +384,8 @@ public class HorizontalSpacingCalculator {
     public static LineSolution solveLine(List<ElementColumn> columns, Line line, double staffRightMarginSs) {
         var springs = LyricLift.applyLyricLift(buildSprings(columns, line), columns);
         var firstXSs = calculateAnchorXSs(columns.getFirst(), line);
-        var result = solveChain(springs, firstXSs, columns.getLast().getRightExtentSs(), staffRightMarginSs);
+        var result = solveChain(
+            springs, firstXSs, trailingReservationSs(columns.getLast(), line), staffRightMarginSs);
 
         return new LineSolution(firstXSs, springs, result);
     }

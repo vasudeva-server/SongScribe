@@ -64,17 +64,19 @@ public final class InsertionSpacingCalculator {
      * inserted element, the shift amount for subsequent elements, and the projected
      * line width after the insertion.
      *
-     * @param insertedElementXSs           X position where the inserted element should be placed
-     * @param shiftForSubsequentElementsSs Amount to shift all elements after the insertion point (always >= 0)
-     * @param newLineWidthSs               Projected line width after the insertion
-     * @param projectedSprings             The lyric-stretched spring chain of the line as LayoutEngine
-     *                                     will build it after the commit — every column with the new
-     *                                     one spliced in, including the terminal barline — what
-     *                                     {@link #fitsWithinLine} solves
-     * @param projectedFirstXSs            X the projected chain is anchored at
-     *                                     ({@link HorizontalSpacingCalculator#calculateAnchorXSs})
-     * @param projectedLastRightExtentSs   Right extent of the projected chain's last column, so the
-     *                                     solve leaves room for its glyph inside the margin
+     * @param insertedElementXSs             X position where the inserted element should be placed
+     * @param shiftForSubsequentElementsSs   Amount to shift all elements after the insertion point (always >= 0)
+     * @param newLineWidthSs                 Projected line width after the insertion
+     * @param projectedSprings               The lyric-stretched spring chain of the line as LayoutEngine
+     *                                       will build it after the commit — every column with the new
+     *                                       one spliced in, including the terminal barline — what
+     *                                       {@link #fitsWithinLine} solves
+     * @param projectedFirstXSs              X the projected chain is anchored at
+     *                                       ({@link HorizontalSpacingCalculator#calculateAnchorXSs})
+     * @param projectedTrailingReservationSs The span the solve keeps clear past the projected chain's
+     *                                       last column origin — its right extent, plus a full line
+     *                                       rest when that column is not the auto-maintained terminal
+     *                                       ({@link HorizontalSpacingCalculator#trailingReservationSs})
      */
     public record InsertionResult(
         double insertedElementXSs,
@@ -82,7 +84,7 @@ public final class InsertionSpacingCalculator {
         double newLineWidthSs,
         List<Spring> projectedSprings,
         double projectedFirstXSs,
-        double projectedLastRightExtentSs
+        double projectedTrailingReservationSs
     ) {
         public InsertionResult {
             projectedSprings = List.copyOf(projectedSprings);
@@ -98,7 +100,7 @@ public final class InsertionSpacingCalculator {
          */
         public boolean fitsWithinLine(double staffRightMarginSs) {
             return !HorizontalSpacingCalculator.solveChain(
-                projectedSprings, projectedFirstXSs, projectedLastRightExtentSs, staffRightMarginSs)
+                projectedSprings, projectedFirstXSs, projectedTrailingReservationSs, staffRightMarginSs)
                 .isInfeasible();
         }
     }
@@ -135,25 +137,27 @@ public final class InsertionSpacingCalculator {
      * the single shift to apply to all surviving elements after the fragment, and the projected
      * spring chain its fit gate solves. The multi-element analogue of {@link InsertionResult}.
      *
-     * @param cloneXPositionsSs            X position for each fragment clone, in fragment order
-     * @param shiftForSubsequentElementsSs Amount to shift every surviving element after the
-     *                                     fragment (negative when a paste-replace pulls the
-     *                                     tail left)
-     * @param projectedSprings             The lyric-stretched spring chain of the line as LayoutEngine
-     *                                     will build it after the operation — the surviving columns
-     *                                     with the fragment's clones spliced in, including the terminal
-     *                                     barline — what {@link #fitsWithinLine} solves
-     * @param projectedFirstXSs            X the projected chain is anchored at
-     *                                     ({@link HorizontalSpacingCalculator#calculateAnchorXSs})
-     * @param projectedLastRightExtentSs   Right extent of the projected chain's last column, so the
-     *                                     solve leaves room for its glyph inside the margin
+     * @param cloneXPositionsSs              X position for each fragment clone, in fragment order
+     * @param shiftForSubsequentElementsSs   Amount to shift every surviving element after the
+     *                                       fragment (negative when a paste-replace pulls the
+     *                                       tail left)
+     * @param projectedSprings               The lyric-stretched spring chain of the line as LayoutEngine
+     *                                       will build it after the operation — the surviving columns
+     *                                       with the fragment's clones spliced in, including the terminal
+     *                                       barline — what {@link #fitsWithinLine} solves
+     * @param projectedFirstXSs              X the projected chain is anchored at
+     *                                       ({@link HorizontalSpacingCalculator#calculateAnchorXSs})
+     * @param projectedTrailingReservationSs The span the solve keeps clear past the projected chain's
+     *                                       last column origin — its right extent, plus a full line
+     *                                       rest when that column is not the auto-maintained terminal
+     *                                       ({@link HorizontalSpacingCalculator#trailingReservationSs})
      */
     public record FragmentInsertionResult(
         List<Double> cloneXPositionsSs,
         double shiftForSubsequentElementsSs,
         List<Spring> projectedSprings,
         double projectedFirstXSs,
-        double projectedLastRightExtentSs
+        double projectedTrailingReservationSs
     ) {
         public FragmentInsertionResult {
             cloneXPositionsSs = List.copyOf(cloneXPositionsSs);
@@ -171,19 +175,9 @@ public final class InsertionSpacingCalculator {
          */
         public boolean fitsWithinLine(double staffRightMarginSs) {
             return !HorizontalSpacingCalculator.solveChain(
-                projectedSprings, projectedFirstXSs, projectedLastRightExtentSs, staffRightMarginSs)
+                projectedSprings, projectedFirstXSs, projectedTrailingReservationSs, staffRightMarginSs)
                 .isInfeasible();
         }
-    }
-
-    /**
-     * The fall-fit rule: a projected width fits when it leaves at least the default column gap
-     * before the right margin, so the fall glyph doesn't butt up against the line end. Insertion
-     * uses the compress-to-fit gate in {@link InsertionResult#fitsWithinLine} instead; a fall
-     * widens a column rather than adding one, so it has no spring chain of its own to solve.
-     */
-    private static boolean fitsWithinMarginSs(double projectedWidthSs, double staffRightMarginSs) {
-        return projectedWidthSs + HorizontalSpacingCalculator.DEFAULT_COLUMN_GAP_SS <= staffRightMarginSs;
     }
 
     private InsertionSpacingCalculator() {
@@ -317,13 +311,8 @@ public final class InsertionSpacingCalculator {
         // calculateAnchorXSs, is what keeps the pre-check and the committed layout from disagreeing:
         // without it a nearly-full line could pass the gate, commit, then fail to lay out.
         var fitColumns = new ArrayList<>(columns);
-
-        if (line.effectiveElementCount() < elementCount) {
-            var terminalIndex = elementCount - 1;
-            var columnBuilder = lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null;
-            fitColumns.add(
-                buildSurroundingColumn(line.getElement(terminalIndex), line, terminalIndex, columnBuilder));
-        }
+        appendTerminalIfPresent(
+            fitColumns, line, lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null);
 
         var fitSprings = LyricLift.applyLyricLift(
             HorizontalSpacingCalculator.buildSprings(fitColumns, line), fitColumns);
@@ -335,7 +324,7 @@ public final class InsertionSpacingCalculator {
             newLineWidthSs,
             fitSprings,
             fitFirstXSs,
-            fitColumns.getLast().getRightExtentSs());
+            HorizontalSpacingCalculator.trailingReservationSs(fitColumns.getLast(), line));
     }
 
     /**
@@ -390,6 +379,24 @@ public final class InsertionSpacingCalculator {
         }
 
         return columnBuilder.buildColumn(element, line, elementIndex);
+    }
+
+    /**
+     * Appends the line's auto-maintained terminal barline column to a projected chain, if the line
+     * has one. The positioning chains exclude the terminal — layout pins it flush-right rather than
+     * shifting it — but the fit solve must still include it, because it consumes the span the rest
+     * of the chain has to fit into. Without it a nearly-full line could pass the gate, commit, then
+     * fail to lay out.
+     */
+    private static void appendTerminalIfPresent(
+        List<ElementColumn> columns, Line line, @Nullable ElementColumnBuilder columnBuilder) {
+
+        var elementCount = line.elementCount();
+
+        if (line.effectiveElementCount() < elementCount) {
+            var terminalIndex = elementCount - 1;
+            columns.add(buildSurroundingColumn(line.getElement(terminalIndex), line, terminalIndex, columnBuilder));
+        }
     }
 
     /**
@@ -520,11 +527,7 @@ public final class InsertionSpacingCalculator {
         // the springs keeps the pre-check and the committed layout from disagreeing, exactly as
         // calculateInsertion does for a single element.
         var fitColumns = new ArrayList<>(columns);
-
-        if (effectiveCount < line.elementCount()) {
-            var terminalIndex = line.elementCount() - 1;
-            fitColumns.add(buildSurroundingColumn(line.getElement(terminalIndex), line, terminalIndex, columnBuilder));
-        }
+        appendTerminalIfPresent(fitColumns, line, columnBuilder);
 
         var fitSprings = LyricLift.applyLyricLift(
             HorizontalSpacingCalculator.buildSprings(fitColumns, line), fitColumns);
@@ -535,7 +538,7 @@ public final class InsertionSpacingCalculator {
             shiftSs,
             fitSprings,
             fitFirstXSs,
-            fitColumns.getLast().getRightExtentSs());
+            HorizontalSpacingCalculator.trailingReservationSs(fitColumns.getLast(), line));
     }
 
     /**
@@ -583,16 +586,27 @@ public final class InsertionSpacingCalculator {
     /**
      * Determines whether a fall will fit on a line when applied to the element at the given index.
      * <p>
-     * A fall extends the source element's right extent. When that extension is large enough to push
-     * subsequent elements right, this method checks whether the last element on the line would
-     * overflow the right margin.
+     * A fall widens the source element's column rather than adding one, so the line it produces is
+     * the current line with that one column swapped out. This gate builds exactly that projection —
+     * every column including the auto-maintained terminal barline, with the fall-carrying clone in
+     * the source's place — and runs the same compress-to-fit solve
+     * ({@link InsertionResult#fitsWithinLine}) that the insertion gates and the committed layout
+     * run. Solving rather than measuring is what lets a full line with slack in its springs accept
+     * a fall: the projection is derived from the chain, never from the elements' current X
+     * positions, which still carry the pre-fall (and possibly stale) spacing (refs #617).
      *
-     * @param line        The line to check
-     * @param sourceIndex The index of the element the fall would be applied to
-     * @param layout      Layout result for position lookup; null falls back to {@code xOffset}
+     * @param line               The line to check
+     * @param sourceIndex        The index of the element the fall would be applied to. Must name an
+     *                           effective element ({@code < line.effectiveElementCount()}) — the
+     *                           auto-maintained terminal cannot carry a fall, and an index naming it
+     *                           would leave the fall out of the projection entirely
+     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
+     *                           line as if it had no lyrics
      * @return {@code true} if the fall fits on the line
      */
-    public static boolean hasRoomForFall(Line line, int sourceIndex, @Nullable LayoutResult layout) {
+    public static boolean hasRoomForFall(
+        Line line, int sourceIndex, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+
         var sourceElement = line.getElement(sourceIndex);
 
         // Fall already present — no change in right extent, always fits
@@ -604,33 +618,20 @@ public final class InsertionSpacingCalculator {
         // mirroring the read-only geometry contract of hasRoomForGraceNote.
         var sourceWithFall = sourceElement.clone();
         sourceWithFall.setFall();
-        var sourceColumnWithFall = createLightweightColumn(sourceWithFall);
-
-        // The clone is absent from the layout map, so look up its X by the original element.
-        sourceColumnWithFall.setXSs(elementXSs(sourceElement, layout));
 
         var effectiveCount = line.effectiveElementCount();
-        var projectedWidthSs = sourceColumnWithFall.getRightEdgeXSs();
+        var columnBuilder = lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null;
+        var columns = new ArrayList<ElementColumn>(line.elementCount());
 
-        // If there are effective elements after the source, the fall's larger right extent
-        // may push them right — check whether the last element would overflow the margin.
-        if (sourceIndex + 1 < effectiveCount) {
-            var nextElement = line.getElement(sourceIndex + 1);
-            var nextColumn = createLightweightColumn(nextElement);
-            var currentNextXSs = elementXSs(nextElement, layout);
-            // Space the pair through the spring engine the committed layout uses, so the fall-fit
-            // gate honours the song's line rest instead of a fixed default gap.
-            var requiredNextXSs = sourceColumnWithFall.getXSs()
-                + HorizontalSpacingCalculator.buildSpring(
-                    sourceColumnWithFall, nextColumn, line.getSong().getDefaultRestLengthSs()).naturalLengthSs();
-            var shiftSs = Math.max(0, requiredNextXSs - currentNextXSs);
-
-            if (shiftSs > 0) {
-                projectedWidthSs = projectedWidthWithLastShiftSs(line, projectedWidthSs, shiftSs, layout);
-            }
+        for (var i = 0; i < effectiveCount; i++) {
+            var element = i == sourceIndex ? sourceWithFall : line.getElement(i);
+            columns.add(buildSurroundingColumn(element, line, i, columnBuilder));
         }
 
-        return fitsWithinMarginSs(projectedWidthSs, line.getSong().getLineWidthSs());
+        appendTerminalIfPresent(columns, line, columnBuilder);
+
+        return !HorizontalSpacingCalculator.solveLine(columns, line, line.getSong().getLineWidthSs())
+            .isInfeasible();
     }
 
     /**
