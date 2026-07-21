@@ -770,6 +770,7 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseExited(MouseEvent e) {
+        getPasteModeManager().mouseExited(this);
         PreviewElementManager.mouseExitedLine(this);
     }
 

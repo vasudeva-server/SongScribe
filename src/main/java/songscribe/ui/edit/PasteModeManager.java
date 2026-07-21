@@ -34,6 +34,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.ViewPx;
+import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.PasteModeDidChangeNotification;
 import songscribe.ui.clipboard.ClipboardManager;
@@ -241,14 +242,7 @@ public final class PasteModeManager {
      */
     private void exit() {
         setActive(false);
-
-        var lineComponent = targetLineComponent;
-        targetLineComponent = null;
-        targetIndex = -1;
-
-        if (lineComponent != null) {
-            lineComponent.repaint();
-        }
+        clearTarget();
 
         var layeredPane = MainFrame.getInstance().getLayeredPane();
         var boundsListener = overlayBoundsListener;
@@ -286,6 +280,18 @@ public final class PasteModeManager {
     }
 
     /**
+     * Drops the tracked insertion point when the mouse leaves the line that owns it, so
+     * the marker disappears while the pointer is between lines or off the score entirely.
+     * Guarded on identity: when the pointer crosses directly into another line, that line's
+     * {@code mouseMoved} may arrive first, and this exit must not undo it.
+     */
+    public void mouseExited(LineComponent lineComponent) {
+        if (active && lineComponent == targetLineComponent) {
+            clearTarget();
+        }
+    }
+
+    /**
      * Places the fragment at the clicked insertion point. Returns true (consuming the
      * event) whenever paste mode is active.
      */
@@ -313,6 +319,21 @@ public final class PasteModeManager {
     }
 
     /**
+     * Drops the tracked insertion point and repaints the line that was showing the marker
+     * so it clears. Paste mode stays active — Return simply becomes a no-op again until
+     * the mouse re-enters a valid insertion position.
+     */
+    private void clearTarget() {
+        var lineComponent = targetLineComponent;
+        targetLineComponent = null;
+        targetIndex = -1;
+
+        if (lineComponent != null) {
+            lineComponent.repaint();
+        }
+    }
+
+    /**
      * Recomputes the insertion index under the mouse and, when it or the line changes,
      * repaints the previously tracked line and the new one so only those two lines redraw.
      */
@@ -328,6 +349,16 @@ public final class PasteModeManager {
         // spaces — the same recipe PreviewElementManager.trackMouse uses.
         var mouseXSs = ScaleContext.pxToSs(
             lineComponent.getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).value());
+
+        // Nothing can be inserted into the staff header or past the staff's right edge,
+        // so outside that span there is no insertion point to show.
+        var contentLeftSs = HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line.getKeyAccidentalCount());
+        var contentRightSs = line.getSong().getLineWidthSs();
+
+        if (mouseXSs < contentLeftSs || mouseXSs > contentRightSs) {
+            clearTarget();
+            return;
+        }
 
         // findInsertionIndex over an element head returns that element's index — never
         // on an element, always before N — and every return path is bounded by

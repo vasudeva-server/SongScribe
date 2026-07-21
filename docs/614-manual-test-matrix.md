@@ -116,17 +116,17 @@ silently produce a double repeat.
 
 ## 4. Paste mode (no selection)
 
-| # | Action | Expected | |
+| # | Action | Expected |   |
 |---|---|---|---|
-| 4.1 [R] | Cmd+V with no selection | Overlay pill appears; **all menus and toolbar buttons disabled** | ☐ |
-| 4.2 [R] | Move the mouse along a line | Insertion marker tracks between elements, never on top of one | ☐ |
-| 4.3 [R] | Click inside a beam group | Places, beam removed, **mode exits** | ☐ |
-| 4.4 [R] | Return with a tracked point | Same as a click | ☐ |
-| 4.5 [R] | Escape | Mode exits, nothing pasted, **clipboard retained** | ☐ |
-| 4.6 [R] | Click outside any line | Mode exits, nothing pasted | ☐ |
-| 4.7 [U] | Background the app while in paste mode | Mode exits cleanly; **return and confirm no stray overlay and no leaked listener** (resize the window a few times) | ☐ |
-| 4.8 [U] | Enter paste mode, exit, re-enter — 5× | Overlay still sized correctly after each; resize the window at the end | ☐ |
-| 4.9 [R] | Paste into a nearly-full line | *"There isn't enough room on this line for the pasted elements."* — **mode stays active**, try again elsewhere | ☐ |
+| 4.1 [R] | Cmd+V with no selection | Overlay pill appears; **all menus and toolbar buttons disabled** | x |
+| 4.2 [R] | Move the mouse along a line | Insertion marker tracks between elements, never on top of one | x |
+| 4.3 [R] | Click inside a beam group | Places, beam removed, **mode exits** | x |
+| 4.4 [R] | Return with a tracked point | Same as a click | x |
+| 4.5 [R] | Escape | Mode exits, nothing pasted, **clipboard retained** | x |
+| 4.6 [R] | Click outside any line | Mode exits, nothing pasted | x |
+| 4.7 [U] | Background the app while in paste mode | Mode exits cleanly; **return and confirm no stray overlay and no leaked listener** (resize the window a few times) | x |
+| 4.8 [U] | Enter paste mode, exit, re-enter — 5× | Overlay still sized correctly after each; resize the window at the end | x |
+| 4.9 [R] | Paste into a nearly-full line | *"There isn't enough room on this line for the pasted elements."* — **mode stays active**, try again elsewhere | x |
 
 ---
 
