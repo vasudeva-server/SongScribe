@@ -41,8 +41,8 @@ import songscribe.util.GraphicUtils;
  * @param staffToLyricsGapSs distance in staff-space units from a line's below-staff content
  *                         to the baseline of its first verse row. Equals
  *                         {@link LineSpacing#LYRICS_ROW_MARGIN_SS} plus the lyrics font
- *                         ascent, so a baseline placed at this distance puts the text
- *                         <em>top</em> one visual gap below the content.
+ *                         cap height, so a baseline placed at this distance puts the text
+ *                         <em>ink top</em> one visual gap below the content.
  */
 public record LyricRenderMetrics(
     Font lyricsFont,

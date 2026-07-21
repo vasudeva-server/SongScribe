@@ -1350,7 +1350,7 @@ public final class ScoreView
             ScaleContext.scaleFont(lyricsFont),
             ScaleContext.textWidthSs(lyricsFont, "-").value(),
             ScaleContext.textWidthSs(lyricsFont, " ").value(),
-            LineSpacing.LYRICS_ROW_MARGIN_SS + ScaleContext.fontAscentSs(lyricsFont).value());
+            LineSpacing.LYRICS_ROW_MARGIN_SS + ScaleContext.fontCapHeightSs(lyricsFont).value());
     }
 
     @Nullable

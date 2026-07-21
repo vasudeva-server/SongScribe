@@ -41,7 +41,7 @@ public final class LineSpacing {
      * The visual gap from the bottom of a line's below-staff content to the top of its
      * first verse row.
      */
-    public static final double LYRICS_ROW_MARGIN_SS = 0.5;  // 8px
+    public static final double LYRICS_ROW_MARGIN_SS = 0.75;  // 6px
 
     /**
      * The minimum height of a line component, used for a line with no content so its staff
