@@ -495,10 +495,8 @@ public final class ScoreViewController {
 
         // Confirm before discarding an ending invalidated by the deletion, and do
         // it first: declining must leave both the clipboard and the score untouched.
-        if (line.hasEndingInvalidatedByDeletion(line.getElements(begin, end))) {
-            if (!EndingConfirms.confirmInvalidation(score)) {
-                return;
-            }
+        if (!confirmEndingInvalidatedByDeletion(line, line.getElements(begin, end))) {
+            return;
         }
 
         handleCopy();
@@ -619,17 +617,12 @@ public final class ScoreViewController {
     }
 
     /**
-     * A breath mark immediately after {@code end} is positionally attached to the
-     * last selected element, so it must be included in a deletion or copy range that
-     * ends at {@code end}. Returns {@code end} extended past that trailing breath
-     * mark, or {@code end} unchanged if there is none. Pure query — mutates nothing.
+     * Returns true when the caller may proceed with a deletion of {@code elements}:
+     * either it discards no ending, or the user confirmed discarding one. Callers
+     * must run this before mutating anything — declining leaves the score untouched.
      */
-    public static int effectiveDeleteEnd(Line line, int begin, int end) {
-        if (end + 1 < line.effectiveElementCount() && line.getElement(end + 1).getType().isBreathMark()) {
-            return end + 1;
-        }
-
-        return end;
+    private boolean confirmEndingInvalidatedByDeletion(Line line, java.util.List<StaffElement> elements) {
+        return !line.hasEndingInvalidatedByDeletion(elements) || EndingConfirms.confirmInvalidation(score);
     }
 
     /**
@@ -650,7 +643,7 @@ public final class ScoreViewController {
         if (line.isHostOfPairedGraceNote(begin)) {
             withModification(line, label, () -> deleteSelection(begin, end, line));
         } else {
-            var rangeEnd = effectiveDeleteEnd(line, begin, end);
+            var rangeEnd = line.effectiveDeleteEnd(end);
 
             // Contiguous range: clean up the element before the range, then batch-remove.
             if (begin > 0) {
@@ -753,8 +746,22 @@ public final class ScoreViewController {
             return FragmentInsertOutcome.EMPTY;
         }
 
+        // deleteElementRange also removes a paired grace note immediately before the
+        // range (its host cannot outlive it), so the spacing calculation must count
+        // that element as deleted too. Otherwise the clones are positioned against a
+        // predecessor that does not survive, leaving a gap where the grace note was.
+        var spacingDeleteRange = deleteRange;
+        var spacingInsertIndex = insertIndex;
+
+        if (deleteRange != null && line.isHostOfPairedGraceNote(deleteRange.begin())) {
+            spacingDeleteRange =
+                new InsertionSpacingCalculator.DeletedRange(deleteRange.begin() - 1, deleteRange.end());
+            spacingInsertIndex = spacingDeleteRange.begin();
+        }
+
         var result = InsertionSpacingCalculator.calculateFragmentInsertion(
-            line, fragment.elements(), insertIndex, deleteRange, null, score.getLyricRenderMetrics());
+            line, fragment.elements(), spacingInsertIndex, spacingDeleteRange, null,
+            score.getLyricRenderMetrics());
 
         if (!result.fitsWithinLine(line.getSong().getLineWidthSs())) {
             OptionDialogs.showErrorMessage(
@@ -892,33 +899,33 @@ public final class ScoreViewController {
         var line = state.getLine();
         var begin = state.getSelectionBegin();
         var deleteRange = new InsertionSpacingCalculator.DeletedRange(
-            begin, effectiveDeleteEnd(line, begin, state.getSelectionEnd()));
+            begin, line.effectiveDeleteEnd(state.getSelectionEnd()));
 
         // A paste-replace deletes before it inserts, so it can discard an ending the
         // same way Delete and Cut can — confirm on the same terms. Declining leaves
         // the score, the selection, and the clipboard untouched.
-        if (line.hasEndingInvalidatedByDeletion(line.getElements(deleteRange.begin(), deleteRange.end()))
-                && !EndingConfirms.confirmInvalidation(score)) {
+        if (!confirmEndingInvalidatedByDeletion(
+                line, line.getElements(deleteRange.begin(), deleteRange.end()))) {
             return;
         }
 
         // One bracket for the whole replace — delete + insert is a single undo
         // step. On LINE_FULL tryInsertFragment mutates nothing, so the bracket
         // closes empty, posts no notification, and the selection stays intact.
-        var outcome = new FragmentInsertOutcome[1];
+        var outcome = score.getSong().withModificationResult(() -> {
+            var result = tryInsertFragment(line, begin, deleteRange);
 
-        score.getSong().withModification(() -> {
-            outcome[0] = tryInsertFragment(line, begin, deleteRange);
-
-            if (outcome[0] == FragmentInsertOutcome.INSERTED) {
+            if (result == FragmentInsertOutcome.INSERTED) {
                 // Clear the selection before the bracket closes so action handlers
                 // reacting to SongDidChangeNotification don't query selection
                 // indices that no longer exist on the reshaped line.
                 selectionCoordinator.clearSelection();
             }
+
+            return result;
         });
 
-        if (outcome[0] == FragmentInsertOutcome.INSERTED) {
+        if (outcome == FragmentInsertOutcome.INSERTED) {
             // Discard saved action states — the song has changed, so restoring
             // pre-selection states would be stale. Individual action handlers will
             // re-evaluate their enabled state from the current context.

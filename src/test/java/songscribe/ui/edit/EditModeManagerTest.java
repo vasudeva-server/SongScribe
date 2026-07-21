@@ -72,11 +72,17 @@ class EditModeManagerTest extends UnitTest {
         Actions.initialize(mockFrame);
     }
 
-    // Resets the EditModeManager and GraceModeManager singletons between tests.
+    // Resets the EditModeManager, GraceModeManager, and PasteModeManager singletons
+    // between tests. EditModeManager.init() (called by several nested @BeforeEach
+    // setups below) constructs a PasteModeManager, which sets its own static
+    // instance as a side effect — that leak must be reset here too, or a later
+    // test class's PasteModeManager.isActive()/getActiveInstance() calls see a
+    // zombie instance wired to this test's torn-down mocks.
     @AfterEach
     void tearDownSingletons() {
         resetEditModeManagerInstance(null);
         resetGraceModeManagerInstance(null);
+        resetPasteModeManagerInstance(null);
         // Restore action state so tests don't bleed into each other.
         Actions.REST_ACTION.setSelected(false);
         Actions.DOT_ACTION_GROUP.clearSelection();
@@ -483,5 +489,9 @@ class EditModeManagerTest extends UnitTest {
 
     private static void resetGraceModeManagerInstance(@Nullable GraceModeManager value) {
         GraceModeManager.setInstance(value);
+    }
+
+    private static void resetPasteModeManagerInstance(@Nullable PasteModeManager value) {
+        PasteModeManager.setInstance(value);
     }
 }

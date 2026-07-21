@@ -32,7 +32,6 @@ import javax.swing.SwingUtilities;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.ScaleContext;
 import songscribe.dom.ViewPx;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.message.MessageCenter;
@@ -142,14 +141,6 @@ public final class PasteModeManager {
         return targetIndex;
     }
 
-    ClipboardManager getClipboardManager() {
-        return clipboardManager;
-    }
-
-    ScoreView getScoreView() {
-        return scoreView;
-    }
-
     /**
      * Returns the {@link ScoreViewController} to place clipboard content through,
      * or null if the ScoreView has not finished initializing yet.
@@ -161,6 +152,11 @@ public final class PasteModeManager {
     void setActive(boolean active) {
         this.active = active;
         MessageCenter.post(new PasteModeDidChangeNotification(active));
+    }
+
+    /** Sets the singleton instance; intended for test teardown only. */
+    static void setInstance(@Nullable PasteModeManager value) {
+        instance = value;
     }
 
     // -------------------------------------------------------------------------
@@ -345,10 +341,7 @@ public final class PasteModeManager {
             return;
         }
 
-        // Convert the view-pixel event x to the fixed document scale, then to staff
-        // spaces — the same recipe PreviewElementManager.trackMouse uses.
-        var mouseXSs = ScaleContext.pxToSs(
-            lineComponent.getScoreView().getViewScale().toDocPx(new ViewPx(e.getX())).value());
+        var mouseXSs = lineComponent.getScoreView().getViewScale().toSs(new ViewPx(e.getX())).value();
 
         // Nothing can be inserted into the staff header or past the staff's right edge,
         // so outside that span there is no insertion point to show.
@@ -403,22 +396,21 @@ public final class PasteModeManager {
         }
 
         var index = targetIndex;
-        var outcome = new ScoreViewController.FragmentInsertOutcome[1];
-
         // Placement bypasses UIAction.actionPerformed (it is driven by a mouse click
         // or Return keypress, not a Cmd+V dispatch), so the Tier-A op-name capture
         // that PasteAction relies on must be set here around the bracket instead.
         var priorOpName = UndoController.getPendingOpName();
         UndoController.setPendingOpName(Strings.get(Strings.ACTION_EDIT_OP_PASTE));
+        ScoreViewController.FragmentInsertOutcome outcome;
 
         try {
-            line.withModification(() -> outcome[0] = controller.tryInsertFragment(line, index, null));
+            outcome = line.withModificationResult(() -> controller.tryInsertFragment(line, index, null));
         } finally {
             UndoController.setPendingOpName(priorOpName);
         }
 
-        if (outcome[0] == ScoreViewController.FragmentInsertOutcome.INSERTED
-                || outcome[0] == ScoreViewController.FragmentInsertOutcome.CANCELLED) {
+        if (outcome == ScoreViewController.FragmentInsertOutcome.INSERTED
+                || outcome == ScoreViewController.FragmentInsertOutcome.CANCELLED) {
             exit();
         }
     }

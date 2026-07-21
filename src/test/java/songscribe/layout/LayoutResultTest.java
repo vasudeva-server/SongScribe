@@ -697,6 +697,31 @@ class LayoutResultTest extends UnitTest {
             .isCloseTo(EXPECTED_MIDPOINT_SS, within(TOLERANCE));
     }
 
+    // betweenElementsOnly=true must skip the element-head snap entirely: the mouse sits directly
+    // over the second element's head, where betweenElementsOnly=false snaps to that head, but the
+    // paste-mode marker (betweenElementsOnly=true) must instead fall through to the
+    // between-elements midpoint — every one of the 7 pre-existing calculateInsertionXSs calls in
+    // this file passes false, so the true branch was otherwise never exercised.
+    @Test
+    void testCalculateInsertionXSsBetweenElementsOnlySkipsElementHeadSnap() {
+        var first = ElementType.CROTCHET.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var preview = ElementType.CROTCHET.newInstance();
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(result.calculateInsertionXSs(1, MOUSE_OVER_SECOND_HEAD_SS, preview, line, false))
+            .as("betweenElementsOnly=false snaps the preview onto the element head under the mouse")
+            .isCloseTo(SECOND_ELEMENT_X_SS, within(TOLERANCE));
+
+        assertThat(result.calculateInsertionXSs(1, MOUSE_OVER_SECOND_HEAD_SS, preview, line, true))
+            .as("betweenElementsOnly=true ignores the head snap and returns the between-elements midpoint instead")
+            .isCloseTo(EXPECTED_MIDPOINT_SS, within(TOLERANCE));
+    }
+
     // ==========================================================================
     // getBelowStaffReservationSs — line-height accounting
     // ==========================================================================

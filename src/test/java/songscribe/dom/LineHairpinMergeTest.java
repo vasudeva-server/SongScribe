@@ -163,6 +163,44 @@ class LineHairpinMergeTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // addCrescendo — genuine interior overlap, no shared endpoint
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddCrescendoPartialOverlapMerge {
+
+        /**
+         * Adding crescendo [0,3] then [2,4] — the two overlap only in the interior
+         * (element 2), sharing no endpoint — must still merge into a single crescendo
+         * [0,4], with the absorbed [0,3] crescendo removed. This is the shape a
+         * re-anchored pasted hairpin produces when it lands inside an existing one.
+         */
+        @Test
+        void testInteriorOverlapWithNoSharedEndpointMergesIntoOneSpan() {
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_0), line.getElement(IDX_3))));
+
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_2), line.getElement(IDX_4))));
+
+            var crescendos = line.findRangeElements(Crescendo.class);
+
+            assertAll(
+                () -> assertThat(crescendos)
+                    .as("interior overlap must merge into exactly one crescendo; the absorbed span must be removed")
+                    .hasSize(1),
+                () -> assertThat(crescendos.getFirst().getAnchorElementIndex())
+                    .as("merged crescendo anchor must be 0")
+                    .isEqualTo(IDX_0),
+                () -> assertThat(crescendos.getFirst().getEndElementIndex())
+                    .as("merged crescendo end must be 4")
+                    .isEqualTo(IDX_4)
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // addDiminuendo — same-type merge (row 38)
     // -----------------------------------------------------------------------
 
@@ -374,6 +412,40 @@ class LineHairpinMergeTest extends UnitTest {
             assertThat(line.findRangeElements(Crescendo.class))
                 .as("a plain note between two crescendos keeps them separate")
                 .hasSize(2);
+        }
+
+        /**
+         * A single-note crescendo [2,2] inserted between an existing crescendo ending
+         * directly before it ([0,1]) and one starting directly after it ([3,4]) abuts
+         * both at once. {@code mergeOverlappingSpans} runs two independent expansion
+         * checks — one for the anchor side, one for the end side — and this is the case
+         * where a single {@code addCrescendo} call must satisfy both in the same pass,
+         * absorbing the earlier and the later hairpin together into one [0,4] span.
+         */
+        @Test
+        void testCrescendoAbuttingBothANeighborBeforeAndAfterAbsorbsBothAtOnce() {
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_0), line.getElement(IDX_1))));
+
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_3), line.getElement(IDX_4))));
+
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_2), line.getElement(IDX_2))));
+
+            var crescendos = line.findRangeElements(Crescendo.class);
+
+            assertAll(
+                () -> assertThat(crescendos)
+                    .as("the middle crescendo must absorb both neighbors into one span")
+                    .hasSize(1),
+                () -> assertThat(crescendos.getFirst().getAnchorElementIndex())
+                    .as("merged crescendo anchor must reach back to the earlier neighbor")
+                    .isEqualTo(IDX_0),
+                () -> assertThat(crescendos.getFirst().getEndElementIndex())
+                    .as("merged crescendo end must reach forward to the later neighbor")
+                    .isEqualTo(IDX_4)
+            );
         }
     }
 }

@@ -32,6 +32,7 @@ import org.mockito.MockedStatic;
 import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.PasteboardOpCommand;
+import songscribe.message.notification.ClipboardDidChangeNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.playback.PlaybackController;
@@ -130,6 +131,36 @@ class PasteboardActionTest extends MainFrameMockTest {
 
             action.musicSelectionDidChange(
                 new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+            assertThat(action.isEnabled()).isFalse();
+        }
+    }
+
+    // clipboardDidChange — Paste's enabled state must be refreshed from clipboard
+    // content, not just from selection changes (ClipboardManager.setFragment/clear
+    // post ClipboardDidChangeNotification precisely so this handler re-evaluates it).
+
+    @Nested
+    class ClipboardDidChange {
+
+        @Test
+        void testPasteEnabledWhenPasteboardNonEmpty() {
+            when(mockEnv().score().getPasteboardSize()).thenReturn(1);
+            var action = PasteAction.createAction(mainFrame());
+            action.setEnabled(false);
+
+            action.clipboardDidChange(new ClipboardDidChangeNotification());
+
+            assertThat(action.isEnabled()).isTrue();
+        }
+
+        @Test
+        void testPasteDisabledWhenPasteboardEmpty() {
+            when(mockEnv().score().getPasteboardSize()).thenReturn(0);
+            var action = PasteAction.createAction(mainFrame());
+            action.setEnabled(true);
+
+            action.clipboardDidChange(new ClipboardDidChangeNotification());
 
             assertThat(action.isEnabled()).isFalse();
         }

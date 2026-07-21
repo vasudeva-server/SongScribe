@@ -37,7 +37,6 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.PasteModeManager;
 import songscribe.dom.AnnotationAttachment;
-import songscribe.dom.Line;
 import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Beam;

@@ -342,7 +342,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var fragmentSurvives = result.fragmentSpans().contains(fragmentSpan);
 
             assertThat(destinationSurvives && fragmentSurvives)
-                .as("a paste must never leave two overlapping spans of the same kind")
+                .as("destination=%s fragment=%s must not both survive", destinationSurvives, fragmentSurvives)
                 .isFalse();
         }
 

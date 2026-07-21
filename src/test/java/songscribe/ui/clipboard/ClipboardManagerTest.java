@@ -22,21 +22,45 @@ package songscribe.ui.clipboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import net.engio.mbassy.listener.Handler;
+
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.ClipboardDidChangeNotification;
 
 class ClipboardManagerTest extends UnitTest {
 
+    /** Records every ClipboardDidChangeNotification posted while subscribed. */
+    private static final class RecordingListener {
+        final List<ClipboardDidChangeNotification> received = new ArrayList<>();
+
+        @Handler
+        public void clipboardDidChange(ClipboardDidChangeNotification message) {
+            received.add(message);
+        }
+    }
+
     private ClipboardManager clipboardManager;
+    private RecordingListener listener;
 
     @BeforeEach
     void setUp() {
         clipboardManager = new ClipboardManager();
+        listener = new RecordingListener();
+        MessageCenter.subscribe(listener);
+    }
+
+    @AfterEach
+    void tearDown() {
+        MessageCenter.unsubscribe(listener);
     }
 
     @Test
@@ -81,5 +105,27 @@ class ClipboardManagerTest extends UnitTest {
         assertThat(clipboardManager.isEmpty()).isTrue();
         assertThat(clipboardManager.getFragment()).isNull();
         assertThat(clipboardManager.getSize()).isEqualTo(0);
+    }
+
+    @Test
+    void testSetFragmentPostsClipboardDidChangeNotificationExactlyOnce() {
+        clipboardManager.setFragment(new Fragment(List.of(ElementType.CROTCHET.newInstance()), List.of()));
+
+        assertThat(listener.received)
+            .as("setFragment must post exactly one ClipboardDidChangeNotification")
+            .hasSize(1);
+    }
+
+    @Test
+    void testClearPostsClipboardDidChangeNotificationExactlyOnce() {
+        clipboardManager.setFragment(new Fragment(List.of(ElementType.CROTCHET.newInstance()), List.of()));
+        // Discard the notification from the setFragment above so only clear()'s post is counted.
+        listener.received.clear();
+
+        clipboardManager.clear();
+
+        assertThat(listener.received)
+            .as("clear must post exactly one ClipboardDidChangeNotification")
+            .hasSize(1);
     }
 }

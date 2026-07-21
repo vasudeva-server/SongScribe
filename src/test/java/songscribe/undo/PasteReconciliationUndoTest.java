@@ -41,6 +41,7 @@ import songscribe.dom.Line;
 import songscribe.dom.RangeElement;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.message.MessageCenter;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.clipboard.Fragment;
@@ -138,8 +139,16 @@ class PasteReconciliationUndoTest extends UnitTest {
             clipboardManager
         );
 
-        song.withModification(
-            () -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+        // The controller subscribes itself to the shared message bus in its
+        // constructor. MBassador holds subscribers weakly, but each test builds a
+        // fresh controller, so leaving it subscribed would let it linger until GC
+        // and handle notifications from later tests. Unsubscribe unconditionally.
+        try {
+            song.withModification(
+                () -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+        } finally {
+            MessageCenter.unsubscribe(controller);
+        }
     }
 
     @Test
@@ -162,6 +171,12 @@ class PasteReconciliationUndoTest extends UnitTest {
         assertThat(destinationBeam.getEndElementIndex())
             .as("restored over its original span, not shifted by the undone paste")
             .isEqualTo(LAST_NOTE_INDEX);
+
+        UndoController.redo();
+
+        assertThat(line.getRangeElements())
+            .as("one redo discards the beam again, not just re-inserts the elements")
+            .isEmpty();
     }
 
     @Test
@@ -182,6 +197,15 @@ class PasteReconciliationUndoTest extends UnitTest {
 
         assertThat(line.getRangeElements()).containsExactly(destinationHairpin);
         assertThat(destinationHairpin.getEndElementIndex()).isEqualTo(LAST_NOTE_INDEX);
+
+        UndoController.redo();
+
+        assertThat(line.getRangeElements())
+            .as("one redo restores the paste's widened hairpin, not just the elements")
+            .containsExactly(destinationHairpin);
+        assertThat(destinationHairpin.getEndElementIndex())
+            .as("widened over the pasted note again")
+            .isEqualTo(LAST_NOTE_INDEX + 1);
     }
 
     @Test
@@ -213,5 +237,19 @@ class PasteReconciliationUndoTest extends UnitTest {
             .containsExactly(destinationHairpin);
         assertThat(destinationHairpin.getAnchorElementIndex()).isEqualTo(INTERIOR_INSERT_INDEX);
         assertThat(destinationHairpin.getEndElementIndex()).isEqualTo(LAST_NOTE_INDEX);
+
+        UndoController.redo();
+
+        var afterRedo = line.getRangeElements();
+
+        assertThat(afterRedo)
+            .as("one redo re-merges the hairpins the paste originally fused")
+            .hasSize(1);
+        assertThat(afterRedo.getFirst().getAnchorElementIndex())
+            .as("the re-merged hairpin starts on the pasted note again")
+            .isEqualTo(INTERIOR_INSERT_INDEX);
+        assertThat(afterRedo.getFirst().getEndElementIndex())
+            .as("and runs to where the destination hairpin ended, again")
+            .isEqualTo(LAST_NOTE_INDEX + 1);
     }
 }

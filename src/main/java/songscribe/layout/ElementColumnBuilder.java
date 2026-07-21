@@ -28,6 +28,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
@@ -118,7 +119,31 @@ public class ElementColumnBuilder {
      */
     public ElementColumn buildColumn(StaffElement element, Line line, int elementIndex) {
         // Determine beam membership first — needed for right extent calculation
-        var beam = line.findBeamAt(elementIndex);
+        return buildColumnForBeam(element, line.findBeamAt(elementIndex));
+    }
+
+    /**
+     * Builds a column for an element not attached to any line — a fragment clone about to be
+     * pasted. Carries the element's real syllable data (so a paste preview is spaced by the same
+     * lyric rules as the committed layout) but no beam membership, since beam grouping is
+     * determined by position on a line the element does not yet occupy.
+     *
+     * @param element The element to process (not necessarily on any line)
+     * @return The constructed ElementColumn, unbeamed
+     */
+    public ElementColumn buildDetachedColumn(StaffElement element) {
+        return buildColumnForBeam(element, null);
+    }
+
+    /**
+     * Builds an ElementColumn for {@code element}, beamed iff {@code beam} is non-null.
+     * A detached element (a fragment clone not yet on a line) has no beam membership.
+     *
+     * @param element The element to process
+     * @param beam    The beam {@code element} belongs to, or null if it is unbeamed
+     * @return The constructed ElementColumn
+     */
+    private ElementColumn buildColumnForBeam(StaffElement element, @Nullable Beam beam) {
         var beamed = beam != null;
 
         // Calculate horizontal extents
@@ -175,56 +200,6 @@ public class ElementColumnBuilder {
         // Tag the column with its beam group (anchor index) so adjacent beam groups stay
         // distinct and the spacing calculator does not merge them.
         column.setBeamGroupId(beam != null ? beam.getAnchorElementIndex() : ElementColumn.NO_BEAM_GROUP);
-
-        return column;
-    }
-
-    /**
-     * Builds a column for an element not attached to any line — a fragment clone about to be
-     * pasted. Carries the element's real syllable data (so a paste preview is spaced by the same
-     * lyric rules as the committed layout) but no beam membership, since beam grouping is
-     * determined by position on a line the element does not yet occupy.
-     *
-     * @param element The element to process (not necessarily on any line)
-     * @return The constructed ElementColumn, unbeamed
-     */
-    public ElementColumn buildDetachedColumn(StaffElement element) {
-        var leftExtentSs = calculateLeftExtentSs(element);
-        var rightExtentSs = calculateRightExtentSs(element, false, element.getDirection());
-        var rightExtentExcludingAugmentationSs = calculateRightExtentExcludingAugmentationSs(element, false, element.getDirection());
-
-        var stemTopSs = calculateStemTopSs(element);
-        var stemBottomSs = calculateStemBottomSs(element);
-
-        var syllable = getSyllable(element);
-        var syllableWidthSs = measureSyllableWidthSs(syllable);
-
-        var column = new ElementColumn(
-            element,
-            getGraceNotes(element),
-            leftExtentSs,
-            rightExtentSs,
-            rightExtentExcludingAugmentationSs,
-            stemTopSs,
-            stemBottomSs,
-            syllable,
-            syllableWidthSs,
-            false
-        );
-
-        if (element.getType().isNote()) {
-            column.setNoteheadWidthSs(getNoteheadRightExtent(element.getType()));
-        }
-
-        var mainLyric = element.getMainLyric();
-        var syllabic = mainLyric != null ? mainLyric.syllabic() : null;
-        var isHyphenated = Lyric.syllabicContinues(syllabic);
-        column.setMinGapToNextSyllableSs(isHyphenated
-            ? lyricRenderMetrics.preferredHyphenCellWidthSs()
-            : lyricRenderMetrics.spaceWidthSs());
-        column.setMinCollisionGapToNextSyllableSs(isHyphenated
-            ? lyricRenderMetrics.hyphenWidthSs()
-            : lyricRenderMetrics.spaceWidthSs());
 
         return column;
     }

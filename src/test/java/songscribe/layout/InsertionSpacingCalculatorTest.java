@@ -74,6 +74,25 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     /** Float tolerance for comparing preview and committed X positions (Ss). */
     private static final double PREVIEW_TOLERANCE_SS = 0.001;
 
+    /** Line length for the paste-replace negative-shift fixture: predecessor + wide deleted range + successor. */
+    private static final int NEGATIVE_SHIFT_LINE_ELEMENT_COUNT = 6;
+
+    /** Last index of the wide deleted range in the negative-shift fixture. */
+    private static final int NEGATIVE_SHIFT_DELETE_RANGE_END_INDEX = 4;
+
+    /** Line length for the multi-element-fragment + deleteRange fixture: predecessor, deleted range, successor. */
+    private static final int MULTI_FRAGMENT_DELETE_LINE_ELEMENT_COUNT = 5;
+
+    /** Last index of the deleted range in the multi-element-fragment fixture. */
+    private static final int MULTI_FRAGMENT_DELETE_RANGE_END_INDEX = 3;
+
+    /**
+     * Line length for the {@code calculateFragmentInsertion} validation fixtures — large enough
+     * that a {@link InsertionSpacingCalculator.DeletedRange}'s begin and end can each be made
+     * invalid independently of the other.
+     */
+    private static final int VALIDATION_LINE_ELEMENT_COUNT = 4;
+
     /**
      * Returns the narrowest margin an insertion can still be laid out within: every projected gap
      * frozen on its strut, anchored at the projected first X, with the last column's right extent
@@ -1031,6 +1050,237 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             assertThat(withMetrics.cloneXPositionsSs().get(0))
                 .as("a wide syllable on the predecessor must push the fragment's clone further right")
                 .isGreaterThan(withoutMetrics.cloneXPositionsSs().get(0));
+        }
+
+        @Test
+        void testPasteReplaceWithNarrowerFragmentProducesNegativeShift() {
+            // The single-clone fragment is far narrower than the multi-element range it replaces.
+            // The javadoc promises the tail is pulled LEFT (negative shift) in this case — the one
+            // behavior that distinguishes paste-replace from pure insertion's
+            // Math.max(0, shiftSs) clamp — but no existing test checks the sign.
+            var line = lineWithCrotchets(NEGATIVE_SHIFT_LINE_ELEMENT_COUNT, songWithLineWidth(WIDE_LINE_SS));
+            var deleteRange = new InsertionSpacingCalculator.DeletedRange(1, NEGATIVE_SHIFT_DELETE_RANGE_END_INDEX);
+            var fragment = List.<StaffElement>of(crotchet());
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fragment, 1, deleteRange, null, null);
+
+            assertThat(result.shiftForSubsequentElementsSs())
+                .as("a fragment narrower than the deleted range must pull the tail left (negative shift)")
+                .isNegative();
+        }
+
+        @Test
+        void testPureInsertionShiftNeverNegativeEvenWhenGapIsAlreadyWide() {
+            // Companion to the paste-replace negative-shift test above: with deleteRange == null,
+            // Math.max(0, shiftSs) must clamp even a negative raw required shift to zero.
+            var firstXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(0);  // no key accidentals
+            var largeGapSs = 50.0;
+            var secondElementXSs = firstXSs + largeGapSs;
+            var line = widelySpacedTwoCrotchetLine(secondElementXSs);
+            var fragment = List.<StaffElement>of(crotchet());
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fragment, 1, null, null, null);
+
+            assertThat(result.shiftForSubsequentElementsSs())
+                .as("pure insertion (deleteRange == null) must clamp a negative raw shift to zero")
+                .isEqualTo(0.0);
+        }
+
+        @Test
+        void testMultiElementFragmentWithDeleteRangeChainsFromPredecessorAndShiftsFromSuccessor() {
+            // Every existing deleteRange test above uses a single-element fragment; this pins both
+            // the clone-to-clone chaining AND the trailing shift for a multi-element paste-replace.
+            var line = lineWithCrotchets(MULTI_FRAGMENT_DELETE_LINE_ELEMENT_COUNT, songWithLineWidth(WIDE_LINE_SS));
+            var predecessor = line.getElement(0);
+            var successor = line.getElement(MULTI_FRAGMENT_DELETE_LINE_ELEMENT_COUNT - 1);
+            var deleteRange = new InsertionSpacingCalculator.DeletedRange(1, MULTI_FRAGMENT_DELETE_RANGE_END_INDEX);
+            var fragment = List.<StaffElement>of(crotchet(), crotchet());
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, fragment, 1, deleteRange, null, null);
+
+            assertThat(result.cloneXPositionsSs()).as("one X per fragment clone").hasSize(fragment.size());
+
+            var predecessorColumn = lightweightColumn(predecessor);
+            predecessorColumn.setXSs(ScaleContext.pxToSs(predecessor.getXOffsetPx()));
+            var expectedFirstCloneXSs = springNextColumnXSs(predecessorColumn, lightweightColumn(fragment.get(0)));
+            assertThat(result.cloneXPositionsSs().get(0))
+                .as("first clone seeds from the element before the deleted range")
+                .isEqualTo(expectedFirstCloneXSs);
+
+            var firstCloneColumn = lightweightColumn(fragment.get(0));
+            firstCloneColumn.setXSs(result.cloneXPositionsSs().get(0));
+            var expectedSecondCloneXSs = springNextColumnXSs(firstCloneColumn, lightweightColumn(fragment.get(1)));
+            assertThat(result.cloneXPositionsSs().get(1))
+                .as("second clone chains off the first clone's natural spring gap")
+                .isEqualTo(expectedSecondCloneXSs);
+
+            var lastCloneColumn = lightweightColumn(fragment.get(1));
+            lastCloneColumn.setXSs(result.cloneXPositionsSs().get(1));
+            var successorColumn = lightweightColumn(successor);
+            var requiredSuccessorXSs = springNextColumnXSs(lastCloneColumn, successorColumn);
+            var successorXSs = ScaleContext.pxToSs(successor.getXOffsetPx());
+            assertThat(result.shiftForSubsequentElementsSs())
+                .as("trailing shift is derived from the LAST clone, not from within the deleted range")
+                .isEqualTo(requiredSuccessorXSs - successorXSs);
+        }
+
+        @Test
+        void testUsesLayoutPositionForPredecessorWhenLayoutProvided() {
+            // With a non-null layout the predecessor's X comes from the layout map, not xOffsetPx.
+            // Every existing CalculateFragmentInsertion test above passes null, so this path
+            // (elementXSs falling through to layout.getElementXSs) is otherwise never exercised.
+            var line = lineWithCrotchets(1, songWithLineWidth(WIDE_LINE_SS));
+            var predecessor = line.getElement(0);
+            var fragmentElement = crotchet();
+
+            var layout = mock(LayoutResult.class);
+            when(layout.getElementXSs(any())).thenAnswer(invocation ->
+                ScaleContext.pxToSs(((StaffElement) invocation.getArgument(0)).getXOffsetPx()) + LAYOUT_SHIFT_SS);
+
+            var result = InsertionSpacingCalculator.calculateFragmentInsertion(
+                line, List.of(fragmentElement), 1, null, layout, null);
+
+            var layoutPredecessorColumn = lightweightColumn(predecessor);
+            layoutPredecessorColumn.setXSs(ScaleContext.pxToSs(predecessor.getXOffsetPx()) + LAYOUT_SHIFT_SS);
+            var expectedCloneXSs = springNextColumnXSs(layoutPredecessorColumn, lightweightColumn(fragmentElement));
+
+            assertThat(result.cloneXPositionsSs().get(0))
+                .as("predecessor position must come from the supplied layout, not xOffsetPx")
+                .isEqualTo(expectedCloneXSs);
+
+            // Prove disagreement: the xOffsetPx-based position must differ from the layout-driven
+            // one, so this test can only pass if the layout source was actually used.
+            var xOffsetPredecessorColumn = lightweightColumn(predecessor);
+            xOffsetPredecessorColumn.setXSs(ScaleContext.pxToSs(predecessor.getXOffsetPx()));
+            var xOffsetCloneXSs = springNextColumnXSs(xOffsetPredecessorColumn, lightweightColumn(fragmentElement));
+
+            assertThat(result.cloneXPositionsSs().get(0))
+                .as("layout-driven position must differ from the xOffsetPx-only position")
+                .isNotEqualTo(xOffsetCloneXSs);
+        }
+
+        /**
+         * Creates a line with two crotchets spaced far apart — first at the standard first-element X,
+         * second at {@code secondElementXSs} — so a fragment inserted between them has a raw required
+         * shift that goes negative before {@code calculateFragmentInsertion}'s pure-insertion clamp
+         * is applied.
+         */
+        private static Line widelySpacedTwoCrotchetLine(double secondElementXSs) {
+            var line = detachedLine();
+            var first = crotchet();
+            var firstXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            first.setXOffsetPx(ScaleContext.ssToRoundedPx(firstXSs));
+            line.addElement(first);
+
+            var second = crotchet();
+            second.setXOffsetPx(ScaleContext.ssToRoundedPx(secondElementXSs));
+            line.addElement(second);
+
+            return line;
+        }
+
+        @SuppressWarnings("PackageVisibleInnerClass")
+        @Nested
+        class Validation {
+
+            @Test
+            void testEmptyFragmentThrowsIllegalArgumentException() {
+                // Pins the calculator's OWN empty-fragment guard, independent of
+                // ScoreViewController's upstream guard against ever calling with an empty selection.
+                var line = lineWithCrotchets(0);
+
+                assertThatIllegalArgumentException()
+                    .isThrownBy(() -> InsertionSpacingCalculator.calculateFragmentInsertion(
+                        line, List.of(), 0, null, null, null))
+                    .withMessage("fragment must not be empty");
+            }
+
+            @Test
+            void testNegativeInsertIndexThrowsIllegalArgumentException() {
+                var line = lineWithCrotchets(0);
+                var fragment = List.<StaffElement>of(crotchet());
+                var insertIndex = -1;
+                var effectiveCount = line.effectiveElementCount();
+                var expectedMessage = "insertIndex " + insertIndex + " out of bounds [0, " + effectiveCount + ']';
+
+                assertThatIllegalArgumentException()
+                    .isThrownBy(() -> InsertionSpacingCalculator.calculateFragmentInsertion(
+                        line, fragment, insertIndex, null, null, null))
+                    .withMessage(expectedMessage);
+            }
+
+            @Test
+            void testInsertIndexBeyondEffectiveCountThrowsIllegalArgumentException() {
+                var line = lineWithCrotchets(0);
+                var fragment = List.<StaffElement>of(crotchet());
+                var effectiveCount = line.effectiveElementCount();
+                var insertIndex = effectiveCount + 1;
+                var expectedMessage = "insertIndex " + insertIndex + " out of bounds [0, " + effectiveCount + ']';
+
+                assertThatIllegalArgumentException()
+                    .isThrownBy(() -> InsertionSpacingCalculator.calculateFragmentInsertion(
+                        line, fragment, insertIndex, null, null, null))
+                    .withMessage(expectedMessage);
+            }
+
+            @Test
+            void testDeleteRangeWithNegativeBeginThrowsIllegalArgumentException() {
+                var line = lineWithCrotchets(VALIDATION_LINE_ELEMENT_COUNT);
+                var fragment = List.<StaffElement>of(crotchet());
+                var deleteRange = new InsertionSpacingCalculator.DeletedRange(-1, 1);
+                var expectedMessage = "invalid deleteRange " + deleteRange;
+
+                assertThatIllegalArgumentException()
+                    .isThrownBy(() -> InsertionSpacingCalculator.calculateFragmentInsertion(
+                        line, fragment, 0, deleteRange, null, null))
+                    .withMessage(expectedMessage);
+            }
+
+            @Test
+            void testDeleteRangeWithBeginGreaterThanEndThrowsIllegalArgumentException() {
+                var line = lineWithCrotchets(VALIDATION_LINE_ELEMENT_COUNT);
+                var fragment = List.<StaffElement>of(crotchet());
+                var deleteRange =
+                    new InsertionSpacingCalculator.DeletedRange(VALIDATION_LINE_ELEMENT_COUNT - 1, 0);
+                var expectedMessage = "invalid deleteRange " + deleteRange;
+
+                assertThatIllegalArgumentException()
+                    .isThrownBy(() -> InsertionSpacingCalculator.calculateFragmentInsertion(
+                        line, fragment, 0, deleteRange, null, null))
+                    .withMessage(expectedMessage);
+            }
+
+            @Test
+            void testDeleteRangeWithEndAtOrBeyondEffectiveCountThrowsIllegalArgumentException() {
+                var line = lineWithCrotchets(VALIDATION_LINE_ELEMENT_COUNT);
+                var fragment = List.<StaffElement>of(crotchet());
+                var deleteRange =
+                    new InsertionSpacingCalculator.DeletedRange(0, VALIDATION_LINE_ELEMENT_COUNT);
+                var expectedMessage = "invalid deleteRange " + deleteRange;
+
+                assertThatIllegalArgumentException()
+                    .isThrownBy(() -> InsertionSpacingCalculator.calculateFragmentInsertion(
+                        line, fragment, 0, deleteRange, null, null))
+                    .withMessage(expectedMessage);
+            }
+
+            @Test
+            void testInsertIndexNotEqualToDeleteRangeBeginThrowsIllegalArgumentException() {
+                var line = lineWithCrotchets(VALIDATION_LINE_ELEMENT_COUNT);
+                var fragment = List.<StaffElement>of(crotchet());
+                var deleteRange = new InsertionSpacingCalculator.DeletedRange(1, 1);
+                var insertIndex = 0;
+                var expectedMessage = "insertIndex " + insertIndex
+                    + " must equal deleteRange.begin() " + deleteRange.begin();
+
+                assertThatIllegalArgumentException()
+                    .isThrownBy(() -> InsertionSpacingCalculator.calculateFragmentInsertion(
+                        line, fragment, insertIndex, deleteRange, null, null))
+                    .withMessage(expectedMessage);
+            }
         }
     }
 }

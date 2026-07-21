@@ -155,6 +155,44 @@ class LineBeamTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // addBeaming — genuine interior overlap, no shared endpoint
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddBeamingPartialOverlapMerge {
+
+        /**
+         * Adding [0,3] then [2,4] — the two overlap only in the interior (element 2),
+         * sharing no endpoint — must still merge into a single beam [0,4], with the
+         * absorbed [0,3] beam removed. This is the shape a re-anchored pasted beam
+         * produces when it lands inside an existing one.
+         */
+        @Test
+        void testInteriorOverlapWithNoSharedEndpointMergesIntoOneSpan() {
+            song.withoutMutationTracking(() ->
+                line.addBeaming(new Beam(line.getElement(IDX_0), line.getElement(IDX_3))));
+
+            song.withoutMutationTracking(() ->
+                line.addBeaming(new Beam(line.getElement(IDX_2), line.getElement(IDX_4))));
+
+            var beams = line.findBeamsOverlapping(IDX_0, IDX_4);
+
+            assertAll(
+                () -> assertThat(beams)
+                    .as("interior overlap must merge into exactly one beam; the absorbed span must be removed")
+                    .hasSize(1),
+                () -> assertThat(beams.getFirst().getAnchorElementIndex())
+                    .as("merged beam anchor must be 0")
+                    .isEqualTo(IDX_0),
+                () -> assertThat(beams.getFirst().getEndElementIndex())
+                    .as("merged beam end must be 4")
+                    .isEqualTo(IDX_4)
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // removeBeaming — absent beam is no-op (row 27)
     // -----------------------------------------------------------------------
 

@@ -110,6 +110,38 @@ class ScoreInputHandlerTest extends UnitTest {
                 verify(callback).requestFocusInWindow();
             }
         }
+
+        @Test
+        void testMouseClickedButton1WhenPasteModeInProgressCancelsPasteMode() {
+            var callback = mock(InputHandlerCallback.class);
+            var handler = new ScoreInputHandler(callback);
+            var pasteModeManager = mock(PasteModeManager.class);
+            when(pasteModeManager.isInProgress()).thenReturn(true);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
+
+                verify(pasteModeManager).cancel();
+            }
+        }
+
+        @Test
+        void testMouseClickedButton1WhenPasteModeNotInProgressDoesNotCancel() {
+            var callback = mock(InputHandlerCallback.class);
+            var handler = new ScoreInputHandler(callback);
+            var pasteModeManager = mock(PasteModeManager.class);
+            when(pasteModeManager.isInProgress()).thenReturn(false);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
+
+                verify(pasteModeManager, never()).cancel();
+            }
+        }
     }
 
     // -------------------------------------------------------------------
@@ -249,6 +281,34 @@ class ScoreInputHandlerTest extends UnitTest {
         }
 
         @Test
+        void testKeyPressedEscapeWhenPasteModeInProgressCancelsPasteModeAndDoesNotDeselect() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.SELECT);
+            var window = mock(Window.class);
+            when(callback.getWindow()).thenReturn(window);
+            var handler = new ScoreInputHandler(callback);
+            var graceModeManager = mock(GraceModeManager.class);
+            var pasteModeManager = mock(PasteModeManager.class);
+            when(graceModeManager.isInProgress()).thenReturn(false);
+            when(pasteModeManager.isInProgress()).thenReturn(true);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                handler.keyPressed(keyEvent(KeyEvent.VK_ESCAPE));
+
+                verify(pasteModeManager).cancel();
+                // Paste-mode cancellation must short-circuit the SELECT-mode deselect
+                // fallback below it — proves the branch is exclusive, not merely reached.
+                mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)), never());
+            }
+        }
+
+        @Test
         void testKeyPressedEscapeInSelectModeWithNullWindowPostsDeselectCommand() {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getMode()).thenReturn(Mode.SELECT);
@@ -364,6 +424,33 @@ class ScoreInputHandlerTest extends UnitTest {
                 handler.keyReleased(keyEvent(KeyEvent.VK_ALT));
 
                 lc.verify(() -> LineComponent.setAltPressed(false));
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Rows 246-254: KeyAction(VK_ENTER) places the paste-mode fragment and
+    // returns before touching the selection coordinator
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EnterKeyPressed {
+
+        @Test
+        void testEnterCallsPasteModeManagerPlaceAndSkipsSelectionHandling() {
+            var callback = mock(InputHandlerCallback.class);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                pressArrowKey(callback, KeyEvent.VK_ENTER);
+
+                verify(pasteModeManager).place();
+                // The VK_ENTER branch returns immediately after place(), so the
+                // arrow-key selection path below it must never run.
+                verify(callback, never()).getSelectionCoordinator();
             }
         }
     }

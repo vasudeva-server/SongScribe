@@ -24,6 +24,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.DoubleSupplier;
+import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
 
@@ -1332,6 +1333,23 @@ public final class Song {
 
         try {
             body.run();
+        } finally {
+            endModification();
+        }
+    }
+
+    /**
+     * The value-returning form of {@link #withModification(Runnable)}, for a body
+     * whose outcome the caller must inspect after the bracket closes.
+     *
+     * @param body The modification to run
+     * @return Whatever {@code body} returns
+     */
+    public <T> T withModificationResult(Supplier<T> body) {
+        beginModification();
+
+        try {
+            return body.get();
         } finally {
             endModification();
         }

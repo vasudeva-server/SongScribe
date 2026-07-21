@@ -25,6 +25,7 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
@@ -142,6 +143,17 @@ public class Line {
      */
     public void withModification(Runnable body) {
         song.withModification(body);
+    }
+
+    /**
+     * The value-returning form of {@link #withModification(Runnable)}, for a body
+     * whose outcome the caller must inspect after the bracket closes.
+     *
+     * @param body The modification to run
+     * @return Whatever {@code body} returns
+     */
+    public <T> T withModificationResult(Supplier<T> body) {
+        return song.withModificationResult(body);
     }
 
     /**
@@ -1034,6 +1046,20 @@ public class Line {
     /** Returns true when the element at {@code index} is the host of a paired grace note. */
     public boolean isHostOfPairedGraceNote(int index) {
         return index >= 1 && isPairedGraceNote(index - 1);
+    }
+
+    /**
+     * A breath mark immediately after {@code end} is positionally attached to the
+     * last selected element, so it must be included in a deletion or copy range that
+     * ends at {@code end}. Returns {@code end} extended past that trailing breath
+     * mark, or {@code end} unchanged if there is none. Pure query — mutates nothing.
+     */
+    public int effectiveDeleteEnd(int end) {
+        if (end + 1 < effectiveElementCount() && getElement(end + 1).getType().isBreathMark()) {
+            return end + 1;
+        }
+
+        return end;
     }
 
     /**

@@ -23,12 +23,12 @@ package songscribe.ui.clipboard;
 import java.util.ArrayList;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.RangeElement;
 import songscribe.dom.StaffElement;
-import songscribe.ui.component.ScoreViewController;
 
 /**
  * An immutable, self-contained copy of a run of {@link StaffElement}s (and the
@@ -57,14 +57,23 @@ import songscribe.ui.component.ScoreViewController;
  */
 public record Fragment(List<StaffElement> elements, List<RangeElement> spans) {
 
+    // Defensive copies — the class contract is immutability, and both factories
+    // build their lists incrementally before handing them over.
+    public Fragment {
+        elements = List.copyOf(elements);
+        spans = List.copyOf(spans);
+    }
+
     /**
      * Captures the elements in {@code line} from {@code begin} to {@code end}
      * (inclusive), along with every {@link RangeElement} fully contained within
      * that range.
      *
      * <p>The captured range is first extended past a trailing breath mark
-     * ({@link ScoreViewController#effectiveDeleteEnd}) and then trimmed of an
-     * orphan paired grace note at the tail. A captured {@code FINAL_DOUBLE_BARLINE}
+     * ({@link Line#effectiveDeleteEnd}) and then trimmed of an
+     * orphan paired grace note at the tail. When the entire range is that one
+     * orphan grace note ({@code begin == end}), the trim drops it entirely and
+     * capture returns an empty {@code Fragment}. A captured {@code FINAL_DOUBLE_BARLINE}
      * is normalized to {@code DOUBLE_BARLINE} so pasted content can never violate
      * the song-owned invariant. Repeats are copied verbatim, with no balance
      * validation.
@@ -75,7 +84,7 @@ public record Fragment(List<StaffElement> elements, List<RangeElement> spans) {
      * @return A new {@code Fragment} of clones, independent of {@code line}
      */
     public static Fragment capture(Line line, int begin, int end) {
-        var effectiveEnd = ScoreViewController.effectiveDeleteEnd(line, begin, end);
+        var effectiveEnd = line.effectiveDeleteEnd(end);
 
         // The host of a paired grace note sits at the very next index, which lies
         // outside the captured range when the grace note is the last included
@@ -100,25 +109,35 @@ public record Fragment(List<StaffElement> elements, List<RangeElement> spans) {
             elements.add(clone);
         }
 
-        var spans = new ArrayList<RangeElement>();
+        return new Fragment(elements, cloneSpans(line.getRangeElements(), originalToClone));
+    }
 
-        for (var rangeElement : line.getRangeElements()) {
-            var anchor = rangeElement.getAnchorElement();
-            var rangeEnd = rangeElement.getEndElement();
+    /**
+     * Copies every span in {@code source} onto the clones in {@code originalToClone},
+     * keeping only those whose anchor and end are both present in the map — a span
+     * with an endpoint outside the captured run cannot be re-anchored and is dropped.
+     */
+    private static List<RangeElement> cloneSpans(
+        List<RangeElement> source, Map<StaffElement, StaffElement> originalToClone) {
+        var clonedSpans = new ArrayList<RangeElement>();
 
-            if (anchor == null || rangeEnd == null) {
+        for (var span : source) {
+            var anchor = span.getAnchorElement();
+            var end = span.getEndElement();
+
+            if (anchor == null || end == null) {
                 continue;
             }
 
             var clonedAnchor = originalToClone.get(anchor);
-            var clonedEnd = originalToClone.get(rangeEnd);
+            var clonedEnd = originalToClone.get(end);
 
             if (clonedAnchor != null && clonedEnd != null) {
-                spans.add(rangeElement.copy(clonedAnchor, clonedEnd));
+                clonedSpans.add(span.copy(clonedAnchor, clonedEnd));
             }
         }
 
-        return new Fragment(elements, spans);
+        return clonedSpans;
     }
 
     /**
@@ -139,24 +158,6 @@ public record Fragment(List<StaffElement> elements, List<RangeElement> spans) {
             clonedElements.add(clone);
         }
 
-        var clonedSpans = new ArrayList<RangeElement>(spans.size());
-
-        for (var span : spans) {
-            var anchor = span.getAnchorElement();
-            var end = span.getEndElement();
-
-            if (anchor == null || end == null) {
-                continue;
-            }
-
-            var clonedAnchor = originalToClone.get(anchor);
-            var clonedEnd = originalToClone.get(end);
-
-            if (clonedAnchor != null && clonedEnd != null) {
-                clonedSpans.add(span.copy(clonedAnchor, clonedEnd));
-            }
-        }
-
-        return new Fragment(clonedElements, clonedSpans);
+        return new Fragment(clonedElements, cloneSpans(spans, originalToClone));
     }
 }

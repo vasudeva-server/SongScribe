@@ -30,6 +30,81 @@ import songscribe.UnitTest;
 class LineQueryTest extends UnitTest {
 
     // -----------------------------------------------------------------------
+    // effectiveDeleteEnd — pure query, must not mutate
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EffectiveDeleteEnd {
+
+        @Test
+        void testExtendsPastATrailingBreathMark() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var note = ElementType.CROTCHET.newInstance();
+            var breath = ElementType.BREATH_MARK.newInstance();
+            song.withoutMutationTracking(() -> {
+                line.addElement(note);
+                line.addElement(breath);
+            });
+
+            assertThat(line.effectiveDeleteEnd(0))
+                .as("a breath mark after end is attached to it, so the range must extend past it")
+                .isEqualTo(1);
+        }
+
+        @Test
+        void testLeavesANonBreathMarkSuccessorAlone() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = ElementType.CROTCHET.newInstance();
+            var noteB = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+            });
+
+            assertThat(line.effectiveDeleteEnd(0))
+                .as("a plain successor is not attached to end, so the range must not grow")
+                .isEqualTo(0);
+        }
+
+        @Test
+        void testHandlesEndAtTheLastElement() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var note = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(note));
+
+            assertThat(line.effectiveDeleteEnd(0))
+                .as("there is no successor to inspect, so end must come back unchanged")
+                .isEqualTo(0);
+        }
+
+        @Test
+        void testMutatesNothing() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var note = ElementType.CROTCHET.newInstance();
+            var breath = ElementType.BREATH_MARK.newInstance();
+            song.withoutMutationTracking(() -> {
+                line.addElement(note);
+                line.addElement(breath);
+            });
+
+            var countBefore = line.elementCount();
+
+            line.effectiveDeleteEnd(0);
+
+            assertThat(line.elementCount())
+                .as("effectiveDeleteEnd is a pure query and must not add or remove elements")
+                .isEqualTo(countBefore);
+            assertThat(line.getElement(0)).isSameAs(note);
+            assertThat(line.getElement(1)).isSameAs(breath);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // getFirstBeatChange
     // -----------------------------------------------------------------------
 

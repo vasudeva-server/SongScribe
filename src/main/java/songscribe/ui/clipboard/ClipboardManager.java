@@ -28,8 +28,9 @@ import songscribe.message.notification.ClipboardDidChangeNotification;
 /**
  * Manages clipboard state for copy/paste operations.
  *
- * <p>This is app-global: it is constructed once ({@code ScoreView.java:251}) and
- * {@code ScoreView} is never recreated, only its {@code song} swapped, so it is
+ * <p>This is app-global: it is constructed once by
+ * {@link songscribe.ui.component.ScoreView}, which is never recreated —
+ * only its {@code song} is swapped — so it is
  * not cleared on document close. A clone's {@code line} back-reference keeps
  * that one {@code Song} reachable until the next copy replaces it — bounded,
  * harmless, and pre-existing.

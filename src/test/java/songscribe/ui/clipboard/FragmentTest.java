@@ -138,6 +138,116 @@ class FragmentTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // instantiate() called twice must yield fully independent results
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RepeatedInstantiation {
+
+        // Guards against a shared/cached IdentityHashMap: every existing test compares
+        // an instantiate() result only against the original captured Fragment, which
+        // would still pass if both instantiate() calls returned (or re-anchored onto)
+        // the SAME clones. Comparing the two instantiations against EACH OTHER closes
+        // that hole.
+        @Test
+        void testTwoInstantiationsOfTheSameFragmentAreIndependentOfEachOther() {
+            var line = detachedLine();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            line.addElement(noteA);
+            line.addElement(noteB);
+            line.addRangeElement(new Tie(noteA, noteB));
+
+            var fragment = Fragment.capture(line, 0, 1);
+
+            var first = fragment.instantiate();
+            var second = fragment.instantiate();
+
+            assertThat(first.elements().get(0))
+                .as("each instantiate() call must clone its own elements")
+                .isNotSameAs(second.elements().get(0));
+            assertThat(first.elements().get(1)).isNotSameAs(second.elements().get(1));
+
+            assertThat(first.spans()).hasSize(1);
+            assertThat(second.spans()).hasSize(1);
+            var firstSpan = first.spans().getFirst();
+            var secondSpan = second.spans().getFirst();
+
+            assertThat(firstSpan)
+                .as("each instantiate() call must produce its own span instance")
+                .isNotSameAs(secondSpan);
+            assertThat(firstSpan.getAnchorElement()).isNotSameAs(secondSpan.getAnchorElement());
+            assertThat(firstSpan.getEndElement()).isNotSameAs(secondSpan.getEndElement());
+
+            // Each instantiation's span must anchor to THAT instantiation's own elements,
+            // never to the other instantiation's clones.
+            assertThat(firstSpan.getAnchorElement()).isSameAs(first.elements().get(0));
+            assertThat(firstSpan.getEndElement()).isSameAs(first.elements().get(1));
+            assertThat(secondSpan.getAnchorElement()).isSameAs(second.elements().get(0));
+            assertThat(secondSpan.getEndElement()).isSameAs(second.elements().get(1));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Multiple overlapping/nested spans in one capture
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MultipleSpansInOneCapture {
+
+        // [A, B, C, D] with Tie(A,B) and Beam(A,B) sharing the same pair of endpoints,
+        // plus a Tuplet(A,D) nested around (and wider than) that pair — stresses the
+        // capture-shared IdentityHashMap re-anchoring competing/nested spans onto the
+        // SAME clone instances, not per-span copies. Every existing SpanRoundTrip test
+        // captures exactly one span, so a bug where each span's endpoints get cloned
+        // independently (breaking the shared-instance invariant) would still pass them.
+        @Test
+        void testCompetingAndNestedSpansShareTheSameReanchoredClones() {
+            var line = detachedLine();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            var noteC = crotchet();
+            var noteD = crotchet();
+            line.addElement(noteA);
+            line.addElement(noteB);
+            line.addElement(noteC);
+            line.addElement(noteD);
+
+            var tie = new Tie(noteA, noteB);
+            var beam = new Beam(noteA, noteB);
+            var tuplet = new Tuplet(noteA, noteD, 3);
+            line.addRangeElement(tie);
+            line.addRangeElement(beam);
+            line.addRangeElement(tuplet);
+
+            var fragment = Fragment.capture(line, 0, 3);
+
+            assertThat(fragment.spans()).hasSize(3);
+            var clonedTie = fragment.spans().get(0);
+            var clonedBeam = fragment.spans().get(1);
+            var clonedTuplet = fragment.spans().get(2);
+
+            assertThat(clonedTie.getAnchorElement()).isSameAs(fragment.elements().get(0));
+            assertThat(clonedTie.getEndElement()).isSameAs(fragment.elements().get(1));
+
+            assertThat(clonedBeam.getAnchorElement()).isSameAs(fragment.elements().get(0));
+            assertThat(clonedBeam.getEndElement()).isSameAs(fragment.elements().get(1));
+
+            assertThat(clonedTuplet.getAnchorElement()).isSameAs(fragment.elements().get(0));
+            assertThat(clonedTuplet.getEndElement()).isSameAs(fragment.elements().get(3));
+
+            // Tie, Beam, and Tuplet all anchor on noteA: they must share the SAME
+            // clone instance, not each get their own independent copy of it.
+            assertThat(clonedTie.getAnchorElement()).isSameAs(clonedBeam.getAnchorElement());
+            assertThat(clonedTie.getAnchorElement()).isSameAs(clonedTuplet.getAnchorElement());
+            // Tie and Beam also share the same end (noteB) clone.
+            assertThat(clonedTie.getEndElement()).isSameAs(clonedBeam.getEndElement());
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Partially-overlapping spans are dropped
     // -----------------------------------------------------------------------
 
@@ -268,6 +378,68 @@ class FragmentTest extends UnitTest {
             assertThat(fragment.elements().get(1).getType()).isEqualTo(ElementType.DOUBLE_BARLINE);
             // The original line's terminal must be untouched.
             assertThat(line.getElement(1).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+
+        @Test
+        void testRepeatRightTerminalPassesThroughCaptureUnmodified() {
+            // Regression guard from the pre-refactor ClipboardManagerTest: only
+            // FINAL_DOUBLE_BARLINE is normalized on capture. REPEAT_RIGHT (and every
+            // other terminal) must pass through as an unmodified clone, and the
+            // original line's element must be untouched.
+            var line = detachedLine();
+            var noteA = crotchet();
+            var repeatRight = ElementType.REPEAT_RIGHT.newInstance();
+            line.addElement(noteA);
+            line.addElement(repeatRight);
+
+            var fragment = Fragment.capture(line, 0, 1);
+
+            assertThat(fragment.elements()).hasSize(2);
+            assertThat(fragment.elements().get(1).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
+            assertThat(fragment.elements().get(1)).isNotSameAs(repeatRight);
+            // The original line's terminal must be untouched.
+            assertThat(line.getElement(1).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
+        }
+
+        @Test
+        void testCapturingOnlyAnOrphanPairedGraceNoteReturnsEmptyFragment() {
+            // [G(paired), host] — capturing just the grace note (begin == end == 0,
+            // excluding its host at index 1) makes the tail trim's effectiveEnd--
+            // walk below begin, so the clone loop never runs at all: an entirely
+            // empty Fragment, not a Fragment containing the dropped grace note.
+            var line = detachedLine();
+            var grace = pairedGraceNote();
+            var host = crotchet();
+            line.addElement(grace);
+            line.addElement(host);
+
+            var fragment = Fragment.capture(line, 0, 0);
+
+            assertThat(fragment.elements()).as("copying exactly one grace note must be empty").isEmpty();
+            assertThat(fragment.spans()).isEmpty();
+        }
+
+        @Test
+        void testLeadingGraceNoteOrphanedFromHeadIsNotSpecialCased() {
+            // [G(paired), host, C] — capturing [host, C] (begin == 1) excludes the
+            // leading grace note at index 0 from the head, the mirror image of the
+            // tail-trim case. capture() only special-cases the tail (effectiveEnd),
+            // so this must NOT trim or otherwise alter the captured range: the host
+            // is captured exactly like any other element.
+            var line = detachedLine();
+            var grace = pairedGraceNote();
+            var host = crotchet();
+            var noteC = crotchet();
+            line.addElement(grace);
+            line.addElement(host);
+            line.addElement(noteC);
+
+            var fragment = Fragment.capture(line, 1, 2);
+
+            assertThat(fragment.elements()).hasSize(2);
+            assertThat(fragment.elements().get(0).getType()).isEqualTo(ElementType.CROTCHET);
+            assertThat(fragment.elements().get(0)).isNotSameAs(host);
+            assertThat(fragment.elements().get(1).getType()).isEqualTo(ElementType.CROTCHET);
         }
     }
 

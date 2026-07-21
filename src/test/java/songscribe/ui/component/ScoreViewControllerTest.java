@@ -877,67 +877,6 @@ class ScoreViewControllerTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // effectiveDeleteEnd — pure query, must not mutate
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class EffectiveDeleteEnd {
-
-        @Test
-        void testExtendsPastATrailingBreathMark() {
-            var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
-            var breath = ElementType.BREATH_MARK.newInstance();
-            line.addElement(note);
-            line.addElement(breath);
-
-            var effectiveEnd = ScoreViewController.effectiveDeleteEnd(line, 0, 0);
-
-            assertThat(effectiveEnd).isEqualTo(1);
-        }
-
-        @Test
-        void testLeavesANonBreathMarkSuccessorAlone() {
-            var line = detachedLine();
-            var noteA = ElementType.CROTCHET.newInstance();
-            var noteB = ElementType.CROTCHET.newInstance();
-            line.addElement(noteA);
-            line.addElement(noteB);
-
-            var effectiveEnd = ScoreViewController.effectiveDeleteEnd(line, 0, 0);
-
-            assertThat(effectiveEnd).isEqualTo(0);
-        }
-
-        @Test
-        void testHandlesEndAtTheLastElement() {
-            var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
-            line.addElement(note);
-
-            var effectiveEnd = ScoreViewController.effectiveDeleteEnd(line, 0, 0);
-
-            assertThat(effectiveEnd).isEqualTo(0);
-        }
-
-        @Test
-        void testMutatesNothing() {
-            var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
-            var breath = ElementType.BREATH_MARK.newInstance();
-            line.addElement(note);
-            line.addElement(breath);
-
-            ScoreViewController.effectiveDeleteEnd(line, 0, 0);
-
-            assertThat(line.elementCount()).isEqualTo(2);
-            assertThat(line.getElement(0)).isSameAs(note);
-            assertThat(line.getElement(1)).isSameAs(breath);
-        }
-    }
-
-    // -----------------------------------------------------------------------
     // handlePaste — row 24
     // -----------------------------------------------------------------------
 
@@ -2268,6 +2207,60 @@ class ScoreViewControllerTest extends UnitTest {
         }
 
         @Test
+        void testPasteReplaceAfterAPairedGraceNotePositionsClonesWhereTheGraceNoteWas() {
+            // deleteElementRange cascade-deletes the paired grace note sitting before
+            // the selection, so the predecessor the spacing calculation anchored the
+            // clones to is gone by the time they are inserted. The clones must land
+            // where the grace note was, leaving no dead gap at the head of the line.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setGlissando();
+            var host = ElementType.CROTCHET.newInstance();
+            var tail = ElementType.CROTCHET.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(grace);
+                line.addElement(host);
+                line.addElement(tail);
+            });
+
+            var pasted = ElementType.CROTCHET.newInstance();
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(List.of(pasted), List.of()));
+            var controller = buildController(song, clipboardManager);
+
+            // Replacing [host] alone: the cascade takes the grace note at index 0 too.
+            song.withModification(() -> controller.tryInsertFragment(
+                line, 1, new InsertionSpacingCalculator.DeletedRange(1, 1)));
+
+            assertThat(line.getElementIndex(grace))
+                .as("the paired grace note is cascade-deleted along with its host")
+                .isEqualTo(-1);
+
+            // Ground truth: the same paste into a line already reduced to what the
+            // cascade leaves behind. Both must place the clone identically — the
+            // cascade is not allowed to leak a gap into the spacing.
+            var referenceSong = wideSong();
+            var referenceLine = referenceSong.getLine(0);
+            var referenceTail = ElementType.CROTCHET.newInstance();
+            referenceSong.withoutMutationTracking(() -> referenceLine.addElement(referenceTail));
+
+            var referencePasted = ElementType.CROTCHET.newInstance();
+            var referenceClipboard = new ClipboardManager();
+            referenceClipboard.setFragment(new Fragment(List.of(referencePasted), List.of()));
+            var referenceController = buildController(referenceSong, referenceClipboard);
+
+            referenceSong.withModification(
+                () -> referenceController.tryInsertFragment(referenceLine, 0, null));
+
+            assertThat(line.getElement(0).getXOffsetPx())
+                .as("the clone must sit where it would if the cascade-deleted grace note "
+                    + "had never been on the line")
+                .isEqualTo(referenceLine.getElement(0).getXOffsetPx());
+        }
+
+        @Test
         void testPastedEndingDoesNotNestInsideTheDestinationEnding() {
             // #614: an ending bracket covering a few extra notes is still valid
             // notation, but an ending nested inside another one never is — and no
@@ -2290,7 +2283,14 @@ class ScoreViewControllerTest extends UnitTest {
             var controller = buildController(song, clipboardManager);
             var elementCountBeforePaste = line.elementCount();
 
-            song.withModification(() -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+            // Plain notes never trigger the confirm; without this mock an over-triggering
+            // regression would call the real confirm against a bare mock(ScoreView.class)
+            // and fail confusingly instead of cleanly.
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                song.withModification(() -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+
+                endingConfirmsMock.verifyNoInteractions();
+            }
 
             assertThat(line.getRangeElements())
                 .as("the destination ending wins; the pasted one is dropped")
@@ -2354,7 +2354,14 @@ class ScoreViewControllerTest extends UnitTest {
             ));
             var controller = buildController(song, clipboardManager);
 
-            song.withModification(() -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+            // Plain notes never trigger the confirm; without this mock an over-triggering
+            // regression would call the real confirm against a bare mock(ScoreView.class)
+            // and fail confusingly instead of cleanly.
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                song.withModification(() -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+
+                endingConfirmsMock.verifyNoInteractions();
+            }
 
             assertThat(line.getRangeElements()).containsExactly(destinationEnding);
             assertThat(destinationEnding.getEndElementIndex())
@@ -2522,8 +2529,9 @@ class ScoreViewControllerTest extends UnitTest {
             var song = wideSong();
             var line = song.getLine(0);
             var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
+            var endingAnchor = notes.getFirst();
             song.withoutMutationTracking(() ->
-                line.addRangeElement(new Ending(notes.getFirst(), notes.getLast())));
+                line.addRangeElement(new Ending(endingAnchor, notes.getLast())));
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
@@ -2531,15 +2539,38 @@ class ScoreViewControllerTest extends UnitTest {
                 List.of()
             ));
             var controller = buildController(song, clipboardManager);
+            var elementCountBeforePaste = line.elementCount();
 
             // Deleting the ending's anchor invalidates it on its own.
             var deleteRange = new InsertionSpacingCalculator.DeletedRange(0, 0);
+            var outcome = new ScoreViewController.FragmentInsertOutcome[1];
 
             try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
-                song.withModification(() -> controller.tryInsertFragment(line, 0, deleteRange));
+                song.withModification(() ->
+                    outcome[0] = controller.tryInsertFragment(line, 0, deleteRange));
 
                 endingConfirmsMock.verifyNoInteractions();
             }
+
+            // If deletionAlreadyConfirmed regressed to always-true, the interaction
+            // count above would still be zero — only asserting on the resulting
+            // document proves the ending was actually invalidated by the deletion,
+            // not silently skipped past by a broken guard.
+            assertThat(outcome[0])
+                .as("the paste-replace still completes despite the pre-invalidated ending")
+                .isEqualTo(ScoreViewController.FragmentInsertOutcome.INSERTED);
+            assertThat(line.getElementIndex(endingAnchor))
+                .as("the ending's anchor was deleted by the paste-replace")
+                .isEqualTo(-1);
+            assertThat(line.getElement(0).getType())
+                .as("the pasted barline landed at the replaced index")
+                .isEqualTo(ElementType.SINGLE_BARLINE);
+            assertThat(line.getRangeElements())
+                .as("the ending was removed as a consequence of its anchor's deletion")
+                .isEmpty();
+            assertThat(line.elementCount())
+                .as("one note replaced by one pasted element — the count is unchanged")
+                .isEqualTo(elementCountBeforePaste);
         }
 
         @Test
@@ -2681,6 +2712,168 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(destinationHairpin.getEndElementIndex())
                 .as("the surviving hairpin now covers the pasted notes too")
                 .isEqualTo(4);
+        }
+
+        @Test
+        void testCutThenPasteBackReconstructsEquivalentNotationFromFreshClones() {
+            // Cut-populates-clipboard and paste-from-a-hand-built-fragment are each
+            // tested in isolation elsewhere. This drives a real cut and pastes the
+            // RESULTING clipboard fragment straight back, proving the two halves
+            // compose into a faithful round trip — not just that each half works alone.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var noteA = ElementType.CROTCHET.newInstance();
+            var noteB = ElementType.CROTCHET.newInstance();
+            var noteC = ElementType.CROTCHET.newInstance();
+            var noteD = ElementType.CROTCHET.newInstance();
+            noteA.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "la", Lyric.Extend.NONE);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+                line.addElement(noteC);
+                line.addElement(noteD);
+                line.addRangeElement(new Tie(noteA, noteB));
+            });
+
+            var elementCountBeforeCut = line.effectiveElementCount();
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 1); // select noteA and noteB
+
+            var clipboardManager = new ClipboardManager();
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+            when(scoreMock.canDeleteLine()).thenReturn(false);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinator,
+                clipboardManager
+            );
+
+            // The real cut: copies noteA/noteB (plus their tie and noteA's lyric)
+            // into the clipboard, then deletes them from the line.
+            controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.CUT));
+
+            var cutFragment = clipboardManager.getFragment();
+            assertThat(cutFragment).isNotNull();
+
+            if (cutFragment == null) {
+                return; // unreachable — NullAway flow narrowing
+            }
+
+            var cutCount = cutFragment.elements().size();
+
+            // Paste the cut fragment straight back at the same index.
+            var outcome = song.withModificationResult(() -> controller.tryInsertFragment(line, 0, null));
+
+            assertThat(outcome).isEqualTo(ScoreViewController.FragmentInsertOutcome.INSERTED);
+            assertThat(line.effectiveElementCount())
+                .as("a cut followed by pasting the same fragment back is size-neutral")
+                .isEqualTo(elementCountBeforeCut);
+
+            var restoredAnchor = line.getElement(0);
+            var restoredEnd = line.getElement(1);
+
+            assertThat(restoredAnchor.getType())
+                .as("the pasted note has the same element type as the original")
+                .isEqualTo(noteA.getType());
+            assertThat(restoredEnd.getType()).isEqualTo(noteB.getType());
+            assertThat(restoredAnchor)
+                .as("the pasted note is a fresh clone — neither the original nor the "
+                    + "intermediate clone stored on the clipboard")
+                .isNotSameAs(noteA)
+                .isNotSameAs(cutFragment.elements().get(0));
+            assertThat(restoredEnd)
+                .isNotSameAs(noteB)
+                .isNotSameAs(cutFragment.elements().get(1));
+
+            var restoredLyric = restoredAnchor.getLyricForVerse(1);
+            assertThat(restoredLyric).isNotNull();
+
+            if (restoredLyric == null) {
+                return; // unreachable — NullAway flow narrowing
+            }
+
+            assertThat(restoredLyric.text()).as("the lyric text survived the round trip").isEqualTo("la");
+            assertThat(restoredLyric.syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
+
+            assertThat(line.getRangeElements()).hasSize(1);
+            var restoredSpan = line.getRangeElements().getFirst();
+            assertThat(restoredSpan.getAnchorElement())
+                .as("the tie survived the round trip, re-anchored to the fresh clones")
+                .isSameAs(restoredAnchor);
+            assertThat(restoredSpan.getEndElement()).isSameAs(restoredEnd);
+
+            assertThat(line.getElement(cutCount))
+                .as("the untouched survivor is back where it started, after the pasted pair")
+                .isSameAs(noteC);
+            assertThat(line.getElement(cutCount + 1)).isSameAs(noteD);
+        }
+
+        @Test
+        void testPasteFragmentIntoAGenuinelyEmptyLineInsertsAtTheOnlyValidIndex() {
+            // insertIndex == 0 == effectiveElementCount(): there is no predecessor for
+            // adjustSyllablesForNeighborChange(insertAt - 1, ...) to look up (index -1)
+            // and no successor for the trailing-shift/span-reconciliation logic to
+            // straddle. The spacing math for this boundary is covered at the calculator
+            // unit level; this drives the full controller flow — lyric-seam repair and
+            // span reconciliation included — through it.
+            var song = wideSong();
+            var line = song.getLine(0);
+            assertThat(line.effectiveElementCount())
+                .as("precondition: the destination line is genuinely empty")
+                .isEqualTo(0);
+
+            var pastedAnchor = ElementType.CROTCHET.newInstance();
+            var pastedEnd = ElementType.CROTCHET.newInstance();
+            pastedAnchor.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "be", Lyric.Extend.NONE);
+            pastedEnd.setLyricForVerse(1, Lyric.Syllabic.END, false, "gin", Lyric.Extend.NONE);
+            var pastedElements = List.of(pastedAnchor, pastedEnd);
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                pastedElements,
+                List.of(new Tie(pastedAnchor, pastedEnd))
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            var outcome = song.withModificationResult(() -> controller.tryInsertFragment(line, 0, null));
+
+            assertThat(outcome).isEqualTo(ScoreViewController.FragmentInsertOutcome.INSERTED);
+            assertThat(line.effectiveElementCount())
+                .as("both pasted notes landed on the previously empty line")
+                .isEqualTo(pastedElements.size());
+
+            var firstLyric = line.getElement(0).getLyricForVerse(1);
+            var secondLyric = line.getElement(1).getLyricForVerse(1);
+            assertThat(firstLyric).isNotNull();
+            assertThat(secondLyric).isNotNull();
+
+            if (firstLyric == null || secondLyric == null) {
+                return; // unreachable — NullAway flow narrowing
+            }
+
+            assertThat(firstLyric.syllabic())
+                .as("no predecessor to sever against — the seam repair must be a no-op here")
+                .isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(secondLyric.syllabic())
+                .as("no successor to sever against either")
+                .isEqualTo(Lyric.Syllabic.END);
+
+            assertThat(line.getRangeElements()).hasSize(1);
+            var pastedSpan = line.getRangeElements().getFirst();
+            assertThat(pastedSpan.getAnchorElement())
+                .as("the pasted tie survives reconciliation with no destination span to compete with")
+                .isSameAs(line.getElement(0));
+            assertThat(pastedSpan.getEndElement()).isSameAs(line.getElement(1));
+            assertThat(line.getElement(0))
+                .as("the inserted note is a fresh clone, not the fragment's own stored element")
+                .isNotSameAs(pastedAnchor);
+            assertThat(line.getElement(1)).isNotSameAs(pastedEnd);
         }
     }
 
