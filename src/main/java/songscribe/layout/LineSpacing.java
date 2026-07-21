@@ -33,9 +33,16 @@ public final class LineSpacing {
 
     /**
      * The minimum vertical gap between the lowest content of one line and the highest
-     * content of the next.
+     * content of the next. A user-chosen gap is clamped to this by
+     * {@link #interLineGapSs(double)}.
      */
-    public static final double MIN_INTER_LINE_GAP_SS = 2.5;  // 20px
+    public static final double MIN_INTER_LINE_GAP_SS = 2.0;  // 16px
+
+    /**
+     * The vertical gap between the lowest content of one line and the highest content of
+     * the next, used when the song does not specify one of its own.
+     */
+    public static final double DEFAULT_INTER_LINE_GAP_SS = 4.0;
 
     /**
      * The visual gap from the bottom of a line's below-staff content to the top of its
@@ -79,6 +86,17 @@ public final class LineSpacing {
      * cursor beyond the legal staff-position range maps to no preview at all.
      */
     public static final double PREVIEW_REPAINT_MARGIN_SS = 1.5;
+
+    /**
+     * The usable inter-line gap for a requested gap, floored at
+     * {@link #MIN_INTER_LINE_GAP_SS} so no setting can pack lines tighter than the minimum.
+     *
+     * @param requestedGapSs the requested gap in staff spaces
+     * @return the requested gap, or the minimum if the request falls below it
+     */
+    public static double interLineGapSs(double requestedGapSs) {
+        return Math.max(requestedGapSs, MIN_INTER_LINE_GAP_SS);
+    }
 
     private LineSpacing() {}
 }

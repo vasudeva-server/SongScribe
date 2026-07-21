@@ -744,7 +744,8 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
         var spacingSs = 0.0;
 
         for (var i = 0; i < lineCount - 1; i++) {
-            var pairSs = belowMidlineSs(i) + LineSpacing.MIN_INTER_LINE_GAP_SS + aboveMidlineSs(i + 1);
+            var gapSs = LineSpacing.interLineGapSs(LineSpacing.DEFAULT_INTER_LINE_GAP_SS);
+            var pairSs = belowMidlineSs(i) + gapSs + aboveMidlineSs(i + 1);
             spacingSs = Math.max(spacingSs, pairSs);
         }
 

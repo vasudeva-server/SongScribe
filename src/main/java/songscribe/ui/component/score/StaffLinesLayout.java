@@ -37,7 +37,7 @@ import songscribe.layout.LineSpacing;
  * midline-to-midline distance is the worst adjacent pair:
  * <pre>
  * S = max over N in [0, count-2] of
- *         ( belowMidline[N] + MIN_INTER_LINE_GAP_SS + aboveMidline[N+1] )
+ *         ( belowMidline[N] + gap + aboveMidline[N+1] )
  *
  * midlineY[0] = aboveMidline[0]
  * midlineY[N] = midlineY[0] + N * S
@@ -48,8 +48,9 @@ import songscribe.layout.LineSpacing;
  *       content above the <em>first</em> line's staff translates the whole block downward
  *       without widening the spacing. Content below it does enter pair (0,1) and widens it.</li>
  *   <li>Because {@code S >= belowMidline[N] + gap + aboveMidline[N+1]} for every pair, adjacent
- *       lines' <em>content</em> is always at least {@link LineSpacing#MIN_INTER_LINE_GAP_SS}
- *       apart.</li>
+ *       lines' <em>content</em> is always at least {@code gap} apart, where {@code gap} is
+ *       {@link LineSpacing#DEFAULT_INTER_LINE_GAP_SS} clamped by
+ *       {@link LineSpacing#interLineGapSs(double)}.</li>
  * </ul>
  * Component <em>bounds</em>, however, are floored at the minimum staff surround
  * ({@link LineSpacing#MIN_ABOVE_MIDLINE_SS} / {@link LineSpacing#MIN_BELOW_MIDLINE_SS}) so a
@@ -161,9 +162,10 @@ public class StaffLinesLayout implements LayoutManager2 {
 
         // With a single child there are no pairs, so the spacing stays 0 and it sits at y = 0.
         var spacingSs = 0.0;
+        var interLineGapSs = LineSpacing.interLineGapSs(LineSpacing.DEFAULT_INTER_LINE_GAP_SS);
 
         for (var i = 0; i < count - 1; i++) {
-            var pairSs = belowMidlineSs[i] + LineSpacing.MIN_INTER_LINE_GAP_SS + aboveMidlineSs[i + 1];
+            var pairSs = belowMidlineSs[i] + interLineGapSs + aboveMidlineSs[i + 1];
             spacingSs = Math.max(spacingSs, pairSs);
         }
 
