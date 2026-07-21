@@ -29,6 +29,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.layout.Ending;
+import songscribe.layout.LineEndingSupport;
 
 /**
  * Per-line selection state and query methods.
@@ -166,6 +167,31 @@ public final class LineSelectionState {
      */
     public boolean isEndingSelected(Ending ending) {
         return selectedEnding == ending;
+    }
+
+    /**
+     * Clears the slide or ending selection if it no longer refers to a live decoration
+     * on this line — e.g. after an undo/redo that shifted element indices or removed
+     * the selected ending outright. No-op if the current selection is still valid, or
+     * if there is no slide/ending selection.
+     *
+     * @return whether the selection was cleared
+     */
+    public boolean revalidateDecorationSelection() {
+        if (selectedSlideElementIndex != -1) {
+            if (selectedSlideElementIndex >= line.effectiveElementCount()
+                    || line.getElement(selectedSlideElementIndex).getSlide() == null) {
+                clearSelection();
+                return true;
+            }
+        } else if (selectedEnding != null) {
+            if (!LineEndingSupport.findEndings(line).contains(selectedEnding)) {
+                clearSelection();
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Nullable

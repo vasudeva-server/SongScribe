@@ -232,6 +232,92 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.isSlideSelected(0)).isTrue();
     }
 
+    // -- revalidateDecorationSelection --
+
+    @Test
+    void testRevalidateDecorationSelectionNoOpWhenNoDecorationSelected() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+
+        assertThat(state.revalidateDecorationSelection()).isFalse();
+        assertThat(state.getSelectionBegin()).isEqualTo(0);
+    }
+
+    @Test
+    void testRevalidateDecorationSelectionKeepsSlideWhenElementStillHasSlide() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.getElement(0).setGlissando();
+        var state = new LineSelectionState(line);
+        state.selectSlide(0);
+
+        assertThat(state.revalidateDecorationSelection()).isFalse();
+        assertThat(state.hasSlideSelection()).isTrue();
+    }
+
+    @Test
+    void testRevalidateDecorationSelectionClearsSlideWhenElementNoLongerHasSlide() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.getElement(0).setGlissando();
+        var state = new LineSelectionState(line);
+        state.selectSlide(0);
+
+        // Simulates an undo/redo that removed the slide without clearing the selection.
+        line.getElement(0).removeSlide();
+
+        assertThat(state.revalidateDecorationSelection()).isTrue();
+        assertThat(state.hasSlideSelection()).isFalse();
+    }
+
+    @Test
+    void testRevalidateDecorationSelectionClearsSlideWhenIndexShiftedOutOfBounds() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.getElement(0).setGlissando();
+        var state = new LineSelectionState(line);
+        state.selectSlide(0);
+
+        // Simulates an undo/redo that shrank the line so the slide's index is stale.
+        line.removeElement(0);
+
+        assertThat(state.revalidateDecorationSelection()).isTrue();
+        assertThat(state.hasSlideSelection()).isFalse();
+    }
+
+    @Test
+    void testRevalidateDecorationSelectionKeepsEndingWhenStillOnLine() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var ending = makeEnding(line);
+        line.addRangeElement(ending);
+        var state = new LineSelectionState(line);
+        state.selectEnding(ending);
+
+        assertThat(state.revalidateDecorationSelection()).isFalse();
+        assertThat(state.hasEndingSelection()).isTrue();
+    }
+
+    @Test
+    void testRevalidateDecorationSelectionClearsEndingWhenNoLongerOnLine() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var ending = makeEnding(line);
+        line.addRangeElement(ending);
+        var state = new LineSelectionState(line);
+        state.selectEnding(ending);
+
+        // Simulates an undo/redo that removed the ending without clearing the selection.
+        line.removeRangeElement(ending);
+
+        assertThat(state.revalidateDecorationSelection()).isTrue();
+        assertThat(state.hasEndingSelection()).isFalse();
+    }
+
     // -- isEndingSelected --
 
     @Test

@@ -1008,6 +1008,21 @@ public final class SelectionCoordinator {
      */
     @Handler
     public void songDidChange(SongDidChangeNotification message) {
+        var state = getActiveSelection();
+
+        if (state != null && message.getLine() == state.getLine()
+                && (state.hasSlideSelection() || state.hasEndingSelection())
+                && state.revalidateDecorationSelection()) {
+            // A slide/ending selection carries no ElementSelection for getSelection() to
+            // compare below, so undo/redo of a mutation on this line — which can shift
+            // indices or remove the selected ending outright — would otherwise go
+            // unnoticed and leave the selection pointing at the wrong (or a dead) decoration.
+            // The selection was just cleared: force a fresh reflection so any slide/ending
+            // toolbar action that was showing selected/enabled resets to its default state.
+            lastReflectedSelection = null;
+            triggerReflection();
+        }
+
         var selection = getSelection();
 
         if (selection == null) {

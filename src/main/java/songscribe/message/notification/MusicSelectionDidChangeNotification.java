@@ -30,24 +30,18 @@ import songscribe.ui.selection.SelectionCoordinator.LyricSelection;
 public class MusicSelectionDidChangeNotification extends Message {
 
     private final int selectionSize;
-    private final boolean hasSlideSelection;
     @Nullable
     private final LyricSelection lyricSelection;
     private final ScoreView scoreView;
 
     public MusicSelectionDidChangeNotification(ScoreView scoreView) {
         selectionSize = scoreView.getSelectionSize();
-        hasSlideSelection = scoreView.getSelectionCoordinator().hasSlideSelection();
         lyricSelection = scoreView.getSelectionCoordinator().getLyricSelection();
         this.scoreView = scoreView;
     }
 
     public int getSelectionSize() {
         return selectionSize;
-    }
-
-    public boolean hasSlideSelection() {
-        return hasSlideSelection;
     }
 
     public boolean hasLyricSelection() {
