@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -41,6 +42,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.layout.Ending;
@@ -525,6 +527,139 @@ class LineSelectionHandlerTest extends UnitTest {
         assertThat(lineSelState.hasElementSelection())
             .as("no rubber-band element selection was started")
             .isFalse();
+    }
+
+    // -------------------------------------------------------------------------
+    // selectElementAtIndex — stale-highlight repaint of the outgoing line
+    // -------------------------------------------------------------------------
+
+    /**
+     * {@code selectElementAtIndex} is called directly rather than through
+     * {@link LineSelectionHandler#handlePress}, because the press path is not where the
+     * outgoing-line repaint matters: {@code handlePress} calls
+     * {@code ScoreView.clearSelection()} first, which resets the coordinator's active line
+     * to -1 and repaints the outgoing line itself, leaving nothing for
+     * {@code selectElementAtIndex} to do. The state exercised here — a *different* line
+     * still active on entry — is produced by {@code NoteDragHandler}, which selects a
+     * pressed note without pre-clearing and so bypasses {@code handlePress} entirely.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SelectElementAtIndex {
+
+        private static final int FIRST_LINE_INDEX = 0;
+        private static final int SECOND_LINE_INDEX = 1;
+
+        /** Line index registered with no selection state, to force a null selection result. */
+        private static final int UNREGISTERED_LINE_INDEX = 2;
+
+        private Song song;
+        private Line firstLine;
+        private Line secondLine;
+        private SelectionCoordinator coordinator;
+        private LineSelectionState firstLineState;
+        private LineSelectionState secondLineState;
+        private LineComponent firstLineComponent;
+
+        @BeforeEach
+        void buildTwoLineSong() {
+            song = new Song();
+            firstLine = song.getLine(FIRST_LINE_INDEX);
+            secondLine = new Line(song);
+            song.withoutMutationTracking(() -> {
+                firstLine.addElement(ElementType.CROTCHET_REST.newInstance());
+                secondLine.addElement(ElementType.CROTCHET_REST.newInstance());
+            });
+            song.addLine(secondLine);
+
+            coordinator = new SelectionCoordinator(() -> song);
+            firstLineState = new LineSelectionState(firstLine);
+            secondLineState = new LineSelectionState(secondLine);
+            coordinator.registerLineState(FIRST_LINE_INDEX, firstLineState);
+            coordinator.registerLineState(SECOND_LINE_INDEX, secondLineState);
+
+            firstLineComponent = mock(LineComponent.class);
+            when(mockScoreView.getSelectionCoordinator()).thenReturn(coordinator);
+            when(mockScoreView.getLineComponent(FIRST_LINE_INDEX)).thenReturn(firstLineComponent);
+
+            when(lc.getLine()).thenReturn(secondLine);
+            when(lc.getLineIndex()).thenReturn(SECOND_LINE_INDEX);
+            when(lc.getLineSelectionState()).thenReturn(secondLineState);
+        }
+
+        /**
+         * The stale highlight of issue #625: the outgoing line's state is cleared by
+         * {@code selectSingleElement}, so without an explicit repaint it keeps painting a
+         * selection that no longer exists.
+         */
+        @Test
+        void testSelectingOnAnotherLineRepaintsThePreviouslyActiveLine() {
+            coordinator.selectSingleElement(FIRST_LINE_INDEX, 0);
+
+            handler.selectElementAtIndex(0);
+
+            assertThat(firstLineState.hasElementSelection())
+                .as("outgoing line's selection state was cleared")
+                .isFalse();
+            assertThat(secondLineState.getSingleSelectedElement())
+                .as("target line's element is now selected")
+                .isEqualTo(secondLine.getElement(0));
+            verify(firstLineComponent).repaint();
+            verify(mockScoreView).selectionChanged();
+        }
+
+        /**
+         * Reselecting within the already-active line has no outgoing line, so the extra
+         * repaint must be suppressed — this line is repainted by its own caller.
+         */
+        @Test
+        void testSelectingOnTheAlreadyActiveLineDoesNotRepaintIt() {
+            when(mockScoreView.getLineComponent(SECOND_LINE_INDEX)).thenReturn(lc);
+            song.withoutMutationTracking(() -> secondLine.addElement(ElementType.CROTCHET_REST.newInstance()));
+            coordinator.selectSingleElement(SECOND_LINE_INDEX, 0);
+
+            handler.selectElementAtIndex(1);
+
+            assertThat(secondLineState.getSingleSelectedElement())
+                .as("selection moved to the newly clicked element")
+                .isEqualTo(secondLine.getElement(1));
+            verify(lc, never()).repaint();
+        }
+
+        /**
+         * The first selection of a session: nothing was active, so
+         * {@code getLineComponent(-1)} yields null and there is nothing to repaint.
+         */
+        @Test
+        void testSelectingWithNoPreviouslyActiveLineRepaintsNothing() {
+            when(mockScoreView.getLineComponent(-1)).thenReturn(null);
+
+            handler.selectElementAtIndex(0);
+
+            assertThat(secondLineState.getSingleSelectedElement())
+                .as("target line's element is selected on the first click")
+                .isEqualTo(secondLine.getElement(0));
+            assertThat(coordinator.getActiveLineIndex())
+                .as("target line became the active line")
+                .isEqualTo(SECOND_LINE_INDEX);
+            verify(firstLineComponent, never()).repaint();
+        }
+
+        /**
+         * A line with no registered selection state cannot be selected, so no selection
+         * change may be announced — but the outgoing line still repaints, since
+         * {@code selectSingleElement} cleared it on the way through.
+         */
+        @Test
+        void testSelectingOnALineWithNoRegisteredStateDoesNotNotify() {
+            coordinator.selectSingleElement(FIRST_LINE_INDEX, 0);
+            when(lc.getLineIndex()).thenReturn(UNREGISTERED_LINE_INDEX);
+
+            handler.selectElementAtIndex(0);
+
+            verify(mockScoreView, never()).selectionChanged();
+            verify(firstLineComponent).repaint();
+        }
     }
 
     private static final int DRAG_TARGET_X = 30;

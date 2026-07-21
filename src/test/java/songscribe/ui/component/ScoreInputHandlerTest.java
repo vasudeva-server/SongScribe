@@ -99,6 +99,7 @@ class ScoreInputHandlerTest extends UnitTest {
         @Test
         void testMouseClickedButton1RequestsFocus() {
             var callback = mock(InputHandlerCallback.class);
+            when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
             var handler = new ScoreInputHandler(callback);
             var pasteModeManager = mock(PasteModeManager.class);
 
@@ -114,6 +115,7 @@ class ScoreInputHandlerTest extends UnitTest {
         @Test
         void testMouseClickedButton1WhenPasteModeInProgressCancelsPasteMode() {
             var callback = mock(InputHandlerCallback.class);
+            when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
             var handler = new ScoreInputHandler(callback);
             var pasteModeManager = mock(PasteModeManager.class);
             when(pasteModeManager.isInProgress()).thenReturn(true);
@@ -130,6 +132,7 @@ class ScoreInputHandlerTest extends UnitTest {
         @Test
         void testMouseClickedButton1WhenPasteModeNotInProgressDoesNotCancel() {
             var callback = mock(InputHandlerCallback.class);
+            when(callback.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
             var handler = new ScoreInputHandler(callback);
             var pasteModeManager = mock(PasteModeManager.class);
             when(pasteModeManager.isInProgress()).thenReturn(false);
@@ -140,6 +143,104 @@ class ScoreInputHandlerTest extends UnitTest {
                 handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
 
                 verify(pasteModeManager, never()).cancel();
+            }
+        }
+
+        @Test
+        void testMouseClickedButton1InSelectModeOutsideAnyLinePostsDeselectCommand() {
+            var callback = mock(InputHandlerCallback.class);
+            var coordinator = mock(SelectionCoordinator.class);
+            when(callback.getSelectionCoordinator()).thenReturn(coordinator);
+            when(coordinator.isInSelectMode()).thenReturn(true);
+            var handler = new ScoreInputHandler(callback);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
+
+                mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)));
+            }
+        }
+
+        @Test
+        void testMouseClickedButton1NotInSelectModeDoesNotPostDeselectCommand() {
+            var callback = mock(InputHandlerCallback.class);
+            var coordinator = mock(SelectionCoordinator.class);
+            when(callback.getSelectionCoordinator()).thenReturn(coordinator);
+            when(coordinator.isInSelectMode()).thenReturn(false);
+            var handler = new ScoreInputHandler(callback);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
+
+                mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)), never());
+            }
+        }
+
+        /**
+         * Unlike the Escape key — where the first press only cancels paste mode and leaves
+         * the selection intact — a click does both at once, since the click has already
+         * moved the user's attention off the selection.
+         */
+        @Test
+        void testMouseClickedButton1InSelectModeWhilePasteModeInProgressCancelsAndDeselects() {
+            var callback = mock(InputHandlerCallback.class);
+            var coordinator = mock(SelectionCoordinator.class);
+            when(callback.getSelectionCoordinator()).thenReturn(coordinator);
+            when(coordinator.isInSelectMode()).thenReturn(true);
+            var handler = new ScoreInputHandler(callback);
+            var pasteModeManager = mock(PasteModeManager.class);
+            when(pasteModeManager.isInProgress()).thenReturn(true);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
+
+                verify(pasteModeManager).cancel();
+                mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)));
+            }
+        }
+
+        /**
+         * The non-BUTTON1 guard must skip every effect of the handler, not just the focus
+         * request, so the preconditions for all three are satisfied here.
+         */
+        @Test
+        void testMouseClickedNonButton1SkipsPasteCancelAndDeselect() {
+            var callback = mock(InputHandlerCallback.class);
+            var coordinator = mock(SelectionCoordinator.class);
+            when(callback.getSelectionCoordinator()).thenReturn(coordinator);
+            when(coordinator.isInSelectMode()).thenReturn(true);
+            var handler = new ScoreInputHandler(callback);
+            var pasteModeManager = mock(PasteModeManager.class);
+            when(pasteModeManager.isInProgress()).thenReturn(true);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON3));
+
+                verify(pasteModeManager, never()).cancel();
+                mc.verify(() -> MessageCenter.post(any(DeselectCommand.class)), never());
+                verify(callback, never()).requestFocusInWindow();
             }
         }
     }

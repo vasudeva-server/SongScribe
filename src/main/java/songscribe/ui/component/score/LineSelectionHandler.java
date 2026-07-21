@@ -325,10 +325,24 @@ class LineSelectionHandler {
      */
     void selectElementAtIndex(int elementIndex) {
         var scoreView = lc.getScoreView();
-        var state = scoreView.getSelectionCoordinator().selectSingleElement(lc.getLineIndex(), elementIndex);
+        var coordinator = scoreView.getSelectionCoordinator();
+
+        // Repaint the previously active line, since its selection highlight would
+        // otherwise stay on screen even though selectSingleElement clears its state.
+        // This is for the NoteDragHandler path, which selects a pressed note without
+        // clearing first, so the outgoing line is still active here. On the handlePress
+        // path there is nothing to do — it calls ScoreView.clearSelection() up front,
+        // which repaints the outgoing line itself and leaves no active line behind.
+        var deselectedLine = scoreView.getLineComponent(coordinator.getActiveLineIndex());
+
+        var state = coordinator.selectSingleElement(lc.getLineIndex(), elementIndex);
 
         if (state != null) {
             scoreView.selectionChanged();
+        }
+
+        if (deselectedLine != null && deselectedLine != lc) {
+            deselectedLine.repaint();
         }
     }
 

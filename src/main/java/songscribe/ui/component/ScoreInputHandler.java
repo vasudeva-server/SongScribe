@@ -64,10 +64,15 @@ public final class ScoreInputHandler extends KeyAdapter
             return;
         }
 
-        // A click on the ScoreView itself (not on any line) cancels paste mode —
-        // per-line clicks are handled and consumed by LineComponent.
+        // A click on the ScoreView itself (not on any line) cancels paste mode and,
+        // in select mode, clears the current selection — per-line clicks are handled
+        // and consumed by LineComponent.
         if (EditModeManager.getPasteModeManager().isInProgress()) {
             EditModeManager.getPasteModeManager().cancel();
+        }
+
+        if (callback.getSelectionCoordinator().isInSelectMode()) {
+            MessageCenter.post(new DeselectCommand());
         }
 
         callback.requestFocusInWindow();
