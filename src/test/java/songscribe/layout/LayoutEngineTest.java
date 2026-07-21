@@ -184,10 +184,14 @@ class LayoutEngineTest extends UnitTest {
     private static final int SEMIQUAVER_BEAMS = 2;
     private static final int DEMI_SEMIQUAVER_BEAMS = 3;
 
-    private static LayoutEngine engine() {
+    private static LyricRenderMetrics lyricRenderMetrics() {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
-        var metrics = LyricRenderMetrics.forFont(lyricsFont);
-        return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
+        return LyricRenderMetrics.forFont(lyricsFont);
+    }
+
+    private static LayoutEngine engine() {
+        return new LayoutEngine(
+            lyricRenderMetrics(), STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
     }
 
     /** Asserts value is not null and returns it non-null for NullAway. */
@@ -277,27 +281,34 @@ class LayoutEngineTest extends UnitTest {
         assertThat(result.getKeySignature()).describedAs("KeySignature on empty line").isNotNull();
     }
 
-    // T5a: An empty line with no attribution pads evenly above and below, so the staff sits
-    // centred and the header elements have room. Pinned exactly: the padding is the only thing
-    // giving an empty line its height, and dropping it leaves the staff flush against the edge.
+    // T5a: An empty line reports no content extents at all. These feed inter-line spacing, so
+    // padding them to give the line height made every empty line space itself as if it held that
+    // much content (refs #630). The height it needs comes from the paint floors instead, which is
+    // what the companion assertion pins — the two must not be conflated again.
     @Test
-    void testEmptyLinePadsEvenlyAboveAndBelowStaff() {
-        var expectedPaddingSs = (LineSpacing.MIN_LINE_HEIGHT_SS - Staff.STAFF_HEIGHT_SS) / 2.0;
-
+    void testEmptyLineReportsNoContentButKeepsMinimumPaintedHeight() {
         var result = require(engine().layout(detachedLine()), "LayoutResult");
 
         assertThat(result.getContentAboveStaffSs())
-            .describedAs("empty line padding above the staff")
-            .isCloseTo(expectedPaddingSs, within(TOLERANCE));
+            .describedAs("empty line content above the staff")
+            .isCloseTo(0.0, within(TOLERANCE));
         assertThat(result.getContentBelowStaffSs())
-            .describedAs("empty line padding below the staff")
-            .isCloseTo(expectedPaddingSs, within(TOLERANCE));
+            .describedAs("empty line content below the staff")
+            .isCloseTo(0.0, within(TOLERANCE));
+
+        // The staff still gets its full surround, so the clef and key signature are not clipped.
+        assertThat(result.paintAboveMidlineSs())
+            .describedAs("empty line painted extent above the midline")
+            .isCloseTo(LineSpacing.MIN_ABOVE_MIDLINE_SS, within(TOLERANCE));
+        assertThat(result.paintBelowMidlineSs(lyricRenderMetrics()))
+            .describedAs("empty line painted extent below the midline")
+            .isCloseTo(LineSpacing.MIN_BELOW_MIDLINE_SS, within(TOLERANCE));
     }
 
     // T5b: Empty first line (no columns) reserves room for a tall attribution (refs #616).
     // The stacking maths itself is covered by VerticalStackingCalculatorTest.EmptyLineAttribution;
     // this only pins LayoutEngine's own wiring — that it calls the calculator at all and lets a
-    // tall attribution win over the empty-line padding floor.
+    // tall attribution lift the band above the zero baseline an empty line otherwise reports.
     @Test
     void testEmptyLineStacksAttribution() {
         var attribution = new Attribution();
@@ -312,7 +323,7 @@ class LayoutEngineTest extends UnitTest {
             .describedAs("attribution DecorationLayout on an empty first line")
             .isNotNull();
         assertThat(withAttribution.getContentAboveStaffSs())
-            .describedAs("a tall attribution must push the staff down past the padding floor")
+            .describedAs("a tall attribution must lift the band above an empty line's zero baseline")
             .isGreaterThan(withoutAttribution.getContentAboveStaffSs());
     }
 

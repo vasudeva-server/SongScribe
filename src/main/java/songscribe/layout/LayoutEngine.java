@@ -270,62 +270,13 @@ public class LayoutEngine {
         // Step 1: Build note columns
         var columns = columnBuilder.buildColumns(line);
 
-        if (columns.isEmpty()) {
-            // Empty line — give it MIN_LINE_HEIGHT_SS so header elements (clef, key
-            // signature) still have room, splitting the shortfall evenly above and below
-            // so the staff sits centred in the component.
-            var emptyPaddingSs = (LineSpacing.MIN_LINE_HEIGHT_SS - Staff.STAFF_HEIGHT_SS) / 2.0;
-            var emptyBuilder = LayoutResult.builder()
-                .setContentBelowStaffSs(emptyPaddingSs);
-            createHeaderElements(line, emptyBuilder);
-
-            // The padding is a floor, not the whole story: an attribution stacked above the
-            // staff can reach past it, and the taller of the two wins (refs #616).
-            var contentAboveStaffSs = emptyPaddingSs;
-
-            if (attribution != null) {
-                contentAboveStaffSs = Math.max(
-                    emptyPaddingSs,
-                    verticalCalculator.calculateEmptyLineAttribution(
-                        attribution, staffRightMarginSs, emptyBuilder));
-            }
-
-            emptyBuilder.setContentAboveStaffSs(contentAboveStaffSs);
-
-            return emptyBuilder.build();
-        }
-
-        // Step 2 & 3: Build the springs, lift their rests so syllables clear each other, anchor the
-        // chain, and solve it against the staff width — all through the shared solve the insertion
-        // pre-check also runs, so a line the pre-check accepts is one this layout can always place.
-        // The line rest drives the base rests and the lift cap.
-        var lineRestSs = line.getSong().getDefaultRestLengthSs();
-        var solution = HorizontalSpacingCalculator.solveLine(columns, line, staffRightMarginSs);
-
-        if (solution.isInfeasible()) {
-            // Every gap is frozen at its collision floor and the line still overflows the margin.
-            lastError = LINE_TOO_FULL_ERROR;
+        // Steps 2-3b: Place the columns horizontally. An empty line has no chain to solve and
+        // falls straight through to the shared passes below, which all resolve to no-ops or
+        // natural zeros on empty columns. It deliberately gets no special-cased result: the
+        // extents below feed inter-line spacing, so a line that invents content extents it does
+        // not have spaces itself as if it held that content (refs #630).
+        if (!placeColumnsHorizontally(columns, line, isLastLine)) {
             return null;
-        }
-
-        // Anchor the first column at the solved chain's origin, then lay the solved gaps out from it.
-        var firstColumn = columns.getFirst();
-        firstColumn.setXSs(solution.firstXSs());
-
-        var gapLengthsSs = solution.result().gapLengthsSs();
-
-        if (gapLengthsSs == null) {
-            throw new IllegalStateException("solve succeeded but gapLengthsSs is null");
-        }
-
-        for (var i = 1; i < columns.size(); i++) {
-            columns.get(i).setXSs(columns.get(i - 1).getXSs() + gapLengthsSs[i - 1]);
-        }
-
-        // Step 3b: Pin the terminal flush-right on the last line.
-        // Layout is the sole writer of the terminal's x position.
-        if (isLastLine) {
-            positionTerminalFlushRight(columns, lineRestSs);
         }
 
         var builder = LayoutResult.builder();
@@ -377,11 +328,57 @@ public class LayoutEngine {
         builder.setHasTrailingLyricContinuation(lyricResult.hasTrailingContinuation());
     }
 
-    private void positionTerminalFlushRight(List<ElementColumn> columns, double lineRestSs) {
+    /**
+     * Builds the springs, lifts their rests so syllables clear each other, anchors the chain, and
+     * solves it against the staff width — all through the shared solve the insertion pre-check
+     * also runs, so a line the pre-check accepts is one this can always place. The line rest
+     * drives the base rests and the lift cap. Column X positions are written in place.
+     * <p>
+     * A line with no columns has nothing to solve and succeeds trivially — the solver anchors on
+     * the first and last column, so it is the one pass an empty line cannot take.
+     *
+     * @return false when the line overflows the margin with every gap already at its collision
+     *         floor, in which case {@link #getLastError()} carries the reason
+     */
+    private boolean placeColumnsHorizontally(
+        List<ElementColumn> columns, Line line, boolean isLastLine) {
+
         if (columns.isEmpty()) {
-            return;
+            return true;
         }
 
+        var lineRestSs = line.getSong().getDefaultRestLengthSs();
+        var solution = HorizontalSpacingCalculator.solveLine(columns, line, staffRightMarginSs);
+
+        if (solution.isInfeasible()) {
+            // Every gap is frozen at its collision floor and the line still overflows the margin.
+            lastError = LINE_TOO_FULL_ERROR;
+            return false;
+        }
+
+        // Anchor the first column at the solved chain's origin, then lay the solved gaps out from it.
+        columns.getFirst().setXSs(solution.firstXSs());
+
+        var gapLengthsSs = solution.result().gapLengthsSs();
+
+        if (gapLengthsSs == null) {
+            throw new IllegalStateException("solve succeeded but gapLengthsSs is null");
+        }
+
+        for (var i = 1; i < columns.size(); i++) {
+            columns.get(i).setXSs(columns.get(i - 1).getXSs() + gapLengthsSs[i - 1]);
+        }
+
+        // Pin the terminal flush-right on the last line.
+        // Layout is the sole writer of the terminal's x position.
+        if (isLastLine) {
+            positionTerminalFlushRight(columns, lineRestSs);
+        }
+
+        return true;
+    }
+
+    private void positionTerminalFlushRight(List<ElementColumn> columns, double lineRestSs) {
         // On the last line, the terminal is always the last element. Only the last
         // column is snapped flush-right — interior REPEAT_RIGHTs are left in place.
         var lastColumn = columns.getLast();

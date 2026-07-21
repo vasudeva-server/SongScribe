@@ -173,36 +173,6 @@ public class VerticalStackingCalculator {
     }
 
     /**
-     * Stacks the attribution block for a first line with no musical columns.
-     * <p>
-     * A brand-new document's first line has no note columns to build the note/structural/system
-     * layers from, so {@link #calculate} is never reached for it. This mirrors just the
-     * attribution tier of {@link #calculate} — stack, apply manual offsets, then measure —
-     * against an empty {@link StaffExtents}, so the attribution still renders (refs #616).
-     *
-     * @param attribution the attribution block element with dimensions already set
-     * @param lineWidthSs total width of the staff line in staff-space units
-     * @param builder     the LayoutResult builder to write the decoration position into
-     * @return the extent of content above the staff top needed to clear the attribution,
-     *         in staff-space units
-     */
-    public double calculateEmptyLineAttribution(
-        Attribution attribution,
-        double lineWidthSs,
-        LayoutResult.Builder builder) {
-
-        var systemExtents = new StaffExtents(lineWidthSs);
-        stackAttribution(attribution, systemExtents, lineWidthSs, builder);
-
-        // The renderer paints the layout verbatim, so the user's drag has to be baked in
-        // here just as it is on the normal path — otherwise the band below reserves room
-        // for a shift the attribution never makes (refs #616).
-        applyManualOffsets(builder);
-
-        return calculateContentAboveStaffSs(systemExtents, lineWidthSs, attribution, builder);
-    }
-
-    /**
      * Measures how far content reaches above the staff top, in staff-space units.
      * <p>
      * Stacking coordinates put the middle staff line at y=0, so the staff top is at

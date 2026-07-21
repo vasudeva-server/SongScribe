@@ -354,6 +354,24 @@ class VerticalStackingCalculatorTest extends UnitTest {
             return attribution;
         }
 
+        /**
+         * Stacks {@code attribution} over a line with no columns — the shared path an empty
+         * line takes, with no empty-specific branch behind it (refs #630).
+         */
+        private static double stackOnEmptyLine(
+            Attribution attribution, LayoutResult.Builder builder) {
+
+            new VerticalStackingCalculator().calculate(
+                List.of(),
+                detachedLine(),
+                builder,
+                LINE_WIDTH_SS,
+                mock(DocumentFontsHolder.class),
+                attribution);
+
+            return builder.build().getContentAboveStaffSs();
+        }
+
         @Test
         void testUpwardOffsetIsBakedIntoTheDecorationLayout() {
             // The renderer paints DecorationLayout.ySs() verbatim, so a dragged attribution
@@ -361,15 +379,13 @@ class VerticalStackingCalculatorTest extends UnitTest {
             // leaving the attribution pinned in place under a widening gap.
             var noOffset = attribution(ATTRIBUTION_HEIGHT_SS, 0.0);
             var noOffsetBuilder = LayoutResult.builder();
-            new VerticalStackingCalculator().calculateEmptyLineAttribution(
-                noOffset, LINE_WIDTH_SS, noOffsetBuilder);
+            stackOnEmptyLine(noOffset, noOffsetBuilder);
             var naturalYSs = require(
                 noOffsetBuilder.getDecorationLayout(noOffset), "natural layout").ySs();
 
             var shifted = attribution(ATTRIBUTION_HEIGHT_SS, UPWARD_OFFSET_SS);
             var shiftedBuilder = LayoutResult.builder();
-            new VerticalStackingCalculator().calculateEmptyLineAttribution(
-                shifted, LINE_WIDTH_SS, shiftedBuilder);
+            stackOnEmptyLine(shifted, shiftedBuilder);
             var shiftedYSs = require(
                 shiftedBuilder.getDecorationLayout(shifted), "shifted layout").ySs();
 
@@ -380,13 +396,11 @@ class VerticalStackingCalculatorTest extends UnitTest {
 
         @Test
         void testUpwardOffsetGrowsAboveStaffSsByExactlyTheShift() {
-            var noOffsetAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
-                attribution(ATTRIBUTION_HEIGHT_SS, 0.0), LINE_WIDTH_SS, LayoutResult.builder());
+            var noOffsetAboveSs = stackOnEmptyLine(
+                attribution(ATTRIBUTION_HEIGHT_SS, 0.0), LayoutResult.builder());
 
-            var shiftedAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
-                attribution(ATTRIBUTION_HEIGHT_SS, UPWARD_OFFSET_SS),
-                LINE_WIDTH_SS,
-                LayoutResult.builder());
+            var shiftedAboveSs = stackOnEmptyLine(
+                attribution(ATTRIBUTION_HEIGHT_SS, UPWARD_OFFSET_SS), LayoutResult.builder());
 
             assertThat(shiftedAboveSs - noOffsetAboveSs)
                 .describedAs("band must grow by exactly the shift, not twice it")
@@ -395,13 +409,11 @@ class VerticalStackingCalculatorTest extends UnitTest {
 
         @Test
         void testDownwardOffsetDoesNotGrowAboveStaffSs() {
-            var noOffsetAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
-                attribution(ATTRIBUTION_HEIGHT_SS, 0.0), LINE_WIDTH_SS, LayoutResult.builder());
+            var noOffsetAboveSs = stackOnEmptyLine(
+                attribution(ATTRIBUTION_HEIGHT_SS, 0.0), LayoutResult.builder());
 
-            var shiftedAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
-                attribution(ATTRIBUTION_HEIGHT_SS, DOWNWARD_OFFSET_SS),
-                LINE_WIDTH_SS,
-                LayoutResult.builder());
+            var shiftedAboveSs = stackOnEmptyLine(
+                attribution(ATTRIBUTION_HEIGHT_SS, DOWNWARD_OFFSET_SS), LayoutResult.builder());
 
             assertThat(shiftedAboveSs)
                 .describedAs("a downward drag must not reserve extra room above the staff")
@@ -410,11 +422,11 @@ class VerticalStackingCalculatorTest extends UnitTest {
 
         @Test
         void testTallerAttributionReservesMoreRoom() {
-            var shortAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
-                attribution(ATTRIBUTION_HEIGHT_SS, 0.0), LINE_WIDTH_SS, LayoutResult.builder());
+            var shortAboveSs = stackOnEmptyLine(
+                attribution(ATTRIBUTION_HEIGHT_SS, 0.0), LayoutResult.builder());
 
-            var tallAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
-                attribution(ATTRIBUTION_HEIGHT_SS * 2, 0.0), LINE_WIDTH_SS, LayoutResult.builder());
+            var tallAboveSs = stackOnEmptyLine(
+                attribution(ATTRIBUTION_HEIGHT_SS * 2, 0.0), LayoutResult.builder());
 
             assertThat(tallAboveSs - shortAboveSs)
                 .describedAs("the extra reserved room must match the extra height")
@@ -429,8 +441,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
             var unmeasured = new Attribution();
             unmeasured.setUserYOffsetSs(UPWARD_OFFSET_SS);
 
-            var aboveStaffSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
-                unmeasured, LINE_WIDTH_SS, LayoutResult.builder());
+            var aboveStaffSs = stackOnEmptyLine(unmeasured, LayoutResult.builder());
 
             assertThat(aboveStaffSs)
                 .describedAs("an unmeasured attribution must reserve nothing, not a negative band")
