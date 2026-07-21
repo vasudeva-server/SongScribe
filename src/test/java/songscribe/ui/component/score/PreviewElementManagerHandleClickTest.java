@@ -251,7 +251,8 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
                 PreviewElementManager.handleClick(lc, true);
 
                 optionDialogsMock.verify(() -> OptionDialogs.showErrorMessage(
-                    isNull(), eq(Strings.ALERT_TITLE_INSERT_ERROR), eq(Strings.ERROR_LINE_FULL_NOTE)));
+                    isNull(), eq(Strings.ALERT_TITLE_INSERT_ERROR), eq(Strings.ERROR_LINE_FULL_ELEMENT),
+                    eq(ElementType.CROTCHET.categoryName())));
             }
 
             assertThat(line.elementCount())

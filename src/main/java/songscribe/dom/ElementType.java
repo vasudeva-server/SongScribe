@@ -28,6 +28,7 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.Strings;
 import songscribe.smufl.BBox;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
@@ -407,6 +408,38 @@ public enum ElementType {
 
     public boolean isBreathMark() {
         return this == BREATH_MARK;
+    }
+
+    /**
+     * Returns a lowercase, user-facing category name for this element type, suitable for
+     * substitution into a message such as "There isn’t enough room on this line for this {0}."
+     */
+    public String categoryName() {
+        if (isNote()) {
+            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_NOTE);
+        }
+
+        if (isBarLine()) {
+            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_BARLINE);
+        }
+
+        if (isRest()) {
+            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_REST);
+        }
+
+        if (isRepeat()) {
+            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_REPEAT);
+        }
+
+        if (isBreathMark()) {
+            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_BREATH_MARK);
+        }
+
+        if (this == SLIDE) {
+            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_FALL);
+        }
+
+        throw new IllegalStateException("No category name for element type " + this);
     }
 
     /**
