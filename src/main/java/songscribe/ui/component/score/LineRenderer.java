@@ -88,12 +88,8 @@ class LineRenderer {
     /** Corner arc diameter for the rubber-band selection rectangle, in pixels. */
     private static final int SELECTION_RECT_ARC_PX = 2;
 
-    /**
-     * Stroke width for the paste-mode insertion-point marker, in logical pixels — constant
-     * across zoom levels, drawn in the stripped-transform pixel space (see
-     * {@link #renderInsertionPoint}).
-     */
-    private static final BasicStroke INSERTION_POINT_STROKE = new BasicStroke(3.0f);
+    /** Thickness of the paste-mode insertion-point marker, in staff spaces. */
+    private static final double INSERTION_POINT_THICKNESS_SS = 0.25;
 
     // ==========================================================================
     // Instance Fields
@@ -721,12 +717,8 @@ class LineRenderer {
      * tracked placement target. Topmost — drawn last, still inside the single Ss
      * transform {@code LineComponent.render} establishes.
      * <p>
-     * Draws entirely in {@code Ss} except for the stroke width, which must stay a
-     * constant number of logical pixels across zoom: following the
-     * {@link songscribe.ui.renderer.LyricTextRenderer} recipe, this strips the
-     * outer staff-space transform (which also carries the current zoom factor) and
-     * re-derives pixel coordinates from the same zoomed scale, so only the line's
-     * position and height scale with zoom while the stroke does not.
+     * Drawn entirely in {@code Ss}, so the marker's thickness scales with zoom along
+     * with its position and height, the same as every other engraved line.
      *
      * @param g2         Graphics context
      * @param invariants Line invariants
@@ -764,18 +756,10 @@ class LineRenderer {
         var middleLineYSs = invariants.getMiddleLineYSs();
         var topYSs = middleLineYSs + Staff.spToSs(Staff.MIN_STAFF_POSITION_SP);
         var bottomYSs = middleLineYSs + Staff.spToSs(Staff.MAX_STAFF_POSITION_SP);
-        var viewPxPerSs = invariants.getViewPixelsPerStaffSpace();
 
-        try (var ignored = GraphicsState.save(g2,
-                GraphicsState.Property.COLOR, GraphicsState.Property.STROKE, GraphicsState.Property.TRANSFORM)) {
-            g2.scale(1.0 / viewPxPerSs, 1.0 / viewPxPerSs);
+        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
             g2.setColor(ScoreView.getPreviewElementColor());
-            g2.setStroke(INSERTION_POINT_STROKE);
-
-            var xPx = (int) Math.round(xSs * viewPxPerSs);
-            var topYPx = (int) Math.round(topYSs * viewPxPerSs);
-            var bottomYPx = (int) Math.round(bottomYSs * viewPxPerSs);
-            g2.drawLine(xPx, topYPx, xPx, bottomYPx);
+            GraphicUtils.drawRoundedLine(g2, xSs, topYSs, xSs, bottomYSs, INSERTION_POINT_THICKNESS_SS);
         }
     }
 
