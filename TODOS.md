@@ -157,32 +157,34 @@ per-test `initialize()` call guarantees fresh constants.
 See the "Automated guard" TODO below for turning the manual verification greps into
 an enforced test.
 
-## Undo/redo (#14) must replay the new attribution mutation
+## Attribution ownership across line insert/delete under undo
 
-**What:** When undo/redo (#14) is implemented, its replay engine must handle the
-coarse `MetadataChange(MetadataField.ATTRIBUTION, oldSongMetadata,
-newSongMetadata)` record-swap introduced by the attribution refactor.
+**What:** Decide whether first-line attribution ownership needs to survive line
+insert/delete under undo, and if so model it as a recorded mutation.
 
-**Why:** The mutation is pure groundwork — it is emitted (from
-`Song.setMetadata()`) and validated today but nothing consumes it, because no
-replay engine exists yet. It is easy to overlook when #14 lands: the metadata
-change collapses 11 former per-field changes into a single record swap, so a
-naive replay that diffs scalar fields will mishandle it.
+**Why:** `Song.addLine(0, …)` / `Song.removeLine(0)` emit only `LineInsertion` /
+`LineDeletion`. The only ATTRIBUTION mutation is the `MetadataChange` from
+`Song.setMetadata()`. Nothing records the migration of attribution ownership when
+the first line changes identity, so undoing such an edit may leave attribution
+attached to the wrong line.
 
-**Context:** `MetadataChange` lives in `songscribe.message.mutation`; its
-canonical constructor validates `oldValue`/`newValue` against
-`MetadataField.getExpectedType()` (= `SongMetadata.class` for `ATTRIBUTION`).
+**Context:** This is unfinished design work, not groundwork awaiting a consumer —
+there is no existing mutation to wire up. `MetadataChange` lives in
+`songscribe.message.mutation`; its canonical constructor validates
+`oldValue`/`newValue` against `MetadataField.getExpectedType()`
+(= `SongMetadata.class` for `ATTRIBUTION`). Start by reproducing the bug: insert
+a line at index 0 on a song with attribution, undo, and check where attribution
+lands.
 
-NOTE (corrected 2026-06-19): An earlier version of this TODO also described a
-"cross-line attribution-migration mutation emitted by `Song.addLine(0, …)` /
-`Song.removeLine(0)`". That mutation does not exist in the code — `addLine` /
-`removeLine` emit only `LineInsertion` / `LineDeletion`, and the only ATTRIBUTION
-mutation is the `MetadataChange` from `setMetadata()`. If first-line attribution
-ownership needs to survive line insert/delete under undo, modeling that as a
-recorded mutation is unfinished design work, not existing groundwork.
+**Depends on / blocked by:** Nothing. The replay engine it would plug into
+already exists.
 
-**Depends on / blocked by:** Issue #14 (undo/redo) — not started; this refactor
-is the groundwork.
+NOTE (corrected 2026-07-21): This entry previously claimed the replay engine did
+not exist and was blocked on issue #14. That is no longer true —
+`songscribe.undo.UndoController` and `songscribe.undo.MutationReplayer` both
+ship, and `MutationReplayer.applyMetadataField` handles the coarse
+`MetadataChange(ATTRIBUTION, …)` record swap correctly. Only the line
+insert/delete question above remains open.
 
 ## MusicXML attribution export via `AttributionFormatter`
 

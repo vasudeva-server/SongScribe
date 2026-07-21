@@ -1,5 +1,7 @@
 # Pagination Support
-Introduce real pages: on-screen pagination with separate page surfaces, true multi-page printing, page numbers, a bottom-of-last-page copyright line, and a per-document Page Setup (paper size, margins, mirrored/spread margins) persisted in MusicXML. Horizontal layout authority moves from line width to margins; line width becomes a derived value.
+Introduce real pages: on-screen pagination with separate page surfaces, true multi-page printing, page numbers, and a bottom-of-last-page copyright line.
+
+Page geometry stays exactly as it is today — paper size from `PrefsKey.PAGE_SIZE`, fixed 0.5″ vertical margins, horizontal margins centered on the stored `Song.lineWidthSs`. Making margins authoritative and adding a Page Setup dialog is a separate issue: see `specs/184b-page-setup.md`.
 
 **Issue:** vasudeva-server/SongScribe#184
 
@@ -13,337 +15,398 @@ Introduce real pages: on-screen pagination with separate page surfaces, true mul
   
 4. **Copyright line** — fixed text pinned at the bottom of the last page's content area, on screen and in print
   
-5. **Per-document Page Setup** — paper size, per-edge margins, mirrored (inner/outer) margins with verso-first option; margins authoritative, line width derived; fully undoable; persisted with true MusicXML `<page-layout>` semantics
+5. **Status bar page indicator** — "Page N of M" with a click-to-jump popup
   
-6. **Page Setup dialog** — new macOS-style dialog; retire the conflicting legacy `PaperSizeStep` UI and the Song Settings line-width section
+
+* * *
+## Prerequisite
+`plans/overlay-components.md` **must land first.** This spec assumes `LineOverlayComponent` and its subclasses exist and that `LineOverlayPainter` is gone.
+
+That ordering shrinks the work here rather than adding to it:
+
+- It deletes `LineOverlayPainter.paintOnLine`'s translate-and-scale and `LineComponent.repaintWithOverlayHeadroom`'s rectangle inflation, both of which would otherwise need auditing against page boundaries — a line near a page bottom inflates its dirty rect into the inter-page gap and onto the next page surface.
   
-7. **Status bar page indicator** — "Page N of M" with a click-to-jump popup
+- It makes print-time overlay suppression (§6) "skip the overlay children" instead of threading a render-mode flag through paint code.
   
+- Overlays become children of the page containing their target line, so overlay ink can never spill onto the gap or an adjacent page. `LineOverlayComponent` already holds its host as a `JComponent` and supports runtime re-homing for exactly this reason.
+  
+
+`plans/overlay-components.md` phase 1 task 1 (`ScoreView` → null layout with an explicit `doLayout()`) is discarded by §4 below; its own plan already records that.
 
 * * *
 ## Current State
 ### Layout and rendering
-- `ScoreView` (inside `JScrollPane` → `ScorePanel`) is a single white `JComponent` sized to one page width whose height grows without bound: `getSheetHeightPx()` returns `max(pageHeightPx, contentHeight + margins)`. Margins are an `EmptyBorder`.
+- `ScoreView` (inside `JScrollPane` → `ScorePanel`) is a single white `JComponent` sized to one page width whose height grows without bound: `getSheetHeightPx()` (`ScoreView.java:932-950`) returns `max(pageHeightPx, contentHeight + margins)`. Margins are an `EmptyBorder` set in `layoutPage` (`ScoreView.java:1084-1123`).
   
-- `MainPanel` stacks `TitleComponent` → `SubtitleComponent` → strut → `StaffPanel` (one `LinePanel` per music line, `LINE_MARGIN_BOTTOM_SS = 2.0`) → `TextPanel` (under-lyrics/Bangla/translation) → `FootnotesComponent` via `BoxLayout.Y_AXIS`. No page-break concept exists anywhere.
+- `MainPanel` (`BoxLayout.Y_AXIS`, `MainPanel.java:92`) stacks `TitleComponent` → `SubtitleComponent` → `ScoreMarginStrut` (`SCORE_MARGIN_TOP_SS = 1.5`) → `StaffPanel` → `TextPanel` → `FootnotesComponent`. `MainPanel.getPreferredSize()` (lines 276-303) manually sums child heights. No page-break concept exists anywhere.
   
-- `PageModel` (singleton) is the only page-geometry authority: `Size` enum (LETTER, A4) read from `PrefsKey.PAGE_SIZE`, fixed `VERTICAL_MARGIN_INCHES = 0.5`, and `getHorizontalMarginPx(lineWidthPx)` which _derives_ margins by centering the line width.
+- `StaffPanel` uses the custom `StaffLinesLayout` and holds `List<LinePanel> linePanels` (`StaffPanel.java:52`). `rebuildLayout()` (lines 116-139) does `removeAll()` + `linePanels.clear()` and constructs a fresh `LinePanel` per line — there is no incremental add/remove.
+  
+- `StaffPanel.ensureAllLineLayouts()` (lines 186-198) measures lines **sequentially, threading** `hasLeadingLyricContinuation` **across them** for melisma continuation. Line heights are therefore order-dependent, not independent.
+  
+- Hit-testing is `MainPanel.getLinePanelAt(Point)` (lines 250-263) → `StaffPanel.getLinePanelAt` (lines 169-178, linear bounds scan). `ScoreView` performs no mouse→model mapping of its own.
+  
+- `PageModel` (all-static, `layout/PageModel.java`) is the page-geometry authority: `Size` enum from `PrefsKey.PAGE_SIZE`, `VERTICAL_MARGIN_INCHES = 0.5`, and `getHorizontalMarginPx(lineWidthPx)` which centers the line width. `getPageWidthPx()`/`getPageHeightPx()` are documented as fixed document scale, independent of view zoom.
   
 - Zoom is per-view via `ViewScale` (`Ss` / `DocPx` / `ViewPx`); `ViewScale.IDENTITY` serves off-screen consumers.
   
-### Line width
-- `Song.lineWidthSs` is the canonical horizontal layout value, mutation-tracked via `LayoutField.LINE_WIDTH_SS`. The only user-facing writer is the Line Width section of `SongSettingsDialog`'s Music tab (`lineWidthField` + `LineWidthVerifier`, validated against `PageModel.MIN_LINE_WIDTH_INCHES = 5.0` / `MAX_LINE_WIDTH_INCHES = 7.77`), applied through `ScoreView.updatePageLayout(int)`.
+### Print
+- `MainFrame implements Printable`; `print(...)` (`MainFrame.java:952-990`) is a stub hardcoded to one page (`pageIndex >= 1 → NO_SUCH_PAGE`) drawing `Strings.ERROR_PRINT_NOT_IMPLEMENTED` at fixed coordinates. `PRINT_EXTRA_MARGIN = 0.25 * 72` (line 141) is a fudge inset.
   
-- `ScoreView.openFile` rejects files whose stored line width exceeds `MAX_LINE_WIDTH_INCHES` (`SongLoadResult.LineWidthTooLarge`).
+- `handlePrint()` (lines 934-949) drives `PrinterJob` + the OS dialog and is unchanged by this issue.
   
-### Print and export
-- `MainFrame implements Printable`; `print(...)` is a stub hardcoded to one page (`pageIndex >= 1 → NO_SUCH_PAGE`) drawing "not implemented" strings. `PDFExporter`, `ImageExporter`, `SVGExporter` are stubs. The old shared `ScoreRenderer` was deleted during the score-layout redesign. No PDF library is in `build.gradle.kts`.
+- `PDFExporter`, `ImageExporter`, `SVGExporter` are stubs and stay stubs.
   
-- `PageLayoutData` (export-only, raw px) has `mirrored` / `songsPerPage` fields that are written by `PaperSizeStep` (inside `ExportPDFDialog`, mirrored checkbox hidden) but never read — dead scaffolding.
+### Package boundaries (enforced by tests)
+`PackageDependencyTest` (`src/test/java/songscribe/PackageDependencyTest.java`) asserts:
+
+- `songscribe.dom` must not import `songscribe.layout` (line 63)
   
-### Persistence
-- Native format is MusicXML 4.0 (`.musicxml`), hand-rolled writer/reader (`MusicXmlWriter`/`MusicXmlReader` + header/measure/note/direction helpers). `.mssw` is a legacy read-only import.
+- `songscribe.dom` must not import `songscribe.ui` (line 70)
   
-- `<defaults><page-layout><page-width>` is **overloaded** to carry `lineWidthSs` (the sole canonical page-layout value); `<page-height>` and `<scaling>` are fixed write-forward; `<page-margins>` is never written. SongScribe-specific scalars ride in `<miscellaneous-field>` entries.
+- `songscribe.layout` must not import `songscribe.ui` (line 79)
   
-- `<print new-system="yes">` round-trips line breaks; `new-page` is unused.
-  
+
+The third constrains `Paginator`'s input type (§2).
 
 * * *
 ## Design
-### 1. Page setup document model
-New per-document state on `Song` (all mutation-tracked, see §11):
+### 1. Page geometry
+`PageModel` keeps its current shape and its current meaning. One addition:
 
-| Field | Type | Default (new documents) |
-|-------|------|------------------------|
-| `paperSize` | `PaperSize` enum | from `PrefsKey.PAGE_SIZE` |
-| `topMarginInches` | `double` | 0.5 |
-| `bottomMarginInches` | `double` | 0.5 |
-| `leftMarginInches` (inner when mirrored) | `double` | 0.5 |
-| `rightMarginInches` (outer when mirrored) | `double` | 0.5 |
-| `mirroredMargins` | `boolean` | false |
-| `versoFirst` | `boolean` | false |
+- `getContentHeightPx()` — page height minus top and bottom margins, in `DocPx`. This is the pagination unit of measure.
+  
 
-- `PaperSize` replaces `PageModel.Size` and offers a curated portrait-only list: **Letter, Legal, Tabloid, A3, A4, A5, B4, B5** (widths/heights in inches, following the existing `Size(double widthInches, double heightInches)` shape).
-  
-- Physical units (inches) are the storage unit for paper geometry, matching the existing `*_INCHES` constants; conversion to `DocPx`/`Ss` happens at the `PageModel` seam as today (`GraphicUtils.Unit.INCH`, `ScaleContext`).
-  
-- `PrefsKey.PAGE_SIZE` remains, but now means "paper size for **new** documents" (and legacy loads, §8). The `PreferencesDialog` radio group is unchanged apart from label wording if needed. Margins/mirrored get **no** prefs surface — new documents start from the fixed defaults above.
-  
-### 2. Derived line width
-`Song.lineWidthSs` ceases to be stored or user-set:
+Nothing else in `PageModel` changes. Paper size still comes from `PrefsKey.PAGE_SIZE`, vertical margins are still fixed at `VERTICAL_MARGIN_INCHES`, horizontal margins are still centered on `Song.lineWidthSs`, and `Song.lineWidthSs` remains stored and user-settable through `SongSettingsDialog`'s Music tab.
+### 2. Pagination engine
+New class `Paginator` in `songscribe.layout`. **Pure arithmetic — it must not import** `songscribe.ui`**.**
 
-```
-lineWidthInches = paperWidthInches − leftMarginInches − rightMarginInches
-lineWidthSs     = pxToSs(inchesToPx(lineWidthInches))
+**Input:** an ordered `List<Block>`, where `Block` is a record declared in `songscribe.layout`:
+
+```java
+record Block(double heightPx, Kind kind) { }
+
+enum Kind {
+    PAGE_ONE_ONLY,       // title + subtitle
+    NORMAL,              // strut, each LinePanel, TextPanel
+    PINNED_LAST_PAGE     // footnotes, copyright
+}
 ```
 
-- `Song.getLineWidthSs()` / `getLineWidthPx()` remain (dozens of rendering and layout consumers) but compute from page setup. `Song.setLineWidthSs` and `LayoutField.LINE_WIDTH_SS` are removed; `ScoreView.updatePageLayout(int lineWidthDocPx)` loses its model-write role (page layout refresh is driven by mutations, §11).
+plus the page content height in `DocPx`.
+
+**Output:** a `Pagination` result carrying, per block index, its page index; and the total page count.
+
+Callers map indices back to components. No Swing type crosses this boundary — this keeps `Paginator` headless-testable and satisfies `layoutMustNotImportUi`.
+
+**Block order:**
+
+```
+  index  kind              source
+  ─────  ────────────────  ────────────────────────────────
+   0     PAGE_ONE_ONLY     TitleComponent + SubtitleComponent (one block)
+   1     NORMAL            ScoreMarginStrut (SCORE_MARGIN_TOP_SS)
+   2..n  NORMAL            one per LinePanel — never split
+   n+1   NORMAL            TextPanel (under-lyrics/Bangla/translation), atomic
+   n+2   PINNED_LAST_PAGE  FootnotesComponent
+   n+3   PINNED_LAST_PAGE  CopyrightComponent
+```
+
+**Pinned blocks are ordinary blocks.** Their heights come from `getPreferredSize().height` on the same components, measured the same way as every other block. Only their _placement rule_ differs. There is no separate band formula anywhere — a second source of truth for the copyright band height would drift silently against what `CopyrightComponent` actually renders.
+
+**Algorithm — greedy fill, two passes, fully automatic:**
+
+```
+  PASS 1 ── place NORMAL and PAGE_ONE_ONLY blocks greedily
+            capacity per page = getContentHeightPx()
+            a block that does not fit moves WHOLE to the next page
+            → yields provisional last page P
+
+  PASS 2 ── reduce page P's capacity by the pinned-block total
+            (footnotes + copyright, bottom-aligned in that order)
+            re-run the greedy fill
+            → if the last block is pushed off P, the last page becomes P+1
+              and the pinned blocks go there instead
+
+  STOP. Two passes, always. Pass 2's result is final.
+```
+
+The two-pass structure exists because the reservation is circular: the pinned blocks reduce the **last** page's capacity, but which page is last depends on capacity. A naive single pass oscillates:
+
+```
+  content exactly fills page 3's content height
+  ├─ reserve pinned blocks on p3  → last block no longer fits → pushed to p4
+  ├─ p4 is now last               → p3 needs no reservation → block fits on p3
+  └─ ⟲ oscillates forever
+```
+
+Capping at two passes terminates by construction — the reservation only ever pushes content forward, and pass 2 is accepted as final. The cost is that page P may end with a small gap at its bottom. That is correct and stable output, and it is what the tests assert.
+
+**Placement rules:**
+
+- `PAGE_ONE_ONLY` blocks are placed on page 1 and nowhere else.
   
-- **Validation** (enforced in the Page Setup dialog, §9):
+- `PINNED_LAST_PAGE` blocks are bottom-aligned on the final page in list order (footnotes above copyright, separated by a named `Ss` gap constant reusing the scale of `FOOTNOTES_MIN_MARGIN_TOP_SS`), regardless of where content ends.
   
-  - every margin ≥ `MIN_MARGIN_INCHES = 0.25` (renames `MIN_HORIZONTAL_MARGIN_INCHES`, now applied to all four edges)
+- **Oversized atomic block** — a block taller than a full page's content area gets its own page and overflows. Because a page surface is a fixed size (§4), the page edge _is_ the clip; no extra code is required. Degenerate input, degenerate output.
+  
+- No widow/orphan rules, no manual breaks.
+  
+
+Give `Paginator` a class-level ASCII comment carrying the two-pass diagram above.
+### 3. Height measurement ownership
+**Measurement stays centralized.** `PageComponent`**s never measure.**
+
+Line heights are order-dependent: `StaffPanel.ensureAllLineLayouts()` threads `hasLeadingLyricContinuation` across lines in sequence. If each page measured its own lines, continuation state would reset at every page boundary and produce heights different from the ones pagination was computed from — a silent wrong-height bug with no visible cause.
+
+```
+  MEASURE (unchanged)              PAGINATE                POSITION
+  ───────────────────              ────────                ────────
+  one owner holds the       →      Paginator        →      PageComponents
+  ordered List<LinePanel>          (pure math over         place the
+  and runs ensureAll-              heights, §2)            existing
+  LineLayouts() over the                                   instances
+  WHOLE song, in order
+```
+
+One component keeps the ordered `LinePanel` list and runs the full-song measurement pass before pagination, exactly as `StaffPanel` does today. `PageComponent`s are pure positioning containers. This makes pagination a _re-slice_ of an unchanged measurement pass and is what allows `Paginator` to be a pure function.
+
+`MainPanel`/`StaffPanel`'s role as the single vertical stack is absorbed by the per-page containers, but the measurement pass itself does not move.
+### 4. On-screen page surfaces
+```
+  BEFORE                              AFTER
+  ──────                              ─────
+  JScrollPane                         JScrollPane
+   └ ScorePanel (gray)                 └ ScorePanel (gray)
+      └ ScoreView (white, 1 sheet)        ├ PageComponent 1 (white)
+         └ MainPanel [BoxLayout]          │   ├ content children
+            ├ TitleComponent              │   └ LineOverlayComponent(s)
+            ├ SubtitleComponent           ├ ── gap ──
+            ├ ScoreMarginStrut            ├ PageComponent 2 (white)
+            ├ StaffPanel                  │   └ …
+            │  └ LinePanel×N              ├ ── gap ──
+            ├ TextPanel                   └ PageComponent 3 (white)
+            └ FootnotesComponent              └ …, CopyrightComponent
+```
+
+- `ScorePanel` (gray, existing) hosts one `PageComponent` per page, stacked vertically with a named gap constant between them.
+  
+- `PageComponent` is white, view-scaled to the page size, with `EmptyBorder` margins. It draws its own page number (§5).
+  
+- **Sizing is O(1).** `PageComponent.getPreferredSize()` is computed from `PageModel` + `ViewScale` alone — a page's size is fixed by paper size × zoom and is completely independent of its children. Do **not** copy `MainPanel.getPreferredSize()`'s child-summing pattern (`MainPanel.java:276-303`); that is correct for an unbounded sheet and wrong for a fixed page. `ScorePanel`'s preferred size is `pageCount × (pageHeight + gap)` — also O(1).
+  
+- `PageComponent` must return `false` from `isOptimizedDrawingEnabled()`. It has overlapping children (overlays), and the honest declaration is what lets Swing compute their dirty regions. `ScoreView` returns `false` today for the same reason (`ScoreView.java:660-663`).
+  
+- **Rebuild and repaginate are distinct operations.**
+  
+  - **Rebuild** — the song's structure changed. The measurement owner recreates the ordered `LinePanel` list, as `StaffPanel.rebuildLayout()` does today.
     
-  - derived line width ≥ `MIN_LINE_WIDTH_INCHES = 5.0`
+  - **Repaginate** — the page assignment of _existing_ `LinePanel` instances changed. Repagination **reparents**; it never constructs a component.
     
-  - `MAX_LINE_WIDTH_INCHES` is deleted — the maximum is now implied by paper width minus the margin floors.
-    
-### 3. PageModel rework
-`PageModel` stops reading prefs and becomes a view over the active `Song`'s page setup (instance created from a `Song`, or static methods taking one):
-
-- `getPageWidthPx()` / `getPageHeightPx()` — from `paperSize`
   
-- `getTopMarginPx()` / `getBottomMarginPx()` — from the document margins
+  This is not only a cost question. Overlay re-homing is defined as moving an overlay to its target line's new page; if repagination destroyed and recreated the `LinePanel`, there would be no line to re-home to and `LineOverlayComponent`'s `isDescendingFrom` guard would simply hide the overlay every time.
   
-- `getLeftMarginPx()` / `getRightMarginPx()` — from the document margins; when `mirroredMargins` is set these return the **centered equivalent**`(inner + outer) / 2` for screen layout (§5); the true inner/outer values are exposed separately for print (§7)
+- **Reparenting is batched.** Perform all `remove`/`add` calls first, then a **single** `revalidate()` + `repaint()` on `ScorePanel`. Never revalidate inside the loop. Re-home overlays once after the loop completes, not per hierarchy event.
   
-- `getContentHeightPx()` — page height minus top/bottom margins (the pagination unit of measure)
+- **Coordinate mapping uses ancestor-agnostic Swing conversion — no page-origin arithmetic anywhere.** Hit-testing goes through `SwingUtilities.convertPoint` / `Container.findComponentAt` from `ScorePanel`; overlays already convert via `SwingUtilities.convertPoint(line, 0, 0, host)`, which is valid at any ancestor depth. Introducing a page-origin offset layer would create exactly the class of bug that is silent and untestable headlessly.
   
-### 4. Pagination engine
-New class `Paginator` in `songscribe.layout`. Pure layout math — input is the ordered list of vertical blocks with their heights plus the page content height; output is a `Pagination` result: per-page block assignments and the total page count.
-
-**Blocks, in document order:**
-
-1. Title + subtitle (one block, page 1 only)
+  Three sites are replaced wholesale and are the real work here:
   
-2. The `SCORE_MARGIN_TOP_SS` strut
+  | Site | Disposition |
+  | --- | --- |
+  | `ScoreView.getSheetHeightPx()` (`932-950`, already TODO'd) | replaced by the page stack's O(1) size |
+  | `ScoreView.layoutPage` (`1084-1123`) | replaced by per-page layout |
+  | `ScoreView.applyZoomPercent` scroll anchoring (`1188-1220`) | must survive page gaps **and page-count change** |
   
-3. Each music line (`LinePanel`) — individually placeable, never split
+  The remaining `ScaleContext.ssToPx(lineWidthSs)` conversions in `ScoreView` are pure scale, page-independent, and untouched.
   
-4. `TextPanel` (under-lyrics/Bangla/translation) — one atomic block
+- **Scroll anchoring** currently converts a viewport anchor against a single canvas (`convertPoint(viewport, anchorViewportOffset, this)`). It must handle the case where the page **count** changed between anchor capture and restore, not merely the presence of gaps — otherwise the view resolves the anchor against a stale stack and jumps to an unrelated page.
   
-5. Footnotes — one atomic block, **pinned** (see below)
+- **Zoom** continues to work through `ViewScale` exactly as today; page surfaces scale like the current sheet does.
   
-6. Copyright line — **pinned band** on the last page (§6)
+- The class-level hierarchy comment at `ScoreView.java:99-111` documents the old tree and is invalidated by this change. Update it in the same commit.
   
-
-**Algorithm — greedy fill, fully automatic:**
-
-- Place blocks in order onto page 1, 2, … Each page's capacity is `getContentHeightPx()`. A block that does not fit in the remaining space moves whole to the next page. No widow/orphan rules, no manual breaks.
-  
-- **Copyright band**: the last page always reserves `copyrightBandPx = gap + copyright line height` at the bottom of its content area (gap: a named `Ss` constant, reusing the footnote-gap scale of `FOOTNOTES_MIN_MARGIN_TOP_SS`). Because the band exists on screen and in print (§6), pagination is identical in both.
-  
-- **Footnotes pinning**: footnotes render at the bottom of the final page, directly above the copyright band, regardless of where content ends. If footnotes (+ band) don't fit below the last content block, they move to a new final page (still bottom-pinned).
-  
-- **Oversized atomic block**: a block taller than a full page's content area gets its own page and simply overflows (clipped at the page edge in print). Degenerate input, degenerate output.
-  
-
-Repagination runs whenever layout inputs change: any `SongDidChangeNotification` that affects content heights, page-setup mutations, and zoom changes.
-
-Repagination moves line components, so anything holding line-derived geometry must refresh afterward. If `plans/overlay-components.md` has landed, that includes the line overlays: their bounds are fixed in staff spaces but not in pixels, and their host page can change. The plan hooks the moment line bounds are finalized (`StaffLinesLayout.layoutContainer` pre-pagination); under pagination that hook moves to the per-page equivalent and must additionally fire on repagination — `PaginationDidChangeNotification` (§10) is the natural signal.
-### 5. On-screen page surfaces
-The single-sheet structure is replaced by a page stack:
-
-- `ScorePanel` (gray, existing) hosts one `PageComponent` per page — white, view-scaled page size, `EmptyBorder` margins — stacked vertically with a named gap constant (`PAGE_GAP_SS` or a view-px constant) between pages.
-  
-- The existing content components (`TitleComponent`, `SubtitleComponent`, `LinePanel`s, `TextPanel`, `FootnotesComponent`, new `CopyrightComponent`) are **distributed** across `PageComponent`s per the `Paginator` result and reparented on repagination. `MainPanel`/`StaffPanel`'s roles as the single vertical stack are absorbed by the per-page containers (exact decomposition is an implementation decision; the component classes themselves are reused).
-  
-- `PageComponent` draws its own page number (§6).
-  
-- **Line overlays** — if `plans/overlay-components.md` has landed (it is planned to precede this issue), the hover preview element, paste-mode insertion marker, and glissando/fall previews are transparent `LineOverlayComponent` children rather than paint-time drawing. Their host moves from `ScoreView` to `PageComponent`: they must be children of the page containing their target line, so overlay ink can never spill onto the inter-page gap or an adjacent page. `LineOverlayComponent` holds its host as a `JComponent` and supports re-homing at runtime for exactly this reason, so the change is a registration swap, not a rewrite of the components. Two obligations follow: `PageComponent` must return `false` from `isOptimizedDrawingEnabled()` (it has overlapping children, which is what lets Swing compute their dirty regions); and because repagination reparents `LinePanel`s across pages, an overlay whose target line moves pages must be re-homed to the new page's `PageComponent`, not merely hidden. If that plan has **not** landed, the overlays are still drawn in `ScoreView.paintChildren` via `LineOverlayPainter` with hand-computed dirty rectangles inflated by `LineSpacing.PREVIEW_REPAINT_MARGIN_SS`, and that inflation will need auditing against page boundaries — a line near a page bottom inflates its dirty rect into the gap and the next page surface.
-  
-- **Horizontal placement**: content is placed at the left margin. When `mirroredMargins` is on, screen uses the centered equivalent margins (§3) — the mirrored shift is print-only, so the on-screen stack never zigzags.
-  
-- **Coordinate mapping**: `ScoreView`'s edit overlays, mouse handling, selection, and adjustment modes currently assume one canvas. A page-aware mapping layer (page origin offsets added to the existing `DocPx`/`ViewPx` conversions) is required. This is the highest-risk area of the change; every `ScoreView` coordinate conversion call site must be audited. Note that `plans/overlay-components.md`, if landed, removes several hand-rolled conversion sites from this audit: `LineOverlayPainter.paintOnLine`'s translate-and-scale and `LineComponent.repaintWithOverlayHeadroom`'s rectangle inflation are both deleted, and the overlays convert via `SwingUtilities.convertPoint(line, 0, 0, host)`, which is ancestor-agnostic and needs no page-origin arithmetic.
-  
-- **Zoom** continues to work through `ViewScale` exactly as today; page surfaces scale like the current sheet does. Scroll-anchoring in `applyZoomPercent` must account for page gaps.
-  
-### 6. Page numbers and copyright
+### 5. Page numbers and copyright
 **Page number**
 
-- Pages 2+ only; page 1 (and therefore any single-page document) never shows a number.
+- Pages 2+ only; page 1 — and therefore any single-page document — never shows a number.
   
 - Plain numeral (`"2"`), horizontally centered, drawn **inside the bottom margin**, vertically centered in it. The content area is not reduced.
   
-- Font: new `FontKey.PAGE_NUMBER` with `SystemPrefsKey.PAGE_NUMBER_FONT` / `PAGE_NUMBER_FONT_SIZE` defaults in `system-defaults.json`. Not surfaced in any dialog yet (same status as `FOOTNOTE` / `BANGLA`).
+- Font: new `FontKey.PAGE_NUMBER` with `SystemPrefsKey.PAGE_NUMBER_FONT` / `PAGE_NUMBER_FONT_SIZE` defaults in `system-defaults.json`.
   
-- Rendered on screen, in print, and (later) in exports.
+- Rendered on screen and in print.
   
 
 **Copyright line**
 
 - Fixed application constant (a `strings.properties` key, e.g. `song.copyright.notice`): `© Sri Chinmoy Songs. All rights reserved under CC BY-NC-ND 4.0`
   
-- Pinned at the bottom of the **last page's content area**, horizontally centered; footnotes sit above it with the band gap (§4). Shown on screen and in print — identical pagination everywhere.
+- New `CopyrightComponent` (a `ScoreComponent` sibling of `FootnotesComponent`), pinned at the bottom of the **last page's content area**, horizontally centered, with footnotes above it (§2).
   
-- Font: new `FontKey.COPYRIGHT`, small default (~8 pt), via `SystemPrefsKey.COPYRIGHT_FONT` / `COPYRIGHT_FONT_SIZE`. Not surfaced in UI.
+- Font: new `FontKey.COPYRIGHT`, small default (~8 pt), via `SystemPrefsKey.COPYRIGHT_FONT` / `COPYRIGHT_FONT_SIZE`.
   
-- New `CopyrightComponent` (a `ScoreComponent` sibling of `FootnotesComponent`).
+- Shown on screen and in print — pagination is identical in both.
   
-- The attribution block above the first staff is untouched (it carries composer/lyricist/dates/place only — no copyright).
+- The attribution block above the first staff is untouched; it carries composer/lyricist/dates/place only.
   
 
-**Font persistence**: both new fonts round-trip through `<miscellaneous-field>` entries following the existing `MISC_SUB_ATTRIBUTION_FONT` pattern (name + size fields each).
-### 7. Printing
-- New shared entry point, e.g. `ScoreView.paintPage(Graphics2D g2, int pageIndex)`: paints one page's full content — music, text blocks, footnotes, copyright, page number — at document scale (`ViewScale.IDENTITY`), with edit-time decorations (selection highlights, edit overlays, insertion cursors) suppressed via a render-mode flag. This method is designed as the future entry point for `PDFExporter` (PDFBox + `pdfbox-graphics2d`, follow-up issue) and `ImageExporter`.
+**Neither font is persisted per document.** Neither is surfaced in any dialog, so there is no way for a document to differ from the system default — round-tripping them through `<miscellaneous-field>` would serialize a constant and add round-trip surface guarding nothing. `system-defaults.json` alone. Persistence is added when the fonts become editable (tracked separately).
+### 6. Printing
+- New shared entry point, e.g. `ScoreView.paintPage(Graphics2D g2, int pageIndex)`: paints one page's full content — music, text blocks, footnotes, copyright, page number — at document scale (`ViewScale.IDENTITY`).
   
-  - The line overlays are edit-time decorations and must be suppressed here. If `plans/overlay-components.md` has landed they are `LineOverlayComponent` children of `PageComponent`, so suppression means painting the page's content children while skipping its overlay children — no render-mode flag needs to reach inside them. This is the first render path that traverses the component tree: `MainFrame.print`, `PDFExporter`, `SVGExporter`, and `ImageExporter` are all stubs today that never touch it, which is why the overlays currently need no print guard at all.
+  Edit-time decorations are suppressed by **painting the page's content children and skipping its overlay children**. Because the overlays are separate child components (see Prerequisite), no render-mode flag needs to reach inside them. Selection highlights and insertion cursors drawn by `drawEditElements` are suppressed by not invoking that path.
+  
+  This method is the designed entry point for `PDFExporter` and `ImageExporter` when those are implemented.
   
 - `MainFrame.print(Graphics, PageFormat, int pageIndex)`:
   
   - `pageIndex >= pageCount → NO_SUCH_PAGE`
     
-  - `PageFormat`/`Paper` derived from the document's `paperSize` and margins (replacing the `PRINT_EXTRA_MARGIN` fudge)
+  - `PageFormat`/`Paper` derived from `PageModel`'s page size and margins, replacing the `PRINT_EXTRA_MARGIN` fudge
     
   - scale/translate document px → the imageable area, then delegate to `paintPage`
     
-- **Mirrored margins apply here only.** With `mirroredMargins` and more than one page: for each page, the content block is placed at the inner or outer margin according to page parity; `versoFirst` flips which parity is the left-hand (verso) page. A single-page document prints centered (the §3 centered-equivalent margins), matching the screen.
+- `handlePrint()` (`MainFrame.java:934-949`) is unchanged; the macOS print dialog's built-in Save-as-PDF covers PDF output until `PDFExporter` is implemented.
   
-- `handlePrint()` flow (`PrinterJob` + OS dialog) is unchanged; the macOS print dialog's built-in Save-as-PDF covers PDF output until `PDFExporter` is implemented.
+### 7. Status bar page indicator
+- New `PageStatusBarPanel` (pattern: `ZoomStatusBarPanel`), added as a **center cell** in `StatusBar`'s `GridBagLayout`. The note preview stays at `LINE_START` (`gridx=0`) and the zoom cluster at `LINE_END`; the new panel is horizontally centered between them.
   
-### 8. MusicXML persistence
-**New format** (written by `MusicXmlHeaderWriter.writeDefaults`, read by `MusicXmlHeaderReader`):
-
-```xml
-<defaults>
-  <scaling>…</scaling>                          <!-- unchanged, fixed -->
-  <page-layout>
-    <page-height>…</page-height>                <!-- real paper height, tenths -->
-    <page-width>…</page-width>                  <!-- real paper width, tenths -->
-    <page-margins type="both">                  <!-- non-mirrored -->
-      <left-margin>…</left-margin> <right-margin>…</right-margin>
-      <top-margin>…</top-margin> <bottom-margin>…</bottom-margin>
-    </page-margins>
-  </page-layout>
-  …
-</defaults>
-```
-
-- All values in tenths via `MusicXmlUnits` (inches → tenths through the fixed scaling). `paperSize` is recovered on read by matching width/height against the `PaperSize` table (nearest match).
-  
-- `versoFirst` has no native MusicXML slot → `<miscellaneous-field name="verso-first">` (written only when true).
-  
-- Line width is **no longer stored** — it is derived on load from page width minus margins.
-  
-- The fixed copyright constant is written into `<identification><rights>` (currently write-forward anyway); the reader continues to ignore it.
-  
-- `<credit page>` attributes remain `1` — credits are display-only and re-derived from head data on read.
-  
-
-**Legacy load** (both `.musicxml` without `<page-margins>` and `.mssw`):
-
-- Detected by the **absence of** `<page-margins>` — no version marker.
-  
-- Old semantics apply: `<page-width>` is the line width. Recover:
-  
-  - `paperSize` ← `PrefsKey.PAGE_SIZE`
-    
-  - left = right = `(paperWidthInches − lineWidthInches) / 2`
-    
-  - top = bottom = 0.5", mirrored/versoFirst off
-    
-- Rendering is pixel-identical to today (the same centering math). The file upgrades to the new format on next save.
-  
-- The `SongLoadResult.LineWidthTooLarge` guard is kept, now checking the legacy line width against `paperWidthInches − 2 × MIN_MARGIN_INCHES`.
-  
-### 9. Page Setup dialog
-New `PageSetupDialog extends StandardDialog`, category `EXCLUSIVE` (precedent: `SongSettingsDialog`), designed to read like a typical macOS Page Setup dialog — **not** modeled on the legacy GUI-Designer `PaperSizeStep`:
-
-- Paper size combo (`PaperSize` list, dimensions shown in the active unit)
-  
-- Four margin fields with unit label (inch/cm per `PrefsKey.METRIC`, decimal filtering via `InputUtils.addDecimalFilter`)
-  
-- "Mirrored margins" checkbox — relabels Left/Right ↔ Inner/Outer
-  
-- "First page is left-hand (verso)" checkbox — enabled only when mirrored
-  
-- Read-only derived line width display, updating live
-  
-- Validation per §2 in `isValidData()`, error alerts via `OptionDialogs` (`alert.*` keys); `setData()` commits (§11)
-  
-- String keys under `dialog.page.setup.*` per the strings taxonomy
-  
-
-**Menu/action**: `Actions.PAGE_SETUP_ACTION` — a `DialogOpenAction<>` opening `PageSetupDialog`, accelerator ⇧⌘P, flags `DISABLE_WHEN_PLAYING` + `OPENS_DIALOG`, inserted in `MenuController.initFileMenu()` directly above `Actions.PRINT_ACTION` (macOS convention).
-### 10. Status bar page indicator
-- New `PageStatusBarPanel` (pattern: `ZoomStatusBarPanel`), added as a **center cell** in `StatusBar`'s `GridBagLayout`, horizontally centered in the status bar (note preview stays at `LINE_START`, zoom cluster at `LINE_END`).
-  
-- Shows "Page N of M" where N is the page under the viewport center; updates on scroll (viewport listener), repagination, and zoom.
+- Shows "Page N of M" where N is the page under the viewport center. Updates on scroll (viewport listener), on repagination, and on zoom — zoom moves the viewport centre over a different page, which is a scroll concern, not a pagination one.
   
 - Clickable: opens a `JPopupMenu` listing pages 1…M; selecting one scrolls that page into view (pattern: the zoom `percentButton` popup).
   
-- New `PaginationDidChangeNotification` (`songscribe.message.notification`, carries the page count) posted after repagination; the panel subscribes via `MessageCenter.subscribe(this)` and stays strongly reachable from `StatusBar`.
+- New `PaginationDidChangeNotification` (`songscribe.message.notification`, carries the page count) posted after a repagination **that changed something** (§8). The panel subscribes via `MessageCenter.subscribe(this)` and stays strongly reachable from `StatusBar`.
   
-- Hidden or "Page 1 of 1" for single-page documents (implementation choice; showing it keeps layout stable).
+- Shows "Page 1 of 1" for single-page documents, which keeps status bar layout stable.
   
-### 11. Undo / mutations
-New `LayoutField` entries (all validated `Object` old/new via the existing `LayoutChange` mutation): `PAPER_SIZE`, `TOP_MARGIN_INCHES`, `BOTTOM_MARGIN_INCHES`, `LEFT_MARGIN_INCHES`, `RIGHT_MARGIN_INCHES`, `MIRRORED_MARGINS`, `VERSO_FIRST`. (`LINE_WIDTH_SS` is removed.)
+### 8. Repagination triggers
+**Repaginate on every** `SongDidChangeNotification`**, then diff and no-op if nothing moved.**
 
-`PageSetupDialog.setData()` wraps all changed fields in **one**`Song.withModification(...)` bracket — one `SongDidChangeNotification`, one undo step reverting the whole Page Setup commit. Undo/redo of these mutations triggers repagination like any other layout change.
-### 12. Cleanup
-- `SongSettingsDialog` Music tab: the Line Width section is removed — `lineWidthField`, `unitLabel`, `LineWidthVerifier`, `validateLineWidth`/`validateLineWidthText`, `revertLineWidthField`, `showLineWidthError`, and the now-dead string keys (`dialog.song.settings.section.line.width`, `error.line.width.*`, `alert.title.line.width.error`; `label.width` only if unreferenced elsewhere).
+Frequency is already bounded: `Song.endModification()` posts exactly one notification per outermost `withModification` bracket — one per user operation. `Paginator` itself is O(blocks) arithmetic over tens of blocks. The cost is reparenting, so that is what the guard protects:
+
+```
+  SongDidChangeNotification
+        │
+        ▼
+  measure (§3) ──► Paginator (§2) ──► diff vs previous assignment
+                                            │
+                        ┌───────────────────┴───────────────────┐
+                        ▼                                       ▼
+                  UNCHANGED                                  CHANGED
+                  do nothing:                          batch reparent (§4),
+                  no reparent,                         single revalidate,
+                  no notification                      re-home overlays,
+                                                       post PaginationDidChange
+```
+
+Do **not** allow-list "mutation types that affect content heights". Such a list rots silently the day a new mutation type is added, and the symptom is stale pagination with no error.
+
+**Zoom does not trigger repagination.** Page content height and block heights are both document-space quantities — `PageModel.getPageWidthPx()/getPageHeightPx()` are documented as independent of view zoom — so zoom scales content and page uniformly and the page assignment is mathematically invariant under it. Repaginating on zoom would additionally fire on every tick of `ZoomStatusBarPanel`'s slider, which drives `ZoomController.setZoomPercent` continuously during drag. Zoom re-lays-out and re-sizes the existing page stack; it never repaginates.
+### 9. What is not changed
+Explicitly out of scope for this issue, to keep the diff bounded:
+
+- `Song.lineWidthSs` — still stored, still mutation-tracked via `LayoutField.LINE_WIDTH_SS`, still written by `SongSettingsDialog`'s Line Width section through `ScoreView.updatePageLayout(int)`.
   
-- `PaperSizeStep` is removed from `ExportPDFDialog` (and deleted along with its strings if nothing else references it). `PageLayoutData` drops the dead `mirrored` and `songsPerPage` fields; when PDF export is implemented it will read the document's page setup instead.
+- All MusicXML read/write paths.
   
-- Stub exporters and their menu items are left untouched.
+- `LayoutField`, `LayoutChange`, `MutationReplayer`, `LayoutDidChangeNotification`.
+  
+- `PageModel.Size`, `MIN_LINE_WIDTH_INCHES`, `MAX_LINE_WIDTH_INCHES`, `getHorizontalMarginPx`.
+  
+- `PaperSizeStep`, `ExportPDFDialog`, `PageLayoutData`.
+  
+- Stub exporters and their menu items.
   
 
 * * *
 ## What Is Removed
-- `Song.setLineWidthSs` / stored `lineWidthSs` field (getter stays, derived)
-  
-- `LayoutField.LINE_WIDTH_SS`
-  
-- `PageModel.Size` (replaced by `PaperSize`), `MAX_LINE_WIDTH_INCHES`, pref-reading singleton behavior, margin-by-centering derivation
-  
-- `SongSettingsDialog` Line Width section + its strings
-  
-- `PaperSizeStep` (from the export flow; deleted if unreferenced)
-  
-- `PageLayoutData.mirrored`, `PageLayoutData.songsPerPage`
-  
 - `MainFrame.PRINT_EXTRA_MARGIN` and the print stub body
   
-- Legacy `<page-width> = line width` **write** semantics (read path kept for legacy files)
+- `ScoreView.getSheetHeightPx()` and `getSheetHeightPx(ExportOptions)` (both replaced by the page stack's size)
+  
+- `ScoreView.layoutPage(int)`'s single-sheet sizing and `EmptyBorder` margin logic
+  
+- `MainPanel`/`StaffPanel`'s role as the single vertical stack (the component classes and the measurement pass survive; see §3)
   
 
 * * *
 ## New / Modified Files
 | File | Change |
 |------|--------|
-| `dom/Song.java` | **Modified** — page-setup fields, derived line width, mutation plumbing |
-| `layout/PaperSize.java` | **New** — curated paper-size enum |
-| `layout/Paginator.java` | **New** — page-break assignment engine |
-| `layout/PageModel.java` | **Modified** — sourced from Song page setup; centered-equivalent margins |
-| `ui/component/score/PageComponent.java` | **New** — one page surface; draws page number; hosts line overlays and returns `false` from `isOptimizedDrawingEnabled()` (§5) |
-| `ui/component/score/LineOverlayComponent.java` and subclasses | **Modified** (if `plans/overlay-components.md` landed) — re-home from `ScoreView` to the owning `PageComponent`; re-home on repagination |
+| `layout/Paginator.java` | **New** — pure page-break engine; `Block` record + `Kind` enum; two-pass algorithm |
+| `layout/PageModel.java` | **Modified** — add `getContentHeightPx()` |
+| `ui/component/score/PageComponent.java` | **New** — one page surface; O(1) size; draws page number; hosts overlays; `isOptimizedDrawingEnabled()` returns `false` |
 | `ui/component/score/CopyrightComponent.java` | **New** — pinned copyright line |
-| `ui/component/ScoreView.java` | **Modified** — page stack, coordinate mapping, `paintPage`, repagination |
-| `ui/component/score/MainPanel.java` / `StaffPanel.java` | **Modified/absorbed** — single-stack role replaced by per-page containers |
-| `ui/component/MainFrame.java` | **Modified** — real multi-page `print(...)` |
-| `ui/dialog/PageSetupDialog.java` | **New** — macOS-style page setup (StandardDialog, EXCLUSIVE) |
-| `ui/dialog/SongSettingsDialog.java` | **Modified** — Line Width section removed |
-| `ui/dialog/ExportPDFDialog.java` | **Modified** — PaperSizeStep removed |
-| `ui/action/Actions.java`, `ui/menu/MenuController.java` | **Modified** — `PAGE_SETUP_ACTION` in File menu |
+| `ui/component/ScoreView.java` | **Modified** — page stack, `paintPage`, repagination, batched reparenting; update the hierarchy comment at lines 99-111 |
+| `ui/component/score/MainPanel.java` / `StaffPanel.java` | **Modified** — single-stack role absorbed by per-page containers; measurement pass unchanged |
+| `ui/component/score/LineOverlayComponent.java` and subclasses | **Modified** — re-home from `ScoreView` to the owning `PageComponent`; re-home on repagination |
+| `ui/component/MainFrame.java` | **Modified** — real multi-page `print(...)`; `PRINT_EXTRA_MARGIN` removed |
 | `ui/component/StatusBar.java` | **Modified** — centered middle cell |
 | `ui/component/PageStatusBarPanel.java` | **New** — indicator + jump popup |
 | `message/notification/PaginationDidChangeNotification.java` | **New** |
-| `message/mutation/LayoutField.java` | **Modified** — new fields, `LINE_WIDTH_SS` removed |
-| `font/FontKey.java`, `font/DocumentFonts.java`, `prefs/SystemPrefsKey.java`, `conf/system-defaults.json` | **Modified** — `PAGE_NUMBER`, `COPYRIGHT` fonts |
-| `io/musicxml/MusicXmlHeaderWriter.java` / `MusicXmlHeaderReader.java` / `MusicXmlTags.java` | **Modified** — real page-layout write/read, legacy fallback, font misc-fields, verso-first |
-| `io/SongLoader.java` (`.mssw` path) | **Modified** — center-derive margins on legacy import |
-| `export/PageLayoutData.java` | **Modified** — dead fields removed |
-| `resources/songscribe/strings.properties` | **Modified** — dialog/copyright/indicator keys added; dead keys removed |
+| `font/FontKey.java`, `font/DocumentFonts.java`, `prefs/SystemPrefsKey.java`, `conf/system-defaults.json` | **Modified** — `PAGE_NUMBER`, `COPYRIGHT` fonts (system defaults only, not persisted) |
+| `resources/songscribe/strings.properties` | **Modified** — copyright notice + page indicator keys |
 
 * * *
 ## Testing
-Unit tests only (no new e2e in this issue; on-screen behavior and printing are verified manually):
+Unit tests only. Everything below runs headless — `JComponent` subclasses construct, size, and lay out without a display; only `JFrame`/`Window`/visible dialogs require one. `@RequiresDisplay` is reserved for the four items in the manual list.
+### `Paginator` — pure math
+- greedy fill, blocks placed in order
+  
+- a block that overflows moves **whole** to the next page
+  
+- `PINNED_LAST_PAGE` blocks bottom-aligned on the final page, footnotes above copyright
+  
+- **two-pass fixpoint**: content that exactly fills page N without the pinned blocks — assert the result is the pushed-to-N+1 layout, and that a third pass would change nothing
+  
+- **exact-fit boundary**: block height exactly equals remaining capacity (the `<=` vs `<` case)
+  
+- oversized block gets its own page and overflows
+  
+- `PAGE_ONE_ONLY` block on page 1 only
+  
+- empty song and single-block song each yield exactly 1 page — no page 2, no page number
+  
+- `PageModel.getContentHeightPx()` = page height − top − bottom, in `DocPx`
+  
+### Print — `Printable` against a `BufferedImage`
+- `pageIndex >= pageCount → NO_SUCH_PAGE`, and `pageIndex < pageCount → PAGE_EXISTS`
+  
+- `PageFormat`/`Paper` imageable area derived from `PageModel`
+  
+- page N paints page N's blocks (recording `Graphics2D`, or a coarse ink check)
+  
+- `paintPage` skips overlay children
+  
 
-- **Paginator** — break assignment across page counts; atomic `TextPanel` / footnotes push; footnote pinning above the copyright band; copyright band reservation on the last page; oversized-block own-page overflow; title block on page 1 only
+These are the highest-consequence branches in the change: a wrong page-count bound produces a runaway print job or a silently truncated score, and a broken overlay skip prints edit decorations onto paper. Neither is caught by eyeballing a test print.
+### Component tree — headless `JComponent`
+- repagination **reparents the same instances** — capture `LinePanel` identity before and after and assert it is unchanged (guards §4's rebuild/repaginate split)
   
-- **Derivation math** — line width from paper size + margins; centered -equivalent margins under mirrored; print parity placement with and without `versoFirst`; single-page centered rule
+- the pinned-block height `Paginator` reserved equals `CopyrightComponent.getPreferredSize().height` (guards §2's single measurement path against silent drift)
   
-- **Validation** — margin floor, minimum derived line width, per-unit (inch/cm) round-trips of the dialog values
+### Messaging
+- `PaginationDidChangeNotification` fires **exactly once** per repagination that changed the assignment, and **zero** times when the assignment is unchanged
   
-- **MusicXML round-trip** — new `<page-layout>`/`<page-margins>` (both and odd/even forms), verso-first misc-field, page-number/copyright font misc-fields; nearest-`PaperSize` recovery
+- it does **not** fire on zoom (guards §8's invariant)
   
-- **Legacy load** — old `.musicxml` (no `<page-margins>`) and `.mssw`: center-derived margins reproduce the stored line width exactly; `LineWidthTooLarge` guard against the new bound
+### Manual / `@RequiresDisplay`
+- scroll anchoring across page gaps, including when the page count changes
   
-- **Mutations** — Page Setup commit produces one bracket/notification; undo restores all fields and line width; `FieldTypeValidator` coverage for the new `LayoutField` entries
+- indicator tracks the page under the viewport center
+  
+- jump popup scrolls the selected page into view
+  
+- visual fidelity of printed output
   
 
 * * *
 ## Non-Goals (explicit follow-ups)
+- Page Setup: paper size, authoritative margins, derived line width, mirrored/verso margins, the Page Setup dialog, `<page-margins>` persistence — `specs/184b-page-setup.md`
+  
+- Per-document persistence of the page-number and copyright fonts, and surfacing them for editing
+  
 - PDF, image, and SVG export (PDFBox + `pdfbox-graphics2d`; `paintPage` is their designed entry point)
   
 - Fit-page / fit-width zoom modes
@@ -354,18 +417,4 @@ Unit tests only (no new e2e in this issue; on-screen behavior and printing are v
   
 - Landscape orientation
   
-- Third-party MusicXML import of page layout
-  
 - Running headers / top-of-page titles
-  
-- Preferences UI for default margins or default mirrored state
-  
-- Surfacing the page-number and copyright fonts for editing
-
----
-comments:
-  c2:
-    body: Done — the indicator is now specified as a horizontally centered middle cell in StatusBar's GridBagLayout, with the note preview and zoom cluster unchanged at the edges.
-    by: AI
-    at: "2026-07-16T16:45:00.000Z"
-    re: c1
