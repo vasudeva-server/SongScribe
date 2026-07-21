@@ -22,12 +22,14 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import java.awt.Dimension;
+import java.awt.BorderLayout;
 import java.awt.Font;
 import java.awt.Rectangle;
+
+import javax.swing.JComponent;
+import javax.swing.RepaintManager;
+import javax.swing.SwingUtilities;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -39,38 +41,49 @@ import songscribe.engraving.Staff;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LineSpacing;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * Unit tests for {@link LineComponent#repaintWithPreviewHeadroom()}.
  * <p>
- * The preview element is painted by {@link StaffPanel} as an overlay, so its ink can land
+ * The preview element is painted by {@link ScoreView} as an overlay, so its ink can land
  * outside the line's own bounds — a plain {@code repaint()} clips the dirty region to those
  * bounds and would leave the ink behind. These tests pin the enlarged dirty rectangle that
- * replaces it.
+ * replaces it, and that it is registered against the {@code ScoreView} rather than a nearer
+ * ancestor, whose bounds would clip the region back off — plus the {@code ScoreView} opt-out
+ * from optimized drawing that keeps the overlay pass running at all.
  */
 class LineComponentPreviewHeadroomTest extends UnitTest {
 
-    private static final int LINE_WIDTH_PX = 200;
-    private static final int PANEL_WIDTH_PX = 400;
-    private static final int PANEL_HEIGHT_PX = 500;
+    private static final int VIEW_WIDTH_PX = 400;
+    private static final int VIEW_HEIGHT_PX = 500;
+
+    private static final int DETACHED_LINE_WIDTH_PX = 200;
+    private static final int DETACHED_LINE_HEIGHT_PX = 60;
 
     private static final Font TEST_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
 
-    private static final LyricRenderMetrics LYRIC_RENDER_METRICS =
-        new LyricRenderMetrics(TEST_FONT, TEST_FONT, 0.0, 0.0, 0.0);
+    /**
+     * Records the dirty regions handed to one target component. {@link ScoreView} is final, so
+     * the region cannot be captured by overriding {@code repaint} on a subclass.
+     */
+    private static final class RepaintRecorder extends RepaintManager {
 
-    /** A {@link StaffPanel} that records the last dirty rectangle it was handed. */
-    private static final class RepaintCapturingStaffPanel extends StaffPanel {
-
+        private final JComponent target;
         private @Nullable Rectangle lastDirtyRect;
 
+        private RepaintRecorder(JComponent target) {
+            this.target = target;
+        }
+
         @Override
-        public void repaint(long tm, int x, int y, int width, int height) {
-            lastDirtyRect = new Rectangle(x, y, width, height);
-            super.repaint(tm, x, y, width, height);
+        public void addDirtyRegion(JComponent component, int x, int y, int width, int height) {
+            if (component == target) {
+                // Recorded before super, which clips the region to the component's bounds.
+                lastDirtyRect = new Rectangle(x, y, width, height);
+            }
+
+            super.addDirtyRegion(component, x, y, width, height);
         }
     }
 
@@ -78,55 +91,78 @@ class LineComponentPreviewHeadroomTest extends UnitTest {
         return (int) Math.ceil(valueSs * ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE);
     }
 
-    /** A single-line panel, laid out, whose line carries a known layout result. */
-    private static RepaintCapturingStaffPanel laidOutPanel() {
-        var panel = new RepaintCapturingStaffPanel();
-        panel.setSong(new Song());
+    /** A laid-out score view paired with the line under test. */
+    private record Fixture(ScoreView scoreView, LineComponent lineComponent) {}
 
-        var scoreView = mock(ScoreView.class);
-        when(scoreView.getLyricRenderMetrics()).thenReturn(LYRIC_RENDER_METRICS);
-        when(scoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
-        when(scoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+    /** A laid-out score view whose single line carries a known layout result. */
+    private static Fixture laidOutScoreView() {
+        // The hierarchy is assembled directly rather than through ScoreView.init(), which
+        // installs interactive-only machinery (a macOS pinch-zoom gesture in particular) that
+        // is unavailable to a unit test. This mirrors what initMainPanel wires up.
+        var scoreView = new ScoreView(null);
+        scoreView.setLayout(new BorderLayout());
+        scoreView.setSize(VIEW_WIDTH_PX, VIEW_HEIGHT_PX);
+        scoreView.setLyricRenderMetrics(LyricRenderMetrics.forFont(TEST_FONT));
 
-        var linePanel = panel.getLinePanels().getFirst();
-        linePanel.setPreferredSize(new Dimension(LINE_WIDTH_PX, 0));
+        var mainPanel = new MainPanel();
+        mainPanel.setScoreView(scoreView);
+        mainPanel.setSong(new Song());
+        scoreView.add(mainPanel, BorderLayout.CENTER);
 
+        var staffPanel = mainPanel.getStaffPanel();
+
+        // Every line is measured during layout, so all of them need their ScoreView.
+        for (var panel : staffPanel.getLinePanels()) {
+            panel.getLineComponent().setScoreView(scoreView);
+        }
+
+        var linePanel = staffPanel.getLinePanels().getFirst();
         var lineComponent = linePanel.getLineComponent();
-        lineComponent.setScoreView(scoreView);
         lineComponent.layoutResult = LayoutResult.builder()
             .setContentAboveStaffSs(Staff.MIN_ABOVE_STAFF_SS)
             .setContentBelowStaffSs(Staff.MIN_BELOW_STAFF_SS)
             .build();
         lineComponent.layoutDirty = false;
 
-        panel.setSize(PANEL_WIDTH_PX, PANEL_HEIGHT_PX);
-        panel.doLayout();
+        // Lay the whole page out so the line's origin in view coordinates is real.
+        scoreView.doLayout();
+        mainPanel.doLayout();
+        staffPanel.doLayout();
         linePanel.doLayout();
 
-        // The panel's own repaint bookkeeping during layout is not what these tests measure.
-        panel.lastDirtyRect = null;
-        return panel;
+        return new Fixture(scoreView, lineComponent);
     }
 
     /**
      * The dirty rectangle covers the line's own bounds grown by the full preview headroom on
      * both sides — the staff-position range the preview may occupy, plus the ink margin for
-     * glyph parts (an accidental in particular) that reach past the notehead centre.
+     * glyph parts (an accidental in particular) that reach past the notehead centre — and is
+     * registered against the score view, the component that paints the overlay.
      */
     @Test
     void testDirtyRectGrowsByThePreviewHeadroomOnBothSides() {
-        var panel = laidOutPanel();
-        var linePanel = panel.getLinePanels().getFirst();
-        var lineComponent = linePanel.getLineComponent();
+        var fixture = laidOutScoreView();
+        var scoreView = fixture.scoreView();
+        var lineComponent = fixture.lineComponent();
 
-        lineComponent.repaintWithPreviewHeadroom();
+        var recorder = new RepaintRecorder(scoreView);
+        var previousManager = RepaintManager.currentManager(scoreView);
+        RepaintManager.setCurrentManager(recorder);
 
-        var dirtyRect = panel.lastDirtyRect;
-
-        if (dirtyRect == null) {
-            throw new AssertionError("repaintWithPreviewHeadroom did not repaint the staff panel");
+        try {
+            lineComponent.repaintWithPreviewHeadroom();
+        } finally {
+            RepaintManager.setCurrentManager(previousManager);
         }
 
+        var dirtyRect = recorder.lastDirtyRect;
+
+        if (dirtyRect == null) {
+            throw new AssertionError("repaintWithPreviewHeadroom did not repaint the score view");
+        }
+
+        var lineTopInView = SwingUtilities
+            .convertPoint(lineComponent, 0, 0, scoreView).y;
         var headroomAbovePx =
             ceilViewPx(Staff.MIN_ABOVE_STAFF_SS + LineSpacing.PREVIEW_REPAINT_MARGIN_SS);
         var headroomBelowPx =
@@ -134,7 +170,7 @@ class LineComponentPreviewHeadroomTest extends UnitTest {
 
         assertThat(dirtyRect.y)
             .as("dirty rect starts one above-headroom above the line's top edge")
-            .isEqualTo(linePanel.getY() - headroomAbovePx);
+            .isEqualTo(lineTopInView - headroomAbovePx);
 
         assertThat(dirtyRect.height)
             .as("and is tall enough to cover the line plus both headrooms")
@@ -146,20 +182,47 @@ class LineComponentPreviewHeadroomTest extends UnitTest {
     }
 
     /**
-     * A line with no {@link StaffPanel} ancestor has no overlay host, so nothing can have been
+     * A line with no {@link ScoreView} ancestor has no overlay host, so nothing can have been
      * drawn outside its bounds. It falls back to a plain repaint rather than walking off the
      * end of the hierarchy.
      */
     @Test
     void testDetachedLineComponentFallsBackToPlainRepaint() {
         var lineComponent = new LineComponent();
+        lineComponent.setSize(DETACHED_LINE_WIDTH_PX, DETACHED_LINE_HEIGHT_PX);
 
         assertThat(lineComponent.getParent())
             .as("fixture precondition: the component must be detached")
             .isNull();
 
-        assertThatCode(lineComponent::repaintWithPreviewHeadroom)
-            .as("a detached line must not throw when asked to repaint its headroom")
-            .doesNotThrowAnyException();
+        var recorder = new RepaintRecorder(lineComponent);
+        var previousManager = RepaintManager.currentManager(lineComponent);
+        RepaintManager.setCurrentManager(recorder);
+
+        try {
+            assertThatCode(lineComponent::repaintWithPreviewHeadroom)
+                .as("a detached line must not throw when asked to repaint its headroom")
+                .doesNotThrowAnyException();
+        } finally {
+            RepaintManager.setCurrentManager(previousManager);
+        }
+
+        // Falling back must still repaint — a branch that silently did nothing would leave
+        // the line stale, and would pass a no-throw assertion on its own.
+        assertThat(recorder.lastDirtyRect)
+            .as("the fallback repaints the line's own bounds, ungrown")
+            .isEqualTo(new Rectangle(0, 0, DETACHED_LINE_WIDTH_PX, DETACHED_LINE_HEIGHT_PX));
+    }
+
+    /**
+     * Without this, Swing may resolve a repaint to a descendant and paint it directly, never
+     * running {@code ScoreView.paintChildren} — which is what draws the preview on top of the
+     * children — so the overlay would be erased by any unrelated repaint beneath it.
+     */
+    @Test
+    void testScoreViewIsNotOptimizedForDrawingSoTheOverlayPassAlwaysRuns() {
+        assertThat(new ScoreView(null).isOptimizedDrawingEnabled())
+            .as("the score view must remain the paint root for its subtree")
+            .isFalse();
     }
 }

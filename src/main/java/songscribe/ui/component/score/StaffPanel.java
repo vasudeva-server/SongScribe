@@ -28,15 +28,11 @@ import songscribe.error.RuntimeError;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
-import songscribe.dom.Ss;
-import songscribe.engraving.Staff;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.util.GraphicUtils;
 
 /**
  * Panel containing all staff lines of a song.
@@ -89,49 +85,6 @@ public class StaffPanel extends JPanel {
     public boolean isOptimizedDrawingEnabled() {
         return false;
     }
-
-    /**
-     * Paints the children, then the hover preview element on top of them.
-     * <p>
-     * The preview element is painted here rather than by the line that owns it because it may
-     * sit up to {@link Staff#MIN_ABOVE_STAFF_SS} above and {@link Staff#MIN_BELOW_STAFF_SS}
-     * below that line's content-hugging bounds, and Swing clips a child to its own bounds.
-     * Painting from the parent is what keeps the full legal staff-position range visible
-     * without inflating any line's height, which would reopen the excessive inter-line
-     * spacing of issue #591.
-     */
-    @Override
-    protected void paintChildren(Graphics g) {
-        super.paintChildren(g);
-
-        var previewLine = PreviewElementManager.getCurrentInsertionLine();
-
-        // A line component from a previous rebuildLayout() is stale — it is no longer in
-        // this panel's hierarchy, so its origin here is meaningless.
-        if (previewLine == null || !SwingUtilities.isDescendingFrom(previewLine, this)) {
-            return;
-        }
-
-        var g2 = (Graphics2D) g.create();
-
-        try {
-            // The overlay bypasses ScoreComponent.paintComponent, which is what normally
-            // applies these for a line's own paint pass.
-            GraphicUtils.setRenderingHints(g2);
-
-            var origin = SwingUtilities.convertPoint(previewLine, 0, 0, this);
-            g2.translate(origin.x, origin.y);
-
-            // The same transform LineComponent.render applies, so the renderer draws in Ss.
-            var scale = ScaleContext.getPixelsPerStaffSpace() * viewScale().factor();
-            g2.scale(scale, scale);
-
-            previewLine.renderPreviewOverlay(g2);
-        } finally {
-            g2.dispose();
-        }
-    }
-
 
     /**
      * Sets the song and rebuilds the layout.

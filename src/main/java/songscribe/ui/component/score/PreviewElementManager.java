@@ -61,6 +61,8 @@ import songscribe.engraving.Staff;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.ui.component.ScoreView;
+import songscribe.util.GraphicUtils;
 
 /**
  * Manages the preview element subsystem for {@link LineComponent}.
@@ -219,6 +221,47 @@ public final class PreviewElementManager {
     @Nullable
     static LineComponent getCurrentInsertionLine() {
         return currentPreviewLine;
+    }
+
+    /**
+     * Paints the hover preview element into {@code host}'s coordinate space, on top of
+     * whatever {@code host} has already painted.
+     * <p>
+     * The preview is painted by an ancestor rather than by the line that owns it because its
+     * ink extent is not derivable from that line's layout: a preview may carry accidentals,
+     * articulations and other decorations, so no band a line could reserve is guaranteed to
+     * contain it. Swing clips a component to its own bounds, so the host is the full page —
+     * the one level in the hierarchy whose bounds are never the binding constraint.
+     *
+     * @param g the graphics context to paint into, in {@code host} coordinates
+     * @param host the ancestor doing the painting
+     */
+    public static void paintOverlay(Graphics2D g, ScoreView host) {
+        // A line component from a previous rebuildLayout() is stale — it is no longer in
+        // the host's hierarchy, so its origin there is meaningless.
+        if (currentPreviewLine == null || !SwingUtilities.isDescendingFrom(currentPreviewLine, host)) {
+            return;
+        }
+
+        var g2 = (Graphics2D) g.create();
+
+        try {
+            // The overlay bypasses ScoreComponent.paintComponent, which is what normally
+            // applies these for a line's own paint pass.
+            GraphicUtils.setRenderingHints(g2);
+
+            var origin = SwingUtilities.convertPoint(currentPreviewLine, 0, 0, host);
+            g2.translate(origin.x, origin.y);
+
+            // The same transform LineComponent.render applies, so the renderer draws in Ss.
+            var scale =
+                ScaleContext.getPixelsPerStaffSpace() * currentPreviewLine.getViewScale().factor();
+            g2.scale(scale, scale);
+
+            currentPreviewLine.renderPreviewOverlay(g2);
+        } finally {
+            g2.dispose();
+        }
     }
 
     /**

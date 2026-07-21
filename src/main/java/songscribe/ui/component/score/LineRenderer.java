@@ -186,14 +186,14 @@ class LineRenderer {
      * Renders the preview element as an overlay, outside this line's own paint pass.
      * <p>
      * The preview element may sit well above or below the line's content-hugging bounds, so
-     * it is painted by {@link StaffPanel#paintChildren} after all children, in panel
+     * it is painted by {@code ScoreView.paintChildren} after all children, in page
      * coordinates — Swing would otherwise clip it at the line's edge.
      *
      * @param g2 Graphics context, already scaled to staff spaces and translated to this
      *           line's origin
      */
     void renderPreviewOverlay(Graphics2D g2) {
-        // The overlay runs on every StaffPanel paint, including while a line is in the
+        // The overlay runs on every ScoreView paint, including while a line is in the
         // issue-#449 lineDoesNotFit state, so a missing layout is expected here rather
         // than fatal as it is in render().
         if (lc.getLayoutResult() == null) {

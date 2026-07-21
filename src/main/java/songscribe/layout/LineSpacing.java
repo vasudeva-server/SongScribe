@@ -57,7 +57,8 @@ public final class LineSpacing {
      * This floors a line's <em>bounds</em> only. It is deliberately kept out of the inter-line
      * spacing computation: spacing follows measured content, so a line whose ink stops at the
      * staff top still packs tightly against its neighbour, while its bounds stay large enough
-     * that Swing does not clip the staff, its ledger lines, or the hover preview.
+     * that Swing does not clip the staff or its ledger lines. The hover preview is not a
+     * consideration here — it is painted at page level, not by the line.
      */
     public static final double MIN_ABOVE_MIDLINE_SS = Staff.STAFF_HALF_SS + Staff.MIN_ABOVE_STAFF_SS;
 

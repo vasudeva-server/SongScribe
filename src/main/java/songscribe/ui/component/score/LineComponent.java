@@ -896,7 +896,7 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Renders this line's preview element into the enclosing {@link StaffPanel}'s overlay pass.
+     * Renders this line's preview element into the enclosing {@link ScoreView}'s overlay pass.
      *
      * @param g2 Graphics context, already scaled to staff spaces and translated to this
      *           line's origin
@@ -909,29 +909,22 @@ public class LineComponent extends ScoreComponent
      * Repaints this line plus the bands above and below it in which its preview element may
      * have drawn.
      * <p>
-     * The preview element is painted by the enclosing {@link StaffPanel}, not by this
+     * The preview element is painted by the enclosing {@link ScoreView}, not by this
      * component, so {@code repaint()} — which clips the dirty region to this component's own
      * content-hugging bounds — cannot clear preview ink drawn outside them.
      */
     void repaintWithPreviewHeadroom() {
-        StaffPanel staffPanel = null;
+        var scoreView = (ScoreView) SwingUtilities.getAncestorOfClass(ScoreView.class, this);
 
-        for (var ancestor = getParent(); ancestor != null; ancestor = ancestor.getParent()) {
-            if (ancestor instanceof StaffPanel panel) {
-                staffPanel = panel;
-                break;
-            }
-        }
-
-        // Detached from any StaffPanel (tests): there is no overlay host, so nothing can
+        // Detached from any ScoreView (tests): there is no overlay host, so nothing can
         // have drawn outside this component's bounds.
-        if (staffPanel == null) {
+        if (scoreView == null) {
             repaint();
             return;
         }
 
         var bounds = SwingUtilities.convertRectangle(
-            this, new Rectangle(0, 0, getWidth(), getHeight()), staffPanel);
+            this, new Rectangle(0, 0, getWidth(), getHeight()), scoreView);
 
         // Sizes, so round up — a dirty rect that is a pixel short leaves stale ink.
         var viewScale = getViewScale();
@@ -942,7 +935,7 @@ public class LineComponent extends ScoreComponent
             .toViewPx(new Ss(Staff.MIN_BELOW_STAFF_SS + LineSpacing.PREVIEW_REPAINT_MARGIN_SS))
             .ceilPx();
 
-        staffPanel.repaint(
+        scoreView.repaint(
             bounds.x,
             bounds.y - headroomAbovePx,
             bounds.width,
