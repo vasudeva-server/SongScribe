@@ -84,26 +84,26 @@ class LayoutResultTest extends UnitTest {
     @Test
     void testGetLyricAnchorBoxAnchored() {
         var element = ElementType.CROTCHET.newInstance();
-        var box = new LyricBoxLayout(3.0, 2.0, 1, "do");
-        var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
-        var metrics = testSongMetrics();
-        var anchor = layoutResult.getLyricAnchor(element, metrics);
+        var box = new LyricBoxLayout(ANCHOR_BOX_X_SS, ANCHOR_BOX_WIDTH_SS, 1, "do");
+        var layoutResult = anchorLayoutBuilder().addLyricBox(element, box).build();
+        var anchor = layoutResult.getLyricAnchor(element, testLyricMetrics());
 
-        assertThat(anchor.centerXSs()).isCloseTo(4.0, within(TOLERANCE));  // 3.0 + 2.0/2
-        assertThat(anchor.baselineYSs()).isCloseTo(metrics.verseYSsInLine(1), within(TOLERANCE));
+        assertThat(anchor.centerXSs())
+            .isCloseTo(ANCHOR_BOX_X_SS + ANCHOR_BOX_WIDTH_SS / 2, within(TOLERANCE));
+        assertThat(anchor.baselineYSs()).isCloseTo(EXPECTED_VERSE_1_BASELINE_SS, within(TOLERANCE));
     }
 
     // T2: getLyricAnchor returns column-anchored geometry when no boxes
     @Test
     void testGetLyricAnchorColumnAnchored() {
         var element = ElementType.CROTCHET.newInstance();
-        var column = testColumnAt(element, 5.0);
-        var layoutResult = LayoutResult.builder().putElementColumn(element, column).build();
-        var metrics = testSongMetrics();
-        var anchor = layoutResult.getLyricAnchor(element, metrics);
+        var column = testColumnAt(element, ANCHOR_COLUMN_X_SS);
+        var layoutResult = anchorLayoutBuilder().putElementColumn(element, column).build();
+        var anchor = layoutResult.getLyricAnchor(element, testLyricMetrics());
 
-        assertThat(anchor.centerXSs()).isCloseTo(5.0 + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0, within(TOLERANCE));
-        assertThat(anchor.baselineYSs()).isCloseTo(metrics.verseYSsInLine(1), within(TOLERANCE));
+        assertThat(anchor.centerXSs())
+            .isCloseTo(ANCHOR_COLUMN_X_SS + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0, within(TOLERANCE));
+        assertThat(anchor.baselineYSs()).isCloseTo(EXPECTED_VERSE_1_BASELINE_SS, within(TOLERANCE));
     }
 
     // T2b: column-anchored getLyricAnchor centres on the notehead extent (excluding augmentation),
@@ -111,15 +111,14 @@ class LayoutResultTest extends UnitTest {
     @Test
     void testGetLyricAnchorColumnAnchoredIgnoresDots() {
         var element = ElementType.CROTCHET.newInstance();
-        var column = testDottedColumnAt(element, 5.0);
-        var layoutResult = LayoutResult.builder().putElementColumn(element, column).build();
-        var metrics = testSongMetrics();
-        var anchor = layoutResult.getLyricAnchor(element, metrics);
+        var column = testDottedColumnAt(element, ANCHOR_COLUMN_X_SS);
+        var layoutResult = anchorLayoutBuilder().putElementColumn(element, column).build();
+        var anchor = layoutResult.getLyricAnchor(element, testLyricMetrics());
 
         // Centred on the notehead (excluding the dot), not the full extent that includes it.
         assertThat(anchor.centerXSs())
             .as("dotted note: anchor must be centred on the notehead, not shifted right by the dot")
-            .isCloseTo(5.0 + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0, within(TOLERANCE));
+            .isCloseTo(ANCHOR_COLUMN_X_SS + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0, within(TOLERANCE));
     }
 
     // T3: getLyricAnchor Y matches verseYSsInLine(1) exactly
@@ -127,13 +126,13 @@ class LayoutResultTest extends UnitTest {
     void testGetLyricAnchorYMatchesVerseBaseline() {
         var element = ElementType.CROTCHET.newInstance();
         var box = new LyricBoxLayout(2.0, 1.0, 1, "re");
-        var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
-        // maxAboveStaffSs=1, STAFF_HEIGHT_SS=4, maxBelowContentSs=0.5,
-        // staffToLyricsGapSs=0.25, lyricsLineHeightSs=2.0 → verseYSsInLine(1) = 5+0.5+0.25+0 = 5.75
-        var metrics = testSongMetrics();
+        var layoutResult = anchorLayoutBuilder().addLyricBox(element, box).build();
+        var metrics = testLyricMetrics();
         var anchor = layoutResult.getLyricAnchor(element, metrics);
 
-        assertThat(anchor.baselineYSs()).isCloseTo(5.75, within(TOLERANCE));
+        assertThat(anchor.baselineYSs()).isCloseTo(EXPECTED_VERSE_1_BASELINE_SS, within(TOLERANCE));
+        assertThat(anchor.baselineYSs())
+            .isCloseTo(layoutResult.verseYSsInLine(1, metrics), within(TOLERANCE));
     }
 
     // T4: getLyricAnchor throws IllegalStateException when neither boxes nor column exist
@@ -141,10 +140,130 @@ class LayoutResultTest extends UnitTest {
     void testGetLyricAnchorThrowsWhenNoBoxOrColumn() {
         var element = ElementType.CROTCHET.newInstance();
         var layoutResult = LayoutResult.builder().build();
-        var metrics = testSongMetrics();
+        var metrics = testLyricMetrics();
 
         assertThatThrownBy(() -> layoutResult.getLyricAnchor(element, metrics))
             .isInstanceOf(IllegalStateException.class);
+    }
+
+    // ==========================================================================
+    // Per-line staff geometry and verse baselines
+    // (ported from the retired song-wide SongLayoutMetricsTest)
+    // ==========================================================================
+
+    // The staff Y helpers place the staff within the line's own coordinate frame: the top at
+    // the line's above-staff content extent, the bottom a fixed staff height below it.
+    @Test
+    void testStaffYHelpersFollowThisLinesOwnAboveStaffContent() {
+        var result = LayoutResult.builder()
+            .setContentAboveStaffSs(ABOVE_STAFF_SS)
+            .setContentBelowStaffSs(BELOW_CONTENT_SS)
+            .build();
+
+        assertThat(result.staffTopYSsInLine()).isCloseTo(ABOVE_STAFF_SS, within(TOLERANCE));
+        assertThat(result.staffBottomYSsInLine())
+            .isCloseTo(ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS, within(TOLERANCE));
+    }
+
+    // verseYSsInLine walks down one measured row height per verse from the first baseline,
+    // which itself sits a staff-to-lyrics gap below this line's below-staff content.
+    @Test
+    void testVerseYSsInLineStepsOneMeasuredRowPerVerse() {
+        var result = LayoutResult.builder()
+            .setContentAboveStaffSs(ABOVE_STAFF_SS)
+            .setContentBelowStaffSs(BELOW_CONTENT_SS)
+            .setVerseCount(2)
+            .build();
+        var metrics = testLyricMetrics();
+
+        // The row height is measured from the font, never a constant.
+        var rowHeightSs = LyricRenderMetrics.fontHeightSs(metrics.lyricsFont());
+        var expectedVerse1Ss = ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS
+            + BELOW_CONTENT_SS + ANCHOR_STAFF_TO_LYRICS_GAP_SS;
+
+        assertThat(result.verseYSsInLine(1, metrics)).isCloseTo(expectedVerse1Ss, within(TOLERANCE));
+        assertThat(result.verseYSsInLine(2, metrics))
+            .isCloseTo(expectedVerse1Ss + rowHeightSs, within(TOLERANCE));
+        assertThat(rowHeightSs)
+            .as("a verse row must have real measured height, or the per-verse step proves nothing")
+            .isGreaterThan(0.0);
+    }
+
+    // The lyrics band is the visual row margin plus one measured row per reserved verse, and it
+    // reserves a row even before the line's first verse exists so typing a lyric does not
+    // re-space the song.
+    @Test
+    void testLyricsBandHeightReservesOneMeasuredRowWhenLineHasNoVerses() {
+        var metrics = testLyricMetrics();
+        var rowHeightSs = LyricRenderMetrics.fontHeightSs(metrics.lyricsFont());
+
+        var noVerses = LayoutResult.builder().build();
+        var twoVerses = LayoutResult.builder().setVerseCount(2).build();
+
+        assertThat(noVerses.lyricsBandHeightSs(metrics))
+            .isCloseTo(
+                LineSpacing.LYRICS_ROW_MARGIN_SS
+                    + LineSpacing.MIN_RESERVED_VERSE_ROWS * rowHeightSs,
+                within(TOLERANCE));
+        assertThat(twoVerses.lyricsBandHeightSs(metrics))
+            .isCloseTo(LineSpacing.LYRICS_ROW_MARGIN_SS + 2 * rowHeightSs, within(TOLERANCE));
+    }
+
+    // A line's own height is the staff plus its measured content extents plus its own lyrics
+    // band — and carries no inter-line gap, which belongs to the layout manager that stacks
+    // the lines (refs #591).
+    @Test
+    void testLineHeightSsCoversOwnContentOnlyWithoutInterLineGap() {
+        var result = LayoutResult.builder()
+            .setContentAboveStaffSs(TALL_ABOVE_STAFF_SS)
+            .setContentBelowStaffSs(TALL_BELOW_CONTENT_SS)
+            .build();
+        var metrics = testLyricMetrics();
+
+        var expectedHeightSs = Staff.STAFF_HEIGHT_SS
+            + TALL_ABOVE_STAFF_SS
+            + TALL_BELOW_CONTENT_SS
+            + LineSpacing.LYRICS_ROW_MARGIN_SS
+            + LineSpacing.MIN_RESERVED_VERSE_ROWS * LyricRenderMetrics.fontHeightSs(metrics.lyricsFont());
+
+        // Content chosen to clear both floors, so the measured height is purely data-driven.
+        assertThat(result.aboveMidlineSs()).isGreaterThan(LineSpacing.MIN_ABOVE_MIDLINE_SS);
+        assertThat(result.belowMidlineSs(metrics)).isGreaterThan(LineSpacing.MIN_BELOW_MIDLINE_SS);
+
+        assertThat(result.lineHeightSs(metrics)).isCloseTo(expectedHeightSs, within(TOLERANCE));
+        assertThat(result.paintLineHeightSs(metrics))
+            .as("with both floors cleared, the painted height equals the measured height")
+            .isCloseTo(expectedHeightSs, within(TOLERANCE));
+    }
+
+    // The painted extents floor a line's bounds so Swing never clips its staff or ledger lines,
+    // even though the measured extents that drive inter-line spacing stay unfloored.
+    @Test
+    void testPaintedExtentsFloorAnEmptyLineAtTheMinimumLineHeight() {
+        var result = LayoutResult.builder().build();
+        var metrics = testLyricMetrics();
+
+        // Precondition: with no content this line's measured reach is inside both floors.
+        assertThat(result.aboveMidlineSs()).isLessThan(LineSpacing.MIN_ABOVE_MIDLINE_SS);
+        assertThat(result.belowMidlineSs(metrics)).isLessThan(LineSpacing.MIN_BELOW_MIDLINE_SS);
+
+        assertThat(result.paintAboveMidlineSs())
+            .isCloseTo(LineSpacing.MIN_ABOVE_MIDLINE_SS, within(TOLERANCE));
+        assertThat(result.paintBelowMidlineSs(metrics))
+            .isCloseTo(LineSpacing.MIN_BELOW_MIDLINE_SS, within(TOLERANCE));
+        assertThat(result.paintLineHeightSs(metrics))
+            .isCloseTo(LineSpacing.MIN_LINE_HEIGHT_SS, within(TOLERANCE));
+    }
+
+    // MIN_LINE_HEIGHT_SS is pinned to a concrete value so a change to the staff geometry it is
+    // derived from cannot silently re-space every song.
+    @Test
+    void testMinLineHeightSsConstantHasConcretePinnedValue() {
+        // (STAFF_HALF_SS 2.0 + MIN_ABOVE_STAFF_SS 3.0) + (STAFF_HALF_SS 2.0 + MIN_BELOW_STAFF_SS 4.0)
+        final double expectedMinLineHeightSs = 11.0;
+
+        assertThat(LineSpacing.MIN_LINE_HEIGHT_SS)
+            .isCloseTo(expectedMinLineHeightSs, within(TOLERANCE));
     }
 
     @Test
@@ -153,24 +272,25 @@ class LayoutResultTest extends UnitTest {
         var line = song.getLine(0);
         var element = ElementType.CROTCHET.newInstance();
         song.withoutMutationTracking(() -> line.addElement(0, element));
-        var box = new LyricBoxLayout(3.0, 2.0, 1, "do");
+        var box = new LyricBoxLayout(ANCHOR_BOX_X_SS, ANCHOR_BOX_WIDTH_SS, 1, "do");
         var lyricsFont = DocumentFonts.defaultFonts().getLyricsFont();
-        var baselineYSs = 1.0 + Staff.STAFF_HEIGHT_SS + 0.5
-            + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS
-            + ScaleContext.fontAscentSs(lyricsFont).value();
-        var layoutResult = LayoutResult.builder()
-            .setContentAboveStaffSs(1.0)
-            .setContentBelowStaffSs(0.5)
+        var layoutResult = anchorLayoutBuilder()
             .addLyricBox(element, box)
             .build();
 
-        var lyricRenderMetrics = new LyricRenderMetrics(lyricsFont, lyricsFont, 0.0, 0.0);
+        // Probe the vertical middle of verse row 1, derived independently of the production
+        // helper: the row band starts one visual margin below this line's below-staff content,
+        // and each row is one measured font ink height tall.
+        var rowTopYSs = ANCHOR_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + ANCHOR_BELOW_CONTENT_SS
+            + LineSpacing.LYRICS_ROW_MARGIN_SS;
+        var probeYSs = rowTopYSs + LyricRenderMetrics.fontHeightSs(lyricsFont) / 2;
+
         var hit = layoutResult.hitTestLyric(
-            lyricRenderMetrics,
+            testLyricMetrics(),
             line,
             new Point2D.Double(
-                ScaleContext.ssToRoundedPx(4.0),
-                ScaleContext.ssToRoundedPx(baselineYSs)
+                ScaleContext.ssToRoundedPx(ANCHOR_BOX_X_SS + ANCHOR_BOX_WIDTH_SS / 2),
+                ScaleContext.ssToRoundedPx(probeYSs)
             )
         );
 
@@ -185,25 +305,35 @@ class LayoutResultTest extends UnitTest {
         var line = song.getLine(0);
         var element = ElementType.CROTCHET.newInstance();
         song.withoutMutationTracking(() -> line.addElement(0, element));
-        var box = new LyricBoxLayout(3.0, 2.0, 1, "do");
-        var layoutResult = LayoutResult.builder()
-            .setContentAboveStaffSs(1.0)
-            .setContentBelowStaffSs(0.5)
+        var box = new LyricBoxLayout(ANCHOR_BOX_X_SS, ANCHOR_BOX_WIDTH_SS, 1, "do");
+        var layoutResult = anchorLayoutBuilder()
             .addLyricBox(element, box)
             .build();
 
-        var lyricsFont = DocumentFonts.defaultFonts().getLyricsFont();
-        var lyricRenderMetrics = new LyricRenderMetrics(lyricsFont, lyricsFont, 0.0, 0.0);
-        var hit = layoutResult.hitTestLyric(
-            lyricRenderMetrics,
+        var metrics = testLyricMetrics();
+        var rowTopYSs = ANCHOR_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + ANCHOR_BELOW_CONTENT_SS
+            + LineSpacing.LYRICS_ROW_MARGIN_SS;
+        var rowMiddleYSs = rowTopYSs + LyricRenderMetrics.fontHeightSs(metrics.lyricsFont()) / 2;
+
+        // Right of the box, at the row's own height — an X miss.
+        assertThat(layoutResult.hitTestLyric(
+            metrics,
             line,
             new Point2D.Double(
-                ScaleContext.ssToRoundedPx(5.5),
-                ScaleContext.ssToRoundedPx(7.0)
+                ScaleContext.ssToRoundedPx(ANCHOR_BOX_X_SS + ANCHOR_BOX_WIDTH_SS + MISS_MARGIN_SS),
+                ScaleContext.ssToRoundedPx(rowMiddleYSs)
             )
-        );
+        )).isNull();
 
-        assertThat(hit).isNull();
+        // Over the box, but above the first verse row — a Y miss.
+        assertThat(layoutResult.hitTestLyric(
+            metrics,
+            line,
+            new Point2D.Double(
+                ScaleContext.ssToRoundedPx(ANCHOR_BOX_X_SS + ANCHOR_BOX_WIDTH_SS / 2),
+                ScaleContext.ssToRoundedPx(rowTopYSs - MISS_MARGIN_SS)
+            )
+        )).isNull();
     }
 
     // lyricAreaBaseYSs pins the verse base offset and tracks both vertical inputs.
@@ -223,7 +353,7 @@ class LayoutResultTest extends UnitTest {
             .build();
 
         var expectedBase = ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS
-            + BELOW_CONTENT_SS + SongLayoutMetricsBuilder.LYRICS_ROW_MARGIN_SS;
+            + BELOW_CONTENT_SS + LineSpacing.LYRICS_ROW_MARGIN_SS;
 
         assertThat(base.lyricAreaBaseYSs()).isCloseTo(expectedBase, within(TOLERANCE));
         assertThat(raisedAbove.lyricAreaBaseYSs() - base.lyricAreaBaseYSs())
@@ -723,23 +853,6 @@ class LayoutResultTest extends UnitTest {
     }
 
     // ==========================================================================
-    // getBelowStaffReservationSs — line-height accounting
-    // ==========================================================================
-
-    // The below-staff reservation is the line height minus the above-staff extent
-    // minus the fixed staff height.
-    @Test
-    void testGetBelowStaffReservationSsSubtractsAboveStaffAndStaffHeight() {
-        var result = LayoutResult.builder()
-            .setLineHeightSs(RESERVATION_LINE_HEIGHT_SS)
-            .setContentAboveStaffSs(RESERVATION_ABOVE_STAFF_SS)
-            .build();
-
-        assertThat(result.getBelowStaffReservationSs())
-            .isCloseTo(EXPECTED_BELOW_STAFF_RESERVATION_SS, within(TOLERANCE));
-    }
-
-    // ==========================================================================
     // findAttachmentBounds / findAttachment — owner+type lookup
     // ==========================================================================
 
@@ -987,10 +1100,10 @@ class LayoutResultTest extends UnitTest {
     private static final double DECORATION_HEIGHT_SS = 1.0;
     private static final double DECORATION_MARGIN_SS = 0.25;
 
-    private static final double RESERVATION_LINE_HEIGHT_SS = 10.0;
-    private static final double RESERVATION_ABOVE_STAFF_SS = 2.0;
-    // RESERVATION_LINE_HEIGHT_SS - RESERVATION_ABOVE_STAFF_SS - Staff.STAFF_HEIGHT_SS (4.0).
-    private static final double EXPECTED_BELOW_STAFF_RESERVATION_SS = 4.0;
+    // Content extents chosen to clear both painted-extent floors, so a measured line height
+    // built from them is purely data-driven.
+    private static final double TALL_ABOVE_STAFF_SS = 6.0;
+    private static final double TALL_BELOW_CONTENT_SS = 5.0;
 
     private static final double SAMPLE_BOUNDS_LEFT_SS = 5.0;
     private static final double SAMPLE_BOUNDS_TOP_SS = 1.0;
@@ -1013,11 +1126,33 @@ class LayoutResultTest extends UnitTest {
             DECORATION_HEIGHT_SS, DECORATION_MARGIN_SS);
     }
 
-    private static SongLayoutMetrics testSongMetrics() {
-        // maxAboveStaffSs=1, maxBelowStaffSs=1, maxBelowContentSs=0.5,
-        // staffToLyricsGapSs=0.25, lyricsLineHeightSs=2.0, verseCount=1
-        // verseYSsInLine(1) = (1 + 4) + 0.5 + 0.25 + 0*2.0 = 5.75
-        return new SongLayoutMetrics(1.0, 1.0, 0.5, 0.25, 2.0, 1, 2.0, 9.75);
+    // ---- Lyric-anchor / hit-test fixture -------------------------------------
+    //
+    // A single line whose content extents and staff-to-lyrics gap are known, so verse
+    // baselines and lyric row bands can be derived by hand.
+
+    private static final double ANCHOR_ABOVE_STAFF_SS = 1.0;
+    private static final double ANCHOR_BELOW_CONTENT_SS = 0.5;
+    private static final double ANCHOR_STAFF_TO_LYRICS_GAP_SS = 0.25;
+    private static final double ANCHOR_BOX_X_SS = 3.0;
+    private static final double ANCHOR_BOX_WIDTH_SS = 2.0;
+    private static final double ANCHOR_COLUMN_X_SS = 5.0;
+    /** Comfortably more than one rounded pixel, so a "miss" probe is unambiguously outside. */
+    private static final double MISS_MARGIN_SS = 0.5;
+    // (ANCHOR_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS) + ANCHOR_BELOW_CONTENT_SS
+    //   + ANCHOR_STAFF_TO_LYRICS_GAP_SS = 5.0 + 0.5 + 0.25
+    private static final double EXPECTED_VERSE_1_BASELINE_SS = 5.75;
+
+    private static LayoutResult.Builder anchorLayoutBuilder() {
+        return LayoutResult.builder()
+            .setContentAboveStaffSs(ANCHOR_ABOVE_STAFF_SS)
+            .setContentBelowStaffSs(ANCHOR_BELOW_CONTENT_SS);
+    }
+
+    private static LyricRenderMetrics testLyricMetrics() {
+        var lyricsFont = DocumentFonts.defaultFonts().getLyricsFont();
+        return new LyricRenderMetrics(
+            lyricsFont, lyricsFont, 0.0, 0.0, ANCHOR_STAFF_TO_LYRICS_GAP_SS);
     }
 
     private static ElementColumn testColumnAt(StaffElement element, double xSs) {

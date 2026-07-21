@@ -41,7 +41,6 @@ import songscribe.dom.Tie;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.layout.SongLayoutMetrics;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
@@ -51,7 +50,7 @@ class LineInvariantsTest extends UnitTest {
     private static final int FONT_SIZE = 12;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, FONT_SIZE);
     private static final String BUILD_VALIDATION_MESSAGE =
-        "LineInvariants requires layoutResult, songLayoutMetrics, and lyricRenderMetrics to be set";
+        "LineInvariants requires layoutResult and lyricRenderMetrics to be set";
 
     /**
      * A builder seeded with the required layout fields (set to minimal values that the
@@ -60,8 +59,7 @@ class LineInvariantsTest extends UnitTest {
     private static LineInvariants.Builder seededBuilder() {
         return LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())
             .setLayoutResult(LayoutResult.builder().build())
-            .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
-            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0));
+            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0, 0));
     }
 
     private static Line tiedLine() {
@@ -193,20 +191,7 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testBuildThrowsWhenLayoutResultNull() {
         var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())
-            .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
-            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0));
-
-        assertThatThrownBy(builder::build)
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessage(BUILD_VALIDATION_MESSAGE);
-    }
-
-    // Builder.build() — throws IllegalStateException when songLayoutMetrics is null
-    @Test
-    void testBuildThrowsWhenSongLayoutMetricsNull() {
-        var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())
-            .setLayoutResult(LayoutResult.builder().build())
-            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0));
+            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0, 0));
 
         assertThatThrownBy(builder::build)
             .isInstanceOf(IllegalStateException.class)
@@ -217,8 +202,7 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testBuildThrowsWhenLyricRenderMetricsNull() {
         var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())
-            .setLayoutResult(LayoutResult.builder().build())
-            .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0));
+            .setLayoutResult(LayoutResult.builder().build());
 
         assertThatThrownBy(builder::build)
             .isInstanceOf(IllegalStateException.class)

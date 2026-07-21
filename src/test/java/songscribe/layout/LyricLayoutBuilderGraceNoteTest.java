@@ -60,7 +60,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
     private static final double LINE_WIDTH_SS = 100.0;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final LyricRenderMetrics LYRIC_METRICS =
-        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
 
     private Song song;
     private Line line;

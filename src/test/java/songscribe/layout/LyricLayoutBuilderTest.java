@@ -53,11 +53,11 @@ class LyricLayoutBuilderTest extends UnitTest {
     private static final double LINE_WIDTH_SS = 100.0;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final LyricRenderMetrics LYRIC_METRICS =
-        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
     // Non-zero space width so melisma trailing-gap assertions verify a real gap rather than 0.
     private static final double EXTENDER_SPACE_WIDTH_SS = 0.5;
     private static final LyricRenderMetrics LYRIC_METRICS_WITH_SPACE =
-        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, EXTENDER_SPACE_WIDTH_SS);
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, EXTENDER_SPACE_WIDTH_SS, 0.0);
     // Distance from the STOP carrier to the following syllable that leaves the raw extender
     // overshoot well within the gap, so the clamp must leave the extender untouched.
     private static final double FAR_FOLLOWING_SYLLABLE_GAP_SS = 20.0;

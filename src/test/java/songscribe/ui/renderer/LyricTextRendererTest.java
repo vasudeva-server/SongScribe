@@ -38,10 +38,10 @@ import org.mockito.ArgumentCaptor;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
+import songscribe.engraving.Staff;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricBoxLayout;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.layout.SongLayoutMetrics;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 
@@ -50,34 +50,54 @@ class LyricTextRendererTest extends UnitTest {
     private static final double PX_PER_SS = 8.0;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
 
+    // Synthetic line geometry: the staff top sits 1 ss down the line, so the staff bottom
+    // lands at 5 ss, with 1 ss of content hanging below it.
+    private static final double CONTENT_ABOVE_STAFF_SS = 1.0;
+    private static final double CONTENT_BELOW_STAFF_SS = 1.0;
+    private static final double STAFF_TO_LYRICS_GAP_SS = 1.0;
+
+    /** Verse-1 baseline: staff bottom + below-staff content + the staff-to-lyrics gap. */
+    private static final double VERSE_1_BASELINE_SS =
+        CONTENT_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + CONTENT_BELOW_STAFF_SS + STAFF_TO_LYRICS_GAP_SS;
+
+    /**
+     * The pitch between consecutive verse baselines. Measured from the lyrics font rather
+     * than injected, since a verse row now hugs the font's ink height.
+     * <p>
+     * Deliberately a method, not a constant: {@link LyricRenderMetrics#fontHeightSs} converts
+     * through the global {@link songscribe.dom.ScaleContext} scale, which other test classes
+     * mutate. Reading it at call time keeps this in step with the renderer, which reads the
+     * same scale when it runs; a static initializer would freeze whatever scale happened to be
+     * in force when this class was loaded.
+     */
+    private static double verseRowHeightSs() {
+        return LyricRenderMetrics.fontHeightSs(LYRICS_FONT);
+    }
+
     private static int toPx(double ss) {
         return (int) Math.round(ss * PX_PER_SS);
     }
 
-    private static SongLayoutMetrics metrics(double staffToLyricsGapSs, double lyricsLineHeightSs, int verseCount) {
-        // staffTop=1, staffHeight=4 ⇒ staffBottom=5. verse 1 baseline = 5 + maxBelowContent + gap
-        return new SongLayoutMetrics(
-            1.0,
-            1.0,
-            1.0,
-            staffToLyricsGapSs,
-            lyricsLineHeightSs,
-            verseCount,
-            verseCount * lyricsLineHeightSs,
-            1.0 + 4.0 + 1.0 + staffToLyricsGapSs + verseCount * lyricsLineHeightSs
-        );
+    /** A layout carrying this test's synthetic above/below-staff geometry. */
+    private static LayoutResult.Builder layoutBuilder() {
+        return LayoutResult.builder()
+            .setContentAboveStaffSs(CONTENT_ABOVE_STAFF_SS)
+            .setContentBelowStaffSs(CONTENT_BELOW_STAFF_SS);
+    }
+
+    private static LyricRenderMetrics lyricRenderMetrics() {
+        return new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, STAFF_TO_LYRICS_GAP_SS);
     }
 
     @Test
     void testDrawsSingleBoxAtVerseBaseline() {
         var element = ElementType.CROTCHET.newInstance();
         var box = new LyricBoxLayout(3.25, 2.0, 1, "do");
-        var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
+        var layoutResult = layoutBuilder().addLyricBox(element, box).build();
 
         var invariants = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResult)
-            .setSongLayoutMetrics(metrics(1.0, 2.5, 1))
-            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0))
+            .setLyricRenderMetrics(lyricRenderMetrics())
             .build();
 
         var g2 = mock(Graphics2D.class);
@@ -92,8 +112,7 @@ class LyricTextRendererTest extends UnitTest {
         assertThat(textCap.getValue()).isEqualTo("do");
         assertThat(xCap.getValue()).isEqualTo(toPx(3.25));
 
-        // Baseline for verse 1 = staffBottom(5) + below(1) + gap(1) + 0 * lineHeight(2.5) = 7.0
-        assertThat(yCap.getValue()).isEqualTo(toPx(7.0));
+        assertThat(yCap.getValue()).isEqualTo(toPx(VERSE_1_BASELINE_SS));
     }
 
     @Test
@@ -101,15 +120,15 @@ class LyricTextRendererTest extends UnitTest {
         var element = ElementType.CROTCHET.newInstance();
         var verse1 = new LyricBoxLayout(2.0, 1.5, 1, "v1");
         var verse2 = new LyricBoxLayout(2.0, 1.5, 2, "v2");
-        var layoutResult = LayoutResult.builder()
+        var layoutResult = layoutBuilder()
             .addLyricBox(element, verse1)
             .addLyricBox(element, verse2)
+            .setVerseCount(2)
             .build();
 
         var invariants = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResult)
-            .setSongLayoutMetrics(metrics(1.0, 2.0, 2))
-            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0))
+            .setLyricRenderMetrics(lyricRenderMetrics())
             .build();
 
         var g2 = mock(Graphics2D.class);
@@ -122,19 +141,19 @@ class LyricTextRendererTest extends UnitTest {
 
         assertThat(textCap.getAllValues()).containsExactly("v1", "v2");
 
-        // staffBottom=5, below=1, gap=1, lineHeight=2.0 ⇒ verse1=7.0, verse2=9.0
-        assertThat(yCap.getAllValues().get(0)).isEqualTo(toPx(7.0));
-        assertThat(yCap.getAllValues().get(1)).isEqualTo(toPx(9.0));
+        // Consecutive verses sit exactly one measured row apart.
+        assertThat(yCap.getAllValues().get(0)).isEqualTo(toPx(VERSE_1_BASELINE_SS));
+        assertThat(yCap.getAllValues().get(1))
+            .isEqualTo(toPx(VERSE_1_BASELINE_SS + verseRowHeightSs()));
     }
 
     @Test
     void testNoBoxesIsNoOp() {
         var element = ElementType.CROTCHET.newInstance();
-        var layoutResult = LayoutResult.builder().build();
+        var layoutResult = layoutBuilder().build();
 
         var invariants = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResult)
-            .setSongLayoutMetrics(metrics(0, 0, 0))
             .build();
 
         var g2 = mock(Graphics2D.class);
@@ -149,12 +168,11 @@ class LyricTextRendererTest extends UnitTest {
         // Sanity check that drawString receives the correct text argument irrespective of font scaling.
         var element = ElementType.CROTCHET.newInstance();
         var box = new LyricBoxLayout(0.0, 1.0, 1, "re");
-        var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
+        var layoutResult = layoutBuilder().addLyricBox(element, box).build();
 
         var invariants = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResult)
-            .setSongLayoutMetrics(metrics(0.5, 2.5, 1))
-            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0))
+            .setLyricRenderMetrics(lyricRenderMetrics())
             .build();
 
         var g2 = mock(Graphics2D.class);
@@ -174,16 +192,15 @@ class LyricTextRendererTest extends UnitTest {
         var activeBox = new LyricBoxLayout(1.0, 1.5, 1, "la");
         var otherBox = new LyricBoxLayout(3.0, 1.5, 1, "sol");
 
-        var layoutResult = LayoutResult.builder()
+        var layoutResult = layoutBuilder()
             .addLyricBox(activeElement, activeBox)
             .addLyricBox(otherElement, otherBox)
             .build();
 
-        var lyricRenderMetrics = new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+        var lyricRenderMetrics = lyricRenderMetrics();
 
         var activeInv = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResult)
-            .setSongLayoutMetrics(metrics(1.0, 2.5, 1))
             .setLyricRenderMetrics(lyricRenderMetrics)
             .setActivelyEditedElement(activeElement)
             .build();
@@ -194,7 +211,6 @@ class LyricTextRendererTest extends UnitTest {
 
         var otherInv = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResult)
-            .setSongLayoutMetrics(metrics(1.0, 2.5, 1))
             .setLyricRenderMetrics(lyricRenderMetrics)
             .setActivelyEditedElement(activeElement)
             .build();
@@ -208,13 +224,12 @@ class LyricTextRendererTest extends UnitTest {
     void testSelectedLyricPaintsInSelectionColor() {
         var element = ElementType.CROTCHET.newInstance();
         var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");
-        var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
+        var layoutResult = layoutBuilder().addLyricBox(element, box).build();
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
 
         var invariants = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResult)
-            .setSongLayoutMetrics(metrics(1.0, 2.0, 1))
-            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0))
+            .setLyricRenderMetrics(lyricRenderMetrics())
             .setEditMode(true)
             .setSelectionProvider(selectionProvider)
             .build();
@@ -226,19 +241,18 @@ class LyricTextRendererTest extends UnitTest {
         LyricTextRenderer.getInstance().render(invariants, ElementFrame.LINE_LEVEL, element, g2);
 
         verify(g2).setColor(ScoreView.getSelectionColor());
-        verify(g2).drawString("v1", toPx(2.0), toPx(7.0));
+        verify(g2).drawString("v1", toPx(2.0), toPx(VERSE_1_BASELINE_SS));
     }
 
     @Test
     void testSelectedElementPaintsLyricInSelectionColor() {
         var element = ElementType.CROTCHET.newInstance();
         var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");
-        var layoutResult = LayoutResult.builder().addLyricBox(element, box).build();
+        var layoutResult = layoutBuilder().addLyricBox(element, box).build();
 
         var builder = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResult)
-            .setSongLayoutMetrics(metrics(1.0, 2.0, 1))
-            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0));
+            .setLyricRenderMetrics(lyricRenderMetrics());
         RenderContextTestHelper.enableSelection(builder, 0);
         var invariants = builder.build();
         var frame = new ElementFrame(0, Double.NaN, -1, 0.0);

@@ -41,12 +41,13 @@ import static org.mockito.Mockito.mock;
  * Unit tests for {@link VerticalStackingCalculator} — vertical layout pipeline.
  * <p>
  * All tests use an empty column list so the stacker tiers (NoteAttached, Structural,
- * System) have no elements to process; only the attribution path and the line-height
+ * System) have no elements to process; only the attribution path and the content-extent
  * computation are driven.
  */
 class VerticalStackingCalculatorTest extends UnitTest {
 
     private static final Offset<Double> EPSILON = within(1e-10);
+    private static final double LINE_WIDTH_SS = 100.0;
 
     /** Asserts non-null and narrows the type so NullAway is satisfied on the caller. */
     @SuppressWarnings("NullAway")
@@ -183,51 +184,34 @@ class VerticalStackingCalculatorTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Line-height computation
+    // Content-extent computation
     // -----------------------------------------------------------------------
 
     @Nested
-    class LineHeightComputation {
+    class ContentExtentComputation {
 
         @Test
-        void testLineHeightAtLeastMinimumForEmptyColumns() {
-            // With no elements and no attribution, the computed lineHeightSs must be at
-            // least Staff.STAFF_HEIGHT_SS + MIN_ABOVE_STAFF_SS + MIN_BELOW_STAFF_SS + INTER_LINE_MARGIN_SS.
-            var expectedMinHeight = Staff.STAFF_HEIGHT_SS
-                + Staff.MIN_ABOVE_STAFF_SS
-                + Staff.MIN_BELOW_STAFF_SS
-                + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
-
+        void testContentExtentsAreZeroForEmptyColumns() {
+            // The calculator reports a line's *true* content reach, unfloored: with no elements
+            // and no attribution nothing reaches past either staff edge, so both extents are 0.
+            // The ledger-line floors live in LayoutResult's painted extents, not here —
+            // re-introducing a floor at this stage would inflate every inter-line gap (refs #591).
             var builder = LayoutResult.builder();
 
             new VerticalStackingCalculator().calculate(
                 List.of(),
                 detachedLine(),
                 builder,
-                100.0,
-                mock(DocumentFontsHolder.class));
-
-            var result = builder.build();
-            assertThat(result.getLineHeightSs())
-                .describedAs("line height must be at least the minimum")
-                .isGreaterThanOrEqualTo(expectedMinHeight - EPSILON.value);
-        }
-
-        @Test
-        void testAboveStaffSsAtLeastMinimumForEmptyColumns() {
-            // With no elements, aboveStaffSs must be at least MIN_ABOVE_STAFF_SS.
-            var builder = LayoutResult.builder();
-
-            new VerticalStackingCalculator().calculate(
-                List.of(),
-                detachedLine(),
-                builder,
-                100.0,
+                LINE_WIDTH_SS,
                 mock(DocumentFontsHolder.class));
 
             var result = builder.build();
             assertThat(result.getContentAboveStaffSs())
-                .isGreaterThanOrEqualTo(Staff.MIN_ABOVE_STAFF_SS - EPSILON.value);
+                .describedAs("an empty line reaches nothing above its staff")
+                .isCloseTo(0.0, EPSILON);
+            assertThat(result.getContentBelowStaffSs())
+                .describedAs("an empty line reaches nothing below its staff")
+                .isCloseTo(0.0, EPSILON);
         }
 
         @Test

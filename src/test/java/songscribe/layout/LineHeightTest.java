@@ -38,10 +38,16 @@ import songscribe.dom.StaffElement;
 import songscribe.engraving.Staff;
 
 /**
- * Pins {@link LayoutResult#getLineHeightSs()} for the cases called out in
+ * Pins a line's per-line height for the cases called out in
  * {@code plans/dynamic-line-height.md} — empty lines must produce the minimum
  * content-fitted height, and lines with decorations above or notes extending
  * below the staff must grow accordingly.
+ * <p>
+ * A line's height covers only its own content: the measured
+ * {@link LayoutResult#lineHeightSs} is the staff plus its true content extents plus its own
+ * lyrics band, while {@link LayoutResult#paintLineHeightSs} additionally applies the
+ * ledger-line floors. Neither carries an inter-line gap — that belongs to the layout manager
+ * that stacks the lines.
  */
 @SuppressWarnings("DataFlowIssue")
 class LineHeightTest extends UnitTest {
@@ -49,13 +55,47 @@ class LineHeightTest extends UnitTest {
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;
     private static final double TOLERANCE = 0.001;
 
+    private static final Font LYRICS_FONT = new Font("Dialog", Font.PLAIN, 12);
+
+    /**
+     * No test here asserts a verse baseline, so the staff-to-lyrics gap is irrelevant and
+     * left at zero; the lyrics band height does not depend on it.
+     */
+    private static final LyricRenderMetrics LYRIC_METRICS = new LyricRenderMetrics(
+        LYRICS_FONT,
+        ScaleContext.scaleFont(LYRICS_FONT),
+        ScaleContext.textWidthSs(LYRICS_FONT, "-").value(),
+        ScaleContext.textWidthSs(LYRICS_FONT, " ").value(),
+        0.0);
+
+    /**
+     * The lyrics band every line reserves, derived from the font rather than a constant —
+     * a verse row is the measured ink height of the lyric extent reference.
+     */
+    private static final double LYRICS_BAND_HEIGHT_SS =
+        LineSpacing.LYRICS_ROW_MARGIN_SS
+        + LineSpacing.MIN_RESERVED_VERSE_ROWS * LyricRenderMetrics.fontHeightSs(LYRICS_FONT);
+
     private static LayoutEngine engine() {
-        var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
-        var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-").value();
-        var spaceWidthSs = ScaleContext.textWidthSs(lyricsFont, " ").value();
-        var metrics = new LyricRenderMetrics(
-            lyricsFont, ScaleContext.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
-        return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
+        return new LayoutEngine(LYRIC_METRICS, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
+    }
+
+    /** The measured height a line of the given content extents must report. */
+    private static double expectedLineHeightSs(double aboveStaffSs, double belowStaffSs) {
+        return Staff.STAFF_HEIGHT_SS + aboveStaffSs + belowStaffSs + LYRICS_BAND_HEIGHT_SS;
+    }
+
+    /**
+     * Asserts the ledger-line floors, not the measured content, govern this line's painted
+     * height — the precondition every "minimum height" assertion below depends on.
+     */
+    private static void assertFloorsGovern(LayoutResult result) {
+        assertThat(result.aboveMidlineSs())
+            .describedAs("measured content above the midline must sit inside its floor")
+            .isLessThanOrEqualTo(LineSpacing.MIN_ABOVE_MIDLINE_SS);
+        assertThat(result.belowMidlineSs(LYRIC_METRICS))
+            .describedAs("the lyrics band must fit inside the below-midline floor")
+            .isLessThanOrEqualTo(LineSpacing.MIN_BELOW_MIDLINE_SS);
     }
 
     @SuppressWarnings("NullAway")
@@ -81,8 +121,12 @@ class LineHeightTest extends UnitTest {
         var song = new Song();
         var result = require(engine().layout(song.getLine(0), true), "LayoutResult");
 
-        assertThat(result.getLineHeightSs())
-            .isCloseTo(SongLayoutMetricsBuilder.MIN_LINE_HEIGHT_SS, within(TOLERANCE));
+        assertThat(result.getContentAboveStaffSs()).isCloseTo(0.0, within(TOLERANCE));
+        assertThat(result.getContentBelowStaffSs()).isCloseTo(0.0, within(TOLERANCE));
+
+        assertFloorsGovern(result);
+        assertThat(result.paintLineHeightSs(LYRIC_METRICS))
+            .isCloseTo(LineSpacing.MIN_LINE_HEIGHT_SS, within(TOLERANCE));
     }
 
     @Test
@@ -92,13 +136,12 @@ class LineHeightTest extends UnitTest {
 
         var result = require(engine().layout(song.getLine(1), false), "LayoutResult");
 
-        assertThat(result.getLineHeightSs())
-            .isCloseTo(SongLayoutMetricsBuilder.MIN_LINE_HEIGHT_SS, within(TOLERANCE));
-    }
+        assertThat(result.getContentAboveStaffSs()).isCloseTo(0.0, within(TOLERANCE));
+        assertThat(result.getContentBelowStaffSs()).isCloseTo(0.0, within(TOLERANCE));
 
-    /** Below-staff reservation only: the line-height term minus the inter-line margin. */
-    private static double belowStaffSsOf(LayoutResult result) {
-        return result.getBelowStaffReservationSs() - SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
+        assertFloorsGovern(result);
+        assertThat(result.paintLineHeightSs(LYRIC_METRICS))
+            .isCloseTo(LineSpacing.MIN_LINE_HEIGHT_SS, within(TOLERANCE));
     }
 
     @Test
@@ -129,19 +172,16 @@ class LineHeightTest extends UnitTest {
             .describedAs("above-staff reservation tracks the notehead top")
             .isCloseTo(expectedAboveStaffSs, within(TOLERANCE));
 
-        // A high note grows the line only above the staff; the below-staff
-        // reservation stays at its floor.
-        assertThat(belowStaffSsOf(result))
-            .describedAs("a high note must not change the below-staff reservation")
-            .isCloseTo(Staff.MIN_BELOW_STAFF_SS, within(TOLERANCE));
+        // A high note grows the line only above the staff. Its stem points down but stops at
+        // the staff center, so nothing reaches past the staff bottom and the below-staff
+        // content extent — now unfloored — stays at zero.
+        assertThat(result.getContentBelowStaffSs())
+            .describedAs("a high note must not extend content below the staff")
+            .isCloseTo(0.0, within(TOLERANCE));
 
-        var expectedLineHeightSs = Staff.STAFF_HEIGHT_SS
-            + expectedAboveStaffSs
-            + Staff.MIN_BELOW_STAFF_SS
-            + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
-        assertThat(result.getLineHeightSs())
-            .describedAs("line height reflects the extended above-staff reservation")
-            .isCloseTo(expectedLineHeightSs, within(TOLERANCE));
+        assertThat(result.lineHeightSs(LYRIC_METRICS))
+            .describedAs("line height reflects the extended above-staff content")
+            .isCloseTo(expectedLineHeightSs(expectedAboveStaffSs, 0.0), within(TOLERANCE));
     }
 
     @Test
@@ -167,22 +207,19 @@ class LineHeightTest extends UnitTest {
             .describedAs("staff position must exceed the below-staff floor")
             .isGreaterThan(Staff.MIN_BELOW_STAFF_SS);
 
-        assertThat(belowStaffSsOf(result))
-            .describedAs("below-staff reservation tracks the notehead bottom")
+        assertThat(result.getContentBelowStaffSs())
+            .describedAs("below-staff content tracks the notehead bottom")
             .isCloseTo(expectedBelowStaffSs, within(TOLERANCE));
 
-        // A low note grows the line only below the staff; the above-staff
-        // reservation stays at its floor.
+        // A low note grows the line only below the staff. Its stem points up but stops at the
+        // staff center, so nothing reaches past the staff top and the above-staff content
+        // extent — now unfloored — stays at zero.
         assertThat(result.getContentAboveStaffSs())
-            .describedAs("a low note must not change the above-staff reservation")
-            .isCloseTo(Staff.MIN_ABOVE_STAFF_SS, within(TOLERANCE));
+            .describedAs("a low note must not extend content above the staff")
+            .isCloseTo(0.0, within(TOLERANCE));
 
-        var expectedLineHeightSs = Staff.STAFF_HEIGHT_SS
-            + Staff.MIN_ABOVE_STAFF_SS
-            + expectedBelowStaffSs
-            + SongLayoutMetricsBuilder.INTER_LINE_MARGIN_SS;
-        assertThat(result.getLineHeightSs())
-            .describedAs("line height reflects the extended below-staff reservation")
-            .isCloseTo(expectedLineHeightSs, within(TOLERANCE));
+        assertThat(result.lineHeightSs(LYRIC_METRICS))
+            .describedAs("line height reflects the extended below-staff content")
+            .isCloseTo(expectedLineHeightSs(0.0, expectedBelowStaffSs), within(TOLERANCE));
     }
 }

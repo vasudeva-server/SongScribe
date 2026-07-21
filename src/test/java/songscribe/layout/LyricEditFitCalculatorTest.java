@@ -42,7 +42,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
 
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final LyricRenderMetrics METRICS =
-        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
 
     /**
      * Hyphen glyph wide enough that the reserved hyphen cell ({@code 1.75 ×} this) alone dwarfs
@@ -51,7 +51,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
      */
     private static final double WIDE_HYPHEN_WIDTH_SS = 100.0;
     private static final LyricRenderMetrics HYPHEN_HEAVY_METRICS =
-        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, WIDE_HYPHEN_WIDTH_SS, 0.0);
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, WIDE_HYPHEN_WIDTH_SS, 0.0, 0.0);
 
     /** Wide enough that even a long syllable comfortably fits. */
     private static final double WIDE_LINE_SS = 500;
@@ -237,7 +237,8 @@ class LyricEditFitCalculatorTest extends UnitTest {
             lyricsFont,
             ScaleContext.scaleFont(lyricsFont),
             ScaleContext.textWidthSs(lyricsFont, "-").value(),
-            ScaleContext.textWidthSs(lyricsFont, " ").value());
+            ScaleContext.textWidthSs(lyricsFont, " ").value(),
+            LineSpacing.LYRICS_ROW_MARGIN_SS + LyricRenderMetrics.fontAboveBaselineSs(lyricsFont));
         var line = song.getLines().get(0);
         var lastNoteIndex = lastPitchedNoteIndex(line);
         var staffRightMarginSs = song.getLineWidthSs();

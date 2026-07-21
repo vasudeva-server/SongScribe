@@ -62,7 +62,11 @@ class TiedScriptStackingTest extends UnitTest {
         var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-").value();
         var spaceWidthSs = ScaleContext.textWidthSs(lyricsFont, " ").value();
         var metrics = new LyricRenderMetrics(
-            lyricsFont, ScaleContext.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
+            lyricsFont,
+            ScaleContext.scaleFont(lyricsFont),
+            hyphenWidthSs,
+            spaceWidthSs,
+            LineSpacing.LYRICS_ROW_MARGIN_SS + LyricRenderMetrics.fontAboveBaselineSs(lyricsFont));
         return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
     }
 

@@ -55,7 +55,6 @@ import songscribe.dom.StaffElement;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.layout.SongLayoutMetrics;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.renderer.ElementFrame;
@@ -97,8 +96,7 @@ class LineRendererTest extends UnitTest {
     private static LineInvariants.Builder seededBuilder() {
         return LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())
             .setLayoutResult(LayoutResult.builder().build())
-            .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
-            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0));
+            .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0, 0));
     }
 
     /** Creates a real {@code Graphics2D} backed by an off-screen image, wrapped in a spy. */
@@ -654,8 +652,7 @@ class LineRendererTest extends UnitTest {
         private LineInvariants invariantsFor(Song song) {
             return LineInvariants.builder(song, DocumentFonts.defaultFonts())
                 .setLayoutResult(LayoutResult.builder().build())
-                .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
-                .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0))
+                .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0, 0))
                 .setLineIndex(0)
                 .setCurrentLine(song.getLine(0))
                 .build();

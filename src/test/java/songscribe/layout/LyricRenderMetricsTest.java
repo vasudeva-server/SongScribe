@@ -49,7 +49,7 @@ class LyricRenderMetricsTest extends UnitTest {
     private static final double TOLERANCE = 0.0001;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final LyricRenderMetrics LYRIC_METRICS =
-        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
 
     private Song song;
     private Line line;
@@ -193,7 +193,7 @@ class LyricRenderMetricsTest extends UnitTest {
     void testPreferredHyphenCellWidthSsEqualsFactorTimesHyphenWidth() {
         final var hyphenWidthSs = 1.5;
         final var expectedWidthSs = LyricRenderMetrics.HYPHEN_WIDENING_FACTOR * hyphenWidthSs;
-        var metricsWithHyphen = new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, hyphenWidthSs, 0.0);
+        var metricsWithHyphen = new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, hyphenWidthSs, 0.0, 0.0);
         assertThat(metricsWithHyphen.preferredHyphenCellWidthSs())
             .isCloseTo(expectedWidthSs, within(TOLERANCE));
     }

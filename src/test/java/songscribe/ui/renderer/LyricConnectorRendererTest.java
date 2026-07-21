@@ -39,11 +39,11 @@ import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
 import songscribe.dom.Song;
+import songscribe.engraving.Staff;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricConnectorLayout;
 import songscribe.layout.LyricConnectorLayout.Kind;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.layout.SongLayoutMetrics;
 import songscribe.ui.component.ScoreView;
 
 class LyricConnectorRendererTest extends UnitTest {
@@ -51,27 +51,43 @@ class LyricConnectorRendererTest extends UnitTest {
     private static final double TOLERANCE = 0.0001;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final double HYPHEN_WIDTH_SS = 0.875;
-    private static final LyricRenderMetrics TEST_LYRIC_RENDER_METRICS =
-        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, HYPHEN_WIDTH_SS, 0.0);
 
-    private static SongLayoutMetrics metrics(double staffToLyricsGapSs, double lyricsLineHeightSs, int verseCount) {
-        return new SongLayoutMetrics(
-            1.0,
-            1.0,
-            1.0,
-            staffToLyricsGapSs,
-            lyricsLineHeightSs,
-            verseCount,
-            verseCount * lyricsLineHeightSs,
-            1.0 + 4.0 + 1.0 + staffToLyricsGapSs + verseCount * lyricsLineHeightSs
-        );
+    // Synthetic line geometry: the staff top sits 1 ss down the line, so the staff bottom
+    // lands at 5 ss, with 1 ss of content hanging below it.
+    private static final double CONTENT_ABOVE_STAFF_SS = 1.0;
+    private static final double CONTENT_BELOW_STAFF_SS = 1.0;
+    private static final double STAFF_TO_LYRICS_GAP_SS = 1.0;
+    private static final double NARROW_STAFF_TO_LYRICS_GAP_SS = 0.5;
+
+    /** Staff bottom plus the below-staff content: the anchor every verse baseline hangs off. */
+    private static final double LYRICS_ANCHOR_YSS =
+        CONTENT_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + CONTENT_BELOW_STAFF_SS;
+
+    private static final double VERSE_1_BASELINE_SS = LYRICS_ANCHOR_YSS + STAFF_TO_LYRICS_GAP_SS;
+    private static final double NARROW_VERSE_1_BASELINE_SS =
+        LYRICS_ANCHOR_YSS + NARROW_STAFF_TO_LYRICS_GAP_SS;
+
+    /**
+     * The pitch between consecutive verse baselines. Measured from the lyrics font rather
+     * than injected, since a verse row now hugs the font's ink height.
+     * <p>
+     * Deliberately a method, not a constant: {@link LyricRenderMetrics#fontHeightSs} converts
+     * through the global {@link songscribe.dom.ScaleContext} scale, which other test classes
+     * mutate. Reading it at call time keeps this in step with the renderer, which reads the
+     * same scale when it runs; a static initializer would freeze whatever scale happened to be
+     * in force when this class was loaded.
+     */
+    private static double verseRowHeightSs() {
+        return LyricRenderMetrics.fontHeightSs(LYRICS_FONT);
     }
 
     private static LineInvariants.Builder builderWith(
         List<LyricConnectorLayout> connectors,
-        SongLayoutMetrics metrics
+        double staffToLyricsGapSs
     ) {
-        var layoutBuilder = LayoutResult.builder();
+        var layoutBuilder = LayoutResult.builder()
+            .setContentAboveStaffSs(CONTENT_ABOVE_STAFF_SS)
+            .setContentBelowStaffSs(CONTENT_BELOW_STAFF_SS);
 
         for (var connector : connectors) {
             layoutBuilder.addLyricConnector(connector);
@@ -79,14 +95,14 @@ class LyricConnectorRendererTest extends UnitTest {
 
         return RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutBuilder.build())
-            .setSongLayoutMetrics(metrics)
-            .setLyricRenderMetrics(TEST_LYRIC_RENDER_METRICS);
+            .setLyricRenderMetrics(
+                new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, HYPHEN_WIDTH_SS, 0.0, staffToLyricsGapSs));
     }
 
     @Test
     void testHyphenDrawnCenteredAtMidpoint() {
         var connector = new LyricConnectorLayout(10.0, 11.5, 1, Kind.HYPHEN, NO_SOURCE_ELEMENT_INDEX);
-        var invariants = builderWith(List.of(connector), metrics(1.0, 2.5, 1)).build();
+        var invariants = builderWith(List.of(connector), STAFF_TO_LYRICS_GAP_SS).build();
         var g2 = mock(Graphics2D.class);
 
         LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
@@ -99,14 +115,13 @@ class LyricConnectorRendererTest extends UnitTest {
 
         assertThat(xCap.getValue().doubleValue()).isCloseTo(center - HYPHEN_WIDTH_SS / 2.0, within(TOLERANCE));
 
-        // Verse 1 baseline: staffBottom(5) + below(1) + gap(1) + 0 * lineHeight(2.5) = 7.0
-        assertThat(yCap.getValue().doubleValue()).isCloseTo(7.0, within(TOLERANCE));
+        assertThat(yCap.getValue().doubleValue()).isCloseTo(VERSE_1_BASELINE_SS, within(TOLERANCE));
     }
 
     @Test
     void testDanglingHyphenDrawnCenteredInGap() {
         var connector = new LyricConnectorLayout(8.0, 12.0, 1, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
-        var invariants = builderWith(List.of(connector), metrics(1.0, 2.5, 1)).build();
+        var invariants = builderWith(List.of(connector), STAFF_TO_LYRICS_GAP_SS).build();
         var g2 = mock(Graphics2D.class);
 
         LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
@@ -118,13 +133,13 @@ class LyricConnectorRendererTest extends UnitTest {
         var center = (8.0 + 12.0) / 2.0;
 
         assertThat(xCap.getValue().doubleValue()).isCloseTo(center - HYPHEN_WIDTH_SS / 2.0, within(TOLERANCE));
-        assertThat(yCap.getValue().doubleValue()).isCloseTo(7.0, within(TOLERANCE));
+        assertThat(yCap.getValue().doubleValue()).isCloseTo(VERSE_1_BASELINE_SS, within(TOLERANCE));
     }
 
     @Test
     void testExtenderDrawnFromStartToEnd() {
         var connector = new LyricConnectorLayout(5.0, 20.0, 1, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
-        var invariants = builderWith(List.of(connector), metrics(0.5, 2.0, 1)).build();
+        var invariants = builderWith(List.of(connector), NARROW_STAFF_TO_LYRICS_GAP_SS).build();
         var g2 = mock(Graphics2D.class);
 
         LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
@@ -137,15 +152,14 @@ class LyricConnectorRendererTest extends UnitTest {
         assertThat(drawn.x1).isCloseTo(5.0, within(TOLERANCE));
         assertThat(drawn.x2).isCloseTo(20.0, within(TOLERANCE));
 
-        // Verse 1 baseline: staffBottom(5) + below(1) + gap(0.5) + 0 * lineHeight(2.0) = 6.5
-        assertThat(drawn.y1).isCloseTo(6.5, within(TOLERANCE));
-        assertThat(drawn.y2).isCloseTo(6.5, within(TOLERANCE));
+        assertThat(drawn.y1).isCloseTo(NARROW_VERSE_1_BASELINE_SS, within(TOLERANCE));
+        assertThat(drawn.y2).isCloseTo(NARROW_VERSE_1_BASELINE_SS, within(TOLERANCE));
     }
 
     @Test
     void testDanglingExtenderDrawnFromStartToEnd() {
         var connector = new LyricConnectorLayout(5.0, 15.0, 1, Kind.DANGLING_EXTENDER, NO_SOURCE_ELEMENT_INDEX);
-        var invariants = builderWith(List.of(connector), metrics(0.5, 2.0, 1)).build();
+        var invariants = builderWith(List.of(connector), NARROW_STAFF_TO_LYRICS_GAP_SS).build();
         var g2 = mock(Graphics2D.class);
 
         LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
@@ -158,16 +172,15 @@ class LyricConnectorRendererTest extends UnitTest {
         assertThat(drawn.x1).isCloseTo(5.0, within(TOLERANCE));
         assertThat(drawn.x2).isCloseTo(15.0, within(TOLERANCE));
 
-        // Verse 1 baseline: staffBottom(5) + below(1) + gap(0.5) + 0 * lineHeight(2.0) = 6.5
-        assertThat(drawn.y1).isCloseTo(6.5, within(TOLERANCE));
-        assertThat(drawn.y2).isCloseTo(6.5, within(TOLERANCE));
+        assertThat(drawn.y1).isCloseTo(NARROW_VERSE_1_BASELINE_SS, within(TOLERANCE));
+        assertThat(drawn.y2).isCloseTo(NARROW_VERSE_1_BASELINE_SS, within(TOLERANCE));
     }
 
     @Test
     void testDistinctVersesRenderAtDistinctY() {
         var verse1 = new LyricConnectorLayout(0.0, 10.0, 1, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
         var verse2 = new LyricConnectorLayout(0.0, 10.0, 2, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
-        var invariants = builderWith(List.of(verse1, verse2), metrics(1.0, 2.0, 2)).build();
+        var invariants = builderWith(List.of(verse1, verse2), STAFF_TO_LYRICS_GAP_SS).build();
         var g2 = mock(Graphics2D.class);
 
         LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
@@ -178,16 +191,16 @@ class LyricConnectorRendererTest extends UnitTest {
         var first = (Line2D.Double) lineCap.getAllValues().get(0);
         var second = (Line2D.Double) lineCap.getAllValues().get(1);
 
-        // below=1, gap=1, lineHeight=2.0 ⇒ verse1 baseline = 7.0, verse2 baseline = 9.0
-        assertThat(first.y1).isCloseTo(7.0, within(TOLERANCE));
-        assertThat(second.y1).isCloseTo(9.0, within(TOLERANCE));
+        // Consecutive verses sit exactly one measured row apart.
+        assertThat(first.y1).isCloseTo(VERSE_1_BASELINE_SS, within(TOLERANCE));
+        assertThat(second.y1).isCloseTo(VERSE_1_BASELINE_SS + verseRowHeightSs(), within(TOLERANCE));
     }
 
     @Test
     void testExtenderUsesExtenderStroke() {
         var hyphen = new LyricConnectorLayout(0.0, 4.0, 1, Kind.HYPHEN, NO_SOURCE_ELEMENT_INDEX);
         var extender = new LyricConnectorLayout(0.0, 4.0, 1, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
-        var invariants = builderWith(List.of(hyphen, extender), metrics(1.0, 2.0, 1)).build();
+        var invariants = builderWith(List.of(hyphen, extender), STAFF_TO_LYRICS_GAP_SS).build();
         var g2 = mock(Graphics2D.class);
 
         LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
@@ -208,7 +221,7 @@ class LyricConnectorRendererTest extends UnitTest {
     @Test
     void testSelectedSourceElementRendersConnectorInSelectionColor() {
         var connector = new LyricConnectorLayout(5.0, 20.0, 1, Kind.EXTENDER, 0);
-        var builder = builderWith(List.of(connector), metrics(0.5, 2.0, 1));
+        var builder = builderWith(List.of(connector), NARROW_STAFF_TO_LYRICS_GAP_SS);
         RenderContextTestHelper.enableSelection(builder, 0);
         var invariants = builder.build();
         var g2 = mock(Graphics2D.class);
@@ -220,7 +233,7 @@ class LyricConnectorRendererTest extends UnitTest {
 
     @Test
     void testNoConnectorsIsNoOp() {
-        var invariants = builderWith(List.of(), metrics(0, 0, 0)).build();
+        var invariants = builderWith(List.of(), STAFF_TO_LYRICS_GAP_SS).build();
         var g2 = mock(Graphics2D.class);
 
         LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
@@ -247,7 +260,7 @@ class LyricConnectorRendererTest extends UnitTest {
         //   = 0.96875 - 0.4375, 2.5 - 0.4375, 4.03125 - 0.4375
         //   = 0.53125, 2.0625, 3.59375
         var connector = new LyricConnectorLayout(0.0, 5.0, 1, Kind.HYPHEN, NO_SOURCE_ELEMENT_INDEX);
-        var invariants = builderWith(List.of(connector), metrics(1.0, 2.5, 1)).build();
+        var invariants = builderWith(List.of(connector), STAFF_TO_LYRICS_GAP_SS).build();
         var g2 = mock(Graphics2D.class);
 
         LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
@@ -269,8 +282,8 @@ class LyricConnectorRendererTest extends UnitTest {
             assertThat(xs.get(i).doubleValue()).isCloseTo(expectedX, within(TOLERANCE));
         }
 
-        // All hyphens are at the same verse baseline (verse 1, baseline = 7.0)
+        // All hyphens are at the same verse baseline (verse 1)
         yCap.getAllValues().forEach(y ->
-            assertThat(y.doubleValue()).isCloseTo(7.0, within(TOLERANCE)));
+            assertThat(y.doubleValue()).isCloseTo(VERSE_1_BASELINE_SS, within(TOLERANCE)));
     }
 }

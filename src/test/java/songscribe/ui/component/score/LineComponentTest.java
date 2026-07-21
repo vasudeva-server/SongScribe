@@ -30,6 +30,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.event.MouseEvent;
 import java.util.List;
 
@@ -45,7 +46,8 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.layout.InsertionSpacingCalculator.InsertionResult;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.SongLayoutMetrics;
+import songscribe.layout.LineSpacing;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.engraving.Staff;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
@@ -62,6 +64,21 @@ import songscribe.ui.selection.SelectionCoordinator;
  * heavyweight layout engine.
  */
 class LineComponentTest extends UnitTest {
+
+    /**
+     * Content beyond the minimum staff surround, used to build layouts whose measured
+     * extents clear the {@link LineSpacing#MIN_ABOVE_MIDLINE_SS} floor — so the tests
+     * observe the measured value rather than the floor.
+     */
+    private static final double CONTENT_HEADROOM_SS = 1.5;
+
+    private static final int LYRICS_FONT_POINT_SIZE = 12;
+    private static final Font LYRICS_FONT =
+        new Font(Font.MONOSPACED, Font.PLAIN, LYRICS_FONT_POINT_SIZE);
+
+    /** Lyric geometry for sizing; the gap is 0 since no verse baseline is asserted. */
+    private static final LyricRenderMetrics LYRIC_RENDER_METRICS =
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
 
     /** A clean LineComponent under test. */
     private LineComponent lc;
@@ -169,7 +186,7 @@ class LineComponentTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // calculateMiddleLineYSs — aboveStaffSs + STAFF_HALF_SS
+    // calculateMiddleLineYSs — the line's own painted above-midline extent
     // -------------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -178,27 +195,50 @@ class LineComponentTest extends UnitTest {
 
         /**
          * When {@code layoutResult} is already present (not dirty), {@code getMiddleLineYSs()}
-         * computes {@code aboveStaffSs + STAFF_HALF_SS} without re-running layout.
+         * computes {@code aboveStaffSs + STAFF_HALF_SS} from this line's own layout, without
+         * re-running layout and without consulting any song-wide value.
          *
-         * <p>The test injects a mocked {@link LayoutResult} with a known {@code aboveStaffSs}
-         * and drives the lazy computation via {@link LineComponent#getMiddleLineYSs()}.
+         * <p>The layout is built with more content above the staff than the minimum staff
+         * surround so the measured extent, not {@link LineSpacing#MIN_ABOVE_MIDLINE_SS},
+         * is what the midline placement reports.
          */
         @Test
         void testReturnsAboveStaffSsPlusHalfStaff() {
-            final double aboveStaffSs = 3.0;
-            var mockLayout = mock(LayoutResult.class);
-            when(mockLayout.getContentAboveStaffSs()).thenReturn(aboveStaffSs);
+            final var contentAboveStaffSs = Staff.MIN_ABOVE_STAFF_SS + CONTENT_HEADROOM_SS;
+            var layout = LayoutResult.builder()
+                .setContentAboveStaffSs(contentAboveStaffSs)
+                .build();
 
             // Inject layout state: result present and not dirty, so performLayout() is skipped.
-            lc.layoutResult = mockLayout;
+            lc.layoutResult = layout;
             lc.layoutDirty = false;
             // song must be non-null to trigger the lazy-calculation branch.
             lc.song = mock(Song.class);
             // middleLineYSs starts at 0.0 (JVM default) → lazy calc fires.
 
             assertThat(lc.getMiddleLineYSs())
-                .as("calculateMiddleLineYSs returns aboveStaffSs + STAFF_HALF_SS")
-                .isEqualTo(aboveStaffSs + Staff.STAFF_HALF_SS);
+                .as("midline sits at this line's own contentAboveStaffSs + STAFF_HALF_SS")
+                .isEqualTo(contentAboveStaffSs + Staff.STAFF_HALF_SS);
+        }
+
+        /**
+         * A line whose ink stops at the staff top still places its midline at the minimum
+         * staff surround, not at {@code STAFF_HALF_SS}: {@code StaffLinesLayout} floors a
+         * line's bounds there, and the staff must sit where that reservation put it or it
+         * would be drawn clear of its own component.
+         */
+        @Test
+        void testSparseLineUsesMinimumAboveMidlineFloor() {
+            // No content above the staff at all.
+            var layout = LayoutResult.builder().build();
+
+            lc.layoutResult = layout;
+            lc.layoutDirty = false;
+            lc.song = mock(Song.class);
+
+            assertThat(lc.getMiddleLineYSs())
+                .as("no content above the staff → midline floored at MIN_ABOVE_MIDLINE_SS")
+                .isEqualTo(LineSpacing.MIN_ABOVE_MIDLINE_SS);
         }
     }
 
@@ -236,7 +276,8 @@ class LineComponentTest extends UnitTest {
 
         /**
          * With song, line, and an injected layout result, {@code getPreferredSize()} computes
-         * ceiling-rounded pixel dimensions from the song's line width and total line height.
+         * ceiling-rounded pixel dimensions from the song's line width and this line's own
+         * painted height.
          */
         @Test
         void testNonNullInputsReturnCeilingRoundedDimension() {
@@ -245,17 +286,14 @@ class LineComponentTest extends UnitTest {
             // mutable ScaleContext pps, so overriding that here would not affect the result.
             final double pxPerSs = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
 
-            final double totalLineHeightSs = 9.5;
-            final double aboveStaffSs = 2.0;
+            // The line's own painted height, not a song-wide one: each line is now sized
+            // to its own content.
+            final double paintLineHeightSs = 9.5;
 
-            // Build a real SongLayoutMetrics with a known totalLineHeightSs.
-            var metrics = new SongLayoutMetrics(aboveStaffSs, 0, 0, 0, 0, 0, 0, totalLineHeightSs);
-
-            // Mock ScoreView to return our metrics.
             var mockScoreView = mock(ScoreView.class);
             var mockCoordinator = mock(SelectionCoordinator.class);
             when(mockScoreView.getSelectionCoordinator()).thenReturn(mockCoordinator);
-            when(mockScoreView.getSongLayoutMetrics()).thenReturn(metrics);
+            when(mockScoreView.getLyricRenderMetrics()).thenReturn(LYRIC_RENDER_METRICS);
             when(mockScoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
 
             // Set ScoreView before setting line (lineSelectionState is null → no coordinator call).
@@ -274,10 +312,12 @@ class LineComponentTest extends UnitTest {
             // Use setLine so lineSelectionState is created.
             lc.setLine(line, 0);
 
-            // Inject a mock layout result so performLayout() is not called. The layout has
-            // no bearing on the size — the width comes from the song, not from where the
-            // line's last element happens to sit (issue #578).
-            lc.layoutResult = mock(LayoutResult.class);
+            // Inject a mock layout result so performLayout() is not called. The layout drives
+            // only the height — the width comes from the song, not from where the line's last
+            // element happens to sit (issue #578).
+            var mockLayout = mock(LayoutResult.class);
+            when(mockLayout.paintLineHeightSs(LYRIC_RENDER_METRICS)).thenReturn(paintLineHeightSs);
+            lc.layoutResult = mockLayout;
             lc.layoutDirty = false;
 
             var size = lc.getPreferredSize();
@@ -287,8 +327,8 @@ class LineComponentTest extends UnitTest {
                 .isEqualTo((int) Math.ceil(pxPerSs * lineWidthSs));
 
             assertThat(size.height)
-                .as("height = ceil(totalLineHeightSs → view px)")
-                .isEqualTo((int) Math.ceil(pxPerSs * totalLineHeightSs));
+                .as("height = ceil(this line's paintLineHeightSs → view px)")
+                .isEqualTo((int) Math.ceil(pxPerSs * paintLineHeightSs));
         }
     }
 

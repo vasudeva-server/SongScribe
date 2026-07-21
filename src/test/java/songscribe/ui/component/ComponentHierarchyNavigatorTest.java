@@ -46,8 +46,8 @@ import songscribe.ui.component.score.StaffPanel;
  *   <li>Row 41 — {@code getActualLineMiddleYPx}: returns 0 when {@code mainPanel} is null</li>
  *   <li>Row 42 — {@code getActualLineMiddleYPx}: sums Y offsets from mainPanel + staffPanel
  *                + linePanel + lineComponent + middleLineY</li>
- *   <li>Row 46 — {@code updateLayoutFromComponents}: single-panel fallback uses
- *                {@code height + margin}</li>
+ *   <li>Row 46 — {@code updateLayoutFromComponents}: single-panel fallback uses the
+ *                line component's own height</li>
  *   <li>Row 47 — {@code updateLayoutFromComponents}: with &ge;2 panels, rowHeight =
  *                midY[1] - midY[0]</li>
  * </ul>
@@ -65,8 +65,6 @@ class ComponentHierarchyNavigatorTest extends UnitTest {
     private static final int MIDDLE_LINE_Y_PX = 15;
     private static final int EXPECTED_MIDDLE_Y = MAIN_PANEL_Y + STAFF_PANEL_Y + LINE_PANEL_Y
         + LINE_COMPONENT_Y + MIDDLE_LINE_Y_PX;
-    // Single-panel fallback scale — distinct from the default to make the conversion observable
-    private static final double SINGLE_PANEL_PX_PER_SS = 10.0;
     private static final int SINGLE_PANEL_LINE_HEIGHT_PX = 40;
 
     @AfterEach
@@ -202,6 +200,9 @@ class ComponentHierarchyNavigatorTest extends UnitTest {
 
     // -----------------------------------------------------------------------
     // Row 46: updateLayoutFromComponents — single-panel fallback
+    //
+    // Inter-line spacing is owned by StaffLinesLayout and derived from the measured
+    // content of adjacent lines, so a lone line contributes no gap at all.
     // -----------------------------------------------------------------------
 
     @Test
@@ -239,10 +240,7 @@ class ComponentHierarchyNavigatorTest extends UnitTest {
     }
 
     @Test
-    void testUpdateLayoutFromComponentsSinglePanelUsesHeightPlusMargin() {
-        // Set a known scale so we can predict the margin conversion
-        ScaleContext.setPixelsPerStaffSpace(SINGLE_PANEL_PX_PER_SS);
-
+    void testUpdateLayoutFromComponentsSinglePanelUsesLineHeight() {
         // Single line panel: height = 40px, line at y-sum = 0 for simplicity
         var lineComponent = mock(LineComponent.class);
         when(lineComponent.getLineIndex()).thenReturn(0);
@@ -269,12 +267,11 @@ class ComponentHierarchyNavigatorTest extends UnitTest {
         var captured = new AtomicReference<int[]>();
         navigator.updateLayoutFromComponents(captured::set);
 
-        // rowHeightPx = lineComponent.getHeight() + ssToRoundedPx(LINE_MARGIN_BOTTOM_SS)
-        var expectedRowHeight = SINGLE_PANEL_LINE_HEIGHT_PX
-            + ScaleContext.ssToRoundedPx(StaffPanel.LINE_MARGIN_BOTTOM_SS);
+        // With one line there is no adjacent pair, so no inter-line gap enters the row
+        // height: it is the line component's own height and nothing more.
         var result = captured.get();
         assertThat(result).isNotNull();
-        assertThat(result[1]).isEqualTo(expectedRowHeight);
+        assertThat(result[1]).isEqualTo(SINGLE_PANEL_LINE_HEIGHT_PX);
     }
 
     // -----------------------------------------------------------------------

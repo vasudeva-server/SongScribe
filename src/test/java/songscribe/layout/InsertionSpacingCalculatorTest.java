@@ -116,7 +116,12 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
         var hyphenWidthSs = ScaleContext.textWidthSs(lyricsFont, "-").value();
         var spaceWidthSs = ScaleContext.textWidthSs(lyricsFont, " ").value();
-        return new LyricRenderMetrics(lyricsFont, ScaleContext.scaleFont(lyricsFont), hyphenWidthSs, spaceWidthSs);
+        return new LyricRenderMetrics(
+            lyricsFont,
+            ScaleContext.scaleFont(lyricsFont),
+            hyphenWidthSs,
+            spaceWidthSs,
+            LineSpacing.LYRICS_ROW_MARGIN_SS + LyricRenderMetrics.fontAboveBaselineSs(lyricsFont));
     }
 
     /** A {@link LayoutEngine} with real lyric-render metrics, for the preview-vs-committed equality test. */

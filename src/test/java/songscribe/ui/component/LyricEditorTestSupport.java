@@ -58,8 +58,12 @@ import songscribe.ui.ViewScale;
 abstract class LyricEditorTestSupport extends UnitTest {
 
     protected static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+    /**
+     * The staff-to-lyrics gap is 0 because nothing here asserts a verse baseline or a
+     * lyrics band height; only syllable text handling is under test.
+     */
     protected static final LyricRenderMetrics LYRIC_METRICS =
-        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
 
     protected Song song;
     protected ScoreView score;

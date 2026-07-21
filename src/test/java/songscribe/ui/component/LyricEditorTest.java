@@ -61,8 +61,12 @@ import songscribe.ui.ViewScale;
 class LyricEditorTest extends LyricEditorTestSupport {
 
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+    /**
+     * The staff-to-lyrics gap is 0 because nothing here asserts a verse baseline or a
+     * lyrics band height; only syllable text handling is under test.
+     */
     private static final LyricRenderMetrics LYRIC_METRICS =
-        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0);
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
 
     /** Narrow enough that a wide lyric overflows it but the bare notes still fit. */
     private static final double NARROW_LINE_WIDTH_SS = 40;

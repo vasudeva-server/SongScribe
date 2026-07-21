@@ -30,7 +30,6 @@ import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
-import songscribe.layout.SongLayoutMetrics;
 import songscribe.ui.component.score.LineComponent;
 
 /**
@@ -61,8 +60,7 @@ final class RenderContextTestHelper {
         var lyricFont = fonts.getFont(FontKey.LYRICS);
         return LineInvariants.builder(song, fonts)
             .setLayoutResult(LayoutResult.builder().build())
-            .setSongLayoutMetrics(new SongLayoutMetrics(0, 0, 0, 0, 0, 0, 0, 0))
-            .setLyricRenderMetrics(new LyricRenderMetrics(lyricFont, lyricFont, 0, 0));
+            .setLyricRenderMetrics(new LyricRenderMetrics(lyricFont, lyricFont, 0, 0, 0));
     }
 
     /**

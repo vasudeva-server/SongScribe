@@ -21,7 +21,6 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -40,8 +39,12 @@ import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
+import songscribe.engraving.Staff;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.LineSpacing;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * Unit tests for {@link TranslationComponent}, {@link TextPanel},
@@ -491,10 +494,10 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
 
         /**
          * When the song has exactly one line, {@link StaffPanel#rebuildLayout()} adds
-         * exactly one {@link LinePanel} and no struts (struts are added only between lines).
+         * exactly one {@link LinePanel} and nothing else.
          */
         @Test
-        void testOneLinesProducesOnePanelNoStrut() {
+        void testOneLineProducesOnePanel() {
             // new Song() creates a fresh Song that already contains one initial line.
             var song = new Song();
             assertThat(song.lineCount())
@@ -507,20 +510,19 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             assertThat(panel.getLinePanels())
                 .as("one line → exactly one LinePanel")
                 .hasSize(1);
-            // One LinePanel, zero struts → one component total.
             assertThat(panel.getComponentCount())
-                .as("one line → one component (the LinePanel), no strut")
+                .as("one line → one component (the LinePanel)")
                 .isEqualTo(1);
         }
 
         /**
          * When the song has three lines, {@link StaffPanel#rebuildLayout()} adds three
-         * {@link LinePanel}s and two struts (one between each adjacent pair).
-         * <p>
-         * Total component count = 3 LinePanels + 2 struts = 5.
+         * {@link LinePanel}s and nothing else: inter-line spacing is owned by
+         * {@link StaffLinesLayout} and is not represented by any child component, so the
+         * child count is exactly the line count.
          */
         @Test
-        void testThreeLinesProducesThreePanelsAndTwoStruts() {
+        void testThreeLinesProducesThreePanels() {
             var song = new Song();
             // Add two more lines (song already has one). Use withoutMutationTracking
             // to avoid posting notifications during test setup.
@@ -540,10 +542,9 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
                 .as("three lines → exactly three LinePanels")
                 .hasSize(3);
 
-            // 3 LinePanels + 2 struts = 5 total child components.
-            final int expectedComponents = 5;
+            final int expectedComponents = 3;
             assertThat(panel.getComponentCount())
-                .as("three lines → five child components (3 panels + 2 struts)")
+                .as("three lines → three child components, one per line, no spacer children")
                 .isEqualTo(expectedComponents);
         }
     }
@@ -687,16 +688,125 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
     }
 
     // =========================================================================
-    // StaffPanel — row 27: getPreferredSize
+    // StaffPanel — row 27: preferred size and line stacking
+    //
+    // Line heights and inter-line spacing are no longer song-wide. StaffLinesLayout
+    // sizes every line to its own measured content and separates adjacent staff
+    // midlines by a single uniform distance — the worst adjacent pair:
+    //
+    //     S = max over N of (belowMidline[N] + MIN_INTER_LINE_GAP_SS + aboveMidline[N+1])
+    //
+    // so the tests below derive their expectations from that rule rather than from a
+    // per-line strut that no longer exists.
     // =========================================================================
+
+    /**
+     * Content beyond the minimum staff surround, so every test line's measured extents
+     * clear the {@link LineSpacing#MIN_ABOVE_MIDLINE_SS} /
+     * {@link LineSpacing#MIN_BELOW_MIDLINE_SS} floors and the measured values — not the
+     * floors — drive both the spacing and the bounds.
+     */
+    private static final double CONTENT_HEADROOM_SS = 1.5;
+
+    /** Lyric geometry the test lines are measured against. */
+    private static final LyricRenderMetrics LYRIC_RENDER_METRICS =
+        new LyricRenderMetrics(TEST_FONT, TEST_FONT, 0.0, 0.0, 0.0);
+
+    /** Above-staff content of test line {@code lineIndex}; grows with the index. */
+    private static double contentAboveStaffSs(int lineIndex) {
+        return Staff.MIN_ABOVE_STAFF_SS + (lineIndex + 1) * CONTENT_HEADROOM_SS;
+    }
+
+    /** Below-staff content of test line {@code lineIndex}; grows with the index. */
+    private static double contentBelowStaffSs(int lineIndex) {
+        return Staff.MIN_BELOW_STAFF_SS + (lineIndex + 1) * CONTENT_HEADROOM_SS;
+    }
+
+    /**
+     * The lyrics band every test line reserves. No line carries a verse, so each still
+     * reserves {@link LineSpacing#MIN_RESERVED_VERSE_ROWS} rows of measured font ink.
+     */
+    private static double lyricsBandHeightSs() {
+        return LineSpacing.LYRICS_ROW_MARGIN_SS
+            + LineSpacing.MIN_RESERVED_VERSE_ROWS * LYRIC_RENDER_METRICS.lyricBoxHeightSs();
+    }
+
+    private static double aboveMidlineSs(int lineIndex) {
+        return Staff.STAFF_HALF_SS + contentAboveStaffSs(lineIndex);
+    }
+
+    private static double belowMidlineSs(int lineIndex) {
+        return Staff.STAFF_HALF_SS + contentBelowStaffSs(lineIndex) + lyricsBandHeightSs();
+    }
+
+    /** The uniform midline-to-midline distance for {@code lineCount} test lines. */
+    private static double midlineSpacingSs(int lineCount) {
+        var spacingSs = 0.0;
+
+        for (var i = 0; i < lineCount - 1; i++) {
+            var pairSs = belowMidlineSs(i) + LineSpacing.MIN_INTER_LINE_GAP_SS + aboveMidlineSs(i + 1);
+            spacingSs = Math.max(spacingSs, pairSs);
+        }
+
+        return spacingSs;
+    }
+
+    private static int toViewPx(double valueSs) {
+        return (int) Math.round(valueSs * ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE);
+    }
+
+    private static int toViewPxCeil(double valueSs) {
+        return (int) Math.ceil(valueSs * ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE);
+    }
+
+    /**
+     * Builds a {@link StaffPanel} of {@code lineCount} lines whose components already carry
+     * a layout result with the extents above, so {@code StaffLinesLayout} measures known
+     * values without the layout engine ever running.
+     */
+    private static StaffPanel staffPanelWithMeasuredLines(int lineCount, int lineWidthPx) {
+        var song = new Song();
+        song.withoutMutationTracking(() -> {
+            for (var i = 1; i < lineCount; i++) {
+                song.addLine(new Line(song));
+            }
+        });
+
+        var panel = new StaffPanel();
+        panel.setSong(song);
+
+        var scoreView = mock(ScoreView.class);
+        when(scoreView.getLyricRenderMetrics()).thenReturn(LYRIC_RENDER_METRICS);
+        when(scoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+
+        var linePanels = panel.getLinePanels();
+
+        for (var i = 0; i < linePanels.size(); i++) {
+            var linePanel = linePanels.get(i);
+            // Width only: the stack's height comes from the layout results, never from a
+            // child's preferred height.
+            linePanel.setPreferredSize(new Dimension(lineWidthPx, 0));
+
+            var lineComponent = linePanel.getLineComponent();
+            lineComponent.setScoreView(scoreView);
+            lineComponent.layoutResult = LayoutResult.builder()
+                .setContentAboveStaffSs(contentAboveStaffSs(i))
+                .setContentBelowStaffSs(contentBelowStaffSs(i))
+                .build();
+            // Clean, so ensureAllLineLayouts() finds nothing to recompute.
+            lineComponent.layoutDirty = false;
+        }
+
+        return panel;
+    }
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class StaffPanelGetPreferredSize {
 
         /**
-         * When the song is null, {@link StaffPanel#getPreferredSize()} returns
-         * {@code (0, 0)} without calling {@code updateSongMetrics}.
+         * When there are no line panels, {@link StaffPanel#getPreferredSize()} returns
+         * {@code (0, 0)} without measuring anything.
          */
         @Test
         void testSongNullReturnsDimensionZero() {
@@ -708,50 +818,90 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
         }
 
         /**
-         * For N lines, the total preferred height is the sum of all line heights plus
-         * exactly N-1 margins — one between each adjacent pair of lines.
+         * For N lines, the total preferred height spans the first line's own reach above its
+         * midline, then exactly N-1 uniform midline gaps, then the last line's own reach
+         * below its midline.
          * <p>
-         * An anonymous subclass of {@link StaffPanel} overrides the package-private
-         * {@code updateSongMetrics()} as a no-op to avoid requiring a real
-         * {@link songscribe.ui.component.ScoreView}. Known sizes are injected via
-         * {@code setPreferredSize()} on each {@link LinePanel}.
+         * This is the per-line replacement for the old "N line heights plus N-1 struts":
+         * a line's height no longer carries any inter-line spacing, and the spacing is one
+         * song-wide distance derived from the worst adjacent pair.
          */
         @Test
-        void testThreeLinesHeightIncludesTwoMargins() {
-            var song = new Song();
-            song.withoutMutationTracking(() -> {
-                song.addLine(new Line(song));
-                song.addLine(new Line(song));
-            });
-
-            // Anonymous subclass stubs out updateSongMetrics() so no ScoreView is needed.
-            var panel = new StaffPanel() {
-                @Override
-                void updateSongMetrics() {
-                    // no-op: skip ScoreView dependency in the test
-                }
-            };
-            panel.setSong(song);  // creates 3 LinePanels
-
-            // Inject a known size on each LinePanel so LineComponent is bypassed.
-            final int lineWidth = 200;
-            final int lineHeight = 50;
-            for (var linePanel : panel.getLinePanels()) {
-                linePanel.setPreferredSize(new Dimension(lineWidth, lineHeight));
-            }
+        void testThreeLinesSpanTwoUniformMidlineGaps() {
+            final int lineCount = 3;
+            final int lineWidthPx = 200;
+            var panel = staffPanelWithMeasuredLines(lineCount, lineWidthPx);
 
             var size = panel.getPreferredSize();
-            final int lineCount = 3;
-            final int marginCount = lineCount - 1;
-            int expectedMargin = ScaleContext.ssToRoundedPx(StaffPanel.LINE_MARGIN_BOTTOM_SS);
-            int expectedHeight = lineCount * lineHeight + marginCount * expectedMargin;
+
+            var lastLine = lineCount - 1;
+            var totalHeightSs = aboveMidlineSs(0)
+                + (lineCount - 1) * midlineSpacingSs(lineCount)
+                + belowMidlineSs(lastLine);
 
             assertThat(size.height)
-                .as("3 lines → height = 3*lineHeight + 2*lineMargin")
-                .isEqualTo(expectedHeight);
+                .as("3 lines → first line's headroom + 2 midline gaps + last line's depth")
+                .isEqualTo(toViewPxCeil(totalHeightSs));
             assertThat(size.width)
                 .as("width = max of all line widths (all same here)")
-                .isEqualTo(lineWidth);
+                .isEqualTo(lineWidthPx);
+        }
+
+        /**
+         * A single line has no adjacent pair, so it contributes no inter-line gap at all:
+         * the panel is exactly as tall as that one line.
+         */
+        @Test
+        void testSingleLineAddsNoInterLineGap() {
+            final int lineCount = 1;
+            final int lineWidthPx = 200;
+            var panel = staffPanelWithMeasuredLines(lineCount, lineWidthPx);
+
+            assertThat(panel.getPreferredSize().height)
+                .as("1 line → height is that line's own extent, with no gap term")
+                .isEqualTo(toViewPxCeil(aboveMidlineSs(0) + belowMidlineSs(0)));
+        }
+    }
+
+    // =========================================================================
+    // StaffPanel — layoutContainer: per-line bounds at uniform midline spacing
+    // =========================================================================
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class StaffPanelLineStacking {
+
+        /**
+         * Each line is positioned so its own staff midline lands on a uniform grid, and is
+         * sized to its own content — the two halves of the per-line model. Lines with more
+         * content above their staff therefore start higher within their own slot, and the
+         * distance between staff midlines stays constant regardless.
+         */
+        @Test
+        void testLinesAreSizedIndividuallyAndSpacedUniformly() {
+            final int lineCount = 3;
+            final int panelWidthPx = 200;
+            var panel = staffPanelWithMeasuredLines(lineCount, panelWidthPx);
+
+            var preferredSize = panel.getPreferredSize();
+            panel.setSize(preferredSize.width, preferredSize.height);
+            panel.doLayout();
+
+            var spacingSs = midlineSpacingSs(lineCount);
+            var linePanels = panel.getLinePanels();
+
+            for (var i = 0; i < lineCount; i++) {
+                var midlineYSs = aboveMidlineSs(0) + i * spacingSs;
+                var linePanel = linePanels.get(i);
+
+                assertThat(linePanel.getY())
+                    .as("line %d top = its midline on the uniform grid, less its own headroom", i)
+                    .isEqualTo(toViewPx(midlineYSs - aboveMidlineSs(i)));
+
+                assertThat(linePanel.getHeight())
+                    .as("line %d height = its own measured extent, no inter-line gap", i)
+                    .isEqualTo(toViewPxCeil(aboveMidlineSs(i) + belowMidlineSs(i)));
+            }
         }
     }
 
@@ -844,26 +994,25 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
     }
 
     // =========================================================================
-    // StaffPanel — row 29: updateSongMetrics call order
+    // StaffPanel — row 29: ensureAllLineLayouts call order
     // =========================================================================
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class StaffPanelUpdateSongMetrics {
+    class StaffPanelEnsureAllLineLayouts {
 
         /**
-         * {@link StaffPanel#updateSongMetrics()} must call
-         * {@code scoreView.rebuildLyricRenderMetrics()} BEFORE
-         * {@code scoreView.setSongLayoutMetrics(…)}, because line layouts read lyric
-         * metrics (set by the first call) during the intermediate
-         * {@code getLayoutResults()} step.
+         * {@link StaffPanel#ensureAllLineLayouts()} must call
+         * {@code scoreView.rebuildLyricRenderMetrics()} BEFORE laying out any line, because
+         * a line layout reads the hyphen and space widths those metrics carry to reserve
+         * inter-syllable column spacing.
          */
         @Test
-        void testRebuildLyricRenderMetricsCalledBeforeSetSongLayoutMetrics() {
+        void testRebuildLyricRenderMetricsCalledBeforeLineLayouts() {
             // Mock ScoreView (final class — Mockito 5 inline mock maker handles this).
             var mockScoreView = mock(ScoreView.class);
             // Return a real font so ScaleContext.fontAscentSs doesn't NPE.
-            when(mockScoreView.getLyricsFont()).thenReturn(new Font(Font.SANS_SERIF, Font.PLAIN, 12));
+            when(mockScoreView.getLyricsFont()).thenReturn(TEST_FONT);
 
             // Build a mock LineComponent that provides the ScoreView and returns null
             // for getLayoutResult() so getLayoutResults() produces an empty list.
@@ -877,12 +1026,12 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             var panel = new StaffPanel();
             panel.getLinePanels().add(mockLp);
 
-            panel.updateSongMetrics();
+            panel.ensureAllLineLayouts();
 
-            // Verify that rebuildLyricRenderMetrics was called BEFORE setSongLayoutMetrics.
-            var ordered = inOrder(mockScoreView);
+            // Verify that rebuildLyricRenderMetrics was called BEFORE the line laid itself out.
+            var ordered = inOrder(mockScoreView, mockLc);
             ordered.verify(mockScoreView).rebuildLyricRenderMetrics();
-            ordered.verify(mockScoreView).setSongLayoutMetrics(any());
+            ordered.verify(mockLc).ensureLayout();
         }
     }
 
