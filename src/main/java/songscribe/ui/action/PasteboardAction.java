@@ -60,33 +60,37 @@ public class PasteboardAction extends UIAction {
     public void musicSelectionDidChange(
         MusicSelectionDidChangeNotification message
     ) {
-        if (updateEnabledState()) {
-            switch (op) {
-                case PASTE -> setEnabled(
-                    message.getScoreView().getPasteboardSize() > 0
-                );
-                case COPY, CUT -> setEnabled(
-                    message.getSelectionSize() > 0
-                );
-                // DELETE is handled by DeleteAction.updateEnabledState() above.
-                case DELETE -> {}
-            }
-        }
+        updateEnabledState();
     }
 
     @Handler
     public void clipboardDidChange(ClipboardDidChangeNotification message) {
-        if (updateEnabledState()) {
-            switch (op) {
-                case PASTE -> {
-                    var scoreView = getScoreView();
-                    setEnabled(scoreView != null && scoreView.getPasteboardSize() > 0);
-                }
-                // COPY/CUT are gated by music selection, unaffected by clipboard content.
-                // DELETE is handled by DeleteAction.updateEnabledState() above.
-                case COPY, CUT, DELETE -> {}
-            }
+        updateEnabledState();
+    }
+
+    /**
+     * Base {@link UIAction#updateEnabledState()} only accounts for the generic
+     * flag-based checks (playback state, grace mode, etc.), and is called directly by
+     * several unrelated {@code @Handler} methods in the base class (e.g. song/document
+     * load). Without this override, those calls would force-enable COPY/CUT/PASTE
+     * regardless of selection or clipboard content, since none of them declare a
+     * {@code REQUIRES_SELECTION}-style flag.
+     */
+    @Override
+    public boolean updateEnabledState() {
+        if (!super.updateEnabledState()) {
+            return false;
         }
+
+        var scoreView = requireScoreView();
+        var isEnabled = switch (op) {
+            case PASTE -> scoreView.getPasteboardSize() > 0;
+            case COPY, CUT -> scoreView.getSelectionSize() > 0;
+            // DELETE is handled by DeleteAction.updateEnabledState() above.
+            case DELETE -> true;
+        };
+        setEnabled(isEnabled);
+        return isEnabled;
     }
 
     @Override
