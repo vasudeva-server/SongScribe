@@ -187,6 +187,13 @@ final class WedgeResolver {
      * {@code end}] and adds it to {@code line}. {@code x1ShiftSs}/{@code yShiftSs}
      * come from the start wedge, {@code x2ShiftSs} from the stop wedge — each set
      * only when non-zero.
+     * <p>
+     * Added with {@link Line#addCrescendo}/{@link Line#addDiminuendo} rather than the
+     * raw {@code addRangeElement} the other span kinds use, so a file carrying two
+     * same-type wedges that overlap or merely touch loads as the one hairpin it
+     * musically is. Back-to-back wedges of the same type say nothing a single wider
+     * wedge does not, so nothing is lost by normalizing them on the way in — and it
+     * keeps the model's invariant true no matter who wrote the file.
      */
     private void buildHairpin(
         Line line,

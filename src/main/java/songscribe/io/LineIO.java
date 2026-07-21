@@ -329,6 +329,11 @@ public final class LineIO {
         /**
          * Creates {@link Crescendo} range elements from the parsed crescendo data.
          * Called at end-of-line after all elements have been loaded.
+         * <p>
+         * Added through {@link Line#addCrescendo} rather than the raw
+         * {@code addRangeElement} the other span kinds use, so a legacy file's two
+         * same-type hairpins that overlap or merely touch migrate to the one hairpin
+         * they musically are.
          */
         private void createCrescendosFromPending(Line line) throws SAXException {
             for (var data : pendingCrescendoPairs) {
@@ -342,7 +347,7 @@ public final class LineIO {
                 crescendo.setX1ShiftSs(data[2]);
                 crescendo.setX2ShiftSs(data[3]);
                 crescendo.setYShiftSs(data[4]);
-                line.addRangeElement(crescendo);
+                line.addCrescendo(crescendo);
             }
 
             pendingCrescendoPairs.clear();
@@ -350,7 +355,8 @@ public final class LineIO {
 
         /**
          * Creates {@link Diminuendo} range elements from the parsed diminuendo data.
-         * Called at end-of-line after all elements have been loaded.
+         * Called at end-of-line after all elements have been loaded. Merge semantics
+         * mirror {@link #createCrescendosFromPending}.
          */
         private void createDiminuendosFromPending(Line line) throws SAXException {
             for (var data : pendingDiminuendoPairs) {
@@ -364,7 +370,7 @@ public final class LineIO {
                 diminuendo.setX1ShiftSs(data[2]);
                 diminuendo.setX2ShiftSs(data[3]);
                 diminuendo.setYShiftSs(data[4]);
-                line.addRangeElement(diminuendo);
+                line.addDiminuendo(diminuendo);
             }
 
             pendingDiminuendoPairs.clear();

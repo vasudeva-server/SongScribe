@@ -352,6 +352,10 @@ public final class PasteModeManager {
      * bracket. On {@code INSERTED} the mode exits (the clipboard is retained, so another
      * Cmd+V starts a fresh paste); on {@code LINE_FULL} the error is already shown by
      * {@code tryInsertFragment} and the mode stays active for another try.
+     *
+     * <p>{@code CANCELLED} — the user declined the ending-invalidation confirm — also
+     * exits: declining is a decision about the paste, not about this insertion point,
+     * unlike the retryable "line full" case.
      */
     private void placeAtTarget() {
         var lineComponent = targetLineComponent;
@@ -382,7 +386,8 @@ public final class PasteModeManager {
             UndoController.setPendingOpName(priorOpName);
         }
 
-        if (outcome[0] == ScoreViewController.FragmentInsertOutcome.INSERTED) {
+        if (outcome[0] == ScoreViewController.FragmentInsertOutcome.INSERTED
+                || outcome[0] == ScoreViewController.FragmentInsertOutcome.CANCELLED) {
             exit();
         }
     }

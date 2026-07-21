@@ -74,6 +74,7 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.clipboard.Fragment;
+import songscribe.ui.clipboard.PasteSpanReconciliation;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.edit.ScoreActions;
@@ -720,7 +721,8 @@ public final class ScoreViewController {
     public enum FragmentInsertOutcome {
         INSERTED,
         LINE_FULL,
-        EMPTY
+        EMPTY,
+        CANCELLED
     }
 
     /**
@@ -729,6 +731,10 @@ public final class ScoreViewController {
      * check runs against the pre-delete line, so on {@code LINE_FULL} nothing has
      * been mutated: the "line full" error is shown, a caller-opened bracket stays
      * empty, and no notification is posted. Callers decide recovery.
+     *
+     * <p>{@code CANCELLED} means the user declined the confirm shown when the pasted
+     * content would invalidate a first-second ending. Like {@code LINE_FULL} it leaves
+     * the line untouched.
      *
      * <p>Must be called inside a modification bracket — both paste-replace and
      * paste-mode placement supply their own, so delete + insert form one undo step.
@@ -759,6 +765,38 @@ public final class ScoreViewController {
             return FragmentInsertOutcome.LINE_FULL;
         }
 
+        // Fresh clones every paste — the stored fragment is never itself inserted.
+        // Instantiated before any mutation because the confirms and the reconciliation
+        // below decide which of *these* spans survive, and they must read pre-mutation
+        // indices off the line. The clones carry no line back-reference until addElement
+        // below, so building them early touches nothing.
+        var instantiated = fragment.instantiate();
+
+        // A pasted barline or repeat landing inside an ending discards it, exactly as
+        // inserting one by hand does — confirm on the same terms, before anything is
+        // mutated. Skipped when the paste-replace's own deletion already invalidates an
+        // ending: handlePaste has confirmed that, and the ending is going either way.
+        var deletionAlreadyConfirmed = deleteRange != null
+            && line.hasEndingInvalidatedByDeletion(line.getElements(deleteRange.begin(), deleteRange.end()));
+
+        if (!deletionAlreadyConfirmed) {
+            var insertedTypes = fragment.elements().stream().map(StaffElement::getType).toList();
+
+            if (line.hasEndingInvalidatedByInsertion(insertIndex, insertedTypes)
+                    && !EndingConfirms.confirmInvalidation(score)) {
+                return FragmentInsertOutcome.CANCELLED;
+            }
+        }
+
+        var reconciliation = PasteSpanReconciliation.reconcile(
+            line, insertIndex, deleteRange, instantiated.spans());
+
+        // Drop the destination spans this paste lands inside before anything moves,
+        // while their anchor/end indices still resolve against the pre-paste line.
+        for (var span : reconciliation.targetSpansToRemove()) {
+            line.removeInvalidatedRangeElement(span);
+        }
+
         // Capture the successor and its target X before any mutation: the trailing
         // shift was measured against pre-delete positions, and deleteElementRange's
         // gap-fill moves the tail before the clones go in.
@@ -779,8 +817,6 @@ public final class ScoreViewController {
             insertAt = successor != null ? line.getElementIndex(successor) : line.effectiveElementCount();
         }
 
-        // Fresh clones every paste — the stored fragment is never itself inserted.
-        var instantiated = fragment.instantiate();
         var clones = instantiated.elements();
         var cloneCount = clones.size();
 
@@ -790,17 +826,20 @@ public final class ScoreViewController {
         line.adjustExtendsForInsertion(insertAt);
 
         // Hard ordering constraint: every clone must be inserted before the first
-        // addRangeElement. addRangeElement re-parents only the span, not its
+        // addPastedRangeElement. Adding a span re-parents only the span, not its
         // anchor/end, and getAnchorElementIndex() resolves through the anchor's
         // own getLine() — a span added while its anchors still carry the source
         // line's back-reference makes addElement's isInvalidatedByInsertion sweep
-        // evaluate it against the wrong line, yielding a wrong index or -1.
+        // evaluate it against the wrong line, yielding a wrong index or -1. The
+        // hairpin merge in addPastedRangeElement reads those same indices, so it
+        // would mis-measure what to absorb for exactly the same reason.
         //
-        // Accepted loss: line.addElement removes a destination tuplet the insert
-        // point falls inside and drops endings invalidated by the inserted element
-        // types, so a paste into a tuplet destroys that tuplet. It happens inside
-        // the paste's own undo bracket, so a single undo restores it — the same
-        // behavior as any single-element insert, deliberately not special-cased.
+        // line.addElement additionally drops endings invalidated by the inserted
+        // element types — the ending's own barline/repeat-aware rule, which is more
+        // precise than the straddle test PasteSpanReconciliation applies to the
+        // other span kinds, so endings are left to it. Its tuplet removal is now
+        // redundant (the reconciliation above already removed a straddled tuplet)
+        // but harmless: findTupletAt finds nothing.
         for (var k = 0; k < cloneCount; k++) {
             var clone = clones.get(k);
             clone.setXOffsetPx(ScaleContext.ssToRoundedPx(result.cloneXPositionsSs().get(k)));
@@ -822,8 +861,11 @@ public final class ScoreViewController {
             }
         }
 
-        for (var span : instantiated.spans()) {
-            line.addRangeElement(span);
+        // A pasted hairpin flush against a same-type hairpin already on the line is
+        // merged into it by addPastedRangeElement, the same rule that applies when
+        // the user draws one there; every other kind is added verbatim.
+        for (var span : reconciliation.fragmentSpans()) {
+            line.addPastedRangeElement(span);
         }
 
         return FragmentInsertOutcome.INSERTED;
@@ -851,6 +893,14 @@ public final class ScoreViewController {
         var begin = state.getSelectionBegin();
         var deleteRange = new InsertionSpacingCalculator.DeletedRange(
             begin, effectiveDeleteEnd(line, begin, state.getSelectionEnd()));
+
+        // A paste-replace deletes before it inserts, so it can discard an ending the
+        // same way Delete and Cut can — confirm on the same terms. Declining leaves
+        // the score, the selection, and the clipboard untouched.
+        if (line.hasEndingInvalidatedByDeletion(line.getElements(deleteRange.begin(), deleteRange.end()))
+                && !EndingConfirms.confirmInvalidation(score)) {
+            return;
+        }
 
         // One bracket for the whole replace — delete + insert is a single undo
         // step. On LINE_FULL tryInsertFragment mutates nothing, so the bracket

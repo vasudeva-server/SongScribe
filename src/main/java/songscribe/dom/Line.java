@@ -1294,7 +1294,9 @@ public class Line {
         // During replay the recorded BeamingAddition already carries the merged
         // span and the batch carries the subsumed-beam removals — just add.
         if (!song.isReplaying()) {
-            mergeOverlappingSpans(beam, Beam.class, this::removeBeaming);
+            // Beams do not absorb an adjacent beam: two beam groups written back to
+            // back are two deliberate groupings, not one interrupted by an accident.
+            mergeOverlappingSpans(beam, Beam.class, this::removeBeaming, false);
         }
 
         applyChange(new BeamingAddition(this, beam), () -> rangeElements.add(beam));
@@ -1306,14 +1308,22 @@ public class Line {
      * range via {@code remover}. The tracked removals are emitted before the widened
      * span's addition so undo restores the original spans after removing the merged
      * one.
+     *
+     * @param absorbAdjacent Whether a same-type span merely <em>touching</em> an endpoint
+     *                       — ending one element before it, or starting one element after
+     *                       — is absorbed too, as opposed to only one that overlaps it
      */
     private <R extends RangeElement> void mergeOverlappingSpans(
         R span,
         Class<R> type,
-        Consumer<? super R> remover
+        Consumer<? super R> remover,
+        boolean absorbAdjacent
     ) {
         var anchorIdx = elements.indexOf(span.getAnchorElement());
         var endIdx = elements.indexOf(span.getEndElement());
+
+        // How far past an endpoint an existing span may sit and still be absorbed.
+        var reach = absorbAdjacent ? 1 : 0;
 
         // Expand bounds to absorb adjacent/overlapping spans.
         var mergedAnchorIdx = anchorIdx;
@@ -1325,11 +1335,11 @@ public class Line {
                 var existingAnchor = existing.getAnchorElementIndex();
                 var existingEnd = existing.getEndElementIndex();
 
-                if (existingAnchor <= anchorIdx && anchorIdx <= existingEnd) {
+                if (existingAnchor <= anchorIdx && anchorIdx <= existingEnd + reach) {
                     mergedAnchorIdx = Math.min(mergedAnchorIdx, existingAnchor);
                 }
 
-                if (existingAnchor <= endIdx && endIdx <= existingEnd) {
+                if (existingAnchor - reach <= endIdx && endIdx <= existingEnd) {
                     mergedEndIdx = Math.max(mergedEndIdx, existingEnd);
                 }
             }
@@ -1462,7 +1472,9 @@ public class Line {
         // During replay the recorded addition already carries the merged span
         // and the batch carries the absorbed-hairpin removals — just add.
         if (!song.isReplaying()) {
-            mergeOverlappingSpans(hairpin, type, this::removeInvalidatedRangeElement);
+            // A hairpin drawn flush against a same-type one continues it rather than
+            // starting a second: one uninterrupted dynamic gesture, one hairpin.
+            mergeOverlappingSpans(hairpin, type, this::removeInvalidatedRangeElement, true);
         }
 
         applyChange(mutationFactory.apply(this, hairpin), () -> rangeElements.add(hairpin));
@@ -1653,8 +1665,13 @@ public class Line {
      * so the removal emits its proper mutation. A raw
      * {@code rangeElements.removeIf} would drop the span with no record, making
      * undo of the enclosing operation lossy.
+     * <p>
+     * Every branch is a no-op when the span is no longer in this line, so callers
+     * that cannot cheaply tell whether an earlier step already removed it (the paste
+     * reconciliation in {@code ScoreViewController.tryInsertFragment}) may call it
+     * unconditionally.
      */
-    private void removeInvalidatedRangeElement(RangeElement rangeElement) {
+    public void removeInvalidatedRangeElement(RangeElement rangeElement) {
         switch (rangeElement) {
             case Beam beam -> removeBeaming(beam);
             case Tie tie -> removeTie(tie);
@@ -1662,6 +1679,24 @@ public class Line {
             case Crescendo crescendo -> removeCrescendo(crescendo);
             case Diminuendo diminuendo -> removeDiminuendo(diminuendo);
             default -> removeRangeElement(rangeElement);
+        }
+    }
+
+    /**
+     * Adds a span that a paste is inserting, routing hairpins through the merge-aware
+     * {@link #addCrescendo}/{@link #addDiminuendo} so a pasted hairpin landing flush
+     * against a same-type one already on this line becomes a single hairpin, exactly
+     * as if the user had drawn it there.
+     * <p>
+     * Every other kind is added verbatim: {@code PasteSpanReconciliation} has already
+     * guaranteed no same-kind overlap survives the paste, so the other adders'
+     * displacement logic has nothing left to resolve.
+     */
+    public void addPastedRangeElement(RangeElement rangeElement) {
+        switch (rangeElement) {
+            case Crescendo crescendo -> addCrescendo(crescendo);
+            case Diminuendo diminuendo -> addDiminuendo(diminuendo);
+            default -> addRangeElement(rangeElement);
         }
     }
 
@@ -1735,6 +1770,23 @@ public class Line {
     public boolean hasEndingInvalidatedByInsertion(int insertedIndex, ElementType insertedType) {
         return rangeElements.stream()
             .anyMatch(r -> r.isInvalidatedByInsertion(insertedIndex, insertedType, this));
+    }
+
+    /**
+     * Returns true if inserting a contiguous run of elements of {@code insertedTypes} at
+     * {@code insertedIndex} would remove any Ending in this line — the paste equivalent of
+     * {@link #hasEndingInvalidatedByInsertion(int, ElementType)}.
+     * <p>
+     * Every type is tested at {@code insertedIndex} rather than at its own eventual
+     * position: the run lands contiguously, so each element sits inside the ending
+     * (or at its split boundary) exactly when the first one does, and only the
+     * pre-insertion index resolves correctly against the pre-insertion line.
+     * <p>
+     * Call before the first {@link #addElement(int, StaffElement)}.
+     */
+    public boolean hasEndingInvalidatedByInsertion(int insertedIndex, List<ElementType> insertedTypes) {
+        return insertedTypes.stream()
+            .anyMatch(type -> hasEndingInvalidatedByInsertion(insertedIndex, type));
     }
 
     private record ExtendFix(int lyricIndex, int verse, Lyric.Extend newExtend) {}

@@ -1,0 +1,222 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.ui.clipboard;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+
+import org.jspecify.annotations.Nullable;
+
+import songscribe.dom.Beam;
+import songscribe.dom.Hairpin;
+import songscribe.dom.Line;
+import songscribe.dom.RangeElement;
+import songscribe.dom.Tie;
+import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
+import songscribe.layout.Ending;
+import songscribe.layout.InsertionSpacingCalculator;
+
+/**
+ * Decides which spans survive a paste that lands <em>inside</em> an existing span
+ * on the destination line (#614).
+ *
+ * <p>{@link Fragment#capture} already guarantees the source side is internally
+ * consistent — a span is captured only when both its endpoints are inside the copied
+ * range — and the deletion sweep in {@link Line#removeRange} already drops any target
+ * span whose anchor or end is deleted by a paste-replace. What neither covers is the
+ * span that <em>straddles</em> the paste: its anchor sits before the paste region and
+ * its end sits after, so both endpoints survive and the span silently stretches over
+ * material the user never put under it.
+ *
+ * <p>A straddling target span is reconciled by kind:
+ *
+ * <table border="1">
+ *   <caption>Straddle policy by span kind</caption>
+ *   <tr><th>Kind</th><th>Target</th><th>Fragment</th></tr>
+ *   <tr><td>{@link Tuplet}</td><td>removed</td><td>tuplets dropped</td></tr>
+ *   <tr><td>{@link Beam}</td><td>removed</td><td>beams dropped</td></tr>
+ *   <tr><td>{@link Tie}</td><td>removed</td><td>kept</td></tr>
+ *   <tr><td>{@link Trill}</td><td>removed</td><td>kept</td></tr>
+ *   <tr><td>{@link Hairpin}</td><td colspan="2">by type — see below</td></tr>
+ *   <tr><td>{@link Ending}</td><td>kept</td><td>endings dropped</td></tr>
+ * </table>
+ *
+ * <p>Tuplets and beams are rhythmic groupings: a group that no longer covers the
+ * notes it was written for is not merely misplaced but wrong, and a pasted group
+ * dropped into the wreckage of a broken one is equally wrong — so both sides go.
+ * Ties and trills bind specific adjacent notes, so a straddled one is dropped, but
+ * a fragment's own tie or trill still binds its own notes and is kept.
+ *
+ * <p><b>Hairpins reconcile by type</b>, because a crescendo and a diminuendo say
+ * opposite things. A straddled destination hairpin is kept — and silently widened by
+ * the insertion, which reads correctly over any span of notes — only while the
+ * fragment says nothing that contradicts it: if the fragment carries a hairpin of a
+ * <em>different</em> type, the destination's is removed and the fragment's own
+ * hairpins win, since a diminuendo nested inside a crescendo is a contradiction no
+ * widening can fix. Otherwise the destination's wins and the fragment's — necessarily
+ * a shorter hairpin of the same type inside it — is dropped as redundant.
+ *
+ * <p><b>A paste that merely abuts a hairpin is not this class's problem.</b> Two
+ * same-type hairpins left nose to tail are one hairpin, but that is the same rule
+ * that applies when the user draws a hairpin flush against an existing one, so it
+ * lives where drawing already handles it: {@link Line#addCrescendo} and
+ * {@link Line#addDiminuendo} absorb an overlapping <em>or adjacent</em> same-type
+ * hairpin, and {@code tryInsertFragment} adds pasted spans through
+ * {@link Line#addPastedRangeElement}, which routes hairpins to them. A different type
+ * merges with nothing and the two hairpins stand side by side, again exactly as when
+ * drawn. Nothing here needs to know about it.
+ *
+ * <p><b>Only a straddle counts.</b> #614 words the tuplet/beam rule as "if the paste
+ * does not completely replace a group, remove it from both sides", which literally
+ * also covers a paste-replace that clips a group at its edge — deleting one endpoint
+ * and orphaning notes on the other side. That case is deliberately excluded: the
+ * destination group dies anyway (the deletion sweep sees the lost endpoint), and the
+ * pasted group lands contiguous and self-consistent at the boundary rather than
+ * interleaved with the orphaned remains, which is the mess the rule exists to prevent.
+ * Dropping it there would strip beaming from a paste merely for landing next to a
+ * beamed note. The orphaned notes' own beaming is left to the user, matching the
+ * "beams at the seams" note in {@code docs/clipboard.md}.
+ *
+ * <p>An ending straddling the paste follows the hairpin rule for the same reason in
+ * reverse: an ending bracket covering a few extra notes is still valid notation, but
+ * an ending <em>nested inside</em> another one never is — and nothing else in the
+ * codebase rejects a nested ending, since {@code makeFirstSecondEnding} validates
+ * repeat context rather than existing-ending overlap. So the destination ending is
+ * kept and the fragment's is dropped. Whether the destination ending survives the
+ * pasted <em>content</em> is a separate and more precise question that
+ * {@link Line#addElement} already answers per clone via
+ * {@code Ending.isInvalidatedByInsertion}, the ending's own barline/repeat-aware
+ * rule; this class does not second-guess it. A fragment carrying a whole ending
+ * necessarily carries that ending's own barlines, so in practice that rule usually
+ * removes the destination ending too, and the paste is confirmed on those terms.
+ *
+ * @param targetSpansToRemove Spans on the destination line to remove before inserting
+ * @param fragmentSpans       The fragment's spans that should still be added
+ */
+public record PasteSpanReconciliation(
+    List<RangeElement> targetSpansToRemove,
+    List<RangeElement> fragmentSpans
+) {
+
+    /**
+     * Reconciles {@code fragmentSpans} against the spans already on {@code line}.
+     *
+     * <p>Must be called on the <em>pre-mutation</em> line: every index below is a
+     * live index into the line as it stands before the paste's delete and insert.
+     *
+     * @param line          The destination line, before any paste mutation
+     * @param insertIndex   The index the fragment's first element will land at
+     * @param deleteRange   The range a paste-replace deletes first, or null for a pure insertion
+     * @param fragmentSpans The spans the instantiated fragment carries
+     */
+    public static PasteSpanReconciliation reconcile(
+        Line line,
+        int insertIndex,
+        InsertionSpacingCalculator.@Nullable DeletedRange deleteRange,
+        List<RangeElement> fragmentSpans
+    ) {
+        // The first index after the paste region. For a pure insertion the region is
+        // empty, so it collapses onto insertIndex itself.
+        var firstIndexAfterRegion = deleteRange == null ? insertIndex : deleteRange.end() + 1;
+
+        var toRemove = new ArrayList<RangeElement>();
+        var dropTuplets = false;
+        var dropBeams = false;
+        var dropEndings = false;
+
+        // Hairpin types whose straddled destination hairpin survives, and which the
+        // fragment therefore must not also contribute.
+        var keptStraddledHairpinTypes = new HashSet<Class<?>>();
+
+        for (var span : line.getRangeElements()) {
+            var anchorIndex = span.getAnchorElementIndex();
+            var endIndex = span.getEndElementIndex();
+
+            // A span straddles the paste when its anchor lies strictly before the
+            // region and its end lies at or after the first index past it. That
+            // simultaneously excludes spans fully inside the deleted range (whose
+            // endpoints the deletion sweep removes) and spans clear of it entirely.
+            if (anchorIndex < 0 || endIndex < 0
+                    || anchorIndex >= insertIndex
+                    || endIndex < firstIndexAfterRegion) {
+                continue;
+            }
+
+            switch (span) {
+                case Tuplet tuplet -> {
+                    toRemove.add(tuplet);
+                    dropTuplets = true;
+                }
+                case Beam beam -> {
+                    toRemove.add(beam);
+                    dropBeams = true;
+                }
+                case Tie tie -> toRemove.add(tie);
+                case Trill trill -> toRemove.add(trill);
+                case Hairpin hairpin -> {
+                    if (fragmentContradictsHairpin(fragmentSpans, hairpin)) {
+                        toRemove.add(hairpin);
+                    } else {
+                        keptStraddledHairpinTypes.add(hairpin.getClass());
+                    }
+                }
+                case Ending ignored -> dropEndings = true;
+                default -> { }
+            }
+        }
+
+        var keptFragmentSpans = new ArrayList<RangeElement>(fragmentSpans.size());
+
+        for (var span : fragmentSpans) {
+            var dropped = (dropTuplets && span instanceof Tuplet)
+                || (dropBeams && span instanceof Beam)
+                || (dropEndings && span instanceof Ending)
+                || (span instanceof Hairpin && keptStraddledHairpinTypes.contains(span.getClass()));
+
+            if (!dropped) {
+                keptFragmentSpans.add(span);
+            }
+        }
+
+        return new PasteSpanReconciliation(toRemove, keptFragmentSpans);
+    }
+
+    /**
+     * Whether the fragment carries a hairpin of a type other than {@code hairpin}'s —
+     * the one thing that can beat a straddled destination hairpin, since the pasted
+     * notes would then be reading two opposite dynamics at once.
+     */
+    private static boolean fragmentContradictsHairpin(
+        List<RangeElement> fragmentSpans,
+        Hairpin hairpin
+    ) {
+        for (var span : fragmentSpans) {
+            if (span instanceof Hairpin fragmentHairpin
+                    && fragmentHairpin.getClass() != hairpin.getClass()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+}

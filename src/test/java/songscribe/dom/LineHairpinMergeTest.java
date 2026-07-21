@@ -255,4 +255,125 @@ class LineHairpinMergeTest extends UnitTest {
             );
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Abutting hairpins — no shared endpoint, merely touching
+    // -----------------------------------------------------------------------
+
+    /**
+     * The tests above merge hairpins that share an endpoint, so their ranges overlap.
+     * These merge hairpins that only <em>touch</em>: one ends on the element directly
+     * before the other begins, with no element in common. One uninterrupted dynamic
+     * gesture is one hairpin however the user happened to draw it, so the two merge —
+     * which is also what makes a pasted hairpin landing flush against an existing one
+     * continue it instead of restarting it.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AbuttingHairpinMerge {
+
+        @Test
+        void testCrescendoAddedDirectlyAfterAnotherMergesIntoOneSpan() {
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_0), line.getElement(IDX_1))));
+
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_2), line.getElement(IDX_4))));
+
+            var crescendos = line.findRangeElements(Crescendo.class);
+
+            assertAll(
+                () -> assertThat(crescendos)
+                    .as("a crescendo starting where another ended must merge into one")
+                    .hasSize(1),
+                () -> assertThat(crescendos.getFirst().getAnchorElementIndex())
+                    .as("merged crescendo anchor must be 0")
+                    .isEqualTo(IDX_0),
+                () -> assertThat(crescendos.getFirst().getEndElementIndex())
+                    .as("merged crescendo end must be 4")
+                    .isEqualTo(IDX_4)
+            );
+        }
+
+        @Test
+        void testCrescendoAddedDirectlyBeforeAnotherMergesIntoOneSpan() {
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_2), line.getElement(IDX_4))));
+
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_0), line.getElement(IDX_1))));
+
+            var crescendos = line.findRangeElements(Crescendo.class);
+
+            assertAll(
+                () -> assertThat(crescendos)
+                    .as("a crescendo ending where another began must merge into one")
+                    .hasSize(1),
+                () -> assertThat(crescendos.getFirst().getAnchorElementIndex())
+                    .as("merged crescendo anchor must be 0")
+                    .isEqualTo(IDX_0),
+                () -> assertThat(crescendos.getFirst().getEndElementIndex())
+                    .as("merged crescendo end must be 4")
+                    .isEqualTo(IDX_4)
+            );
+        }
+
+        @Test
+        void testDiminuendoAddedDirectlyAfterAnotherMergesIntoOneSpan() {
+            song.withoutMutationTracking(() ->
+                line.addDiminuendo(new Diminuendo(line.getElement(IDX_0), line.getElement(IDX_1))));
+
+            song.withoutMutationTracking(() ->
+                line.addDiminuendo(new Diminuendo(line.getElement(IDX_2), line.getElement(IDX_4))));
+
+            var diminuendos = line.findRangeElements(Diminuendo.class);
+
+            assertAll(
+                () -> assertThat(diminuendos)
+                    .as("a diminuendo starting where another ended must merge into one")
+                    .hasSize(1),
+                () -> assertThat(diminuendos.getFirst().getAnchorElementIndex())
+                    .as("merged diminuendo anchor must be 0")
+                    .isEqualTo(IDX_0),
+                () -> assertThat(diminuendos.getFirst().getEndElementIndex())
+                    .as("merged diminuendo end must be 4")
+                    .isEqualTo(IDX_4)
+            );
+        }
+
+        @Test
+        void testAbuttingHairpinsOfDifferentTypesStayApart() {
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_0), line.getElement(IDX_1))));
+
+            song.withoutMutationTracking(() ->
+                line.addDiminuendo(new Diminuendo(line.getElement(IDX_2), line.getElement(IDX_4))));
+
+            assertAll(
+                () -> assertThat(line.findRangeElements(Crescendo.class))
+                    .as("crescendo must survive alongside the abutting diminuendo")
+                    .hasSize(1),
+                () -> assertThat(line.findRangeElements(Diminuendo.class))
+                    .as("a crescendo swelling straight into a diminuendo is two hairpins")
+                    .hasSize(1)
+            );
+        }
+
+        /**
+         * A hairpin separated from a same-type one by even a single plain note is a
+         * second gesture, not a continuation, so the two must not merge across the gap.
+         */
+        @Test
+        void testHairpinsSeparatedByAGapStayApart() {
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_0), line.getElement(IDX_1))));
+
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(IDX_3), line.getElement(IDX_4))));
+
+            assertThat(line.findRangeElements(Crescendo.class))
+                .as("a plain note between two crescendos keeps them separate")
+                .hasSize(2);
+        }
+    }
 }

@@ -98,6 +98,24 @@ class LineBeamTest extends UnitTest {
                     .isEqualTo(IDX_4)
             );
         }
+
+        /**
+         * Beams merge only where they overlap. Two beam groups written back to back —
+         * [0,1] then [2,4], sharing no element — are two deliberate groupings, and
+         * unlike hairpins they must stay that way.
+         */
+        @Test
+        void testAbuttingBeamsWithNoSharedEndpointStayApart() {
+            song.withoutMutationTracking(() ->
+                line.addBeaming(new Beam(line.getElement(IDX_0), line.getElement(IDX_1))));
+
+            song.withoutMutationTracking(() ->
+                line.addBeaming(new Beam(line.getElement(IDX_2), line.getElement(IDX_4))));
+
+            assertThat(line.findBeamsOverlapping(IDX_0, IDX_4))
+                .as("beam groups written back to back must remain two groups")
+                .hasSize(2);
+        }
     }
 
     // -----------------------------------------------------------------------

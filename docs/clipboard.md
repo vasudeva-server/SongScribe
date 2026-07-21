@@ -130,13 +130,130 @@ what a user experiences as one action. On `LINE_FULL` `tryInsertFragment` mutate
 nothing before returning, so the bracket closes empty, posts no
 `SongDidChangeNotification`, and the selection is left intact.
 
-Inside that one bracket, `Line.addElement`'s existing side effects also apply to
-every pasted clone: it re-parents the clone (`setLine`/`setParentLine`) and, if the
-insertion point falls inside a tuplet or invalidates an ending, removes that tuplet
-or ending. This is the **accepted loss** for pasting into occupied structure — it
-is exactly what any single-element insert already does, deliberately not
-special-cased for paste, and because it happens inside the paste's own bracket a
-single undo restores the destroyed tuplet/ending along with everything else.
+`handlePaste` also runs the ending-invalidation confirm before opening that bracket,
+on the same terms as `handleDelete` and `handleCut`: a paste-replace deletes before
+it inserts, so it can discard an ending the same way they can. Declining leaves the
+score, the selection, and the clipboard untouched.
+
+Inside the bracket, `Line.addElement`'s existing side effects also apply to every
+pasted clone: it re-parents the clone (`setLine`/`setParentLine`) and removes any
+ending invalidated by the inserted element's type. Everything else that pasting
+into occupied structure would break is reconciled deliberately — see §3.1.
+
+### 3.1 Span reconciliation — pasting inside an existing span (#614)
+
+`Fragment.capture` keeps the source side consistent (a span survives only if both
+endpoints are inside the copied range) and `Line.removeRange`'s sweep drops any
+destination span whose anchor or end a paste-replace deletes. Neither covers the
+span that **straddles** the paste: anchor before the paste region, end after it,
+both endpoints surviving, so the span silently stretches over material the user
+never put under it. `PasteSpanReconciliation.reconcile` is the one place that case
+is decided. It runs on the **pre-mutation** line, before the delete, so every index
+it reads is still live.
+
+A span straddles iff `anchorIndex < insertIndex && endIndex >= firstIndexAfterRegion`,
+where `firstIndexAfterRegion` is `deleteRange.end() + 1` for a paste-replace and
+collapses onto `insertIndex` for a pure insertion. That single predicate excludes
+both the fully-replaced span (endpoints deleted, the sweep's job) and the span
+clear of the paste entirely.
+
+| Kind | Destination | Fragment |
+| --- | --- | --- |
+| `Tuplet` | removed | tuplets dropped |
+| `Beam` | removed | beams dropped |
+| `Tie` | removed | kept |
+| `Trill` | removed | kept |
+| `Hairpin` | **kept**, unless contradicted | same-type hairpins dropped |
+| `Ending` | **kept** | endings dropped |
+
+Tuplets and beams are rhythmic groupings: one that no longer covers the notes it
+was written for is wrong, and a pasted group dropped into the wreckage of a broken
+one is equally wrong, so both sides go. The fragment-side drop is **per kind** — a
+straddled beam does not kill a pasted tuplet. Ties and trills bind specific notes,
+so a straddled one is dropped, but the fragment's own tie/trill still binds the
+fragment's own notes and is kept.
+
+**Hairpins reconcile by type**, because a crescendo and a diminuendo say opposite
+things. A hairpin is a continuous dynamic that reads correctly over any span of
+notes, so a straddled destination hairpin is kept — silently widened by the
+insertion — and the fragment's, necessarily a shorter hairpin of the same type
+inside it, is dropped as redundant. But if the fragment carries a hairpin of a
+*different* type, the destination's is removed and the fragment's own hairpins win:
+a diminuendo nested inside a crescendo is a contradiction no widening can fix. When
+the whole destination hairpin *is* selected it dies with the deletion and the
+fragment's hairpin replaces it, with no special case needed.
+
+**A paste that merely abuts a hairpin is not the reconciler's problem.** Two
+same-type hairpins left nose to tail are one hairpin — but that is the same rule
+that applies when the user *draws* a hairpin flush against an existing one, so it
+lives where drawing already handles it. `Line.addCrescendo`/`addDiminuendo` absorb an
+overlapping **or adjacent** same-type hairpin (`mergeOverlappingSpans` takes an
+`absorbAdjacent` reach: `true` for hairpins, `false` for beams, since two beam groups
+written back to back are two deliberate groupings). `tryInsertFragment` adds pasted
+spans through `Line.addPastedRangeElement`, which routes hairpins to those two adders
+and everything else to the raw `addRangeElement`, so a pasted hairpin landing flush
+against a same-type one continues it instead of restarting it. A different type merges
+with nothing and the two stand side by side, again exactly as when drawn.
+
+**Reading merges too.** Two same-type hairpins back to back say nothing a single
+wider one does not, so that state is not one the model holds — however it arises.
+`WedgeResolver` and legacy `LineIO` therefore add hairpins through
+`addCrescendo`/`addDiminuendo` rather than the raw `addRangeElement` every other span
+kind in both readers uses, so a file another program wrote (or an old `.mssw`)
+normalizes on the way in. The upshot is a single invariant with no exceptions: a
+hairpin never abuts or overlaps a same-type hairpin, whether the user drew it, pasted
+it, or opened a file containing it.
+
+**Only a straddle counts.** #614 words the tuplet/beam rule as "if the paste does not
+completely replace a group, remove it from both sides", which literally also covers a
+paste-replace that clips a group at its edge — deleting one endpoint and orphaning
+notes on the other side. That case is deliberately excluded: the destination group
+dies anyway (the deletion sweep sees the lost endpoint), and the pasted group lands
+contiguous and self-consistent at the boundary rather than interleaved with the
+orphaned remains, which is the mess the rule exists to prevent. Dropping it there
+would strip beaming from a paste merely for landing next to a beamed note. The
+orphaned notes' own beaming is left to the user, per "beams at the seams" in §6.
+
+An ending follows the hairpin rule for the same reason in reverse: an ending bracket
+covering a few extra notes is still valid notation, but an ending *nested inside*
+another one never is — and nothing else rejects a nested ending, since
+`makeFirstSecondEnding` validates repeat context rather than existing-ending overlap.
+So the destination ending is kept and the fragment's is dropped. Whether the
+destination ending survives the pasted *content* is a separate, more precise question
+`Line.addElement` already answers per clone via `Ending.isInvalidatedByInsertion`, the
+ending's own barline/repeat-aware rule; the reconciler does not second-guess it.
+
+### Why the per-kind rules add up to an invariant
+
+Taken together the rules guarantee that **a paste never leaves two overlapping spans
+of the same kind**, which is the property #614 is really after. The argument: a
+surviving destination span `D = [a, b]` (endpoints not deleted) can overlap the
+pasted block at all only if `a < insertIndex && b >= firstIndexAfterRegion` — the
+straddle predicate exactly. Any other `D` lies wholly before the region, wholly after
+it, or wholly inside the deleted range (endpoints deleted, so it doesn't survive), and
+is therefore index-disjoint from the block. So every possible same-kind overlap passes
+through the straddle branch, where one side or the other is always dropped.
+
+`NoSameKindOverlapSurvives` in `PasteSpanReconciliationTest` asserts this per kind
+independently of which side each rule favours, so a future kind added to the switch
+with the wrong policy — or added to `RangeElement` and forgotten here — fails a test
+rather than shipping a malformed score. Note that the invariant is what makes it safe
+for `addPastedRangeElement` to add every non-hairpin pasted span with the raw
+`line.addRangeElement`, bypassing the overlap-merge and displacement logic in
+`addTuplet`/`addBeaming`/`addTrill`: there is by then no overlap left for those to
+resolve. Hairpins are the exception, and only because they must handle *abutment*,
+which the invariant says nothing about — abutting spans do not overlap.
+
+Removals go through `Line.removeInvalidatedRangeElement`, the typed dispatcher that
+emits each span's proper tracked mutation, so a single undo restores every span this
+step discarded. Every branch of it is a no-op on a span already gone from the line,
+which is what makes `addElement`'s now-redundant tuplet removal harmless rather than
+a double-remove.
+
+`Fragment.instantiate()` therefore moves **above** the delete in `tryInsertFragment`:
+the reconciliation decides which of the instantiated spans survive, and it needs
+pre-mutation indices. The clones carry no line back-reference until `addElement`, so
+building them early touches nothing.
 
 ### Hard ordering constraint inside `tryInsertFragment`
 

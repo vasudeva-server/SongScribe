@@ -276,10 +276,16 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
     // -------------------------------------------------------------------------
 
     @Test
-    void testBackToBackCrescendosRoundTrip() throws Exception {
-        // Two crescendos on one line: first spans [0,1], second spans [2,3].
-        // The stop wedge of the first is adjacent to the start wedge of the second
-        // (both placed before note1 and note2 respectively in the emitted XML).
+    void testBackToBackCrescendosLoadAsOneMergedCrescendo() throws Exception {
+        // Two crescendos on one line: first spans [0,1], second spans [2,3], so the
+        // stop wedge of the first is adjacent to the start wedge of the second (placed
+        // before note1 and note2 respectively in the emitted XML).
+        //
+        // Back-to-back crescendos say nothing a single wider one does not, so they are
+        // not a state the model holds: addCrescendo merges them however they arise —
+        // drawn, pasted, or read back from a file another program wrote. Building this
+        // fixture therefore needs the raw addRangeElement to get two wedges into the
+        // XML at all; what the round-trip asserts is that reading them merges them.
         var song = buildSong(line -> {
             var note0 = ElementType.CROTCHET.newInstance();
             var note1 = ElementType.CROTCHET.newInstance();
@@ -289,17 +295,18 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note1);
             line.addElement(note2);
             line.addElement(note3);
-            line.addCrescendo(new Crescendo(note0, note1));
-            line.addCrescendo(new Crescendo(note2, note3));
+            line.addRangeElement(new Crescendo(note0, note1));
+            line.addRangeElement(new Crescendo(note2, note3));
         });
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
         var crescendos = line2.getCrescendos();
 
-        assertThat(crescendos).as("crescendo count after back-to-back round-trip").hasSize(2);
-        assertHairpinEquals(crescendos.get(0), Crescendo.class, 0, 1, 0.0, 0.0, 0.0, "first crescendo");
-        assertHairpinEquals(crescendos.get(1), Crescendo.class, 2, 3, 0.0, 0.0, 0.0, "second crescendo");
+        assertThat(crescendos)
+            .as("two back-to-back wedges in the file must load as one crescendo")
+            .hasSize(1);
+        assertHairpinEquals(crescendos.getFirst(), Crescendo.class, 0, 3, 0.0, 0.0, 0.0, "merged crescendo");
     }
 
     @Test

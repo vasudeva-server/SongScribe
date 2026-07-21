@@ -31,6 +31,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
@@ -43,6 +44,7 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
+import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
@@ -52,6 +54,8 @@ import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.Ending;
+import songscribe.layout.EndingLineFixture;
+import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LineEndingSupport;
 import songscribe.message.Message;
 import songscribe.message.command.DeselectCommand;
@@ -815,6 +819,60 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(line.getElement(0)).isSameAs(noteA);
             assertThat(line.getElement(1)).isSameAs(noteB);
             assertThat(line.getRangeElements()).hasSize(1);
+        }
+
+        // #614: a paste-replace deletes before it inserts, so it can discard an ending
+        // the same way Cut can and confirms on the same terms. Declining must leave the
+        // score, the selection, and the clipboard untouched.
+        @Test
+        void testHandlePasteLeavesScoreAndClipboardUntouchedWhenEndingInvalidationIsDeclined() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = ElementType.CROTCHET.newInstance();
+            var noteB = ElementType.CROTCHET.newInstance();
+            var ending = new Ending(noteA, noteB);
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+                line.addRangeElement(ending);
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 1);
+
+            var pastedNote = ElementType.CROTCHET.newInstance();
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(List.of(pastedNote), List.of()));
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinator,
+                clipboardManager
+            );
+
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                endingConfirmsMock.when(() -> EndingConfirms.confirmInvalidation(any())).thenReturn(false);
+
+                controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE));
+
+                // Positive control: without this the assertions below would also pass
+                // if handlePaste had bailed out before ever reaching the confirm.
+                endingConfirmsMock.verify(() -> EndingConfirms.confirmInvalidation(any()));
+            }
+
+            assertThat(line.getElement(0)).isSameAs(noteA);
+            assertThat(line.getElement(1)).isSameAs(noteB);
+            assertThat(line.getRangeElements())
+                .as("the declined confirm leaves the ending in place")
+                .containsExactly(ending);
+            assertThat(clipboardManager.getFragment())
+                .as("declining must not consume the clipboard")
+                .isNotNull();
         }
     }
 
@@ -2013,6 +2071,12 @@ class ScoreViewControllerTest extends UnitTest {
 
         private static final double WIDE_LINE_WIDTH_SS = 500;
 
+        /** Notes in the destination line for the span-reconciliation fixtures. */
+        private static final int DESTINATION_NOTE_COUNT = 6;
+
+        /** An insertion index strictly inside a span covering the whole fixture line. */
+        private static final int INTERIOR_INSERT_INDEX = 2;
+
         private static Song wideSong() {
             var song = new Song();
             song.withoutMutationTracking(() -> song.setLineWidthSs(WIDE_LINE_WIDTH_SS));
@@ -2186,6 +2250,437 @@ class ScoreViewControllerTest extends UnitTest {
             var span = line.getRangeElements().get(0);
             assertThat(span.getAnchorElementIndex()).isEqualTo(1);
             assertThat(span.getEndElementIndex()).isEqualTo(2);
+        }
+
+        /** Builds a {@code count}-note line with mutation tracking suspended. */
+        private static List<StaffElement> fillLine(Song song, Line line, int count) {
+            var notes = new ArrayList<StaffElement>();
+
+            song.withoutMutationTracking(() -> {
+                for (var i = 0; i < count; i++) {
+                    var note = ElementType.CROTCHET.newInstance();
+                    notes.add(note);
+                    line.addElement(note);
+                }
+            });
+
+            return notes;
+        }
+
+        @Test
+        void testPastedEndingDoesNotNestInsideTheDestinationEnding() {
+            // #614: an ending bracket covering a few extra notes is still valid
+            // notation, but an ending nested inside another one never is — and no
+            // other code path rejects one, so the paste must.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
+            var destinationEnding = new Ending(notes.getFirst(), notes.getLast());
+            song.withoutMutationTracking(() -> line.addRangeElement(destinationEnding));
+
+            // Plain notes, so nothing invalidates the destination ending on content
+            // grounds and the straddle rule is the only thing acting on the endings.
+            var pastedFirst = ElementType.CROTCHET.newInstance();
+            var pastedSecond = ElementType.CROTCHET.newInstance();
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(pastedFirst, pastedSecond),
+                List.of(new Ending(pastedFirst, pastedSecond))
+            ));
+            var controller = buildController(song, clipboardManager);
+            var elementCountBeforePaste = line.elementCount();
+
+            song.withModification(() -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+
+            assertThat(line.getRangeElements())
+                .as("the destination ending wins; the pasted one is dropped")
+                .containsExactly(destinationEnding);
+            assertThat(line.elementCount())
+                .as("the notes themselves were pasted — the assertion above is not vacuous")
+                .isEqualTo(elementCountBeforePaste + 2);
+        }
+
+        @Test
+        void testPastingAWholeEndingIntoAnEndingConfirmsOnItsBarlines() {
+            // Copy an ending, paste it inside itself: the fragment necessarily carries
+            // that ending's own barlines and repeat, so the destination ending is
+            // invalidated on content grounds and the ordinary confirm covers it.
+            var song = wideSong();
+            var fixture = EndingLineFixture.primary(song);
+            var line = fixture.line();
+
+            var pastedAnchor = ElementType.SINGLE_BARLINE.newInstance();
+            var pastedEnd = ElementType.SINGLE_BARLINE.newInstance();
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(
+                    pastedAnchor,
+                    ElementType.CROTCHET.newInstance(),
+                    ElementType.REPEAT_RIGHT.newInstance(),
+                    ElementType.CROTCHET.newInstance(),
+                    pastedEnd
+                ),
+                List.of(new Ending(pastedAnchor, pastedEnd))
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                endingConfirmsMock.when(() -> EndingConfirms.confirmInvalidation(any())).thenReturn(true);
+
+                song.withModification(() -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+
+                endingConfirmsMock.verify(() -> EndingConfirms.confirmInvalidation(any()));
+            }
+
+            assertThat(line.getRangeElements())
+                .as("destination invalidated by the pasted barlines, pasted ending dropped by the straddle rule")
+                .isEmpty();
+        }
+
+        @Test
+        void testDestinationEndingKeptByReconciliationSurvivesAPasteOfPlainNotes() {
+            // The "kept" half of the ending rule: nothing in the pasted content
+            // invalidates the ending, so it survives and simply widens to cover it.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
+            var destinationEnding = new Ending(notes.getFirst(), notes.getLast());
+            song.withoutMutationTracking(() -> line.addRangeElement(destinationEnding));
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance()),
+                List.of()
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            song.withModification(() -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+
+            assertThat(line.getRangeElements()).containsExactly(destinationEnding);
+            assertThat(destinationEnding.getEndElementIndex())
+                .as("an ending bracket covering a few extra notes is still valid notation")
+                .isEqualTo(DESTINATION_NOTE_COUNT + 1);
+        }
+
+        @Test
+        void testDestinationEndingKeptByReconciliationIsStillDroppedByAPastedBarline() {
+            // The reconciler keeps a straddled ending unconditionally; whether the
+            // pasted *content* breaks it is Ending.isInvalidatedByInsertion's call,
+            // made per clone inside line.addElement. An interior barline breaks it.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
+            var destinationEnding = new Ending(notes.getFirst(), notes.getLast());
+            song.withoutMutationTracking(() -> line.addRangeElement(destinationEnding));
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(ElementType.SINGLE_BARLINE.newInstance()),
+                List.of()
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                endingConfirmsMock.when(() -> EndingConfirms.confirmInvalidation(any())).thenReturn(true);
+
+                song.withModification(() -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+
+                endingConfirmsMock.verify(() -> EndingConfirms.confirmInvalidation(any()));
+            }
+
+            assertThat(line.getRangeElements())
+                .as("a barline pasted into the ending's interior invalidates it")
+                .isEmpty();
+        }
+
+        @Test
+        void testPastingARightRepeatIntoTheFirstSpanOfASplitEndingConfirmsAndRemovesIt() {
+            // Matrix 3.7 / the reported bug: a realistically-structured ending, whose
+            // first and second spans are separated by a REPEAT_RIGHT split, must react
+            // to a pasted repeat exactly as the plain-ending fixtures do.
+            var song = wideSong();
+            var fixture = EndingLineFixture.primary(song);
+            var line = fixture.line();
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(ElementType.CROTCHET.newInstance(), ElementType.REPEAT_RIGHT.newInstance()),
+                List.of()
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            // Index 2 is interior to the first sub-span (anchor 0, split 3, end 6).
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                endingConfirmsMock.when(() -> EndingConfirms.confirmInvalidation(any())).thenReturn(true);
+
+                song.withModification(() -> controller.tryInsertFragment(line, 2, null));
+
+                endingConfirmsMock.verify(() -> EndingConfirms.confirmInvalidation(any()));
+            }
+
+            assertThat(line.getRangeElements())
+                .as("a repeat pasted into the first span invalidates the ending")
+                .isEmpty();
+        }
+
+        @Test
+        void testPastingARightRepeatAtTheSplitBoundaryOfAnEndingConfirmsAndRemovesIt() {
+            // The reported bug: a fragment ending in a right repeat is naturally dropped
+            // at the *end* of the first span, right before the split. That used to be
+            // exempt, silently leaving the ending holding two adjacent right repeats.
+            var song = wideSong();
+            var fixture = EndingLineFixture.primary(song);
+            var line = fixture.line();
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(ElementType.CROTCHET.newInstance(), ElementType.REPEAT_RIGHT.newInstance()),
+                List.of()
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            // Index 3 is the split element's own index — the boundary.
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                endingConfirmsMock.when(() -> EndingConfirms.confirmInvalidation(any())).thenReturn(true);
+
+                song.withModification(() -> controller.tryInsertFragment(line, 3, null));
+
+                endingConfirmsMock.verify(() -> EndingConfirms.confirmInvalidation(any()));
+            }
+
+            assertThat(line.getRangeElements())
+                .as("the ending cannot survive a second repeat in its first sub-span")
+                .isEmpty();
+        }
+
+        @Test
+        void testDecliningTheConfirmCancelsAPasteThatWouldInvalidateTheEnding() {
+            // #614 / matrix 3.2: a pasted barline discards the destination ending, so it
+            // asks first — the same confirm hand-inserting a barline there would show.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
+            var destinationEnding = new Ending(notes.getFirst(), notes.getLast());
+            song.withoutMutationTracking(() -> line.addRangeElement(destinationEnding));
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(ElementType.SINGLE_BARLINE.newInstance()),
+                List.of()
+            ));
+            var controller = buildController(song, clipboardManager);
+            var outcome = new ScoreViewController.FragmentInsertOutcome[1];
+            var elementCountBeforePaste = line.elementCount();
+
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                endingConfirmsMock.when(() -> EndingConfirms.confirmInvalidation(any())).thenReturn(false);
+
+                song.withModification(() ->
+                    outcome[0] = controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+            }
+
+            assertThat(outcome[0]).isEqualTo(ScoreViewController.FragmentInsertOutcome.CANCELLED);
+            assertThat(line.getRangeElements())
+                .as("the declined confirm leaves the ending in place")
+                .containsExactly(destinationEnding);
+            assertThat(line.elementCount())
+                .as("nothing was inserted")
+                .isEqualTo(elementCountBeforePaste);
+            assertThat(clipboardManager.getFragment())
+                .as("declining must not consume the clipboard")
+                .isNotNull();
+        }
+
+        @Test
+        void testAPasteOfPlainNotesIntoAnEndingShowsNoConfirm() {
+            // The confirm is gated on the pasted content, not on merely landing inside
+            // an ending — plain notes widen the bracket and must not interrupt.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
+            song.withoutMutationTracking(() ->
+                line.addRangeElement(new Ending(notes.getFirst(), notes.getLast())));
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(ElementType.CROTCHET.newInstance()),
+                List.of()
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                song.withModification(() -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, null));
+
+                endingConfirmsMock.verifyNoInteractions();
+            }
+        }
+
+        @Test
+        void testAPasteReplaceWhoseDeletionAlreadyInvalidatedTheEndingConfirmsOnlyOnce() {
+            // handlePaste confirms the deletion before opening the bracket; the
+            // insertion check must not ask a second time about the same doomed ending.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
+            song.withoutMutationTracking(() ->
+                line.addRangeElement(new Ending(notes.getFirst(), notes.getLast())));
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(ElementType.SINGLE_BARLINE.newInstance()),
+                List.of()
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            // Deleting the ending's anchor invalidates it on its own.
+            var deleteRange = new InsertionSpacingCalculator.DeletedRange(0, 0);
+
+            try (var endingConfirmsMock = mockStatic(EndingConfirms.class)) {
+                song.withModification(() -> controller.tryInsertFragment(line, 0, deleteRange));
+
+                endingConfirmsMock.verifyNoInteractions();
+            }
+        }
+
+        @Test
+        void testPasteReplacingOnlyABeamGroupsInteriorRemovesTheBeamEndToEnd() {
+            // The reconciler matrix covers this decision in isolation; this drives it
+            // through the real delete-then-insert path, where the deletion's gap-fill
+            // and index re-derivation run between the decision and the insert.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
+            var destinationBeam = new Beam(notes.get(1), notes.get(4));
+            song.withoutMutationTracking(() -> line.addRangeElement(destinationBeam));
+
+            var pastedFirst = ElementType.QUAVER.newInstance();
+            var pastedSecond = ElementType.QUAVER.newInstance();
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(pastedFirst, pastedSecond),
+                List.of(new Beam(pastedFirst, pastedSecond))
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            // Replace note 2 only — both of the beam's endpoints survive the deletion,
+            // so nothing but the reconciliation can remove it.
+            var deleteRange = new InsertionSpacingCalculator.DeletedRange(
+                INTERIOR_INSERT_INDEX, INTERIOR_INSERT_INDEX);
+
+            song.withModification(
+                () -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, deleteRange));
+
+            assertThat(line.getRangeElements())
+                .as("a partially replaced beam group loses its beam, and the pasted beam with it")
+                .isEmpty();
+            assertThat(line.getElement(1))
+                .as("the beam's surviving anchor note is untouched")
+                .isSameAs(notes.get(1));
+            assertThat(line.getElementIndex(notes.get(INTERIOR_INSERT_INDEX)))
+                .as("the replaced note is gone from the line")
+                .isEqualTo(-1);
+            // The inserted elements are fresh clones — instantiate() never inserts the
+            // stored fragment's own elements — so identity is checked negatively.
+            assertThat(line.getElement(INTERIOR_INSERT_INDEX))
+                .isNotSameAs(pastedFirst)
+                .isNotSameAs(notes.get(INTERIOR_INSERT_INDEX));
+            assertThat(line.getElement(INTERIOR_INSERT_INDEX + 1)).isNotSameAs(pastedSecond);
+        }
+
+        @Test
+        void testPasteReplacingAWholeBeamGroupKeepsThePastedBeam() {
+            // The complementary case: the selection covers the destination beam
+            // exactly, so it dies with the deletion and the pasted beam replaces it.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
+            song.withoutMutationTracking(() -> line.addRangeElement(new Beam(notes.get(1), notes.get(4))));
+
+            var pastedFirst = ElementType.QUAVER.newInstance();
+            var pastedSecond = ElementType.QUAVER.newInstance();
+            var pastedBeam = new Beam(pastedFirst, pastedSecond);
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(pastedFirst, pastedSecond), List.of(pastedBeam)));
+            var controller = buildController(song, clipboardManager);
+
+            var deleteRange = new InsertionSpacingCalculator.DeletedRange(1, 4);
+
+            song.withModification(() -> controller.tryInsertFragment(line, 1, deleteRange));
+
+            assertThat(line.getRangeElements()).hasSize(1);
+            var survivingBeam = line.getRangeElements().getFirst();
+            assertThat(survivingBeam.getAnchorElement())
+                .as("the surviving beam is the pasted one, anchored to its own clones")
+                .isSameAs(line.getElement(1));
+            assertThat(survivingBeam.getEndElementIndex()).isEqualTo(2);
+        }
+
+        @Test
+        void testPasteInsideABeamGroupRemovesTheBeamAndDropsThePastedBeam() {
+            // #614: without reconciliation the destination beam's endpoints both
+            // survive, so it silently stretches over the pasted notes.
+            var song = wideSong();
+            var line = song.getLine(0);
+            var beamStart = ElementType.QUAVER.newInstance();
+            var beamMiddle = ElementType.QUAVER.newInstance();
+            var beamEnd = ElementType.QUAVER.newInstance();
+            var destinationBeam = new Beam(beamStart, beamEnd);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(beamStart);
+                line.addElement(beamMiddle);
+                line.addElement(beamEnd);
+                line.addRangeElement(destinationBeam);
+            });
+
+            var pastedFirst = ElementType.QUAVER.newInstance();
+            var pastedSecond = ElementType.QUAVER.newInstance();
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(pastedFirst, pastedSecond),
+                List.of(new Beam(pastedFirst, pastedSecond))
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            song.withModification(() -> controller.tryInsertFragment(line, 1, null));
+
+            assertThat(line.getRangeElements())
+                .as("both the straddled destination beam and the pasted beam are gone")
+                .isEmpty();
+        }
+
+        @Test
+        void testPasteInsideAHairpinKeepsTheDestinationHairpinAndDropsThePastedOne() {
+            var song = wideSong();
+            var line = song.getLine(0);
+            var hairpinStart = ElementType.CROTCHET.newInstance();
+            var hairpinMiddle = ElementType.CROTCHET.newInstance();
+            var hairpinEnd = ElementType.CROTCHET.newInstance();
+            var destinationHairpin = new Crescendo(hairpinStart, hairpinEnd);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(hairpinStart);
+                line.addElement(hairpinMiddle);
+                line.addElement(hairpinEnd);
+                line.addRangeElement(destinationHairpin);
+            });
+
+            var pastedFirst = ElementType.CROTCHET.newInstance();
+            var pastedSecond = ElementType.CROTCHET.newInstance();
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(new Fragment(
+                List.of(pastedFirst, pastedSecond),
+                List.of(new Crescendo(pastedFirst, pastedSecond))
+            ));
+            var controller = buildController(song, clipboardManager);
+
+            song.withModification(() -> controller.tryInsertFragment(line, 1, null));
+
+            assertThat(line.getRangeElements()).containsExactly(destinationHairpin);
+            assertThat(destinationHairpin.getEndElementIndex())
+                .as("the surviving hairpin now covers the pasted notes too")
+                .isEqualTo(4);
         }
     }
 

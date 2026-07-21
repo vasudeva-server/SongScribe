@@ -583,15 +583,9 @@ public class Ending extends RangeElement {
             return false;
         }
 
-        var splitEl = findRepeatSplitElement(line);
-
-        if (splitEl != null) {
-            var splitIndex = line.getElementIndex(splitEl);
-            // Inserting at the split boundary is allowed; anywhere else interior is not
-            return insertedIndex != splitIndex;
-        }
-
-        // No split: any interior barline/repeat invalidates the ending
+        // Any interior barline or repeat invalidates the ending, the split boundary
+        // included: inserting one immediately before the split element does not take
+        // over as the split, it leaves the sub-span carrying two.
         return true;
     }
 

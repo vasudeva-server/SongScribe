@@ -165,9 +165,10 @@ class EndingInvalidationTest extends UnitTest {
         }
 
         @Test
-        void testBarlineAtSplitIndexReturnsFalse() {
-            // Split-boundary exemption: insertedIndex == splitIndex (3) → not an invalidating insertion
-            assertThat(ending.isInvalidatedByInsertion(3, ElementType.SINGLE_BARLINE, line)).isFalse();
+        void testBarlineAtSplitIndexReturnsTrue() {
+            // The split boundary is not exempt: inserting at splitIndex (3) puts the new
+            // barline *before* the existing split, leaving the first sub-span with two.
+            assertThat(ending.isInvalidatedByInsertion(3, ElementType.SINGLE_BARLINE, line)).isTrue();
         }
 
         @Test
