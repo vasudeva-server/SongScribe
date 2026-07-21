@@ -129,6 +129,8 @@ New class `Paginator` in `songscribe.layout`. Pure layout math — input is the 
   
 
 Repagination runs whenever layout inputs change: any `SongDidChangeNotification` that affects content heights, page-setup mutations, and zoom changes.
+
+Repagination moves line components, so anything holding line-derived geometry must refresh afterward. If `plans/overlay-components.md` has landed, that includes the line overlays: their bounds are fixed in staff spaces but not in pixels, and their host page can change. The plan hooks the moment line bounds are finalized (`StaffLinesLayout.layoutContainer` pre-pagination); under pagination that hook moves to the per-page equivalent and must additionally fire on repagination — `PaginationDidChangeNotification` (§10) is the natural signal.
 ### 5. On-screen page surfaces
 The single-sheet structure is replaced by a page stack:
 
@@ -138,9 +140,11 @@ The single-sheet structure is replaced by a page stack:
   
 - `PageComponent` draws its own page number (§6).
   
+- **Line overlays** — if `plans/overlay-components.md` has landed (it is planned to precede this issue), the hover preview element, paste-mode insertion marker, and glissando/fall previews are transparent `LineOverlayComponent` children rather than paint-time drawing. Their host moves from `ScoreView` to `PageComponent`: they must be children of the page containing their target line, so overlay ink can never spill onto the inter-page gap or an adjacent page. `LineOverlayComponent` holds its host as a `JComponent` and supports re-homing at runtime for exactly this reason, so the change is a registration swap, not a rewrite of the components. Two obligations follow: `PageComponent` must return `false` from `isOptimizedDrawingEnabled()` (it has overlapping children, which is what lets Swing compute their dirty regions); and because repagination reparents `LinePanel`s across pages, an overlay whose target line moves pages must be re-homed to the new page's `PageComponent`, not merely hidden. If that plan has **not** landed, the overlays are still drawn in `ScoreView.paintChildren` via `LineOverlayPainter` with hand-computed dirty rectangles inflated by `LineSpacing.PREVIEW_REPAINT_MARGIN_SS`, and that inflation will need auditing against page boundaries — a line near a page bottom inflates its dirty rect into the gap and the next page surface.
+  
 - **Horizontal placement**: content is placed at the left margin. When `mirroredMargins` is on, screen uses the centered equivalent margins (§3) — the mirrored shift is print-only, so the on-screen stack never zigzags.
   
-- **Coordinate mapping**: `ScoreView`'s edit overlays, mouse handling, selection, and adjustment modes currently assume one canvas. A page-aware mapping layer (page origin offsets added to the existing `DocPx`/`ViewPx` conversions) is required. This is the highest-risk area of the change; every `ScoreView` coordinate conversion call site must be audited.
+- **Coordinate mapping**: `ScoreView`'s edit overlays, mouse handling, selection, and adjustment modes currently assume one canvas. A page-aware mapping layer (page origin offsets added to the existing `DocPx`/`ViewPx` conversions) is required. This is the highest-risk area of the change; every `ScoreView` coordinate conversion call site must be audited. Note that `plans/overlay-components.md`, if landed, removes several hand-rolled conversion sites from this audit: `LineOverlayPainter.paintOnLine`'s translate-and-scale and `LineComponent.repaintWithOverlayHeadroom`'s rectangle inflation are both deleted, and the overlays convert via `SwingUtilities.convertPoint(line, 0, 0, host)`, which is ancestor-agnostic and needs no page-origin arithmetic.
   
 - **Zoom** continues to work through `ViewScale` exactly as today; page surfaces scale like the current sheet does. Scroll-anchoring in `applyZoomPercent` must account for page gaps.
   
@@ -172,6 +176,8 @@ The single-sheet structure is replaced by a page stack:
 **Font persistence**: both new fonts round-trip through `<miscellaneous-field>` entries following the existing `MISC_SUB_ATTRIBUTION_FONT` pattern (name + size fields each).
 ### 7. Printing
 - New shared entry point, e.g. `ScoreView.paintPage(Graphics2D g2, int pageIndex)`: paints one page's full content — music, text blocks, footnotes, copyright, page number — at document scale (`ViewScale.IDENTITY`), with edit-time decorations (selection highlights, edit overlays, insertion cursors) suppressed via a render-mode flag. This method is designed as the future entry point for `PDFExporter` (PDFBox + `pdfbox-graphics2d`, follow-up issue) and `ImageExporter`.
+  
+  - The line overlays are edit-time decorations and must be suppressed here. If `plans/overlay-components.md` has landed they are `LineOverlayComponent` children of `PageComponent`, so suppression means painting the page's content children while skipping its overlay children — no render-mode flag needs to reach inside them. This is the first render path that traverses the component tree: `MainFrame.print`, `PDFExporter`, `SVGExporter`, and `ImageExporter` are all stubs today that never touch it, which is why the overlays currently need no print guard at all.
   
 - `MainFrame.print(Graphics, PageFormat, int pageIndex)`:
   
@@ -299,7 +305,8 @@ New `LayoutField` entries (all validated `Object` old/new via the existing `Layo
 | `layout/PaperSize.java` | **New** — curated paper-size enum |
 | `layout/Paginator.java` | **New** — page-break assignment engine |
 | `layout/PageModel.java` | **Modified** — sourced from Song page setup; centered-equivalent margins |
-| `ui/component/score/PageComponent.java` | **New** — one page surface; draws page number |
+| `ui/component/score/PageComponent.java` | **New** — one page surface; draws page number; hosts line overlays and returns `false` from `isOptimizedDrawingEnabled()` (§5) |
+| `ui/component/score/LineOverlayComponent.java` and subclasses | **Modified** (if `plans/overlay-components.md` landed) — re-home from `ScoreView` to the owning `PageComponent`; re-home on repagination |
 | `ui/component/score/CopyrightComponent.java` | **New** — pinned copyright line |
 | `ui/component/ScoreView.java` | **Modified** — page stack, coordinate mapping, `paintPage`, repagination |
 | `ui/component/score/MainPanel.java` / `StaffPanel.java` | **Modified/absorbed** — single-stack role replaced by per-page containers |

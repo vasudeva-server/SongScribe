@@ -122,8 +122,8 @@ public final class PasteModeManager {
 
     /**
      * Returns the active {@link PasteModeManager} instance, or null when paste mode is
-     * not in progress. Used by {@code LineRenderer} to determine whether a given line is
-     * the current insertion target.
+     * not in progress. Used by {@code LineOverlayPainter} to find the line currently
+     * tracked as the insertion target.
      */
     @Nullable
     public static PasteModeManager getActiveInstance() {
@@ -325,7 +325,7 @@ public final class PasteModeManager {
         targetIndex = -1;
 
         if (lineComponent != null) {
-            lineComponent.repaint();
+            lineComponent.repaintWithOverlayHeadroom();
         }
     }
 
@@ -364,10 +364,10 @@ public final class PasteModeManager {
             targetIndex = index;
 
             if (previous != null && previous != lineComponent) {
-                previous.repaint();
+                previous.repaintWithOverlayHeadroom();
             }
 
-            lineComponent.repaint();
+            lineComponent.repaintWithOverlayHeadroom();
         }
     }
 

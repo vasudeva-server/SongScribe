@@ -207,7 +207,25 @@ class LineRenderer {
         NoteGeometry.initializeAccidentalWidths();
 
         renderPreviewElement(g2, invariants, lineFrame);
-        renderInsertionPoint(g2, invariants);
+    }
+
+    /**
+     * Renders the paste-mode insertion marker as an overlay, outside this line's own paint
+     * pass, for the same clipping reason as {@link #renderPreviewOverlay}: the marker spans
+     * every staff position a note could occupy, which is wider than the bounds this line is
+     * laid out to.
+     *
+     * @param g2 Graphics context, already scaled to staff spaces and translated to this
+     *           line's origin
+     */
+    void renderInsertionPointOverlay(Graphics2D g2) {
+        // As in renderPreviewOverlay, the overlay runs on every ScoreView paint, including
+        // while a line is in the issue-#449 lineDoesNotFit state.
+        if (lc.getLayoutResult() == null) {
+            return;
+        }
+
+        renderInsertionPoint(g2, buildInvariants());
     }
 
     // ==========================================================================
@@ -746,9 +764,10 @@ class LineRenderer {
     }
 
     /**
-     * Renders the paste-mode insertion-point marker when this line is the currently
-     * tracked placement target. Topmost — drawn last, still inside the single Ss
-     * transform {@code LineComponent.render} establishes.
+     * Renders the paste-mode insertion-point marker for the tracked placement target line.
+     * Runs in the page-level overlay pass, inside the Ss transform
+     * {@code LineOverlayPainter.paintOnLine} establishes against {@link ScoreView} page
+     * coordinates.
      * <p>
      * Drawn entirely in {@code Ss}, so the marker's thickness scales with zoom along
      * with its position and height, the same as every other engraved line.
@@ -759,7 +778,9 @@ class LineRenderer {
     private void renderInsertionPoint(Graphics2D g2, LineInvariants invariants) {
         var pasteModeManager = PasteModeManager.getActiveInstance();
 
-        if (pasteModeManager == null || pasteModeManager.getTargetLineComponent() != lc) {
+        // The caller resolves the target line, so no line match is needed here — only
+        // the manager itself, for getTargetIndex().
+        if (pasteModeManager == null) {
             return;
         }
 

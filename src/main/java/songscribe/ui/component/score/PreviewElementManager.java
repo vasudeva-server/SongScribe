@@ -62,7 +62,6 @@ import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.component.ScoreView;
-import songscribe.util.GraphicUtils;
 
 /**
  * Manages the preview element subsystem for {@link LineComponent}.
@@ -195,7 +194,7 @@ public final class PreviewElementManager {
             xPosSsMatchesElement = false;
             yPosSpMatchesElement = false;
             currentSlideZone = null;
-            oldLine.repaintWithPreviewHeadroom();
+            oldLine.repaintWithOverlayHeadroom();
         }
 
         // Nothing is positioned to preview anymore, so it can no longer be visible;
@@ -237,31 +236,7 @@ public final class PreviewElementManager {
      * @param host the ancestor doing the painting
      */
     public static void paintOverlay(Graphics2D g, ScoreView host) {
-        // A line component from a previous rebuildLayout() is stale — it is no longer in
-        // the host's hierarchy, so its origin there is meaningless.
-        if (currentPreviewLine == null || !SwingUtilities.isDescendingFrom(currentPreviewLine, host)) {
-            return;
-        }
-
-        var g2 = (Graphics2D) g.create();
-
-        try {
-            // The overlay bypasses ScoreComponent.paintComponent, which is what normally
-            // applies these for a line's own paint pass.
-            GraphicUtils.setRenderingHints(g2);
-
-            var origin = SwingUtilities.convertPoint(currentPreviewLine, 0, 0, host);
-            g2.translate(origin.x, origin.y);
-
-            // The same transform LineComponent.render applies, so the renderer draws in Ss.
-            var scale =
-                ScaleContext.getPixelsPerStaffSpace() * currentPreviewLine.getViewScale().factor();
-            g2.scale(scale, scale);
-
-            currentPreviewLine.renderPreviewOverlay(g2);
-        } finally {
-            g2.dispose();
-        }
+        LineOverlayPainter.paintOnLine(g, host, currentPreviewLine, LineComponent::renderPreviewOverlay);
     }
 
     /**
@@ -705,7 +680,7 @@ public final class PreviewElementManager {
 
         // Repaint old line if different
         if (currentPreviewLine != null && currentPreviewLine != lc) {
-            currentPreviewLine.repaintWithPreviewHeadroom();
+            currentPreviewLine.repaintWithOverlayHeadroom();
         }
 
         // Update static state
@@ -718,7 +693,7 @@ public final class PreviewElementManager {
 
         if (isSlidePlaceholder(previewElement)) {
             // No note-head preview for slide tool — renderPreviewElement draws the preview line.
-            lc.repaintWithPreviewHeadroom();
+            lc.repaintWithOverlayHeadroom();
             return;
         }
 
@@ -741,7 +716,7 @@ public final class PreviewElementManager {
         }
 
         // Repaint this line
-        lc.repaintWithPreviewHeadroom();
+        lc.repaintWithOverlayHeadroom();
     }
 
     /**
@@ -798,7 +773,7 @@ public final class PreviewElementManager {
                 ElementField.SLIDE,
                 () -> zone.applyTo(sourceNote)
             ));
-            lc.repaintWithPreviewHeadroom();
+            lc.repaintWithOverlayHeadroom();
             return;  // Stay in slide mode
         }
 

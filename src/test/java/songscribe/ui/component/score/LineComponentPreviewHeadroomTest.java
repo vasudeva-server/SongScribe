@@ -44,7 +44,7 @@ import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.component.ScoreView;
 
 /**
- * Unit tests for {@link LineComponent#repaintWithPreviewHeadroom()}.
+ * Unit tests for {@link LineComponent#repaintWithOverlayHeadroom()}.
  * <p>
  * The preview element is painted by {@link ScoreView} as an overlay, so its ink can land
  * outside the line's own bounds — a plain {@code repaint()} clips the dirty region to those
@@ -150,7 +150,7 @@ class LineComponentPreviewHeadroomTest extends UnitTest {
         RepaintManager.setCurrentManager(recorder);
 
         try {
-            lineComponent.repaintWithPreviewHeadroom();
+            lineComponent.repaintWithOverlayHeadroom();
         } finally {
             RepaintManager.setCurrentManager(previousManager);
         }
@@ -158,7 +158,7 @@ class LineComponentPreviewHeadroomTest extends UnitTest {
         var dirtyRect = recorder.lastDirtyRect;
 
         if (dirtyRect == null) {
-            throw new AssertionError("repaintWithPreviewHeadroom did not repaint the score view");
+            throw new AssertionError("repaintWithOverlayHeadroom did not repaint the score view");
         }
 
         var lineTopInView = SwingUtilities
@@ -200,7 +200,7 @@ class LineComponentPreviewHeadroomTest extends UnitTest {
         RepaintManager.setCurrentManager(recorder);
 
         try {
-            assertThatCode(lineComponent::repaintWithPreviewHeadroom)
+            assertThatCode(lineComponent::repaintWithOverlayHeadroom)
                 .as("a detached line must not throw when asked to repaint its headroom")
                 .doesNotThrowAnyException();
         } finally {

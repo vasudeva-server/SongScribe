@@ -80,8 +80,8 @@ class PasteModeManagerTest extends UnitTest {
     private static final int FIRST_INSERTION_INDEX = 2;
     private static final int SECOND_INSERTION_INDEX = 5;
 
-    // The abandoned line's repaint() fires once when it is first tracked and again when
-    // tracking moves to another line (updateTarget's "previous" repaint).
+    // The abandoned line's headroom repaint fires once when it is first tracked and again
+    // when tracking moves to another line (updateTarget's "previous" repaint).
     private static final int REPAINT_COUNT_TRACKED_THEN_ABANDONED = 2;
 
     private MockedStatic<MainFrame> mainFrameMock;
@@ -283,6 +283,9 @@ class PasteModeManagerTest extends UnitTest {
 
             assertThat(pasteModeManager.getTargetLineComponent()).isNull();
             assertThat(pasteModeManager.getTargetIndex()).isEqualTo(-1);
+            // With headroom, so the abandoned marker's ink outside the line's own bounds clears.
+            verify(lineComponent, times(REPAINT_COUNT_TRACKED_THEN_ABANDONED))
+                .repaintWithOverlayHeadroom();
         }
 
         @Test
@@ -294,6 +297,9 @@ class PasteModeManagerTest extends UnitTest {
 
             assertThat(pasteModeManager.getTargetLineComponent()).isNull();
             assertThat(pasteModeManager.getTargetIndex()).isEqualTo(-1);
+            // With headroom, so the abandoned marker's ink outside the line's own bounds clears.
+            verify(lineComponent, times(REPAINT_COUNT_TRACKED_THEN_ABANDONED))
+                .repaintWithOverlayHeadroom();
         }
 
         @Test
@@ -312,8 +318,9 @@ class PasteModeManagerTest extends UnitTest {
             assertThat(pasteModeManager.getTargetIndex()).isEqualTo(SECOND_INSERTION_INDEX);
             // The abandoned line redraws twice (tracked, then abandoned) and the newly
             // tracked one once, so only these two lines' insertion markers change on screen.
-            verify(lineComponent, times(REPAINT_COUNT_TRACKED_THEN_ABANDONED)).repaint();
-            verify(otherLineComponent).repaint();
+            verify(lineComponent, times(REPAINT_COUNT_TRACKED_THEN_ABANDONED))
+                .repaintWithOverlayHeadroom();
+            verify(otherLineComponent).repaintWithOverlayHeadroom();
         }
     }
 

@@ -71,8 +71,8 @@ import songscribe.ui.adjustment.HorizontalAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.component.score.LineOverlayPainter;
 import songscribe.ui.component.score.MainPanel;
-import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.component.score.StaffPanel;
 import songscribe.ui.edit.EditModeManager;
@@ -632,28 +632,29 @@ public final class ScoreView
     }
 
     /**
-     * Paints the page content, then the hover preview element on top of it.
+     * Paints the page content, then the line overlays — the hover preview element and the
+     * paste-mode insertion marker — on top of it.
      * <p>
-     * The preview is hosted here, at the full page, rather than by the line or the
-     * {@link StaffPanel} that owns it: its ink extent depends on whatever decorations the
-     * previewed element carries, so no reserved band inside the staff block is guaranteed to
-     * contain it, and Swing clips a component to its own bounds. At page level there is
-     * nothing left to clip against, so the preview stays whole even at the lowest legal staff
-     * position on the last line — without inflating any line's height, which would reopen the
-     * excessive inter-line spacing of issue #591.
+     * They are hosted here, at the full page, rather than by the line or the
+     * {@link StaffPanel} that owns them: their ink spans the full legal staff-position range,
+     * so no reserved band inside the staff block is guaranteed to contain them, and Swing
+     * clips a component to its own bounds. At page level there is nothing left to clip
+     * against, so an overlay stays whole even at the lowest legal staff position on the last
+     * line — without inflating any line's height, which would reopen the excessive inter-line
+     * spacing of issue #591.
      */
     @Override
     protected void paintChildren(Graphics g) {
         super.paintChildren(g);
-        PreviewElementManager.paintOverlay((Graphics2D) g, this);
+        LineOverlayPainter.paintOverlays((Graphics2D) g, this);
     }
 
     /**
      * Reports that this view's painting may extend outside any one child's bounds, so Swing
      * treats this component — not a descendant — as the paint root for a damaged region.
      * <p>
-     * {@link #paintChildren} draws the preview overlay after the children, so a repaint that
-     * Swing resolved to a descendant would repaint that descendant over the preview and never
+     * {@link #paintChildren} draws the line overlays after the children, so a repaint that
+     * Swing resolved to a descendant would repaint that descendant over an overlay and never
      * run this method, leaving the overlay erased.
      */
     @Override

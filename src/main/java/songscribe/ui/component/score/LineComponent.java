@@ -906,14 +906,25 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Repaints this line plus the bands above and below it in which its preview element may
-     * have drawn.
-     * <p>
-     * The preview element is painted by the enclosing {@link ScoreView}, not by this
-     * component, so {@code repaint()} — which clips the dirty region to this component's own
-     * content-hugging bounds — cannot clear preview ink drawn outside them.
+     * Renders this line's paste-mode insertion marker into the enclosing {@link ScoreView}'s
+     * overlay pass.
+     *
+     * @param g2 Graphics context, already scaled to staff spaces and translated to this
+     *           line's origin
      */
-    void repaintWithPreviewHeadroom() {
+    void renderInsertionPointOverlay(Graphics2D g2) {
+        lineRenderer.renderInsertionPointOverlay(g2);
+    }
+
+    /**
+     * Repaints this line plus the bands above and below it in which one of its overlays — the
+     * preview element or the paste-mode insertion marker — may have drawn.
+     * <p>
+     * The overlays are painted by the enclosing {@link ScoreView}, not by this component, so
+     * {@code repaint()} — which clips the dirty region to this component's own
+     * content-hugging bounds — cannot clear overlay ink drawn outside them.
+     */
+    public void repaintWithOverlayHeadroom() {
         var scoreView = (ScoreView) SwingUtilities.getAncestorOfClass(ScoreView.class, this);
 
         // Detached from any ScoreView (tests): there is no overlay host, so nothing can
