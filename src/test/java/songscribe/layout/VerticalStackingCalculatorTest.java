@@ -254,6 +254,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
             // An upward (negative) user Y offset on the attribution must push aboveStaffSs
             // further than the same attribution with no offset.
             var lineWidth = 100.0;
+            var upwardOffsetSs = -15.0;  // large upward shift
 
             // Attribution with no Y offset
             var noOffsetAttribution = new Attribution();
@@ -272,7 +273,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
             // Same attribution shifted further up by a large negative Y offset
             var shiftedAttribution = new Attribution();
             shiftedAttribution.setDimensionsSs(15.0, 5.0);
-            shiftedAttribution.setUserYOffsetSs(-15.0);  // large upward shift
+            shiftedAttribution.setUserYOffsetSs(upwardOffsetSs);
 
             var shiftedBuilder = LayoutResult.builder();
             new VerticalStackingCalculator().calculate(
@@ -284,9 +285,12 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 shiftedAttribution);
             var shiftedAboveSs = shiftedBuilder.build().getContentAboveStaffSs();
 
-            assertThat(shiftedAboveSs)
-                .describedAs("upward Y offset must grow aboveStaffSs")
-                .isGreaterThan(noOffsetAboveSs);
+            // Exact, not merely greater: the offset is baked into the layout by
+            // applyManualOffsets before the band is measured, so re-adding it would
+            // silently reserve twice the shift and only an exact assertion catches that.
+            assertThat(shiftedAboveSs - noOffsetAboveSs)
+                .describedAs("upward Y offset must grow aboveStaffSs by exactly the shift")
+                .isCloseTo(-upwardOffsetSs, EPSILON);
         }
 
         @Test
@@ -328,6 +332,109 @@ class VerticalStackingCalculatorTest extends UnitTest {
             assertThat(shiftedAboveSs)
                 .describedAs("downward Y offset must not grow aboveStaffSs beyond the natural position")
                 .isLessThanOrEqualTo(noOffsetAboveSs + EPSILON.value);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Empty-line attribution (first line with no musical columns) — refs #616
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class EmptyLineAttribution {
+
+        private static final double ATTRIBUTION_WIDTH_SS = 15.0;
+        private static final double ATTRIBUTION_HEIGHT_SS = 5.0;
+        private static final double UPWARD_OFFSET_SS = -15.0;
+        private static final double DOWNWARD_OFFSET_SS = 5.0;
+
+        private static Attribution attribution(double heightSs, double userYOffsetSs) {
+            var attribution = new Attribution();
+            attribution.setDimensionsSs(ATTRIBUTION_WIDTH_SS, heightSs);
+            attribution.setUserYOffsetSs(userYOffsetSs);
+            return attribution;
+        }
+
+        @Test
+        void testUpwardOffsetIsBakedIntoTheDecorationLayout() {
+            // The renderer paints DecorationLayout.ySs() verbatim, so a dragged attribution
+            // only moves if the offset is applied here. Without it the band still grows,
+            // leaving the attribution pinned in place under a widening gap.
+            var noOffset = attribution(ATTRIBUTION_HEIGHT_SS, 0.0);
+            var noOffsetBuilder = LayoutResult.builder();
+            new VerticalStackingCalculator().calculateEmptyLineAttribution(
+                noOffset, LINE_WIDTH_SS, noOffsetBuilder);
+            var naturalYSs = require(
+                noOffsetBuilder.getDecorationLayout(noOffset), "natural layout").ySs();
+
+            var shifted = attribution(ATTRIBUTION_HEIGHT_SS, UPWARD_OFFSET_SS);
+            var shiftedBuilder = LayoutResult.builder();
+            new VerticalStackingCalculator().calculateEmptyLineAttribution(
+                shifted, LINE_WIDTH_SS, shiftedBuilder);
+            var shiftedYSs = require(
+                shiftedBuilder.getDecorationLayout(shifted), "shifted layout").ySs();
+
+            assertThat(shiftedYSs - naturalYSs)
+                .describedAs("the painted attribution must move by exactly the user's drag")
+                .isCloseTo(UPWARD_OFFSET_SS, EPSILON);
+        }
+
+        @Test
+        void testUpwardOffsetGrowsAboveStaffSsByExactlyTheShift() {
+            var noOffsetAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
+                attribution(ATTRIBUTION_HEIGHT_SS, 0.0), LINE_WIDTH_SS, LayoutResult.builder());
+
+            var shiftedAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
+                attribution(ATTRIBUTION_HEIGHT_SS, UPWARD_OFFSET_SS),
+                LINE_WIDTH_SS,
+                LayoutResult.builder());
+
+            assertThat(shiftedAboveSs - noOffsetAboveSs)
+                .describedAs("band must grow by exactly the shift, not twice it")
+                .isCloseTo(-UPWARD_OFFSET_SS, EPSILON);
+        }
+
+        @Test
+        void testDownwardOffsetDoesNotGrowAboveStaffSs() {
+            var noOffsetAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
+                attribution(ATTRIBUTION_HEIGHT_SS, 0.0), LINE_WIDTH_SS, LayoutResult.builder());
+
+            var shiftedAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
+                attribution(ATTRIBUTION_HEIGHT_SS, DOWNWARD_OFFSET_SS),
+                LINE_WIDTH_SS,
+                LayoutResult.builder());
+
+            assertThat(shiftedAboveSs)
+                .describedAs("a downward drag must not reserve extra room above the staff")
+                .isLessThanOrEqualTo(noOffsetAboveSs + EPSILON.value);
+        }
+
+        @Test
+        void testTallerAttributionReservesMoreRoom() {
+            var shortAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
+                attribution(ATTRIBUTION_HEIGHT_SS, 0.0), LINE_WIDTH_SS, LayoutResult.builder());
+
+            var tallAboveSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
+                attribution(ATTRIBUTION_HEIGHT_SS * 2, 0.0), LINE_WIDTH_SS, LayoutResult.builder());
+
+            assertThat(tallAboveSs - shortAboveSs)
+                .describedAs("the extra reserved room must match the extra height")
+                .isCloseTo(ATTRIBUTION_HEIGHT_SS, EPSILON);
+        }
+
+        @Test
+        void testZeroDimensionAttributionWithUpwardOffsetClampsToZero() {
+            // A stored drag can outlive the measured dimensions (empty attribution text, or a
+            // pane not yet measured). stackAttribution then writes no layout, so the null guard
+            // is live and the clamp is the only thing keeping the band non-negative.
+            var unmeasured = new Attribution();
+            unmeasured.setUserYOffsetSs(UPWARD_OFFSET_SS);
+
+            var aboveStaffSs = new VerticalStackingCalculator().calculateEmptyLineAttribution(
+                unmeasured, LINE_WIDTH_SS, LayoutResult.builder());
+
+            assertThat(aboveStaffSs)
+                .describedAs("an unmeasured attribution must reserve nothing, not a negative band")
+                .isCloseTo(0.0, EPSILON);
         }
     }
 }

@@ -276,9 +276,22 @@ public class LayoutEngine {
             // so the staff sits centred in the component.
             var emptyPaddingSs = (LineSpacing.MIN_LINE_HEIGHT_SS - Staff.STAFF_HEIGHT_SS) / 2.0;
             var emptyBuilder = LayoutResult.builder()
-                .setContentAboveStaffSs(emptyPaddingSs)
                 .setContentBelowStaffSs(emptyPaddingSs);
             createHeaderElements(line, emptyBuilder);
+
+            // The padding is a floor, not the whole story: an attribution stacked above the
+            // staff can reach past it, and the taller of the two wins (refs #616).
+            var contentAboveStaffSs = emptyPaddingSs;
+
+            if (attribution != null) {
+                contentAboveStaffSs = Math.max(
+                    emptyPaddingSs,
+                    verticalCalculator.calculateEmptyLineAttribution(
+                        attribution, staffRightMarginSs, emptyBuilder));
+            }
+
+            emptyBuilder.setContentAboveStaffSs(contentAboveStaffSs);
+
             return emptyBuilder.build();
         }
 

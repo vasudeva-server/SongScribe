@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Attribution;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
 import songscribe.dom.Tie;
@@ -172,6 +173,12 @@ class LayoutEngineTest extends UnitTest {
     /** Expected lengtheningSs at SP_LEDGER_ABOVE_3: |5.0| - 3.5. */
     private static final double LENGTHENING_THREE_LEDGER_LINES = 1.5;
 
+    // T5b — empty-line attribution constants
+    /** Non-zero content width for an attribution stacked on an empty first line. */
+    private static final double EMPTY_LINE_ATTRIBUTION_WIDTH_SS = 20.0;
+    /** Non-zero content height for an attribution stacked on an empty first line. */
+    private static final double EMPTY_LINE_ATTRIBUTION_HEIGHT_SS = 3.0;
+
     // Row 30 — beam count (flag levels) per note type
     private static final int QUAVER_BEAMS = 1;
     private static final int SEMIQUAVER_BEAMS = 2;
@@ -268,6 +275,45 @@ class LayoutEngineTest extends UnitTest {
 
         assertThat(result.getClef()).describedAs("Clef on empty line").isNotNull();
         assertThat(result.getKeySignature()).describedAs("KeySignature on empty line").isNotNull();
+    }
+
+    // T5a: An empty line with no attribution pads evenly above and below, so the staff sits
+    // centred and the header elements have room. Pinned exactly: the padding is the only thing
+    // giving an empty line its height, and dropping it leaves the staff flush against the edge.
+    @Test
+    void testEmptyLinePadsEvenlyAboveAndBelowStaff() {
+        var expectedPaddingSs = (LineSpacing.MIN_LINE_HEIGHT_SS - Staff.STAFF_HEIGHT_SS) / 2.0;
+
+        var result = require(engine().layout(detachedLine()), "LayoutResult");
+
+        assertThat(result.getContentAboveStaffSs())
+            .describedAs("empty line padding above the staff")
+            .isCloseTo(expectedPaddingSs, within(TOLERANCE));
+        assertThat(result.getContentBelowStaffSs())
+            .describedAs("empty line padding below the staff")
+            .isCloseTo(expectedPaddingSs, within(TOLERANCE));
+    }
+
+    // T5b: Empty first line (no columns) reserves room for a tall attribution (refs #616).
+    // The stacking maths itself is covered by VerticalStackingCalculatorTest.EmptyLineAttribution;
+    // this only pins LayoutEngine's own wiring — that it calls the calculator at all and lets a
+    // tall attribution win over the empty-line padding floor.
+    @Test
+    void testEmptyLineStacksAttribution() {
+        var attribution = new Attribution();
+        attribution.setDimensionsSs(EMPTY_LINE_ATTRIBUTION_WIDTH_SS, EMPTY_LINE_ATTRIBUTION_HEIGHT_SS);
+
+        var withAttribution = require(
+            engine().layout(detachedLine(), false, false, attribution), "LayoutResult");
+        var withoutAttribution = require(
+            engine().layout(detachedLine(), false, false, null), "LayoutResult");
+
+        assertThat(withAttribution.getDecorationLayout(attribution))
+            .describedAs("attribution DecorationLayout on an empty first line")
+            .isNotNull();
+        assertThat(withAttribution.getContentAboveStaffSs())
+            .describedAs("a tall attribution must push the staff down past the padding floor")
+            .isGreaterThan(withoutAttribution.getContentAboveStaffSs());
     }
 
     // T6: Un-justifiable line returns null from layout() with a non-null getLastError()
