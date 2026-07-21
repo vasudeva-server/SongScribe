@@ -66,6 +66,10 @@ class LyricLayoutBuilderTest extends UnitTest {
     // Arbitrary flag width used in tests that need a note whose flag pushes the augmentation-excluded
     // right extent past the notehead (an unbeamed flagged note).
     private static final double FAKE_FLAG_EXTENT_SS = 1.0;
+    // Narrow enough that extenderStart + MIN_MELISMA_LENGTH_SS exceeds the STOP note's notehead
+    // right edge, so the minimum-melisma-length rule (not the plain notehead edge) determines
+    // where the extender ends.
+    private static final double NARROW_COLUMN_SPACING_SS = 0.5;
 
     private Song song;
     private Line line;
@@ -658,14 +662,90 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
+        var expectedEndXSs = Math.max(
+            columns.get(0).getNoteheadCenterXSs() + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS,
+            columns.get(1).getNoteheadRightEdgeXSs());
         assertThat(extenders.getFirst().endXSs())
-            .as("extender ends 0.5 ss beyond stop carrier note's right edge")
-            .isCloseTo(
-                columns.get(1).getRightEdgeXSs() + LyricLayoutBuilder.STOP_MELISMA_OVERSHOOT_SS,
-                within(TOLERANCE));
+            .as("extender ends at the stop carrier note's notehead right edge (LilyPond minimum-length rule)")
+            .isCloseTo(expectedEndXSs, within(TOLERANCE));
         assertThat(result.hasTrailingContinuation())
             .as("stop terminates melisma — no trailing continuation")
             .isFalse();
+    }
+
+    // STOP carrier close behind its START note: the plain notehead right edge alone would be too
+    // short to read as a melisma line, so LilyPond's minimum-melisma-length rule stretches the
+    // extender to extenderStart + MIN_MELISMA_LENGTH_SS instead.
+    @Test
+    void testStopCarrierEnforcesMinimumMelismaLengthWhenNotesAreClose() {
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
+        var n2 = note();
+        setLyric(n2, null, false, "", Lyric.Extend.STOP);
+        addToLine(n1, n2);
+
+        var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + NARROW_COLUMN_SPACING_SS));
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
+        assertThat(extenders).hasSize(1);
+
+        var minLengthEndXSs = columns.get(0).getNoteheadCenterXSs() + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS;
+
+        assertThat(minLengthEndXSs)
+            .as("sanity: the notes must be close enough that the minimum-length rule actually dominates")
+            .isGreaterThan(columns.get(1).getNoteheadRightEdgeXSs());
+        assertThat(extenders.getFirst().endXSs())
+            .as("close-note melisma is stretched to the minimum melisma length, past the STOP note's notehead")
+            .isCloseTo(minLengthEndXSs, within(TOLERANCE));
+    }
+
+    // STOP carrier on a flagged note (unbeamed quaver): the extender must end at the notehead right
+    // edge, not the flag-inflated right edge — the flag must not push where the melisma line ends.
+    @Test
+    void testStopCarrierWithFlagEndsExtenderAtNoteheadNotFlag() {
+        var n1 = note();
+        setLyric(n1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
+        var n2 = note();
+        setLyric(n2, null, false, "", Lyric.Extend.STOP);
+        addToLine(n1, n2);
+
+        var col0XSs = 5.0;
+        var col1XSs = col0XSs + COLUMN_SPACING_SS;
+        var noteheadWidthSs = SMuFLConstants.NOTE_HEAD_WIDTH_SS;
+        var flagInflatedRightExtentSs = noteheadWidthSs + FAKE_FLAG_EXTENT_SS;
+
+        var col0 = columnAt(n1, col0XSs);
+
+        // Full public constructor: rightExtentSs/rightExtentExcludingAugmentationSs both include the
+        // flag; setNoteheadWidthSs models the builder setting the notehead width to the head alone.
+        var col1 = new ElementColumn(
+            n2,
+            Collections.emptyList(),
+            0.0,
+            flagInflatedRightExtentSs,
+            flagInflatedRightExtentSs,
+            0.0, 0.0, null, 0.0, false);
+        col1.setNoteheadWidthSs(noteheadWidthSs);
+        col1.setXSs(col1XSs);
+
+        var columns = List.of(col0, col1);
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
+        assertThat(extenders).hasSize(1);
+
+        var expectedEndXSs = Math.max(
+            col0.getNoteheadCenterXSs() + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS,
+            col1.getNoteheadRightEdgeXSs());
+
+        assertThat(expectedEndXSs)
+            .as("sanity: the flag must actually inflate col1's right edge past the notehead for this test to be meaningful")
+            .isLessThan(col1.getRightEdgeXSs());
+        assertThat(extenders.getFirst().endXSs())
+            .as("STOP note's flag must not push the extender end past the notehead right edge")
+            .isCloseTo(expectedEndXSs, within(TOLERANCE));
     }
 
     // STOP-terminated melisma followed by a nearby syllable: the extender's overshoot past the
@@ -723,7 +803,9 @@ class LyricLayoutBuilderTest extends UnitTest {
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
 
-        var unclampedStopEndXSs = columns.get(1).getRightEdgeXSs() + LyricLayoutBuilder.STOP_MELISMA_OVERSHOOT_SS;
+        var unclampedStopEndXSs = Math.max(
+            columns.get(0).getNoteheadCenterXSs() + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS,
+            columns.get(1).getNoteheadRightEdgeXSs());
 
         assertThat(extenders.getFirst().endXSs())
             .as("extender already clears 'three' by more than a space width, so it keeps its raw overshoot")
@@ -834,8 +916,9 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.HYPHEN)).hasSize(2);
     }
 
-    // REST + STOP: extender ends STOP_MELISMA_OVERSHOOT_SS past the rest's right edge —
-    // a distinct code path from note+STOP (tested by testStopCarrierEndsExtenderAtNoteRightEdge).
+    // REST + STOP: extender ends at the rest's notehead-equivalent right edge (LilyPond
+    // minimum-length rule) — a distinct code path from note+STOP (tested by
+    // testStopCarrierEndsExtenderAtNoteRightEdge).
     @Test
     void testRestWithStopLyricClosesExtenderPastRestRightEdge() {
         var n1 = note();
@@ -857,11 +940,12 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(extenders)
             .as("REST+STOP must close exactly one EXTENDER")
             .hasSize(1);
+        var expectedEndXSs = Math.max(
+            columns.get(0).getNoteheadCenterXSs() + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS,
+            columns.get(1).getNoteheadRightEdgeXSs());
         assertThat(extenders.getFirst().endXSs())
-            .as("extender ends STOP_MELISMA_OVERSHOOT_SS past rest's right edge")
-            .isCloseTo(
-                columns.get(1).getRightEdgeXSs() + LyricLayoutBuilder.STOP_MELISMA_OVERSHOOT_SS,
-                within(TOLERANCE));
+            .as("extender ends at the rest's notehead-equivalent right edge (LilyPond minimum-length rule)")
+            .isCloseTo(expectedEndXSs, within(TOLERANCE));
         assertThat(result.hasTrailingContinuation())
             .as("STOP on rest terminates the melisma — no trailing continuation")
             .isFalse();

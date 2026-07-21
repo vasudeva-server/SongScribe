@@ -278,6 +278,16 @@ public final class ElementColumn {
         return xSs + getNoteheadWidthSs() / 2.0;
     }
 
+    /**
+     * Returns the absolute X of the notehead's right edge, excluding the stem, flag, and
+     * augmentation dots. Used to anchor melisma extenders so a terminating flag or dot never
+     * shifts where the extender ends (see {@link LyricLayoutBuilder#MIN_MELISMA_LENGTH_SS}).
+     * Only valid after X position has been set by the spacing calculator.
+     */
+    public double getNoteheadRightEdgeXSs() {
+        return xSs + getNoteheadWidthSs();
+    }
+
     // ==========================================================================
     // Stem Information
     // ==========================================================================

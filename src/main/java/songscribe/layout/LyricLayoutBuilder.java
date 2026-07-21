@@ -41,16 +41,18 @@ import songscribe.dom.StaffElement;
  * <ul>
  *   <li>note-with-Lyric(relation = SYLLABLE/COMPOUND_WORD) → HYPHEN span to next syllable</li>
  *   <li>note-with-Lyric(extend = START) → EXTENDER span from end of syllable onward</li>
- *   <li>note-with-Lyric(extend = STOP) → active EXTENDER ends {@value STOP_MELISMA_OVERSHOOT_SS} ss
- *       past this note's right edge; emits no lyric box (the lyric is a melisma terminator)</li>
+ *   <li>note-with-Lyric(extend = STOP) → active EXTENDER ends at
+ *       {@code max(syllable end + }{@value MIN_MELISMA_LENGTH_SS}{@code , note's notehead right edge)},
+ *       matching LilyPond's {@code LyricExtender} minimum-length rule; emits no lyric box (the
+ *       lyric is a melisma terminator)</li>
  *   <li>note-with-Lyric(extend = CONTINUE) → continues current EXTENDER silently (cross-line
  *       carrier); emits no lyric box</li>
  *   <li>note-with-no-Lyric + active EXTENDER → continues current EXTENDER</li>
  *   <li>rest-with-no-Lyric + active EXTENDER → breaks EXTENDER (ends at rest left edge)</li>
  *   <li>rest-with-Lyric(extend = START/CONTINUE) + active EXTENDER → continues EXTENDER through
  *       rest</li>
- *   <li>rest-with-Lyric(extend = STOP) + active EXTENDER → ends EXTENDER {@value STOP_MELISMA_OVERSHOOT_SS} ss
- *       past rest's right edge</li>
+ *   <li>rest-with-Lyric(extend = STOP) + active EXTENDER → ends EXTENDER the same way as the
+ *       note case above, anchored to the rest's notehead-equivalent right edge</li>
  *   <li>note-with-Lyric(extend = NONE, text) + active EXTENDER → EXTENDER ends at start of this
  *       syllable; a new span (if any) begins after this syllable</li>
  * </ul>
@@ -65,9 +67,12 @@ public final class LyricLayoutBuilder {
 
     private static final Logger LOG = LoggerFactory.getLogger(LyricLayoutBuilder.class);
 
-    // Extends 0.5 ss past the column right edge so the line visually overshoots
-    // the notehead and makes the melisma termination unambiguous.
-    static final double STOP_MELISMA_OVERSHOOT_SS = 0.5;
+    // LilyPond's LyricExtender minimum-length (scm/define-grobs.scm): the extender's total length,
+    // measured from the end of the syllable, so a melisma spanning few/close notes still reads as a
+    // visible line. Longer melismas are unaffected: the extender is clamped to end no earlier than
+    // the terminating note's notehead right edge (see ElementColumn#getNoteheadRightEdgeXSs), never
+    // the column's right edge, so a stem, flag, or augmentation dot never shifts where it ends.
+    static final double MIN_MELISMA_LENGTH_SS = 1.5;
 
     private LyricLayoutBuilder() {}
 
@@ -163,14 +168,15 @@ public final class LyricLayoutBuilder {
 
             if (column.isRest()) {
                 // Rest with extending lyric (START/CONTINUE): extender flows through.
-                // Rest with STOP lyric: extender ends STOP_MELISMA_OVERSHOOT_SS past rest's right edge.
+                // Rest with STOP lyric: extender ends at the rest's notehead-equivalent right edge
+                // (LilyPond LyricExtender minimum-length rule, see MIN_MELISMA_LENGTH_SS).
                 // Rest without extending lyric: extender (if active) ends at rest's left edge.
                 if (extend == Lyric.Extend.CONTINUE || extend == Lyric.Extend.START) {
                     continue;
                 }
 
                 if (extend == Lyric.Extend.STOP) {
-                    state.closeExtender(connectors, verse, column.getRightEdgeXSs() + STOP_MELISMA_OVERSHOOT_SS);
+                    state.closeExtenderPastHead(connectors, verse, column.getNoteheadRightEdgeXSs());
                     continue;
                 }
 
@@ -189,8 +195,8 @@ public final class LyricLayoutBuilder {
             }
 
             if (extend == Lyric.Extend.STOP) {
-                // STOP carrier: ends active extender STOP_MELISMA_OVERSHOOT_SS past this note's right edge, no box.
-                state.closeExtender(connectors, verse, column.getRightEdgeXSs() + STOP_MELISMA_OVERSHOOT_SS);
+                // STOP carrier: ends active extender past this note's notehead, no box.
+                state.closeExtenderPastHead(connectors, verse, column.getNoteheadRightEdgeXSs());
                 continue;
             }
 
@@ -258,10 +264,10 @@ public final class LyricLayoutBuilder {
     /**
      * Pulls back any extender that would otherwise run within {@code gapSs} of the syllable that
      * follows it, so a melisma keeps the same gap from the next syllable that separates adjacent
-     * words. An extender closed by a STOP carrier ends a fixed overshoot past that carrier and the
-     * next syllable's box is not known at that point, so the clamp has to run once the whole verse
-     * is laid out. DANGLING_EXTENDER connectors have no following syllable on this line and are
-     * left untouched.
+     * words. An extender closed by a STOP carrier ends past that carrier per the
+     * {@value #MIN_MELISMA_LENGTH_SS}-ss minimum-length rule, and the next syllable's box is not
+     * known at that point, so the clamp has to run once the whole verse is laid out.
+     * DANGLING_EXTENDER connectors have no following syllable on this line and are left untouched.
      */
     private static void clampExtendersToFollowingSyllable(
         List<LyricConnectorLayout> connectors,
@@ -464,6 +470,18 @@ public final class LyricLayoutBuilder {
                     extenderColumnIndex));
                 extenderActive = false;
             }
+        }
+
+        /**
+         * If an extender is active, emit it ending at
+         * {@code max(extenderStartXSs + MIN_MELISMA_LENGTH_SS, headRightEdgeXSs)} — LilyPond's
+         * LyricExtender minimum-length rule — and clear the active flag. For a leading continuation
+         * (extender carried in from the previous line), {@code extenderStartXSs} is still the {@code 0.0}
+         * placeholder from the constructor, so the first term collapses to {@code MIN_MELISMA_LENGTH_SS};
+         * {@code headRightEdgeXSs}, an absolute X position on this line, always dominates that {@code max()}.
+         */
+        void closeExtenderPastHead(List<? super LyricConnectorLayout> connectors, int verse, double headRightEdgeXSs) {
+            closeExtender(connectors, verse, Math.max(extenderStartXSs + MIN_MELISMA_LENGTH_SS, headRightEdgeXSs));
         }
     }
 
