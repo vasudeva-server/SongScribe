@@ -148,20 +148,41 @@ class LyricRenderMetricsTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Row 11: lyricBoxHeightSs() — positive and equals ascent + descent
+    // Row 11: lyricBoxHeightSs() — the measured ink height of the lyrics font
     // -----------------------------------------------------------------------
 
     @Test
-    void testLyricBoxHeightSsIsPositiveAndEqualsAscentPlusDescent() {
-        final var expectedHeightSs =
-            ScaleContext.fontAscentSs(LYRICS_FONT).value() + ScaleContext.fontDescentSs(LYRICS_FONT).value();
+    void testLyricBoxHeightSsIsPositiveAndEqualsMeasuredInkHeight() {
         assertAll(
             () -> assertThat(LYRIC_METRICS.lyricBoxHeightSs())
                       .describedAs("height must be positive for a real font")
                       .isGreaterThan(0.0),
             () -> assertThat(LYRIC_METRICS.lyricBoxHeightSs())
-                      .isCloseTo(expectedHeightSs, within(TOLERANCE))
+                      .isCloseTo(LyricRenderMetrics.fontHeightSs(LYRICS_FONT), within(TOLERANCE))
         );
+    }
+
+    /**
+     * The whole point of measuring ink rather than the font's own ascent/descent: the
+     * reserved row must be strictly shorter than the font-wide worst case, or the lyrics
+     * band carries dead space that shows up as excess space between staff lines.
+     */
+    @Test
+    void testLyricBoxHeightSsIsShorterThanAscentPlusDescent() {
+        final var fontWideHeightSs =
+            ScaleContext.fontAscentSs(LYRICS_FONT).value() + ScaleContext.fontDescentSs(LYRICS_FONT).value();
+        assertThat(LYRIC_METRICS.lyricBoxHeightSs()).isLessThan(fontWideHeightSs);
+    }
+
+    /**
+     * The above-baseline extent feeds the first verse's baseline offset, so it must exclude
+     * the descender that {@link LyricRenderMetrics#fontHeightSs} includes.
+     */
+    @Test
+    void testFontAboveBaselineSsExcludesTheDescender() {
+        assertThat(LyricRenderMetrics.fontAboveBaselineSs(LYRICS_FONT))
+            .isGreaterThan(0.0)
+            .isLessThan(LyricRenderMetrics.fontHeightSs(LYRICS_FONT));
     }
 
     // -----------------------------------------------------------------------

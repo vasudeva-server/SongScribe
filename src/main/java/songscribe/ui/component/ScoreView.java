@@ -24,6 +24,7 @@ import module java.desktop;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.util.LinkedHashMap;
 import songscribe.error.RuntimeError;
@@ -764,6 +765,38 @@ public final class ScoreView
     }
 
     @Override
+    public boolean forwardHeadroomEvent(MouseEvent e) {
+        if (mainPanel == null) {
+            return false;
+        }
+
+        var staffPanel = mainPanel.getStaffPanel();
+        var pointInStaffPanel = SwingUtilities.convertPoint(this, e.getPoint(), staffPanel);
+        var target = staffPanel.lineForHeadroomPoint(pointInStaffPanel.y);
+
+        if (target == null) {
+            return false;
+        }
+
+        // Called directly rather than through target.dispatchEvent, which would re-run Swing's
+        // own hit test and drop the event as out of the line's bounds — which it is, by
+        // definition, for every event this method handles.
+        var converted = SwingUtilities.convertMouseEvent(this, e, target);
+
+        switch (e.getID()) {
+            case MouseEvent.MOUSE_MOVED -> target.mouseMoved(converted);
+            case MouseEvent.MOUSE_PRESSED -> target.mousePressed(converted);
+            case MouseEvent.MOUSE_RELEASED -> target.mouseReleased(converted);
+            case MouseEvent.MOUSE_CLICKED -> target.mouseClicked(converted);
+            default -> {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    @Override
     public void zoomByWheel(double preciseWheelRotation, Point viewPoint) {
         ZoomController.zoomByWheel(preciseWheelRotation, viewPoint);
     }
@@ -1350,7 +1383,7 @@ public final class ScoreView
             ScaleContext.scaleFont(lyricsFont),
             ScaleContext.textWidthSs(lyricsFont, "-").value(),
             ScaleContext.textWidthSs(lyricsFont, " ").value(),
-            LineSpacing.LYRICS_ROW_MARGIN_SS + ScaleContext.fontCapHeightSs(lyricsFont).value());
+            LineSpacing.LYRICS_ROW_MARGIN_SS + LyricRenderMetrics.fontAboveBaselineSs(lyricsFont));
     }
 
     @Nullable

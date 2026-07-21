@@ -580,14 +580,22 @@ public final class LayoutResult {
     /**
      * Returns the total vertical space this line's verses occupy, in staff spaces,
      * measured from this line's below-staff content down to the bottom of its last
-     * verse row. Zero when the line has no lyrics.
+     * verse row. Always reserves at least {@link LineSpacing#MIN_RESERVED_VERSE_ROWS} rows,
+     * even when the line has no lyrics yet, so entering the first lyric on a line does not
+     * re-space the song.
+     * <p>
+     * Deliberately built from {@link LineSpacing#LYRICS_ROW_MARGIN_SS} rather than from
+     * {@link LyricRenderMetrics#staffToLyricsGapSs}: that gap is a <em>baseline</em> offset, so
+     * it already contains the first row's above-baseline ink. Adding whole rows on top of it
+     * counted that ink twice and left dead space at the bottom of every line. The band is
+     * simply the visual margin plus one row of ink per reserved verse — which also lands the
+     * last row's ink bottom exactly on the band's bottom edge, since
+     * {@code lastBaseline + belowBaseline} collapses to this same expression.
      */
     public double lyricsBandHeightSs(LyricRenderMetrics lyricRenderMetrics) {
-        if (verseCount == 0) {
-            return 0.0;
-        }
+        var reservedVerseRows = Math.max(LineSpacing.MIN_RESERVED_VERSE_ROWS, verseCount);
 
-        return lyricRenderMetrics.staffToLyricsGapSs() + verseCount * lyricRenderMetrics.lyricBoxHeightSs();
+        return LineSpacing.LYRICS_ROW_MARGIN_SS + reservedVerseRows * lyricRenderMetrics.lyricBoxHeightSs();
     }
 
     /**
@@ -596,6 +604,43 @@ public final class LayoutResult {
      */
     public double lineHeightSs(LyricRenderMetrics lyricRenderMetrics) {
         return aboveMidlineSs() + belowMidlineSs(lyricRenderMetrics);
+    }
+
+    // ==========================================================================
+    // Painted extents
+    // ==========================================================================
+    //
+    // The measured extents above drive inter-line spacing; the floored ones below drive
+    // component bounds and the staff's placement within those bounds. Every consumer of a
+    // line's *geometry* must use the painted pair, and every consumer of its *spacing* the
+    // measured pair — mixing them puts the staff at a different offset than the layout
+    // manager reserved for it, which draws the line clear of its own bounds.
+
+    /**
+     * Returns the distance from the top of this line's component to its staff midline, in
+     * staff spaces: the measured content above the midline, floored at
+     * {@link LineSpacing#MIN_ABOVE_MIDLINE_SS}.
+     */
+    public double paintAboveMidlineSs() {
+        return Math.max(aboveMidlineSs(), LineSpacing.MIN_ABOVE_MIDLINE_SS);
+    }
+
+    /**
+     * Returns the distance from this line's staff midline to the bottom of its component, in
+     * staff spaces: the measured content below the midline, floored at
+     * {@link LineSpacing#MIN_BELOW_MIDLINE_SS}.
+     */
+    public double paintBelowMidlineSs(LyricRenderMetrics lyricRenderMetrics) {
+        return Math.max(belowMidlineSs(lyricRenderMetrics), LineSpacing.MIN_BELOW_MIDLINE_SS);
+    }
+
+    /**
+     * Returns the height of this line's component, in staff spaces — the height its bounds
+     * must have for nothing it draws to be clipped. Use this for sizing, not
+     * {@link #lineHeightSs}, which reports measured content only.
+     */
+    public double paintLineHeightSs(LyricRenderMetrics lyricRenderMetrics) {
+        return paintAboveMidlineSs() + paintBelowMidlineSs(lyricRenderMetrics);
     }
 
     /**

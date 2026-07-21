@@ -44,12 +44,41 @@ public final class LineSpacing {
     public static final double LYRICS_ROW_MARGIN_SS = 0.75;  // 6px
 
     /**
+     * The least a line component may reach above its own staff midline: half the staff plus
+     * the full legal staff-position range above it.
+     * <p>
+     * This floors a line's <em>bounds</em> only. It is deliberately kept out of the inter-line
+     * spacing computation: spacing follows measured content, so a line whose ink stops at the
+     * staff top still packs tightly against its neighbour, while its bounds stay large enough
+     * that Swing does not clip the staff, its ledger lines, or the hover preview.
+     */
+    public static final double MIN_ABOVE_MIDLINE_SS = Staff.STAFF_HALF_SS + Staff.MIN_ABOVE_STAFF_SS;
+
+    /** The below-midline counterpart of {@link #MIN_ABOVE_MIDLINE_SS}. */
+    public static final double MIN_BELOW_MIDLINE_SS = Staff.STAFF_HALF_SS + Staff.MIN_BELOW_STAFF_SS;
+
+    /**
      * The minimum height of a line component, used for a line with no content so its staff
      * still has room above and below for ledger lines. Carries no inter-line gap term —
      * that belongs to the layout manager.
      */
-    public static final double MIN_LINE_HEIGHT_SS =
-        Staff.STAFF_HEIGHT_SS + Staff.MIN_ABOVE_STAFF_SS + Staff.MIN_BELOW_STAFF_SS;
+    public static final double MIN_LINE_HEIGHT_SS = MIN_ABOVE_MIDLINE_SS + MIN_BELOW_MIDLINE_SS;
+
+    /**
+     * The minimum number of verse rows a line reserves in its lyrics band, even before that
+     * verse exists. A line reserves space for its first verse before that verse exists, so
+     * entering the first lyric on a line does not re-space the song.
+     */
+    public static final int MIN_RESERVED_VERSE_ROWS = 1;
+
+    /**
+     * Slack added to the preview element's <em>dirty rectangle</em> only, covering glyph ink
+     * that extends beyond the notehead <em>centre</em> — an accidental's half-height is the
+     * tallest contributor. Over-reporting a dirty region is free; under-reporting leaves
+     * stale ink behind. This is never added to a hit-test band or to any layout extent: a
+     * cursor beyond the legal staff-position range maps to no preview at all.
+     */
+    public static final double PREVIEW_REPAINT_MARGIN_SS = 1.5;
 
     private LineSpacing() {}
 }

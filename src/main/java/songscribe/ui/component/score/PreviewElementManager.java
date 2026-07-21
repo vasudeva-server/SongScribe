@@ -193,7 +193,7 @@ public final class PreviewElementManager {
             xPosSsMatchesElement = false;
             yPosSpMatchesElement = false;
             currentSlideZone = null;
-            oldLine.repaint();
+            oldLine.repaintWithPreviewHeadroom();
         }
 
         // Nothing is positioned to preview anymore, so it can no longer be visible;
@@ -662,7 +662,7 @@ public final class PreviewElementManager {
 
         // Repaint old line if different
         if (currentPreviewLine != null && currentPreviewLine != lc) {
-            currentPreviewLine.repaint();
+            currentPreviewLine.repaintWithPreviewHeadroom();
         }
 
         // Update static state
@@ -675,7 +675,7 @@ public final class PreviewElementManager {
 
         if (isSlidePlaceholder(previewElement)) {
             // No note-head preview for slide tool — renderPreviewElement draws the preview line.
-            lc.repaint();
+            lc.repaintWithPreviewHeadroom();
             return;
         }
 
@@ -698,7 +698,7 @@ public final class PreviewElementManager {
         }
 
         // Repaint this line
-        lc.repaint();
+        lc.repaintWithPreviewHeadroom();
     }
 
     /**
@@ -755,7 +755,7 @@ public final class PreviewElementManager {
                 ElementField.SLIDE,
                 () -> zone.applyTo(sourceNote)
             ));
-            lc.repaint();
+            lc.repaintWithPreviewHeadroom();
             return;  // Stay in slide mode
         }
 

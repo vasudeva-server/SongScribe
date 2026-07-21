@@ -22,6 +22,9 @@ package songscribe.layout;
 
 import module java.desktop;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import songscribe.dom.ScaleContext;
 import songscribe.util.GraphicUtils;
 
@@ -40,9 +43,9 @@ import songscribe.util.GraphicUtils;
  *                         gap between non-hyphenated syllables
  * @param staffToLyricsGapSs distance in staff-space units from a line's below-staff content
  *                         to the baseline of its first verse row. Equals
- *                         {@link LineSpacing#LYRICS_ROW_MARGIN_SS} plus the lyrics font
- *                         cap height, so a baseline placed at this distance puts the text
- *                         <em>ink top</em> one visual gap below the content.
+ *                         {@link LineSpacing#LYRICS_ROW_MARGIN_SS} plus
+ *                         {@link #fontAboveBaselineSs}, so a baseline placed at this distance
+ *                         puts the text <em>ink top</em> one visual gap below the content.
  */
 public record LyricRenderMetrics(
     Font lyricsFont,
@@ -108,14 +111,84 @@ public record LyricRenderMetrics(
     }
 
     /**
-     * Returns a stable lyric-box height in staff spaces — ascent + descent of the lyrics
-     * font. Matches what {@link JTextField} actually paints (its baseline
-     * lands at {@code insets.top + ascent} from {@link LineMetrics}, and
-     * the descender extends {@code descent} below), so the box hugs the rendered glyphs
-     * with no slack. Independent of the currently typed text so the editor box does not
-     * change height as characters with descenders are typed or deleted.
+     * Returns a stable lyric-box height in staff spaces: the ink height of
+     * {@link #LYRIC_EXTENT_REFERENCE} in the lyrics font. Independent of the currently typed
+     * text, so the editor box does not change height as characters with descenders are typed
+     * or deleted.
      */
     public double lyricBoxHeightSs() {
+        return fontHeightSs(lyricsFont);
+    }
+
+    /**
+     * Returns the height of the in-place lyric editor's text box in staff spaces — the lyrics
+     * font's ascent + descent.
+     * <p>
+     * Deliberately not {@link #lyricBoxHeightSs}. A reserved verse row hugs the ink of
+     * {@link #LYRIC_EXTENT_REFERENCE}, but a live text field has to fit whatever the user
+     * types, and {@link JTextField} lays its own painting out from the font-wide ascent and
+     * descent — its baseline lands at {@code insets.top + ascent}, with the descender below.
+     * Sizing the editor from ink would clip glyphs mid-edit.
+     */
+    public double editorBoxHeightSs() {
         return ScaleContext.fontAscentSs(lyricsFont).value() + ScaleContext.fontDescentSs(lyricsFont).value();
+    }
+
+    // ==========================================================================
+    // Lyric font extents
+    // ==========================================================================
+
+    /**
+     * The reference string measured to size a lyrics row. {@code Ā} contributes the tallest
+     * ink a lyric can carry above the baseline — a capital plus a combining macron — and
+     * {@code j} the deepest below it.
+     * <p>
+     * Real ink is measured rather than the font's own ascent/descent because those are
+     * font-wide worst cases: ascent reserves height for glyphs lyrics never contain, and
+     * descent reserves room for under-character marks. That slack sits inside every line's
+     * lyrics band and reads as excess space between staff lines.
+     */
+    private static final String LYRIC_EXTENT_REFERENCE = "Ājyg";
+
+    /** Identifies a font for caching purposes; the extents depend on face and size only. */
+    private record FontInfo(String psName, float size) {}
+
+    /** Baseline-relative ink bounds of {@link #LYRIC_EXTENT_REFERENCE}, in pixels. */
+    private static final Map<FontInfo, Rectangle2D> lyricExtentCache = new HashMap<>();
+
+    private static Rectangle2D lyricExtentPx(Font font) {
+        var fontInfo = new FontInfo(font.getPSName(), font.getSize2D());
+        var cachedExtent = lyricExtentCache.get(fontInfo);
+
+        if (cachedExtent != null) {
+            return cachedExtent;
+        }
+
+        var extent = font
+            .createGlyphVector(GraphicUtils.SCREEN_FRC, LYRIC_EXTENT_REFERENCE)
+            .getVisualBounds();
+        lyricExtentCache.put(fontInfo, extent);
+        return extent;
+    }
+
+    /**
+     * Returns the full ink height of a lyrics row in {@code font}, in staff spaces — the
+     * distance from the top of {@link #LYRIC_EXTENT_REFERENCE}'s ink to its bottom. This is
+     * the height one verse row reserves.
+     */
+    public static double fontHeightSs(Font font) {
+        return ScaleContext.pxToSs(lyricExtentPx(font).getHeight());
+    }
+
+    /**
+     * Returns the ink height above the baseline of a lyrics row in {@code font}, in staff
+     * spaces. Use this to place a first baseline a known distance below other content:
+     * offsetting by this puts the row's <em>ink top</em> at that distance, with no descender
+     * included.
+     */
+    public static double fontAboveBaselineSs(Font font) {
+        // Visual bounds are baseline-relative with Y growing downward, so the ink top edge is
+        // a negative offset from the baseline.
+        return ScaleContext.pxToSs(-lyricExtentPx(font).getY());
     }
 }

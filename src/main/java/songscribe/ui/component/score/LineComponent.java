@@ -26,6 +26,9 @@ import java.awt.event.MouseEvent;
 
 import org.jspecify.annotations.Nullable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.Strings;
 import songscribe.dom.*;
 import songscribe.ui.Mode;
@@ -40,6 +43,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.layout.Ending;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.LineSpacing;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.engraving.Staff;
 import songscribe.ui.renderer.ElementFrame;
@@ -171,6 +175,8 @@ public class LineComponent extends ScoreComponent
 
     /** Handles press/drag/release for pitch-dragging a note in NOTE_EDIT mode. */
     private final NoteDragHandler noteDragHandler = new NoteDragHandler(this);
+
+    private static final Logger LOG = LoggerFactory.getLogger(LineComponent.class);
 
     /** Renderer that handles all drawing for this line. */
     private final LineRenderer lineRenderer = new LineRenderer(this);
@@ -493,6 +499,10 @@ public class LineComponent extends ScoreComponent
         middleLineYSs = calculateMiddleLineYSs();
         middleLineYSsValid = true;
 
+        if (LOG.isDebugEnabled()) {
+            logStaleBounds();
+        }
+
         // ── Paint pipeline: the zoom factor is applied EXACTLY ONCE ─────────────────
         //
         //   g2.scale(pxPerSs × factor)              <- single factor application, here
@@ -571,11 +581,13 @@ public class LineComponent extends ScoreComponent
         double heightSs;
 
         if (layoutResult != null) {
-            heightSs = layoutResult.lineHeightSs(getScoreView().getLyricRenderMetrics());
+            // The painted height, so the bounds hold everything this line draws — the measured
+            // lineHeightSs is the spacing input and can be shorter than the staff surround.
+            heightSs = layoutResult.paintLineHeightSs(getScoreView().getLyricRenderMetrics());
         } else {
             // Issue #449: the line has never had a fitting layout. Fall back to the same
             // minimum extents StaffLinesLayout uses for a null LayoutResult.
-            heightSs = Staff.MIN_ABOVE_STAFF_SS + Staff.MIN_BELOW_STAFF_SS + Staff.STAFF_HEIGHT_SS;
+            heightSs = LineSpacing.MIN_LINE_HEIGHT_SS;
         }
 
         return new Dimension(
@@ -600,7 +612,11 @@ public class LineComponent extends ScoreComponent
             throw unexpectedNullLayout();
         }
 
-        return result.staffTopYSsInLine() + Staff.STAFF_HALF_SS;
+        // The painted extent, not staffTopYSsInLine() + half: the staff must sit where
+        // StaffLinesLayout reserved room for it, and that reservation is floored. Using the
+        // measured content here drew the staff above the component's own top on any line whose
+        // ink stops at the staff, clipping it and overlapping the line above.
+        return result.paintAboveMidlineSs();
     }
 
     /**
@@ -875,6 +891,86 @@ public class LineComponent extends ScoreComponent
         }
 
         return ElementFrame.LINE_LEVEL;
+    }
+
+    /**
+     * Logs a line whose Swing bounds disagree with the extents its current
+     * {@link LayoutResult} reports.
+     * <p>
+     * This is the clipping signature: an edit produced a new layout, but the component was
+     * painted before the layout manager re-measured it, so the line draws content its bounds
+     * are too small to hold and Swing cuts it off at the edge.
+     */
+    private void logStaleBounds() {
+        if (layoutResult == null || scoreView == null) {
+            return;
+        }
+
+        var lyricRenderMetrics = scoreView.getLyricRenderMetrics();
+        var expectedHeightPx = toViewPx(new Ss(layoutResult.paintLineHeightSs(lyricRenderMetrics))).ceilPx();
+
+        if (expectedHeightPx != getHeight()) {
+            LOG.debug(
+                "line {}: stale bounds — painted height {} px, layout wants {} px "
+                    + "(staffTopInLine={} ss, lyricsBand={} ss, midlineY={} ss)",
+                lineIndex, getHeight(), expectedHeightPx,
+                layoutResult.staffTopYSsInLine(),
+                layoutResult.lyricsBandHeightSs(lyricRenderMetrics), middleLineYSs);
+        }
+    }
+
+    /**
+     * Renders this line's preview element into the enclosing {@link StaffPanel}'s overlay pass.
+     *
+     * @param g2 Graphics context, already scaled to staff spaces and translated to this
+     *           line's origin
+     */
+    void renderPreviewOverlay(Graphics2D g2) {
+        lineRenderer.renderPreviewOverlay(g2);
+    }
+
+    /**
+     * Repaints this line plus the bands above and below it in which its preview element may
+     * have drawn.
+     * <p>
+     * The preview element is painted by the enclosing {@link StaffPanel}, not by this
+     * component, so {@code repaint()} — which clips the dirty region to this component's own
+     * content-hugging bounds — cannot clear preview ink drawn outside them.
+     */
+    void repaintWithPreviewHeadroom() {
+        StaffPanel staffPanel = null;
+
+        for (var ancestor = getParent(); ancestor != null; ancestor = ancestor.getParent()) {
+            if (ancestor instanceof StaffPanel panel) {
+                staffPanel = panel;
+                break;
+            }
+        }
+
+        // Detached from any StaffPanel (tests): there is no overlay host, so nothing can
+        // have drawn outside this component's bounds.
+        if (staffPanel == null) {
+            repaint();
+            return;
+        }
+
+        var bounds = SwingUtilities.convertRectangle(
+            this, new Rectangle(0, 0, getWidth(), getHeight()), staffPanel);
+
+        // Sizes, so round up — a dirty rect that is a pixel short leaves stale ink.
+        var viewScale = getViewScale();
+        var headroomAbovePx = viewScale
+            .toViewPx(new Ss(Staff.MIN_ABOVE_STAFF_SS + LineSpacing.PREVIEW_REPAINT_MARGIN_SS))
+            .ceilPx();
+        var headroomBelowPx = viewScale
+            .toViewPx(new Ss(Staff.MIN_BELOW_STAFF_SS + LineSpacing.PREVIEW_REPAINT_MARGIN_SS))
+            .ceilPx();
+
+        staffPanel.repaint(
+            bounds.x,
+            bounds.y - headroomAbovePx,
+            bounds.width,
+            bounds.height + headroomAbovePx + headroomBelowPx);
     }
 
     /**

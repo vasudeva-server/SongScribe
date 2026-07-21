@@ -447,25 +447,4 @@ public final class MyFontUtils {
         return METRICS_GRAPHICS.getFontMetrics(font);
     }
 
-    private record FontInfo(String psName, float size) {}
-
-    private static final Map<FontInfo, Integer> capHeightCache = new HashMap<>();
-
-    // "Ā" (A with macron) is used as the reference glyph because its cap height
-    // matches a plain "A" while also including the ascender space some fonts
-    // reserve for combining diacritics.
-    public static int getCapHeight(Font font) {
-        var fontInfo = new FontInfo(font.getPSName(), font.getSize2D());
-        var cachedCapHeight = capHeightCache.get(fontInfo);
-
-        if (cachedCapHeight != null) {
-            return cachedCapHeight;
-        }
-
-        var glyphVector = font.createGlyphVector(GraphicUtils.SCREEN_FRC, "Ā");
-        var capHeight = (int) GraphicUtils.inkHeight(glyphVector.getVisualBounds());
-        capHeightCache.put(fontInfo, capHeight);
-        return capHeight;
-    }
-
 }

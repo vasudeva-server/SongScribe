@@ -123,33 +123,8 @@ class LineRenderer {
      * @param g2 Graphics context with antialiasing enabled
      */
     void render(Graphics2D g2) {
-        var song = lc.getSong();
-        var line = lc.getLine();
-        var lineIndex = lc.getLineIndex();
-
-        var layoutResult = lc.getLayoutResult();
-
-        if (layoutResult == null) {
-            throw RuntimeError.exit("LineRenderer.render called before layout was performed");
-        }
-
-        var score = lc.getScoreView();
-        var activeEditor = score.getActiveLyricEditor();
-
         // Build the immutable per-line invariants once.
-        var invariants = LineInvariants.builder(song, score)
-            .setCurrentLine(line)
-            .setLineIndex(lineIndex)
-            .setMiddleLineYSs(lc.getMiddleLineYSs())
-            .setLayoutResult(layoutResult)
-            .setLyricRenderMetrics(score.getLyricRenderMetrics())
-            .setActivelyEditedElement(activeEditor != null ? activeEditor.getActiveElement() : null)
-            .setSelectionProvider(lc.getSelectionProvider())
-            .setEditMode(lc.isEditMode())
-            .setPlayingNoteIndex(lc.getPlayingNoteIndex())
-            .setPlayingGraceNoteIndex(lc.getPlayingGraceNoteIndex())
-            .setViewScale(score.getViewScale())
-            .build();
+        var invariants = buildInvariants();
 
         // The line-level frame carries the grace-note insert preview shift (rightward
         // displacement of subsequent elements) when this is the active grace line; the
@@ -171,6 +146,66 @@ class LineRenderer {
         renderDynamics(g2, invariants);
         renderEndings(g2, invariants);
         renderAttachments(g2, invariants, lineFrame);
+    }
+
+    /**
+     * Builds the immutable per-line invariants from the owning line component's current state.
+     *
+     * @return The invariants for this render pass
+     */
+    LineInvariants buildInvariants() {
+        var song = lc.getSong();
+        var line = lc.getLine();
+        var lineIndex = lc.getLineIndex();
+
+        var layoutResult = lc.getLayoutResult();
+
+        if (layoutResult == null) {
+            throw RuntimeError.exit("LineRenderer.render called before layout was performed");
+        }
+
+        var score = lc.getScoreView();
+        var activeEditor = score.getActiveLyricEditor();
+
+        return LineInvariants.builder(song, score)
+            .setCurrentLine(line)
+            .setLineIndex(lineIndex)
+            .setMiddleLineYSs(lc.getMiddleLineYSs())
+            .setLayoutResult(layoutResult)
+            .setLyricRenderMetrics(score.getLyricRenderMetrics())
+            .setActivelyEditedElement(activeEditor != null ? activeEditor.getActiveElement() : null)
+            .setSelectionProvider(lc.getSelectionProvider())
+            .setEditMode(lc.isEditMode())
+            .setPlayingNoteIndex(lc.getPlayingNoteIndex())
+            .setPlayingGraceNoteIndex(lc.getPlayingGraceNoteIndex())
+            .setViewScale(score.getViewScale())
+            .build();
+    }
+
+    /**
+     * Renders the preview element as an overlay, outside this line's own paint pass.
+     * <p>
+     * The preview element may sit well above or below the line's content-hugging bounds, so
+     * it is painted by {@link StaffPanel#paintChildren} after all children, in panel
+     * coordinates — Swing would otherwise clip it at the line's edge.
+     *
+     * @param g2 Graphics context, already scaled to staff spaces and translated to this
+     *           line's origin
+     */
+    void renderPreviewOverlay(Graphics2D g2) {
+        // The overlay runs on every StaffPanel paint, including while a line is in the
+        // issue-#449 lineDoesNotFit state, so a missing layout is expected here rather
+        // than fatal as it is in render().
+        if (lc.getLayoutResult() == null) {
+            return;
+        }
+
+        var invariants = buildInvariants();
+        var lineFrame = lc.gracePreviewLineFrame();
+
+        // Ensure accidental metrics are initialized
+        NoteGeometry.initializeAccidentalWidths();
+
         renderPreviewElement(g2, invariants, lineFrame);
         renderInsertionPoint(g2, invariants);
     }

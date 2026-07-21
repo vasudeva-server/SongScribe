@@ -664,7 +664,7 @@ public final class LyricEditor extends MyJTextField {
         var anchor = layoutResult.getLyricAnchor(element, lyricRenderMetrics);
 
         var advanceLeftSs = anchor.centerXSs() - advanceSs / 2.0;
-        var heightSs = lyricRenderMetrics.lyricBoxHeightSs();
+        var heightSs = lyricRenderMetrics.editorBoxHeightSs();
 
         // The editor is a real overlay component positioned in absolute view pixels, so
         // ss→px conversions here honor the current zoom via the view scale (not the
@@ -675,7 +675,7 @@ public final class LyricEditor extends MyJTextField {
             ? MIN_TRAILING_CARET_ROOM_PX
             : 0;
         var contentWidthPx = roundedAdvancePx + trailingCaretRoomPx;
-        // lyricBoxHeightSs covers ascent+descent only; FieldView's selection height uses
+        // editorBoxHeightSs covers ascent+descent only; FieldView's selection height uses
         // getHeight() = ascent+descent+leading. Adding leading here makes fieldViewSlopPx
         // equal to SELECTION_MARGIN_PX*2, so the selection gets exactly SELECTION_MARGIN_PX
         // pixels of breathing room above and below.

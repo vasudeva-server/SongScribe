@@ -113,16 +113,6 @@ public final class ScaleContext {
     }
 
     /**
-     * Returns the font cap height in staff-space units for the given font — the ink
-     * height of a capital letter above the baseline, per {@link MyFontUtils#getCapHeight}.
-     * Unlike {@link #fontAscentSs}, this tracks the actual top of the ink rather than the
-     * font's reserved ascent space, which can sit well above where capitals are drawn.
-     */
-    public static Ss fontCapHeightSs(Font font) {
-        return new Ss(pxToSs(MyFontUtils.getCapHeight(font)));
-    }
-
-    /**
      * Returns an {@link AffineTransform} that scales from staff-space
      * coordinates to pixel coordinates. Apply this to a {@code Graphics2D}
      * before rendering in staff-space units.

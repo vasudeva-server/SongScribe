@@ -11,8 +11,9 @@
 | 2   | [StaffLinesLayout Manager](#-phase-2-stafflineslayout-manager) | ✅ Complete | —   |
 | 3   | [Renderer + Consumer Migration](#-phase-3-renderer--consumer-migration) | ✅ Complete | —   |
 | 4   | [LineComponent + Navigator Cleanup](#-phase-4-linecomponent--navigator-cleanup) | ✅ Complete | —   |
-| 5   | [Manual UI Verification](#-phase-5-manual-ui-verification) | ⏸️ Blocked by 4 | —   |
-| 6   | [Tests](#-phase-6-tests) | ⏸️ Blocked by 5 | —   |
+| 5   | [Always Reserve the Lyric Band](#-phase-5-always-reserve-the-lyric-band) | ✅ Complete | —   |
+| 6   | [Manual UI Verification](#-phase-6-manual-ui-verification) | ⏸️ Blocked by 5, [preview-element-overlay.md](./preview-element-overlay.md) | [preview-element-overlay.md](./preview-element-overlay.md) |
+| 7   | [Tests](#-phase-7-tests) | ⏸️ Blocked by 6 | —   |
 
 * * *
 ## The Target Model
@@ -115,7 +116,7 @@ I first widened this to max over the `structural`/`system` tier bot extents, on 
 2. **The uncommitted #591 work was stashed, not `git checkout --`'d** — recoverable as stash entry `pre-phase-1 revert of #591 uniform-height work`.
 
 #### Free wins
-`jet_brains_rename` propagated the field renames into test sources as well, so several rename-only edits Phase 6 was scoped to make are already done (`ArticulationStackingTest`, `LineHeightTest`, `SongLayoutMetricsTest`, both `VerticalStackingCalculatorTest`s, `LayoutResultTest`, `LineComponentTest`).
+`jet_brains_rename` propagated the field renames into test sources as well, so several rename-only edits Phase 7 was scoped to make are already done (`ArticulationStackingTest`, `LineHeightTest`, `SongLayoutMetricsTest`, both `VerticalStackingCalculatorTest`s, `LayoutResultTest`, `LineComponentTest`).
   
 
 * * *
@@ -216,11 +217,11 @@ No deviations from the plan as written.
   
 4. `ComponentHierarchyNavigator.getActualLineMiddleYPx` **path** (`src/main/java/songscribe/ui/component/ComponentHierarchyNavigator.java:157-171`): the single-line fallback at lines 166-168 adds the deleted `StaffPanel.LINE_MARGIN_BOTTOM_SS`. With one line there is no inter-line spacing at all, so the row height is just `linePanel.getLineComponent().getHeight()`. Delete the margin term and the now-unused `StaffPanel` import if nothing else in the file uses it. The two-or-more-lines branch at line 161 (`getActualLineMiddleYPx(1) - getActualLineMiddleYPx(0)`) already measures real component positions and stays correct under the new layout — leave it alone.
   
-5. Run `./scripts/compile.sh` and confirm **SUCCESS**. Then run `./scripts/test.sh unit` and record the failures. Expect failures in `SongLayoutMetricsTest`, `LineHeightTest`, `VerticalStackingCalculatorTest`, `LayoutResultTest`, `LineComponentTest`, `LyricTextRendererTest`, `LyricConnectorRendererTest`, `LineInvariantsTest`, `LineRendererTest`, `RenderContextTestHelper`, `ComponentHierarchyNavigatorTest`, and `TranslationTextPanelStaffPanelTest`. **Do not fix them** — Phase 6 owns tests, and it is gated behind manual verification. Report the full failure list.
+5. Run `./scripts/compile.sh` and confirm **SUCCESS**. Then run `./scripts/test.sh unit` and record the failures. Expect failures in `SongLayoutMetricsTest`, `LineHeightTest`, `VerticalStackingCalculatorTest`, `LayoutResultTest`, `LineComponentTest`, `LyricTextRendererTest`, `LyricConnectorRendererTest`, `LineInvariantsTest`, `LineRendererTest`, `RenderContextTestHelper`, `ComponentHierarchyNavigatorTest`, and `TranslationTextPanelStaffPanelTest`. **Do not fix them** — Phase 7 owns tests, and it is gated behind manual verification. Report the full failure list.
   
 
 ### Outcome
-Done as specified. `./scripts/compile.sh` reports **SUCCESS**. `./scripts/test.sh unit` fails at **test compilation**, not at runtime — expected, since the deleted `SongLayoutMetrics`/`SongLayoutMetricsBuilder` classes and the Phase 1 `LyricRenderMetrics` constructor-arity change (new `staffToLyricsGapSs` component) are still referenced from test sources that only Phase 6 is scoped to fix.
+Done as specified. `./scripts/compile.sh` reports **SUCCESS**. `./scripts/test.sh unit` fails at **test compilation**, not at runtime — expected, since the deleted `SongLayoutMetrics`/`SongLayoutMetricsBuilder` classes and the Phase 1 `LyricRenderMetrics` constructor-arity change (new `staffToLyricsGapSs` component) are still referenced from test sources that only Phase 7 is scoped to fix.
 
 Files with compile errors (superset of the plan's predicted list — the extra files are cascading failures from shared test helpers/constructors touched by Phases 1-3, not new breakage from this phase):
 `SongLayoutMetricsTest`, `LineHeightTest`, `VerticalStackingCalculatorTest`, `LayoutResultTest`, `LineComponentTest`, `LyricTextRendererTest`, `LyricConnectorRendererTest`, `LineInvariantsTest`, `LineRendererTest`, `RenderContextTestHelper`, `ComponentHierarchyNavigatorTest`, `TranslationTextPanelStaffPanelTest`, plus `InsertionSpacingCalculatorTest`, `LayoutEngineTest`, `LyricEditFitCalculatorTest`, `LyricLayoutBuilderGraceNoteTest`, `LyricLayoutBuilderTest`, `LyricRenderMetricsTest`, `TiedScriptStackingTest`, `LyricEditorTest`, `LyricEditorTestSupport` (these last nine fail only because they share a helper/constructor with one of the files already on the plan's list).
@@ -233,12 +234,101 @@ Files with compile errors (superset of the plan's predicted list — the extra f
   
 
 * * *
-## ⏸️ Phase 5: Manual UI Verification
-**Status:** Pending  
+## ✅ Phase 5: Always Reserve the Lyric Band
+**Status:** Complete  
 **BlockedBy:** 4  
+**Recommended model/effort:** Sonnet 4.6, medium effort — a one-method behaviour change, but
+it must be traced to every other reader of `verseCount` before it is safe.
+
+Every line in a finished song ultimately carries lyrics, so a line with no verses yet must
+still reserve one verse row. Otherwise the whole block re-spaces the moment the first lyric
+on a line is typed, which reads as the score jumping under the cursor.
+
+### Tasks
+1. **Reserve at least one verse row** in `LayoutResult.lyricsBandHeightSs(LyricRenderMetrics)`
+  (`src/main/java/songscribe/layout/LayoutResult.java:585-591`). It currently short-circuits
+  to `0.0` when `verseCount == 0`. Delete that short-circuit and compute the row count as
+  `Math.max(LineSpacing.MIN_RESERVED_VERSE_ROWS, verseCount)`. Add
+  `public static final int MIN_RESERVED_VERSE_ROWS = 1;` to
+  `src/main/java/songscribe/layout/LineSpacing.java` with Javadoc stating that a line reserves
+  space for its first verse before that verse exists, so entering the first lyric on a line
+  does not re-space the song. Update the method's Javadoc, which currently ends "Zero when the
+  line has no lyrics" — that sentence becomes false.
+
+2. **`verseCount` is per-line, not song-wide** — `LayoutEngine.java:363` sets it from
+  `lyricResult.verseCount()`, documented at `LayoutResult.java:1166` as "the highest verse
+  index present on **this line**". This task deliberately reserves only the *first* row, not
+  the song's maximum verse count, so adding a second verse to a line still re-spaces. Do not
+  widen it to a song-wide maximum — that would reintroduce the song-wide uniformity this plan
+  removed.
+
+3. **Audit the other readers of `verseCount`.** Run
+  `jet_brains_find_referencing_symbols` on the `verseCount` field and on
+  `lyricsBandHeightSs` in `src/main/java/songscribe/layout/LayoutResult.java`. Anything that
+  branches on "this line has no lyrics" to decide whether to *draw* or *hit-test* lyrics must
+  keep using `verseCount == 0` and must **not** be switched to the reserved row count — the
+  reservation changes geometry only, never whether lyric content exists. Report every call
+  site you inspected and which category you put it in.
+
+4. **Confirm the reservation does not disturb baselines.** `verseYSsInLine(int, LyricRenderMetrics)`
+  and `lyricAreaBaseYSs(LyricRenderMetrics)` derive from `staffBottomYSsInLine()`,
+  `contentBelowStaffSs` and `staffToLyricsGapSs` — none of which read `verseCount`. Verify by
+  reading them that a line's existing verse baselines are unchanged by this task, and say so
+  in your report. If any baseline does shift, stop and report rather than compensating.
+
+5. Run `./scripts/compile.sh` and confirm **SUCCESS**. Do not run the unit tests — they are
+  still red from Phase 4 and Phase 7 owns fixing them.
+
+### Outcome
+Done as specified. `./scripts/compile.sh` reports **SUCCESS**. Unit tests were not run, per the
+task instruction — they remain red from Phase 4 and are Phase 7's responsibility.
+
+- Added `LineSpacing.MIN_RESERVED_VERSE_ROWS = 1` with Javadoc as specified.
+- `LayoutResult.lyricsBandHeightSs(LyricRenderMetrics)` now computes
+  `reservedVerseRows = Math.max(LineSpacing.MIN_RESERVED_VERSE_ROWS, verseCount)` and always
+  returns `staffToLyricsGapSs() + reservedVerseRows * lyricBoxHeightSs()` — the `verseCount == 0`
+  short-circuit is gone, and the Javadoc's "Zero when the line has no lyrics" sentence was
+  replaced with a description of the reservation behaviour.
+
+**Audit of other `verseCount` readers** (`jet_brains_find_referencing_symbols` on the field, the
+`verseCount()` getter, and `lyricsBandHeightSs`, cross-checked with `rg -n "verseCount"
+src/main`):
+
+- `LayoutResult.isYInLyricBounds(LyricRenderMetrics, double)` (line 674-676) — branches on
+  `verseCount == 0` to decide whether a point is in lyric bounds at all, and uses `verseCount` in
+  its upper-bound math. This is a hit-test over *actual* lyric content, so it correctly keeps
+  reading raw `verseCount`, unchanged.
+- `LayoutResult.hitTestLyric(...)` — iterates `getLyricBoxes(element)`, which is populated only
+  from real lyric boxes, not the reservation. No `verseCount` read at all; unaffected.
+- `LayoutResult.lyricsBandHeightSs(LyricRenderMetrics)` — the geometry method itself, now
+  reservation-aware as above.
+- `LayoutResult.belowMidlineSs(LyricRenderMetrics)` — the sole caller of `lyricsBandHeightSs`;
+  it's pure geometry (line component sizing), so inheriting the reservation is exactly the
+  intended effect.
+- `LayoutEngine.java:363` (`builder.setVerseCount(lyricResult.verseCount())`) — sets the raw
+  per-line count from `LyricLayoutBuilder.Result`; unaffected, still the true content count.
+- `verseCount()` getter (`LayoutResult.java:737`) — no production callers outside this file; only
+  referenced from test files (`SongLayoutMetricsTest`, `LyricLayoutBuilderTest`), which are
+  Phase 7's territory.
+
+**Baseline confirmation (task 4):** `verseYSsInLine(int, LyricRenderMetrics)` and
+`lyricAreaBaseYSs(LyricRenderMetrics)` (verified by reading both) derive only from
+`staffBottomYSsInLine()`/`contentAboveStaffSs`/`contentBelowStaffSs` and
+`LineSpacing.LYRICS_ROW_MARGIN_SS`/`m.staffToLyricsGapSs()` — neither reads `verseCount` or
+`lyricsBandHeightSs()`. Existing verse baselines are unchanged by this task; only the reserved
+below-midline footprint (and thus inter-line spacing) changes when a line has zero verses.
+
+No deviations from the plan as written.
+
+* * *
+## ⏸️ Phase 6: Manual UI Verification
+**Status:** Pending  
+**BlockedBy:** 5, [preview-element-overlay.md](./preview-element-overlay.md)  
 **Recommended model/effort:** No model — the user performs this.
 
 The layout behaviour must be confirmed visually by the user before any test is written against it, because the expected numbers are a design judgement, not a derivation.
+
+Run this in the **same session** as Phase 3 of [preview-element-overlay.md](./preview-element-overlay.md) — both are user-driven passes over the same score, and that plan fixes task 4 below.
 ### Tasks
 1. Ask the user for permission, then run `./scripts/run.sh`. Never run it without asking.
   
@@ -246,18 +336,20 @@ The layout behaviour must be confirmed visually by the user before any test is w
   
 3. Have the user confirm the pairwise spacing rule visually: add a note with several ledger lines **above** the staff on the **first** line only. The whole block should shift down, and the gaps between lines should **not** grow. Then add the same note above the staff on the **second** line; now the gaps **should** grow uniformly. Then add a low note **below** the staff on the first line; the gaps **should** grow.
   
-4. Have the user confirm that removing the floors from the content extents (Phase 1 task 4) did not break editing headroom: hover to place a preview element above and below the staff on a line with no other content, and drag a note upward and downward past the staff. If the preview element or a dragged note is clipped at the component edge, report it — the fix is to reintroduce a small named headroom constant in `LineSpacing` added to the content extents, not to restore the old `Staff.MIN_ABOVE_STAFF_SS` / `MIN_BELOW_STAFF_SS` floors, which were much larger (3.0 and 4.0 staff spaces) and are what made the spacing excessive.
+4. **Already failed — see [preview-element-overlay.md](./preview-element-overlay.md), which must land before this phase runs.** Removing the floors from the content extents (Phase 1 task 4) did break editing headroom: the preview element is clipped a few ledger lines above the staff, and the extreme staff positions are unreachable on a line with no content, because the floors were derived from exactly the staff-position range the preview accepts. The fix is the overlay in that plan — do **not** reintroduce headroom into the content extents, which would restore the excessive spacing this plan exists to remove.
   
 5. Have the user confirm behaviour at non-100% zoom (both a zoom-in and a zoom-out step) and on a single-line song.
   
-6. Record the user's verdict and any tuning they ask for in this phase's section before Phase 6 starts. If tuning is needed, apply it and re-verify before proceeding.
+6. Record the user's verdict and any tuning they ask for in this phase's section before Phase 7 starts. If tuning is needed, apply it and re-verify before proceeding.
   
 
 * * *
-## ⏸️ Phase 6: Tests
+## ⏸️ Phase 7: Tests
 **Status:** Pending  
-**BlockedBy:** 5  
+**BlockedBy:** 6  
 **Recommended model/effort:** Sonnet 4.6, medium effort — mechanical test migration against behaviour the user has already signed off on.
+
+This phase is what makes `./scripts/test.sh unit` compile again. Phase 4 of [preview-element-overlay.md](./preview-element-overlay.md) is blocked on it and must run after.
 
 Read `.agents/guides/testing-common.md` and `.agents/guides/testing-unit.md` first. No raw numeric literals in tests either — every expected value must be built from the named constants.
 ### Tasks
@@ -294,7 +386,7 @@ Read `.agents/guides/testing-common.md` and `.agents/guides/testing-unit.md` fir
   
 2. `./scripts/test.sh unit` is green.
   
-3. Issue #591's two reported symptoms are gone, confirmed by the user in Phase 5: inter-line space is no longer excessive, and lyrics on lines after the first render where hit-testing responds.
+3. Issue #591's two reported symptoms are gone, confirmed by the user in Phase 6: inter-line space is no longer excessive, and lyrics on lines after the first render where hit-testing responds.
   
 4. `rg -n "SongLayoutMetrics" src/` returns no hits.
   

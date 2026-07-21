@@ -24,6 +24,9 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.dom.Ss;
 import songscribe.engraving.Staff;
 import songscribe.layout.LayoutResult;
@@ -49,15 +52,22 @@ import songscribe.layout.LyricRenderMetrics;
  *   <li>{@code aboveMidline[0]} appears only in {@code midlineY[0]}, never in a pair, so
  *       content above the <em>first</em> line's staff translates the whole block downward
  *       without widening the spacing. Content below it does enter pair (0,1) and widens it.</li>
- *   <li>Because {@code S >= belowMidline[N] + gap + aboveMidline[N+1]} for every pair,
- *       adjacent components are always at least {@link LineSpacing#MIN_INTER_LINE_GAP_SS}
- *       apart and never overlap. Swing's default child clipping is therefore harmless and
- *       must not be worked around.</li>
+ *   <li>Because {@code S >= belowMidline[N] + gap + aboveMidline[N+1]} for every pair, adjacent
+ *       lines' <em>content</em> is always at least {@link LineSpacing#MIN_INTER_LINE_GAP_SS}
+ *       apart.</li>
  * </ul>
+ * Component <em>bounds</em>, however, are floored at the minimum staff surround
+ * ({@link LineSpacing#MIN_ABOVE_MIDLINE_SS} / {@link LineSpacing#MIN_BELOW_MIDLINE_SS}) so a
+ * line always contains its own staff, and those floors are excluded from {@code S}. Two sparse
+ * neighbours
+ * can therefore have overlapping bounds even though their ink does not overlap — which is why
+ * {@link StaffPanel#isOptimizedDrawingEnabled} reports {@code false}.
  * This class is the seam where staff spaces become view pixels: everything above is computed
  * in {@code Ss}, then converted once per child through the view zoom.
  */
 public class StaffLinesLayout implements LayoutManager2 {
+
+    private static final Logger LOG = LoggerFactory.getLogger(StaffLinesLayout.class);
 
     private final StaffPanel staffPanel;
 
@@ -68,28 +78,48 @@ public class StaffLinesLayout implements LayoutManager2 {
     /**
      * The midline geometry of every child, in staff spaces, plus the uniform
      * midline-to-midline distance derived from it.
+     * <p>
+     * Two extents are kept per line, and the split is the whole point:
+     * <ul>
+     *   <li>{@code aboveMidlineSs} / {@code belowMidlineSs} — the line's <em>measured content</em>,
+     *       and the only inputs to {@code spacingSs}. Spacing therefore still follows content
+     *       exactly as issue #591 requires.</li>
+     *   <li>{@code paintAboveMidlineSs} / {@code paintBelowMidlineSs} — the same values floored
+     *       at the minimum staff surround, used only for component <em>bounds</em>. Without the
+     *       floor a line whose ink stops at the staff top gets bounds that start there, and
+     *       Swing clips the top staff line, its ledger lines, and anything else drawn above.</li>
+     * </ul>
+     * The floors never reach {@code spacingSs}, so adding them cannot widen the gaps.
      */
-    private record Geometry(double[] aboveMidlineSs, double[] belowMidlineSs, double spacingSs) {
+    private record Geometry(
+        double[] aboveMidlineSs,
+        double[] belowMidlineSs,
+        double[] paintAboveMidlineSs,
+        double[] paintBelowMidlineSs,
+        double spacingSs
+    ) {
 
         int count() {
             return aboveMidlineSs.length;
         }
 
         double midlineYSs(int index) {
-            return aboveMidlineSs[0] + index * spacingSs;
+            // Anchored on the painted extent so the first line's headroom cannot fall above
+            // y = 0, where the panel edge would clip it.
+            return paintAboveMidlineSs[0] + index * spacingSs;
         }
 
         double topYSs(int index) {
-            return midlineYSs(index) - aboveMidlineSs[index];
+            return midlineYSs(index) - paintAboveMidlineSs[index];
         }
 
         double heightSs(int index) {
-            return aboveMidlineSs[index] + belowMidlineSs[index];
+            return paintAboveMidlineSs[index] + paintBelowMidlineSs[index];
         }
 
         double totalHeightSs() {
             var last = count() - 1;
-            return midlineYSs(last) + belowMidlineSs[last];
+            return midlineYSs(last) + paintBelowMidlineSs[last];
         }
     }
 
@@ -113,31 +143,102 @@ public class StaffLinesLayout implements LayoutManager2 {
         var aboveMidlineSs = new double[count];
         var belowMidlineSs = new double[count];
 
+        var paintAboveMidlineSs = new double[count];
+        var paintBelowMidlineSs = new double[count];
+
         for (var i = 0; i < count; i++) {
             var result = layoutResultOf(parent.getComponent(i));
 
             if (result == null) {
                 // The line could not fit its content (issue #449) and has no layout to
                 // measure; reserve the minimum staff surround so it still stacks sensibly.
-                aboveMidlineSs[i] = Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HALF_SS;
-                belowMidlineSs[i] = Staff.MIN_BELOW_STAFF_SS + Staff.STAFF_HALF_SS;
+                aboveMidlineSs[i] = LineSpacing.MIN_ABOVE_MIDLINE_SS;
+                belowMidlineSs[i] = LineSpacing.MIN_BELOW_MIDLINE_SS;
+                paintAboveMidlineSs[i] = LineSpacing.MIN_ABOVE_MIDLINE_SS;
+                paintBelowMidlineSs[i] = LineSpacing.MIN_BELOW_MIDLINE_SS;
             } else {
                 aboveMidlineSs[i] = result.aboveMidlineSs();
                 belowMidlineSs[i] = result.belowMidlineSs(lyricRenderMetrics);
+                // Floored by LayoutResult, so LineComponent's own sizing and midline placement
+                // resolve to the same numbers this layout positions against.
+                paintAboveMidlineSs[i] = result.paintAboveMidlineSs();
+                paintBelowMidlineSs[i] = result.paintBelowMidlineSs(lyricRenderMetrics);
             }
         }
 
         // With a single child there are no pairs, so the spacing stays 0 and it sits at y = 0.
         var spacingSs = 0.0;
+        var worstPairIndex = -1;
 
         for (var i = 0; i < count - 1; i++) {
-            spacingSs = Math.max(
-                spacingSs,
-                belowMidlineSs[i] + LineSpacing.MIN_INTER_LINE_GAP_SS + aboveMidlineSs[i + 1]
-            );
+            var pairSs = belowMidlineSs[i] + LineSpacing.MIN_INTER_LINE_GAP_SS + aboveMidlineSs[i + 1];
+
+            if (pairSs > spacingSs) {
+                spacingSs = pairSs;
+                worstPairIndex = i;
+            }
         }
 
-        return new Geometry(aboveMidlineSs, belowMidlineSs, spacingSs);
+        var geometry = new Geometry(
+            aboveMidlineSs, belowMidlineSs, paintAboveMidlineSs, paintBelowMidlineSs, spacingSs);
+
+        if (LOG.isDebugEnabled()) {
+            logGeometry(parent, geometry, worstPairIndex, lyricRenderMetrics);
+        }
+
+        return geometry;
+    }
+
+    /**
+     * Dumps the full spacing derivation: each line's extents, which adjacent pair set the
+     * uniform spacing, and the resulting visible gap between consecutive components. Only the
+     * pair named as {@code worstPairIndex} is tight against
+     * {@link LineSpacing#MIN_INTER_LINE_GAP_SS}; every other gap is wider by construction,
+     * which is the model working as designed rather than stray padding.
+     */
+    private void logGeometry(
+        Container parent, Geometry geometry, int worstPairIndex, LyricRenderMetrics lyricRenderMetrics) {
+        LOG.debug(
+            "staff spacing: {} lines, S={} ss set by pair ({},{}); lyric metrics: staffToLyricsGap={} ss, lyricBoxHeight={} ss",
+            geometry.count(), geometry.spacingSs(), worstPairIndex, worstPairIndex + 1,
+            lyricRenderMetrics.staffToLyricsGapSs(), lyricRenderMetrics.lyricBoxHeightSs());
+
+        for (var i = 0; i < geometry.count(); i++) {
+            var result = layoutResultOf(parent.getComponent(i));
+            double contentAboveSs;
+            double lyricsBandSs;
+
+            if (result == null) {
+                contentAboveSs = Double.NaN;
+                lyricsBandSs = Double.NaN;
+            } else {
+                contentAboveSs = result.staffTopYSsInLine();
+                lyricsBandSs = result.lyricsBandHeightSs(lyricRenderMetrics);
+            }
+
+            // contentBelow is not exposed directly; recover it from the below-midline total.
+            var contentBelowSs = geometry.belowMidlineSs[i] - Staff.STAFF_HALF_SS - lyricsBandSs;
+
+            LOG.debug(
+                "  line {}: above={} below={} ss (contentAbove={} contentBelow={} lyricsBand={} ss); "
+                    + "painted above={} below={} ss, topY={} height={} ss",
+                i, geometry.aboveMidlineSs[i], geometry.belowMidlineSs[i],
+                contentAboveSs, contentBelowSs, lyricsBandSs,
+                geometry.paintAboveMidlineSs[i], geometry.paintBelowMidlineSs[i],
+                geometry.topYSs(i), geometry.heightSs(i));
+        }
+
+        for (var i = 0; i < geometry.count() - 1; i++) {
+            // Content gap: bottom of line i's lyrics band to the top of line i+1's above-staff
+            // content. This is the one MIN_INTER_LINE_GAP_SS governs. The bounds gap can be
+            // smaller, and negative when two sparse neighbours' reserved headroom overlaps.
+            var contentGapSs = (geometry.midlineYSs(i + 1) - geometry.aboveMidlineSs[i + 1])
+                - (geometry.midlineYSs(i) + geometry.belowMidlineSs[i]);
+            var boundsGapSs = geometry.topYSs(i + 1) - (geometry.topYSs(i) + geometry.heightSs(i));
+            LOG.debug(
+                "  gap {}->{}: content={} ss (min {}), bounds={} ss",
+                i, i + 1, contentGapSs, LineSpacing.MIN_INTER_LINE_GAP_SS, boundsGapSs);
+        }
     }
 
     private @Nullable LayoutResult layoutResultOf(Component child) {
