@@ -52,16 +52,20 @@ class LyricConnectorRendererTest extends UnitTest {
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final double HYPHEN_WIDTH_SS = 0.875;
 
-    // Synthetic line geometry: the staff top sits 1 ss down the line, so the staff bottom
-    // lands at 5 ss, with 1 ss of content hanging below it.
+    // Synthetic line geometry. The above-staff content is below the painted floor, so the
+    // staff is drawn at MIN_ABOVE_STAFF_SS rather than at the measured 1 ss — and the verse
+    // baselines hang off that painted staff, which is where the connectors actually appear.
     private static final double CONTENT_ABOVE_STAFF_SS = 1.0;
     private static final double CONTENT_BELOW_STAFF_SS = 1.0;
     private static final double STAFF_TO_LYRICS_GAP_SS = 1.0;
     private static final double NARROW_STAFF_TO_LYRICS_GAP_SS = 0.5;
 
-    /** Staff bottom plus the below-staff content: the anchor every verse baseline hangs off. */
+    /**
+     * Painted staff bottom plus the below-staff content: the anchor every verse baseline
+     * hangs off.
+     */
     private static final double LYRICS_ANCHOR_YSS =
-        CONTENT_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + CONTENT_BELOW_STAFF_SS;
+        Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + CONTENT_BELOW_STAFF_SS;
 
     private static final double VERSE_1_BASELINE_SS = LYRICS_ANCHOR_YSS + STAFF_TO_LYRICS_GAP_SS;
     private static final double NARROW_VERSE_1_BASELINE_SS =

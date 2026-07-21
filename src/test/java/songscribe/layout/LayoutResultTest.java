@@ -152,17 +152,37 @@ class LayoutResultTest extends UnitTest {
     // ==========================================================================
 
     // The staff Y helpers place the staff within the line's own coordinate frame: the top at
-    // the line's above-staff content extent, the bottom a fixed staff height below it.
+    // the line's above-staff content extent, the bottom a fixed staff height below it — once
+    // that content clears the painted floor.
     @Test
     void testStaffYHelpersFollowThisLinesOwnAboveStaffContent() {
+        var result = LayoutResult.builder()
+            .setContentAboveStaffSs(TALL_ABOVE_STAFF_SS)
+            .setContentBelowStaffSs(BELOW_CONTENT_SS)
+            .build();
+
+        assertThat(result.staffTopYSsInLine()).isCloseTo(TALL_ABOVE_STAFF_SS, within(TOLERANCE));
+        assertThat(result.staffBottomYSsInLine())
+            .isCloseTo(TALL_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS, within(TOLERANCE));
+    }
+
+    // Below the floor the staff Y helpers report the floored position, because that is where
+    // LineComponent draws the staff. Reporting the measured content here instead left every
+    // lyric on a short line drawn a floor's worth above the staff it belongs to (refs #591).
+    @Test
+    void testStaffYHelpersReportFlooredPositionOnShortLine() {
         var result = LayoutResult.builder()
             .setContentAboveStaffSs(ABOVE_STAFF_SS)
             .setContentBelowStaffSs(BELOW_CONTENT_SS)
             .build();
 
-        assertThat(result.staffTopYSsInLine()).isCloseTo(ABOVE_STAFF_SS, within(TOLERANCE));
+        assertThat(result.aboveMidlineSs())
+            .as("fixture must sit below the floor, or this proves nothing")
+            .isLessThan(LineSpacing.MIN_ABOVE_MIDLINE_SS);
+
+        assertThat(result.staffTopYSsInLine()).isCloseTo(Staff.MIN_ABOVE_STAFF_SS, within(TOLERANCE));
         assertThat(result.staffBottomYSsInLine())
-            .isCloseTo(ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS, within(TOLERANCE));
+            .isCloseTo(Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS, within(TOLERANCE));
     }
 
     // verseYSsInLine walks down one measured row height per verse from the first baseline,
@@ -178,7 +198,9 @@ class LayoutResultTest extends UnitTest {
 
         // The row height is measured from the font, never a constant.
         var rowHeightSs = LyricRenderMetrics.fontHeightSs(metrics.lyricsFont());
-        var expectedVerse1Ss = ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS
+        // ABOVE_STAFF_SS is below the painted floor, so the staff — and every verse baseline
+        // hanging off it — sits at MIN_ABOVE_STAFF_SS, not at the measured content.
+        var expectedVerse1Ss = Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS
             + BELOW_CONTENT_SS + ANCHOR_STAFF_TO_LYRICS_GAP_SS;
 
         assertThat(result.verseYSsInLine(1, metrics)).isCloseTo(expectedVerse1Ss, within(TOLERANCE));
@@ -281,7 +303,7 @@ class LayoutResultTest extends UnitTest {
         // Probe the vertical middle of verse row 1, derived independently of the production
         // helper: the row band starts one visual margin below this line's below-staff content,
         // and each row is one measured font ink height tall.
-        var rowTopYSs = ANCHOR_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + ANCHOR_BELOW_CONTENT_SS
+        var rowTopYSs = Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + ANCHOR_BELOW_CONTENT_SS
             + LineSpacing.LYRICS_ROW_MARGIN_SS;
         var probeYSs = rowTopYSs + LyricRenderMetrics.fontHeightSs(lyricsFont) / 2;
 
@@ -311,7 +333,7 @@ class LayoutResultTest extends UnitTest {
             .build();
 
         var metrics = testLyricMetrics();
-        var rowTopYSs = ANCHOR_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + ANCHOR_BELOW_CONTENT_SS
+        var rowTopYSs = Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + ANCHOR_BELOW_CONTENT_SS
             + LineSpacing.LYRICS_ROW_MARGIN_SS;
         var rowMiddleYSs = rowTopYSs + LyricRenderMetrics.fontHeightSs(metrics.lyricsFont()) / 2;
 
@@ -336,23 +358,25 @@ class LayoutResultTest extends UnitTest {
         )).isNull();
     }
 
-    // lyricAreaBaseYSs pins the verse base offset and tracks both vertical inputs.
+    // lyricAreaBaseYSs pins the verse base offset and tracks both vertical inputs. Measured
+    // above a content extent that clears the painted floor, so the floor does not absorb the
+    // above-staff delta the test is asserting on.
     @Test
     void testLyricAreaBaseYSsFollowsAboveStaffAndBelowContent() {
         var base = LayoutResult.builder()
-            .setContentAboveStaffSs(ABOVE_STAFF_SS)
+            .setContentAboveStaffSs(TALL_ABOVE_STAFF_SS)
             .setContentBelowStaffSs(BELOW_CONTENT_SS)
             .build();
         var raisedAbove = LayoutResult.builder()
-            .setContentAboveStaffSs(ABOVE_STAFF_SS + ABOVE_STAFF_DELTA_SS)
+            .setContentAboveStaffSs(TALL_ABOVE_STAFF_SS + ABOVE_STAFF_DELTA_SS)
             .setContentBelowStaffSs(BELOW_CONTENT_SS)
             .build();
         var raisedBelow = LayoutResult.builder()
-            .setContentAboveStaffSs(ABOVE_STAFF_SS)
+            .setContentAboveStaffSs(TALL_ABOVE_STAFF_SS)
             .setContentBelowStaffSs(BELOW_CONTENT_SS + BELOW_CONTENT_DELTA_SS)
             .build();
 
-        var expectedBase = ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS
+        var expectedBase = TALL_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS
             + BELOW_CONTENT_SS + LineSpacing.LYRICS_ROW_MARGIN_SS;
 
         assertThat(base.lyricAreaBaseYSs()).isCloseTo(expectedBase, within(TOLERANCE));
@@ -1139,9 +1163,10 @@ class LayoutResultTest extends UnitTest {
     private static final double ANCHOR_COLUMN_X_SS = 5.0;
     /** Comfortably more than one rounded pixel, so a "miss" probe is unambiguously outside. */
     private static final double MISS_MARGIN_SS = 0.5;
-    // (ANCHOR_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS) + ANCHOR_BELOW_CONTENT_SS
-    //   + ANCHOR_STAFF_TO_LYRICS_GAP_SS = 5.0 + 0.5 + 0.25
-    private static final double EXPECTED_VERSE_1_BASELINE_SS = 5.75;
+    // ANCHOR_ABOVE_STAFF_SS is below the painted floor, so the staff bottom sits at
+    // (Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS), not at the measured content:
+    //   (3.0 + 4.0) + ANCHOR_BELOW_CONTENT_SS + ANCHOR_STAFF_TO_LYRICS_GAP_SS = 7.0 + 0.5 + 0.25
+    private static final double EXPECTED_VERSE_1_BASELINE_SS = 7.75;
 
     private static LayoutResult.Builder anchorLayoutBuilder() {
         return LayoutResult.builder()

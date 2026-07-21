@@ -62,7 +62,8 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
             return;
         }
 
-        var boxes = invariants.getLayoutResult().getLyricBoxes(element);
+        var layoutResult = invariants.getLayoutResult();
+        var boxes = layoutResult.getLyricBoxes(element);
 
         if (boxes.isEmpty()) {
             return;
@@ -89,7 +90,7 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
             for (var box : boxes) {
                 g2.setColor(invariants.getLyricColor(frame.currentElementIndex(), element, box.verseIndex()));
 
-                var baselineYSs = invariants.getLayoutResult().verseYSsInLine(box.verseIndex(), lyricRenderMetrics);
+                var baselineYSs = layoutResult.verseYSsInLine(box.verseIndex(), lyricRenderMetrics);
                 var xPx = (int) Math.round(box.xSs() * viewPxPerSs);
                 var yPx = (int) Math.round(baselineYSs * viewPxPerSs);
                 g2.drawString(box.text(), xPx, yPx);

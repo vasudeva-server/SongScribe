@@ -603,10 +603,10 @@ public class LineComponent extends ScoreComponent
             throw unexpectedNullLayout();
         }
 
-        // The painted extent, not staffTopYSsInLine() + half: the staff must sit where
-        // StaffLinesLayout reserved room for it, and that reservation is floored. Using the
-        // measured content here drew the staff above the component's own top on any line whose
-        // ink stops at the staff, clipping it and overlapping the line above.
+        // The painted extent: the staff must sit where StaffLinesLayout reserved room for it,
+        // and that reservation is floored. Using the measured content here drew the staff above
+        // the component's own top on any line whose ink stops at the staff, clipping it and
+        // overlapping the line above.
         return result.paintAboveMidlineSs();
     }
 

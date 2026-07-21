@@ -50,15 +50,16 @@ class LyricTextRendererTest extends UnitTest {
     private static final double PX_PER_SS = 8.0;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
 
-    // Synthetic line geometry: the staff top sits 1 ss down the line, so the staff bottom
-    // lands at 5 ss, with 1 ss of content hanging below it.
+    // Synthetic line geometry. The above-staff content is below the painted floor, so the
+    // staff is drawn at MIN_ABOVE_STAFF_SS rather than at the measured 1 ss — and the verse
+    // baselines hang off that painted staff, which is where the text actually appears.
     private static final double CONTENT_ABOVE_STAFF_SS = 1.0;
     private static final double CONTENT_BELOW_STAFF_SS = 1.0;
     private static final double STAFF_TO_LYRICS_GAP_SS = 1.0;
 
-    /** Verse-1 baseline: staff bottom + below-staff content + the staff-to-lyrics gap. */
+    /** Verse-1 baseline: painted staff bottom + below-staff content + the staff-to-lyrics gap. */
     private static final double VERSE_1_BASELINE_SS =
-        CONTENT_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + CONTENT_BELOW_STAFF_SS + STAFF_TO_LYRICS_GAP_SS;
+        Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + CONTENT_BELOW_STAFF_SS + STAFF_TO_LYRICS_GAP_SS;
 
     /**
      * The pitch between consecutive verse baselines. Measured from the lyrics font rather

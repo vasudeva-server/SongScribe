@@ -542,9 +542,9 @@ public final class LayoutResult {
     /**
      * Returns the true extent of this line's content above the staff top, in staff spaces.
      * <p>
-     * This is also the Y position of the staff top within the line's local coordinate
-     * frame (component top = y=0). Unfloored: a line with nothing above its staff
-     * returns 0.
+     * Unfloored: a line with nothing above its staff returns 0. This is a <em>spacing</em>
+     * value, not the staff's position — for that use {@link #staffTopYSsInLine}, which is
+     * floored and so is where the staff is actually drawn.
      */
     public double getContentAboveStaffSs() {
         return contentAboveStaffSs;
@@ -646,17 +646,24 @@ public final class LayoutResult {
     /**
      * Returns the Y position of the staff top within this line's local coordinate frame,
      * in staff spaces.
+     * <p>
+     * Derived from {@link #paintAboveMidlineSs}, not from {@code contentAboveStaffSs}: this is
+     * a <em>geometry</em> query, and {@code LineComponent} draws the staff at the painted
+     * midline. On a line whose content stops short of {@link LineSpacing#MIN_ABOVE_MIDLINE_SS}
+     * the two frames differ by the floor, and answering from the measured one reports a staff
+     * that is not where anything is drawn.
      */
     public double staffTopYSsInLine() {
-        return contentAboveStaffSs;
+        return paintAboveMidlineSs() - Staff.STAFF_HALF_SS;
     }
 
     /**
      * Returns the Y position of the staff bottom within this line's local coordinate frame,
-     * in staff spaces.
+     * in staff spaces. Anchored on the painted midline for the reason given in
+     * {@link #staffTopYSsInLine}.
      */
     public double staffBottomYSsInLine() {
-        return contentAboveStaffSs + Staff.STAFF_HEIGHT_SS;
+        return paintAboveMidlineSs() + Staff.STAFF_HALF_SS;
     }
 
     /**
@@ -729,8 +736,12 @@ public final class LayoutResult {
     }
 
     // Package-private for direct unit testing of the formula.
+    //
+    // Built on staffBottomYSsInLine() so the hit-test bands ride the same painted frame as the
+    // baselines LyricTextRenderer draws at. Anchoring this on contentAboveStaffSs instead put
+    // the clickable rows above the visible text on any line short enough to hit the floor.
     double lyricAreaBaseYSs() {
-        return contentAboveStaffSs + Staff.STAFF_HEIGHT_SS + contentBelowStaffSs + LineSpacing.LYRICS_ROW_MARGIN_SS;
+        return staffBottomYSsInLine() + contentBelowStaffSs + LineSpacing.LYRICS_ROW_MARGIN_SS;
     }
 
     /**
