@@ -367,6 +367,17 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
+     * Puts this line into the issue #449 does-not-fit state, in which a null layout result
+     * is the expected steady state rather than a signal to lay out again.
+     * <p>
+     * Exists so tests can reproduce that state directly: it is otherwise only reachable by
+     * driving a real layout that fails to fit, which no unit test can arrange cheaply.
+     */
+    void setLineDoesNotFit(boolean lineDoesNotFit) {
+        this.lineDoesNotFit = lineDoesNotFit;
+    }
+
+    /**
      * Returns true when no layout result exists and its absence is not the expected
      * outcome of the issue #449 does-not-fit state, which deliberately keeps the last
      * good result (or none at all) rather than producing a new one.
@@ -383,8 +394,8 @@ public class LineComponent extends ScoreComponent
     /**
      * Ensures the layout is up to date, computing it if dirty.
      * <p>
-     * Called by {@link StaffPanel} before collecting
-     * all layout results to build {@link SongLayoutMetrics}.
+     * Called by {@link StaffPanel#ensureAllLineLayouts()} before collecting all layout
+     * results, since {@link StaffLinesLayout} measures every line from them.
      */
     public void ensureLayout() {
         if (song != null && line != null && needsLayout()) {

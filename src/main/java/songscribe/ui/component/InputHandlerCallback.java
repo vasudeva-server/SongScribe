@@ -22,7 +22,6 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
-import java.awt.event.MouseEvent;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.Mode;
@@ -54,18 +53,6 @@ public interface InputHandlerCallback {
      * to extend or shrink the selection to.
      */
     void extendSelectionTo(int targetIndex);
-
-    /**
-     * Forwards {@code e} to the line whose preview headroom band it lands in, if any.
-     * <p>
-     * A line component hugs its own content, so the staff positions the preview element may
-     * legally occupy extend past its bounds. Events there land on the view instead of the
-     * line, and this hands them back to the line that owns that band.
-     *
-     * @param e A mouse event in this view's coordinates
-     * @return true if the event was forwarded and the caller should do nothing more with it
-     */
-    boolean forwardHeadroomEvent(MouseEvent e);
 
     /**
      * Zooms in or out around {@code viewPoint} (in this view's local coordinate

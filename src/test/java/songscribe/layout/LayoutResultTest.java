@@ -386,6 +386,27 @@ class LayoutResultTest extends UnitTest {
             .isCloseTo(BELOW_CONTENT_DELTA_SS, within(TOLERANCE));
     }
 
+    // Lyrics hug each line individually: a verse baseline is driven by that line's own
+    // below-staff content, never by a song-wide maximum. This is the regression guard for the
+    // second half of issue #591 — the song-wide anchoring that put lyrics on lines after the
+    // first where hit-testing did not respond.
+    @Test
+    void testVerseBaselinesFollowEachLinesOwnBelowStaffContent() {
+        var metrics = testLyricMetrics();
+        var shallow = LayoutResult.builder()
+            .setContentAboveStaffSs(TALL_ABOVE_STAFF_SS)
+            .setContentBelowStaffSs(BELOW_CONTENT_SS)
+            .build();
+        var deep = LayoutResult.builder()
+            .setContentAboveStaffSs(TALL_ABOVE_STAFF_SS)
+            .setContentBelowStaffSs(BELOW_CONTENT_SS + BELOW_CONTENT_DELTA_SS)
+            .build();
+
+        assertThat(deep.verseYSsInLine(1, metrics) - shallow.verseYSsInLine(1, metrics))
+            .as("a line reaching further below its staff pushes its own verses down by exactly that much")
+            .isCloseTo(BELOW_CONTENT_DELTA_SS, within(TOLERANCE));
+    }
+
     // findRangeElementDecorationLayout returns the layout whose range matches anchor AND type.
     @Test
     void testFindRangeElementDecorationLayoutMatchesAnchorAndType() {

@@ -12,8 +12,8 @@
 | --- | --- | --- | --- |
 | 1 | [Overlay Painting](#-phase-1-overlay-painting) | ✅ Complete | — |
 | 2 | [Input Reachability](#-phase-2-input-reachability) | ✅ Complete | — |
-| 3 | [Manual UI Verification](#-phase-3-manual-ui-verification) | ⏳ Ready (user-driven) | — |
-| 4 | [Tests](#-phase-4-tests) | ⏸️ Blocked by 3, [per-line-heights Phase 7](./per-line-heights-pairwise-spacing.md) | — |
+| 3 | [Manual UI Verification](#-phase-3-manual-ui-verification) | ✅ Complete | — |
+| 4 | [Tests](#-phase-4-tests) | ✅ Complete (re-scoped — see [Phase 4](#-phase-4-tests)) | — |
 
 ---
 
@@ -287,9 +287,9 @@ from `StaffPanel` keeps the preview correctly beneath ScoreView-level overlays.
 
 ---
 
-## ⏳ Phase 3: Manual UI Verification
+## ✅ Phase 3: Manual UI Verification
 
-**Status:** Ready
+**Status:** Complete
 **BlockedBy:** —
 **Recommended model/effort:** No model — the user performs this.
 
@@ -328,12 +328,18 @@ This gates Phase 4: the expected numbers are a design judgement, not a derivatio
 7. Record the user's verdict and any tuning they ask for in this section. If tuning is needed,
    apply it and re-verify before Phase 4 starts.
 
+### Outcome
+
+**Verified visually by the user (2026-07-21).** The preview element renders unclipped and stays
+reachable across the full staff-position range, and inter-line spacing did not regress. No
+tuning of `PREVIEW_REPAINT_MARGIN_SS` was requested.
+
 ---
 
-## ⏸️ Phase 4: Tests
+## ✅ Phase 4: Tests
 
-**Status:** Pending
-**BlockedBy:** 3, [per-line-heights-pairwise-spacing.md](./per-line-heights-pairwise-spacing.md) → Phase 7
+**Status:** Complete — re-scoped: task 2's subject was deleted rather than tested
+**BlockedBy:** —
 **Recommended model/effort:** Sonnet 4.6, medium effort — mechanical test writing against
 behaviour the user has already signed off on.
 
@@ -346,6 +352,52 @@ unrelated to this plan.
 
 Read `.agents/guides/testing-common.md` and `.agents/guides/testing-unit.md` first. No raw
 numeric literals — every expected value must be built from the named constants.
+
+### ⚠️ Finding (2026-07-21): `lineForHeadroomPoint` is now unreachable
+
+`StaffPanel.lineForHeadroomPoint` **always returns `null`**, so the whole Phase 2 forwarding
+path — `ScoreView.forwardHeadroomEvent`, the four `ScoreInputHandler` hooks — is dead code.
+Confirmed empirically by probing every Y across a laid-out three-line panel: zero hits.
+
+The cause is the **painted-bounds floor** added to `LayoutResult` / `StaffLinesLayout` after
+this plan was written (commit `0cc4fad5`, "line bounds floor"). It makes a line's bounds
+strictly contain its own headroom band, so the method's own "inside a line's bounds → return
+`null`" guard fires before any band test can match. The containment is unconditional, not a
+property of the fixture:
+
+```
+band top    = midline − MIN_ABOVE_MIDLINE_SS
+bounds top  = midline − max(aboveMidlineSs, MIN_ABOVE_MIDLINE_SS)  ≤  band top
+band bottom = midline + MIN_BELOW_MIDLINE_SS
+bounds btm  = midline + max(belowMidlineSs, MIN_BELOW_MIDLINE_SS)  ≥  band bottom
+```
+
+The floor solves reachability directly — the component is simply big enough for the events to
+land in it — which is why the user's Phase 3 verification passed despite the forwarding never
+firing.
+
+**This does not invalidate Phase 1.** Overlay *painting* still earns its keep at the extremes:
+glyph ink (an accidental in particular) can reach past `MIN_ABOVE_STAFF_SS` beyond the notehead
+centre, which is what `PREVIEW_REPAINT_MARGIN_SS` exists for, and that ink is still outside the
+bounds.
+
+**Resolved: the forwarding path was deleted** (2026-07-21), and task 2 with it. Removed
+`StaffPanel.lineForHeadroomPoint`, `InputHandlerCallback.forwardHeadroomEvent` and its
+`ScoreView` implementation, and the four `ScoreInputHandler` hooks. Reachability is now the
+bounds floor's job alone.
+
+`ScoreInputHandler.mouseExited`'s `LineComponent.clearPreviewElement()` call was **kept**: it
+was introduced for the forwarding case, but it is a genuine safety net for the cursor leaving
+without the owning line's exit being delivered, and it has a test. Only its (now false)
+justifying comment changed.
+
+#### Honest note on when this died
+The forwarding was **not** dead when Phase 2 landed. It was killed by the lyric-baseline fix in
+commit `4efee872`, which repointed `staffTopYSsInLine`/`staffBottomYSsInLine` at the painted
+midline. Before that they answered from the measured `contentAboveStaffSs`, which on a short
+line sits *above* the component's floored top — so the band genuinely fell outside the bounds
+and the forwarding genuinely fired. Aligning the staff helpers with the painted frame moved the
+band inside the bounds and made the path unreachable in the same stroke.
 
 ### Tasks
 
@@ -371,15 +423,26 @@ numeric literals — every expected value must be built from the named constants
 4. Run `./scripts/compile.sh`, then `./scripts/test.sh unit`. Both must report SUCCESS /
    green before this phase is done.
 
----
+### Outcome
 
-## Verification (whole plan)
+Done. `./scripts/compile.sh` SUCCESS, `./scripts/test.sh unit` green at 5469 passed / 1 skipped.
+
+- **Task 1 — no-op.** No test asserted that `LineRenderer.render` reaches `renderPreviewElement`;
+  `LineRendererTest`'s preview tests all cover `renderWithPreviewShiftIfNeeded`, an unrelated
+  method that still lives on the normal render path. Nothing to repoint.
+- **Task 2 — dropped.** Its subject was deleted; see the finding above.
+- **Task 3 — done.** `src/test/java/songscribe/ui/component/score/LineComponentPreviewHeadroomTest.java`,
+  two tests: the enlarged dirty rectangle, and the detached-component fallback. Verified the
+  first can fail by temporarily shrinking the dirty rect back to the component's own bounds.
+
+
 
 1. `./scripts/compile.sh` reports SUCCESS.
 2. `./scripts/test.sh unit` is green.
 3. The preview element renders unclipped and stays reachable across the full
    `Staff.MIN_STAFF_POSITION_SP`..`Staff.MAX_STAFF_POSITION_SP` range on a line with no
-   content, confirmed by the user in Phase 3.
+   content, confirmed by the user in Phase 3. **Reachability is delivered by the line-bounds
+   floor, not by event forwarding** — see the Phase 4 finding.
 4. Inter-line spacing is unchanged from before this work — `StaffLinesLayout`,
    `LayoutResult`'s content extents, and `LineComponent.getPreferredSize` are untouched.
 5. `rg -n "renderPreviewElement" src/main/` shows it called only from

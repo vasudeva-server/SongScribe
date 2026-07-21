@@ -132,66 +132,6 @@ public class StaffPanel extends JPanel {
         }
     }
 
-    /**
-     * Returns the line whose preview headroom band contains {@code yPx}, or null if there is
-     * none.
-     * <p>
-     * A line's headroom band runs from {@link Staff#MIN_ABOVE_STAFF_SS} above its staff top to
-     * {@link Staff#MIN_BELOW_STAFF_SS} below its staff bottom — exactly the range
-     * {@code PreviewElementManager.isValidStaffPosition} accepts. No ink margin is added: a
-     * cursor beyond that range maps to no valid staff position, so widening the band would
-     * only steal events from the neighbouring line.
-     *
-     * @param yPx A Y coordinate in this panel's coordinates
-     */
-    @Nullable
-    public LineComponent lineForHeadroomPoint(int yPx) {
-        LineComponent nearestLine = null;
-        var nearestDistancePx = Integer.MAX_VALUE;
-        var viewScale = viewScale();
-
-        for (var linePanel : linePanels) {
-            var lineComponent = linePanel.getLineComponent();
-            var layoutResult = lineComponent.getLayoutResult();
-
-            if (layoutResult == null) {
-                continue;
-            }
-
-            var originY = SwingUtilities.convertPoint(lineComponent, 0, 0, this).y;
-
-            // Inside a line's own bounds the line receives the event directly. Bail out
-            // entirely rather than skipping this line: forwarding to a neighbour whose band
-            // reaches the same Y would deliver the event twice, to the wrong line.
-            if (yPx >= originY && yPx < originY + lineComponent.getHeight()) {
-                return null;
-            }
-
-            var staffTopYSs = layoutResult.staffTopYSsInLine();
-            var bandTopPx = originY
-                + viewScale.toViewPx(new Ss(staffTopYSs - Staff.MIN_ABOVE_STAFF_SS)).roundedPx();
-            var bandBottomPx = originY + viewScale
-                .toViewPx(new Ss(layoutResult.staffBottomYSsInLine() + Staff.MIN_BELOW_STAFF_SS))
-                .roundedPx();
-
-            if (yPx < bandTopPx || yPx > bandBottomPx) {
-                continue;
-            }
-
-            // Adjacent bands overlap whenever MIN_INTER_LINE_GAP_SS is smaller than the sum of
-            // the two headrooms — the normal case — so the nearer staff wins.
-            var midlineYPx = originY
-                + viewScale.toViewPx(new Ss(staffTopYSs + Staff.STAFF_HALF_SS)).roundedPx();
-            var distancePx = Math.abs(yPx - midlineYPx);
-
-            if (distancePx < nearestDistancePx) {
-                nearestDistancePx = distancePx;
-                nearestLine = lineComponent;
-            }
-        }
-
-        return nearestLine;
-    }
 
     /**
      * Sets the song and rebuilds the layout.

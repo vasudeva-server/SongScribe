@@ -12,8 +12,8 @@
 | 3   | [Renderer + Consumer Migration](#-phase-3-renderer--consumer-migration) | ✅ Complete | —   |
 | 4   | [LineComponent + Navigator Cleanup](#-phase-4-linecomponent--navigator-cleanup) | ✅ Complete | —   |
 | 5   | [Always Reserve the Lyric Band](#-phase-5-always-reserve-the-lyric-band) | ✅ Complete | —   |
-| 6   | [Manual UI Verification](#-phase-6-manual-ui-verification) | ⏸️ Blocked by 5, [preview-element-overlay.md](./preview-element-overlay.md) | [preview-element-overlay.md](./preview-element-overlay.md) |
-| 7   | [Tests](#-phase-7-tests) | ⏸️ Blocked by 6 | —   |
+| 6   | [Manual UI Verification](#-phase-6-manual-ui-verification) | ✅ Complete | [preview-element-overlay.md](./preview-element-overlay.md) |
+| 7   | [Tests](#-phase-7-tests) | ✅ Complete | —   |
 
 * * *
 ## The Target Model
@@ -321,8 +321,8 @@ below-midline footprint (and thus inter-line spacing) changes when a line has ze
 No deviations from the plan as written.
 
 * * *
-## ⏸️ Phase 6: Manual UI Verification
-**Status:** Pending  
+## ✅ Phase 6: Manual UI Verification
+**Status:** Complete  
 **BlockedBy:** 5, [preview-element-overlay.md](./preview-element-overlay.md)  
 **Recommended model/effort:** No model — the user performs this.
 
@@ -342,10 +342,17 @@ Run this in the **same session** as Phase 3 of [preview-element-overlay.md](./pr
   
 6. Record the user's verdict and any tuning they ask for in this phase's section before Phase 7 starts. If tuning is needed, apply it and re-verify before proceeding.
   
+### Outcome
+**Verified visually by the user (2026-07-21).** Both issue #591 symptoms are gone.
+
+Two changes were made during verification rather than as planned tasks:
+
+1. **The inter-line gap became a setting.** `MIN_INTER_LINE_GAP_SS` was lowered to 2.0 and demoted to a pure floor; `DEFAULT_INTER_LINE_GAP_SS = 4.0` is the gap actually used, clamped through the new `LineSpacing.interLineGapSs(double)`. This supersedes the plan's original single-constant design — see the revised Verification item 5.
+2. **Lyric baselines were anchored on the painted staff position** (commit `4efee872`). `staffTopYSsInLine` / `staffBottomYSsInLine` / `lyricAreaBaseYSs` answered from the measured `contentAboveStaffSs` while `LineComponent` draws the staff at the floored `paintAboveMidlineSs`. On a line short enough to hit the floor the two frames diverged, drawing every lyric up to a floor's worth above its own staff — visible on the second line of `paste-test.musicxml` as lyrics rendered inside the staff. Caught during this phase, not by any test, which is why `testStaffYHelpersReportFlooredPositionOnShortLine` now exists.
 
 * * *
-## ⏸️ Phase 7: Tests
-**Status:** Pending  
+## ✅ Phase 7: Tests
+**Status:** Complete  
 **BlockedBy:** 6  
 **Recommended model/effort:** Sonnet 4.6, medium effort — mechanical test migration against behaviour the user has already signed off on.
 
@@ -379,6 +386,18 @@ Read `.agents/guides/testing-common.md` and `.agents/guides/testing-unit.md` fir
   
 6. Run `./scripts/compile.sh`, then `./scripts/test.sh unit`. Both must report SUCCESS / green before this phase is done.
   
+### Outcome
+Done. `./scripts/compile.sh` SUCCESS, `./scripts/test.sh unit` green at 5467 passed / 1 skipped.
+
+Tasks 1-3 landed earlier, in commit `e53f0009` ("test: port the test tree to the per-line height model"). Tasks 4-5 were completed on 2026-07-21:
+
+- **Task 4** — `src/test/java/songscribe/ui/component/score/StaffLinesLayoutTest.java`, 9 tests over the positioning formula with hand-built `LayoutResult`s. Covers all seven listed cases. Verified the two defining tests can actually fail by temporarily replacing the pairwise rule with a global maximum: `testContentAboveFirstLineTranslatesBlockWithoutWideningSpacing` and `testSpacingFollowsWorstAdjacentPairNotGlobalMaximum` both failed under that mutation and pass against the real implementation.
+- **Task 5** — `testVerseBaselinesFollowEachLinesOwnBelowStaffContent` added to `LayoutResultTest`; `testLyricAreaBaseYSsFollowsAboveStaffAndBelowContent` already covered the `lyricAreaBaseYSs` half.
+
+#### Deviations / notes
+1. **Gap assertions carry a one-pixel tolerance** (`ROUNDING_TOLERANCE_PX`). `StaffLinesLayout` rounds each child's Y independently, so a gap measured between two of them lands within a pixel of the exact staff-space spacing. Uniformity is exact in `Ss` and approximate in px; asserting exact pixel equality would assert a rounding accident.
+2. **`LineComponent.setLineDoesNotFit(boolean)` was added** (package-private) so the null-`LayoutResult` case is reachable from a test. `layoutMissing()` treats a null result as "lay this out again" unless the line is in the issue-#449 state, so without the setter `ensureAllLineLayouts()` simply recomputed the result the test had just cleared.
+3. **`StaffLinesLayout` already had partial coverage** in `TranslationTextPanelStaffPanelTest` (`testThreeLinesSpanTwoUniformMidlineGaps`, `testSingleLineAddsNoInterLineGap`, `testLinesAreSizedIndividuallyAndSpacedUniformly`). Those were left alone; the new file covers the cases that fixture's monotonically-growing extents cannot express.
 
 * * *
 ## Verification (whole plan)
@@ -390,4 +409,5 @@ Read `.agents/guides/testing-common.md` and `.agents/guides/testing-unit.md` fir
   
 4. `rg -n "SongLayoutMetrics" src/` returns no hits.
   
-5. There is exactly one inter-line spacing constant in the codebase (`LineSpacing.MIN_INTER_LINE_GAP_SS`), not the two that previously stacked to 26px.
+5. ~~There is exactly one inter-line spacing constant in the codebase (`LineSpacing.MIN_INTER_LINE_GAP_SS`), not the two that previously stacked to 26px.~~
+  **Revised during Phase 6.** The gap became a setting, so there are now two constants — but they no longer *stack*, which was the actual defect. `LineSpacing.DEFAULT_INTER_LINE_GAP_SS` is the gap applied when the song specifies none; `MIN_INTER_LINE_GAP_SS` is only a floor, enforced by `LineSpacing.interLineGapSs(double)`. The check is therefore: exactly one value reaches `StaffLinesLayout`'s pair computation, and no line's height carries an inter-line term of its own.

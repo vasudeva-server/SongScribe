@@ -60,12 +60,6 @@ public final class ScoreInputHandler extends KeyAdapter
     //***************************
     @Override
     public void mouseClicked(MouseEvent e) {
-        // Ahead of the button guard: a headroom click is a note insertion, and the line
-        // applies its own button rules.
-        if (callback.forwardHeadroomEvent(e)) {
-            return;
-        }
-
         if (e.getButton() != MouseEvent.BUTTON1) {
             return;
         }
@@ -86,10 +80,6 @@ public final class ScoreInputHandler extends KeyAdapter
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (callback.forwardHeadroomEvent(e)) {
-            return;
-        }
-
         if (e.isPopupTrigger()) {
             var popup = callback.getEditPopup();
 
@@ -101,10 +91,6 @@ public final class ScoreInputHandler extends KeyAdapter
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if (callback.forwardHeadroomEvent(e)) {
-            return;
-        }
-
         if (e.isPopupTrigger()) {
             var popup = callback.getEditPopup();
 
@@ -123,8 +109,9 @@ public final class ScoreInputHandler extends KeyAdapter
 
     @Override
     public void mouseExited(MouseEvent e) {
-        // A preview placed through forwardHeadroomEvent never entered the line that owns it,
-        // so LineComponent.mouseExited will not fire to take it down.
+        // Belt and braces: leaving the score normally exits the owning line first, which takes
+        // its own preview down. This covers the cursor leaving without that exit being
+        // delivered, where the preview would otherwise be left painted.
         LineComponent.clearPreviewElement();
 
         if (EditModeManager.isPreviewElementVisible() && (callback.getMode() == Mode.EDIT)) {
@@ -143,8 +130,8 @@ public final class ScoreInputHandler extends KeyAdapter
 
     @Override
     public void mouseMoved(MouseEvent e) {
-        // Nothing else to do here: the view itself has no hover behaviour.
-        callback.forwardHeadroomEvent(e);
+        // Nothing to do: the view itself has no hover behaviour, and every point a line
+        // responds to now falls inside that line's own bounds, so the line is hovered directly.
     }
 
     //***********************
