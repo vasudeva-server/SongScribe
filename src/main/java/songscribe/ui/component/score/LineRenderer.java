@@ -81,11 +81,11 @@ class LineRenderer {
     // Constants
     // ==========================================================================
 
-    /** The stroke used to draw the selection rectangle border. */
-    private static final BasicStroke SELECTION_RECT_STROKE = new BasicStroke(2.0f);
+    /** Width of the selection rectangle border stroke at 100% zoom, in pixels. */
+    private static final float SELECTION_RECT_STROKE_WIDTH_PX = 2.0f;
 
-    /** Corner arc diameter for the rubber-band selection rectangle, in pixels. */
-    private static final int SELECTION_RECT_ARC_PX = 2;
+    /** Corner arc diameter for the rubber-band selection rectangle at 100% zoom, in pixels. */
+    private static final double SELECTION_RECT_ARC_PX = 2.0;
 
     /** Thickness of the paste-mode insertion-point marker, in staff spaces. */
     private static final double INSERTION_POINT_THICKNESS_SS = 0.25;
@@ -778,12 +778,17 @@ class LineRenderer {
             return;
         }
 
+        // This rectangle is a pixel-space overlay drawn outside the Ss transform (see
+        // LineComponent.render), so the border must be scaled by the zoom factor explicitly
+        // rather than relying on the transform to do it, unlike Ss-space engraved lines.
+        var factor = lc.getViewScale().factor();
+        var arcPx = SELECTION_RECT_ARC_PX * factor;
         var roundRect = new RoundRectangle2D.Double(
                 dragRectangle.x, dragRectangle.y,
                 dragRectangle.width, dragRectangle.height,
-                SELECTION_RECT_ARC_PX, SELECTION_RECT_ARC_PX);
+                arcPx, arcPx);
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.STROKE, GraphicsState.Property.COLOR)) {
-            g2.setStroke(SELECTION_RECT_STROKE);
+            g2.setStroke(new BasicStroke((float) (SELECTION_RECT_STROKE_WIDTH_PX * factor)));
             g2.setColor(ScoreView.getSelectionColor());
             g2.draw(roundRect);
         }

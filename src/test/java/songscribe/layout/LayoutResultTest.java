@@ -512,7 +512,7 @@ class LayoutResultTest extends UnitTest {
         var marginSs = midpointOf(lastColumn.getRightEdgeXSs(), naturalXSs + previewColumn.getRightExtentSs());
         song.setLineWidthSs(marginSs);
 
-        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
         var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(preview);
         var expected = centeredInRoom(lastColumn.getRightEdgeXSs(), marginSs, noteheadWidthSs);
 
@@ -544,7 +544,7 @@ class LayoutResultTest extends UnitTest {
         var terminalXSs = midpointOf(lastColumn.getRightEdgeXSs(), naturalXSs + previewColumn.getRightExtentSs());
         var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
 
-        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
         var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(preview);
         var expected = centeredInRoom(lastColumn.getRightEdgeXSs(), terminalXSs, noteheadWidthSs);
 
@@ -587,7 +587,7 @@ class LayoutResultTest extends UnitTest {
         var terminalXSs = midpointOf(lastColumn.getRightEdgeXSs(), naturalXSs + footprintWidthSs);
         var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
 
-        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
         var lastEdgeSs = lastColumn.getRightEdgeXSs();
 
         assertThat(actual).isCloseTo(centeredInRoom(lastEdgeSs, terminalXSs, noteheadWidthSs), within(TOLERANCE));
@@ -622,7 +622,7 @@ class LayoutResultTest extends UnitTest {
         var terminalXSs = midpointOf(lastColumn.getRightEdgeXSs(), naturalXSs + previewColumn.getRightExtentSs());
         var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
 
-        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
         var expected = centeredInRoom(lastColumn.getRightEdgeXSs(), terminalXSs, previewType.getElementWidthSs());
 
         assertThat(actual).isCloseTo(expected, within(TOLERANCE));
@@ -650,7 +650,7 @@ class LayoutResultTest extends UnitTest {
             .isLessThan(NoteGeometry.getNoteheadRightEdgeSs(preview));
 
         var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
-        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
 
         assertThat(actual).isCloseTo(lastEdgeSs, within(TOLERANCE));
     }
@@ -676,7 +676,7 @@ class LayoutResultTest extends UnitTest {
         var terminalXSs = naturalXSs + previewColumn.getRightExtentSs();
         var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
 
-        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line);
+        var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
 
         assertThat(actual).isCloseTo(naturalXSs, within(TOLERANCE));
     }
