@@ -228,6 +228,22 @@ public final class ElementColumn {
     }
 
     /**
+     * Returns how much of {@link #getRightExtentExcludingAugmentationSs()} is owed to an unbeamed
+     * flag rather than the notehead itself — the difference between the two, since the flag is the
+     * only thing that widens the augmentation-excluded right extent past {@link #getNoteheadWidthSs()}.
+     * Zero for beamed notes, notes with no flag, and non-note columns.
+     * <p>
+     * A flag's footprint sits well above or below the staff and has no bearing on lyric clearance
+     * (which measures from the notehead, see {@link #getNoteheadWidthSs()}), so callers that judge
+     * whether a gap needs widening <em>for lyrics</em> must subtract this out of the comfortable rest
+     * first — otherwise a stem flip, which changes only the flag's side and footprint, would silently
+     * change how much lyric-driven lift the rest of the line receives (refs #629).
+     */
+    public double getFlagExtentSs() {
+        return rightExtentExcludingAugmentationSs - noteheadWidthSs;
+    }
+
+    /**
      * Returns the total width of this column (leftExtent + rightExtent).
      */
     public double getWidthSs() {

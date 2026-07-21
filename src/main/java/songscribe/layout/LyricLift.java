@@ -104,7 +104,15 @@ public final class LyricLift {
             // The absolute shortfall: how far this gap's ideal rest falls short of its requirement.
             // The largest shortfall on the line becomes the even lift; a tight beam gap contributes
             // only its own small shortfall, so it never inflates the whole line.
-            var shortfallSs = requirementSs - spring.restSs();
+            //
+            // The rest is measured with the flag's contribution backed out first (see
+            // ElementColumn#getFlagExtentSs): the requirement is a lyric-clearance need, measured
+            // from the notehead, and the flag has no bearing on it. Leaving the flag in would let an
+            // unrelated stem flip change which gap "wins" the largest-shortfall vote and so silently
+            // change the lift applied to the whole line (refs #629).
+            var restExcludingFlagSs = spring.restSs() - columns.get(i).getFlagExtentSs();
+            var shortfallSs = requirementSs - restExcludingFlagSs;
+
             liftSs = Math.max(liftSs, shortfallSs);
         }
 
@@ -124,6 +132,7 @@ public final class LyricLift {
             // lift still falls short of the requirement.
             var evenRestSs = spring.restSs() + factor * liftSs;
             var newRestSs = Math.max(evenRestSs, requirementsSs[i]);
+
             lifted.add(spring.withRestSs(newRestSs));
         }
 
