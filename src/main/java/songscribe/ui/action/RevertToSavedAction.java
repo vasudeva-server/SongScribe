@@ -28,6 +28,7 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.RevertToSavedCommand;
 import songscribe.message.notification.DocumentWasSavedNotification;
+import songscribe.message.notification.UndoStateDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 
 public final class RevertToSavedAction extends UIAction {
@@ -60,6 +61,15 @@ public final class RevertToSavedAction extends UIAction {
     // inherited handlers never re-run; listen for the save directly to disable the action.
     @Handler(priority = Message.MEDIUM_PRIORITY)
     public void documentWasSaved(DocumentWasSavedNotification message) {
+        updateEnabledState();
+    }
+
+    // Undo/redo posts SongDidChangeNotification with a stale modified flag before
+    // UndoController recomputes and corrects it via UndoStateDidChangeNotification;
+    // refresh again on that notification so this action doesn't stay enabled after
+    // undoing back to a clean state (see UndoRedoAction.undoStateDidChange).
+    @Handler
+    public void undoStateDidChange(UndoStateDidChangeNotification message) {
         updateEnabledState();
     }
 
