@@ -339,51 +339,6 @@ public final class ScoreView
         scrollPane = new JScrollPane(scorePanel);
         scrollPane.setBorder(new ThemeAwareMatteBorder(1, 0, 1, 0, "ToolBar.separatorColor"));
         updateScoreSurroundBackground();
-
-        if (LOG.isDebugEnabled()) {
-            installViewportDebugLogging(scrollPane);
-        }
-    }
-
-    /**
-     * DEBUG-ONLY: logs every viewport position/size change with a filtered stack
-     * trace so a re-layout that unexpectedly shifts the scroll position reveals its
-     * trigger. Remove once the first-line scroll-shift bug (refs #128) is resolved.
-     */
-    private void installViewportDebugLogging(JScrollPane scrollPane) {
-        var viewport = scrollPane.getViewport();
-        var lastPosition = new Point[] {viewport.getViewPosition()};
-
-        viewport.addChangeListener(event -> {
-            var position = viewport.getViewPosition();
-
-            if (position.equals(lastPosition[0])) {
-                return;
-            }
-
-            LOG.debug(
-                "viewport pos {} -> {} (viewSize={}, extent={})\n{}",
-                lastPosition[0],
-                position,
-                viewport.getViewSize(),
-                viewport.getExtentSize(),
-                songscribeStackTrace()
-            );
-            lastPosition[0] = position;
-        });
-    }
-
-    /** DEBUG-ONLY helper: compact call stack limited to songscribe frames. */
-    private static String songscribeStackTrace() {
-        var builder = new StringBuilder();
-
-        for (var frame : Thread.currentThread().getStackTrace()) {
-            if (frame.getClassName().startsWith("songscribe.")) {
-                builder.append("    at ").append(frame).append('\n');
-            }
-        }
-
-        return builder.toString();
     }
 
     @Override
