@@ -35,7 +35,7 @@ public final class LineSpacing {
      * The minimum vertical gap between the lowest content of one line and the highest
      * content of the next.
      */
-    public static final double MIN_INTER_LINE_GAP_SS = 2.0;  // 16px
+    public static final double MIN_INTER_LINE_GAP_SS = 2.5;  // 20px
 
     /**
      * The visual gap from the bottom of a line's below-staff content to the top of its

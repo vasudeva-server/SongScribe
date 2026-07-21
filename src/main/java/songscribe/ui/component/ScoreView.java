@@ -1167,6 +1167,33 @@ public final class ScoreView
         repaint();
     }
 
+    /**
+     * Invalidates {@code component} and every descendant.
+     * <p>
+     * {@link Container#invalidate} propagates <em>upward</em> only, and a still-valid
+     * container serves cached geometry: {@link Container#preferredSize} reuses its last
+     * answer, and a {@code LayoutManager2} is told to discard its own cache only when the
+     * container it manages is invalidated. Every other trigger for that — a mutation, a
+     * resize — originates inside the tree, so the normal upward propagation suffices.
+     * <p>
+     * A zoom change is the one input that comes from outside it: it alters every pixel
+     * dimension in the tree while changing no component's own state, so nothing below this
+     * view is ever marked invalid. Without this walk {@code StaffPanel} kept returning the
+     * previous zoom's cached preferred size, was therefore never resized, was therefore
+     * never invalidated, and {@code StaffLinesLayout} never ran again — leaving every line
+     * painting at the new zoom inside bounds measured at the old one, so the lines
+     * overlapped and clipped (issue #591).
+     */
+    private static void invalidateTree(Component component) {
+        component.invalidate();
+
+        if (component instanceof Container container) {
+            for (var child : container.getComponents()) {
+                invalidateTree(child);
+            }
+        }
+    }
+
     /** The per-view zoom state. On-score components read it on demand. */
     public ViewScale getViewScale() {
         return viewScale;
@@ -1214,6 +1241,10 @@ public final class ScoreView
         var oldPercent = viewScale.getZoomPercent();
         viewScale.setZoomPercent(newPercent);
 
+        // Drop every cached pixel size in the score tree first: layoutPage reads
+        // mainPanel's preferred size, and that read must already reflect the new zoom.
+        invalidateTree(this);
+
         // Recompute the canvas's preferred size at the new zoom before re-layout. Go through
         // layoutPage (not updatePageLayout) so this pure view change does not write the
         // round-tripped width back to the model and record a spurious undo entry.
@@ -1221,12 +1252,6 @@ public final class ScoreView
 
         // Force synchronous re-layout so the new (post-zoom) sizes are realized before
         // we read them below; plain revalidate() is async and would leave stale sizes.
-        invalidate();
-
-        if (mainPanel != null) {
-            mainPanel.invalidate();
-        }
-
         if (scorePanel != null) {
             scorePanel.invalidate();
         }

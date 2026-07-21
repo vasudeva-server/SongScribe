@@ -24,14 +24,9 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import songscribe.dom.Ss;
-import songscribe.engraving.Staff;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LineSpacing;
-import songscribe.layout.LyricRenderMetrics;
 
 /**
  * Lays out the {@link LinePanel} children of a {@link StaffPanel} so that the distance
@@ -66,8 +61,6 @@ import songscribe.layout.LyricRenderMetrics;
  * in {@code Ss}, then converted once per child through the view zoom.
  */
 public class StaffLinesLayout implements LayoutManager2 {
-
-    private static final Logger LOG = LoggerFactory.getLogger(StaffLinesLayout.class);
 
     private final StaffPanel staffPanel;
 
@@ -168,77 +161,14 @@ public class StaffLinesLayout implements LayoutManager2 {
 
         // With a single child there are no pairs, so the spacing stays 0 and it sits at y = 0.
         var spacingSs = 0.0;
-        var worstPairIndex = -1;
 
         for (var i = 0; i < count - 1; i++) {
             var pairSs = belowMidlineSs[i] + LineSpacing.MIN_INTER_LINE_GAP_SS + aboveMidlineSs[i + 1];
-
-            if (pairSs > spacingSs) {
-                spacingSs = pairSs;
-                worstPairIndex = i;
-            }
+            spacingSs = Math.max(spacingSs, pairSs);
         }
 
-        var geometry = new Geometry(
+        return new Geometry(
             aboveMidlineSs, belowMidlineSs, paintAboveMidlineSs, paintBelowMidlineSs, spacingSs);
-
-        if (LOG.isDebugEnabled()) {
-            logGeometry(parent, geometry, worstPairIndex, lyricRenderMetrics);
-        }
-
-        return geometry;
-    }
-
-    /**
-     * Dumps the full spacing derivation: each line's extents, which adjacent pair set the
-     * uniform spacing, and the resulting visible gap between consecutive components. Only the
-     * pair named as {@code worstPairIndex} is tight against
-     * {@link LineSpacing#MIN_INTER_LINE_GAP_SS}; every other gap is wider by construction,
-     * which is the model working as designed rather than stray padding.
-     */
-    private void logGeometry(
-        Container parent, Geometry geometry, int worstPairIndex, LyricRenderMetrics lyricRenderMetrics) {
-        LOG.debug(
-            "staff spacing: {} lines, S={} ss set by pair ({},{}); lyric metrics: staffToLyricsGap={} ss, lyricBoxHeight={} ss",
-            geometry.count(), geometry.spacingSs(), worstPairIndex, worstPairIndex + 1,
-            lyricRenderMetrics.staffToLyricsGapSs(), lyricRenderMetrics.lyricBoxHeightSs());
-
-        for (var i = 0; i < geometry.count(); i++) {
-            var result = layoutResultOf(parent.getComponent(i));
-            double contentAboveSs;
-            double lyricsBandSs;
-
-            if (result == null) {
-                contentAboveSs = Double.NaN;
-                lyricsBandSs = Double.NaN;
-            } else {
-                contentAboveSs = result.staffTopYSsInLine();
-                lyricsBandSs = result.lyricsBandHeightSs(lyricRenderMetrics);
-            }
-
-            // contentBelow is not exposed directly; recover it from the below-midline total.
-            var contentBelowSs = geometry.belowMidlineSs[i] - Staff.STAFF_HALF_SS - lyricsBandSs;
-
-            LOG.debug(
-                "  line {}: above={} below={} ss (contentAbove={} contentBelow={} lyricsBand={} ss); "
-                    + "painted above={} below={} ss, topY={} height={} ss",
-                i, geometry.aboveMidlineSs[i], geometry.belowMidlineSs[i],
-                contentAboveSs, contentBelowSs, lyricsBandSs,
-                geometry.paintAboveMidlineSs[i], geometry.paintBelowMidlineSs[i],
-                geometry.topYSs(i), geometry.heightSs(i));
-        }
-
-        for (var i = 0; i < geometry.count() - 1; i++) {
-            // Content gap: bottom of line i's lyrics band to the top of line i+1's above-staff
-            // content. This is the one MIN_INTER_LINE_GAP_SS governs. The bounds gap can be
-            // smaller, and negative when two sparse neighbours' reserved headroom overlaps.
-            var contentGapSs = (geometry.midlineYSs(i + 1) - geometry.aboveMidlineSs[i + 1])
-                - (geometry.midlineYSs(i) + geometry.belowMidlineSs[i]);
-            var boundsGapSs = geometry.topYSs(i + 1) - (geometry.topYSs(i) + geometry.heightSs(i));
-            LOG.debug(
-                "  gap {}->{}: content={} ss (min {}), bounds={} ss",
-                i, i + 1, contentGapSs, LineSpacing.MIN_INTER_LINE_GAP_SS, boundsGapSs);
-        }
     }
 
     private @Nullable LayoutResult layoutResultOf(Component child) {

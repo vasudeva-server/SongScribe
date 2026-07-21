@@ -26,9 +26,6 @@ import java.awt.event.MouseEvent;
 
 import org.jspecify.annotations.Nullable;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 import songscribe.Strings;
 import songscribe.dom.*;
 import songscribe.ui.Mode;
@@ -175,8 +172,6 @@ public class LineComponent extends ScoreComponent
 
     /** Handles press/drag/release for pitch-dragging a note in NOTE_EDIT mode. */
     private final NoteDragHandler noteDragHandler = new NoteDragHandler(this);
-
-    private static final Logger LOG = LoggerFactory.getLogger(LineComponent.class);
 
     /** Renderer that handles all drawing for this line. */
     private final LineRenderer lineRenderer = new LineRenderer(this);
@@ -498,10 +493,6 @@ public class LineComponent extends ScoreComponent
 
         middleLineYSs = calculateMiddleLineYSs();
         middleLineYSsValid = true;
-
-        if (LOG.isDebugEnabled()) {
-            logStaleBounds();
-        }
 
         // ── Paint pipeline: the zoom factor is applied EXACTLY ONCE ─────────────────
         //
@@ -891,32 +882,6 @@ public class LineComponent extends ScoreComponent
         }
 
         return ElementFrame.LINE_LEVEL;
-    }
-
-    /**
-     * Logs a line whose Swing bounds disagree with the extents its current
-     * {@link LayoutResult} reports.
-     * <p>
-     * This is the clipping signature: an edit produced a new layout, but the component was
-     * painted before the layout manager re-measured it, so the line draws content its bounds
-     * are too small to hold and Swing cuts it off at the edge.
-     */
-    private void logStaleBounds() {
-        if (layoutResult == null || scoreView == null) {
-            return;
-        }
-
-        var lyricRenderMetrics = scoreView.getLyricRenderMetrics();
-        var expectedHeightPx = toViewPx(new Ss(layoutResult.paintLineHeightSs(lyricRenderMetrics))).ceilPx();
-
-        if (expectedHeightPx != getHeight()) {
-            LOG.debug(
-                "line {}: stale bounds — painted height {} px, layout wants {} px "
-                    + "(staffTopInLine={} ss, lyricsBand={} ss, midlineY={} ss)",
-                lineIndex, getHeight(), expectedHeightPx,
-                layoutResult.staffTopYSsInLine(),
-                layoutResult.lyricsBandHeightSs(lyricRenderMetrics), middleLineYSs);
-        }
     }
 
     /**

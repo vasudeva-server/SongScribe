@@ -109,7 +109,10 @@ public class MainPanel extends JPanel {
 
         add(titleComponent);
         add(subtitleComponent);
-        add(Box.createVerticalStrut(scoreMarginTopPx()));
+        var scoreMarginTop = new ScoreMarginStrut();
+        scoreMarginTop.setAlignmentX(LEFT_ALIGNMENT);
+
+        add(scoreMarginTop);
         add(staffPanel);
         add(textPanel);
         add(footnotesComponent);
@@ -137,6 +140,32 @@ public class MainPanel extends JPanel {
     /** Spacing between title and score, scaled to the current view zoom. */
     private int scoreMarginTopPx() {
         return (int) Math.round(ScaleContext.ssToPx(SCORE_MARGIN_TOP_SS) * viewScale().factor());
+    }
+
+    /**
+     * The gap between the title block and the score, as a BoxLayout sibling.
+     * <p>
+     * Reports its height on demand instead of baking it in at construction the way
+     * {@link Box#createVerticalStrut} does. The height is zoom-dependent, so a fixed strut
+     * held the zoom in force when this panel was built while {@link #getPreferredSize} used
+     * the current one — and the score block shifted vertically by the difference.
+     */
+    private final class ScoreMarginStrut extends JComponent {
+
+        @Override
+        public Dimension getPreferredSize() {
+            return new Dimension(0, scoreMarginTopPx());
+        }
+
+        @Override
+        public Dimension getMinimumSize() {
+            return getPreferredSize();
+        }
+
+        @Override
+        public Dimension getMaximumSize() {
+            return getPreferredSize();
+        }
     }
 
     /**
