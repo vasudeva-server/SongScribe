@@ -107,9 +107,22 @@ public abstract class LineOverlayComponent extends JComponent {
     }
 
     /**
-     * Declares this component a validate root so that the {@link #setBounds} calls made from
-     * the host's {@code validateTree()} do not re-invalidate the host and provoke a second
-     * validation pass.
+     * Declares this component a validate root, so that an overlay is treated as the top of its
+     * own layout subtree rather than as a participant in the host's.
+     *
+     * <p><b>This does not currently suppress re-invalidation of the host.</b> The intent was
+     * that the {@link #setBounds} calls made from the host's {@code validateTree()} would not
+     * mark the host invalid again and provoke a second validation pass, but AWT gates that
+     * suppression in {@code Container.invalidateParent()} behind the
+     * {@code java.awt.smartInvalidate} system property, which defaults to {@code false} and is
+     * not set by this project's build or launch scripts. With it unset, the parent chain is
+     * invalidated regardless of what this method returns.
+     *
+     * <p>Correctness does not depend on the suppression — overlay bounds are refreshed from the
+     * host's {@code validateTree()} after {@code super.validateTree()} has laid the subtree out,
+     * and an extra validation pass costs a repeat of that same idempotent work. Enabling
+     * {@code smartInvalidate} would change AWT invalidation behavior application-wide, so it is
+     * deliberately left alone rather than switched on for this optimization.
      */
     @Override
     public boolean isValidateRoot() {
