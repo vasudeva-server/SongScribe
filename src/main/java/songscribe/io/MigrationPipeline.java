@@ -70,12 +70,16 @@ final class MigrationPipeline {
 
     // ┌────────────────────────── POST-ASSEMBLY (ctx.song set) ─────────────┐
     // │ 7 legacy-lyrics        !lyrics.isBlank() && isBefore(2,6) → importLegacyLyrics             │
-    // │ 8 syllabic-backfill    always                            → line.backfillSyllabic()         │
+    // │ 8 grace-host-melisma   always                            → line.repairGraceHostMelismas()  │
+    // │ 9 syllabic-backfill    always                            → line.backfillSyllabic()         │
     // └─────────────────────────────────────────────────────────────────────┘
     static final List<SongMigration> POST_ASSEMBLY = List.of(
         new SongMigration(StageId.LEGACY_LYRICS,
             ctx -> !ctx.lyrics.isBlank() && ctx.isBefore(2, PER_NOTE_LYRIC_VERSION),
             MigrationPipeline::applyLegacyLyrics),
+        new SongMigration(StageId.GRACE_HOST_MELISMA,
+            ctx -> true,
+            MigrationPipeline::applyGraceHostMelismaRepair),
         new SongMigration(StageId.SYLLABIC_BACKFILL,
             ctx -> true,
             MigrationPipeline::applySyllabicBackfill));
@@ -86,6 +90,16 @@ final class MigrationPipeline {
 
     private static void applyLegacyLyrics(MigrationContext ctx) {
         LegacyLyricsImporter.importLegacyLyrics(requireSong(ctx).getLines(), ctx.lyrics);
+    }
+
+    // Bring imported grace-host pairs onto the automatic melisma: a legacy file may carry the
+    // syllable on the host, or a syllable on the grace with no melisma across it. Runs before
+    // the syllabic backfill, which reads the syllabic chain in element order and so must see
+    // syllables at their final positions. The song is assembled by now, so tracking has been
+    // resumed; suspend it again to keep the repair silent, as the rest of the load path is.
+    private static void applyGraceHostMelismaRepair(MigrationContext ctx) {
+        var song = requireSong(ctx);
+        song.withoutMutationTracking(() -> song.getLines().forEach(Line::repairGraceHostMelismas));
     }
 
     // Normalize stored syllabic values to match relation-chain derivation. Required

@@ -55,6 +55,10 @@ import songscribe.dom.StaffElement;
  *       note case above, anchored to the rest's notehead-equivalent right edge</li>
  *   <li>note-with-Lyric(extend = NONE, text) + active EXTENDER → EXTENDER ends at start of this
  *       syllable; a new span (if any) begins after this syllable</li>
+ *   <li>host of a paired grace note → emits no lyric box (the syllable belongs to the grace); a
+ *       STOP on it ends the active EXTENDER exactly as the note case above, closing the automatic
+ *       grace-host melisma, while any other lyric state passes through so a hyphen or extender
+ *       from the grace reaches the next lyric-bearing element</li>
  * </ul>
  * <p>
  * Spans that extend past the last column produce a {@link LyricConnectorLayout.Kind#DANGLING_EXTENDER}
@@ -156,15 +160,20 @@ public final class LyricLayoutBuilder {
             var column = columns.get(columnIndex);
             var element = column.getElement();
 
-            // The host of a paired grace note never carries a lyric; skip its column outright
-            // so hyphens and extenders originating from the grace pass through to the next
-            // lyric-bearing element, never terminating at the host.
-            if (isHostOfPairedGraceColumn(columns, columnIndex)) {
-                continue;
-            }
-
             var lyric = element.getLyricForVerse(verse);
             var extend = lyric != null ? lyric.extend() : null;
+
+            // The host of a paired grace note never carries a syllable of its own, so it emits no
+            // lyric box. A STOP carrier on it closes the automatic melisma that the grace started,
+            // ending past the host's notehead like any other STOP; anything else passes through so
+            // hyphens and extenders originating from the grace reach the next lyric-bearing element.
+            if (isHostOfPairedGraceColumn(columns, columnIndex)) {
+                if (extend == Lyric.Extend.STOP) {
+                    state.closeExtenderPastHead(connectors, verse, column.getNoteheadRightEdgeXSs());
+                }
+
+                continue;
+            }
 
             if (column.isRest()) {
                 // Rest with extending lyric (START/CONTINUE): extender flows through.

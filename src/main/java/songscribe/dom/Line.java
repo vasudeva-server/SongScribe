@@ -22,6 +22,7 @@ package songscribe.dom;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -567,9 +568,17 @@ public class Line {
 
             var isStop = lyric.extend() == Lyric.Extend.STOP;
 
-            modifyElement(i, ElementField.LYRIC, () ->
-                element.lyrics.set(lyricIndex,
-                    new Lyric(lyric.verse(), lyric.text(), Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)));
+            // A carrier has no text of its own, so clearing its extend would strand an empty
+            // lyric — one that still counts as lyric-bearing for lyric navigation. Drop the
+            // entry instead. The cascade only ever walks the members of a chain downstream of
+            // its START, which are carriers by construction; the else branch is for safety.
+            if (lyric.isCarrier()) {
+                modifyElement(i, ElementField.LYRIC, () -> element.lyrics.remove(lyricIndex));
+            } else {
+                modifyElement(i, ElementField.LYRIC, () ->
+                    element.lyrics.set(lyricIndex,
+                        new Lyric(lyric.verse(), lyric.text(), Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)));
+            }
 
             if (isStop) {
                 break;
@@ -589,8 +598,7 @@ public class Line {
             return;
         }
 
-        var lyric = precedingElement.lyrics.get(lyricIndex);
-        var existingExtend = lyric.extend();
+        var existingExtend = precedingElement.lyrics.get(lyricIndex).extend();
 
         if (existingExtend != Lyric.Extend.CONTINUE && existingExtend != Lyric.Extend.START) {
             return;
@@ -600,9 +608,7 @@ public class Line {
         // START → NONE: 2-note chain collapses (a single note cannot carry a melisma)
         var newExtend = existingExtend == Lyric.Extend.CONTINUE ? Lyric.Extend.STOP : Lyric.Extend.NONE;
 
-        modifyElement(precedingIndex, ElementField.LYRIC, () ->
-            precedingElement.lyrics.set(lyricIndex,
-                new Lyric(lyric.verse(), lyric.text(), newExtend, lyric.syllabic(), lyric.compound())));
+        setExtendForVerse(precedingIndex, verse, newExtend);
     }
 
     /**
@@ -836,6 +842,263 @@ public class Line {
 
         // No predecessor — fix the successor if it now lacks a continuing predecessor.
         fixSuccessorSyllabic(index, verse, false);
+    }
+
+    /**
+     * Removes the {@code verse} lyric at {@code index} outright, leaving no residue.
+     *
+     * <p>This is deliberately stronger than clearing a lyric's melisma extend, which keeps
+     * an (empty-texted) lyric on the element. An empty lyric still counts as lyric-bearing
+     * for lyric navigation, so a melisma carrier that is no longer wanted must be removed,
+     * not cleared.
+     *
+     * <p>No-op when the element has no lyric for the verse. Must be called inside a
+     * modification bracket.
+     */
+    public void removeLyricForVerse(int index, int verse) {
+        if (index < 0 || index >= effectiveElementCount()) {
+            return;
+        }
+
+        var element = elements.get(index);
+
+        if (element.getLyricForVerse(verse) == null) {
+            return;
+        }
+
+        // Blank text + NONE is setLyricForVerse's "remove the entry" case, which keeps the
+        // removal inside the API that enforces the carrier/text-bearing invariants.
+        modifyElement(index, ElementField.LYRIC, () ->
+            element.setLyricForVerse(verse, null, false, null, Lyric.Extend.NONE));
+    }
+
+    /** The verse number of every lyric on {@code element}, in list order. */
+    private static List<Integer> verseNumbersOf(StaffElement element) {
+        var verses = new ArrayList<Integer>();
+
+        for (var lyric : element.lyrics) {
+            verses.add(lyric.verse());
+        }
+
+        return verses;
+    }
+
+    /**
+     * Moves the {@code verse} syllable from {@code fromIndex} to {@code toIndex}, replacing
+     * whatever lyric the target held. Used in both directions by the automatic grace-host
+     * melisma: host→grace when a pair is formed (the syllable belongs to the grace), and
+     * grace→host when the grace alone is deleted (the host is an ordinary note again).
+     *
+     * <p>The melisma extend is not carried across — the target receives the syllable at
+     * {@link Lyric.Extend#NONE}, and {@link #syncGraceHostMelisma} re-establishes an
+     * extender if the pairing still calls for one. The target's own lyric is dropped as
+     * part of the write, so a text-less carrier on the target can never collide with the
+     * incoming text.
+     *
+     * <p>No-op when the source has no lyric for the verse or its lyric is a text-less
+     * carrier — there is no syllable to move. Must be called inside a modification bracket.
+     */
+    public void transferLyricForVerse(int fromIndex, int toIndex, int verse) {
+        var elementCount = effectiveElementCount();
+
+        if (fromIndex == toIndex
+                || fromIndex < 0 || fromIndex >= elementCount
+                || toIndex < 0 || toIndex >= elementCount) {
+            return;
+        }
+
+        var sourceLyric = elements.get(fromIndex).getLyricForVerse(verse);
+
+        if (sourceLyric == null || sourceLyric.isCarrier()) {
+            return;
+        }
+
+        // Read off the source before anything is written: setLyricForVerse drops the
+        // target's existing verse entry before adding the incoming syllable.
+        var targetElement = elements.get(toIndex);
+        modifyElement(toIndex, ElementField.LYRIC, () ->
+            targetElement.setLyricForVerse(verse, sourceLyric.syllabic(), sourceLyric.compound(),
+                sourceLyric.text(), Lyric.Extend.NONE));
+        removeLyricForVerse(fromIndex, verse);
+    }
+
+    /**
+     * Moves every verse's syllable from {@code fromIndex} to {@code toIndex} via
+     * {@link #transferLyricForVerse}. Verse enumeration lives here because a caller
+     * outside this package cannot see an element's lyric list.
+     *
+     * <p>Must be called inside a modification bracket.
+     */
+    public void transferLyrics(int fromIndex, int toIndex) {
+        if (fromIndex < 0 || fromIndex >= effectiveElementCount()) {
+            return;
+        }
+
+        // Snapshot the verses first: transferLyricForVerse mutates the source's lyric list.
+        for (var verse : verseNumbersOf(elements.get(fromIndex))) {
+            transferLyricForVerse(fromIndex, toIndex, verse);
+        }
+    }
+
+    /**
+     * Converges the automatic grace-host melisma at {@code graceIndex} to whatever the
+     * current state implies. When a grace-host pair carries a lyric the syllable belongs to
+     * the grace and the host may not carry one of its own, so a melisma must run from the
+     * grace across its host.
+     *
+     * <p>Idempotent, and derived from live state rather than from a transition: a call site
+     * only has to invoke this inside the bracket that changed the pairing, without reasoning
+     * about which change occurred.
+     *
+     * <ul>
+     *   <li><b>Establish</b> — {@code graceIndex} is a paired grace note carrying a syllable:
+     *       the syllable becomes a melisma {@link Lyric.Extend#START} and the host at
+     *       {@code graceIndex + 1} receives a text-less {@link Lyric.Extend#STOP} carrier,
+     *       replacing any lyric of its own.</li>
+     *   <li><b>Tear down</b> — otherwise: the host's carrier is removed outright and the
+     *       grace's {@code START} reverts to {@link Lyric.Extend#NONE}.</li>
+     * </ul>
+     *
+     * <p>Melismas that merely pass through the pair are left alone. A host already marked
+     * {@link Lyric.Extend#CONTINUE} keeps carrying its chain onward, and a host {@code STOP}
+     * whose chain began before the grace — which shows up as a carrier on the grace itself —
+     * is not this pair's to tear down.
+     *
+     * <p>Must be called inside a modification bracket.
+     */
+    public void syncGraceHostMelisma(int graceIndex) {
+        var hostIndex = graceIndex + 1;
+
+        if (graceIndex < 0 || hostIndex >= effectiveElementCount()) {
+            return;
+        }
+
+        var isPaired = isPairedGraceNote(graceIndex);
+        var verses = new LinkedHashSet<Integer>(verseNumbersOf(elements.get(graceIndex)));
+        verses.addAll(verseNumbersOf(elements.get(hostIndex)));
+
+        for (var verse : verses) {
+            syncGraceHostMelismaForVerse(graceIndex, verse, isPaired);
+        }
+    }
+
+    /**
+     * Normalizes every grace-host pair on this line to the automatic grace-host melisma, for
+     * files written before the melisma was maintained automatically (or by another program).
+     * Two states are repaired, per verse and per pair:
+     *
+     * <ul>
+     *   <li>the host carries a syllable of its own and the grace has no lyric for that verse —
+     *       the syllable moves to the grace, which is where a paired grace's syllable belongs,
+     *       and the melisma is established across the host;</li>
+     *   <li>the grace carries a syllable with no melisma — the melisma is established.</li>
+     * </ul>
+     *
+     * <p>When <em>both</em> elements carry a syllable, the grace's wins and the host's is
+     * discarded: with the invariant enforced there is nowhere left to put it. The grace is
+     * likewise left alone when it holds a text-less carrier, since that carrier belongs to a
+     * melisma that began before the pair rather than to the pair itself.
+     *
+     * <p>Convergence is {@link #syncGraceHostMelisma}'s, so a repaired file lands in exactly
+     * the state editing would have produced, and a second load is a no-op.
+     *
+     * <p>Intended for the load path. Mutation tracking must be suspended (readers already
+     * suspend it) so the repair is silent — no undo entry, no {@code modified} flag.
+     */
+    public void repairGraceHostMelismas() {
+        for (var index = 0; index < elements.size(); index++) {
+            if (!isPairedGraceNote(index) || index + 1 >= elements.size()) {
+                continue;
+            }
+
+            moveHostSyllablesToGrace(index);
+            syncGraceHostMelisma(index);
+        }
+    }
+
+    /**
+     * Hands each of the host's own syllables back to the grace, for the verses where the grace
+     * has no lyric at all. A verse the grace already occupies — with a syllable or with a
+     * carrier — is left untouched; see {@link #repairGraceHostMelismas}.
+     */
+    private void moveHostSyllablesToGrace(int graceIndex) {
+        var hostIndex = graceIndex + 1;
+        var graceElement = elements.get(graceIndex);
+
+        // Snapshot the verses first: transferLyricForVerse mutates the host's lyric list.
+        for (var verse : verseNumbersOf(elements.get(hostIndex))) {
+            // transferLyricForVerse ignores a text-less carrier, so a host STOP stays put.
+            if (graceElement.getLyricForVerse(verse) == null) {
+                transferLyricForVerse(hostIndex, graceIndex, verse);
+            }
+        }
+    }
+
+    private void syncGraceHostMelismaForVerse(int graceIndex, int verse, boolean isPaired) {
+        var hostIndex = graceIndex + 1;
+        var hostElement = elements.get(hostIndex);
+        var graceLyric = elements.get(graceIndex).getLyricForVerse(verse);
+        var hostLyric = hostElement.getLyricForVerse(verse);
+        var graceCarries = graceLyric != null && graceLyric.isCarrier();
+        var graceHasSyllable = graceLyric != null && !graceCarries && !graceLyric.text().isBlank();
+
+        if (isPaired && graceHasSyllable) {
+            setExtendForVerse(graceIndex, verse, Lyric.Extend.START);
+
+            // A host that already carries the extender onward needs no STOP of its own.
+            if (hostLyric != null && hostLyric.isCarrier()) {
+                return;
+            }
+
+            var hostHadSyllable = hostLyric != null;
+            modifyElement(hostIndex, ElementField.LYRIC, () ->
+                hostElement.setLyricForVerse(verse, null, false, null, Lyric.Extend.STOP));
+
+            // The host's own syllable is gone, so its neighbors' syllabic chain has to heal
+            // exactly as it would after a deletion. adjustNeighborsForLyricDeletion documents
+            // a cleared lyric as its precondition, and what sits here now is a carrier rather
+            // than nothing — that is equivalent for its purposes, since it reads only the
+            // neighbors of `index`, never `index` itself.
+            if (hostHadSyllable) {
+                adjustNeighborsForLyricDeletion(hostIndex, verse);
+            }
+
+            return;
+        }
+
+        // Tear down only this pair's own two-element chain: a STOP reached by a chain that
+        // began before the grace belongs to that chain, not to the pair.
+        if (graceCarries || hostLyric == null || hostLyric.extend() != Lyric.Extend.STOP) {
+            return;
+        }
+
+        removeLyricForVerse(hostIndex, verse);
+        setExtendForVerse(graceIndex, verse, Lyric.Extend.NONE);
+    }
+
+    /**
+     * Replaces the melisma extend of the {@code verse} lyric at {@code index}, leaving its
+     * text, syllabic and compound flag untouched. No-op when there is no lyric for the verse
+     * or the extend already matches. Only valid for text-bearing lyrics, whose non-null
+     * syllabic remains legal for every non-carrier extend.
+     */
+    private void setExtendForVerse(int index, int verse, Lyric.Extend extend) {
+        var element = elements.get(index);
+        var lyricIndex = findLyricIndexForVerse(element, verse);
+
+        if (lyricIndex < 0) {
+            return;
+        }
+
+        var lyric = element.lyrics.get(lyricIndex);
+
+        if (lyric.extend() == extend) {
+            return;
+        }
+
+        modifyElement(index, ElementField.LYRIC, () ->
+            element.lyrics.set(lyricIndex,
+                new Lyric(lyric.verse(), lyric.text(), extend, lyric.syllabic(), lyric.compound())));
     }
 
     private static int findLyricIndexForVerse(StaffElement element, int verse) {

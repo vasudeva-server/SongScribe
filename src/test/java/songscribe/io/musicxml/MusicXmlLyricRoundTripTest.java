@@ -52,6 +52,10 @@ class MusicXmlLyricRoundTripTest extends MusicXmlRoundTripSupport {
     // and 1 hold BEGIN and MIDDLE); 2 is not a self-evident index literal.
     private static final int END_SYLLABLE_INDEX = 2;
 
+    // The grace-host pair the melisma-repair cases build, in line order.
+    private static final int GRACE_INDEX = 0;
+    private static final int HOST_INDEX = 1;
+
     // Pre-#420 files marked a compound-word boundary with a zero-width space
     // (U+200B) rather than the current U+2011; the loader must still recognize it.
     private static final String LEGACY_ZERO_WIDTH_SPACE_MARKER = Character.toString(0x200B);
@@ -303,4 +307,83 @@ class MusicXmlLyricRoundTripTest extends MusicXmlRoundTripSupport {
             noteAt(song, 0).getLyricForVerse(FIRST_VERSE), expected, "escaped special characters");
     }
 
+    /**
+     * A file written before the grace-host melisma became automatic can carry the syllable on
+     * the host, which the model now forbids. The reader repairs the pair once every
+     * {@code <slide>} has been resolved: the syllable lands on the grace as a melisma START and
+     * the host becomes a text-less STOP carrier.
+     */
+    @Test
+    void hostSyllableIsRepairedOntoTheGraceOnLoad() throws Exception {
+        var song = roundTrip(buildSong(MusicXmlLyricRoundTripTest::addPairWithSyllableOnHost));
+
+        assertLyricEquals(
+            noteAt(song, GRACE_INDEX).getLyricForVerse(FIRST_VERSE),
+            new Lyric(FIRST_VERSE, "glo", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false),
+            "grace after repair");
+        assertLyricEquals(
+            noteAt(song, HOST_INDEX).getLyricForVerse(FIRST_VERSE),
+            new Lyric(FIRST_VERSE, "", Lyric.Extend.STOP, null, false),
+            "host after repair");
+    }
+
+    /**
+     * The repaired state is what the writer emits, so a second load changes nothing: the
+     * {@code <extend type="start"/>} / {@code <extend type="stop"/>} pair survives verbatim.
+     */
+    @Test
+    void repairedGraceHostMelismaIsStableAcrossASecondLoad() throws Exception {
+        var repaired = roundTrip(buildSong(MusicXmlLyricRoundTripTest::addPairWithSyllableOnHost));
+        var reloaded = roundTrip(repaired);
+
+        assertLyricEquals(
+            noteAt(reloaded, GRACE_INDEX).getLyricForVerse(FIRST_VERSE),
+            new Lyric(FIRST_VERSE, "glo", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false),
+            "grace after second load");
+        assertLyricEquals(
+            noteAt(reloaded, HOST_INDEX).getLyricForVerse(FIRST_VERSE),
+            new Lyric(FIRST_VERSE, "", Lyric.Extend.STOP, null, false),
+            "host after second load");
+    }
+
+    /**
+     * The repair's second branch: the syllable is already on the grace, but the file carries no
+     * {@code <extend>} at all — the state every pre-melisma editing session produced, and the one
+     * a foreign notation program writes. The reader must establish the melisma, which it can only
+     * do once {@code RangeSpanResolver} has turned the {@code <slide>} into the glissando that
+     * makes the pairing visible. Repairing before that point would leave this file untouched.
+     */
+    @Test
+    void graceSyllableWithoutExtendGainsTheMelismaOnLoad() throws Exception {
+        var song = roundTrip(buildSong(MusicXmlLyricRoundTripTest::addPairWithSyllableOnGrace));
+
+        assertLyricEquals(
+            noteAt(song, GRACE_INDEX).getLyricForVerse(FIRST_VERSE),
+            new Lyric(FIRST_VERSE, "glo", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false),
+            "grace after repair");
+        assertLyricEquals(
+            noteAt(song, HOST_INDEX).getLyricForVerse(FIRST_VERSE),
+            new Lyric(FIRST_VERSE, "", Lyric.Extend.STOP, null, false),
+            "host after repair");
+    }
+
+    /** Grace note joined to the following note by a glissando, with the syllable on that host. */
+    private static void addPairWithSyllableOnHost(Line line) {
+        var grace = ElementType.GRACE_QUAVER.newInstance();
+        grace.setGlissando();
+        line.addElement(grace);
+        addNote(line, new Lyric(FIRST_VERSE, "glo", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+    }
+
+    /**
+     * The same pair with the syllable already on the grace and no melisma anywhere: the grace's
+     * lyric has {@code Extend.NONE} and the host has no lyric at all.
+     */
+    private static void addPairWithSyllableOnGrace(Line line) {
+        var grace = ElementType.GRACE_QUAVER.newInstance();
+        grace.setGlissando();
+        line.addElement(grace);
+        grace.lyrics.add(new Lyric(FIRST_VERSE, "glo", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        addNote(line);
+    }
 }

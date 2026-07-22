@@ -27,6 +27,13 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Lyric;
 
+/**
+ * A syllable on a paired grace note survives the legacy {@code .mssw} load path. Since the
+ * grace-host melisma became automatic, loading also normalizes the pair: the syllable becomes a
+ * melisma START on the grace and the host receives the text-less STOP terminator, so these cases
+ * double as coverage that the repair reaches the legacy reader (via
+ * {@code MigrationPipeline}'s post-assembly stage) and not only the MusicXML one.
+ */
 @SuppressWarnings("OverlyBroadThrowsClause")
 class GraceNoteLyricRoundTripTest extends UnitTest {
 
@@ -76,12 +83,12 @@ class GraceNoteLyricRoundTripTest extends UnitTest {
         var reloadedLine = reloaded.getLine(0);
 
         assertThat(reloadedLine.getElement(0).lyrics)
-            .as("lyric on grace note must survive the round-trip")
-            .containsExactly(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+            .as("lyric on grace note must survive the round-trip, as an automatic melisma START")
+            .containsExactly(new Lyric(1, "la", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
 
         assertThat(reloadedLine.getElement(1).lyrics)
-            .as("host of paired grace must never carry a lyric after round-trip")
-            .isEmpty();
+            .as("host of paired grace carries only the text-less melisma terminator")
+            .containsExactly(new Lyric(1, "", Lyric.Extend.STOP, null, false));
     }
 
     @Test
@@ -121,11 +128,11 @@ class GraceNoteLyricRoundTripTest extends UnitTest {
         var line = song.getLine(0);
 
         assertThat(line.getElement(0).lyrics)
-            .as("lyric on grace note must load from XML")
-            .containsExactly(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+            .as("lyric on grace note must load from XML, repaired into a melisma START")
+            .containsExactly(new Lyric(1, "la", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
 
         assertThat(line.getElement(1).lyrics)
-            .as("host of paired grace must have no lyric after load")
-            .isEmpty();
+            .as("the load-path repair gives the host the text-less melisma terminator")
+            .containsExactly(new Lyric(1, "", Lyric.Extend.STOP, null, false));
     }
 }

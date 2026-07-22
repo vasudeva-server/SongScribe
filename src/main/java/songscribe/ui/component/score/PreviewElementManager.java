@@ -768,11 +768,19 @@ public final class PreviewElementManager {
 
             var sourceNote = line.getElement(noteIndex);
 
-            line.withModification(OpNames.addSlideLabel(zone == SlideZone.FALL), () -> line.modifyElement(
-                noteIndex,
-                ElementField.SLIDE,
-                () -> zone.applyTo(sourceNote)
-            ));
+            // A fall replaces the glissando (slides are mutually exclusive), which un-pairs
+            // a grace note. Capture the pairing first — applyTo destroys the evidence.
+            var wasPairedGraceNote = line.isPairedGraceNote(noteIndex);
+
+            line.withModification(OpNames.addSlideLabel(zone == SlideZone.FALL), () -> {
+                line.modifyElement(noteIndex, ElementField.SLIDE, () -> zone.applyTo(sourceNote));
+
+                // Un-pairing dissolves the automatic melisma. Both elements survive, so
+                // the syllable simply stays on the now-ordinary former grace note.
+                if (wasPairedGraceNote) {
+                    line.syncGraceHostMelisma(noteIndex);
+                }
+            });
             lc.repaintWithOverlayHeadroom();
             return;  // Stay in slide mode
         }
@@ -1195,6 +1203,16 @@ public final class PreviewElementManager {
                 precedingElement.removeSlide();
             }
         }
+
+        // A pitched insertion between a grace note and its host re-targets the glissando, so
+        // the inserted element is the new host. adjustExtendsForInsertion removed the melisma
+        // that pointed at the old host — carrier and all, leaving it an ordinary note free to
+        // take a syllable of its own — so re-establish the melisma against the new host. The
+        // non-pitched case fell through the glissando strip above and no longer reads as paired.
+        if (line.isPairedGraceNote(xIndex - 1)) {
+            line.syncGraceHostMelisma(xIndex - 1);
+        }
+
         var shift = ScaleContext.ssToRoundedPx(insertion.shiftForSubsequentElementsSs());
 
         for (var i = xIndex + 1; i < line.effectiveElementCount(); i++) {
@@ -1379,7 +1397,21 @@ public final class PreviewElementManager {
         // setElement preserves the element index.
         if (line.isHostOfPairedGraceNote(elementIndex)
                 && !previewType.isPitchedNote()) {
-            line.removeElement(elementIndex - 1);
+            var graceNoteIndex = elementIndex - 1;
+            var graceNote = line.getElement(graceNoteIndex);
+
+            // setElement carried the old host's lyrics onto the replacement, which is not a
+            // pitched note and has no business holding a melisma carrier. Strip the glissando
+            // first so the sync sees an unpaired grace and converges to teardown, removing the
+            // carrier outright instead of leaving an empty lyric behind on the replacement.
+            // No hand-back here: the host the syllable would return to no longer exists.
+            line.modifyElement(graceNoteIndex, ElementField.SLIDE, graceNote::removeSlide);
+            line.syncGraceHostMelisma(graceNoteIndex);
+
+            // Any melisma reaching past this pair still has to be unwound before the grace
+            // note leaves the line, and the removal must be tracked for undo.
+            line.adjustExtendsForDeletion(graceNoteIndex);
+            line.removeElement(graceNoteIndex);
             elementIndex--;
         }
 

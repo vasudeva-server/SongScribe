@@ -721,6 +721,17 @@ public final class GraceModeManager {
             // Connect the grace note to the host note with a connecting glissando.
             line.modifyElement(graceNoteIndex, ElementField.SLIDE, note::setGlissando);
 
+            if (connectNext) {
+                // The syllable of a grace-host pair belongs to the grace note, so an
+                // existing host lyric moves onto it. A host note inserted just above has
+                // no lyric to hand over.
+                line.transferLyrics(hostNoteIndex, graceNoteIndex);
+            }
+
+            // Runs after the glissando so the pair is established and the sync converges
+            // to a melisma running from the grace across its host.
+            line.syncGraceHostMelisma(graceNoteIndex);
+
             // Mirror the host note's attributes onto the toolbar.
             selectionCoordinator.reflectElement(hostNote);
         });

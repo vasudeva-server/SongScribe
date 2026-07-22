@@ -37,6 +37,7 @@ import org.mockito.MockedStatic;
 import songscribe.Strings;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.SlideZone;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
@@ -58,6 +59,11 @@ import songscribe.ui.edit.EditModeManager;
  */
 class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase {
 
+    private static final int VERSE = 1;
+    private static final String SYLLABLE = "glo";
+    private static final int GRACE_INDEX = 0;
+    private static final int HOST_INDEX = 1;
+
     // -----------------------------------------------------------------------
     // Helpers
     // -----------------------------------------------------------------------
@@ -68,6 +74,33 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
                 line.addElement(type.newInstance());
             }
         });
+    }
+
+    /**
+     * Builds {@code [grace(glissando, SYLLABLE), host crotchet]} with the automatic
+     * grace-host melisma established: {@link Lyric.Extend#START} on the grace and a
+     * text-less {@link Lyric.Extend#STOP} carrier on the host.
+     */
+    private void addPairedGraceCarryingSyllable() {
+        song.withoutMutationTracking(() -> {
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setGlissando();
+            grace.setLyricForVerse(VERSE, Lyric.Syllabic.SINGLE, false, SYLLABLE, Lyric.Extend.NONE);
+            line.addElement(grace);
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.syncGraceHostMelisma(GRACE_INDEX);
+        });
+    }
+
+    /** Reads the verse lyric at {@code index}, failing the test when there is none. */
+    private Lyric requireLyric(int index, int verse) {
+        var lyric = line.getElement(index).getLyricForVerse(verse);
+
+        if (lyric == null) {
+            throw new AssertionError("expected a verse " + verse + " lyric at index " + index);
+        }
+
+        return lyric;
     }
 
     // -----------------------------------------------------------------------
@@ -173,6 +206,58 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
             assertThat(line.getElement(0).hasFall())
                 .as("fall not applied when the line is full")
                 .isFalse();
+        }
+
+        /**
+         * Plan trace row 2. Slides are mutually exclusive, so applying a fall to a paired
+         * grace note clears its glissando and un-pairs it, which dissolves the automatic
+         * grace-host melisma. Both elements survive the click, so there is no hand-back: the
+         * syllable simply stays on the now-ordinary former grace note.
+         *
+         * <p>The host's carrier must be removed outright rather than merely have its extend
+         * cleared — an empty-text lyric still counts as lyric-bearing for backward lyric
+         * navigation. This test fails if {@code syncGraceHostMelisma} is dropped from the
+         * slide-placeholder branch of {@code handleClick}: the grace would keep {@code START}
+         * and the host would keep its {@code STOP} carrier.
+         */
+        @Test
+        void testFallOnPairedGraceNoteTearsDownTheMelisma() {
+            song.setLineWidthSs(WIDE_LINE_SS);
+            addPairedGraceCarryingSyllable();
+
+            assertThat(requireLyric(GRACE_INDEX, VERSE).extend())
+                .as("pre-condition: the melisma starts on the grace note")
+                .isEqualTo(Lyric.Extend.START);
+            assertThat(requireLyric(HOST_INDEX, VERSE).extend())
+                .as("pre-condition: the host carries the melisma's STOP")
+                .isEqualTo(Lyric.Extend.STOP);
+
+            // currentXIndex - 1 is the slide's source note, so index 1 targets the grace.
+            setPreviewElement(ElementType.SLIDE.newInstance());
+            PreviewElementManager.setCurrentXIndex(HOST_INDEX);
+            PreviewElementManager.setCurrentSlideZone(SlideZone.FALL);
+
+            PreviewElementManager.handleClick(lc);
+
+            var graceNote = line.getElement(GRACE_INDEX);
+            assertThat(graceNote.hasFall())
+                .as("fall applied to the grace note")
+                .isTrue();
+            assertThat(graceNote.hasGlissando())
+                .as("the fall replaced the glissando, un-pairing the grace note")
+                .isFalse();
+
+            var graceLyric = requireLyric(GRACE_INDEX, VERSE);
+            assertThat(graceLyric.text())
+                .as("the syllable stays on the now-ordinary former grace note")
+                .isEqualTo(SYLLABLE);
+            assertThat(graceLyric.extend())
+                .as("the melisma START reverted to NONE")
+                .isEqualTo(Lyric.Extend.NONE);
+
+            assertThat(line.getElement(HOST_INDEX).getLyricForVerse(VERSE))
+                .as("the host's carrier is removed outright, leaving no empty-lyric residue")
+                .isNull();
         }
     }
 

@@ -41,6 +41,48 @@ import songscribe.dom.StaffElement;
  */
 class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBase {
 
+    private static final int VERSE = 1;
+    private static final String SYLLABLE = "glo";
+    private static final int GRACE_INDEX = 0;
+    private static final int HOST_INDEX = 1;
+
+    /** After a pitched insertion at {@link #HOST_INDEX}, the original host sits one slot later. */
+    private static final int DISPLACED_HOST_INDEX = 2;
+
+    // -----------------------------------------------------------------------
+    // Grace-host melisma helpers
+    // -----------------------------------------------------------------------
+
+    /**
+     * Builds {@code [grace(glissando, SYLLABLE), host minim]} with the automatic
+     * grace-host melisma established: {@link Lyric.Extend#START} on the grace and a
+     * text-less {@link Lyric.Extend#STOP} carrier on the host.
+     *
+     * <p>The host is a MINIM so that a CROTCHET inserted between the two is
+     * distinguishable from it by type.
+     */
+    private void addPairedGraceCarryingSyllable() {
+        song.withoutMutationTracking(() -> {
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setGlissando();
+            grace.setLyricForVerse(VERSE, Lyric.Syllabic.SINGLE, false, SYLLABLE, Lyric.Extend.NONE);
+            line.addElement(grace);
+            line.addElement(ElementType.MINIM.newInstance());
+            line.syncGraceHostMelisma(GRACE_INDEX);
+        });
+    }
+
+    /** Reads the verse lyric at {@code index}, failing the test when there is none. */
+    private Lyric requireLyric(int index, int verse) {
+        var lyric = line.getElement(index).getLyricForVerse(verse);
+
+        if (lyric == null) {
+            throw new AssertionError("expected a verse " + verse + " lyric at index " + index);
+        }
+
+        return lyric;
+    }
+
     // -----------------------------------------------------------------------
     // modifyExistingElement — grace-note cleanup (row 33)
     // -----------------------------------------------------------------------
@@ -83,6 +125,56 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
             assertThat(line.getElement(0).getType())
                 .as("remaining element is the replacement rest, not the grace note")
                 .isEqualTo(ElementType.CROTCHET_REST);
+        }
+
+        /**
+         * Same replacement as the sibling test above, but the pair carries a lyric: the
+         * grace holds the syllable with the automatic melisma established, so the host holds
+         * a text-less STOP carrier.
+         *
+         * <p>{@code setElement} copies the old host's lyrics onto the replacement rest, which
+         * has no business holding a melisma carrier. {@code modifyExistingElement} therefore
+         * strips the glissando and syncs — converging to teardown — before removing the grace
+         * note. Per the plan, hand-back does <em>not</em> apply: the host is simultaneously
+         * being replaced by a non-pitched element that cannot carry a lyric, so the syllable
+         * dies with the grace.
+         *
+         * <p>The end state is a bare rest: no orphaned carrier on it, and no empty-text
+         * phantom lyric anywhere on the line (an empty lyric still counts as lyric-bearing
+         * for backward lyric navigation).
+         */
+        @Test
+        void testMelismaFullyRemovedWhenHostCarryingItIsReplacedWithRest() {
+            addPairedGraceCarryingSyllable();
+
+            assertThat(requireLyric(GRACE_INDEX, VERSE).extend())
+                .as("pre-condition: the melisma starts on the grace note")
+                .isEqualTo(Lyric.Extend.START);
+            assertThat(requireLyric(HOST_INDEX, VERSE).extend())
+                .as("pre-condition: the host carries the melisma's STOP")
+                .isEqualTo(Lyric.Extend.STOP);
+
+            var countBefore = line.elementCount();
+
+            setPreviewElement(ElementType.CROTCHET_REST.newInstance());
+            PreviewElementManager.setCurrentXIndex(HOST_INDEX);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+            PreviewElementManager.handleClick(lc);
+
+            assertThat(line.elementCount())
+                .as("element count decreases by 1 after the grace note is removed")
+                .isEqualTo(countBefore - 1);
+
+            assertThat(line.getElement(GRACE_INDEX).getType())
+                .as("the replacement rest is all that remains of the pair")
+                .isEqualTo(ElementType.CROTCHET_REST);
+
+            for (var i = 0; i < line.elementCount(); i++) {
+                assertThat(line.getElement(i).getLyricForVerse(VERSE))
+                    .as("index %d must carry no verse %d lyric — neither an orphaned carrier "
+                        + "nor an empty-text phantom", i, VERSE)
+                    .isNull();
+            }
         }
 
         /**
@@ -210,6 +302,75 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
             assertThat(succLyric == null ? null : succLyric.syllabic())
                 .as("MIDDLE syllabic promoted to BEGIN after insertion before it")
                 .isEqualTo(Lyric.Syllabic.BEGIN);
+        }
+
+        /**
+         * Layout before insertion (the automatic grace-host melisma):
+         *   index 0: grace note + glissando, verse 1 "glo", Extend.START
+         *   index 1: host minim, text-less Extend.STOP carrier
+         *
+         * <p>Inserting a PITCHED note at index 1 re-targets the glissando, so the inserted
+         * note becomes the new host and the melisma re-points onto it (plan decision 3). The
+         * original host is displaced to index 2 and is an ordinary note again.
+         *
+         * <p>Regression guard: {@code adjustExtendsForInsertion} used to merely <em>clear</em>
+         * the old host's carrier extend, leaving a {@code Lyric("", NONE, SINGLE)} behind.
+         * That empty-text residue still counts as lyric-bearing for lyric navigation — a
+         * phantom backward target. The entry must be removed outright, so the displaced host
+         * has no verse lyric at all.
+         */
+        @Test
+        void testPitchedInsertionRePointsGraceHostMelismaAndLeavesNoPhantomLyric() {
+            song.setLineWidthSs(WIDE_LINE_SS);
+            addPairedGraceCarryingSyllable();
+
+            assertThat(requireLyric(GRACE_INDEX, VERSE).extend())
+                .as("pre-condition: the melisma starts on the grace note")
+                .isEqualTo(Lyric.Extend.START);
+            assertThat(requireLyric(HOST_INDEX, VERSE).extend())
+                .as("pre-condition: the original host carries the melisma's STOP")
+                .isEqualTo(Lyric.Extend.STOP);
+
+            var countBefore = line.effectiveElementCount();
+
+            setPreviewElement(ElementType.CROTCHET.newInstance());
+            PreviewElementManager.setCurrentXIndex(HOST_INDEX);
+            PreviewElementManager.setXPosSsMatchesElement(false);
+            PreviewElementManager.handleClick(lc);
+
+            assertThat(line.effectiveElementCount())
+                .as("the pitched note was inserted between the grace and its old host")
+                .isEqualTo(countBefore + 1);
+
+            var graceLyric = requireLyric(GRACE_INDEX, VERSE);
+            assertThat(graceLyric.text())
+                .as("the grace note keeps its syllable")
+                .isEqualTo(SYLLABLE);
+            assertThat(graceLyric.extend())
+                .as("the grace note still starts the melisma")
+                .isEqualTo(Lyric.Extend.START);
+
+            assertThat(line.getElement(HOST_INDEX).getType())
+                .as("the inserted crotchet occupies the host slot")
+                .isEqualTo(ElementType.CROTCHET);
+
+            var newHostLyric = requireLyric(HOST_INDEX, VERSE);
+            assertThat(newHostLyric.extend())
+                .as("the melisma re-points onto the newly inserted host")
+                .isEqualTo(Lyric.Extend.STOP);
+            assertThat(newHostLyric.text())
+                .as("the new host's STOP is a text-less carrier")
+                .isEmpty();
+            assertThat(newHostLyric.syllabic())
+                .as("a carrier has no syllabic")
+                .isNull();
+
+            assertThat(line.getElement(DISPLACED_HOST_INDEX).getType())
+                .as("the displaced old host is the original minim")
+                .isEqualTo(ElementType.MINIM);
+            assertThat(line.getElement(DISPLACED_HOST_INDEX).getLyricForVerse(VERSE))
+                .as("the displaced old host has no lyric at all — not an empty-text residue")
+                .isNull();
         }
     }
 }

@@ -41,6 +41,7 @@ import javax.swing.JRootPane;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.HorizontalSpacingCalculator;
@@ -1528,6 +1529,181 @@ class GraceModeManagerTest extends UnitTest {
             assertThat(Actions.ARTICULATION_ACTION_GROUP.getSelected())
                 .as("ARTICULATION_ACTION_GROUP should be cleared after entering grace note mode")
                 .isNull();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // enterGraceNotePaired — the automatic grace-host melisma (#599/#600)
+    //
+    // Driven through mouseReleased with pendingConnect set: that is the drag-right
+    // commit path, the only one that reaches the connectNext == true branch where an
+    // existing host's syllable is handed to the newly paired grace note.
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class EnterGraceNotePairedMelisma {
+
+        private static final int VERSE = 1;
+        private static final int SECOND_VERSE = 2;
+        private static final int GRACE_INDEX = 0;
+        private static final int HOST_INDEX = 1;
+        private static final String SYLLABLE = "glo";
+        private static final String SECOND_VERSE_SYLLABLE = "ry";
+        /** Grace and host must differ in pitch, or the pairing is rejected before it commits. */
+        private static final int GRACE_STAFF_POSITION = 2;
+        private static final int HOST_STAFF_POSITION = 4;
+        private static final int MOUSE_DOWN_X = 100;
+        private static final int MOUSE_DOWN_Y = 100;
+        /** Far enough right of MOUSE_DOWN_X to be classified as a drag, not a click. */
+        private static final int RELEASE_X = 200;
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var mockFrame = mock(MainFrame.class);
+            var mockScore = mock(ScoreView.class);
+            var mockRootPane = mock(JRootPane.class);
+            when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
+            when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
+            when(mockFrame.getRootPane()).thenReturn(mockRootPane);
+            when(mockFrame.requireScoreView()).thenReturn(mockScore);
+            when(mockFrame.getScoreView()).thenReturn(mockScore);
+            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            Actions.initialize(mockFrame);
+        }
+
+        @AfterEach
+        void tearDown() throws Exception {
+            // Drain pending invokeLater tasks (commit() posts invokeLater to re-enable
+            // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions.
+            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            Actions.resetForTest();
+            messageCenterMock.close();
+        }
+
+        @Test
+        void testHostSyllableMovesToGraceAndBecomesAMelismaAcrossTheHost() {
+            var line = graceAndHostLine();
+            setSyllable(line, HOST_INDEX, VERSE, SYLLABLE);
+
+            connectByDragRight(line);
+
+            // The pairing itself must have committed, or the lyric assertions below
+            // would be asserting against an untouched line.
+            assertThat(line.isPairedGraceNote(GRACE_INDEX))
+                .as("the drag-right commit must connect the grace note to its host")
+                .isTrue();
+
+            var graceLyric = requireLyric(line, GRACE_INDEX, VERSE);
+            assertThat(graceLyric.text())
+                .as("the syllable of a grace-host pair belongs to the grace note")
+                .isEqualTo(SYLLABLE);
+            assertThat(graceLyric.syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(graceLyric.extend()).isEqualTo(Lyric.Extend.START);
+
+            var hostLyric = requireLyric(line, HOST_INDEX, VERSE);
+            assertThat(hostLyric.text())
+                .as("the host may not carry a syllable of its own")
+                .isEmpty();
+            assertThat(hostLyric.syllabic()).isNull();
+            assertThat(hostLyric.extend()).isEqualTo(Lyric.Extend.STOP);
+            assertThat(hostLyric.isCarrier()).isTrue();
+        }
+
+        @Test
+        void testNoLyricIsCreatedWhenTheHostCarriesNone() {
+            var line = graceAndHostLine();
+
+            connectByDragRight(line);
+
+            assertThat(line.isPairedGraceNote(GRACE_INDEX))
+                .as("the drag-right commit must connect the grace note to its host")
+                .isTrue();
+
+            // Nothing to transfer and nothing to extend: neither element may end up with a
+            // phantom empty lyric or a stray melisma carrier.
+            assertThat(lyricAt(line, GRACE_INDEX, VERSE)).isNull();
+            assertThat(lyricAt(line, HOST_INDEX, VERSE)).isNull();
+        }
+
+        @Test
+        void testEveryVerseTransfersAndGetsItsOwnMelisma() {
+            var line = graceAndHostLine();
+            setSyllable(line, HOST_INDEX, VERSE, SYLLABLE);
+            setSyllable(line, HOST_INDEX, SECOND_VERSE, SECOND_VERSE_SYLLABLE);
+
+            connectByDragRight(line);
+
+            var firstVerseGraceLyric = requireLyric(line, GRACE_INDEX, VERSE);
+            assertThat(firstVerseGraceLyric.text()).isEqualTo(SYLLABLE);
+            assertThat(firstVerseGraceLyric.extend()).isEqualTo(Lyric.Extend.START);
+            assertThat(requireLyric(line, HOST_INDEX, VERSE).extend()).isEqualTo(Lyric.Extend.STOP);
+
+            var secondVerseGraceLyric = requireLyric(line, GRACE_INDEX, SECOND_VERSE);
+            assertThat(secondVerseGraceLyric.text()).isEqualTo(SECOND_VERSE_SYLLABLE);
+            assertThat(secondVerseGraceLyric.extend()).isEqualTo(Lyric.Extend.START);
+
+            var secondVerseHostLyric = requireLyric(line, HOST_INDEX, SECOND_VERSE);
+            assertThat(secondVerseHostLyric.extend()).isEqualTo(Lyric.Extend.STOP);
+            assertThat(secondVerseHostLyric.text()).isEmpty();
+        }
+
+        /** A line of [grace quaver, crotchet host] with distinct pitches and no glissando yet. */
+        private Line graceAndHostLine() {
+            var line = detachedLine();
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setStaffPosition(GRACE_STAFF_POSITION);
+            line.addElement(grace);
+            var host = ElementType.CROTCHET.newInstance();
+            host.setStaffPosition(HOST_STAFF_POSITION);
+            line.addElement(host);
+            return line;
+        }
+
+        /**
+         * Puts the manager in the mid-drag GRACE_NOTE state with pendingConnect set, then
+         * releases the mouse well to the right of the mouse-down point — the sequence
+         * mouseReleased routes to enterGraceNotePaired(connectNext = true).
+         */
+        private void connectByDragRight(Line line) {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var lineComponent = mock(LineComponent.class);
+
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
+            manager.setGraceNote(line.getElement(GRACE_INDEX));
+            setField(manager, "graceNoteIndex", GRACE_INDEX);
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(lineComponent);
+            setField(manager, "mouseDownPoint", new Point(MOUSE_DOWN_X, MOUSE_DOWN_Y));
+            setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
+            setField(manager, "pendingConnect", true);
+
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_RELEASED, RELEASE_X, MOUSE_DOWN_Y, MouseEvent.BUTTON1);
+            assertThat(manager.mouseReleased(lineComponent, e))
+                .as("the release must be consumed by grace mode")
+                .isTrue();
+        }
+
+        /** Writes a plain (no-melisma) syllable directly — detachedLine suspends tracking. */
+        private static void setSyllable(Line line, int index, int verse, String text) {
+            line.getElement(index).setLyricForVerse(verse, Lyric.Syllabic.SINGLE, false, text, Lyric.Extend.NONE);
+        }
+
+        private static @Nullable Lyric lyricAt(Line line, int index, int verse) {
+            return line.getElement(index).getLyricForVerse(verse);
+        }
+
+        /** {@link #lyricAt} for assertions that dereference the lyric — fails when there is none. */
+        private static Lyric requireLyric(Line line, int index, int verse) {
+            var lyric = lyricAt(line, index, verse);
+
+            if (lyric == null) {
+                throw new AssertionError("expected a verse " + verse + " lyric at index " + index);
+            }
+
+            return lyric;
         }
     }
 

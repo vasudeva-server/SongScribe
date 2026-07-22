@@ -592,8 +592,19 @@ public final class ScoreViewController {
             // hasSlideSelection() guarantees the element carries a slide; guard anyway
             // so the @Nullable getSlide() result is not passed on unchecked.
             if (slide != null) {
-                line.withModification(OpNames.deleteSlideLabel(slide), () -> line.modifyElement(
-                    elementIndex, ElementField.SLIDE, slideElement::removeSlide));
+                // Capture before the removal: stripping the glissando un-pairs the grace
+                // note, so by the time the sync runs there is no pairing left to read.
+                var wasPairedGraceNote = line.isPairedGraceNote(elementIndex);
+
+                line.withModification(OpNames.deleteSlideLabel(slide), () -> {
+                    line.modifyElement(elementIndex, ElementField.SLIDE, slideElement::removeSlide);
+
+                    // Un-pairing dissolves the automatic melisma. Both elements survive, so
+                    // the syllable simply stays on the now-ordinary former grace note.
+                    if (wasPairedGraceNote) {
+                        line.syncGraceHostMelisma(elementIndex);
+                    }
+                });
             }
         } else if (state != null && state.hasEndingSelection()) {
             var line = state.getLine();
@@ -994,7 +1005,20 @@ public final class ScoreViewController {
 
         // Adjust syllable relations and melisma extends before removing —
         // both methods require the element at xIndex to still be in the list.
+        // This must run before the hand-back below: it decides whether to break the
+        // predecessor's word by reading the deleted element's own lyric, which the
+        // transfer would have already moved away.
         line.adjustSyllablesForNeighborChange(firstDeletedIndex - 1, line.getElement(xIndex));
+
+        // Deleting a paired grace note on its own hands its syllable back to the host,
+        // which becomes an ordinary note again and is eligible to carry a lyric. Runs
+        // before adjustExtendsForDeletion so it sees the final lyric state: the transfer
+        // takes the melisma START off the grace and drops the host's STOP carrier, so
+        // there is no longer a chain to unwind.
+        if (line.isPairedGraceNote(xIndex)) {
+            line.transferLyrics(xIndex, xIndex + 1);
+        }
+
         line.adjustExtendsForDeletion(xIndex);
 
         // Remove the host note first (higher index), then the orphaned grace note.

@@ -1287,8 +1287,8 @@ class LineMutationTest extends UnitTest {
             var stop = makeExtendElement(Lyric.Extend.STOP);
             addExtendChain(start, stop);
             deleteAt(0);
-            // Deleting START kills the chain: [2.NONE]
-            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.NONE);
+            // Deleting START kills the chain, and its lone carrier goes with it
+            assertNoLyricForVerse(stop, VERSE);
         }
 
         @Test
@@ -1310,9 +1310,9 @@ class LineMutationTest extends UnitTest {
             var stop = makeExtendElement(Lyric.Extend.STOP);
             addExtendChain(start, continueElement, stop);
             deleteAt(0);
-            // Deleting START kills the chain: [2.NONE, 3.NONE]
-            assertThat(extendOf(continueElement)).isEqualTo(Lyric.Extend.NONE);
-            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.NONE);
+            // Deleting START kills the chain, and every carrier in it goes with it
+            assertNoLyricForVerse(continueElement, VERSE);
+            assertNoLyricForVerse(stop, VERSE);
         }
 
         @Test
@@ -1349,10 +1349,10 @@ class LineMutationTest extends UnitTest {
             var stop = makeExtendElement(Lyric.Extend.STOP);
             addExtendChain(start, firstContinue, secondContinue, stop);
             deleteAt(0);
-            // Deleting START kills the chain: [2.NONE, 3.NONE, 4.NONE]
-            assertThat(extendOf(firstContinue)).isEqualTo(Lyric.Extend.NONE);
-            assertThat(extendOf(secondContinue)).isEqualTo(Lyric.Extend.NONE);
-            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.NONE);
+            // Deleting START kills the chain, and every carrier in it goes with it
+            assertNoLyricForVerse(firstContinue, VERSE);
+            assertNoLyricForVerse(secondContinue, VERSE);
+            assertNoLyricForVerse(stop, VERSE);
         }
 
         @Test
@@ -1420,9 +1420,10 @@ class LineMutationTest extends UnitTest {
             var stop = makeExtendElement(Lyric.Extend.STOP);
             addExtendChain(start, stop);
             insertAt(1);
-            // START broken by insertion: predecessor cleared to NONE, forward chain cascade-cleared
+            // START broken by insertion: the text-bearing predecessor is cleared to NONE and
+            // keeps its syllable, while the forward chain's carriers are removed outright
             assertThat(extendOf(start)).isEqualTo(Lyric.Extend.NONE);
-            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.NONE);
+            assertNoLyricForVerse(stop, VERSE);
         }
 
         @Test
@@ -1432,10 +1433,11 @@ class LineMutationTest extends UnitTest {
             var stop = makeExtendElement(Lyric.Extend.STOP);
             addExtendChain(start, continueElement, stop);
             insertAt(2);
-            // CONTINUE promoted to STOP; forward chain cascade-cleared
+            // CONTINUE promoted to STOP — it still terminates a live chain, so it stays;
+            // the carrier past the new terminus is removed outright
             assertThat(extendOf(start)).isEqualTo(Lyric.Extend.START);
             assertThat(extendOf(continueElement)).isEqualTo(Lyric.Extend.STOP);
-            assertThat(extendOf(stop)).isEqualTo(Lyric.Extend.NONE);
+            assertNoLyricForVerse(stop, VERSE);
         }
 
         @Test
@@ -1490,9 +1492,95 @@ class LineMutationTest extends UnitTest {
             // Verse 1: START → NONE; verse 2: CONTINUE → STOP
             assertThat(predecessor.lyrics.get(0).extend()).isEqualTo(Lyric.Extend.NONE);
             assertThat(predecessor.lyrics.get(1).extend()).isEqualTo(Lyric.Extend.STOP);
-            // Forward chain for both verses cascade-cleared
-            assertThat(follower.lyrics.get(0).extend()).isEqualTo(Lyric.Extend.NONE);
-            assertThat(follower.lyrics.get(1).extend()).isEqualTo(Lyric.Extend.NONE);
+            // Forward chain for both verses severed, so both carriers are removed outright
+            assertNoLyricForVerse(follower, VERSE);
+            assertNoLyricForVerse(follower, verse2);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Grace-host melisma sync
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class GraceHostMelismaSync {
+
+        private static final int GRACE = 0;
+        private static final int HOST = 1;
+        private static final String SYLLABLE = "glo";
+
+        private StaffElement grace;
+        private StaffElement host;
+
+        @BeforeEach
+        void buildPairCarryingASyllable() {
+            grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setGlissando();
+            host = ElementType.CROTCHET.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(grace);
+                line.addElement(host);
+                line.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+                grace.setLyricForVerse(VERSE, Lyric.Syllabic.SINGLE, false, SYLLABLE, Lyric.Extend.NONE);
+            });
+        }
+
+        private List<ElementModification> lyricModifications(SongDidChangeNotification notification) {
+            return notification.getMutations().stream()
+                .filter(ElementModification.class::isInstance)
+                .map(ElementModification.class::cast)
+                .toList();
+        }
+
+        @Test
+        void testEstablishingTheMelismaEmitsLyricModificationsForBothElements() {
+            song.withModification(() -> line.syncGraceHostMelisma(GRACE));
+
+            var modifications = lyricModifications(captureSingleDidChange());
+            assertThat(modifications).hasSize(2);
+            assertThat(modifications.stream().map(ElementModification::index)).containsExactly(GRACE, HOST);
+            assertThat(modifications).allSatisfy(modification ->
+                assertThat(modification.fields()).containsExactly(ElementField.LYRIC));
+        }
+
+        @Test
+        void testResyncingAnEstablishedMelismaEmitsNothing() {
+            // Converge first without tracking, so the tracked call starts from the
+            // established state and has nothing left to change.
+            song.withoutMutationTracking(() -> line.syncGraceHostMelisma(GRACE));
+
+            song.withModification(() -> line.syncGraceHostMelisma(GRACE));
+
+            // An empty bracket posts no notification at all.
+            messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
+        }
+
+        @Test
+        void testTearingDownEmitsLyricModificationsForBothElements() {
+            song.withoutMutationTracking(() -> {
+                line.syncGraceHostMelisma(GRACE);
+                grace.removeSlide();
+            });
+
+            song.withModification(() -> line.syncGraceHostMelisma(GRACE));
+
+            var modifications = lyricModifications(captureSingleDidChange());
+            assertThat(modifications).hasSize(2);
+            assertThat(host.getLyricForVerse(VERSE)).isNull();
+        }
+
+        @Test
+        void testTransferEmitsLyricModificationsForBothElements() {
+            song.withoutMutationTracking(() -> line.removeLyricForVerse(GRACE, VERSE));
+            song.withoutMutationTracking(() ->
+                host.setLyricForVerse(VERSE, Lyric.Syllabic.SINGLE, false, SYLLABLE, Lyric.Extend.NONE));
+
+            song.withModification(() -> line.transferLyricForVerse(HOST, GRACE, VERSE));
+
+            var modifications = lyricModifications(captureSingleDidChange());
+            assertThat(modifications.stream().map(ElementModification::index)).containsExactly(GRACE, HOST);
         }
     }
 
@@ -2036,6 +2124,17 @@ class LineMutationTest extends UnitTest {
 
     private Lyric.Extend extendOf(StaffElement element) {
         return element.lyrics.getFirst().extend();
+    }
+
+    /**
+     * Asserts the verse's carrier was removed outright rather than cleared in place. A carrier
+     * has no text of its own, so clearing its extend would leave an empty lyric that still
+     * counts as lyric-bearing for lyric navigation.
+     */
+    private void assertNoLyricForVerse(StaffElement element, int verse) {
+        assertThat(element.getLyricForVerse(verse))
+            .as("severed carrier is removed, not left as an empty lyric")
+            .isNull();
     }
 
     private void addExtendChain(StaffElement... elements) {

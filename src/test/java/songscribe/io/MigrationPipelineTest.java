@@ -436,10 +436,13 @@ class MigrationPipelineTest extends UnitTest {
         assertThat(actualIds).isEqualTo(expectedIds);
     }
 
-    // Asserts that POST_ASSEMBLY registers exactly LEGACY_LYRICS then SYLLABIC_BACKFILL.
+    // Asserts that POST_ASSEMBLY registers exactly LEGACY_LYRICS, GRACE_HOST_MELISMA, then
+    // SYLLABIC_BACKFILL. The melisma repair moves syllables between elements, so it must land
+    // before the backfill, which reads the syllabic chain in element order.
     @Test
     void testPostAssemblyStageListIsComplete() {
-        var expectedIds = List.of(StageId.LEGACY_LYRICS, StageId.SYLLABIC_BACKFILL);
+        var expectedIds = List.of(
+            StageId.LEGACY_LYRICS, StageId.GRACE_HOST_MELISMA, StageId.SYLLABIC_BACKFILL);
         var actualIds = MigrationPipeline.POST_ASSEMBLY.stream()
             .map(SongMigration::id)
             .toList();

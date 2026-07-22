@@ -513,6 +513,53 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(song.isModified()).isTrue();
         }
 
+        // Row 1 of the pair-destruction trace: deleting a paired grace note's slide un-pairs
+        // it, which dissolves the automatic grace-host melisma. handleDelete must capture the
+        // pairing BEFORE removeSlide() strips the glissando — afterwards there is no pairing
+        // left to read, so the sync would never run and the melisma would survive its pair.
+        @Test
+        void testHandleDeleteSlideOnPairedGraceNoteTearsDownAutomaticMelisma() {
+            // [G(paired, "om" START), H(text-less STOP carrier)] — delete G's glissando.
+            var song = new Song();
+            var line = song.getLine(0);
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setGlissando();
+            grace.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "om", Lyric.Extend.START);
+            var host = crotchet();
+            host.setLyricForVerse(1, null, false, "", Lyric.Extend.STOP);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(grace);
+                line.addElement(host);
+            });
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectGlissando(coordinator, 0);
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            assertThat(grace.hasGlissando()).isFalse();
+
+            // The host's carrier must be REMOVED, not merely cleared to an empty lyric: an
+            // empty-lyric host is still a valid backward target for lyric navigation.
+            assertThat(host.getLyricForVerse(1)).isNull();
+
+            var graceLyric = grace.getLyricForVerse(1);
+
+            if (graceLyric == null) {
+                throw new AssertionError("the now-ordinary former grace note lost its syllable");
+            }
+
+            // Both elements survive the un-pairing, so the syllable simply stays put —
+            // only its melisma goes away.
+            assertThat(graceLyric.extend()).isEqualTo(Lyric.Extend.NONE);
+            assertThat(graceLyric.text()).isEqualTo("om");
+            assertThat(graceLyric.syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
         // Ending selection removes the ending from the line and is recorded as a mutation
         @Test
         void testHandleDeleteEndingSelectionRemovesEndingFromLine() {
@@ -1229,6 +1276,54 @@ class ScoreViewControllerTest extends UnitTest {
 
             assertThat(first.lyrics.getFirst().syllabic())
                 .isEqualTo(Lyric.Syllabic.BEGIN);
+        }
+
+        /**
+         * Decision 2 of the grace-host melisma design: deleting a paired grace note alone
+         * hands its syllable back to the host, which is an ordinary note again.
+         *
+         * <p>Guards the call ordering inside {@code deleteNote}:
+         * {@code adjustSyllablesForNeighborChange} must run BEFORE {@code transferLyrics},
+         * because it decides whether to break the predecessor's word by reading the deleted
+         * element's own lyric. Swap the two and the grace looks lyric-less by the time the
+         * syllabic chain is evaluated, so "won-" is wrongly demoted from BEGIN to SINGLE
+         * even though its word continues into the syllable now sitting on the host.
+         */
+        @Test
+        void testDeleteGraceNoteHandsSyllableToHostAndKeepsPredecessorWordOpen() {
+            // "won-der" split across [won(BEGIN), G(paired, "der" MIDDLE/START), H(STOP carrier)]
+            var predecessor = crotchet();
+            predecessor.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "won", Lyric.Extend.NONE);
+            var grace = pairedGraceNote();
+            grace.setLyricForVerse(1, Lyric.Syllabic.MIDDLE, false, "der", Lyric.Extend.START);
+            var host = crotchet();
+            host.setLyricForVerse(1, null, false, "", Lyric.Extend.STOP);
+            var line = lineWith(predecessor, grace, host);
+
+            var removed = ScoreViewController.deleteNote(1, line);
+
+            assertThat(removed).isEqualTo(1);
+            assertThat(line.elementCount()).isEqualTo(2);
+
+            var hostLyric = host.getLyricForVerse(1);
+
+            if (hostLyric == null) {
+                throw new AssertionError("the grace note's syllable was not handed back to the host");
+            }
+
+            assertThat(hostLyric.text()).isEqualTo("der");
+            assertThat(hostLyric.syllabic()).isEqualTo(Lyric.Syllabic.MIDDLE);
+            // The melisma dies with the pair — the syllable returns as an ordinary lyric.
+            assertThat(hostLyric.extend()).isEqualTo(Lyric.Extend.NONE);
+
+            var predecessorLyric = predecessor.getLyricForVerse(1);
+
+            if (predecessorLyric == null) {
+                throw new AssertionError("the predecessor's syllable was removed");
+            }
+
+            // The assertion that catches the ordering bug.
+            assertThat(predecessorLyric.syllabic()).isEqualTo(Lyric.Syllabic.BEGIN);
         }
 
         // -------------------------------------------------------------------
@@ -2110,25 +2205,22 @@ class ScoreViewControllerTest extends UnitTest {
             song.withModification(() -> controller.tryInsertFragment(line, 1, null));
 
             var startLyric = start.getLyricForVerse(1);
-            var continueLyric = continueEl.getLyricForVerse(1);
-            var stopLyric = stop.getLyricForVerse(1);
             assertThat(startLyric).isNotNull();
-            assertThat(continueLyric).isNotNull();
-            assertThat(stopLyric).isNotNull();
 
-            if (startLyric == null || continueLyric == null || stopLyric == null) {
+            if (startLyric == null) {
                 return; // unreachable — NullAway flow narrowing
             }
 
             assertThat(startLyric.extend()).as("severed predecessor's melisma is truncated")
                 .isEqualTo(Lyric.Extend.NONE);
-            assertThat(continueLyric.extend()).as("orphaned carrier cleared, not left dangling")
-                .isEqualTo(Lyric.Extend.NONE);
-            assertThat(continueLyric.syllabic()).as("orphaned carrier becomes a plain syllable")
-                .isEqualTo(Lyric.Syllabic.SINGLE);
-            assertThat(stopLyric.extend()).as("chain fully collapses past the severed head")
-                .isEqualTo(Lyric.Extend.NONE);
-            assertThat(stopLyric.syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(startLyric.text()).as("the severed head keeps its own syllable")
+                .isEqualTo("ah");
+            assertThat(continueEl.getLyricForVerse(1))
+                .as("orphaned carrier is removed, not left as an empty lyric")
+                .isNull();
+            assertThat(stop.getLyricForVerse(1))
+                .as("chain fully collapses past the severed head")
+                .isNull();
         }
 
         @Test

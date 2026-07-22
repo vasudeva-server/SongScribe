@@ -608,6 +608,11 @@ public final class MusicXmlReader extends DefaultHandler {
                         // non-terminal barline.
                         headerReader.applyHeadMetadata();
                         song.installTerminalAfterParsing();
+                        // Grace-host pairing is only settled once every <slide> has been
+                        // resolved, so the melisma repair runs here rather than per note. A
+                        // file written before the melisma was automatic may put the syllable
+                        // on the host, or leave the grace's syllable with no melisma at all.
+                        song.getLines().forEach(Line::repairGraceHostMelismas);
                         headerReader.applyInitialTempo();
                         song.endSuspendMutationTracking();
                     }

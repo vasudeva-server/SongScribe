@@ -849,6 +849,14 @@ public final class LyricEditor extends MyJTextField {
         if (!text.isEmpty() && !intent.wantsCarrier()) {
             line.setSyllableBoundary(index, CURRENT_VERSE, kind == CommitKind.WORD_FINAL, kind == CommitKind.WORD_CONTINUING_COMPOUND);
         }
+
+        // A syllable on a paired grace note implies a melisma across its host, so the
+        // extender follows the text: established by this commit, torn down when the text
+        // is deleted. Guarded on the pairing because the sync tears down the two-element
+        // chain at index/index + 1, which for an unpaired element is an ordinary melisma.
+        if (line.isPairedGraceNote(index)) {
+            line.syncGraceHostMelisma(index);
+        }
     }
 
     /**
@@ -1253,6 +1261,13 @@ public final class LyricEditor extends MyJTextField {
     void breakChainAtCurrentElement(int currentIndex) {
         terminatePrecedingContinueChain(currentIndex);
         clearForwardCarriers(currentIndex);
+
+        // When the current element is a paired grace note, the carrier cleared just above may
+        // have been its host's, which would leave the grace's own melisma without its STOP.
+        // The sync converges whichever state the clearing landed in.
+        if (line.isPairedGraceNote(currentIndex)) {
+            line.syncGraceHostMelisma(currentIndex);
+        }
     }
 
     private void rewriteLyricExtend(int index, Lyric existing, Lyric.Extend newExtend) {
