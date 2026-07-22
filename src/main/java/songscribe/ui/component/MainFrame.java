@@ -68,7 +68,6 @@ import songscribe.prefs.StartupAction;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SaveAction;
-import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.component.toolbar.MainToolbarPanel;
 import songscribe.ui.dialog.PlatformFileDialog;
@@ -506,8 +505,10 @@ public class MainFrame extends JFrame implements Printable {
         installDesktopHandlers();
         MenuController.init(this);
 
-        // When the application goes to the background, hide the insertion note
-        // and activate the glass pane so the reactivation click is consumed.
+        // When the application goes to the background, cancel any pending paste and activate
+        // the glass pane so the reactivation click is consumed. ActivationGate.activate() posts
+        // ApplicationDidEnterBackgroundNotification, which is what hides the insertion note —
+        // see PreviewElementManager.applicationDidEnterBackground.
         // Use the Desktop API on macOS, fall back to WindowListener elsewhere.
         var usingDesktopApi = false;
 
@@ -523,7 +524,7 @@ public class MainFrame extends JFrame implements Printable {
 
                     @Override
                     public void appMovedToBackground(AppForegroundEvent e) {
-                        hidePreviewNote();
+                        cancelPendingPaste();
                         ActivationGate.activate();
                     }
                 });
@@ -540,7 +541,7 @@ public class MainFrame extends JFrame implements Printable {
 
                 @Override
                 public void windowDeactivated(WindowEvent e) {
-                    hidePreviewNote();
+                    cancelPendingPaste();
                     ActivationGate.activate();
                 }
             });
@@ -549,10 +550,9 @@ public class MainFrame extends JFrame implements Printable {
         setFrameSize();
     }
 
-    private void hidePreviewNote() {
-        PreviewElementManager.hidePreviewElement(true);
-        // Backgrounding the app cancels a pending paste — both background paths
-        // (Desktop appMovedToBackground and the windowDeactivated fallback) call here.
+    // Backgrounding the app cancels a pending paste — both background paths
+    // (Desktop appMovedToBackground and the windowDeactivated fallback) call here.
+    private void cancelPendingPaste() {
         EditModeManager.getPasteModeManager().cancel();
     }
 

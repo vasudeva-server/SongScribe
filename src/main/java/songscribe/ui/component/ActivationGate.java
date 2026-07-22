@@ -26,6 +26,10 @@ import java.awt.event.MouseEvent;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.ApplicationDidBecomeActiveNotification;
+import songscribe.message.notification.ApplicationDidEnterBackgroundNotification;
+
 /**
  * Suppresses the mouse click that brings the application window to the foreground.
  * <p>
@@ -33,6 +37,12 @@ import org.jspecify.annotations.Nullable;
  * to the background. The glass pane intercepts and consumes the first mouse press,
  * then deactivates itself. For keyboard-based activation (e.g., Cmd+Tab), a timer
  * deactivates the glass pane after a short delay.
+ * <p>
+ * Also the source of {@link ApplicationDidEnterBackgroundNotification} and
+ * {@link ApplicationDidBecomeActiveNotification}: {@link #activate()} and {@link #deactivate()}
+ * are the two ends of the background/foreground transition, so posting from here — rather than
+ * from every {@code MainFrame} call site that triggers them — gives every listener one source of
+ * truth for when the app actually entered the background and when it is actually usable again.
  */
 public final class ActivationGate {
     private static final int CMD_TAB_DELAY_MS = 300;
@@ -72,6 +82,8 @@ public final class ActivationGate {
         if (glassPane != null) {
             glassPane.setVisible(true);
         }
+
+        MessageCenter.post(new ApplicationDidEnterBackgroundNotification());
     }
 
     /**
@@ -93,5 +105,7 @@ public final class ActivationGate {
         if (glassPane != null) {
             glassPane.setVisible(false);
         }
+
+        MessageCenter.post(new ApplicationDidBecomeActiveNotification());
     }
 }

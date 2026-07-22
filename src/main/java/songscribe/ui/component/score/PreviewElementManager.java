@@ -54,6 +54,8 @@ import songscribe.layout.LineEndingSupport;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.ScaleContext;
+import songscribe.message.notification.ApplicationDidBecomeActiveNotification;
+import songscribe.message.notification.ApplicationDidEnterBackgroundNotification;
 import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PasteModeDidChangeNotification;
@@ -223,14 +225,36 @@ public final class PreviewElementManager {
     }
 
     /**
+     * Hides the preview element when the application moves to the background. Mirrors
+     * {@link #clearPreviewElement} for the mouse-leaves-the-line case: nothing in the background
+     * is tracking the pointer, so nothing should still claim an insertion position.
+     */
+    @Handler
+    public void applicationDidEnterBackground(ApplicationDidEnterBackgroundNotification message) {
+        hidePreviewElement(true);
+    }
+
+    /**
+     * Re-derives the tracked insertion position and restores the preview element once the
+     * application is genuinely usable again — see
+     * {@link ApplicationDidBecomeActiveNotification}'s Javadoc for why this is later than raw
+     * window activation and why the mouse position has to be re-resolved rather than assumed
+     * unchanged.
+     */
+    @Handler
+    public void applicationDidBecomeActive(ApplicationDidBecomeActiveNotification message) {
+        retargetMouseLineAndRestorePreviewElement();
+    }
+
+    /**
      * Re-resolves {@link #currentMouseLine} against the mouse's current screen position and
-     * re-derives the preview element's position from it — for any external change (zoom,
-     * dialog dismissal) after which the mouse may now be over different document content
-     * without ever having fired a real AWT mouse event of its own.
+     * re-derives the preview element's position from it — for any external change (zoom, dialog
+     * dismissal, application activation) after which the mouse may now be over different
+     * document content without ever having fired a real AWT mouse event of its own.
      */
     private static void retargetMouseLineAndRestorePreviewElement() {
         var previousLine = currentMouseLine;
-        currentMouseLine = retargetMouseLine(previousLine);
+        currentMouseLine = retargetMouseLine();
 
         if (currentMouseLine == null) {
             if (previousLine != null) {
@@ -244,8 +268,13 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Finds the {@link LineComponent} (if any) the mouse is currently over, given only a
-     * previously-tracked line to recover the owning {@link ScoreView} from.
+     * Finds the {@link LineComponent} (if any) the mouse is currently over, resolving the
+     * {@link ScoreView} from {@link MainFrame} rather than from {@link #currentMouseLine} — the
+     * whole point of this method is to recover from cases where the mouse may be somewhere
+     * unexpected, and {@code currentMouseLine} is exactly the state that can no longer be
+     * trusted. In particular, backgrounding the application delivers a native mouse-exited event
+     * to whatever line the pointer was over, clearing {@code currentMouseLine} to null before
+     * the app is ever reactivated — a self-referential lookup through it would always fail.
      * <p>
      * Cannot use {@link SwingUtilities#getDeepestComponentAt} from the score view downward: a
      * visible overlay (e.g. the hover preview itself) is a sibling of every {@code
@@ -254,12 +283,13 @@ public final class PreviewElementManager {
      * never reach the line underneath it. Testing each line's own bounds sidesteps overlay
      * z-order entirely.
      */
-    private static @Nullable LineComponent retargetMouseLine(@Nullable LineComponent previousLine) {
-        if (previousLine == null) {
+    private static @Nullable LineComponent retargetMouseLine() {
+        var scoreView = MainFrame.getInstance().getScoreView();
+
+        if (scoreView == null) {
             return null;
         }
 
-        var scoreView = previousLine.getScoreView();
         var mousePos = scoreView.getMousePosition();
 
         if (mousePos == null) {
