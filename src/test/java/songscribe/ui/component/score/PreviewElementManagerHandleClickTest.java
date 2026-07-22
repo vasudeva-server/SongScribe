@@ -357,8 +357,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
         /**
          * Clicking a breath mark over an existing element must neither replace nor insert:
          * a breath mark never replaces an element, and being over one is a blocked position,
-         * so the click only shows the alert and leaves the line intact. The alert call is
-         * verified through a static mock so that removing it would fail the test.
+         * so the click leaves the line intact.
          */
         @Test
         void testBreathMarkOverExistingElementDoesNotReplaceOrInsert() {
@@ -370,12 +369,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
 
             var countBefore = line.effectiveElementCount();
 
-            try (MockedStatic<OptionDialogs> optionDialogsMock = mockStatic(OptionDialogs.class)) {
-                PreviewElementManager.handleClick(lc);
-
-                optionDialogsMock.verify(() -> OptionDialogs.showErrorMessage(
-                    isNull(), eq(Strings.ALERT_TITLE_BREATH_MARK), eq(Strings.ALERT_BREATH_MARK_POSITION)));
-            }
+            PreviewElementManager.handleClick(lc);
 
             assertThat(line.effectiveElementCount())
                 .as("blocked position: no element inserted or removed")

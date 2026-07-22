@@ -808,7 +808,6 @@ public final class PreviewElementManager {
         }
 
         if (isBreathMarkInsertionBlocked(previewElement, currentXIndex, line, xPosSsMatchesElement)) {
-            OptionDialogs.showErrorMessage(null, Strings.ALERT_TITLE_BREATH_MARK, Strings.ALERT_BREATH_MARK_POSITION);
             return;
         }
 
