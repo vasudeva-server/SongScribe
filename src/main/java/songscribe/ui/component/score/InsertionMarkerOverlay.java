@@ -123,13 +123,17 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
     }
 
     /**
-     * Draws the marker as a single rounded line, reusing {@link #getInkBoundsSs()} rather than
-     * recomputing the insertion x independently, so the drawn geometry can never disagree with
-     * the bounds it was sized to.
+     * Draws the marker as a single rounded line, reusing the bounds this overlay was sized to
+     * rather than recomputing the insertion x independently, so the drawn geometry can never
+     * disagree with them.
+     * <p>
+     * Reads the base class's cached rectangle rather than calling {@link #getInkBoundsSs()}:
+     * that would re-run {@code calculateInsertionXSs} and allocate a probe element on every
+     * paint, and the cache is guaranteed current here.
      */
     @Override
     protected void renderOverlay(Graphics2D g2) {
-        var boundsSs = getInkBoundsSs();
+        var boundsSs = getLastInkBoundsSs();
 
         if (boundsSs == null) {
             return;

@@ -354,6 +354,24 @@ class PasteModeManagerTest extends UnitTest {
             pasteModeManager.setActive(true);
         }
 
+        /**
+         * The marker is constructed and added to the host in {@code PasteModeManager}'s
+         * constructor rather than lazily on activation, and a fresh Swing {@code JComponent}
+         * defaults to visible — so "hidden while paste mode is off" is a real claim about
+         * {@code mouseMoved}'s inactive early-return, not something Swing gives for free. Every
+         * other test in this class asserts visibility only after {@code setActive(true)}.
+         */
+        @Test
+        void testMouseMovedLeavesMarkerHiddenWhilePasteModeIsInactive() {
+            pasteModeManager.setActive(false);
+
+            pasteModeManager.mouseMoved(lineComponent, mouseMovedEvent(lineComponent, insideContentXPx()));
+
+            assertThat(pasteModeManager.getInsertionMarkerOverlay().isVisible())
+                .as("the insertion marker must stay hidden while paste mode is inactive")
+                .isFalse();
+        }
+
         @Test
         void testUpdateTargetShowsMarkerWithRealBounds() {
             pasteModeManager.mouseMoved(lineComponent, mouseMovedEvent(lineComponent, insideContentXPx()));

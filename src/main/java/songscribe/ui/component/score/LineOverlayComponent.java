@@ -97,6 +97,14 @@ public abstract class LineOverlayComponent extends JComponent {
         this.host = host;
         setOpaque(false);
 
+        // Swing defaults a fresh component to visible, but an overlay has no target and no
+        // bounds until something sets one — and updateHostCursor() reads isVisible() across the
+        // host's children, so a never-targeted overlay that still claims to be visible would
+        // suppress the system cursor over the whole score on another overlay's behalf. Nothing
+        // paints either way (the bounds are 0x0); this keeps the flag honest rather than relying
+        // on the first validation pass to correct it.
+        setVisible(false);
+
         // The overlay itself is topmost under the pointer whenever it is visible, so its own
         // cursor must be hidden permanently: the host-level toggle below only covers the line
         // beneath, and Swing shows the cursor of the deepest component under the pointer
@@ -172,6 +180,19 @@ public abstract class LineOverlayComponent extends JComponent {
         targetLine = line;
         forgetCachedGeometry();
         updateBounds();
+    }
+
+    /**
+     * The ink rectangle this overlay's current bounds were computed from, in line-relative staff
+     * spaces, or null while it is hidden.
+     * <p>
+     * Current whenever {@link #renderOverlay(Graphics2D)} runs: the overlay is only made visible
+     * after a successful recompute, and any change to the ink goes through
+     * {@link #inkDidChange()}. A subclass whose drawn geometry is derivable from its bounds
+     * reads it here rather than calling {@link #getInkBoundsSs()} a second time per paint.
+     */
+    protected final @Nullable Rectangle2D getLastInkBoundsSs() {
+        return lastInkBoundsSs;
     }
 
     /**
@@ -320,9 +341,15 @@ public abstract class LineOverlayComponent extends JComponent {
     private void hideOverlay() {
         forgetCachedGeometry();
 
-        if (isVisible()) {
-            setVisible(false);
+        // Already hidden means the host cursor already reflects this overlay's absence, and
+        // recomputing it would walk the host's children for nothing. The host's validateTree()
+        // calls updateBounds() on every overlay whenever any one of them moves, so the
+        // inactive ones land here on every pass.
+        if (!isVisible()) {
+            return;
         }
+
+        setVisible(false);
 
         // After setVisible, never before: the recompute reads this overlay's own visibility.
         updateHostCursor();
@@ -352,8 +379,11 @@ public abstract class LineOverlayComponent extends JComponent {
         var hostComponent = host.getHostComponent();
         var hideCursor = false;
 
-        for (var child : hostComponent.getComponents()) {
-            if (child instanceof LineOverlayComponent overlay
+        // Indexed rather than getComponents(), which returns a defensive copy: this runs on
+        // every overlay show/hide, and the same traversal is used by the host's own bounds
+        // refresh, so both read the hierarchy the same way.
+        for (var i = 0; i < hostComponent.getComponentCount(); i++) {
+            if (hostComponent.getComponent(i) instanceof LineOverlayComponent overlay
                 && overlay.isVisible()
                 && overlay.hidesCursorWhenVisible()) {
                 hideCursor = true;

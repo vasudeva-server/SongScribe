@@ -88,8 +88,9 @@ public final class RecordingGraphics2D extends Graphics2D {
      * <p>
      * That makes fractional metrics load-bearing. With them off, glyph positions round to whole
      * font units, and a unit here is a quarter of a staff space ({@link BravuraFont#SIZE_SS} is
-     * 4.0 for a one-staff-space em) — so the rounding is coarse in score terms, and the zoom
-     * transform applied at replay magnifies it into visible stair-stepping. {@link GraphicUtils#SCREEN_FRC}
+     * {@value BravuraFont#SIZE_SS} for a one-staff-space em) — so the rounding is coarse in score
+     * terms, and the zoom transform applied at replay magnifies it into visible stair-stepping.
+     * {@link GraphicUtils#SCREEN_FRC}
      * is built from a graphics carrying {@link GraphicUtils#setRenderingHints}, which is also what
      * {@code LineOverlayComponent.paintComponent} applies at replay — so recording and replay
      * agree by construction rather than by two constants happening to match.
@@ -492,7 +493,7 @@ public final class RecordingGraphics2D extends Graphics2D {
             return;
         }
 
-        Shape imageRect = new Rectangle2D.Double(0, 0, image.getWidth(), image.getHeight());
+        var imageRect = new Rectangle2D.Double(0, 0, image.getWidth(), image.getHeight());
         recordFill(transform == null ? imageRect : transform.createTransformedShape(imageRect));
     }
 
@@ -502,7 +503,7 @@ public final class RecordingGraphics2D extends Graphics2D {
             return;
         }
 
-        Shape imageRect = new Rectangle2D.Double(0, 0, image.getWidth(), image.getHeight());
+        var imageRect = new Rectangle2D.Double(0, 0, image.getWidth(), image.getHeight());
         recordFill(transform == null ? imageRect : transform.createTransformedShape(imageRect));
     }
 

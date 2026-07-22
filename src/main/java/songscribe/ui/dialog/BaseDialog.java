@@ -487,11 +487,15 @@ public abstract class BaseDialog {
             try {
                 dialog.setVisible(true);
             } catch (Exception e) {
+                // Dispose before decrementing, for the same reason as the close path below:
+                // decrementBlockingCount() posts DialogVisibilityDidChangeNotification(false),
+                // which handlers read as "the dialog window is gone".
+                dialog.dispose();
+
                 if (category.isBlocking()) {
                     decrementBlockingCount();
                 }
 
-                dialog.dispose();
                 throw e;
             }
         } else {

@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 import java.awt.event.MouseEvent;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
@@ -296,7 +297,9 @@ public final class PreviewElementManager {
             return null;
         }
 
-        for (var lineIndex = 0; lineIndex < scoreView.getSong().lineCount(); lineIndex++) {
+        var lineCount = scoreView.getSong().lineCount();
+
+        for (var lineIndex = 0; lineIndex < lineCount; lineIndex++) {
             var lineComponent = scoreView.getLineComponent(lineIndex);
 
             if (lineComponent == null) {
@@ -332,17 +335,13 @@ public final class PreviewElementManager {
      * retargeted.
      */
     public static void installOverlay(OverlayHost host) {
-        var previewOverlay = new PreviewElementOverlay(host);
-        host.addOverlay(previewOverlay);
-        overlay = previewOverlay;
+        overlay = new PreviewElementOverlay(host);
+        fallOverlay = new FallPreviewOverlay(host);
+        glissandoOverlay = new GlissandoPreviewOverlay(host);
 
-        var fallPreviewOverlay = new FallPreviewOverlay(host);
-        host.addOverlay(fallPreviewOverlay);
-        fallOverlay = fallPreviewOverlay;
-
-        var glissandoPreviewOverlay = new GlissandoPreviewOverlay(host);
-        host.addOverlay(glissandoPreviewOverlay);
-        glissandoOverlay = glissandoPreviewOverlay;
+        for (var installed : installedOverlays()) {
+            host.addOverlay(installed);
+        }
     }
 
     /**
@@ -354,17 +353,22 @@ public final class PreviewElementManager {
      * caller having to know which one currently applies.
      */
     public static void previewElementDidChange() {
-        if (overlay != null) {
-            overlay.previewDidChange(currentPreviewLine);
+        for (var installed : installedOverlays()) {
+            installed.previewDidChange(currentPreviewLine);
+        }
+    }
+
+    /**
+     * The installed overlays, or an empty list before {@link #installOverlay} (headless
+     * converters never install any). All three are created and cleared together, so the
+     * all-or-nothing check covers each of them.
+     */
+    private static List<RecordedInkOverlay> installedOverlays() {
+        if (overlay == null || fallOverlay == null || glissandoOverlay == null) {
+            return List.of();
         }
 
-        if (fallOverlay != null) {
-            fallOverlay.previewDidChange(currentPreviewLine);
-        }
-
-        if (glissandoOverlay != null) {
-            glissandoOverlay.previewDidChange(currentPreviewLine);
-        }
+        return List.of(overlay, fallOverlay, glissandoOverlay);
     }
 
     /**
@@ -454,9 +458,8 @@ public final class PreviewElementManager {
      * {@code lc}. {@link SlidePreviewOverlay}'s two subclasses each call this with their own
      * zone, so at most one is ever visible.
      * <p>
-     * The single home for "is this slide preview visible": the conditions mirror those in
-     * {@link LineRenderer#renderPreviewElement} (the slide branch), but the underlying
-     * predicates live here, on the manager, so the components call rather than re-assemble them.
+     * The single home for "is this slide preview visible". The predicates live here, on the
+     * manager, so the overlays call rather than re-assemble them.
      */
     static boolean shouldShowSlidePreviewOn(LineComponent lc, SlideZone zone) {
         if (currentPreviewLine != lc) {
@@ -649,9 +652,9 @@ public final class PreviewElementManager {
      * caller can reuse it across every element on a line instead of re-resolving per element.
      * <p>
      * Returns {@link SlidePreviewNotes#NONE} when no slide preview is being shown. The
-     * conditions mirror those in {@link LineRenderer#renderPreviewElement}: the highlight is only
-     * shown when the preview slide itself is drawn, which excludes the case where the source
-     * note already carries this slide type.
+     * conditions mirror those in {@link #shouldShowSlidePreviewOn}: the highlight is only shown
+     * when the preview slide itself is drawn, which excludes the case where the source note
+     * already carries this slide type.
      */
     public static SlidePreviewNotes getSlidePreviewNotes() {
         if (!shouldShowSlidePreview() || currentPreviewLine == null) {

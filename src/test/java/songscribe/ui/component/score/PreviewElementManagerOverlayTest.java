@@ -245,7 +245,9 @@ class PreviewElementManagerOverlayTest extends UnitTest {
             throw new AssertionError("expected installOverlay to install a non-null overlay");
         }
 
-        assertThat(overlay.isVisible()).isTrue();
+        assertThat(overlay.isVisible())
+            .as("precondition: the preview overlay must be visible before the change under test")
+            .isTrue();
 
         PreviewElementManager.trackMouse(lc, mouseEvent(0, ON_STAFF_Y_PX, true));
 
@@ -287,7 +289,9 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         assertThat(overlay.getTargetLine())
             .as("hovering a different line re-anchors the overlay to it")
             .isSameAs(otherLc);
-        assertThat(overlay.isVisible()).isTrue();
+        assertThat(overlay.isVisible())
+            .as("precondition: the preview overlay must be visible before the change under test")
+            .isTrue();
     }
 
     @Test
@@ -366,7 +370,9 @@ class PreviewElementManagerOverlayTest extends UnitTest {
             throw new AssertionError("expected installOverlay to install a non-null overlay");
         }
 
-        assertThat(overlay.isVisible()).isTrue();
+        assertThat(overlay.isVisible())
+            .as("precondition: the preview overlay must be visible before the change under test")
+            .isTrue();
 
         var toSelect = mock(ModeDidChangeNotification.class);
         when(toSelect.getMode()).thenReturn(Mode.SELECT);
@@ -400,7 +406,9 @@ class PreviewElementManagerOverlayTest extends UnitTest {
             throw new AssertionError("expected installOverlay to install a non-null overlay");
         }
 
-        assertThat(overlay.isVisible()).isTrue();
+        assertThat(overlay.isVisible())
+            .as("precondition: the preview overlay must be visible before the change under test")
+            .isTrue();
 
         playbackMock.when(PlaybackController::isPlaying).thenReturn(true);
         PreviewElementManager.instance().playbackStateDidChange(mock(PlaybackStateDidChangeNotification.class));
@@ -432,7 +440,9 @@ class PreviewElementManagerOverlayTest extends UnitTest {
             throw new AssertionError("expected installOverlay to install a non-null overlay");
         }
 
-        assertThat(overlay.isVisible()).isTrue();
+        assertThat(overlay.isVisible())
+            .as("precondition: the preview overlay must be visible before the change under test")
+            .isTrue();
 
         PreviewElementManager.instance().pasteModeDidChange(new PasteModeDidChangeNotification(true));
 

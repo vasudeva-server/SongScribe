@@ -21,6 +21,7 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -43,6 +44,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.message.MessageCenter;
+import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.LineOverlayComponent;
 import songscribe.ui.component.score.MainPanel;
@@ -348,6 +350,122 @@ class ScoreViewOverlayHostingTest extends UnitTest {
             assertThat(boundsAfter.y)
                 .as("the overlay must have followed its target line down when the title above it grew")
                 .isGreaterThan(boundsBefore.y);
+        }
+
+        /**
+         * The set of overlays to refresh is derived from this view's children, not from a list
+         * maintained by {@code addOverlay}/{@code removeOverlay} — so an overlay detached by any
+         * route, including a bare {@link Container#remove} that bypasses {@code removeOverlay},
+         * stops being visited. A maintained list would keep a stale entry here and go on
+         * refreshing a component that is no longer in the hierarchy.
+         */
+        @Test
+        void testOverlayDetachedByABareRemoveIsNoLongerRefreshed() {
+            final int firstLineHeightPx = 40;
+            final int firstLineGrownHeightPx = 90;
+            final int targetLineHeightPx = 30;
+            final int stackWidthPx = 300;
+            final int stackHeightPx = 300;
+
+            var scoreView = newScoreView();
+
+            var stack = new JPanel();
+            var stackLayout = new StackLayout();
+            stack.setLayout(stackLayout);
+
+            var firstLine = new LineComponent();
+            var targetLine = new LineComponent();
+            stack.add(firstLine);
+            stack.add(targetLine);
+            stackLayout.setHeightPx(firstLine, firstLineHeightPx);
+            stackLayout.setHeightPx(targetLine, targetLineHeightPx);
+
+            scoreView.add(stack, BorderLayout.CENTER);
+            stack.setBounds(0, 0, stackWidthPx, stackHeightPx);
+
+            var overlay = new FixedInkOverlay(scoreView, FIXED_INK_SS);
+            scoreView.addOverlay(overlay);
+            overlay.setTargetLine(targetLine);
+
+            runValidateTree(scoreView);
+            var boundsWhileAttached = overlay.getBounds();
+
+            // Deliberately not removeOverlay(): the point is that the bypass route is safe too.
+            scoreView.remove(overlay);
+
+            stackLayout.setHeightPx(firstLine, firstLineGrownHeightPx);
+            runValidateTree(scoreView);
+
+            assertThat(overlay.getBounds())
+                .as("a detached overlay must not be refreshed when its former target moves")
+                .isEqualTo(boundsWhileAttached);
+        }
+    }
+
+    @Nested
+    class OverlayHostContract {
+
+        /**
+         * {@link OverlayHost}'s class doc requires every implementor to report {@code false}
+         * here, because overlays are free-floating siblings whose bounds intersect the lines
+         * beneath them. A {@code true} answer lets Swing skip repainting what an overlay
+         * covers, so the ink underneath it would go stale with no other visible symptom —
+         * cheap to revert accidentally, and nothing else in the suite would notice.
+         */
+        @Test
+        void testScoreViewReportsUnoptimizedDrawingSoOverlappingChildrenAlwaysRepaint() {
+            assertThat(newScoreView().isOptimizedDrawingEnabled())
+                .as("an OverlayHost must report false from isOptimizedDrawingEnabled()")
+                .isFalse();
+        }
+    }
+
+    @Nested
+    class ZoomRefreshHook {
+
+        private static final Rectangle2D FIXED_INK_SS = new Rectangle2D.Double(0, 0, 4, 2);
+
+        /**
+         * A zoom change repositions and resizes an overlay that is already visible, without
+         * waiting for a validation pass or a mouse move.
+         * <p>
+         * Asserts the geometric consequence rather than the pixel formula: the ink is a fixed
+         * rectangle in staff spaces, so doubling the zoom must roughly double the overlay's
+         * pixel width. The tolerance absorbs the outward floor/ceil rounding and the constant
+         * 1px pad on each side, both of which are the subject of their own test elsewhere.
+         */
+        @Test
+        void testVisibleOverlayResizesWhenTheZoomChanges() {
+            final int initialZoomPercent = 100;
+            final int zoomedPercent = 200;
+            final int lineWidthPx = 500;
+            final int lineHeightPx = 100;
+            final int roundingTolerancePx = 4;
+
+            var scoreView = newScoreView();
+            scoreView.getViewScale().setZoomPercent(initialZoomPercent);
+
+            var targetLine = new LineComponent();
+            targetLine.setScoreView(scoreView);
+            scoreView.add(targetLine, BorderLayout.CENTER);
+            targetLine.setBounds(0, 0, lineWidthPx, lineHeightPx);
+
+            var overlay = new FixedInkOverlay(scoreView, FIXED_INK_SS);
+            scoreView.addOverlay(overlay);
+            overlay.setTargetLine(targetLine);
+
+            assertThat(overlay.isVisible())
+                .as("precondition: the overlay must be visible before the zoom changes")
+                .isTrue();
+            var widthBefore = overlay.getWidth();
+
+            scoreView.getViewScale().setZoomPercent(zoomedPercent);
+            scoreView.zoomDidChangeRefreshOverlayBounds(
+                new ZoomDidChangeNotification(initialZoomPercent, zoomedPercent, null));
+
+            assertThat(overlay.getWidth())
+                .as("doubling the zoom must roughly double the width of fixed staff-space ink")
+                .isCloseTo(widthBefore * 2, within(roundingTolerancePx));
         }
     }
 }

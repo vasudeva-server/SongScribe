@@ -26,9 +26,7 @@ import com.formdev.flatlaf.util.SystemInfo;
 
 import java.awt.event.MouseEvent;
 import java.io.File;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import songscribe.error.RuntimeError;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -246,10 +244,6 @@ public final class ScoreView
     // The currently-open lyric editor overlay, if any. Set by LyricEditor.openOn /
     // dismiss so getActiveLyricEditor() doesn't have to scan getComponents() per paint.
     @Nullable private LyricEditor activeLyricEditor;
-
-    // The line overlays currently hosted by this view. Registered by addOverlay so
-    // validateTree() can refresh their bounds without scanning getComponents().
-    private final List<LineOverlayComponent> lineOverlays = new ArrayList<>();
 
     // Maps each registered KeyStroke to its action key so bindings can be toggled.
     // Package-private so tests can inject synthetic bindings directly.
@@ -1208,9 +1202,7 @@ public final class ScoreView
      */
     @Handler
     public void zoomDidChangeRefreshOverlayBounds(ZoomDidChangeNotification message) {
-        for (var overlay : lineOverlays) {
-            overlay.updateBounds();
-        }
+        forEachLineOverlay(LineOverlayComponent::updateBounds);
     }
 
     /**
@@ -1545,21 +1537,12 @@ public final class ScoreView
         // immediately below it and above everything else.
         var occupiedByEditor = activeLyricEditor != null && activeLyricEditor != overlay;
         setComponentZOrder(overlay, occupiedByEditor ? LYRIC_EDITOR_Z_ORDER + 1 : LYRIC_EDITOR_Z_ORDER);
-
-        if (overlay instanceof LineOverlayComponent lineOverlay && !lineOverlays.contains(lineOverlay)) {
-            lineOverlays.add(lineOverlay);
-        }
     }
 
     @Override
     public void removeOverlay(JComponent overlay) {
         var boundsPx = overlay.getBounds();
         remove(overlay);
-
-        if (overlay instanceof LineOverlayComponent lineOverlay) {
-            lineOverlays.remove(lineOverlay);
-        }
-
         repaint(boundsPx);
     }
 
@@ -1586,9 +1569,7 @@ public final class ScoreView
     protected void validateTree() {
         super.validateTree();
 
-        for (var overlay : lineOverlays) {
-            overlay.updateBounds();
-        }
+        forEachLineOverlay(LineOverlayComponent::updateBounds);
     }
 
     /**
@@ -1600,9 +1581,27 @@ public final class ScoreView
      * and stay hidden until the pointer moved.
      */
     private void retargetOverlays() {
-        for (var overlay : lineOverlays) {
+        forEachLineOverlay(overlay -> {
+            // retarget() ends in inkDidChange(), which recomputes the bounds itself.
             overlay.retarget();
-            overlay.updateBounds();
+        });
+    }
+
+    /**
+     * Applies {@code action} to every {@link LineOverlayComponent} currently parented to this
+     * view.
+     * <p>
+     * Derived from the children rather than from a list maintained by
+     * {@link #addOverlay}/{@link #removeOverlay}, so it cannot disagree with the component
+     * hierarchy — an overlay removed by any route simply stops being visited. Indexes rather
+     * than {@link Container#getComponents()} because that returns a defensive copy, and this
+     * runs from {@link #validateTree()} on every layout pass.
+     */
+    private void forEachLineOverlay(Consumer<LineOverlayComponent> action) {
+        for (var i = 0; i < getComponentCount(); i++) {
+            if (getComponent(i) instanceof LineOverlayComponent overlay) {
+                action.accept(overlay);
+            }
         }
     }
 

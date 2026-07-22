@@ -52,19 +52,7 @@ import songscribe.util.GraphicsState;
  * positioned in the target line's own coordinate space — both endpoints are resolved note
  * positions, not a floating mouse-relative origin — so no translate is applied at paint time.
  */
-public abstract class SlidePreviewOverlay extends LineOverlayComponent {
-
-    /**
-     * Reused across rebuilds: recording allocates neither the scratch image nor its delegate, and
-     * the glyph-vector cache inside survives {@link RecordingGraphics2D#reset()}.
-     */
-    private final RecordingGraphics2D recorder = new RecordingGraphics2D();
-
-    /** The ink the renderer last produced, in the target line's own coordinate space. */
-    private DisplayList displayList = DisplayList.EMPTY;
-
-    /** True when {@link #displayList} no longer describes the current slide-preview state. */
-    private boolean displayListIsStale = true;
+public abstract class SlidePreviewOverlay extends RecordedInkOverlay {
 
     protected SlidePreviewOverlay(OverlayHost host) {
         super(host);
@@ -81,32 +69,6 @@ public abstract class SlidePreviewOverlay extends LineOverlayComponent {
     protected abstract void recordSlide(
         Graphics2D g2, Line domLine, int sourceIndex, LineInvariants invariants);
 
-    /**
-     * Rebuilds this overlay's ink from the current tracking state and re-anchors it to
-     * {@code line}, or hides it when {@code line} is null. Call whenever the slide-preview state
-     * — the tracked line, index, or zone — may have changed; unlike the note-head preview, a
-     * slide preview's endpoints are resolved note positions rather than a continuously-tracked
-     * mouse position, so every state change is a full rebuild rather than a mere translate.
-     */
-    void previewDidChange(@Nullable LineComponent line) {
-        displayListIsStale = true;
-        setTargetLine(line);
-        inkDidChange();
-    }
-
-    @Override
-    public void retarget() {
-        // The line components were recreated, so both the target and the recorded ink refer to a
-        // layout that no longer exists.
-        displayListIsStale = true;
-        setTargetLine(PreviewElementManager.getCurrentInsertionLine());
-
-        // Not merely setTargetLine: when the manager still points at the same component the
-        // setter returns early, and the unchanged-position early-out in updateBounds would then
-        // keep the ink recorded against the discarded layout.
-        inkDidChange();
-    }
-
     @Override
     protected @Nullable Rectangle2D getInkBoundsSs() {
         var line = getTargetLine();
@@ -116,23 +78,30 @@ public abstract class SlidePreviewOverlay extends LineOverlayComponent {
         }
 
         var domLine = line.getLine();
-        var invariants = line.previewInvariants();
 
-        if (domLine == null || invariants == null) {
+        // getLayoutResult() rather than previewInvariants(): the latter is null under exactly
+        // this condition but builds a full LineInvariants otherwise, which is wasted whenever
+        // the recorded ink is still current.
+        if (domLine == null || line.getLayoutResult() == null) {
             return null;
         }
 
-        if (displayListIsStale) {
+        if (inkIsStale()) {
+            var invariants = line.previewInvariants();
+
+            if (invariants == null) {
+                return null;
+            }
+
             var sourceIndex = PreviewElementManager.getCurrentXIndex() - 1;
 
             recorder.reset();
             GraphicUtils.setRenderingHints(recorder);
             recordSlide(recorder, domLine, sourceIndex, invariants);
-            displayList = recorder.displayList();
-            displayListIsStale = false;
+            setDisplayList(recorder.displayList());
         }
 
-        return displayList.inkBoundsSs();
+        return getDisplayListInkSs();
     }
 
     @Override
@@ -141,7 +110,7 @@ public abstract class SlidePreviewOverlay extends LineOverlayComponent {
             // The renderer deliberately never sets a color, so the recorded ink is monochrome and
             // the preview color is applied once, here.
             g2.setColor(ScoreView.getPreviewElementColor());
-            displayList.replay(g2);
+            replayInk(g2);
         }
     }
 }

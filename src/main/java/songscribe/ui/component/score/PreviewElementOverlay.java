@@ -63,19 +63,7 @@ import songscribe.util.GraphicsState;
  * preview components draw for it instead. {@link PreviewElementManager#shouldShowPreviewOn}
  * therefore reports this overlay as hidden for a placeholder.
  */
-public final class PreviewElementOverlay extends LineOverlayComponent {
-
-    /**
-     * Reused across rebuilds: recording allocates neither the scratch image nor its delegate, and
-     * the glyph-vector cache inside survives {@link RecordingGraphics2D#reset()}.
-     */
-    private final RecordingGraphics2D recorder = new RecordingGraphics2D();
-
-    /** The ink the renderers last produced, relative to the preview element's own origin. */
-    private DisplayList displayList = DisplayList.EMPTY;
-
-    /** True when {@link #displayList} no longer describes the current preview configuration. */
-    private boolean displayListIsStale = true;
+public final class PreviewElementOverlay extends RecordedInkOverlay {
 
     /**
      * The preview element's X in the target line's staff spaces. Position rather than ink: it is
@@ -96,33 +84,10 @@ public final class PreviewElementOverlay extends LineOverlayComponent {
         // A different line means different invariants (middle-line Y, layout, grace state), so
         // the ink has to be re-recorded even though the caller only saw a move.
         if (line != getTargetLine()) {
-            displayListIsStale = true;
+            markInkStale();
         }
 
         setTargetLine(line);
-        inkDidChange();
-    }
-
-    /**
-     * Rebuilds the preview's ink from the current state and re-anchors it to {@code line}, or
-     * hides it when {@code line} is null. Use whenever anything the renderers read has changed.
-     */
-    void previewDidChange(@Nullable LineComponent line) {
-        displayListIsStale = true;
-        setTargetLine(line);
-        inkDidChange();
-    }
-
-    @Override
-    public void retarget() {
-        // The line components were recreated, so both the target and the recorded ink refer to a
-        // layout that no longer exists.
-        displayListIsStale = true;
-        setTargetLine(PreviewElementManager.getCurrentInsertionLine());
-
-        // Not merely setTargetLine: when the manager still points at the same component the
-        // setter returns early, and the unchanged-position early-out in updateBounds would then
-        // keep the ink recorded against the discarded layout.
         inkDidChange();
     }
 
@@ -147,12 +112,11 @@ public final class PreviewElementOverlay extends LineOverlayComponent {
 
         elementXSs = calculateElementXSs(line, previewElement);
 
-        if (displayListIsStale) {
-            displayList = recordPreviewElement(line, previewElement);
-            displayListIsStale = false;
+        if (inkIsStale()) {
+            setDisplayList(recordPreviewElement(line, previewElement));
         }
 
-        var inkSs = displayList.inkBoundsSs();
+        var inkSs = getDisplayListInkSs();
 
         if (inkSs == null) {
             return null;
@@ -169,7 +133,7 @@ public final class PreviewElementOverlay extends LineOverlayComponent {
             // and the preview color is applied once, here.
             g2.setColor(ScoreView.getPreviewElementColor());
             g2.translate(elementXSs, 0);
-            displayList.replay(g2);
+            replayInk(g2);
         }
     }
 
