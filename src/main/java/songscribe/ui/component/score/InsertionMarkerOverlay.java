@@ -44,8 +44,12 @@ import songscribe.util.GraphicsState;
  */
 public final class InsertionMarkerOverlay extends LineOverlayComponent {
 
-    /** Thickness of the paste-mode insertion-point marker, in staff spaces. */
-    private static final double INSERTION_POINT_THICKNESS_SS = 0.25;
+    /**
+     * Thickness of the paste-mode insertion-point marker, in staff spaces. Package-private so
+     * {@code InsertionMarkerOverlayTest} can compute expected bounds without duplicating the
+     * literal.
+     */
+    static final double INSERTION_POINT_THICKNESS_SS = 0.25;
 
     /**
      * The tracked insertion index (0 to elementCount inclusive), or -1 when nothing is tracked.

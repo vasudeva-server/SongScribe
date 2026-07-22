@@ -184,6 +184,11 @@ public final class PasteModeManager {
         instance = value;
     }
 
+    /** Returns the insertion-point marker overlay. Package-private: test support only. */
+    InsertionMarkerOverlay getInsertionMarkerOverlay() {
+        return insertionMarkerOverlay;
+    }
+
     // -------------------------------------------------------------------------
     // Lifecycle
     // -------------------------------------------------------------------------

@@ -24,6 +24,7 @@ import java.awt.event.MouseEvent;
 import java.util.function.Supplier;
 
 import javax.swing.JLayeredPane;
+import javax.swing.JPanel;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -35,6 +36,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
 import songscribe.dom.Line;
+import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.layout.HorizontalSpacingCalculator;
@@ -52,6 +54,7 @@ import songscribe.ui.component.score.LineComponent;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
@@ -85,6 +88,16 @@ class PasteModeManagerTest extends UnitTest {
     private ScoreView scoreView;
     private PasteModeManager pasteModeManager;
 
+    /**
+     * A real, unrealized {@link OverlayHost} component for the insertion marker: enough for
+     * {@code SwingUtilities.isDescendingFrom}/{@code convertPoint} (both just walk the parent
+     * chain) without a visible window. Stubbed as {@code scoreView}'s host unconditionally —
+     * every {@code updateTarget}/{@code clearTarget} call recomputes the marker's bounds via
+     * {@code LineOverlayComponent.updateHostCursor}, which dereferences the host component
+     * directly, so an unstubbed (null) host NPEs even in tests that never look at the marker.
+     */
+    private JPanel overlayHost;
+
     @BeforeEach
     void setUp() {
         // A real layered pane (not a mock) so tests can observe the overlay component and
@@ -97,6 +110,8 @@ class PasteModeManagerTest extends UnitTest {
 
         clipboardManager = mock(ClipboardManager.class);
         scoreView = mock(ScoreView.class);
+        overlayHost = new JPanel();
+        when(scoreView.getHostComponent()).thenReturn(overlayHost);
         pasteModeManager = new PasteModeManager(clipboardManager, scoreView);
     }
 
@@ -309,6 +324,102 @@ class PasteModeManagerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // InsertionMarkerOverlay — driven by updateTarget (via mouseMoved), clearTarget, and exit
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class InsertionMarkerOverlayTransitions {
+
+        private static final double FIRST_INSERTION_X_SS = 5.0;
+        private static final double SECOND_INSERTION_X_SS = 15.0;
+
+        private Line line;
+        private LayoutResult layoutResult;
+        private LineComponent lineComponent;
+
+        @BeforeEach
+        void setUp() {
+            line = lineStub();
+            layoutResult = mock(LayoutResult.class);
+            when(layoutResult.findInsertionIndex(anyDouble(), eq(line))).thenReturn(FIRST_INSERTION_INDEX);
+            when(layoutResult.calculateInsertionXSs(anyInt(), anyDouble(), any(), eq(line), eq(true)))
+                .thenReturn(FIRST_INSERTION_X_SS, SECOND_INSERTION_X_SS);
+
+            lineComponent = lineComponentFor(line, layoutResult);
+            // A real descendant of the stubbed overlay host, so LineOverlayComponent's
+            // isDescendingFrom/convertPoint bounds computation actually resolves to real bounds
+            // instead of the always-hidden fallback.
+            when(lineComponent.getParent()).thenReturn(overlayHost);
+
+            pasteModeManager.setActive(true);
+        }
+
+        @Test
+        void testUpdateTargetShowsMarkerWithRealBounds() {
+            pasteModeManager.mouseMoved(lineComponent, mouseMovedEvent(lineComponent, insideContentXPx()));
+
+            var overlay = pasteModeManager.getInsertionMarkerOverlay();
+
+            assertThat(overlay.isVisible())
+                .as("updateTarget must show the marker once a target is tracked")
+                .isTrue();
+            assertThat(overlay.getBounds().width)
+                .as("the marker has a real, non-empty width once shown")
+                .isPositive();
+            assertThat(overlay.getBounds().height)
+                .as("the marker has a real, non-empty height once shown")
+                .isPositive();
+        }
+
+        @Test
+        void testUpdateTargetIndexChangeRepositionsWithoutResizing() {
+            pasteModeManager.mouseMoved(lineComponent, mouseMovedEvent(lineComponent, insideContentXPx()));
+            var overlay = pasteModeManager.getInsertionMarkerOverlay();
+            var boundsBefore = overlay.getBounds();
+
+            when(layoutResult.findInsertionIndex(anyDouble(), eq(line))).thenReturn(SECOND_INSERTION_INDEX);
+            pasteModeManager.mouseMoved(lineComponent, mouseMovedEvent(lineComponent, insideContentXPx()));
+            var boundsAfter = overlay.getBounds();
+
+            assertThat(boundsAfter.x)
+                .as("a different insertion index moves the marker horizontally")
+                .isNotEqualTo(boundsBefore.x);
+            assertThat(boundsAfter.width)
+                .as("the marker's height is identical on every line, so a reposition must not resize it")
+                .isEqualTo(boundsBefore.width);
+            assertThat(boundsAfter.height)
+                .as("a reposition must not resize the marker")
+                .isEqualTo(boundsBefore.height);
+        }
+
+        @Test
+        void testClearTargetHidesMarker() {
+            pasteModeManager.mouseMoved(lineComponent, mouseMovedEvent(lineComponent, insideContentXPx()));
+            var overlay = pasteModeManager.getInsertionMarkerOverlay();
+            assertThat(overlay.isVisible()).isTrue();
+
+            pasteModeManager.mouseMoved(lineComponent, mouseMovedEvent(lineComponent, leftOfHeaderXPx()));
+
+            assertThat(overlay.isVisible())
+                .as("moving outside the content span clears the target and hides the marker")
+                .isFalse();
+        }
+
+        @Test
+        void testExitHidesMarker() {
+            pasteModeManager.mouseMoved(lineComponent, mouseMovedEvent(lineComponent, insideContentXPx()));
+            var overlay = pasteModeManager.getInsertionMarkerOverlay();
+            assertThat(overlay.isVisible()).isTrue();
+
+            pasteModeManager.cancel();
+
+            assertThat(overlay.isVisible())
+                .as("exit() must hide the marker via clearTarget()")
+                .isFalse();
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // place() no-op preconditions: not active, or active with no tracked target
     // -------------------------------------------------------------------------
 
@@ -459,6 +570,12 @@ class PasteModeManagerTest extends UnitTest {
         when(lineComponent.getScoreView()).thenReturn(lineScoreView);
         when(lineComponent.getLine()).thenReturn(line);
         when(lineComponent.getLayoutResult()).thenReturn(layoutResult);
+        // Unrelated to PasteModeManager's own math (which goes through getScoreView().getViewScale()
+        // above), but LineOverlayComponent.updateBounds() reads this directly to convert the
+        // insertion marker's ink from staff spaces to pixels; left unstubbed it is Mockito's
+        // double default (0), which floors every computed bound to the same pixel regardless of
+        // the underlying staff-space position.
+        when(lineComponent.getViewPixelsPerStaffSpace()).thenReturn(ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE);
         return lineComponent;
     }
 

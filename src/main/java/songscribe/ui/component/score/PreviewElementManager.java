@@ -770,6 +770,35 @@ public final class PreviewElementManager {
         pendingTempoPrompt = null;
     }
 
+    /**
+     * Returns the message-bus singleton (package-private for test support only), so tests can
+     * invoke its {@code @Handler} methods directly without posting through the mocked bus.
+     */
+    static PreviewElementManager instance() {
+        return INSTANCE;
+    }
+
+    /** Returns the installed hover-preview overlay, or null before {@link #installOverlay}. */
+    static @Nullable PreviewElementOverlay getOverlay() {
+        return overlay;
+    }
+
+    /** Returns the installed fall-preview overlay, or null before {@link #installOverlay}. */
+    static @Nullable FallPreviewOverlay getFallOverlay() {
+        return fallOverlay;
+    }
+
+    /**
+     * Clears the installed overlays (package-private for test teardown), so a later test's
+     * {@link #installOverlay} starts from a clean slate instead of reusing a previous test's
+     * overlay instances.
+     */
+    static void resetOverlaysForTest() {
+        overlay = null;
+        fallOverlay = null;
+        glissandoOverlay = null;
+    }
+
     // ==========================================================================
     // Private Helpers
     // ==========================================================================
