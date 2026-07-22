@@ -74,6 +74,11 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
         }
     }
 
+    @Override
+    protected boolean hidesCursorWhenVisible() {
+        return true;
+    }
+
     /**
      * The marker's extent: vertically every staff position a note could occupy (including
      * ledger-line room), horizontally the insertion x — a crotchet stands in for the extents

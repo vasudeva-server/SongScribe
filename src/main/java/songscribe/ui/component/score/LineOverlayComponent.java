@@ -25,6 +25,7 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.util.GraphicUtils;
+import songscribe.util.UIUtils;
 
 /**
  * Base class for the overlays that belong to a line but cannot be drawn by it — the hover
@@ -95,6 +96,14 @@ public abstract class LineOverlayComponent extends JComponent {
     protected LineOverlayComponent(OverlayHost host) {
         this.host = host;
         setOpaque(false);
+
+        // The overlay itself is topmost under the pointer whenever it is visible, so its own
+        // cursor must be hidden permanently: the host-level toggle below only covers the line
+        // beneath, and Swing shows the cursor of the deepest component under the pointer
+        // regardless of whether that component has mouse listeners.
+        if (hidesCursorWhenVisible()) {
+            setCursor(UIUtils.HIDDEN_CURSOR);
+        }
     }
 
     /**
@@ -126,6 +135,10 @@ public abstract class LineOverlayComponent extends JComponent {
         }
 
         host.removeOverlay(this);
+
+        // Recompute against the host being left before adopting the new one, so the old host
+        // stops suppressing the cursor on this overlay's behalf.
+        updateHostCursor();
         host = newHost;
         forgetCachedGeometry();
         newHost.addOverlay(this);
@@ -164,6 +177,19 @@ public abstract class LineOverlayComponent extends JComponent {
      * {@link #paintComponent(Graphics)}; implementations must not re-apply the zoom factor.
      */
     protected abstract void renderOverlay(Graphics2D g2);
+
+    /**
+     * Whether this overlay suppresses the system cursor on its target line while visible.
+     * <p>
+     * The hover preview and the paste-mode insertion marker both draw exactly where the system
+     * arrow would otherwise sit, obscuring the ink they exist to show; the marker itself is the
+     * position indicator, so the arrow is redundant clutter on top of it. Overridden by the
+     * overlays for which that applies — false by default, since it is not true of every overlay
+     * (the slide previews, for instance, draw to one side of the cursor rather than under it).
+     */
+    protected boolean hidesCursorWhenVisible() {
+        return false;
+    }
 
     /**
      * Re-resolves this overlay's target from its owning manager's current state.
@@ -229,6 +255,7 @@ public abstract class LineOverlayComponent extends JComponent {
 
         setBounds(leftPx, topPx, rightPx - leftPx, bottomPx - topPx);
         setVisible(true);
+        updateHostCursor();
     }
 
     /**
@@ -283,6 +310,45 @@ public abstract class LineOverlayComponent extends JComponent {
         if (isVisible()) {
             setVisible(false);
         }
+
+        // After setVisible, never before: the recompute reads this overlay's own visibility.
+        updateHostCursor();
+    }
+
+    /**
+     * Recomputes {@code hostComponent}'s cursor from the overlays currently parented to it,
+     * suppressing the system cursor while any visible one opts in via
+     * {@link #hidesCursorWhenVisible()}.
+     * <p>
+     * The host, not the target line, is the right place: it is the shared ancestor of both the
+     * line and this overlay, so hiding the cursor there covers the line underneath as well as
+     * the overlay's own ink (which additionally carries a permanent hidden cursor of its own —
+     * see the constructor).
+     * <p>
+     * Derived from the children on every call rather than tracked in a per-overlay flag because
+     * a host is shared: in paste mode the insertion marker and the hover preview both suppress
+     * the cursor on the same {@code ScoreView}, so whichever hides second would otherwise
+     * restore the cursor out from under the one still showing, and its own flag would say the
+     * cursor was already hidden and never re-apply it.
+     * <p>
+     * Clears to null rather than to {@link Cursor#getDefaultCursor()} so the host keeps
+     * inheriting from its own ancestors; planting an explicit default is what breaks
+     * inheritance for everything underneath.
+     */
+    private void updateHostCursor() {
+        var hostComponent = host.getHostComponent();
+        var hideCursor = false;
+
+        for (var child : hostComponent.getComponents()) {
+            if (child instanceof LineOverlayComponent overlay
+                && overlay.isVisible()
+                && overlay.hidesCursorWhenVisible()) {
+                hideCursor = true;
+                break;
+            }
+        }
+
+        hostComponent.setCursor(hideCursor ? UIUtils.HIDDEN_CURSOR : null);
     }
 
     private void forgetCachedGeometry() {

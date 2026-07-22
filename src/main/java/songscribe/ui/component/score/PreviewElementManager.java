@@ -1277,7 +1277,6 @@ public final class PreviewElementManager {
      */
     static void mouseExitedLine(LineComponent lc) {
         currentMouseLine = null;
-        lc.setCursor(Cursor.getDefaultCursor());
 
         // Clear preview element when mouse leaves this line
         if (currentPreviewLine == lc) {

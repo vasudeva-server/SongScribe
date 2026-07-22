@@ -710,7 +710,6 @@ public class LineComponent extends ScoreComponent
 
         if (getScoreView().getMode() == Mode.EDIT && hitTestLyric(e.getPoint()) != null) {
             clearPreviewElement();
-            setCursor(Cursor.getDefaultCursor());
             return;
         }
 

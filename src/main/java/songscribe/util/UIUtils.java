@@ -58,6 +58,14 @@ public final class UIUtils {
         ? InputEvent.CTRL_DOWN_MASK
         : Toolkit.getDefaultToolkit().getMenuShortcutKeyMaskEx();
 
+    /** A fully transparent 1x1 cursor, for suppressing the system cursor over a component. */
+    public static final @Nullable Cursor HIDDEN_CURSOR = GraphicsEnvironment.isHeadless()
+        ? null
+        : Toolkit.getDefaultToolkit().createCustomCursor(
+            new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB),
+            new Point(),
+            "hidden-cursor");
+
     private static final Dimension LABEL_SPACER = new Dimension(5, 5);
 
     static final int SCREEN_MARGIN_PX = 20;

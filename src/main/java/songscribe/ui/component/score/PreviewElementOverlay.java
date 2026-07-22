@@ -127,6 +127,11 @@ public final class PreviewElementOverlay extends LineOverlayComponent {
     }
 
     @Override
+    protected boolean hidesCursorWhenVisible() {
+        return true;
+    }
+
+    @Override
     protected @Nullable Rectangle2D getInkBoundsSs() {
         var line = getTargetLine();
 

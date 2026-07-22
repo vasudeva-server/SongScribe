@@ -446,7 +446,7 @@ public final class GraceModeManager {
             return false;
         }
 
-        hidePreviewAndSetDefaultCursor(lineComponent);
+        PreviewElementManager.hidePreviewElement(false);
         return true;
     }
 
@@ -459,7 +459,7 @@ public final class GraceModeManager {
             return false;
         }
 
-        hidePreviewAndSetDefaultCursor(lineComponent);
+        PreviewElementManager.hidePreviewElement(false);
 
         var wasPendingCancel = pendingCancel;
         var wasPendingConnect = pendingConnect;
@@ -889,10 +889,5 @@ public final class GraceModeManager {
         var nextIndex = graceNoteIndex + 1;
         return nextIndex < graceLine.elementCount()
             && graceLine.getElement(nextIndex).getType().isPitchedNote();
-    }
-
-    private void hidePreviewAndSetDefaultCursor(LineComponent lineComponent) {
-        PreviewElementManager.hidePreviewElement(false);
-        lineComponent.setCursor(Cursor.getDefaultCursor());
     }
 }
