@@ -838,12 +838,31 @@ class LineRenderer {
         // rather than relying on the transform to do it, unlike Ss-space engraved lines.
         var factor = lc.getViewScale().factor();
         var arcPx = SELECTION_RECT_ARC_PX * factor;
+        var strokeWidthPx = SELECTION_RECT_STROKE_WIDTH_PX * factor;
+        var halfStrokeWidthPx = strokeWidthPx / 2;
+
+        // The stroke is centered on the rectangle's path, so it extends halfStrokeWidthPx
+        // beyond each edge. Swing clips painting at the line's own bounds, so a drag that
+        // reaches the top or bottom of the line (see issue #643) would otherwise have its
+        // border cut off there. Keep the drawn path inset by that half-width so the full
+        // stroke always lands inside the line.
+        var minX = halfStrokeWidthPx;
+        var minY = halfStrokeWidthPx;
+        var maxX = lc.getWidth() - 1 - halfStrokeWidthPx;
+        var maxY = lc.getHeight() - 1 - halfStrokeWidthPx;
+
+        var left = Math.max(dragRectangle.x, minX);
+        var top = Math.max(dragRectangle.y, minY);
+        var right = Math.min(dragRectangle.x + dragRectangle.width, maxX);
+        var bottom = Math.min(dragRectangle.y + dragRectangle.height, maxY);
+
         var roundRect = new RoundRectangle2D.Double(
-                dragRectangle.x, dragRectangle.y,
-                dragRectangle.width, dragRectangle.height,
+                left, top,
+                Math.max(0, right - left), Math.max(0, bottom - top),
                 arcPx, arcPx);
+
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.STROKE, GraphicsState.Property.COLOR)) {
-            g2.setStroke(new BasicStroke((float) (SELECTION_RECT_STROKE_WIDTH_PX * factor)));
+            g2.setStroke(new BasicStroke((float) strokeWidthPx));
             g2.setColor(ScoreView.getSelectionColor());
             g2.draw(roundRect);
         }
