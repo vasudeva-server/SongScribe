@@ -106,7 +106,7 @@ public final class Song {
      * gap's ideal spacing is derived. Matches the legacy default column gap; a song may override it
      * to loosen or tighten the whole score proportionally (#330).
      */
-    public static final double DEFAULT_REST_LENGTH_SS = 2.5;
+    public static final double DEFAULT_REST_LENGTH_SS = 2.0;
     /**
      * Lower clamp for {@link #defaultRestLengthSs}: no rest is ever derived from a line rest tighter
      * than this. Tunable first cut.
