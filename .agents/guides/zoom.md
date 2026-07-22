@@ -47,21 +47,23 @@ Font   zoomedFont(Font base)  scales a font's point size by factor(); identity s
 ```
                  ZoomController (static, stateless orchestrator)
                         │ zoomIn/out/reset/setZoomPercent
-                        │   → reads active view; no-op when null
+                        │   → reads active view's current percent; no-op when
+                        │     no active view or the percent is unchanged
                         ▼
-            MainFrame.<singleton>.getScoreView() ──► ScoreView
-                                                      │ owns viewScale : ViewScale   ◄── SOLE SOURCE OF TRUTH
-                                                      │ applyZoomPercent(newPercent):
-                                                      │   capture anchor → viewScale.setZoomPercent
-                                                      │   → layoutPage → invalidate tree → scrollPane.validate()
-                                                      │   → computeAnchoredViewPosition → setViewPosition
-                                                      │   → active LyricEditor.refreshFont()+recomputeBounds()
-                                                      │   → repaint
-     ┌────────────────────────────────────────────────┼───────────────────────────────────┐
-     │ direct + synchronous (above)                    │ bus: ZoomDidChangeNotification(old,new)
-     ▼                                                 ▼                                    ▼
- score tree + LyricEditor                     ZoomAction enabled-state            ZoomStatusBarPanel
- read viewScale ON DEMAND:                    (below MAX / above MIN)             (percent text, check marks)
+        MessageCenter.post(ZoomDidChangeNotification(old, new, anchor))
+                        │
+     ┌──────────────────┼──────────────────────────────────────────────────┐
+     │ @Handler(priority = HIGH_PRIORITY)                                  │ @Handler (default priority)
+     ▼                                                                     ▼
+ ScoreView.zoomDidChangeApplyZoom                          ZoomAction enabled-state, ZoomStatusBarPanel,
+   → applyZoomPercent(newPercent, anchor):                 ScoreView.zoomDidChangeRefreshOverlayBounds,
+       capture anchor → viewScale.setZoomPercent           LyricEditor.zoomDidChange (if active)
+       → layoutPage → invalidate tree → scrollPane.validate()
+       → computeAnchoredViewPosition → setViewPosition
+       → repaint
+                        │
+                        ▼
+          score tree reads viewScale ON DEMAND:
    ScoreComponent.getViewScale() =
      scoreView != null ? scoreView.getViewScale() : ViewScale.IDENTITY
    ├─ LineComponent          — has scoreView backref (set in LinePanel ctor)
@@ -71,7 +73,7 @@ Font   zoomedFont(Font base)  scales a font's point size by factor(); identity s
    detached previews (SongSettingsDialog) — no scoreView → IDENTITY (natural size)
 ```
 
-`ScoreView.viewScale` is the **sole source of truth** for a view's zoom. `ZoomController` is a static, stateless orchestrator — it holds no zoom state of its own; it resolves the active `ScoreView` via the `MainFrame` singleton accessor and no-ops when there is none. `ZoomDidChangeNotification` on the message bus exists only for loosely-coupled observers (`ZoomAction` enabled-state, `ZoomStatusBarPanel`) — the score tree and the `LyricEditor` overlay are driven directly and synchronously by `ScoreView.applyZoomPercent`, not through the bus.
+`ScoreView.viewScale` is the **sole source of truth** for a view's zoom. `ZoomController` is a static, stateless orchestrator — it holds no zoom state of its own; it resolves the active `ScoreView` via the `MainFrame` singleton accessor and no-ops when there is none. It never calls `ScoreView` directly: every reactor to a zoom change — applying it, the status bar, action enablement, the active `LyricEditor`, overlay bounds — is a `@Handler` of the single `ZoomDidChangeNotification` `ZoomController` posts, sequenced by priority rather than split across direct calls and the bus. `ScoreView.zoomDidChangeApplyZoom` is the one handler that actually performs the change, at `Message.HIGH_PRIORITY`; **any new listener to `ZoomDidChangeNotification` MUST use a handler priority strictly less than `Message.HIGH_PRIORITY`** (a bare `@Handler`, priority 0, satisfies this) so it always observes the zoom as already applied — see the priority requirement documented on `ZoomDidChangeNotification` itself.
 
 ## Read-on-demand channel, not field propagation
 

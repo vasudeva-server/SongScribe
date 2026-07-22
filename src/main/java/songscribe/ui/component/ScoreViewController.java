@@ -73,6 +73,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.clipboard.Fragment;
 import songscribe.ui.clipboard.PasteSpanReconciliation;
 import songscribe.ui.edit.EditModeManager;
@@ -168,6 +169,10 @@ public final class ScoreViewController {
         if (previewElement != null) {
             EditModeManager.decorateElement(previewElement);
             MessageCenter.post(new PreviewElementDidChangeNotification(previewElement));
+
+            // Decorations (accidental, dots, articulations) change the ink the preview overlay
+            // has cached, so it has to re-record rather than merely repaint.
+            PreviewElementManager.previewElementDidChange();
             score.repaint();
         } else {
             score.setPreviewElement(EditModeManager.makePreviewElement());

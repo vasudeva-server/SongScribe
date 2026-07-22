@@ -37,10 +37,14 @@ import songscribe.ui.component.ScoreView;
  * class holds no zoom state: the {@link ScoreView}'s {@code ViewScale} is the
  * sole source of truth and level stepping is done with pure functions. Each
  * mutator resolves the active {@code ScoreView} via
- * {@link MainFrame#getInstance()}{@code .getScoreView()} and no-ops silently when
- * there is none. When the percent actually changes it drives the view directly
- * through {@link ScoreView#applyZoomPercent(int, Point)} and then posts a
- * {@link ZoomDidChangeNotification} for loosely-coupled observers.
+ * {@link MainFrame#getInstance()}{@code .getScoreView()} to read its current
+ * percent and no-ops silently when there is none. When the percent actually
+ * changes, this class does not apply it directly — it posts a
+ * {@link ZoomDidChangeNotification} carrying the requested percent and anchor;
+ * {@code ScoreView} applies the change itself from a high-priority handler of
+ * that message (see {@code ScoreView.zoomDidChangeApplyZoom}), so every
+ * reactor — the score tree included — goes through the same single message
+ * rather than a mix of direct calls and bus notifications.
  * <p>
  * All mutators are EDT-only by contract; they perform no locking. Callers must
  * invoke them on the AWT event-dispatch thread.
@@ -204,10 +208,10 @@ public final class ZoomController {
     }
 
     /**
-     * Applies {@code newZoomPercent} to the active {@link ScoreView}, anchored
-     * around {@code viewAnchorPoint} (or the viewport center when null), and posts
-     * a {@link ZoomDidChangeNotification}. No-ops silently when there is no active
-     * view, or when the percent is unchanged.
+     * Posts a {@link ZoomDidChangeNotification} requesting {@code newZoomPercent} on the
+     * active {@link ScoreView}, anchored around {@code viewAnchorPoint} (or the viewport
+     * center when null). No-ops silently when there is no active view, or when the percent
+     * is unchanged. Does not apply the zoom itself — see {@link ZoomDidChangeNotification}.
      */
     private static void applyZoom(int newZoomPercent, @Nullable Point viewAnchorPoint) {
         var scoreView = MainFrame.getInstance().getScoreView();
@@ -222,7 +226,6 @@ public final class ZoomController {
             return;
         }
 
-        scoreView.applyZoomPercent(newZoomPercent, viewAnchorPoint);
-        MessageCenter.post(new ZoomDidChangeNotification(oldZoomPercent, newZoomPercent));
+        MessageCenter.post(new ZoomDidChangeNotification(oldZoomPercent, newZoomPercent, viewAnchorPoint));
     }
 }

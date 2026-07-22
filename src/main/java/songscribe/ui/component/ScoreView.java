@@ -26,7 +26,9 @@ import com.formdev.flatlaf.util.SystemInfo;
 
 import java.awt.event.MouseEvent;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import songscribe.error.RuntimeError;
 import java.util.Map;
 import java.util.function.Consumer;
@@ -35,6 +37,8 @@ import org.jspecify.annotations.Nullable;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import net.engio.mbassy.listener.Handler;
 
 import songscribe.FileExtensions;
 import songscribe.Strings;
@@ -46,6 +50,7 @@ import songscribe.export.ImageExporter;
 import songscribe.export.SVGExporter;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongFileLoader;
+import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.dom.DocPx;
 import songscribe.dom.Song;
@@ -57,6 +62,7 @@ import songscribe.ui.MusicEditOperations;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.FlatLafKey;
@@ -71,7 +77,9 @@ import songscribe.ui.adjustment.HorizontalAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.component.score.LineOverlayPainter;
+import songscribe.ui.component.score.LineOverlayComponent;
+import songscribe.ui.component.score.OverlayHost;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.component.score.StaffPanel;
@@ -103,9 +111,14 @@ import songscribe.ui.selection.SelectionCoordinator;
  *   └── ScorePanel [GridBagLayout, gray background]
  *       └── ScoreView [BorderLayout, white background, full page size]
  *           │  EmptyBorder: top/bottom = 0.5", left/right = horizontal margin
+ *           ├── LyricEditor            (absolute bounds, topmost; only while editing a lyric)
+ *           ├── LineOverlayComponent × N (absolute bounds, above the score, below the editor)
  *           └── MainPanel [BoxLayout Y_AXIS, CENTER]
  *               ├── TitleComponent
- *               ├── StaffPanel
+ *               ├── SubtitleComponent
+ *               ├── ScoreMarginStrut
+ *               ├── StaffPanel [StaffLinesLayout]
+ *               │   └── LinePanel × N
  *               ├── TextPanel
  *               └── FootnotesComponent
  * </pre>
@@ -118,10 +131,18 @@ public final class ScoreView
     DocumentFontsHolder,
     InputHandlerCallback,
     LineComponent.SelectionProvider,
+    OverlayHost,
     RenderContext,
     ScoreActions {
 
     private static final Logger LOG = LoggerFactory.getLogger(ScoreView.class);
+
+    /**
+     * Z-order index of the active lyric editor: the topmost child of this view. Overlays
+     * registered through {@link #addOverlay} sit directly beneath it — see that method's
+     * z-order contract.
+     */
+    public static final int LYRIC_EDITOR_Z_ORDER = 0;
 
     private static final String DISABLED_KEY_BINDING = "none";
 
@@ -226,6 +247,10 @@ public final class ScoreView
     // dismiss so getActiveLyricEditor() doesn't have to scan getComponents() per paint.
     @Nullable private LyricEditor activeLyricEditor;
 
+    // The line overlays currently hosted by this view. Registered by addOverlay so
+    // validateTree() can refresh their bounds without scanning getComponents().
+    private final List<LineOverlayComponent> lineOverlays = new ArrayList<>();
+
     // Maps each registered KeyStroke to its action key so bindings can be toggled.
     // Package-private so tests can inject synthetic bindings directly.
     final Map<KeyStroke, Object> scoreKeyBindings = new LinkedHashMap<>();
@@ -301,6 +326,10 @@ public final class ScoreView
         initEditPopup();
         selectionChanged();
         initKeys();
+
+        // One preview overlay for this view's lifetime; it is retargeted, never recreated.
+        PreviewElementManager.installOverlay(this);
+        EditModeManager.getPasteModeManager().installOverlay();
 
         // Initialize insertion note with default type
         setPreviewElement(EditModeManager.makePreviewElement());
@@ -381,6 +410,9 @@ public final class ScoreView
         if (hierarchyNavigator != null) {
             hierarchyNavigator.setupLineComponentState(this, this);
         }
+
+        // The line components the overlays point at may have just been recreated.
+        retargetOverlays();
     }
 
     /**
@@ -632,30 +664,19 @@ public final class ScoreView
     }
 
     /**
-     * Paints the page content, then the line overlays — the hover preview element and the
-     * paste-mode insertion marker — on top of it.
+     * Declares that this container has overlapping children: the line overlays are siblings of
+     * the score content and deliberately paint on top of it.
      * <p>
-     * They are hosted here, at the full page, rather than by the line or the
-     * {@link StaffPanel} that owns them: their ink spans the full legal staff-position range,
-     * so no reserved band inside the staff block is guaranteed to contain them, and Swing
-     * clips a component to its own bounds. At page level there is nothing left to clip
-     * against, so an overlay stays whole even at the lowest legal staff position on the last
-     * line — without inflating any line's height, which would reopen the excessive inter-line
-     * spacing of issue #591.
-     */
-    @Override
-    protected void paintChildren(Graphics g) {
-        super.paintChildren(g);
-        LineOverlayPainter.paintOverlays((Graphics2D) g, this);
-    }
-
-    /**
-     * Reports that this view's painting may extend outside any one child's bounds, so Swing
-     * treats this component — not a descendant — as the paint root for a damaged region.
+     * This is a statement of fact, not a workaround. {@link JLayeredPane} returns {@code false}
+     * for exactly the same reason, and any future container that hosts overlays — the page
+     * components under {@code specs/184-pagination.md} — must too.
      * <p>
-     * {@link #paintChildren} draws the line overlays after the children, so a repaint that
-     * Swing resolved to a descendant would repaint that descendant over an overlay and never
-     * run this method, leaving the overlay erased.
+     * The consequence is that Swing cannot resolve a repaint to a single child: this view
+     * repaints <b>every</b> child intersecting the damaged rectangle, including the
+     * {@link LineComponent} beneath an overlay, which runs the full line render pipeline.
+     * Sizing overlays to exact ink <b>shrinks</b> that rectangle — it used to be inflated by
+     * 1.5 staff spaces of slop — but it does not remove the underlying repaint. The win is
+     * correctness (no stale ink, no clipped glyphs), not a reduction in repaint cost.
      */
     @Override
     public boolean isOptimizedDrawingEnabled() {
@@ -711,6 +732,12 @@ public final class ScoreView
         }
 
         EditModeManager.setPreviewElement(element);
+
+        // The preview overlay caches the ink the renderers produced for the previous element,
+        // so a new element is a rebuild, not merely a repaint. It must also re-anchor to the
+        // real mouse position rather than whatever insertion index/staff position was last
+        // tracked, or the preview draws in the wrong spot until the mouse actually moves.
+        PreviewElementManager.previewElementTypeDidChange();
         repaint();
     }
 
@@ -1155,17 +1182,50 @@ public final class ScoreView
     }
 
     /**
+     * Runs before any other {@link ZoomDidChangeNotification} handler so the zoom is already
+     * applied by the time they react — see the priority requirement documented on {@link
+     * ZoomDidChangeNotification}.
+     */
+    private static final int ZOOM_APPLY_PRIORITY = Message.HIGH_PRIORITY;
+
+    /**
+     * Applies a {@link ZoomDidChangeNotification} to this view. The sole handler responsible
+     * for actually performing a zoom change — see {@link #applyZoomPercent}.
+     */
+    @Handler(priority = ZOOM_APPLY_PRIORITY)
+    public void zoomDidChangeApplyZoom(ZoomDidChangeNotification message) {
+        applyZoomPercent(message.getNewZoomPercent(), message.getAnchorPoint());
+    }
+
+    /**
+     * Refreshes every hosted overlay's on-screen bounds against the now-current zoom.
+     * <p>
+     * Overlay bounds are pixel-cached ({@link LineOverlayComponent#updateBounds()}) and
+     * otherwise only refreshed on the next validation pass or mouse-driven update; without
+     * this an overlay (e.g. the hover preview) stays at its pre-zoom screen position until
+     * the mouse moves. Runs after {@link #zoomDidChangeApplyZoom} (default priority is lower
+     * than {@link #ZOOM_APPLY_PRIORITY}), so the zoom is already applied.
+     */
+    @Handler
+    public void zoomDidChangeRefreshOverlayBounds(ZoomDidChangeNotification message) {
+        for (var overlay : lineOverlays) {
+            overlay.updateBounds();
+        }
+    }
+
+    /**
      * Applies {@code newPercent} to this view's {@link ViewScale} and re-anchors
      * the viewport around {@code anchorPoint}, a point in this ScoreView's local
      * (content) coordinate space — e.g. the cursor position for wheel/pinch zoom.
      * When {@code anchorPoint} is null, anchors at the viewport's horizontal
      * center and top edge instead (menu/keyboard zoom).
      * <p>
-     * Drives the re-layout directly and synchronously off this view's own state:
-     * {@link songscribe.ui.ZoomController} calls this on the active view and posts
-     * a {@code ZoomDidChangeNotification} only for loosely-coupled observers. On-
-     * score components read {@link #getViewScale()} on demand, so nothing is
-     * pushed into the tree here. EDT-only, per the {@code ZoomController} contract.
+     * Called only from {@link #zoomDidChangeApplyZoom}, which is this view's own
+     * high-priority handler of {@link ZoomDidChangeNotification} — see that message's
+     * class doc for why every other reactor to a zoom change goes through the same
+     * notification rather than a direct call. On-score components read
+     * {@link #getViewScale()} on demand, so nothing is pushed into the tree here.
+     * EDT-only, per the {@code ZoomController} contract.
      */
     public void applyZoomPercent(int newPercent, @Nullable Point anchorPoint) {
         if (scrollPane == null) {
@@ -1229,16 +1289,6 @@ public final class ScoreView
         );
 
         viewport.setViewPosition(newViewPosition);
-
-        // Drive the active lyric-editor overlay directly and synchronously: it is an
-        // absolutely-positioned JComponent, not a layout-managed child, so it must
-        // re-derive its zoomed font and bounds here — after validate(), before repaint().
-        var activeEditor = getActiveLyricEditor();
-
-        if (activeEditor != null) {
-            activeEditor.refreshFont();
-            activeEditor.recomputeBounds();
-        }
 
         repaint();
     }
@@ -1471,7 +1521,16 @@ public final class ScoreView
      * for its main panel, so we must register the overlay with null constraints (so the
      * layout manager ignores it) and restore the main panel's center mapping that
      * {@link #add(Component)} silently overwrote.
+     *
+     * <h2>Z-order contract</h2>
+     * Overlays paint above the score content and <b>below</b> the active lyric editor: a lyric
+     * editor is a focused text field with a caret, and an overlay painting over it is a defect.
+     * The ordering is a property of this container, not of the order things were registered in
+     * — this method places every overlay directly beneath {@link #LYRIC_EDITOR_Z_ORDER}, and
+     * {@link LyricEditor#openOn} reclaims that index when an editor opens, pushing the existing
+     * overlays down by one.
      */
+    @Override
     public void addOverlay(JComponent overlay) {
         add(overlay);
 
@@ -1480,6 +1539,70 @@ public final class ScoreView
 
         if (mainPanel != null) {
             layout.addLayoutComponent(mainPanel, BorderLayout.CENTER);
+        }
+
+        // Index 0 is the topmost child; an open lyric editor owns it, so overlays start
+        // immediately below it and above everything else.
+        var occupiedByEditor = activeLyricEditor != null && activeLyricEditor != overlay;
+        setComponentZOrder(overlay, occupiedByEditor ? LYRIC_EDITOR_Z_ORDER + 1 : LYRIC_EDITOR_Z_ORDER);
+
+        if (overlay instanceof LineOverlayComponent lineOverlay && !lineOverlays.contains(lineOverlay)) {
+            lineOverlays.add(lineOverlay);
+        }
+    }
+
+    @Override
+    public void removeOverlay(JComponent overlay) {
+        var boundsPx = overlay.getBounds();
+        remove(overlay);
+
+        if (overlay instanceof LineOverlayComponent lineOverlay) {
+            lineOverlays.remove(lineOverlay);
+        }
+
+        repaint(boundsPx);
+    }
+
+    @Override
+    public JComponent getHostComponent() {
+        return this;
+    }
+
+    /**
+     * Notifies the overlays once this host's subtree is laid out.
+     * <p>
+     * Overlay bounds are fixed in staff spaces but not in pixels, so they go stale whenever a
+     * line moves or resizes. The causes do not share a mechanism: a title or subtitle height
+     * change moves StaffPanel without re-running its layout manager, while a line height change
+     * re-runs it. {@code validateTree()} sits above both and is cause-independent by
+     * construction. {@link Container#validateTree()} lays out this container and then recurses
+     * into its children, so calling it first guarantees every descendant's bounds are final
+     * before the overlays read them.
+     * <p>
+     * Only {@code setBounds}/{@code setLocation} may be called on the overlays from here —
+     * never {@code revalidate()}, which would re-enter layout.
+     */
+    @Override
+    protected void validateTree() {
+        super.validateTree();
+
+        for (var overlay : lineOverlays) {
+            overlay.updateBounds();
+        }
+    }
+
+    /**
+     * Re-resolves every overlay's target line after the line components have been recreated.
+     * <p>
+     * A rebuilt layout discards the {@link LineComponent}s the overlays point at, and an
+     * overlay holding a stale target hides itself. Managers retarget on mouse motion only, so
+     * without this the preview would visibly wink out on every edit that rebuilds the layout
+     * and stay hidden until the pointer moved.
+     */
+    private void retargetOverlays() {
+        for (var overlay : lineOverlays) {
+            overlay.retarget();
+            overlay.updateBounds();
         }
     }
 

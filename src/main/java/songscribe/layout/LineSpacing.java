@@ -80,15 +80,6 @@ public final class LineSpacing {
     public static final int MIN_RESERVED_VERSE_ROWS = 1;
 
     /**
-     * Slack added to the preview element's <em>dirty rectangle</em> only, covering glyph ink
-     * that extends beyond the notehead <em>centre</em> — an accidental's half-height is the
-     * tallest contributor. Over-reporting a dirty region is free; under-reporting leaves
-     * stale ink behind. This is never added to a hit-test band or to any layout extent: a
-     * cursor beyond the legal staff-position range maps to no preview at all.
-     */
-    public static final double PREVIEW_REPAINT_MARGIN_SS = 1.5;
-
-    /**
      * The usable inter-line gap for a requested gap, floored at
      * {@link #MIN_INTER_LINE_GAP_SS} so no setting can pack lines tighter than the minimum.
      *

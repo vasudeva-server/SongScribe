@@ -517,11 +517,15 @@ public abstract class BaseDialog {
                 var simpleClassName = getClass().getSimpleName();
                 Prefs.putMap(PrefsKey.DIALOG_GEOMETRY, Map.of(simpleClassName, valueMap));
             } finally {
+                // Dispose first: decrementBlockingCount() posts DialogVisibilityDidChangeNotification(false),
+                // which handlers rely on to mean the dialog is actually gone (e.g. Component.getMousePosition()
+                // on a component the dialog was covering only returns a real value once disposal has removed
+                // the dialog window) — posting before dispose() would have them react while it is still showing.
+                dialog.dispose();
+
                 if (category.isBlocking()) {
                     decrementBlockingCount();
                 }
-
-                dialog.dispose();
             }
         }
     }

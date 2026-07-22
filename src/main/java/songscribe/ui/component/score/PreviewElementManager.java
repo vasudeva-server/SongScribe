@@ -54,14 +54,15 @@ import songscribe.layout.LineEndingSupport;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.ScaleContext;
+import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PasteModeDidChangeNotification;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.engraving.Staff;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.ui.component.ScoreView;
 
 /**
  * Manages the preview element subsystem for {@link LineComponent}.
@@ -118,11 +119,41 @@ public final class PreviewElementManager {
     @Nullable
     private static PendingTempoPrompt pendingTempoPrompt = null;
 
+    /**
+     * True when {@link #previewElementTypeDidChange()} ran while a modification bracket was
+     * open and had to defer re-anchoring the overlay until the bracket closes and layout is
+     * fresh. Consumed by {@link #applyPendingOverlayRestore}.
+     */
+    private static boolean pendingOverlayRestore = false;
+
     /** The slide zone determined by mouse position (null if no valid zone). */
     private static @Nullable SlideZone currentSlideZone = null;
 
     /** Last tracked mouse X in staff-space units; used by LineRenderer to avoid Swing getMousePosition() returning null. */
     private static double currentMouseXSs = 0.0;
+
+    /**
+     * The component that draws the hover preview, or null before a host has installed one
+     * (headless converters never do). Static like the rest of this class's state: only one line
+     * across all hosts can carry the preview at a time.
+     */
+    @Nullable
+    private static PreviewElementOverlay overlay = null;
+
+    /**
+     * The component that draws the fall-tool hover preview, or null before a host has installed
+     * one. Mutually exclusive with {@link #glissandoOverlay}: {@link #shouldShowSlidePreviewOn}
+     * guarantees only one {@link SlideZone} is ever current at a time.
+     */
+    @Nullable
+    private static FallPreviewOverlay fallOverlay = null;
+
+    /**
+     * The component that draws the glissando-tool hover preview, or null before a host has
+     * installed one. Mutually exclusive with {@link #fallOverlay}.
+     */
+    @Nullable
+    private static GlissandoPreviewOverlay glissandoOverlay = null;
 
     /** Strong reference to prevent GC by the weak-reference message bus; used for subscriptions. */
     private static final PreviewElementManager INSTANCE = new PreviewElementManager();
@@ -153,6 +184,105 @@ public final class PreviewElementManager {
         }
     }
 
+    /**
+     * Re-derives the tracked insertion position from the mouse's (unchanged) screen location
+     * once a zoom change has been applied.
+     * <p>
+     * A keyboard/menu zoom (anchored at the viewport center, not the cursor) shifts which
+     * document location sits under a stationary mouse — {@link #currentXIndex}/{@link
+     * #currentStaffPosition} track document position, not screen position, so without this
+     * they stay pinned to the pre-zoom location: the preview keeps rendering there (now
+     * reprojected to new screen pixels by {@code ScoreView.zoomDidChangeRefreshOverlayBounds},
+     * which only fixes the pixel conversion, not the underlying position) and a click at that
+     * screen location resolves against a document position the cursor is no longer over.
+     * Default priority — see the priority requirement documented on
+     * {@link ZoomDidChangeNotification}.
+     */
+    @Handler
+    public void zoomDidChange(ZoomDidChangeNotification message) {
+        retargetMouseLineAndRestorePreviewElement();
+    }
+
+    /**
+     * Re-derives the tracked insertion position once the last blocking dialog (e.g. Song
+     * Settings) has closed.
+     * <p>
+     * A blocking dialog does not deliver mouse-moved events to the score underneath it, so the
+     * mouse can end up anywhere by the time it closes — over a different note, a different
+     * line, or off the score entirely — while the tracked state still reflects wherever it was
+     * when the dialog opened. No-ops while a dialog is opening ({@code isVisible() == true}):
+     * that transition doesn't change what the score looks like, just what the user can click.
+     */
+    @Handler
+    public void dialogVisibilityDidChange(DialogVisibilityDidChangeNotification message) {
+        if (message.isVisible()) {
+            return;
+        }
+
+        retargetMouseLineAndRestorePreviewElement();
+    }
+
+    /**
+     * Re-resolves {@link #currentMouseLine} against the mouse's current screen position and
+     * re-derives the preview element's position from it — for any external change (zoom,
+     * dialog dismissal) after which the mouse may now be over different document content
+     * without ever having fired a real AWT mouse event of its own.
+     */
+    private static void retargetMouseLineAndRestorePreviewElement() {
+        var previousLine = currentMouseLine;
+        currentMouseLine = retargetMouseLine(previousLine);
+
+        if (currentMouseLine == null) {
+            if (previousLine != null) {
+                clearPreviewElement();
+            }
+
+            return;
+        }
+
+        restorePreviewElement(currentMouseLine);
+    }
+
+    /**
+     * Finds the {@link LineComponent} (if any) the mouse is currently over, given only a
+     * previously-tracked line to recover the owning {@link ScoreView} from.
+     * <p>
+     * Cannot use {@link SwingUtilities#getDeepestComponentAt} from the score view downward: a
+     * visible overlay (e.g. the hover preview itself) is a sibling of every {@code
+     * LineComponent}, not a descendant of one, so when the cursor sits over the overlay —
+     * exactly the case this method exists to handle — that walk would return the overlay and
+     * never reach the line underneath it. Testing each line's own bounds sidesteps overlay
+     * z-order entirely.
+     */
+    private static @Nullable LineComponent retargetMouseLine(@Nullable LineComponent previousLine) {
+        if (previousLine == null) {
+            return null;
+        }
+
+        var scoreView = previousLine.getScoreView();
+        var mousePos = scoreView.getMousePosition();
+
+        if (mousePos == null) {
+            return null;
+        }
+
+        for (var lineIndex = 0; lineIndex < scoreView.getSong().lineCount(); lineIndex++) {
+            var lineComponent = scoreView.getLineComponent(lineIndex);
+
+            if (lineComponent == null) {
+                continue;
+            }
+
+            var localPoint = SwingUtilities.convertPoint(scoreView, mousePos, lineComponent);
+
+            if (lineComponent.contains(localPoint)) {
+                return lineComponent;
+            }
+        }
+
+        return null;
+    }
+
     @Handler
     public void pasteModeDidChange(PasteModeDidChangeNotification message) {
         if (message.isActive()) {
@@ -160,6 +290,181 @@ public final class PreviewElementManager {
         } else {
             restorePreviewElement(currentMouseLine);
         }
+    }
+
+    // ==========================================================================
+    // Overlay
+    // ==========================================================================
+
+    /**
+     * Creates {@code host}'s hover-preview overlays and registers them as children of the host.
+     * Exactly one of each exists for the host's lifetime; none is ever recreated, only
+     * retargeted.
+     */
+    public static void installOverlay(OverlayHost host) {
+        var previewOverlay = new PreviewElementOverlay(host);
+        host.addOverlay(previewOverlay);
+        overlay = previewOverlay;
+
+        var fallPreviewOverlay = new FallPreviewOverlay(host);
+        host.addOverlay(fallPreviewOverlay);
+        fallOverlay = fallPreviewOverlay;
+
+        var glissandoPreviewOverlay = new GlissandoPreviewOverlay(host);
+        host.addOverlay(glissandoPreviewOverlay);
+        glissandoOverlay = glissandoPreviewOverlay;
+    }
+
+    /**
+     * Rebuilds every hover-preview overlay's ink and bounds from the current tracking state,
+     * hiding each one that no longer applies. Call whenever anything the renderers read has
+     * changed — the preview element itself, its decorations, the staff position it sits at, or
+     * the slide zone a slide tool is previewing. Each overlay's own gate decides whether it is
+     * the one that should be visible, so a single call here keeps all three in sync without the
+     * caller having to know which one currently applies.
+     */
+    public static void previewElementDidChange() {
+        if (overlay != null) {
+            overlay.previewDidChange(currentPreviewLine);
+        }
+
+        if (fallOverlay != null) {
+            fallOverlay.previewDidChange(currentPreviewLine);
+        }
+
+        if (glissandoOverlay != null) {
+            glissandoOverlay.previewDidChange(currentPreviewLine);
+        }
+    }
+
+    /**
+     * Re-derives the insertion position from the real mouse location, then rebuilds the
+     * overlays' ink for the newly-selected preview element type.
+     * <p>
+     * Call this instead of {@link #previewElementDidChange()} when the preview element's
+     * identity changes (e.g. a toolbar tool selection, or the next-insertion element set up
+     * after a click) rather than merely its decorations — otherwise the overlay re-anchors to
+     * whatever {@link #currentXIndex}/{@link #currentStaffPosition} were last computed, which
+     * can be stale relative to the line's current layout.
+     * <p>
+     * When called from inside an open modification bracket — the post-insertion case, where
+     * {@link EditModeManager#previewElementDidChange} sets up the next preview element while
+     * {@code line.withModification(...)} is still open — the current {@link LayoutResult} is
+     * one insertion out of date (invalidated only when the bracket closes), so re-anchoring
+     * here would land on the just-inserted element and fall back to an empty-line offset. The
+     * re-anchor is deferred to {@link #applyPendingOverlayRestore}, run from {@link
+     * #songDidChange} once the bracket has closed and layout can be made fresh again.
+     */
+    public static void previewElementTypeDidChange() {
+        if (currentMouseLine != null && currentMouseLine.getScoreView().getSong().isModifying()) {
+            pendingOverlayRestore = true;
+            return;
+        }
+
+        restorePreviewElement(currentMouseLine);
+        previewElementDidChange();
+    }
+
+    /**
+     * Repaints the lines whose element colors this manager's tracking state feeds, so an element
+     * that just stopped being the hover target reverts from
+     * {@link LineInvariants#REPLACED_ELEMENT_COLOR} to black — and the one that just became it
+     * turns red.
+     * <p>
+     * The overlays cannot do this themselves. They are siblings of the {@link LineComponent},
+     * not children of it, so updating their bounds dirties only their own rectangles; the
+     * highlighted element is painted by the line underneath and is never touched. The old
+     * drawing-based mechanism repainted the line as a side effect of repainting the overlay ink
+     * welded into it, which is what kept the highlight in sync — separating the overlay out
+     * removed that side effect, and this restores it explicitly.
+     *
+     * @param previousLine the line tracked before the current update, repainted as well when the
+     *                     pointer has crossed from one line to another so the highlight it left
+     *                     behind is cleared
+     */
+    private static void repaintHighlightedElements(@Nullable LineComponent previousLine) {
+        if (previousLine != null && previousLine != currentPreviewLine) {
+            previousLine.repaint();
+        }
+
+        if (currentPreviewLine != null) {
+            currentPreviewLine.repaint();
+        }
+    }
+
+    /**
+     * Re-anchors the preview overlay without rebuilding its ink. Only legal when the glyphs the
+     * renderers would emit are unchanged and just the insertion X moved.
+     */
+    private static void previewElementDidMove() {
+        if (overlay != null) {
+            overlay.previewDidMove(currentPreviewLine);
+        }
+    }
+
+    /**
+     * Returns whether the hover preview should be drawn on {@code lc}.
+     * <p>
+     * The single home for "is the preview visible": the component asks rather than re-assembling
+     * the conditions, which is how they used to exist — as a chain of early returns inside the
+     * renderer, far from the predicates they test.
+     */
+    static boolean shouldShowPreviewOn(LineComponent lc) {
+        var previewElement = activePreviewElementOn(lc);
+
+        // A slide tool's placeholder has no note head at all; the slide preview components draw
+        // for it instead.
+        return previewElement != null
+            && !isSlidePlaceholder(previewElement)
+            && lc.isPreviewElementVisible();
+    }
+
+    /**
+     * Returns whether the slide-tool hover preview for {@code zone} should be drawn on
+     * {@code lc}. {@link SlidePreviewOverlay}'s two subclasses each call this with their own
+     * zone, so at most one is ever visible.
+     * <p>
+     * The single home for "is this slide preview visible": the conditions mirror those in
+     * {@link LineRenderer#renderPreviewElement} (the slide branch), but the underlying
+     * predicates live here, on the manager, so the components call rather than re-assemble them.
+     */
+    static boolean shouldShowSlidePreviewOn(LineComponent lc, SlideZone zone) {
+        if (currentPreviewLine != lc) {
+            return false;
+        }
+
+        var previewElement = EditModeManager.getPreviewElement();
+
+        if (!isSlidePlaceholder(previewElement) || !shouldShowSlidePreview() || getSlideZone() != zone) {
+            return false;
+        }
+
+        var line = lc.getLine();
+
+        if (line == null) {
+            return false;
+        }
+
+        var sourceIndex = currentXIndex - 1;
+
+        return !sourceAlreadyHasSlide(line, sourceIndex, zone);
+    }
+
+    /**
+     * The preview element {@code lc} would draw, or null when {@code lc} carries no preview at
+     * all. The prefix every preview gate shares: the right line, a mode that previews, a laid-out
+     * line, and an element to preview.
+     */
+    private static @Nullable StaffElement activePreviewElementOn(LineComponent lc) {
+        if (!hasPreviewElement(lc) || lc.getScoreView().getMode() == Mode.SELECT) {
+            return null;
+        }
+
+        if (lc.getLayoutResult() == null) {
+            return null;
+        }
+
+        return lc.getPreviewElement();
     }
 
     // ==========================================================================
@@ -178,6 +483,10 @@ public final class PreviewElementManager {
         }
 
         EditModeManager.setPreviewElementVisible(false);
+
+        // The visibility flag is part of the overlay's gate, so it has to be re-evaluated even
+        // when nothing about the position changed.
+        previewElementDidChange();
     }
 
     /**
@@ -186,16 +495,24 @@ public final class PreviewElementManager {
      * Call this when exiting edit mode or when the mouse leaves the score area.
      */
     static void clearPreviewElement() {
+        var previousPreviewLine = currentPreviewLine;
+
         if (currentPreviewLine != null) {
-            var oldLine = currentPreviewLine;
             currentPreviewLine = null;
             currentXIndex = -1;
             currentStaffPosition = 0;
             xPosSsMatchesElement = false;
             yPosSpMatchesElement = false;
             currentSlideZone = null;
-            oldLine.repaintWithOverlayHeadroom();
         }
+
+        // Unconditional: the mode-driven paths reach here with no preview line to clear, and the
+        // overlay must still be taken down. currentPreviewLine is null by now, so this hides it.
+        previewElementDidChange();
+
+        // The element that was the hover target is still painted red on the line it lives on,
+        // and nothing is tracking it anymore to repaint it later.
+        repaintHighlightedElements(previousPreviewLine);
 
         // Nothing is positioned to preview anymore, so it can no longer be visible;
         // this also clears the status bar's pitch/duration display.
@@ -220,23 +537,6 @@ public final class PreviewElementManager {
     @Nullable
     static LineComponent getCurrentInsertionLine() {
         return currentPreviewLine;
-    }
-
-    /**
-     * Paints the hover preview element into {@code host}'s coordinate space, on top of
-     * whatever {@code host} has already painted.
-     * <p>
-     * The preview is painted by an ancestor rather than by the line that owns it because its
-     * ink extent is not derivable from that line's layout: a preview may carry accidentals,
-     * articulations and other decorations, so no band a line could reserve is guaranteed to
-     * contain it. Swing clips a component to its own bounds, so the host is the full page —
-     * the one level in the hierarchy whose bounds are never the binding constraint.
-     *
-     * @param g the graphics context to paint into, in {@code host} coordinates
-     * @param host the ancestor doing the painting
-     */
-    public static void paintOverlay(Graphics2D g, ScoreView host) {
-        LineOverlayPainter.paintOnLine(g, host, currentPreviewLine, LineComponent::renderPreviewOverlay);
     }
 
     /**
@@ -670,18 +970,24 @@ public final class PreviewElementManager {
             }
         }
 
-        // Check if position actually changed
-        if (lc == currentPreviewLine && xIndex == currentXIndex
-            && staffPosition == currentStaffPosition
-            && newXMatch == xPosSsMatchesElement && newYMatch == yPosSpMatchesElement
-            && newSlideZone == currentSlideZone) {
+        // Split the six tracked fields by what they affect. The insertion index alone is
+        // position: the glyphs the renderers would emit are identical, so the overlay only needs
+        // a new translate. Everything else changes the drawn ink — the staff position flips the
+        // stem direction and crosses the ledger-line threshold, the hover flags and the slide
+        // zone change what is drawn at all — so the display list has to be rebuilt. Both are step
+        // functions, so rebuilds stay rare even though the mouse moves continuously.
+        var xIndexChanged = xIndex != currentXIndex;
+        var configurationChanged = lc != currentPreviewLine
+            || staffPosition != currentStaffPosition
+            || newXMatch != xPosSsMatchesElement
+            || newYMatch != yPosSpMatchesElement
+            || newSlideZone != currentSlideZone;
+
+        if (!xIndexChanged && !configurationChanged) {
             return;  // No change, no repaint
         }
 
-        // Repaint old line if different
-        if (currentPreviewLine != null && currentPreviewLine != lc) {
-            currentPreviewLine.repaintWithOverlayHeadroom();
-        }
+        var previousPreviewLine = currentPreviewLine;
 
         // Update static state
         currentPreviewLine = lc;
@@ -692,8 +998,11 @@ public final class PreviewElementManager {
         currentSlideZone = newSlideZone;
 
         if (isSlidePlaceholder(previewElement)) {
-            // No note-head preview for slide tool — renderPreviewElement draws the preview line.
-            lc.repaintWithOverlayHeadroom();
+            // No note-head preview for slide tool — the slide overlays draw the preview line.
+            // The overlay still has to be told, so it takes itself down when the tool changed
+            // from a note to a slide while the preview was showing.
+            previewElementDidChange();
+            repaintHighlightedElements(previousPreviewLine);
             return;
         }
 
@@ -715,8 +1024,13 @@ public final class PreviewElementManager {
             }
         }
 
-        // Repaint this line
-        lc.repaintWithOverlayHeadroom();
+        if (configurationChanged) {
+            previewElementDidChange();
+        } else {
+            previewElementDidMove();
+        }
+
+        repaintHighlightedElements(previousPreviewLine);
     }
 
     /**
@@ -781,7 +1095,11 @@ public final class PreviewElementManager {
                     line.syncGraceHostMelisma(noteIndex);
                 }
             });
-            lc.repaintWithOverlayHeadroom();
+
+            // The source note now already carries this slide, so sourceAlreadyHasSlide flips
+            // the gate off — the overlay has to be told so it takes itself down immediately
+            // rather than waiting for the next mouse move.
+            previewElementDidChange();
             return;  // Stay in slide mode
         }
 
@@ -878,8 +1196,34 @@ public final class PreviewElementManager {
         TempoChangeDialog.showForElement(MainFrame.getInstance(), prompt.anchor(), prompt.line());
     }
 
+    /**
+     * Re-anchors the preview overlay for a pending click-to-insert, if any. Invoked from
+     * {@link #songDidChange} once the outermost modification bracket has committed, so the
+     * layout has been invalidated and can be recomputed to place the preview against the
+     * just-inserted element rather than a stale {@link LayoutResult} that predates it.
+     */
+    static void applyPendingOverlayRestore() {
+        if (!pendingOverlayRestore) {
+            return;
+        }
+
+        pendingOverlayRestore = false;
+
+        if (currentMouseLine == null) {
+            return;
+        }
+
+        // Recompute now: ScoreViewController's higher-priority handler has just invalidated
+        // the layout, so ensureLayout gives the just-inserted element its final position
+        // before the preview is re-anchored against it.
+        currentMouseLine.ensureLayout();
+        restorePreviewElement(currentMouseLine);
+        previewElementDidChange();
+    }
+
     @Handler(priority = TEMPO_PROMPT_PRIORITY)
     public void songDidChange(SongDidChangeNotification message) {
+        applyPendingOverlayRestore();
         showPendingTempoPrompt();
     }
 
@@ -911,6 +1255,7 @@ public final class PreviewElementManager {
         }
 
         EditModeManager.setPreviewElementVisible(false);
+        previewElementDidChange();
     }
 
     // ==========================================================================
@@ -1124,6 +1469,10 @@ public final class PreviewElementManager {
         var elementCount = line.elementCount();
 
         if (EditModeManager.elementWasModified(line, elementCount)) {
+            // A stale-preview bailout, not the main insertion path: elementWasModified's
+            // REPEAT_LEFT/RIGHT merge case aside, this branch does not add the element the
+            // rest of this method would have inserted, so there is no guarantee a
+            // SongDidChangeNotification follows to drive a deferred setup — call synchronously.
             EditModeManager.previewElementDidChange(line, elementCount - 1);
             return;
         }
@@ -1143,7 +1492,7 @@ public final class PreviewElementManager {
     }
 
     @Nullable
-    private static StaffElement validateAndGetPreviewElement(Line line, int elementIndex) {
+    private static StaffElement validateAndGetPreviewElement(LineComponent lc, Line line, int elementIndex) {
         var previewElement = EditModeManager.getPreviewElement();
 
         if (previewElement == null) {
@@ -1151,6 +1500,8 @@ public final class PreviewElementManager {
         }
 
         if (EditModeManager.elementWasModified(line, elementIndex)) {
+            // Same reasoning as addPreviewElement's identical guard: no guaranteed
+            // SongDidChangeNotification follows this bailout, so call synchronously.
             EditModeManager.previewElementDidChange(line, elementIndex);
             return null;
         }
@@ -1159,7 +1510,7 @@ public final class PreviewElementManager {
     }
 
     private static void insertElement(LineComponent lc, int xIndex, Line line) {
-        var previewElement = validateAndGetPreviewElement(line, xIndex);
+        var previewElement = validateAndGetPreviewElement(lc, line, xIndex);
 
         if (previewElement == null) {
             return;
@@ -1297,7 +1648,7 @@ public final class PreviewElementManager {
      * @param line         The line containing the element
      */
     private static void modifyExistingElement(LineComponent lc, int elementIndex, Line line) {
-        var previewElement = validateAndGetPreviewElement(line, elementIndex);
+        var previewElement = validateAndGetPreviewElement(lc, line, elementIndex);
 
         if (previewElement == null) {
             return;

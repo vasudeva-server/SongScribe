@@ -44,6 +44,7 @@ import songscribe.layout.LineSpacing;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.engraving.Staff;
 import songscribe.ui.renderer.ElementFrame;
+import songscribe.ui.renderer.LineInvariants;
 import songscribe.util.GraphicsState;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.error.RuntimeError;
@@ -267,6 +268,19 @@ public class LineComponent extends ScoreComponent
      */
     public int getMiddleLineYPx() {
         return (int) Math.round(ScaleContext.ssToPx(getMiddleLineYSs()) * getViewScale().factor());
+    }
+
+    /**
+     * Returns the zoomed staff-space-to-pixel scale (document {@code pixelsPerStaffSpace} × the
+     * view zoom factor) for this line.
+     * <p>
+     * The component-side counterpart of {@code LineInvariants.getViewPixelsPerStaffSpace()},
+     * which is reachable only from inside a render pass. Callers outside one — the overlay
+     * components, which establish their own scale-and-translate — read the zoomed scale here
+     * rather than re-multiplying the expression inline.
+     */
+    public double getViewPixelsPerStaffSpace() {
+        return ScaleContext.getPixelsPerStaffSpace() * getViewScale().factor();
     }
 
     /**
@@ -514,12 +528,20 @@ public class LineComponent extends ScoreComponent
         //        │
         //        └─► exception: LyricTextRenderer strips this transform and re-derives its
         //            own integer-pixel coords from LineInvariants.getViewPixelsPerStaffSpace()
-        //            (= pxPerSs × factor) — the sole reader of the zoomed scale.
+        //            (= pxPerSs × factor) — the only reader of the zoomed scale inside a
+        //            render pass.
         //
         //   Attribution below is drawn in pixel space OUTSIDE the transform, so it applies
         //   the factor explicitly (positions/sizes × factor, fonts via zoomedFont).
+        //
+        //   "EXACTLY ONCE" is per paint pass, not per process. LineOverlayComponent is a
+        //   sibling component that paints the line's overlays into its OWN graphics, so it
+        //   legitimately establishes a second, parallel scale-and-translate of the same
+        //   factor — see LineOverlayComponent.paintComponent. It reads the zoomed scale from
+        //   getViewPixelsPerStaffSpace() below rather than re-multiplying inline, and the rule
+        //   still holds within each pass: no renderer applies the factor a second time.
         // ────────────────────────────────────────────────────────────────────────────
-        var scale = ScaleContext.getPixelsPerStaffSpace() * getViewScale().factor();
+        var scale = getViewPixelsPerStaffSpace();
 
         // layoutResult is null only when the very first layout could not fit the
         // content (issue #449); with no prior layout to fall back on, skip drawing
@@ -896,61 +918,19 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Renders this line's preview element into the enclosing {@link ScoreView}'s overlay pass.
-     *
-     * @param g2 Graphics context, already scaled to staff spaces and translated to this
-     *           line's origin
-     */
-    void renderPreviewOverlay(Graphics2D g2) {
-        lineRenderer.renderPreviewOverlay(g2);
-    }
-
-    /**
-     * Renders this line's paste-mode insertion marker into the enclosing {@link ScoreView}'s
-     * overlay pass.
-     *
-     * @param g2 Graphics context, already scaled to staff spaces and translated to this
-     *           line's origin
-     */
-    void renderInsertionPointOverlay(Graphics2D g2) {
-        lineRenderer.renderInsertionPointOverlay(g2);
-    }
-
-    /**
-     * Repaints this line plus the bands above and below it in which one of its overlays — the
-     * preview element or the paste-mode insertion marker — may have drawn.
+     * Returns the {@link LineInvariants} an overlay needs to run the real renderers against this
+     * line, or null when this line has no layout yet.
      * <p>
-     * The overlays are painted by the enclosing {@link ScoreView}, not by this component, so
-     * {@code repaint()} — which clips the dirty region to this component's own
-     * content-hugging bounds — cannot clear overlay ink drawn outside them.
+     * A missing layout is expected rather than fatal here: an overlay can be asked for its bounds
+     * while a line is in the issue-#449 {@code lineDoesNotFit} state.
      */
-    public void repaintWithOverlayHeadroom() {
-        var scoreView = (ScoreView) SwingUtilities.getAncestorOfClass(ScoreView.class, this);
-
-        // Detached from any ScoreView (tests): there is no overlay host, so nothing can
-        // have drawn outside this component's bounds.
-        if (scoreView == null) {
-            repaint();
-            return;
+    @Nullable
+    LineInvariants previewInvariants() {
+        if (getLayoutResult() == null) {
+            return null;
         }
 
-        var bounds = SwingUtilities.convertRectangle(
-            this, new Rectangle(0, 0, getWidth(), getHeight()), scoreView);
-
-        // Sizes, so round up — a dirty rect that is a pixel short leaves stale ink.
-        var viewScale = getViewScale();
-        var headroomAbovePx = viewScale
-            .toViewPx(new Ss(Staff.MIN_ABOVE_STAFF_SS + LineSpacing.PREVIEW_REPAINT_MARGIN_SS))
-            .ceilPx();
-        var headroomBelowPx = viewScale
-            .toViewPx(new Ss(Staff.MIN_BELOW_STAFF_SS + LineSpacing.PREVIEW_REPAINT_MARGIN_SS))
-            .ceilPx();
-
-        scoreView.repaint(
-            bounds.x,
-            bounds.y - headroomAbovePx,
-            bounds.width,
-            bounds.height + headroomAbovePx + headroomBelowPx);
+        return lineRenderer.buildInvariants();
     }
 
     /**

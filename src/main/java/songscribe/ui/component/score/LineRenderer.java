@@ -32,12 +32,9 @@ import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
 import songscribe.layout.NoteGeometry;
-import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.GraceModeManager;
-import songscribe.ui.edit.PasteModeManager;
 import songscribe.dom.AnnotationAttachment;
-import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Beam;
 import songscribe.dom.BeatChangeAttachment;
@@ -86,9 +83,6 @@ class LineRenderer {
 
     /** Corner arc diameter for the rubber-band selection rectangle at 100% zoom, in pixels. */
     private static final double SELECTION_RECT_ARC_PX = 2.0;
-
-    /** Thickness of the paste-mode insertion-point marker, in staff spaces. */
-    private static final double INSERTION_POINT_THICKNESS_SS = 0.25;
 
     // ==========================================================================
     // Instance Fields
@@ -182,52 +176,6 @@ class LineRenderer {
             .build();
     }
 
-    /**
-     * Renders the preview element as an overlay, outside this line's own paint pass.
-     * <p>
-     * The preview element may sit well above or below the line's content-hugging bounds, so
-     * it is painted by {@code ScoreView.paintChildren} after all children, in page
-     * coordinates — Swing would otherwise clip it at the line's edge.
-     *
-     * @param g2 Graphics context, already scaled to staff spaces and translated to this
-     *           line's origin
-     */
-    void renderPreviewOverlay(Graphics2D g2) {
-        // The overlay runs on every ScoreView paint, including while a line is in the
-        // issue-#449 lineDoesNotFit state, so a missing layout is expected here rather
-        // than fatal as it is in render().
-        if (lc.getLayoutResult() == null) {
-            return;
-        }
-
-        var invariants = buildInvariants();
-        var lineFrame = lc.gracePreviewLineFrame();
-
-        // Ensure accidental metrics are initialized
-        NoteGeometry.initializeAccidentalWidths();
-
-        renderPreviewElement(g2, invariants, lineFrame);
-    }
-
-    /**
-     * Renders the paste-mode insertion marker as an overlay, outside this line's own paint
-     * pass, for the same clipping reason as {@link #renderPreviewOverlay}: the marker spans
-     * every staff position a note could occupy, which is wider than the bounds this line is
-     * laid out to.
-     *
-     * @param g2 Graphics context, already scaled to staff spaces and translated to this
-     *           line's origin
-     */
-    void renderInsertionPointOverlay(Graphics2D g2) {
-        // As in renderPreviewOverlay, the overlay runs on every ScoreView paint, including
-        // while a line is in the issue-#449 lineDoesNotFit state.
-        if (lc.getLayoutResult() == null) {
-            return;
-        }
-
-        renderInsertionPoint(g2, buildInvariants());
-    }
-
     // ==========================================================================
     // Staff and Line Beginning
     // ==========================================================================
@@ -290,7 +238,6 @@ class LineRenderer {
      *
      * @param g2        Graphics context
      * @param invariants       Line invariants
-     * @param lineFrame Line-level frame (carries any active preview shift)
      */
     private void renderElements(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
         var noteRenderer = NoteRenderer.getInstance();
@@ -557,7 +504,6 @@ class LineRenderer {
      *
      * @param g2        Graphics context
      * @param invariants       Line invariants
-     * @param lineFrame Line-level frame (carries any active preview shift)
      */
     private void renderAttachments(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
         var articulationRenderer = ArticulationRenderer.getInstance();
@@ -641,181 +587,6 @@ class LineRenderer {
     // ==========================================================================
     // Overlay Rendering
     // ==========================================================================
-
-    /**
-     * Renders the preview element if this line is the current preview line.
-     * Package-private for testing.
-     *
-     * @param g2        Graphics context
-     * @param invariants       Line invariants
-     * @param lineFrame Line-level frame (carries any active preview shift)
-     */
-    void renderPreviewElement(Graphics2D g2, LineInvariants invariants, ElementFrame lineFrame) {
-        // Only render if this line is the current insertion line
-        if (!PreviewElementManager.hasPreviewElement(lc)) {
-            return;
-        }
-
-        // Don't render preview element when in select mode
-        var score = lc.getScoreView();
-
-        if (score.getMode() == Mode.SELECT) {
-            return;
-        }
-
-        var previewElement = lc.getPreviewElement();
-
-        if (previewElement == null) {
-            return;
-        }
-
-        // Slide preview bypasses preview element visibility — it manages its own
-        // display logic via shouldShowSlidePreview() and never uses the note-head preview.
-        if (PreviewElementManager.isSlidePlaceholder(previewElement)) {
-            if (!PreviewElementManager.shouldShowSlidePreview()) {
-                return;
-            }
-
-            var zone = PreviewElementManager.getSlideZone();
-
-            if (zone == null) {
-                return;  // Defensive: shouldShowSlidePreview() guards this
-            }
-
-            var line = lc.getLine();
-
-            if (line == null) {
-                return;
-            }
-
-            var sourceIndex = PreviewElementManager.getCurrentXIndex() - 1;
-
-            if (PreviewElementManager.sourceAlreadyHasSlide(line, sourceIndex, zone)) {
-                return;  // Already has this slide — no preview needed
-            }
-
-            try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
-                g2.setColor(ScoreView.getPreviewElementColor());
-
-                var slideRenderer = SlideRenderer.getInstance();
-
-                if (zone == SlideZone.GLISSANDO) {
-                    slideRenderer.renderPreviewGlissando(g2, sourceIndex, line, invariants);
-                } else {
-                    slideRenderer.renderPreviewFall(g2, sourceIndex, line, invariants);
-                }
-            }
-
-            return;
-        }
-
-        // Skip if preview element is not visible (e.g., in keyboard mode, or hovering over a note head)
-        if (!lc.isPreviewElementVisible()) {
-            return;
-        }
-
-        // Calculate X position from insertion index
-        double x = 0;
-        var currentXIndex = PreviewElementManager.getCurrentXIndex();
-        var currentStaffPosition = PreviewElementManager.getCurrentStaffPosition();
-
-        // In grace mode, use the locked x position directly — it already accounts
-        // for grace note spacing. The standard calculateInsertionXSs would apply
-        // normal inter-element spacing instead.
-        if (lc.isGraceModeInProgress()) {
-            x = lc.getGraceModeLockedXSs();
-        } else {
-            // Use the last tracked mouse X from PreviewElementManager — Swing's
-            // getMousePosition() can return null during repaints even when the mouse
-            // is over the component, which would break snap-to-terminal logic.
-            var mouseX = PreviewElementManager.getCurrentMouseXSs();
-            var line = lc.getLine();
-
-            if (line != null) {
-                x = invariants.getLayoutResult()
-                    .calculateInsertionXSs(currentXIndex, mouseX, previewElement, line, false);
-            }
-        }
-
-        // Set the preview element position
-        previewElement.setStaffPosition(currentStaffPosition);
-        previewElement.setDirection(StaffElement.defaultDirection(previewElement));
-
-        // Render the preview element with the preview element color.
-        // Pass x as an override so NoteRenderer and decoration renderers apply
-        // device-pixel snapping to the raw double directly. Sub-renderers detect
-        // preview rendering via hasOverrideElementX() and avoid looking up the
-        // preview element in the layout (it isn't there).
-        var frame = lineFrame.withElement(lineFrame.currentElementIndex(), x);
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
-            g2.setColor(ScoreView.getPreviewElementColor());
-            NoteRenderer.getInstance().render(invariants, frame, previewElement, g2);
-
-            // Render articulations and fermata on the preview element.
-            // The override X remains set so decoration renderers use the precise position.
-            if (!previewElement.getArticulations().isEmpty()) {
-                ArticulationRenderer.getInstance().render(invariants, frame, previewElement, g2);
-            }
-
-            if (previewElement.findAttachment(FermataAttachment.class) != null) {
-                FermataRenderer.getInstance().render(invariants, frame, previewElement, g2);
-            }
-        }
-    }
-
-    /**
-     * Renders the paste-mode insertion-point marker for the tracked placement target line.
-     * Runs in the page-level overlay pass, inside the Ss transform
-     * {@code LineOverlayPainter.paintOnLine} establishes against {@link ScoreView} page
-     * coordinates.
-     * <p>
-     * Drawn entirely in {@code Ss}, so the marker's thickness scales with zoom along
-     * with its position and height, the same as every other engraved line.
-     *
-     * @param g2         Graphics context
-     * @param invariants Line invariants
-     */
-    private void renderInsertionPoint(Graphics2D g2, LineInvariants invariants) {
-        var pasteModeManager = PasteModeManager.getActiveInstance();
-
-        // The caller resolves the target line, so no line match is needed here — only
-        // the manager itself, for getTargetIndex().
-        if (pasteModeManager == null) {
-            return;
-        }
-
-        var line = invariants.getCurrentLine();
-
-        if (line == null) {
-            return;
-        }
-
-        var layoutResult = invariants.getLayoutResult();
-
-        // A crotchet stands in for the extents calculateInsertionXSs needs for
-        // after-last spacing — the clipboard fragment's actual shape doesn't matter
-        // here, only a plausible notehead width. The marker sits half a notehead
-        // width further right so it reads as "before the next element" rather than
-        // centered on the notehead of whatever would be inserted.
-        // mouseXSs is ignored here since betweenElementsOnly=true — paste placement
-        // never snaps onto an existing element's own position.
-        var previewElement = ElementType.CROTCHET.newInstance();
-        var xSs = layoutResult.calculateInsertionXSs(
-            pasteModeManager.getTargetIndex(), 0, previewElement, line, true)
-            + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
-
-        // Span every staff position a note could occupy, including ledger lines,
-        // rather than the staff band alone or the full line (which also includes
-        // lyrics/below-content).
-        var middleLineYSs = invariants.getMiddleLineYSs();
-        var topYSs = middleLineYSs + Staff.spToSs(Staff.MIN_STAFF_POSITION_SP);
-        var bottomYSs = middleLineYSs + Staff.spToSs(Staff.MAX_STAFF_POSITION_SP);
-
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
-            g2.setColor(ScoreView.getPreviewElementColor());
-            GraphicUtils.drawRoundedLine(g2, xSs, topYSs, xSs, bottomYSs, INSERTION_POINT_THICKNESS_SS);
-        }
-    }
 
     /**
      * Renders the drag rectangle during a selection drag on this line.

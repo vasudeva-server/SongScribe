@@ -41,7 +41,9 @@ import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.PasteOverlay;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
+import songscribe.ui.component.score.InsertionMarkerOverlay;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.undo.UndoController;
 import songscribe.util.UIUtils;
 
@@ -50,11 +52,12 @@ import songscribe.util.UIUtils;
  * clicking (or pressing Return over) an insertion point on a line.
  * <pre>
  *                     Cmd+V, no selection
- *         INACTIVE ─────────────────────────> ACTIVE ──────────> [overlay shown, all actions disabled,
- *             ^                                 │                 preview element suppressed]
+ *         INACTIVE ─────────────────────────> ACTIVE ──────────> [paste-mode pill shown, all actions
+ *             ^                                 │                 disabled, preview element suppressed]
  *             │                                 │
  *             │                          mouseMoved on a line
- *             │                                 │  └─> findInsertionIndex → track (lc, index), repaint old+new
+ *             │                                 │  └─> findInsertionIndex → track (lc, index),
+ *             │                                 │      retarget insertion marker overlay
  *             │                                 │
  *             │        ┌── click / Return ──────┤   (Return with no tracked point ⇒ no-op, stay ACTIVE)
  *             │        │      └─> tryInsertFragment(index, no deleteRange)
@@ -66,13 +69,20 @@ import songscribe.util.UIUtils;
  *                      └── app backgrounded
  *
  *         ALL exits funnel through ONE exit():
- *             active=false → post notification → remove overlay → remove ComponentListener
+ *             active=false → post notification → remove paste-mode pill → remove ComponentListener
  * </pre>
  * All exits route through the single {@link #exit()} funnel, mirroring
  * {@code GraceModeManager.finish(boolean)}. Open-coding teardown per exit path
  * would be five paths of duplicated steps, and a missed listener removal is
  * invisible — each enter/exit cycle would leak a live listener on the layered
  * pane. Mirrors {@link GraceModeManager}'s single-flag / static-instance shape.
+ * <p>
+ * "Overlay" means two different things in this class, deliberately kept distinct: the
+ * paste-mode <b>pill</b> ({@link #overlay}, a {@link PasteOverlay}) is a banner in viewport space
+ * hosted on {@link MainFrame}'s {@link JLayeredPane}, while the insertion-point <b>marker</b>
+ * ({@link #insertionMarkerOverlay}, an {@code InsertionMarkerOverlay}) is a
+ * {@code LineOverlayComponent} in page space, hosted by {@link ScoreView} and sized to exactly
+ * the ink it draws.
  */
 public final class PasteModeManager {
 
@@ -102,10 +112,26 @@ public final class PasteModeManager {
     @Nullable
     private ComponentListener overlayBoundsListener;
 
+    // The insertion-point marker. One instance for the lifetime of this manager (and thus of
+    // the owning ScoreView) — retargeted and shown/hidden below rather than recreated.
+    private final InsertionMarkerOverlay insertionMarkerOverlay;
+
     public PasteModeManager(ClipboardManager clipboardManager, ScoreView scoreView) {
         this.clipboardManager = clipboardManager;
         this.scoreView = scoreView;
+        insertionMarkerOverlay = new InsertionMarkerOverlay(scoreView);
         instance = this;
+    }
+
+    /**
+     * Registers the insertion marker as a child of the owning view. Deliberately not done in
+     * the constructor: this manager is built from {@code ScoreView}'s constructor, before the
+     * view has a layout manager to register an absolute-bounds child against, and headless
+     * views never acquire one at all. {@code ScoreView.init()} calls this on the interactive
+     * path only, mirroring {@link PreviewElementManager#installOverlay}.
+     */
+    public void installOverlay() {
+        scoreView.addOverlay(insertionMarkerOverlay);
     }
 
     /**
@@ -122,8 +148,7 @@ public final class PasteModeManager {
 
     /**
      * Returns the active {@link PasteModeManager} instance, or null when paste mode is
-     * not in progress. Used by {@code LineOverlayPainter} to find the line currently
-     * tracked as the insertion target.
+     * not in progress.
      */
     @Nullable
     public static PasteModeManager getActiveInstance() {
@@ -166,6 +191,10 @@ public final class PasteModeManager {
     /**
      * Enters paste mode. Called from {@code handlePaste}'s no-selection branch, so
      * the clipboard is already known non-empty and the score already has focus.
+     * <p>
+     * {@link #syncTargetToMouse()} shows the insertion marker on the spot when a target is
+     * already resolvable (the mouse is already over a line), by routing through
+     * {@link #updateTarget}, the same path a real {@code mouseMoved} takes.
      */
     public void enter() {
         if (active) {
@@ -233,8 +262,8 @@ public final class PasteModeManager {
 
     /**
      * The single teardown funnel every exit routes through: reset the flag and post
-     * the notification (via {@link #setActive}), drop the tracked insertion point,
-     * and repaint the line that was showing the insertion marker so it clears.
+     * the notification (via {@link #setActive}), and drop the tracked insertion point
+     * (via {@link #clearTarget}, which also hides the insertion marker).
      */
     private void exit() {
         setActive(false);
@@ -315,23 +344,21 @@ public final class PasteModeManager {
     }
 
     /**
-     * Drops the tracked insertion point and repaints the line that was showing the marker
-     * so it clears. Paste mode stays active — Return simply becomes a no-op again until
-     * the mouse re-enters a valid insertion position.
+     * Drops the tracked insertion point and hides the insertion marker. Paste mode stays
+     * active — Return simply becomes a no-op again until the mouse re-enters a valid insertion
+     * position.
      */
     private void clearTarget() {
-        var lineComponent = targetLineComponent;
         targetLineComponent = null;
         targetIndex = -1;
-
-        if (lineComponent != null) {
-            lineComponent.repaintWithOverlayHeadroom();
-        }
+        insertionMarkerOverlay.setTarget(null, -1);
     }
 
     /**
      * Recomputes the insertion index under the mouse and, when it or the line changes,
-     * repaints the previously tracked line and the new one so only those two lines redraw.
+     * retargets the insertion marker. {@code InsertionMarkerOverlay}'s height is identical on
+     * every line, so a line change only ever repositions the marker — Swing dirties its old and
+     * new bounds automatically when it moves, with no explicit repaint call needed.
      */
     private void updateTarget(LineComponent lineComponent, MouseEvent e) {
         var line = lineComponent.getLine();
@@ -359,15 +386,9 @@ public final class PasteModeManager {
         var index = layoutResult.findInsertionIndex(mouseXSs, line);
 
         if (lineComponent != targetLineComponent || index != targetIndex) {
-            var previous = targetLineComponent;
             targetLineComponent = lineComponent;
             targetIndex = index;
-
-            if (previous != null && previous != lineComponent) {
-                previous.repaintWithOverlayHeadroom();
-            }
-
-            lineComponent.repaintWithOverlayHeadroom();
+            insertionMarkerOverlay.setTarget(lineComponent, index);
         }
     }
 

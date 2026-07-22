@@ -32,10 +32,13 @@ import javax.swing.text.Element;
 
 import org.jspecify.annotations.Nullable;
 
+import net.engio.mbassy.listener.Handler;
+
 import songscribe.Strings;
 import songscribe.error.RuntimeError;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.TextEditingDidChangeNotification;
+import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
@@ -221,7 +224,8 @@ public final class LyricEditor extends MyJTextField {
     public static void openOn(ScoreView score, Line line, StaffElement element) {
         var editor = new LyricEditor(score, line, element);
         score.addOverlay(editor);
-        score.setComponentZOrder(editor, 0);
+        // Reclaims the topmost index, pushing any line overlays below the caret.
+        score.setComponentZOrder(editor, ScoreView.LYRIC_EDITOR_Z_ORDER);
         score.setActiveLyricEditor(editor);
 
         // A mutation that triggered this open (e.g. committing a lyric before advancing)
@@ -274,6 +278,28 @@ public final class LyricEditor extends MyJTextField {
             setText(existingText);
             selectAll();
         }
+
+        MessageCenter.subscribe(this);
+    }
+
+    /**
+     * Re-derives this editor's zoomed font and bounds when it is the currently active editor.
+     * <p>
+     * This is an absolutely-positioned {@link javax.swing.JComponent}, not a layout-managed
+     * child, so a zoom change does not move or resize it on its own. Guarded on being the
+     * active editor because {@link MessageCenter} holds subscribers weakly — a dismissed
+     * editor stays reachable (and therefore subscribed) until GC'd, and must not react to a
+     * zoom change after {@link #dismiss}. Priority is intentionally left at the default: see
+     * the priority requirement documented on {@link ZoomDidChangeNotification}.
+     */
+    @Handler
+    void zoomDidChange(ZoomDidChangeNotification message) {
+        if (score.getActiveLyricEditor() != this) {
+            return;
+        }
+
+        refreshFont();
+        recomputeBounds();
     }
 
     // PlainDocument replaces '\n' with space before calling the filter; override to strip instead.

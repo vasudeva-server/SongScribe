@@ -22,24 +22,19 @@ package songscribe.ui;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.awt.Point;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import net.engio.mbassy.listener.Handler;
@@ -52,8 +47,12 @@ import songscribe.ui.component.ScoreView;
 
 /**
  * Unit tests for {@link ZoomController}: the pure level-stepping functions, the
- * no-active-view no-op contract, and (with a stubbed {@link ScoreView}) the
- * zoom-apply / notification-posting behavior.
+ * no-active-view no-op contract, and the {@link ZoomDidChangeNotification} payload it posts.
+ * <p>
+ * {@link ZoomController} no longer applies a zoom itself — {@code ScoreView} does that from
+ * its own high-priority handler of the posted notification (see that class's doc) — so these
+ * tests verify {@link ZoomController}'s stepping/clamping logic purely through what it posts,
+ * never through a mocked {@code ScoreView} side effect.
  */
 class ZoomControllerTest extends UnitTest {
 
@@ -112,21 +111,32 @@ class ZoomControllerTest extends UnitTest {
     }
 
     /**
-     * Stubs the active {@link ScoreView} with a real {@link ViewScale} and wires
-     * {@code applyZoomPercent} to mutate it, mirroring the real
-     * {@code ScoreView.applyZoomPercent} contract without needing a live Swing tree.
+     * Stubs the active {@link ScoreView} with a real {@link ViewScale} so {@link
+     * ZoomController} can read/seed the current percent without a live Swing tree.
+     * {@link ZoomController} never calls a method on the returned mock — it only reads {@link
+     * ScoreView#getViewScale()} and posts a notification — so nothing beyond that is stubbed.
      */
     private ScoreView stubActiveScoreView() {
         var scoreView = mock(ScoreView.class);
         var viewScale = new ViewScale();
         when(scoreView.getViewScale()).thenReturn(viewScale);
-        doAnswer(invocation -> {
-            viewScale.setZoomPercent(invocation.getArgument(0));
-            return null;
-        }).when(scoreView).applyZoomPercent(anyInt(), any());
         when(mockFrame.getScoreView()).thenReturn(scoreView);
 
         return scoreView;
+    }
+
+    /** The {@code newZoomPercent} of the sole notification posted so far. */
+    private int postedNewPercent() {
+        assertThat(listener.received).hasSize(1);
+
+        return listener.received.get(0).getNewZoomPercent();
+    }
+
+    /** The {@code anchorPoint} of the sole notification posted so far. */
+    private @Nullable Point postedAnchor() {
+        assertThat(listener.received).hasSize(1);
+
+        return listener.received.get(0).getAnchorPoint();
     }
 
     // -------------------------------------------------------------------------
@@ -260,11 +270,11 @@ class ZoomControllerTest extends UnitTest {
 
         @Test
         void testZoomInStepsToNextLevel() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.zoomIn();
 
-            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(150);
+            assertThat(postedNewPercent()).isEqualTo(150);
         }
 
         @Test
@@ -289,7 +299,7 @@ class ZoomControllerTest extends UnitTest {
 
             ZoomController.zoomOut();
 
-            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(100);
+            assertThat(postedNewPercent()).isEqualTo(100);
         }
 
         @Test
@@ -315,7 +325,7 @@ class ZoomControllerTest extends UnitTest {
 
         ZoomController.resetZoom();
 
-        assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(ZoomController.DEFAULT_ZOOM_PERCENT);
+        assertThat(postedNewPercent()).isEqualTo(ZoomController.DEFAULT_ZOOM_PERCENT);
     }
 
     @Test
@@ -326,7 +336,6 @@ class ZoomControllerTest extends UnitTest {
         ZoomController.resetZoom();
 
         assertThat(listener.received).isEmpty();
-        verify(scoreView, never()).applyZoomPercent(anyInt(), any());
     }
 
     // -------------------------------------------------------------------------
@@ -338,29 +347,29 @@ class ZoomControllerTest extends UnitTest {
 
         @Test
         void testSetZoomPercentBelowMinClampsToMin() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.setZoomPercent(ZoomController.MIN_ZOOM_PERCENT - 1);
 
-            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(ZoomController.MIN_ZOOM_PERCENT);
+            assertThat(postedNewPercent()).isEqualTo(ZoomController.MIN_ZOOM_PERCENT);
         }
 
         @Test
         void testSetZoomPercentAboveMaxClampsToMax() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.setZoomPercent(ZoomController.MAX_ZOOM_PERCENT + 1);
 
-            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(ZoomController.MAX_ZOOM_PERCENT);
+            assertThat(postedNewPercent()).isEqualTo(ZoomController.MAX_ZOOM_PERCENT);
         }
 
         @Test
         void testSetZoomPercentWithinRangeSetsExactValue() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.setZoomPercent(200);
 
-            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(200);
+            assertThat(postedNewPercent()).isEqualTo(200);
         }
     }
 
@@ -388,7 +397,6 @@ class ZoomControllerTest extends UnitTest {
         ZoomController.setZoomPercent(200);
 
         assertThat(listener.received).isEmpty();
-        verify(scoreView, never()).applyZoomPercent(anyInt(), any());
     }
 
     @Test
@@ -401,7 +409,6 @@ class ZoomControllerTest extends UnitTest {
         ZoomController.setZoomPercent(ZoomController.MAX_ZOOM_PERCENT + 1);
 
         assertThat(listener.received).isEmpty();
-        verify(scoreView, never()).applyZoomPercent(anyInt(), any());
     }
 
     // -------------------------------------------------------------------------
@@ -413,24 +420,24 @@ class ZoomControllerTest extends UnitTest {
 
         @Test
         void testNegativeRotationZoomsInWithoutSnappingToNextLevel() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.zoomByWheel(ONE_NOTCH_ZOOM_IN, ANCHOR);
 
             // Continuous multiplicative step: strictly past the current percent but
             // short of the next discrete level a keyboard zoom-in would jump to.
-            assertThat(scoreView.getViewScale().getZoomPercent())
+            assertThat(postedNewPercent())
                 .isGreaterThan(ZoomController.DEFAULT_ZOOM_PERCENT)
                 .isLessThan(ZoomController.nextLevelAbove(ZoomController.DEFAULT_ZOOM_PERCENT));
         }
 
         @Test
         void testPositiveRotationZoomsOutWithoutSnappingToPreviousLevel() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.zoomByWheel(ONE_NOTCH_ZOOM_OUT, ANCHOR);
 
-            assertThat(scoreView.getViewScale().getZoomPercent())
+            assertThat(postedNewPercent())
                 .isLessThan(ZoomController.DEFAULT_ZOOM_PERCENT)
                 .isGreaterThan(ZoomController.nextLevelBelow(ZoomController.DEFAULT_ZOOM_PERCENT));
         }
@@ -442,7 +449,6 @@ class ZoomControllerTest extends UnitTest {
 
             ZoomController.zoomByWheel(ONE_NOTCH_ZOOM_IN, ANCHOR);
 
-            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(ZoomController.MAX_ZOOM_PERCENT);
             assertThat(listener.received).isEmpty();
         }
 
@@ -453,31 +459,28 @@ class ZoomControllerTest extends UnitTest {
 
             ZoomController.zoomByWheel(ONE_NOTCH_ZOOM_OUT, ANCHOR);
 
-            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(ZoomController.MIN_ZOOM_PERCENT);
             assertThat(listener.received).isEmpty();
         }
 
         @Test
         void testSubStepZoomOutStillStepsDownByOne() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             // A rotation whose multiplicative change stays under the rounding
             // threshold at the default percent would, by rounding alone, leave the
             // percent unchanged — the nudge must still advance it one step.
             ZoomController.zoomByWheel(subStepRotation(ZoomController.DEFAULT_ZOOM_PERCENT), ANCHOR);
 
-            assertThat(scoreView.getViewScale().getZoomPercent())
-                .isEqualTo(ZoomController.DEFAULT_ZOOM_PERCENT - 1);
+            assertThat(postedNewPercent()).isEqualTo(ZoomController.DEFAULT_ZOOM_PERCENT - 1);
         }
 
         @Test
         void testSubStepZoomInStillStepsUpByOne() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.zoomByWheel(-subStepRotation(ZoomController.DEFAULT_ZOOM_PERCENT), ANCHOR);
 
-            assertThat(scoreView.getViewScale().getZoomPercent())
-                .isEqualTo(ZoomController.DEFAULT_ZOOM_PERCENT + 1);
+            assertThat(postedNewPercent()).isEqualTo(ZoomController.DEFAULT_ZOOM_PERCENT + 1);
         }
 
         /**
@@ -501,20 +504,20 @@ class ZoomControllerTest extends UnitTest {
 
         @Test
         void testPositiveMagnificationZoomsIn() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.zoomByMagnification(MAGNIFICATION_ZOOM_IN, ANCHOR);
 
-            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(MAGNIFIED_IN_PERCENT);
+            assertThat(postedNewPercent()).isEqualTo(MAGNIFIED_IN_PERCENT);
         }
 
         @Test
         void testNegativeMagnificationZoomsOut() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.zoomByMagnification(MAGNIFICATION_ZOOM_OUT, ANCHOR);
 
-            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(MAGNIFIED_OUT_PERCENT);
+            assertThat(postedNewPercent()).isEqualTo(MAGNIFIED_OUT_PERCENT);
         }
 
         @Test
@@ -524,7 +527,6 @@ class ZoomControllerTest extends UnitTest {
 
             ZoomController.zoomByMagnification(MAGNIFICATION_ZOOM_IN, ANCHOR);
 
-            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(ZoomController.MAX_ZOOM_PERCENT);
             assertThat(listener.received).isEmpty();
         }
 
@@ -535,19 +537,17 @@ class ZoomControllerTest extends UnitTest {
 
             ZoomController.zoomByMagnification(MAGNIFICATION_ZOOM_OUT, ANCHOR);
 
-            assertThat(scoreView.getViewScale().getZoomPercent()).isEqualTo(ZoomController.MIN_ZOOM_PERCENT);
             assertThat(listener.received).isEmpty();
         }
 
         @Test
         void testSubThresholdMagnificationIsNoOp() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             // Unlike zoomByWheel, there is no dead-gesture nudge: a magnification too
-            // small to move the rounded percent must leave applyZoomPercent uncalled.
+            // small to move the rounded percent must post nothing.
             ZoomController.zoomByMagnification(subStepMagnification(ZoomController.DEFAULT_ZOOM_PERCENT), ANCHOR);
 
-            verify(scoreView, never()).applyZoomPercent(anyInt(), any());
             assertThat(listener.received).isEmpty();
         }
 
@@ -562,7 +562,7 @@ class ZoomControllerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Anchor-point forwarding to ScoreView.applyZoomPercent
+    // Anchor-point forwarding into the posted notification
     // -------------------------------------------------------------------------
 
     @Nested
@@ -570,45 +570,38 @@ class ZoomControllerTest extends UnitTest {
 
         @Test
         void testZoomByWheelForwardsAnchorPoint() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.zoomByWheel(ONE_NOTCH_ZOOM_IN, ANCHOR);
 
-            assertThat(capturedAnchor(scoreView)).isEqualTo(ANCHOR);
+            assertThat(postedAnchor()).isEqualTo(ANCHOR);
         }
 
         @Test
         void testZoomByMagnificationForwardsAnchorPoint() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.zoomByMagnification(MAGNIFICATION_ZOOM_IN, ANCHOR);
 
-            assertThat(capturedAnchor(scoreView)).isEqualTo(ANCHOR);
+            assertThat(postedAnchor()).isEqualTo(ANCHOR);
         }
 
         @Test
         void testSetZoomPercentWithAnchorForwardsAnchorPoint() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.setZoomPercent(200, ANCHOR);
 
-            assertThat(capturedAnchor(scoreView)).isEqualTo(ANCHOR);
+            assertThat(postedAnchor()).isEqualTo(ANCHOR);
         }
 
         @Test
         void testKeyboardZoomForwardsNullAnchor() {
-            var scoreView = stubActiveScoreView();
+            stubActiveScoreView();
 
             ZoomController.zoomIn();
 
-            assertThat(capturedAnchor(scoreView)).isNull();
-        }
-
-        private Point capturedAnchor(ScoreView scoreView) {
-            var captor = ArgumentCaptor.forClass(Point.class);
-            verify(scoreView).applyZoomPercent(anyInt(), captor.capture());
-
-            return captor.getValue();
+            assertThat(postedAnchor()).isNull();
         }
     }
 }
