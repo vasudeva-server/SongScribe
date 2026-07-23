@@ -41,6 +41,7 @@ import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.StaffElement;
+import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
 import songscribe.shape.BezierBow;
@@ -78,8 +79,15 @@ class LayoutEngineTest extends UnitTest {
     private static final int SP_BEAM_BELOW_2 = 4;
 
     // Row 20 — slope dampening constant
-    /** Extreme below-midline sp; creates a large raw slope that the hyperbolic dampener saturates. */
+    /** Extreme below-midline sp; creates a large raw slope that the dampener saturates. */
     private static final int SP_SLOPE_EXTREME_LOW = 16;
+    /**
+     * Vertical slack (ss) a single quant step may add to a beam edge on top of the damped slope:
+     * the quant offsets straddle/sit/inter/hang tile one staff space.
+     */
+    private static final double QUANT_STEP_SS = 1.0;
+    /** {@code dirSign} for a stems-up group, per the BeamScoring sign convention. */
+    private static final int STEMS_UP_DIR_SIGN = 1;
 
     // Row 21 — stem-reduction invariant constants
     /** First note of the non-linear beam contour; also the anchor (min sp → highest pitch). */
@@ -490,7 +498,7 @@ class LayoutEngineTest extends UnitTest {
         assertThat(beamLayout.stemsUp()).describedAs("manual upper=true on first note overrides auto stemsDown").isTrue();
     }
 
-    // T14: Beam slope with a very large pitch difference is dampened below BEAM_SLOPE_MAX
+    // T14: Beam slope with a very large pitch difference is dampened well below the raw pitch slope
     @Test
     void testBeamSlopeWithLargePitchDifferenceIsDampened() {
         var line = detachedLine();
@@ -506,12 +514,23 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var beamLayout = require(result.getBeamLayout(beam), "BeamLayout");
 
+        var xSpanSs = result.getElementXSs(note2) - result.getElementXSs(note1);
+        var rawSlope = Math.abs(
+            Staff.spToSs(note2.getStaffPosition() - note1.getStaffPosition()) / xSpanSs);
+
+        // Quanting may move each beam edge by up to one quant step, which the damped
+        // slope cannot account for; allow exactly that slack over the group's X span.
+        var dampedSlopeBound = BeamScoring.SLOPE_DAMPING_COEFFICIENT + QUANT_STEP_SS / xSpanSs;
+
         assertThat(Math.abs(beamLayout.slope()))
-            .describedAs("dampened slope absolute value must be strictly below the saturation limit")
-            .isLessThan(LayoutEngine.BEAM_SLOPE_MAX);
+            .describedAs("dampened slope absolute value must be well below the raw pitch slope")
+            .isLessThan(rawSlope);
+        assertThat(Math.abs(beamLayout.slope()))
+            .describedAs("dampened slope absolute value must respect the damping coefficient plus quant slack")
+            .isLessThanOrEqualTo(dampedSlopeBound);
     }
 
-    // T15: Every stem in a beamed group is at least the minimum stem length after slope reduction
+    // T15: Every stem in a beamed group is at least LilyPond's extreme minimum stem length
     @Test
     void testBeamedGroupAllStemsAtLeastMinimumStemLength() {
         var line = detachedLine();
@@ -528,18 +547,23 @@ class LayoutEngineTest extends UnitTest {
 
         var result = require(engine().layout(line), "LayoutResult");
 
+        // Quanting may shorten a stem below the standard length, but never below LilyPond's
+        // extreme minimum: the free length for a single beam plus half the beam thickness.
+        var extremeMinimumSs = BeamScoring.BEAMED_EXTREME_MINIMUM_FREE_LENGTHS_SS[0]
+            + LineThickness.BEAM_THICKNESS_SS / 2.0;
+
         for (var sp : new int[]{SP_CONTOUR_FIRST, SP_CONTOUR_MIDDLE, SP_CONTOUR_LAST}) {
             var note = (sp == SP_CONTOUR_FIRST) ? note1 : (sp == SP_CONTOUR_MIDDLE) ? note2 : note3;
             var stem = require(result.getStemLayout(note), "StemLayout at sp=" + sp);
             assertThat(stem.bottomYSs() - stem.topYSs())
-                .describedAs("stem length at sp=%d must be ≥ minimum stem length".formatted(sp))
-                .isGreaterThanOrEqualTo(SMuFLConstants.STEM_LENGTH_SS - TOLERANCE);
+                .describedAs("stem length at sp=%d must be ≥ the extreme minimum stem length".formatted(sp))
+                .isGreaterThanOrEqualTo(extremeMinimumSs - TOLERANCE);
         }
     }
 
-    // T16: Flat beam (equal-position notes, slope=0) snaps startYSs to the 0.5 ss grid
+    // T16: Flat beam (equal-position notes, slope=0) lands its center on a straddle/sit/inter/hang quant
     @Test
-    void testFlatBeamSnappingSnapsStartYSsToHalfStaffSpaceGrid() {
+    void testFlatBeamCenterLandsOnAQuant() {
         var line = detachedLine();
         var note1 = ElementType.QUAVER.newInstance();
         note1.setStaffPosition(SP_FLAT_BEAM);
@@ -553,8 +577,29 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var beamLayout = require(result.getBeamLayout(beam), "BeamLayout");
 
-        assertThat(beamLayout.startYSs() % 0.5)
-            .describedAs("startYSs for flat beam must lie on the 0.5 staff-space grid")
+        // Recover the scoring-space beam center from the layout's Y-down outer edge.
+        // Both notes sit below the middle line, so the group is stems-up.
+        var beamCenterYUpSs =
+            -(beamLayout.startYSs() + STEMS_UP_DIR_SIGN * LineThickness.BEAM_THICKNESS_SS / 2.0);
+        var fractionSs = beamCenterYUpSs - Math.floor(beamCenterYUpSs);
+
+        // The last entry wraps straddle around the top of the fractional range.
+        var quantOffsets = new double[]{
+            BeamScoring.STRADDLE_SS,
+            BeamScoring.SIT_SS,
+            BeamScoring.INTER_SS,
+            BeamScoring.HANG_SS,
+            1.0 + BeamScoring.STRADDLE_SS
+        };
+
+        var distanceToNearestQuantSs = Double.MAX_VALUE;
+
+        for (var offset : quantOffsets) {
+            distanceToNearestQuantSs = Math.min(distanceToNearestQuantSs, Math.abs(fractionSs - offset));
+        }
+
+        assertThat(distanceToNearestQuantSs)
+            .describedAs("flat beam center must land on a straddle/sit/inter/hang quant")
             .isCloseTo(0.0, within(TOLERANCE));
     }
 

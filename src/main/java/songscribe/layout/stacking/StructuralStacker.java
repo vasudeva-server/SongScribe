@@ -197,10 +197,10 @@ public class StructuralStacker {
      * package-visible for independent unit testing.
      * <p>
      * The bracket floats above the real tips, exactly as LilyPond does — it never shortens a stem to
-     * meet the line. Forced stems are already shortened bracket-independently (see
-     * {@link NoteGeometry#forcedShorteningSs}), so their reported tips are the shortened ones and the
-     * bracket sits low on them without any trimming; a genuinely natural, full-length interior stem
-     * floats the bracket above it.
+     * meet the line. Unbeamed forced stems are already shortened bracket-independently (see
+     * {@link NoteGeometry#forcedShorteningSs}) and beamed stems already carry their quanted length,
+     * so their reported tips are the final ones and the bracket sits low on them without any
+     * trimming; a genuinely natural, full-length interior stem floats the bracket above it.
      * <p>
      * A flat box that clears only the tallest tip can still dip below an intermediate one once
      * tilted, so each tip is projected back to the left endpoint along the slope and the highest

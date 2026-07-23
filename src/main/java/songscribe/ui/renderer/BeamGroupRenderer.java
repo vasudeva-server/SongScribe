@@ -22,6 +22,7 @@ package songscribe.ui.renderer;
 
 import static songscribe.util.GraphicsState.Property.CLIP;
 import static songscribe.util.GraphicsState.Property.COLOR;
+import static songscribe.util.GraphicsState.Property.STROKE;
 
 import module java.desktop;
 
@@ -30,6 +31,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.BeamMath;
+import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.dom.LineElement;
 import songscribe.layout.LayoutResult;
@@ -283,9 +285,12 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
 
         // --- Thickening (from BeamLayout, zero if unavailable) ---
         var thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
-        var effectiveBeamDepthSs = SMuFLConstants.BEAM_THICKNESS_SS + thickeningSs;
+        var effectiveBeamDepthSs = LineThickness.BEAM_THICKNESS_SS + thickeningSs;
         var beamDepthSs = isUpper ? effectiveBeamDepthSs : -effectiveBeamDepthSs;
-        var innerBeamOffsetSs = (effectiveBeamDepthSs + SMuFLConstants.BEAM_SPACING_SS) * recursionLevel * (isUpper ? 1 : -1);
+        // Thickening widens each beam, so it also widens the step between stacked
+        // beams; without it a thickened stack would overlap.
+        var innerBeamOffsetSs =
+            (LineThickness.BEAM_TRANSLATION_SS + thickeningSs) * recursionLevel * (isUpper ? 1 : -1);
 
         // --- First note stem geometry ---
         var firstStemLayout = layoutResult.getStemLayout(beginNote);
@@ -307,15 +312,23 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var lastOuterY = middleLineYSs + lastTipYSs + innerBeamOffsetSs;
         var lastInnerY = lastOuterY + beamDepthSs;
 
-        // --- Build and draw parallelogram ---
+        // --- Build parallelogram, inset for LilyPond-style rounded corners ---
+        // LilyPond's Lookup::beam pulls every corner half a blot diameter toward
+        // the beam's interior, then strokes the result with a round pen of one
+        // full blot diameter. Fill plus stroke restores the original extent, so
+        // the beam measures BEAM_THICKNESS_SS as before and only its corners round
+        // off. Insetting without stroking would draw a beam one blot too thin.
+        var blotRadiusSs = LineThickness.BEAM_BLOT_DIAMETER_SS / 2.0;
+        var towardInnerSs = isUpper ? blotRadiusSs : -blotRadiusSs;
+
         var beam = new Path2D.Double(Path2D.WIND_NON_ZERO, 4);
-        beam.moveTo(firstX, firstOuterY);
-        beam.lineTo(lastX, lastOuterY);
-        beam.lineTo(lastX, lastInnerY);
-        beam.lineTo(firstX, firstInnerY);
+        beam.moveTo(firstX + blotRadiusSs, firstOuterY + towardInnerSs);
+        beam.lineTo(lastX - blotRadiusSs, lastOuterY + towardInnerSs);
+        beam.lineTo(lastX - blotRadiusSs, lastInnerY - towardInnerSs);
+        beam.lineTo(firstX + blotRadiusSs, firstInnerY - towardInnerSs);
         beam.closePath();
 
-        try (var ignored = GraphicsState.save(g2, CLIP, COLOR)) {
+        try (var ignored = GraphicsState.save(g2, CLIP, COLOR, STROKE)) {
             if (type != BeamType.FULL) {
                 var clip = beam.getBounds2D();
                 var x1 = (type == BeamType.ATTACH_LEFT)
@@ -330,7 +343,13 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
             }
 
             g2.setColor(selected ? selectionColor : RenderingUtils.ELEMENT_COLOR);
+            g2.setStroke(new BasicStroke(
+                (float) LineThickness.BEAM_BLOT_DIAMETER_SS,
+                BasicStroke.CAP_ROUND,
+                BasicStroke.JOIN_ROUND
+            ));
             g2.fill(beam);
+            g2.draw(beam);
         }
     }
 

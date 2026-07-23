@@ -73,7 +73,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
 
     // Half the beam thickness in ss, used to tuck beamed stems inside the beam
     // so they don't peek past the outer edge when the beam is angled.
-    private static final double HALF_BEAM_THICKNESS_SS = SMuFLConstants.BEAM_THICKNESS_SS / 2.0;
+    private static final double HALF_BEAM_THICKNESS_SS = LineThickness.BEAM_THICKNESS_SS / 2.0;
 
     // Stem end-cap arc diameter as a fraction of stem width (from LilyPond code analysis)
     private static final double STEM_ARC_RATIO = 0.615;
@@ -303,9 +303,15 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
 
         // Stem length is measured from notehead center (y=0), not from the anchor.
         // The anchor only determines where the stem visually attaches to the notehead.
-        // The forced-shortening formula already caps at the floor; guard here defensively.
-        var stemLength = Math.max(
-            NoteGeometry.FORCED_STEM_FLOOR_SS, geom.lengthSs() + lengtheningSs - forcedShorteningSs);
+        // For a beamed note the quanted beam geometry is authoritative — LilyPond's
+        // quanting legitimately produces stems shorter than the forced-stem floor, and
+        // lengthening them here would push the stem past the beam edge. For an unbeamed
+        // note the forced-shortening formula already caps at the floor; the guard below
+        // is defensive.
+        var naturalStemLength = geom.lengthSs() + lengtheningSs - forcedShorteningSs;
+        var stemLength = beamed
+            ? naturalStemLength
+            : Math.max(NoteGeometry.FORCED_STEM_FLOOR_SS, naturalStemLength);
         var anchorY = geom.anchorYSs();
 
         // For beamed notes, shorten the rendered stem by half the (thickened) beam

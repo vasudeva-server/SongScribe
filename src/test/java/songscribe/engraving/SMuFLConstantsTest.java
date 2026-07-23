@@ -54,19 +54,8 @@ class SMuFLConstantsTest extends UnitTest {
     // Upper bound: no single engraving default should exceed a full staff space
     private static final double MAX_ENGRAVING_SS = 1.0;
 
-    @Test
-    void testBeamThicknessIsPlausible() {
-        assertThat(SMuFLConstants.BEAM_THICKNESS_SS)
-                .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
-                .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
-    }
-
-    @Test
-    void testBeamSpacingIsPlausible() {
-        assertThat(SMuFLConstants.BEAM_SPACING_SS)
-                .isGreaterThanOrEqualTo(MIN_ENGRAVING_SS)
-                .isLessThanOrEqualTo(MAX_ENGRAVING_SS);
-    }
+    // Beam thickness and spacing are no longer SMuFL-derived — they follow
+    // LilyPond and live in LineThickness, covered by LineThicknessTest.
 
     @Test
     void testRepeatBarlineDotSeparationIsPlausible() {

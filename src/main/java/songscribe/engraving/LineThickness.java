@@ -1,8 +1,8 @@
 package songscribe.engraving;
 
 /**
- * Resolved element thicknesses using LilyPond-informed multiplier ratios,
- * all in staff spaces.
+ * Resolved element thicknesses and beam geometry using LilyPond-informed
+ * multiplier ratios, all in staff spaces.
  *
  * <p>LilyPond derives all element thicknesses from a single base staff-line
  * thickness using fixed multiplier ratios. The same ratios are used for both
@@ -41,6 +41,38 @@ public final class LineThickness {
     public static final double VOLTA_BRACKET_SS = LILYPOND_BASE_THICKNESS_SS * VOLTA_BRACKET_MULTIPLIER;
     public static final double TUPLET_BRACKET_SS = LILYPOND_BASE_THICKNESS_SS * TUPLET_BRACKET_MULTIPLIER;
     public static final double GLISSANDO_SS = LILYPOND_BASE_THICKNESS_SS * GLISSANDO_MULTIPLIER;
+
+    /**
+     * Beam thickness in staff spaces, from LilyPond's {@code beam-thickness}
+     * (define-grobs.scm). Bravura's SMuFL {@code engravingDefaults} recommend 0.5,
+     * but beams are drawn by SongScribe rather than taken from the font, so
+     * following LilyPond here matches its engraving — the same trade-off already
+     * made for {@link #LILYPOND_BASE_THICKNESS_SS} over Bravura's 0.13 staff line.
+     */
+    public static final double BEAM_THICKNESS_SS = 0.48;
+
+    /**
+     * Center-to-center distance between adjacent beams in a stack, in staff
+     * spaces. Ported from LilyPond's {@code Beam::get_beam_translation}
+     * (beam.cc), whose fewer-than-four-beams branch is
+     * {@code (2 * staffSpace + staffLine - beamThickness) / 2}. A staff space is
+     * 1.0 in these units, hence the bare {@code 2.0}. SongScribe never stacks more
+     * than three beams (32nd notes), so the four-or-more branch is unreachable and
+     * is not ported.
+     *
+     * <p>This is wider than beam thickness plus Bravura's {@code beamSpacing} of
+     * 0.25: LilyPond leaves a larger gap between stacked beams.
+     */
+    public static final double BEAM_TRANSLATION_SS = (2.0 + STAFF_LINE_SS - BEAM_THICKNESS_SS) / 2.0;
+
+    /**
+     * Diameter of the rounded corner applied to a drawn beam, in staff spaces.
+     * LilyPond's {@code blot-diameter} is 0.4 pt (scm/paper.scm) against a default
+     * staff space of 5 pt, giving 0.08 staff spaces. {@code Lookup::beam} insets
+     * the beam polygon by half this and strokes it with a round pen of this width,
+     * so the overall beam extent is unchanged and only the corners are rounded.
+     */
+    public static final double BEAM_BLOT_DIAMETER_SS = 0.08;
 
     /**
      * The barline separation (gap between adjacent barlines) in staff spaces.

@@ -24,6 +24,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.smufl.SMuFLMetadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -65,6 +66,45 @@ class LineThicknessTest extends UnitTest {
         void testTupletBracketThicknessEqualsBaseTimesMultiplier() {
             double expectedTupletBracketSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * LineThickness.TUPLET_BRACKET_MULTIPLIER;
             assertThat(LineThickness.TUPLET_BRACKET_SS).isEqualTo(expectedTupletBracketSs);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Beam geometry follows LilyPond, not Bravura's engravingDefaults
+    // -----------------------------------------------------------------------
+
+    @Nested
+    class BeamGeometry {
+
+        @Test
+        void testBeamGeometryIgnoresFontEngravingDefaults() {
+            // The point of these constants: beams are drawn by SongScribe rather
+            // than taken from the font, so they follow LilyPond regardless of what
+            // the loaded font recommends. Compared against the live font values so
+            // no literal is duplicated here.
+            var fontDefaults = SMuFLMetadata.getEngravingDefaults();
+            var gapSs = LineThickness.BEAM_TRANSLATION_SS - LineThickness.BEAM_THICKNESS_SS;
+
+            assertAll(
+                () -> assertThat(LineThickness.BEAM_THICKNESS_SS)
+                        .isNotEqualTo(fontDefaults.beamThickness()),
+                () -> assertThat(gapSs).isGreaterThan(fontDefaults.beamSpacing()));
+        }
+
+        @Test
+        void testStackedBeamsCannotOverlap() {
+            // Translation is center-to-center, so anything at or below the beam
+            // thickness would draw stacked beams touching or merged into one.
+            assertThat(LineThickness.BEAM_TRANSLATION_SS)
+                    .isGreaterThan(LineThickness.BEAM_THICKNESS_SS);
+        }
+
+        @Test
+        void testBlotDiameterOnlyRoundsCorners() {
+            // A blot at or above the beam thickness would round the beam into a lozenge.
+            assertThat(LineThickness.BEAM_BLOT_DIAMETER_SS)
+                    .isGreaterThan(0.0)
+                    .isLessThan(LineThickness.BEAM_THICKNESS_SS);
         }
     }
 

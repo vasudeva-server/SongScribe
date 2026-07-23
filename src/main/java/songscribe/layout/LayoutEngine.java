@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import module java.desktop;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -37,6 +38,7 @@ import songscribe.dom.KeySignature;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
+import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
 import songscribe.dom.Line;
@@ -82,7 +84,6 @@ public class LayoutEngine {
     // Beam geometry constants (staff-space units unless noted)
     static final double BEAM_DEPTH_SS = 0.4;        // beam thickness
     private static final double BEAM_SHIFT_SS = 0.625;      // gap between stacked beam levels
-    static final double BEAM_SLOPE_MAX = 0.4;    // hyperbolic saturation limit (dimensionless)
     private static final double MIN_STEM_SS = SMuFLConstants.STEM_LENGTH_SS;
 
     // Tie geometry constants (LilyPond slur_shape port).
@@ -531,118 +532,61 @@ public class LayoutEngine {
             // geometry below.
             var stemDirection = groupStemDirection(line, beamStart, beamEnd);
 
-            // Compute beam slope (abc2svg algorithm with hyperbolic dampening).
-            // Staff positions are in half-staff-spaces; ×0.5 converts to staff-space units.
-            var firstElement = line.getElement(beamStart);
-            var lastElement = line.getElement(beamEnd);
-            var firstColumn = elementToColumn.get(firstElement);
-            var lastColumn = elementToColumn.get(lastElement);
+            // Collect the group's stems in BeamScoring's scoring space (Y-up positive,
+            // y=0 at the middle staff line, X measured from the first stem).  Elements
+            // without a column are skipped, mirroring computeBeamElementGeometry.
+            var stemInputs = new ArrayList<BeamScoring.StemInput>(beamEnd - beamStart + 1);
+            var firstColumnXSs = 0.0;
+            var haveFirstColumn = false;
+            var forcedStemCount = 0;
+            var memberCount = 0;
 
-            var slope = 0.0;
+            for (var i = beamStart; i <= beamEnd; i++) {
+                var element = line.getElement(i);
+                memberCount++;
 
-            if (firstColumn != null && lastColumn != null) {
-                var dxSs = lastColumn.getXSs() - firstColumn.getXSs();
-
-                if (dxSs != 0.0) {
-                    var rawSlope =
-                        Staff.spToSs(lastElement.getStaffPosition() - firstElement.getStaffPosition()) / dxSs;
-
-                    // Hyperbolic dampening saturates extreme slopes without hard clamping.
-                    slope = BEAM_SLOPE_MAX * rawSlope / (BEAM_SLOPE_MAX + Math.abs(rawSlope));
+                // LilyPond Beam::forced_stem_count: a middle-line head is never "forced".
+                if (element.getStaffPosition() != 0
+                    && element.getDirection() != StaffElement.defaultDirection(element)) {
+                    forcedStemCount++;
                 }
+
+                var column = elementToColumn.get(element);
+
+                if (column == null) {
+                    continue;
+                }
+
+                if (!haveFirstColumn) {
+                    firstColumnXSs = column.getXSs();
+                    haveFirstColumn = true;
+                }
+
+                stemInputs.add(new BeamScoring.StemInput(
+                    column.getXSs() - firstColumnXSs,
+                    -Staff.spToSs(element.getStaffPosition()),
+                    -element.getStaffPosition(),
+                    BeamMath.beamCount(element)));
             }
 
-            // Compute y-intercept so beam passes through the anchor note's stem tip at MIN_STEM_SS.
-            // The anchor is the note whose stem would be shortest — i.e., closest to the beam.
-            //   stemsUp  → note with min staffPosition (highest pitch in Y-down, closest to beam above)
-            //   stemsDown → note with max staffPosition (lowest pitch in Y-down, closest to beam below)
-            // All Y values are in staff-space with Y-down positive (positive staffPos = below center).
+            // Beam geometry in SongScribe layout space (Y-down positive).  startYSs is
+            // the beam's outer edge at the first stem; slope is Y-down per X.
+            var slope = 0.0;
             var startYSs = 0.0;
 
-            if (firstColumn != null) {
-                var firstXSs = firstColumn.getXSs();
+            if (!stemInputs.isEmpty()) {
+                var dirSign = stemDirection.isUp() ? 1 : -1;
+                var forcedFraction = memberCount > 0 ? (double) forcedStemCount / memberCount : 0.0;
+                var beamPosition = BeamScoring.solve(stemInputs, dirSign, forcedFraction);
+                var leftYUpSs = beamPosition.leftYUpSs();
+                var rightYUpSs = beamPosition.rightYUpSs();
+                var xSpanSs = stemInputs.get(stemInputs.size() - 1).xSs();
 
-                var anchorIdx = beamStart;
-                var anchorStaffPos = firstElement.getStaffPosition();
+                startYSs = -leftYUpSs - dirSign * LineThickness.BEAM_THICKNESS_SS / 2.0;
 
-                for (var i = beamStart + 1; i <= beamEnd; i++) {
-                    var pos = line.getElement(i).getStaffPosition();
-
-                    if (stemDirection.isUp() ? pos < anchorStaffPos : pos > anchorStaffPos) {
-                        anchorStaffPos = pos;
-                        anchorIdx = i;
-                    }
+                if (xSpanSs != 0.0) {
+                    slope = -(rightYUpSs - leftYUpSs) / xSpanSs;
                 }
-
-                var anchorElement = line.getElement(anchorIdx);
-                var anchorColumn = elementToColumn.get(anchorElement);
-                var anchorXSs = (anchorColumn != null) ? anchorColumn.getXSs() : firstXSs;
-                var anchorElementYSs = Staff.spToSs(anchorElement.getStaffPosition());
-
-                // Place beam exactly MIN_STEM_SS from the anchor notehead.
-                // Y-down: beam above notehead = smaller Y (subtract); beam below = larger Y (add).
-                var beamYAtAnchorSs = stemDirection.isUp()
-                    ? anchorElementYSs - MIN_STEM_SS
-                    : anchorElementYSs + MIN_STEM_SS;
-
-                startYSs = beamYAtAnchorSs - slope * (anchorXSs - firstXSs);
-
-                // Iteratively reduce slope until all stems are at least MIN_STEM_SS, or give up
-                // after 20 iterations.
-                for (var iter = 0; iter < 20; iter++) {
-                    var allOk = true;
-
-                    for (var i = beamStart; i <= beamEnd; i++) {
-                        var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemDirection.isUp(), slope, firstXSs, startYSs);
-
-                        if (geometry == null) {
-                            continue;
-                        }
-
-                        if (geometry.stemLenSs() < MIN_STEM_SS - 1e-9) {
-                            allOk = false;
-                            break;
-                        }
-                    }
-
-                    if (allOk) {
-                        break;
-                    }
-
-                    // Reduce slope and reanchor so the anchor note still has exactly MIN_STEM_SS.
-                    slope *= 0.85;
-                    startYSs = beamYAtAnchorSs - slope * (anchorXSs - firstXSs);
-                }
-
-                // After slope reduction, shift beam vertically to cover any remaining deficit.
-                var maxDeficitSs = 0.0;
-
-                for (var i = beamStart; i <= beamEnd; i++) {
-                    var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemDirection.isUp(), slope, firstXSs, startYSs);
-
-                    if (geometry == null) {
-                        continue;
-                    }
-
-                    var deficitSs = MIN_STEM_SS - geometry.stemLenSs();
-
-                    if (deficitSs > maxDeficitSs) {
-                        maxDeficitSs = deficitSs;
-                    }
-                }
-
-                if (maxDeficitSs > 0.0) {
-                    startYSs += stemDirection.isUp() ? -maxDeficitSs : maxDeficitSs;
-                }
-            }
-
-            // Flat beam snapping: when slope is near zero, snap the outer beam edge to
-            // the nearest staff line or space boundary (0.5 ss grid) so the beam sits
-            // cleanly on the grid. startYSs is the outer edge (top for stems-up,
-            // bottom for stems-down), so rounding to the nearest 0.5 ss aligns it
-            // with a line or space center.
-            if (Math.abs(slope) < 0.05) {
-                startYSs = Math.round(startYSs * 2.0) / 2.0;
             }
 
             // Beam thickening: angled beams appear thinner due to raster aliasing.
@@ -658,11 +602,9 @@ public class LayoutEngine {
             //   stemsDown: topYSs = elementAnchorYSs,                     bottomYSs = beamYSs (below notehead, larger Y)
             var stemLayouts = new HashMap<StaffElement, LayoutResult.StemLayout>();
 
-            if (firstColumn != null) {
-                var firstXSs = firstColumn.getXSs();
-
+            if (haveFirstColumn) {
                 for (var i = beamStart; i <= beamEnd; i++) {
-                    var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemDirection.isUp(), slope, firstXSs, startYSs);
+                    var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemDirection.isUp(), slope, firstColumnXSs, startYSs);
 
                     if (geometry == null) {
                         continue;
@@ -672,7 +614,12 @@ public class LayoutEngine {
                     var elementYSs = geometry.elementYSs();
                     var beamYSs = geometry.beamYSs();
                     var stemLenSs = geometry.stemLenSs();
-                    var lengtheningSs = stemLenSs - MIN_STEM_SS;
+
+                    // The quanted beam position is authoritative: express the resulting
+                    // stem length as a delta from the standard stem length so
+                    // NoteRenderer.renderStem reproduces exactly this tip.
+                    var lengtheningSs = Math.max(0.0, stemLenSs - MIN_STEM_SS);
+                    var forcedShorteningSs = Math.max(0.0, MIN_STEM_SS - stemLenSs);
 
                     var topYSs = stemDirection.isUp() ? beamYSs : elementYSs;
                     var bottomYSs = stemDirection.isUp() ? elementYSs : beamYSs;
@@ -683,7 +630,7 @@ public class LayoutEngine {
 
                     stemLayouts.put(
                         element,
-                        new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, 0.0, stubRight));
+                        new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, forcedShorteningSs, stubRight));
                 }
             }
 

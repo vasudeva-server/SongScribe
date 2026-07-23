@@ -1412,9 +1412,12 @@ public final class LayoutResult {
      * @param lengtheningSs Extra stem extension beyond the natural minimum length (≥ 0): for a beamed
      *                   note, the amount needed to reach the beam; for an unbeamed note, the amount
      *                   needed to extend the tip to the staff center (Y=0)
-     * @param forcedShorteningSs Amount (≥ 0, ss) this stem is shortened because it points in its
-     *                   forced (unnatural) direction, per Ross &amp; Gourlay; 0 for every natural,
-     *                   auto-direction, and grace stem. Bracket-independent — not a tuplet trim.
+     * @param forcedShorteningSs Amount (≥ 0, ss) this stem falls short of the natural minimum length.
+     *                   For a beamed note this is the quanted beam geometry's shortening below the
+     *                   standard stem length. For an unbeamed note it is the Ross &amp; Gourlay
+     *                   shortening applied because the stem points in its forced (unnatural)
+     *                   direction; 0 for every natural, auto-direction, and grace stem.
+     *                   Bracket-independent — not a tuplet trim.
      * @param stubRight  For partial-beam notes: true if the stub extends to the right, false to the left.
      *                   Meaningless for full-beam and unbeamed notes.
      */

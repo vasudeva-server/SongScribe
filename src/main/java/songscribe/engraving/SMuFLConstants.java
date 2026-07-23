@@ -31,8 +31,9 @@ import songscribe.smufl.SMuFLMetadata;
 public final class SMuFLConstants {
 
     // SMuFLConstants defaults
-    public static final double BEAM_THICKNESS_SS;
-    public static final double BEAM_SPACING_SS;
+    // Beam thickness and spacing deliberately do NOT come from the font's
+    // engravingDefaults — see LineThickness.BEAM_THICKNESS_SS / BEAM_TRANSLATION_SS,
+    // which follow LilyPond instead.
     public static final double REPEAT_BARLINE_DOT_SEPARATION_SS;
     public static final double LEDGER_LINE_THICKNESS_SS;
     // LilyPond length-fraction default: a dimensionless multiplier on the notehead width that
@@ -62,8 +63,6 @@ public final class SMuFLConstants {
     static {
         var defaults = SMuFLMetadata.getEngravingDefaults();
 
-        BEAM_THICKNESS_SS = defaults.beamThickness();
-        BEAM_SPACING_SS = defaults.beamSpacing();
         REPEAT_BARLINE_DOT_SEPARATION_SS = defaults.repeatBarlineDotSeparation();
         LEDGER_LINE_THICKNESS_SS = defaults.legerLineThickness();
         TIE_MIDPOINT_THICKNESS_SS = defaults.tieMidpointThickness();
