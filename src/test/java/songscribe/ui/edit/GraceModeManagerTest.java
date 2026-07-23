@@ -49,6 +49,7 @@ import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LayoutResult;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.notification.DurationWasSelectedNotification;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.MainFrame;
@@ -1499,6 +1500,8 @@ class GraceModeManagerTest extends UnitTest {
             Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
             Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
+            Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
+            Actions.ACCENT_ACTION.setSelected(true);
 
             try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
                 calcMock.when(
@@ -1529,6 +1532,78 @@ class GraceModeManagerTest extends UnitTest {
             assertThat(Actions.ARTICULATION_ACTION_GROUP.getSelected())
                 .as("ARTICULATION_ACTION_GROUP should be cleared after entering grace note mode")
                 .isNull();
+            assertThat(Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected())
+                .as("ACCIDENTAL_IN_PARENS_ACTION should be cleared after entering grace note mode")
+                .isFalse();
+            assertThat(Actions.ACCENT_ACTION.isSelected())
+                .as("ACCENT_ACTION should be cleared after entering grace note mode")
+                .isFalse();
+        }
+
+        /**
+         * The decorations must be cleared <em>before</em> the duration is selected, not merely
+         * by the time enterGraceNote returns. Selecting a duration synchronously posts
+         * {@link DurationWasSelectedNotification}, whose handler rebuilds the preview element
+         * and decorates it from whatever toggles are selected at that instant. That preview is
+         * the very object inserted as the host note, and nothing re-decorates it afterwards, so
+         * clearing the toggles after the selection leaves a clean toolbar above a host note that
+         * still carries the grace note's accidental, dots and articulations.
+         */
+        @Test
+        void testClearsEmbellishmentsBeforeSelectingHostDuration() {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            editModeManagerMock.when(EditModeManager::getPreviewElement)
+                .thenReturn(ElementType.GRACE_QUAVER.newInstance());
+            previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
+
+            Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
+            Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
+            Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
+            Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
+            Actions.ACCENT_ACTION.setSelected(true);
+
+            // Sample the toggles at the moment the duration notification is posted — the
+            // instant the real handler would build and decorate the host preview.
+            var decorationsWereSet = new boolean[1];
+            var durationWasPosted = new boolean[1];
+
+            messageCenterMock.when(() -> MessageCenter.post(any())).thenAnswer(invocation -> {
+                if (invocation.getArgument(0) instanceof DurationWasSelectedNotification) {
+                    durationWasPosted[0] = true;
+                    decorationsWereSet[0] =
+                        Actions.DOT_ACTION_GROUP.getSelected() != null
+                            || Actions.ACCIDENTAL_ACTION_GROUP.getSelected() != null
+                            || Actions.ARTICULATION_ACTION_GROUP.getSelected() != null
+                            || Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected()
+                            || Actions.ACCENT_ACTION.isSelected();
+                }
+
+                return null;
+            });
+
+            try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
+                calcMock.when(
+                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any(), any())
+                ).thenReturn(true);
+
+                var line = lineWith(ElementType.GRACE_QUAVER);
+                var lineComponent = mock(LineComponent.class);
+                when(lineComponent.getLine()).thenReturn(line);
+                when(lineComponent.getLayoutResult()).thenReturn(null);
+                var e = mouseEvent(lineComponent, MouseEvent.MOUSE_PRESSED, 50, 60, MouseEvent.BUTTON1);
+
+                manager.mousePressed(lineComponent, e);
+            }
+
+            // Guards the assertion below: if the notification stopped being posted, the
+            // sampling never runs and decorationsWereSet stays trivially false.
+            assertThat(durationWasPosted[0])
+                .as("selecting the host duration should post DurationWasSelectedNotification")
+                .isTrue();
+
+            assertThat(decorationsWereSet[0])
+                .as("embellishments must already be cleared when the host preview is rebuilt")
+                .isFalse();
         }
     }
 

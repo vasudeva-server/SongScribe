@@ -41,7 +41,10 @@ import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
+import songscribe.dom.Articulation;
+import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -356,6 +359,52 @@ class ElementInsertionTest extends E2ETest {
                 () -> assertThat(isActionEnabled(Actions.GLISSANDO_ACTION)
                     && isActionEnabled(Actions.REST_ACTION))
                     .as("actions re-enabled").isTrue()
+            );
+        }
+
+        /**
+         * The decorations chosen for the grace note must land on the grace note and must not
+         * follow it onto the host. Entering grace note mode clears them before the host preview
+         * is rebuilt, and that preview is the object inserted as the host — so a regression in
+         * either the clearing or its ordering shows up here as a decorated host.
+         */
+        @Order(2)
+        @Test
+        void testGraceDecorationsDoNotFollowOntoTheHost() {
+            var countBefore = song().getLine(0).effectiveElementCount();
+
+            selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
+
+            // Accidentals and articulations stay enabled for the grace duration precisely so
+            // the grace note can be decorated before it is placed.
+            triggerAction(Actions.FLAT_ACTION);
+            triggerAction(Actions.STACCATO_ACTION);
+
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            clickAt(insertionPoint(0, -2));
+            performLayout(0);
+
+            var line = song().getLine(0);
+            var grace = line.getElement(countBefore);
+            var host = line.getElement(countBefore + 1);
+
+            assertAll(
+                () -> assertThat(grace.getAccidental())
+                    .as("grace keeps its accidental").isEqualTo(StaffElement.Accidental.FLAT),
+                () -> assertThat(grace.getArticulations())
+                    .as("grace keeps its articulation")
+                    .extracting(Articulation::getType)
+                    .containsExactly(ArticulationType.STACCATO),
+                () -> assertThat(host.getAccidental())
+                    .as("host has no accidental").isNull(),
+                () -> assertThat(host.getArticulations())
+                    .as("host has no articulations").isEmpty(),
+                () -> assertThat(host.getDotCount())
+                    .as("host has no dots").isEqualTo(0),
+                () -> assertThat(host.isAccidentalInParentheses())
+                    .as("host has no accidental parentheses").isFalse()
             );
         }
 

@@ -50,7 +50,8 @@ public final class RestModeAction extends SelectableUIAction implements UIAction
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.ENABLE_WHEN_DURATION_SELECTED,
             Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_GRACE_MODE
+            Flag.DISABLE_IN_GRACE_MODE,
+            Flag.DISABLE_WHEN_GRACE_DURATION_SELECTED
         );
     }
 

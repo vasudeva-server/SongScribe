@@ -82,14 +82,94 @@ class EnableFromSelectionTest extends MainFrameMockTest {
 
     // -- enableFromDurationSelection: ENABLE_WHEN_DURATION_SELECTED + no selection + excluded durations → false --
 
+    // The grace duration disables an action only when it opts in with
+    // DISABLE_WHEN_GRACE_DURATION_SELECTED. Without that flag the action stays enabled, so a
+    // grace note can be given accidentals and articulations before it is placed.
+
     @Test
-    void testEnableFromDurationSelectionReturnsFalseWhenGraceEighthNoteSelected() {
+    void testEnableFromDurationSelectionReturnsTrueWhenGraceEighthNoteSelectedWithoutOptOut() {
         Actions.DURATION_ACTION_GROUP.setSelected(Actions.GRACE_EIGHTH_NOTE_ACTION, true);
         try {
             var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
             action.setFlags(UIAction.Flag.ENABLE_WHEN_DURATION_SELECTED);
 
+            assertThat(action.enableFromDurationSelection(false)).isTrue();
+        } finally {
+            Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
+        }
+    }
+
+    @Test
+    void testEnableFromDurationSelectionReturnsFalseWhenGraceEighthNoteSelectedWithOptOut() {
+        Actions.DURATION_ACTION_GROUP.setSelected(Actions.GRACE_EIGHTH_NOTE_ACTION, true);
+        try {
+            var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
+            action.setFlags(
+                UIAction.Flag.ENABLE_WHEN_DURATION_SELECTED,
+                UIAction.Flag.DISABLE_WHEN_GRACE_DURATION_SELECTED
+            );
+
             assertThat(action.enableFromDurationSelection(false)).isFalse();
+        } finally {
+            Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
+        }
+    }
+
+    // Pins the two actions that opt out. DotActionTest has no Actions environment, so the
+    // dot wiring is asserted here alongside the mechanism it depends on.
+
+    @Test
+    void testDotActionIsDisabledWhileTheGraceDurationIsSelected() {
+        Actions.DURATION_ACTION_GROUP.setSelected(Actions.GRACE_EIGHTH_NOTE_ACTION, true);
+        try {
+            var dotAction = DotAction.createDotAction(mainFrame());
+            assertThat(dotAction.enableFromDurationSelection(false)).isFalse();
+        } finally {
+            Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
+        }
+    }
+
+    @Test
+    void testDotActionIsEnabledForOrdinaryDurations() {
+        Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
+        var dotAction = DotAction.createDotAction(mainFrame());
+        assertThat(dotAction.enableFromDurationSelection(false)).isTrue();
+    }
+
+    @Test
+    void testGraceOptOutDoesNotDisableForOrdinaryDurations() {
+        Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
+        var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
+        action.setFlags(
+            UIAction.Flag.ENABLE_WHEN_DURATION_SELECTED,
+            UIAction.Flag.DISABLE_WHEN_GRACE_DURATION_SELECTED
+        );
+
+        assertThat(action.enableFromDurationSelection(false)).isTrue();
+    }
+
+    // The decoration actions deliberately do NOT opt out with
+    // DISABLE_WHEN_GRACE_DURATION_SELECTED: a grace note can carry accidentals and
+    // articulations, so they must stay enabled while the grace duration is selected.
+    // Pinning the real actions guards against the opt-out flag being added by mistake.
+
+    @Test
+    void testAccidentalActionStaysEnabledWhileTheGraceDurationIsSelected() {
+        Actions.DURATION_ACTION_GROUP.setSelected(Actions.GRACE_EIGHTH_NOTE_ACTION, true);
+        try {
+            var accidentalAction = AccidentalAction.createSharpAction(mainFrame());
+            assertThat(accidentalAction.enableFromDurationSelection(false)).isTrue();
+        } finally {
+            Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
+        }
+    }
+
+    @Test
+    void testArticulationActionStaysEnabledWhileTheGraceDurationIsSelected() {
+        Actions.DURATION_ACTION_GROUP.setSelected(Actions.GRACE_EIGHTH_NOTE_ACTION, true);
+        try {
+            var articulationAction = DurationArticulationAction.createStaccatoAction(mainFrame());
+            assertThat(articulationAction.enableFromDurationSelection(false)).isTrue();
         } finally {
             Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
         }

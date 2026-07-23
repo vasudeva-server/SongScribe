@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.ui.action.UIAction.AppMenuAction;
 import songscribe.ui.component.MainFrame;
@@ -408,18 +409,36 @@ public final class Actions {
         DURATION_ACTION_GROUP.select(QUARTER_NOTE_ACTION, QUARTER_NOTE_ACTION);
 
         // Silent resets — no downstream state to update
-        ACCIDENTAL_ACTION_GROUP.reset();
-        ARTICULATION_ACTION_GROUP.reset();
-        DOT_ACTION_GROUP.reset();
+        clearNoteDecorations();
         DYNAMIC_MARKING_ACTION_GROUP.reset();
         NON_DURATION_ACTION_GROUP.reset();
 
         // Standalone toggles
-        ACCENT_ACTION.reset();
         REST_ACTION.reset();
         FERMATA_ACTION.reset();
         TRILL_ACTION.reset();
-        ACCIDENTAL_IN_PARENS_ACTION.reset();
+
+        // Re-decorate the preview from the now-cleared toggles. We cannot rely on the
+        // DURATION_ACTION_GROUP.select() above to rebuild it: when the quarter note is
+        // already the selected duration (the common case on document load) that select()
+        // is a no-op and posts nothing, so the preview would otherwise keep a previous
+        // document's decorations even though the toolbar shows them cleared.
+        MessageCenter.post(new UpdatePreviewElementCommand());
+    }
+
+    /**
+     * Clears every toggle that {@link songscribe.ui.edit.EditModeManager#decorateElement}
+     * reads (dot, accidental, accidental-parentheses, and articulations), so this is the
+     * single place that set has to stay in sync. Callers that need a freshly-inserted
+     * element to start undecorated — e.g. a grace note's host — should call this instead
+     * of clearing the toggles individually.
+     */
+    public static void clearNoteDecorations() {
+        DOT_ACTION_GROUP.clearSelection();
+        ACCIDENTAL_ACTION_GROUP.clearSelection();
+        ACCIDENTAL_IN_PARENS_ACTION.setSelected(false);
+        ARTICULATION_ACTION_GROUP.clearSelection();
+        ACCENT_ACTION.setSelected(false);
     }
 
     private static @Nullable List<AppMenuAction> appMenuActions = null;

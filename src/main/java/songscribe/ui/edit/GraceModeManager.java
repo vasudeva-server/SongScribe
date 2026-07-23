@@ -581,14 +581,16 @@ public final class GraceModeManager {
         graceNoteIndex = Math.min(insertedIndex, line.elementCount() - 1);
         graceNote = line.getElement(graceNoteIndex);
 
+        // Deselect all embellishment actions. This must precede the duration selection
+        // below: that selection synchronously rebuilds the preview element, decorating it
+        // from whatever toggles are selected at that moment. Clearing afterwards would
+        // leave the already-built preview — the very object handleClick inserts as the
+        // host — carrying the grace note's decorations.
+        Actions.clearNoteDecorations();
+
         // Select crotchet duration for the host note via the action group so the
         // grace note button is properly deselected.
         Actions.DURATION_ACTION_GROUP.select(Actions.QUARTER_NOTE_ACTION, this);
-
-        // Deselect all embellishment actions
-        Actions.DOT_ACTION_GROUP.clearSelection();
-        Actions.ACCIDENTAL_ACTION_GROUP.clearSelection();
-        Actions.ARTICULATION_ACTION_GROUP.clearSelection();
 
         // Set state before posting the message so that enableFromGraceModeState()
         // sees the correct state when disabling DISABLE_IN_GRACE_MODE actions.
@@ -712,7 +714,9 @@ public final class GraceModeManager {
             line.applyChange(new ElementInsertion(line, graceNoteIndex, note), () -> {});
 
             if (!connectNext) {
-                // Insert the host note at the locked x position.
+                // Insert the host note at the locked x position. The preview element was
+                // built undecorated on entry to grace mode (see enterGraceNote), so the
+                // host arrives as a plain note.
                 PreviewElementManager.handleClick(lineComponent, true);
             }
 

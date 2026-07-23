@@ -279,6 +279,31 @@ class EditModeManagerTest extends UnitTest {
             assertThat(articulations).hasSize(1);
             assertThat(articulations.get(0).getType()).isEqualTo(ArticulationType.ACCENT);
         }
+
+        /**
+         * Pins {@code clearNoteDecorations()} to the full set of toggles this method reads.
+         * A toggle added to decorateElement but not to clearNoteDecorations would leak onto
+         * elements that callers built expecting them to be undecorated — the grace note's
+         * host note being the case that motivated the helper.
+         */
+        @Test
+        void testClearNoteDecorationsLeavesElementUndecorated() {
+            Actions.DOT_ACTION_GROUP.setSelected(Actions.DOUBLE_DOT_ACTION, true);
+            Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
+            Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
+            Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
+            Actions.ACCENT_ACTION.setSelected(true);
+
+            Actions.clearNoteDecorations();
+
+            var element = ElementType.CROTCHET.newInstance();
+            EditModeManager.decorateElement(element);
+
+            assertThat(element.getDotCount()).isEqualTo(0);
+            assertThat(element.getAccidental()).isNull();
+            assertThat(element.isAccidentalInParentheses()).isFalse();
+            assertThat(element.getArticulations()).isEmpty();
+        }
     }
 
     // -------------------------------------------------------------------------

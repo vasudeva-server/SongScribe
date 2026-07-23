@@ -108,7 +108,8 @@ public class UIAction extends AbstractAction {
         DISABLE_IN_SELECT_MODE(1 << 14),
         OPENS_DIALOG(1 << 15),
         DISABLE_WHEN_MIDI_UNAVAILABLE(1 << 16),
-        DISABLE_WHEN_LINE_SELECTED(1 << 17);
+        DISABLE_WHEN_LINE_SELECTED(1 << 17),
+        DISABLE_WHEN_GRACE_DURATION_SELECTED(1 << 18);
 
         private final int value;
 
@@ -679,9 +680,17 @@ public class UIAction extends AbstractAction {
         }
 
         var duration = Actions.DURATION_ACTION_GROUP.getSelected();
+
+        // A grace note is always a single undotted pitched note, so rests and dots cannot
+        // apply to it. Accidentals and articulations can, and stay enabled so the grace
+        // note can be decorated before it is placed.
+        if (hasFlag(Flag.DISABLE_WHEN_GRACE_DURATION_SELECTED)
+                && (duration == Actions.GRACE_EIGHTH_NOTE_ACTION)) {
+            return false;
+        }
+
         return (
-            (duration != Actions.GRACE_EIGHTH_NOTE_ACTION) &&
-                (duration != Actions.GLISSANDO_ACTION) &&
+            (duration != Actions.GLISSANDO_ACTION) &&
                 (duration != Actions.FALL_ACTION)
         );
     }
