@@ -44,7 +44,7 @@ class ElementColumnBuilderTest extends UnitTest {
     private static final int DOUBLE_DOT_COUNT = 2;
 
     // Arbitrary non-zero values used only as mock stubs to pin exact return path in buildColumn
-    private static final double HYPHENATED_CELL_WIDTH_SS = 0.5;
+    private static final double HYPHEN_GLYPH_WIDTH_SS = 0.5;
     private static final double NON_HYPHENATED_SPACE_WIDTH_SS = 0.3;
 
     @BeforeAll
@@ -312,12 +312,12 @@ class ElementColumnBuilderTest extends UnitTest {
         assertThat(ElementColumnBuilder.calculateLeftExtentSs(note)).isEqualTo(expected);
     }
 
-    // Row 20: buildColumn minGap = preferredHyphenCellWidthSs for BEGIN and MIDDLE syllabic types
+    // Row 20: buildColumn minGap = hyphenWidthSs for BEGIN and MIDDLE syllabic types
     @Test
-    void testBuildColumnMinGapIsHyphenCellWidthForHyphenatedSyllable() {
+    void testBuildColumnMinGapIsHyphenGlyphWidthForHyphenatedSyllable() {
         for (var syllabic : new Lyric.Syllabic[]{Lyric.Syllabic.BEGIN, Lyric.Syllabic.MIDDLE}) {
             var metrics = mock(LyricRenderMetrics.class);
-            when(metrics.preferredHyphenCellWidthSs()).thenReturn(HYPHENATED_CELL_WIDTH_SS);
+            when(metrics.hyphenWidthSs()).thenReturn(HYPHEN_GLYPH_WIDTH_SS);
             when(metrics.lyricBoxWidthSs(anyString())).thenReturn(0.0);
 
             var line = detachedLine();
@@ -328,8 +328,8 @@ class ElementColumnBuilderTest extends UnitTest {
             var column = new ElementColumnBuilder(metrics).buildColumn(note, line);
 
             assertThat(column.getMinGapToNextSyllableSs())
-                .as("minGap for syllabic %s should equal hyphen cell width", syllabic)
-                .isEqualTo(HYPHENATED_CELL_WIDTH_SS);
+                .as("minGap for syllabic %s should equal the hyphen glyph advance", syllabic)
+                .isEqualTo(HYPHEN_GLYPH_WIDTH_SS);
         }
     }
 

@@ -365,7 +365,7 @@ public final class ElementColumn {
     /**
      * Returns the minimum required gap between this column's right edge and the next
      * column's syllable left edge. Equals the lyric space width for non-hyphenated or
-     * lyric-less columns; equals the hyphen cell width for hyphenated ones.
+     * lyric-less columns; equals the bare hyphen glyph advance for hyphenated ones.
      */
     public double getMinGapToNextSyllableSs() {
         return minGapToNextSyllableSs;
@@ -378,9 +378,11 @@ public final class ElementColumn {
     /**
      * Returns the hard collision floor for the gap to the next syllable — the closest two
      * syllables may ever come. Equals one lyric space width for non-hyphenated or lyric-less
-     * columns (including melisma carriers); equals the bare hyphen glyph width for hyphenated
-     * ones. Narrower than {@link #getMinGapToNextSyllableSs()}, the comfortable gap the rest aims
-     * for; the spring strut honours this floor so lyrics never touch.
+     * columns (including melisma carriers); equals the bare hyphen glyph advance for hyphenated
+     * ones. Equal to {@link #getMinGapToNextSyllableSs()} — the gap a lyric aims for is already
+     * the tightest one it tolerates — but kept distinct because the two answer different
+     * questions: this one floors the spring strut so lyrics never touch, that one feeds the rest
+     * the lyric lift aims at.
      */
     public double getMinCollisionGapToNextSyllableSs() {
         return minCollisionGapToNextSyllableSs;

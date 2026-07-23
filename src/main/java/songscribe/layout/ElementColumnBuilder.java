@@ -186,17 +186,19 @@ public class ElementColumnBuilder {
         var syllabic = mainLyric != null ? mainLyric.syllabic() : null;
         var isHyphenated = Lyric.syllabicContinues(syllabic);
         // Every column reserves a gap to the next syllable, so a syllable that follows a
-        // lyric-less element still clears it by the lyric space width. Hyphenated syllables
-        // reserve the hyphen cell width instead.
-        column.setMinGapToNextSyllableSs(isHyphenated
-            ? lyricRenderMetrics.preferredHyphenCellWidthSs()
-            : lyricRenderMetrics.spaceWidthSs());
-        // The hard collision floor is narrower than the comfortable gap above: a non-hyphenated
-        // pair (including melisma carriers) may compress to a single space width, a hyphenated
-        // pair only to the bare hyphen glyph width — no closer, so lyrics never touch.
-        column.setMinCollisionGapToNextSyllableSs(isHyphenated
+        // lyric-less element still clears it by the lyric space width. A hyphenated syllable
+        // reserves the bare hyphen glyph advance — glyph plus its side bearings and nothing more,
+        // so a lone hyphen sits in the tightest gap that still keeps the syllables apart. The
+        // wider LyricRenderMetrics#preferredHyphenCellWidthSs is a distribution cell, not a
+        // spacing requirement: LyricConnectorRenderer only steps up to it once a gap has room for
+        // more than one hyphen (refs #638).
+        var gapToNextSyllableSs = isHyphenated
             ? lyricRenderMetrics.hyphenWidthSs()
-            : lyricRenderMetrics.spaceWidthSs());
+            : lyricRenderMetrics.spaceWidthSs();
+        // Ideal gap and hard collision floor coincide: this is already the tightest the syllables
+        // may sit, so a lyric gap is never widened past what it needs, nor compressed below it.
+        column.setMinGapToNextSyllableSs(gapToNextSyllableSs);
+        column.setMinCollisionGapToNextSyllableSs(gapToNextSyllableSs);
         // Tag the column with its beam group (anchor index) so adjacent beam groups stay
         // distinct and the spacing calculator does not merge them.
         column.setBeamGroupId(beam != null ? beam.getAnchorElementIndex() : ElementColumn.NO_BEAM_GROUP);
