@@ -1154,7 +1154,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
         song.addLine(secondLine);
 
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
         coordinator.registerLineState(0, new LineSelectionState(firstLine));
         coordinator.registerLineState(1, new LineSelectionState(secondLine));
         return coordinator;

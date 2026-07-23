@@ -264,7 +264,7 @@ public final class ScoreView
         var headless = onFileOpened == null;
         viewState = new ScoreViewState();
 
-        selectionCoordinator = new SelectionCoordinator(this::getSong);
+        selectionCoordinator = new SelectionCoordinator();
         clipboardManager = new ClipboardManager();
         EditModeManager.init(clipboardManager, selectionCoordinator, this, this);
 

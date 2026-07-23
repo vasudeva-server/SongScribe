@@ -100,6 +100,11 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testRemoveLineFiresLineDeletion() {
+            // Append a second line so removing line 0 isn't the sole-line case —
+            // that case replaces the removed line with a fresh empty one and fires
+            // additional mutations, covered separately by SongLineMaintenanceTest.
+            song.withoutMutationTracking(() -> song.addLine(new Line(song)));
+
             song.removeLine(0);
 
             var notification = captureSingleDidChange();

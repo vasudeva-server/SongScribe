@@ -317,6 +317,53 @@ class SongLineMaintenanceTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // removeLine — removing the sole remaining line installs a fresh empty line
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RemoveSoleLine {
+
+        @Test
+        void testRemovingSoleLineReplacesItWithFreshEmptyLine() {
+            song.removeLine(0);
+
+            var notification = captureSingleDidChange();
+
+            var deletion = singleMutationOfType(notification, LineDeletion.class);
+            assertThat(deletion.lineIndex()).isZero();
+            assertThat(deletion.deletedLine()).isSameAs(initialLine);
+
+            assertThat(song.lineCount()).isEqualTo(1);
+            var newLine = song.getLine(0);
+            assertThat(newLine).isNotSameAs(initialLine);
+
+            var lineInsertion = singleMutationOfType(notification, LineInsertion.class);
+            assertThat(lineInsertion.lineIndex()).isZero();
+            assertThat(lineInsertion.line()).isSameAs(newLine);
+
+            var terminalInsertion = singleMutationOfType(notification, ElementInsertion.class);
+            assertThat(terminalInsertion.line()).isSameAs(newLine);
+            assertThat(terminalInsertion.index()).isZero();
+            assertThat(terminalInsertion.element().getType())
+                .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+
+            assertThat(newLine.elementCount()).isEqualTo(1);
+            assertThat(newLine.getElement(0).getType()).isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        }
+
+        @Test
+        void testRemovingSoleLineWithoutMutationTrackingLeavesSongEmpty() {
+            // The repopulation is deliberately skipped while tracking is suspended:
+            // bulk-load paths such as MusicXmlRoundTripSupport.buildSong clear the
+            // line list and rebuild it, and an auto-inserted line would corrupt that.
+            song.withoutMutationTracking(() -> song.removeLine(0));
+
+            assertThat(song.lineCount()).isZero();
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // removeLine — removing a non-last line runs no maintenance
     // -----------------------------------------------------------------------
 

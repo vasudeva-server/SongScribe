@@ -600,7 +600,8 @@ class ScoreViewControllerTest extends UnitTest {
         void testHandleDeleteRemovesSelectedLineWhenCanDeleteLine() {
             var song = new Song();
             var line = song.getLine(0);
-            // Add a second line so removing the first is legal (song needs >= 1 line)
+            // Add a second line so this covers the plain multi-line removal; the
+            // sole-line case is covered separately below.
             song.withoutMutationTracking(() -> song.addLine(1, new Line(song)));
 
             var scoreMock = mock(ScoreView.class);
@@ -621,6 +622,31 @@ class ScoreViewControllerTest extends UnitTest {
             controller.handleDelete();
 
             assertThat(song.lineCount()).isEqualTo(lineCountBefore - 1);
+        }
+
+        // Row 19a: deleting the sole line is legal — Song.removeLine swaps in a fresh
+        // empty line, so the action succeeds and the song still has exactly one line.
+        @Test
+        void testHandleDeleteRemovesSoleLineAndLeavesAFreshOne() {
+            var song = new Song();
+            var line = song.getLine(0);
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.canDeleteLine()).thenReturn(true);
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            var state = coordinator.getActiveSelection();
+
+            if (state != null) {
+                state.setLineSelected(true);
+            }
+
+            var controller = buildController(song, coordinator, scoreMock);
+            controller.handleDelete();
+
+            assertThat(song.lineCount()).isEqualTo(1);
+            assertThat(song.getLine(0)).isNotSameAs(line);
         }
 
         // Row 20: confirmInvalidation() returns false → deletion is aborted

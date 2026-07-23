@@ -60,7 +60,7 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
      */
     private SelectionCoordinator twoLineCoordinator() {
         var song = minimalSongMock();
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
 
         var lineA = new Line(song);
         lineA.addElement(ElementType.CROTCHET.newInstance());

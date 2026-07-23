@@ -219,6 +219,17 @@ class MutationReplayerRoundTripTest extends UnitTest {
         }
 
         @Test
+        void testDeletingSoleLineRoundTrips() {
+            var song = songWithNotes(2);
+
+            // Removing the only line replaces it with a fresh empty line — a
+            // LineDeletion followed by a LineInsertion (plus terminal maintenance)
+            // in one batch, exercising the replay guard that must not re-trigger
+            // repopulation while undo/redo is replaying that same batch.
+            assertRoundTrip(song, () -> song.removeLine(0));
+        }
+
+        @Test
         void testDeletingMidScoreLineRoundTrips() {
             var song = songWithNotes(2);
             song.addLine(song.lineCount(), new Line(song));

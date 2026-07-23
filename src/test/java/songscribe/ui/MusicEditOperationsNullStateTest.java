@@ -82,7 +82,7 @@ class MusicEditOperationsNullStateTest extends UnitTest {
      */
     private MusicEditOperations opsWithNullState() {
         // A coordinator with no registered/activated line returns null from getActiveSelection().
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
         var ops = new MusicEditOperations(song, coordinator);
         messageCenterMock = mockStatic(MessageCenter.class);
         return ops;

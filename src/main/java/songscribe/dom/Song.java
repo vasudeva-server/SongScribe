@@ -233,10 +233,12 @@ public final class Song {
     // the recorded batch already contains every change.
     private int replayDepth = 0;
 
-    // While true, Line mutation guards are bypassed so Song can auto-maintain
+    // While positive, Line mutation guards are bypassed so Song can auto-maintain
     // the terminal invariant without triggering the guards that protect against
-    // user-driven invariant violations.
-    private boolean autoMaintenance;
+    // user-driven invariant violations. Depth-counted because the maintenance
+    // paths nest: removeLine calls addLine to repopulate an emptied song, and the
+    // inner call must not disarm the guards the outer one is still relying on.
+    private int autoMaintenanceDepth = 0;
 
     @Nullable
     private ArrayList<Mutation> accumulatedMutations;
@@ -916,11 +918,16 @@ public final class Song {
 
     /**
      * Removes the line at {@code index} and, when the removed line was the last line,
-     * installs the terminal on the new last line so the invariant holds. All
-     * resulting mutations coalesce into a single {@link SongDidChangeNotification}.
+     * installs the terminal on the new last line so the invariant holds. When removing
+     * the sole remaining line would leave the song with no lines, a fresh empty line is
+     * inserted in its place instead, so a normally-tracked removal always leaves the
+     * song with at least one line. All resulting mutations coalesce into a single
+     * {@link SongDidChangeNotification}.
      *
-     * <p>The invariant transfer is skipped when mutation tracking is suspended
-     * (see {@link #withoutMutationTracking}).
+     * <p>Both the invariant transfer and the sole-line replacement are skipped when
+     * mutation tracking is suspended (see {@link #withoutMutationTracking}) or while
+     * replaying — bulk-load paths and undo/redo drive the line list explicitly, and
+     * both legitimately pass through a transient zero-line state.
      *
      * <pre>
      *  withModification {
@@ -928,12 +935,17 @@ public final class Song {
      *      applyChange(LineDeletion(index, removed), …)
      *
      *      if (removed line was the last line) {
-     *        let penult = lines.last
-     *        switch (penult.lastElement) {
-     *          FINAL   → no-op
-     *          barline → applyChange(ElementReplacement …)
-     *          non-bar → applyChange(ElementInsertion …)
-     *          empty   → applyChange(ElementInsertion …)
+     *        if (lines is now empty) {
+     *          applyChange(LineInsertion(0, new empty line), …)
+     *          applyChange(ElementInsertion(new line, FINAL) …)
+     *        } else {
+     *          let penult = lines.last
+     *          switch (penult.lastElement) {
+     *            FINAL   → no-op
+     *            barline → applyChange(ElementReplacement …)
+     *            non-bar → applyChange(ElementInsertion …)
+     *            empty   → applyChange(ElementInsertion …)
+     *          }
      *        }
      *      }
      *    }
@@ -950,9 +962,12 @@ public final class Song {
                 () -> lines.remove(index)
             );
 
-            if (wasLast && !lines.isEmpty() && !isMutationTrackingSuspended()
-                    && !isReplaying()) {
-                maintainTerminalOnLastLineChange(null, lines.getLast());
+            if (wasLast && !isMutationTrackingSuspended() && !isReplaying()) {
+                if (!lines.isEmpty()) {
+                    maintainTerminalOnLastLineChange(null, lines.getLast());
+                } else {
+                    addLine(0, new Line(this));
+                }
             }
         }));
     }
@@ -1103,21 +1118,25 @@ public final class Song {
     }
 
     boolean isInAutoMaintenance() {
-        return autoMaintenance;
+        return autoMaintenanceDepth > 0;
     }
 
     /**
-     * Runs {@code body} with the auto-maintenance flag raised so that the terminal
+     * Runs {@code body} with the auto-maintenance depth raised so that the terminal
      * guards in {@link Line} are bypassed for the duration. Used by {@link #addLine} and
      * {@link #removeLine} to transfer the terminal without triggering the guard.
+     *
+     * <p>Re-entrant: {@link #removeLine} nests an {@link #addLine} call to repopulate a
+     * song emptied by removing its sole line, so the guards stay bypassed until the
+     * outermost call unwinds.
      */
     private void incrementAutoMaintenance(Runnable body) {
-        autoMaintenance = true;
+        autoMaintenanceDepth++;
 
         try {
             body.run();
         } finally {
-            autoMaintenance = false;
+            autoMaintenanceDepth--;
         }
     }
 

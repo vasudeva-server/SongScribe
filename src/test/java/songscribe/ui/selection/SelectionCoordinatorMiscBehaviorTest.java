@@ -65,7 +65,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         try (var toolkitStatic = mockStatic(Toolkit.class)) {
             toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(mockToolkit);
 
-            var coordinator = new SelectionCoordinator(() -> null);
+            var coordinator = new SelectionCoordinator();
 
             var mockLine = mock(LineComponent.class);
             when(mockLine.isDraggingSelection()).thenReturn(true);
@@ -210,7 +210,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
 
     @Test
     void testUpdateGraceNoteActionEnabledDisablesInSelectMode() {
-        var coordinator = new SelectionCoordinator(() -> null);
+        var coordinator = new SelectionCoordinator();
         coordinator.setInSelectMode(true);
 
         // Force the grace-note action to enabled so we can observe the disable.
@@ -231,7 +231,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
 
     @Test
     void testUpdateGraceNoteActionEnabledFollowsHasGraceNoteWhenNotInSelectMode() {
-        var coordinator = new SelectionCoordinator(() -> null);
+        var coordinator = new SelectionCoordinator();
         coordinator.setInSelectMode(false);
 
         // hasGraceNote=true, not in select mode → enabled.

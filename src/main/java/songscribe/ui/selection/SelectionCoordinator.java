@@ -32,7 +32,6 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
 
@@ -42,7 +41,6 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.dom.Song;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.Ending;
@@ -62,8 +60,6 @@ import songscribe.dom.Beam;
 public final class SelectionCoordinator {
 
     public record LyricSelection(StaffElement element, int verse) {}
-
-    private final Supplier<Song> songSupplier;
 
     /** Registry of per-line selection states, keyed by line index. */
     private final Map<Integer, LineSelectionState> lineStates = new HashMap<>();
@@ -131,8 +127,7 @@ public final class SelectionCoordinator {
         }
     };
 
-    public SelectionCoordinator(Supplier<Song> songSupplier) {
-        this.songSupplier = songSupplier;
+    public SelectionCoordinator() {
         MessageCenter.subscribe(this);
     }
 
@@ -375,7 +370,9 @@ public final class SelectionCoordinator {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns whether a line can be deleted (a line is selected and there's more than one line).
+     * Returns whether a line can be deleted (a line is selected). Deleting the sole
+     * remaining line is allowed — {@link songscribe.dom.Song#removeLine} replaces it
+     * with a fresh empty line so the song always has at least one line.
      */
     public boolean canDeleteLine() {
         if (activeLineIndex == -1) {
@@ -383,7 +380,7 @@ public final class SelectionCoordinator {
         }
 
         var state = lineStates.get(activeLineIndex);
-        return state != null && state.isLineSelected() && songSupplier.get().lineCount() > 1;
+        return state != null && state.isLineSelected();
     }
 
     /**

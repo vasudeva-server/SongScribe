@@ -56,7 +56,7 @@ class IsLyricSelectedTest extends UnitTest {
      * quarter note, with line 0 activated but nothing selected yet.
      */
     private SelectionCoordinator twoLineCoordinator(Song song) {
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
 
         var lineA = new Line(song);
         lineA.addElement(ElementType.CROTCHET.newInstance());

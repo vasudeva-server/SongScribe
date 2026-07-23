@@ -572,7 +572,7 @@ class LineSelectionHandlerTest extends UnitTest {
             });
             song.addLine(secondLine);
 
-            coordinator = new SelectionCoordinator(() -> song);
+            coordinator = new SelectionCoordinator();
             firstLineState = new LineSelectionState(firstLine);
             secondLineState = new LineSelectionState(secondLine);
             coordinator.registerLineState(FIRST_LINE_INDEX, firstLineState);

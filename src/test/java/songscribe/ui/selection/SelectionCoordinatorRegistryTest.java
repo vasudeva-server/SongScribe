@@ -104,7 +104,7 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
     void testClearLineStatesClearsAllStatesAndResetsActiveLineIndex() {
         // Register two states at indices 0 and 1.
         var song = minimalSongMock();
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
 
         var lineA = new songscribe.dom.Line(song);
         var lineB = new songscribe.dom.Line(song);
@@ -130,8 +130,7 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
      */
     @Test
     void testGetActiveLineIndexReturnsNegativeOneWhenNoLineActive() {
-        var song = minimalSongMock();
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
 
         assertThat(coordinator.getActiveLineIndex())
             .as("activeLineIndex with no line activated")
@@ -144,7 +143,7 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
     @Test
     void testGetActiveLineIndexReturnsCorrectIndexAfterActivation() {
         var song = minimalSongMock();
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
         coordinator.registerLineState(0, new LineSelectionState(new songscribe.dom.Line(song)));
         coordinator.registerLineState(1, new LineSelectionState(new songscribe.dom.Line(song)));
 
@@ -166,7 +165,7 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
     @Test
     void testActivateLineClearsPreviousLineSelectionAndSetsActiveIndex() {
         var song = minimalSongMock();
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
 
         var lineA = new songscribe.dom.Line(song);
         lineA.addElement(ElementType.CROTCHET.newInstance());

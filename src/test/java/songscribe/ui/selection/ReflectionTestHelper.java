@@ -47,7 +47,7 @@ public final class ReflectionTestHelper {
      * registered and activated at line index 0, with no reflectable actions.
      */
     public static SelectionCoordinator createCoordinatorForLine(Line line) {
-        var coordinator = new SelectionCoordinator(line::getSong);
+        var coordinator = new SelectionCoordinator();
         var state = new LineSelectionState(line);
         coordinator.registerLineState(0, state);
         coordinator.activateLine(0);
@@ -117,7 +117,7 @@ public final class ReflectionTestHelper {
             line.addElement(note);
         }
 
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
         var state = new LineSelectionState(line);
         coordinator.registerLineState(0, state);
         coordinator.activateLine(0);

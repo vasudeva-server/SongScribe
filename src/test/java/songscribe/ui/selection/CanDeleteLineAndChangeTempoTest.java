@@ -56,7 +56,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
         var line = song.getLine(LINE_0);
         song.withoutMutationTracking(() -> line.addElement(0, ElementType.CROTCHET.newInstance()));
 
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
         coordinator.registerLineState(LINE_0, new LineSelectionState(line));
         coordinator.activateLine(LINE_0);
         return coordinator;
@@ -72,7 +72,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
         song.withoutMutationTracking(() -> firstLine.addElement(0, ElementType.CROTCHET.newInstance()));
         song.addLine(new Line(song));
 
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
         coordinator.registerLineState(LINE_0, new LineSelectionState(firstLine));
         coordinator.activateLine(LINE_0);
         return coordinator;
@@ -88,9 +88,8 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
      */
     @Test
     void testCanDeleteLineReturnsFalseWhenNoActiveLine() {
-        var song = new Song();
         // Coordinator with no registered lines and no active line.
-        var coordinator = new SelectionCoordinator(() -> song);
+        var coordinator = new SelectionCoordinator();
 
         assertThat(coordinator.canDeleteLine())
             .as("canDeleteLine with no active line")
@@ -120,17 +119,18 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     /**
-     * Row 32: canDeleteLine returns false when the line is line-selected but the
-     * song has only one line (lineCount() == 1).
+     * Row 32: canDeleteLine returns true when the line is line-selected even
+     * though the song has only one line (lineCount() == 1) — deleting the sole
+     * remaining line is allowed and replaces it with a fresh empty line.
      */
     @Test
-    void testCanDeleteLineReturnsFalseWhenOnlyOneLine() {
+    void testCanDeleteLineReturnsTrueWhenOnlyOneLine() {
         var coordinator = oneLineSongCoordinator();
         Objects.requireNonNull(coordinator.getLineState(LINE_0)).setLineSelected(true);
 
         assertThat(coordinator.canDeleteLine())
-            .as("canDeleteLine when line is selected but song has only one line")
-            .isFalse();
+            .as("canDeleteLine when line is selected and song has only one line")
+            .isTrue();
     }
 
     // -------------------------------------------------------------------------
