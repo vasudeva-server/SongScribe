@@ -1314,7 +1314,10 @@ public class SongSettingsDialog extends StandardDialog {
 
                 var g2 = (Graphics2D) g;
                 GraphicUtils.setRenderingHints(g2);
-                pane.render(g2, 0, 0, getWidth(), attributionFont, subAttributionFont);
+                // The preview always renders unzoomed (no ScoreView), so measure at natural scale.
+                pane.render(
+                    g2, 0, 0, getWidth(), attributionFont, subAttributionFont,
+                    AttributionPane.NATURAL_ZOOM_FACTOR);
             }
         }
 

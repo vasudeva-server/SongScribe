@@ -574,6 +574,29 @@ public final class GraphicUtils {
     }
 
     /**
+     * Fractional sibling of {@link #inkBounds}: returns the visual (ink) bounds of
+     * {@code text} rendered in {@code font} under {@link #SCREEN_FRC}, or
+     * {@code null} if the text is empty.
+     * <p>
+     * Uses {@link GlyphVector#getVisualBounds} — a resolution-independent outline
+     * extent — rather than {@link GlyphVector#getPixelBounds}, which snaps to whole
+     * device pixels. Prefer this variant wherever the measurement must scale
+     * linearly with the font size (e.g. zoomed text), because pixel snapping makes
+     * the result jump as the font sweeps across pixel boundaries. Like
+     * {@link #inkBounds}, the returned rectangle's width is the full ink span and
+     * its {@code x} the ink's offset from the drawing origin (negative for the left
+     * bearing of a "W").
+     */
+    @Nullable
+    public static Rectangle2D visualBounds(String text, Font font) {
+        if (text.isEmpty()) {
+            return null;
+        }
+
+        return font.createGlyphVector(SCREEN_FRC, text).getVisualBounds();
+    }
+
+    /**
      * Extra padding beyond the font's nominal ascent/descent, needed so glyph ink
      * that overshoots those metrics is not clipped by a text component's bounds.
      */

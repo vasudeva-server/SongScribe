@@ -451,18 +451,14 @@ public class LineComponent extends ScoreComponent
         if (isFirstLine) {
             attribution = song.getAttributionElement();
             var pane = song.getAttributionPane();
-            // The attribution is drawn in pixel space with no zoom transform (see render),
-            // so the zoom must be baked into the fonts. Scaling here too keeps the measured
-            // staff-space dimensions zoom-invariant: getContentSizePx grows with the zoom
-            // factor, so divide by the zoomed scale (document scale × factor) to divide it
-            // back out and recover the natural-size staff-space dimensions.
-            var factor = getViewScale().factor();
-            var attrFont = zoomedFont(view.getAttributionFont());
-            var subAttrFont = zoomedFont(view.getSubAttributionFont());
-            var sizePx = pane.getContentSizePx(attrFont, subAttrFont);
+            // Measure at natural (unzoomed) scale so the reserved staff-space dimensions
+            // are zoom-invariant by construction — no measure-at-zoom-then-divide-back
+            // round trip. Zoom is applied only when the block is painted (see render),
+            // where the whole block scales uniformly by the view factor.
+            var sizePx = pane.getContentSizePx(view.getAttributionFont(), view.getSubAttributionFont());
             attribution.setDimensionsSs(
-                ScaleContext.pxToSs(sizePx.width) / factor,
-                ScaleContext.pxToSs(sizePx.height) / factor);
+                ScaleContext.pxToSs(sizePx.width),
+                ScaleContext.pxToSs(sizePx.height));
         }
 
         var result = layoutEngine.layout(
@@ -571,7 +567,8 @@ public class LineComponent extends ScoreComponent
                 song.getAttributionPane().render(
                     g2, xPx, yPx, widthPx,
                     zoomedFont(view.getAttributionFont()),
-                    zoomedFont(view.getSubAttributionFont())
+                    zoomedFont(view.getSubAttributionFont()),
+                    factor
                 );
             }
         }

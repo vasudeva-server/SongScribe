@@ -30,16 +30,23 @@ import songscribe.font.FontKey;
 import songscribe.util.GraphicUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 /**
  * Unit tests for {@link AttributionPane}'s measurement, caching, and line
  * resolution. Lines are injected via {@link AttributionPane#setOverrideLines}
  * so the measurement contract can be exercised without the Song model.
  * <p>
- * Expected heights and widths are both derived from {@code getPixelBounds} under
- * {@link GraphicUtils#SCREEN_FRC} — the same source the production code measures
- * with — so the assertions pin the reduction/summation logic without hardcoding
- * platform-specific pixels.
+ * Expected heights and widths are both derived by calling
+ * {@link GraphicUtils#visualBounds} — the same production helper the pane measures
+ * with — and rounded up once with {@link Math#ceil}, mirroring how the pane sizes
+ * its content. This pins the reduction/summation logic without hardcoding
+ * platform-specific pixels, and without re-implementing the glyph measurement in
+ * the test, where a copy could silently drift from production.
+ * <p>
+ * The zoom tests call the package-private {@link AttributionPane#measure} directly so
+ * they can assert on the fractional layout at two zoom factors, rather than inferring
+ * it from a mocked {@code Graphics2D}.
  */
 class AttributionPaneTest extends UnitTest {
 
@@ -66,32 +73,44 @@ class AttributionPaneTest extends UnitTest {
     private static final AttributionLine SECOND_SUB_ATTRIBUTION_LINE =
         new AttributionLine(SECOND_YEAR_TEXT, FontKey.SUB_ATTRIBUTION);
 
-    // Mirrors AttributionPane's ink-based width measurement: the rendered ink span
-    // under GraphicUtils.SCREEN_FRC, not the glyph advance. Callers pass non-empty
-    // text; the guard documents that and satisfies the nullness checker.
-    private static int widthOf(Font font, String text) {
-        var bounds = GraphicUtils.inkBounds(text, font);
+    // A zoom factor deliberately not equal to 1 and not a power of two, so a term
+    // that is scaled the wrong number of times cannot coincidentally match.
+    private static final double ZOOM_FACTOR = 1.5;
+
+    // Tolerance for comparing fractional pixel sums, which accumulate binary
+    // floating-point error across several terms.
+    private static final double EPSILON_PX = 1e-9;
+
+    // Calls the same production helper the pane measures with, rather than
+    // re-implementing the glyph-vector call: the fractional rendered ink span, not the
+    // glyph advance. Callers pass non-empty text; the guard documents that and
+    // satisfies the nullness checker.
+    private static double widthOf(Font font, String text) {
+        var bounds = GraphicUtils.visualBounds(text, font);
 
         if (bounds == null) {
             throw new AssertionError("test text must be non-empty: " + text);
         }
 
-        return bounds.width;
+        return bounds.getWidth();
     }
 
-    private static final int LEADING_PX = ScaleContext.ssToRoundedPx(AttributionPane.LEADING_SS);
-    private static final int SUB_ATTRIBUTION_GAP_PX = ScaleContext.ssToRoundedPx(AttributionPane.SUB_ATTRIBUTION_GAP_SS);
+    // Leading and the sub-attribution gap at natural (unzoomed) scale: fixed
+    // staff-space distances converted to fractional pixels, exactly as the pane does.
+    private static final double LEADING_PX = ScaleContext.ssToPx(AttributionPane.LEADING_SS);
+    private static final double SUB_ATTRIBUTION_GAP_PX = ScaleContext.ssToPx(AttributionPane.SUB_ATTRIBUTION_GAP_SS);
 
-    // A line's height is the rendered ink height of AttributionPane.LINE_BOX_REFERENCE
-    // in its font; leading is added separately, only between consecutive lines.
-    private static int heightOf(Font font) {
-        var bounds = GraphicUtils.inkBounds(AttributionPane.LINE_BOX_REFERENCE, font);
+    // A line's height is the fractional ink height of AttributionPane.LINE_BOX_REFERENCE
+    // in its font, via the same production helper; leading is added separately, only
+    // between consecutive lines.
+    private static double heightOf(Font font) {
+        var bounds = GraphicUtils.visualBounds(AttributionPane.LINE_BOX_REFERENCE, font);
 
         if (bounds == null) {
             throw new AssertionError("line-box reference must be non-empty");
         }
 
-        return bounds.height;
+        return bounds.getHeight();
     }
 
     @Test
@@ -120,7 +139,8 @@ class AttributionPaneTest extends UnitTest {
 
         // Precondition: the lines really do differ in width, so the max matters.
         assertThat(longWidth).isGreaterThan(shortWidth);
-        assertThat(pane.getContentWidthPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT)).isEqualTo(longWidth);
+        assertThat(pane.getContentWidthPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
+            .isEqualTo((int) Math.ceil(longWidth));
     }
 
     @Test
@@ -140,17 +160,21 @@ class AttributionPaneTest extends UnitTest {
 
         // Two lines: their natural heights plus a single leading gap between them,
         // plus the extra sub-attribution gap above the sub-attribution line.
+        var expectedNoMargin = (int) Math.ceil(
+            attributionHeight + subAttributionHeight + LEADING_PX + SUB_ATTRIBUTION_GAP_PX);
         assertThat(heightWithoutMargins)
-            .isEqualTo(attributionHeight + subAttributionHeight + LEADING_PX + SUB_ATTRIBUTION_GAP_PX);
+            .describedAs("height must be each line's ink box plus one leading gap plus the sub-attribution gap")
+            .isEqualTo(expectedNoMargin);
 
         pane.setMarginTop(MARGIN_TOP);
         pane.setMarginBottom(MARGIN_BOTTOM);
 
         // Margins add to height once each, and do not affect width.
         assertThat(pane.getContentHeightPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
-            .isEqualTo(attributionHeight + subAttributionHeight + LEADING_PX + SUB_ATTRIBUTION_GAP_PX
-                + MARGIN_TOP + MARGIN_BOTTOM);
+            .describedAs("each margin must add to the height exactly once")
+            .isEqualTo(expectedNoMargin + MARGIN_TOP + MARGIN_BOTTOM);
         assertThat(pane.getContentWidthPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
+            .describedAs("margins must not affect content width")
             .isEqualTo(widthWithoutMargins);
     }
 
@@ -182,8 +206,8 @@ class AttributionPaneTest extends UnitTest {
         // One attribution line then two sub-attribution lines: three line boxes,
         // two (n-1) leading gaps, and the sub-attribution gap exactly once — above
         // the first sub line, not before the second.
-        var expectedHeight = attributionHeight + 2 * subAttributionHeight
-            + 2 * LEADING_PX + SUB_ATTRIBUTION_GAP_PX;
+        var expectedHeight = (int) Math.ceil(attributionHeight + 2 * subAttributionHeight
+            + 2 * LEADING_PX + SUB_ATTRIBUTION_GAP_PX);
         assertThat(pane.getContentHeightPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
             .describedAs("sub-attribution gap must be added once, not before every sub line")
             .isEqualTo(expectedHeight);
@@ -201,7 +225,7 @@ class AttributionPaneTest extends UnitTest {
         // extra gap is not added.
         assertThat(pane.getContentHeightPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
             .describedAs("gap must not be added when no attribution line precedes the sub lines")
-            .isEqualTo(2 * subAttributionHeight + LEADING_PX);
+            .isEqualTo((int) Math.ceil(2 * subAttributionHeight + LEADING_PX));
     }
 
     @Test
@@ -220,7 +244,7 @@ class AttributionPaneTest extends UnitTest {
         // fence-post error producing n gaps would change this total.
         var lineCount = 3;
         var gapCount = lineCount - 1;
-        var expectedHeight = lineCount * attributionHeight + gapCount * LEADING_PX;
+        var expectedHeight = (int) Math.ceil(lineCount * attributionHeight + gapCount * LEADING_PX);
         assertThat(pane.getContentHeightPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
             .describedAs("leading must apply between each consecutive pair, i.e. n-1 times")
             .isEqualTo(expectedHeight);
@@ -240,11 +264,62 @@ class AttributionPaneTest extends UnitTest {
         // The empty line has no ink, so it adds nothing to the content width...
         assertThat(pane.getContentWidthPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
             .describedAs("empty-text line must not contribute to content width")
-            .isEqualTo(nonEmptyWidth);
+            .isEqualTo((int) Math.ceil(nonEmptyWidth));
 
         // ...but it is still boxed to the full line height and separated by leading.
         assertThat(pane.getContentHeightPx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
             .describedAs("empty-text line must still occupy a full line box")
-            .isEqualTo(2 * attributionHeight + LEADING_PX);
+            .isEqualTo((int) Math.ceil(2 * attributionHeight + LEADING_PX));
+    }
+
+    @Test
+    void testLeadingAndGapScaleWithZoomFactor() {
+        var pane = new AttributionPane();
+        pane.setOverrideLines(List.of(ATTRIBUTION_LINE, SUB_ATTRIBUTION_LINE));
+
+        var natural = pane.measure(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT, AttributionPane.NATURAL_ZOOM_FACTOR);
+        var zoomed = pane.measure(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT, ZOOM_FACTOR);
+
+        // The same (unzoomed) fonts are passed both times, so the two line boxes
+        // contribute identically and the leading plus the sub-attribution gap are the
+        // only terms the zoom factor may scale. Dropping either multiplication, or
+        // applying it to the font-derived line box as well, breaks this difference.
+        assertThat(zoomed.contentHeightPx() - natural.contentHeightPx())
+            .describedAs("leading and the sub-attribution gap must scale linearly with the zoom factor")
+            .isCloseTo((ZOOM_FACTOR - 1) * (LEADING_PX + SUB_ATTRIBUTION_GAP_PX), within(EPSILON_PX));
+    }
+
+    @Test
+    void testMarginsScaleWithZoomFactor() {
+        var pane = new AttributionPane();
+        pane.setOverrideLines(List.of(ATTRIBUTION_LINE));
+        pane.setMarginTop(MARGIN_TOP);
+        pane.setMarginBottom(MARGIN_BOTTOM);
+
+        var natural = pane.measure(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT, AttributionPane.NATURAL_ZOOM_FACTOR);
+        var zoomed = pane.measure(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT, ZOOM_FACTOR);
+
+        // A single line has no leading and no sub-attribution gap, so the margins are
+        // the only zoom-scaled terms left in the total height.
+        assertThat(zoomed.contentHeightPx() - natural.contentHeightPx())
+            .describedAs("margins must scale with the zoom factor, like the leading does")
+            .isCloseTo((ZOOM_FACTOR - 1) * (MARGIN_TOP + MARGIN_BOTTOM), within(EPSILON_PX));
+    }
+
+    @Test
+    void testContentSizeStaysNaturalAfterZoomedMeasure() {
+        var pane = new AttributionPane();
+        pane.setOverrideLines(List.of(ATTRIBUTION_LINE, SUB_ATTRIBUTION_LINE));
+
+        var naturalSize = pane.getContentSizePx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT);
+
+        // Measuring at a different zoom must not disturb the natural-scale answer:
+        // the layout pass reads this size while paints happen at the view zoom, so a
+        // single shared cache slot would hand back the zoomed measurement here.
+        pane.measure(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT, ZOOM_FACTOR);
+
+        assertThat(pane.getContentSizePx(ATTRIBUTION_FONT, SUB_ATTRIBUTION_FONT))
+            .describedAs("content size must stay zoom-invariant after a measure at another zoom")
+            .isEqualTo(naturalSize);
     }
 }

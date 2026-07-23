@@ -48,17 +48,18 @@ class AttributionTest extends UnitTest {
 
     private static final double EPSILON = 1e-10;
 
-    // Mirrors AttributionPane's ink-based width measurement: the rendered ink span
-    // under GraphicUtils.SCREEN_FRC, not the glyph advance. Callers pass non-empty
-    // text; the guard documents that and satisfies the nullness checker.
+    // Calls the same production helper AttributionPane measures with: the fractional
+    // rendered ink span, not the glyph advance, rounded up once the way the pane sizes
+    // its content width. Callers pass non-empty text; the guard documents that and
+    // satisfies the nullness checker.
     private static int inkWidthOf(Font font, String text) {
-        var bounds = GraphicUtils.inkBounds(text, font);
+        var bounds = GraphicUtils.visualBounds(text, font);
 
         if (bounds == null) {
             throw new AssertionError("test text must be non-empty: " + text);
         }
 
-        return bounds.width;
+        return (int) Math.ceil(bounds.getWidth());
     }
 
     @Test

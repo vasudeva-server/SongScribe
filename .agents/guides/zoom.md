@@ -100,13 +100,23 @@ LineComponent.paintComponent
     renderers draw entirely in Ss — they never re-multiply by factor()
         │
         ▼
-    exception: the stripped-transform lyric path (LyricTextRenderer) draws
+    exception 1: the stripped-transform lyric path (LyricTextRenderer) draws
     outside the Ss transform, in pixel space, so it reads
-    LineInvariants.getViewPixelsPerStaffSpace() (= pxPerSs × factor) directly —
-    the ONE place a zoomed pixel-per-staff-space value is read explicitly by name
+    LineInvariants.getViewPixelsPerStaffSpace() (= pxPerSs × factor) directly
+
+    exception 2: the attribution block (AttributionPane.render) also draws outside
+    the Ss transform, in pixel space, and takes the factor as an explicit
+    `zoomFactor` parameter
 ```
 
-The zoom factor is applied **once**, at the `LineComponent` paint transform. Everything drawn inside that transform (via any renderer) works in `Ss` and must never multiply by a zoom factor again — doing so double-scales. The only sanctioned exception is the lyric text path, which draws outside the `Ss` transform (so text stays crisp at the font's natural rasterization) and therefore needs its own explicitly-named zoomed pixels-per-staff-space reader, `LineInvariants.getViewPixelsPerStaffSpace()`. The name states plainly that it carries zoom, so it cannot be confused with a document-scale value.
+The zoom factor is applied **once**, at the `LineComponent` paint transform. Everything drawn inside that transform (via any renderer) works in `Ss` and must never multiply by a zoom factor again — doing so double-scales. There are exactly **two** sanctioned exceptions, both of which draw *outside* the `Ss` transform in pixel space and therefore have to reintroduce the factor by name:
+
+1. **`LyricTextRenderer`** — strips the transform so text stays crisp at the font's natural rasterization, and reads `LineInvariants.getViewPixelsPerStaffSpace()` (= `pxPerSs × factor`).
+2. **`AttributionPane.render`** — the attribution block is not a Swing child and is painted after the staff-space transform is restored (see `LineComponent.render`). It receives the factor as an explicit `zoomFactor` parameter and applies it to its own staff-space spacing constants (`LEADING_SS`, `SUB_ATTRIBUTION_GAP_SS`) and margins, while the caller passes fonts already scaled through `zoomedFont`.
+
+In both cases the carrier is *named* for what it is (`getViewPixelsPerStaffSpace`, `zoomFactor`), so it cannot be mistaken for a document-scale value.
+
+`AttributionPane` lives in `songscribe.dom` and so must not reach for `ViewScale` itself — the factor is pushed in by the caller. Its **measurement** API is deliberately zoom-free: `getContentSizePx`/`getContentWidthPx`/`getContentHeightPx` always measure at `AttributionPane.NATURAL_ZOOM_FACTOR`, so the staff-space dimensions the layout reserves are zoom-invariant by construction. Only the render pass is zoomed. Off-score callers with no `ScoreView` (the settings-dialog preview) pass `NATURAL_ZOOM_FACTOR` explicitly.
 
 ## No typed seam inside `paintComponent`
 

@@ -24,7 +24,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,21 +45,26 @@ import songscribe.util.GraphicsState;
  * <pre>
  *  Invalidation points
  *  ───────────────────
- *  setSong(song)              → clears cachedMeasure   [Song metadata change]
- *  setOverrideLines(lines)    → clears cachedMeasure   [override lines change]
- *  fonts change (passed as params) → cache is keyed on font identity; mismatched
- *                                    fonts cause a fresh measure on next call
+ *  setSong(song)              → clears both cache slots [Song metadata change]
+ *  setOverrideLines(lines)    → clears both cache slots [override lines change]
+ *  fonts / zoom change (passed as params) → each slot is keyed on font identity and
+ *                                    the zoom factor; a mismatch forces a fresh
+ *                                    measure of that slot
+ *
+ *  Natural-scale and zoomed measurements are cached separately, so the layout pass
+ *  (always natural) and the paint pass (at the view zoom) never evict each other.
  *
  *  Measure / cache
  *  ───────────────
- *  getContentWidthPx(aFont, saFont)  → builds lines via formatter if cachedMeasure is null
- *                                       or fonts differ; stores MeasuredCache
- *  getContentHeightPx(aFont, saFont) → same cache; sums line heights + margins
+ *  getContentWidthPx(aFont, saFont)  → builds lines via formatter if the natural slot
+ *                                       is empty or its fonts differ; stores MeasuredCache
+ *  getContentHeightPx(aFont, saFont) → same slot; sums line heights + margins
+ *  Both always measure at NATURAL_ZOOM_FACTOR, so the size is zoom-invariant.
  *
  *  Render
  *  ──────
- *  render(g2, xPx, yPx, widthPx, aFont, saFont) → reuses cachedMeasure (same fonts)
- *                                                   or triggers a fresh measure
+ *  render(g2, xPx, yPx, widthPx, aFont, saFont, zoomFactor) → reuses the matching slot
+ *                                                   (same fonts + zoom) or re-measures
  * </pre>
  */
 public class AttributionPane {
@@ -94,6 +99,16 @@ public class AttributionPane {
      */
     static final String LINE_BOX_REFERENCE = "Ty";
 
+    /**
+     * Zoom factor for a natural-scale (unzoomed) measurement. The public
+     * measurement API always measures at natural scale so the returned size is
+     * zoom-invariant; zoom is applied only when {@link #render} paints.
+     * <p>
+     * Public so callers that render outside any zoomed view — the settings dialog
+     * preview, exporters — can name the constant rather than passing a bare literal.
+     */
+    public static final double NATURAL_ZOOM_FACTOR = 1.0;
+
     // -------------------------------------------------------------------------
     // Margins (pixels)
     // -------------------------------------------------------------------------
@@ -117,12 +132,23 @@ public class AttributionPane {
     private List<AttributionLine> overrideLines;
 
     /**
-     * Cached measurement result. Null means a fresh measure is needed.
+     * Cached natural-scale measurement — the one the measurement API always asks
+     * for. Null means a fresh measure is needed.
      * Invalidated by {@link #setSong(Song)} and {@link #setOverrideLines(List)}.
      * Also invalidated when the fonts differ from those stored in the cache.
      */
     @Nullable
-    private MeasuredCache cachedMeasure;
+    private MeasuredCache cachedNaturalMeasure;
+
+    /**
+     * Cached zoomed measurement, kept in its own slot so it cannot evict
+     * {@link #cachedNaturalMeasure}. The layout pass measures at natural scale while
+     * the very next paint measures at the view zoom with zoomed fonts, so a single
+     * shared slot would have the two passes evict each other on every layout —
+     * which happens per mouse-drag tick while dragging the attribution block.
+     */
+    @Nullable
+    private MeasuredCache cachedZoomedMeasure;
 
     // -------------------------------------------------------------------------
     // Cached measurement record
@@ -133,14 +159,23 @@ public class AttributionPane {
      * produce them and the resulting content size. The per-line {@link LineLayout}
      * captures everything {@link #render} needs, so rendering is a straight walk
      * over precomputed data with no re-measurement.
-     * Re-computed whenever the Song, override lines, or fonts change.
+     * Re-computed whenever the Song, override lines, fonts, or zoom factor change.
+     * <p>
+     * {@code marginTopPx} is the zoom-scaled top margin; storing it here rather than
+     * re-deriving it in {@link #render} keeps the measure and render passes from
+     * drifting apart.
+     * <p>
+     * Package-private, like {@link #measure}, so the measurement test can assert on
+     * the zoom-scaled layout directly instead of inferring it from paint calls.
      */
-    private record MeasuredCache(
+    record MeasuredCache(
         List<LineLayout> layouts,
         Font attributionFont,
         Font subAttributionFont,
-        int contentWidthPx,
-        int contentHeightPx
+        double zoomFactor,
+        double marginTopPx,
+        double contentWidthPx,
+        double contentHeightPx
     ) {}
 
     /**
@@ -151,14 +186,14 @@ public class AttributionPane {
      * these values; {@link #measure} derives the content size from them. Keeping
      * the layout in one place means the measure and render passes cannot drift.
      */
-    private record LineLayout(String text, Font font, @Nullable Rectangle inkBounds, int baselineOffsetPx) {}
+    private record LineLayout(String text, Font font, @Nullable Rectangle2D inkBounds, double baselineOffsetPx) {}
 
     /**
      * The rendered vertical extent of {@link #LINE_BOX_REFERENCE} in a given font.
      * {@code ascentPx} is the ink distance above the baseline; {@code heightPx}
      * is the full ink height (ascent + descent). Recomputed per measure pass.
      */
-    private record LineBox(int ascentPx, int heightPx) {}
+    private record LineBox(double ascentPx, double heightPx) {}
 
     // -------------------------------------------------------------------------
     // Mutators (each invalidates the measure cache)
@@ -171,7 +206,8 @@ public class AttributionPane {
      * the Song reference itself changing.
      */
     public void invalidateCache() {
-        cachedMeasure = null;
+        cachedNaturalMeasure = null;
+        cachedZoomedMeasure = null;
     }
 
     /** Sets the song model; clears the measure cache. */
@@ -222,7 +258,8 @@ public class AttributionPane {
      * @return max line width in pixels, or 0 if there are no lines
      */
     public int getContentWidthPx(Font attributionFont, Font subAttributionFont) {
-        return measure(attributionFont, subAttributionFont).contentWidthPx();
+        var cache = measure(attributionFont, subAttributionFont, NATURAL_ZOOM_FACTOR);
+        return new DocPx(cache.contentWidthPx()).ceilPx();
     }
 
     /**
@@ -233,7 +270,8 @@ public class AttributionPane {
      * @return total height in pixels
      */
     public int getContentHeightPx(Font attributionFont, Font subAttributionFont) {
-        return measure(attributionFont, subAttributionFont).contentHeightPx();
+        var cache = measure(attributionFont, subAttributionFont, NATURAL_ZOOM_FACTOR);
+        return new DocPx(cache.contentHeightPx()).ceilPx();
     }
 
     /**
@@ -246,8 +284,10 @@ public class AttributionPane {
      * @return the content size in pixels
      */
     public Dimension getContentSizePx(Font attributionFont, Font subAttributionFont) {
-        var cache = measure(attributionFont, subAttributionFont);
-        return new Dimension(cache.contentWidthPx(), cache.contentHeightPx());
+        var cache = measure(attributionFont, subAttributionFont, NATURAL_ZOOM_FACTOR);
+        return new Dimension(
+            new DocPx(cache.contentWidthPx()).ceilPx(),
+            new DocPx(cache.contentHeightPx()).ceilPx());
     }
 
     // -------------------------------------------------------------------------
@@ -267,6 +307,10 @@ public class AttributionPane {
      * @param widthPx            available width for centering
      * @param attributionFont    font for {@link FontKey#ATTRIBUTION} lines
      * @param subAttributionFont font for {@link FontKey#SUB_ATTRIBUTION} lines
+     * @param zoomFactor         view zoom factor; scales the staff-space leading, the
+     *                           sub-attribution gap, and the margins so the block scales
+     *                           uniformly with the (already zoomed) fonts. Pass
+     *                           {@value #NATURAL_ZOOM_FACTOR} when unzoomed.
      */
     public void render(
         Graphics2D g2,
@@ -274,9 +318,10 @@ public class AttributionPane {
         double yPx,
         double widthPx,
         Font attributionFont,
-        Font subAttributionFont
+        Font subAttributionFont,
+        double zoomFactor
     ) {
-        var cache = measure(attributionFont, subAttributionFont);
+        var cache = measure(attributionFont, subAttributionFont, zoomFactor);
         var layouts = cache.layouts();
 
         if (layouts.isEmpty()) {
@@ -298,10 +343,10 @@ public class AttributionPane {
                 }
 
                 g2.setFont(layout.font());
-                var drawY = (float) (yPx + marginTop + layout.baselineOffsetPx());
+                var drawY = (float) (yPx + cache.marginTopPx() + layout.baselineOffsetPx());
                 // Center the ink rectangle, then shift back by bounds.x so a negative
                 // left bearing (e.g. the "W" in "Words") does not overhang the box.
-                var drawX = (float) (xPx + (widthPx - bounds.width) / 2.0 - bounds.x);
+                var drawX = (float) (xPx + (widthPx - bounds.getWidth()) / 2.0 - bounds.getX());
                 g2.drawString(layout.text(), drawX, drawY);
             }
         }
@@ -312,22 +357,41 @@ public class AttributionPane {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the cached measurement, or computes a fresh one if the cache is
-     * null or the fonts differ from the cached fonts.
+     * Returns the cached measurement, or computes a fresh one if the matching cache
+     * slot is null or its fonts or zoom factor differ from those requested.
+     * <p>
+     * Natural-scale and zoomed measurements live in separate slots so the layout
+     * pass (always natural) and the paint pass (at the view zoom) cannot evict each
+     * other. Package-private so the measurement test can assert on the zoom-scaled
+     * layout without going through a mocked {@code Graphics2D}.
+     *
+     * @param attributionFont    font for {@link FontKey#ATTRIBUTION} lines
+     * @param subAttributionFont font for {@link FontKey#SUB_ATTRIBUTION} lines
+     * @param zoomFactor         scales the staff-space leading, sub-attribution gap,
+     *                           and margins; pass {@value #NATURAL_ZOOM_FACTOR} to
+     *                           measure at natural scale
      */
-    private MeasuredCache measure(Font attributionFont, Font subAttributionFont) {
-        if (cachedMeasure != null
-            && cachedMeasure.attributionFont().equals(attributionFont)
-            && cachedMeasure.subAttributionFont().equals(subAttributionFont)) {
-            return cachedMeasure;
+    MeasuredCache measure(Font attributionFont, Font subAttributionFont, double zoomFactor) {
+        var isNaturalScale = zoomFactor == NATURAL_ZOOM_FACTOR;
+        var cached = isNaturalScale ? cachedNaturalMeasure : cachedZoomedMeasure;
+
+        if (cached != null
+            && cached.zoomFactor() == zoomFactor
+            && cached.attributionFont().equals(attributionFont)
+            && cached.subAttributionFont().equals(subAttributionFont)) {
+            return cached;
         }
 
         var lines = resolveLines();
         var attributionBox = measureLineBox(attributionFont);
         var subAttributionBox = measureLineBox(subAttributionFont);
 
-        var leadingPx = ScaleContext.ssToRoundedPx(LEADING_SS);
-        var subAttributionGapPx = ScaleContext.ssToRoundedPx(SUB_ATTRIBUTION_GAP_SS);
+        // Leading and the sub-attribution gap are fixed staff-space distances, so they
+        // scale with the view zoom exactly like the (caller-zoomed) fonts do. Keeping
+        // them fractional — never rounding to whole pixels — is what stops the line
+        // spacing from jumping as the zoom factor sweeps across pixel boundaries.
+        var leadingPx = ScaleContext.ssToPx(LEADING_SS) * zoomFactor;
+        var subAttributionGapPx = ScaleContext.ssToPx(SUB_ATTRIBUTION_GAP_SS) * zoomFactor;
 
         // The extra gap sits above the first sub-attribution line, but only when an
         // attribution line precedes it; a sub-attribution line at index 0 has nothing
@@ -335,8 +399,8 @@ public class AttributionPane {
         var firstSubAttributionIndex = firstSubAttributionIndex(lines);
 
         var layouts = new ArrayList<LineLayout>(lines.size());
-        var maxWidth = 0;
-        var offsetPx = 0;
+        var maxWidthPx = 0.0;
+        var offsetPx = 0.0;
 
         for (var i = 0; i < lines.size(); i++) {
             var line = lines.get(i);
@@ -348,10 +412,10 @@ public class AttributionPane {
                 offsetPx += subAttributionGapPx;
             }
 
-            var bounds = GraphicUtils.inkBounds(line.text(), font);
+            var bounds = GraphicUtils.visualBounds(line.text(), font);
 
             if (bounds != null) {
-                maxWidth = Math.max(maxWidth, bounds.width);
+                maxWidthPx = Math.max(maxWidthPx, bounds.getWidth());
             }
 
             layouts.add(new LineLayout(line.text(), font, bounds, offsetPx + lineBox.ascentPx()));
@@ -362,10 +426,22 @@ public class AttributionPane {
             }
         }
 
-        var totalHeight = marginTop + offsetPx + marginBottom;
-        cachedMeasure = new MeasuredCache(
-            List.copyOf(layouts), attributionFont, subAttributionFont, maxWidth, totalHeight);
-        return cachedMeasure;
+        // Margins scale with zoom for the same reason the leading does: they are fixed
+        // distances around a block whose fonts the caller has already zoomed, so leaving
+        // them at natural size would shrink them relative to the text as zoom grows.
+        var marginTopPx = marginTop * zoomFactor;
+        var totalHeightPx = marginTopPx + offsetPx + marginBottom * zoomFactor;
+        var measured = new MeasuredCache(
+            List.copyOf(layouts), attributionFont, subAttributionFont, zoomFactor,
+            marginTopPx, maxWidthPx, totalHeightPx);
+
+        if (isNaturalScale) {
+            cachedNaturalMeasure = measured;
+        } else {
+            cachedZoomedMeasure = measured;
+        }
+
+        return measured;
     }
 
     /**
@@ -384,16 +460,26 @@ public class AttributionPane {
     }
 
     /**
-     * Measures the rendered line box for {@code font}: the pixel bounds of
-     * {@link #LINE_BOX_REFERENCE} rendered as vectors under
-     * {@link GraphicUtils#SCREEN_FRC}. The bounds' {@code y} is the ink top
-     * relative to the baseline (negative), so its negation is the ascent and the
-     * bounds' {@code height} is the full vertical extent used to box every line.
+     * Measures the rendered line box for {@code font}: the fractional visual (ink)
+     * bounds of {@link #LINE_BOX_REFERENCE}, via
+     * {@link GraphicUtils#visualBounds(String, Font)}. The bounds' {@code y} is the
+     * ink top relative to the baseline (negative), so
+     * {@link GraphicUtils#inkHeight(Rectangle2D)} yields the ascent, and the bounds'
+     * {@code height} is the full vertical extent used to box every line.
+     * <p>
+     * The fractional (outline) bounds rather than device-pixel-snapped ones are what
+     * let the line box scale linearly with the zoomed font, so the spacing does not
+     * jump as the zoom factor changes.
      */
     private static LineBox measureLineBox(Font font) {
-        var bounds = font.createGlyphVector(GraphicUtils.SCREEN_FRC, LINE_BOX_REFERENCE)
-            .getPixelBounds(GraphicUtils.SCREEN_FRC, 0, 0);
-        return new LineBox(-bounds.y, bounds.height);
+        // LINE_BOX_REFERENCE is a non-empty constant, so the bounds are never null.
+        var bounds = GraphicUtils.visualBounds(LINE_BOX_REFERENCE, font);
+
+        if (bounds == null) {
+            return new LineBox(0, 0);
+        }
+
+        return new LineBox(GraphicUtils.inkHeight(bounds), bounds.getHeight());
     }
 
     /**
