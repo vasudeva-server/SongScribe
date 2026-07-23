@@ -168,6 +168,10 @@ fun Test.applyCommonTestConfig() {
     outputs.upToDateWhen { false }
     jvmArgs(addOpensArgs)
     jvmArgs("--enable-native-access=ALL-UNNAMED", "-XX:+EnableDynamicAgentLoading", "-Xshare:off")
+    // PinchZoomGesture references com.apple.eawt.event, which java.desktop does not export.
+    // compileJava already passes this; the test JVM needs it too or any test that builds a
+    // MainFrame dies with IllegalAccessError while loading the class.
+    jvmArgs("--add-exports", "java.desktop/com.apple.eawt.event=ALL-UNNAMED")
 
     if (System.getProperty("os.name", "").startsWith("Mac")) {
         jvmArgs(

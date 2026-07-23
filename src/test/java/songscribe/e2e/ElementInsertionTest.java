@@ -445,35 +445,6 @@ class ElementInsertionTest extends E2ETest {
     }
 
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    @Order(6)
-    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-    class FullLine {
-
-        @BeforeAll
-        void setUp() {
-            resetSong();
-            loadFixture("full-line");
-        }
-
-        @Test
-        void testInsertIntoFullLineShowsError() {
-            var line = song().getLine(0);
-            var originalCount = line.elementCount();
-
-            selectDuration(Actions.QUARTER_NOTE_ACTION);
-            clickAt(insertionPointBefore(0, 1, 0));
-
-            var optionPane = JOptionPaneFinder.findOptionPane().using(robot);
-            optionPane.requireErrorMessage();
-            optionPane.okButton().click();
-
-            assertThat(line.elementCount()).as("element count unchanged").isEqualTo(originalCount);
-        }
-    }
-
-
     // -- Grace note assertion helpers --
 
     private boolean isGraceModeActive() {

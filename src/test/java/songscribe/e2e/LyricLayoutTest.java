@@ -55,7 +55,9 @@ class LyricLayoutTest extends E2ETest {
         selectDuration(Actions.QUARTER_NOTE_ACTION);
         clickAt(insertionPoint(0, 0));
         performLayout(0);
-        assertThat(song().getLine(0).elementCount()).isEqualTo(1);
+        // effectiveElementCount excludes the song-owned terminal barline that every line
+        // carries, so this is "exactly one note was inserted".
+        assertThat(song().getLine(0).effectiveElementCount()).isEqualTo(1);
 
         // Attach a single, self-contained syllable to that note.
         GuiActionRunner.execute(() -> song().getLine(0).getElement(0).lyrics.add(
