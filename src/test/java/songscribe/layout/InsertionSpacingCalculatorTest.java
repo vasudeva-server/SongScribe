@@ -442,7 +442,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // the mandatory trailing line-rest gap (refs #617) — fixed, not part of the slack
             // under test.
             var song = songMock();
-            var line = lineWithCrotchets(3, song);
+            var line = lineWithCrotchets(5, song);
             when(song.getLineWidthSs())
                 .thenReturn(lastElementRightEdgeSs(line) + Song.DEFAULT_REST_LENGTH_SS);
 
@@ -697,7 +697,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         @Test
         void testFallFitsOnAFullLineWithRoomToCompress() {
             var song = songMock();
-            var line = lineWithCrotchets(3, song);
+            var line = lineWithCrotchets(5, song);
             var projection = fallProjection(line, 1);
             var marginSs = projection.compressedFloorSs() + BOUNDARY_SLACK_SS;
             when(song.getLineWidthSs()).thenReturn(marginSs);

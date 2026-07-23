@@ -65,12 +65,12 @@ class LyricLiftTest extends UnitTest {
     private static final double NARROW_MIN_GAP_SS = 0.5;
     private static final double NARROW_PAIR_REQUIREMENT_SS = 1.0;
 
-    // --- Even lift: a lead syllable requires 2.5/2 + 1.5 + 0.5/2 = 3.0, a shortfall of 0.5 over the
-    // 2.5 base. The largest shortfall on the line is the even lift, so every gap rises by 0.5.
+    // --- Even lift: a lead syllable requires 2.5/2 + 1.5 + 0.5/2 = 3.0, a shortfall over the line
+    // rest base. The largest shortfall on the line is the even lift, so every gap rises by it.
     private static final double LEAD_SYLLABLE_WIDTH_SS = 2.5;
     private static final double LEAD_MIN_GAP_SS = 1.5;
     private static final double LEAD_REQUIREMENT_SS = 3.0;
-    private static final double EVEN_LIFT_SS = 0.5;
+    private static final double EVEN_LIFT_SS = LEAD_REQUIREMENT_SS - DEFAULT_LINE_REST_SS;
     private static final double EVEN_LIFTED_REST_SS = DEFAULT_LINE_REST_SS + EVEN_LIFT_SS;
 
     // --- Wide syllable: requires 3.5/2 + 2.0 + 0.5/2 = 4.0 on each of its two flanking gaps, a
