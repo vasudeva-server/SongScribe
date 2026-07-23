@@ -21,8 +21,10 @@
 package songscribe.layout;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -127,6 +129,9 @@ final class BeamScoring {
 
     /** Distance between adjacent staff lines, in staff spaces. */
     private static final double STAFF_LINE_STEP_SS = 1.0;
+
+    /** Format used for every number in this class's debug output. */
+    private static final String LOG_NUMBER_FORMAT = "%.3f";
 
     // ---------------------------------------------------------------------
     // Slope damping (beam-quanting.cc slope_damping / concaveness).
@@ -274,7 +279,12 @@ final class BeamScoring {
      * @return the stem's ideal and shortest beam-side ends, in real Y-up ss
      */
     StemInfo calcStemInfo(StemInput stem) {
-        var beamCount = stem.beamCount();
+        // Not the stem's own beam count: LilyPond feeds calc_stem_info
+        // Beam::get_direction_beam_count, the group's maximum for this direction.
+        // Its comment in stem.cc gives the reason — "a8[ a32] must be horizontal"
+        // — and only that shared count makes the ideal ends of equal-pitch edge
+        // stems agree, which is what lets least_squares_positions see dy == 0.
+        var beamCount = maxBeamCount;
         var heightOfBeams = BEAM_THICKNESS_SS + (beamCount - 1) * BEAM_TRANSLATION_SS;
         var halfBeamThickness = BEAM_THICKNESS_SS / 2.0;
 
@@ -293,8 +303,8 @@ final class BeamScoring {
         // …and its lowest beam must never be lower than the second staff line.
         idealY = Math.max(idealY, -1.0 - BEAM_THICKNESS_SS + heightOfBeams);
 
-        // Port of Beam::calc_stem_shorten, which uses the group's max beam count.
-        idealY -= listRef(BEAMED_STEM_SHORTEN_SS, maxBeamCount - 1) * forcedFraction;
+        // Port of Beam::calc_stem_shorten.
+        idealY -= listRef(BEAMED_STEM_SHORTEN_SS, beamCount - 1) * forcedFraction;
 
         var minimumLength = listRef(BEAMED_EXTREME_MINIMUM_FREE_LENGTHS_SS, beamCount - 1)
             + heightOfBeams
@@ -323,8 +333,41 @@ final class BeamScoring {
      */
     void computeUnquantedPositions() {
         leastSquaresPositions();
+        logStage("leastSquares");
         slopeDamping();
+        logStage("slopeDamping");
         shiftRegionToValid();
+        logStage("shiftRegionToValid");
+    }
+
+    /**
+     * Logs the unquanted position after one pipeline stage.
+     *
+     * @param stage the name of the stage that just ran
+     */
+    private void logStage(String stage) {
+        if (!LOG.isDebugEnabled()) {
+            return;
+        }
+
+        var dy = unquantedRightY - unquantedLeftY;
+        LOG.debug(
+            "  after {}: left={} right={} dy={} slope={} musicalDy={}",
+            stage,
+            fmt(unquantedLeftY),
+            fmt(unquantedRightY),
+            fmt(dy),
+            fmt(dy / xSpan),
+            fmt(musicalDy)
+        );
+    }
+
+    /**
+     * @param value a number destined for debug output
+     * @return the value formatted to a readable number of decimals
+     */
+    private static String fmt(double value) {
+        return String.format(LOG_NUMBER_FORMAT, value);
     }
 
     /**
@@ -433,11 +476,21 @@ final class BeamScoring {
 
         var damping = DAMPING;
         var concaveness = calcConcaveness();
+        var forcedFlat = concaveness >= CONCAVE_FORCE_FLAT;
 
-        if (concaveness >= CONCAVE_FORCE_FLAT) {
+        if (forcedFlat) {
             unquantedLeftY = unquantedRightY;
             musicalDy = 0.0;
             damping = 0.0;
+        }
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(
+                "  concaveness={} forcedFlat={} (>= {} forces flat)",
+                fmt(concaveness),
+                forcedFlat,
+                fmt(CONCAVE_FORCE_FLAT)
+            );
         }
 
         if (damping != 0.0 && damping + concaveness != 0.0) {
@@ -447,6 +500,10 @@ final class BeamScoring {
 
             unquantedLeftY += (dy - dampedDy) / 2.0;
             unquantedRightY -= (dy - dampedDy) / 2.0;
+
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("  damping: dy {} -> {}", fmt(dy), fmt(dampedDy));
+            }
         }
     }
 
@@ -469,7 +526,17 @@ final class BeamScoring {
             positions[i] = stems.get(i).headHalfPos();
         }
 
-        if (isConcaveSingleNotes(positions, dirSign)) {
+        var singleNotesConcave = isConcaveSingleNotes(positions, dirSign);
+
+        if (LOG.isDebugEnabled()) {
+            LOG.debug(
+                "  headPositions={} isConcaveSingleNotes={}",
+                Arrays.toString(positions),
+                singleNotesConcave
+            );
+        }
+
+        if (singleNotesConcave) {
             return CONCAVE_FORCE_FLAT;
         }
 
@@ -593,12 +660,70 @@ final class BeamScoring {
     // Quant candidates (port of Beam_configuration + generate_quants)
     // ---------------------------------------------------------------------
 
+    /**
+     * The per-scorer demerit contributions for one candidate, kept apart from the
+     * running total so debug output can attribute a candidate's score to the
+     * scorer responsible for it.
+     *
+     * @param initial         the seed tie-breaker from {@code newConfig}
+     * @param stemLengths     {@link #scoreStemLengths}
+     * @param slopeDirection  {@link #scoreSlopeDirection}
+     * @param slopeMusical    {@link #scoreSlopeMusical}
+     * @param slopeIdeal      {@link #scoreSlopeIdeal}
+     * @param horizontalInter {@link #scoreHorizontalInterQuants}
+     * @param forbiddenQuants {@link #scoreForbiddenQuants}
+     */
+    private record Demerits(
+        double initial,
+        double stemLengths,
+        double slopeDirection,
+        double slopeMusical,
+        double slopeIdeal,
+        double horizontalInter,
+        double forbiddenQuants
+    ) {
+
+        double total() {
+            return initial
+                + stemLengths
+                + slopeDirection
+                + slopeMusical
+                + slopeIdeal
+                + horizontalInter
+                + forbiddenQuants;
+        }
+
+        @Override
+        public String toString() {
+            return String.format(
+                "stemLen=" + LOG_NUMBER_FORMAT
+                    + " slopeDir=" + LOG_NUMBER_FORMAT
+                    + " slopeMus=" + LOG_NUMBER_FORMAT
+                    + " slopeIdeal=" + LOG_NUMBER_FORMAT
+                    + " horizInter=" + LOG_NUMBER_FORMAT
+                    + " forbidden=" + LOG_NUMBER_FORMAT
+                    + " initial=" + LOG_NUMBER_FORMAT,
+                stemLengths,
+                slopeDirection,
+                slopeMusical,
+                slopeIdeal,
+                horizontalInter,
+                forbiddenQuants,
+                initial
+            );
+        }
+    }
+
     /** One candidate beam placement and the demerits accumulated against it. */
     private static final class BeamConfiguration {
 
         private double leftY;
         private double rightY;
         private double demerits;
+
+        /** The breakdown behind {@link #demerits}; null until {@link #score} runs. */
+        @Nullable
+        private Demerits breakdown;
 
         /**
          * Port of {@code Beam_configuration::new_config}. LilyPond truncates the
@@ -732,17 +857,24 @@ final class BeamScoring {
     }
 
     /**
-     * Runs every applicable scorer against a candidate.
+     * Runs every applicable scorer against a candidate, recording both the total
+     * and the per-scorer breakdown on it.
      *
      * @param config the candidate to score
      */
     private void score(BeamConfiguration config) {
-        scoreStemLengths(config);
-        scoreSlopeDirection(config);
-        scoreSlopeMusical(config);
-        scoreSlopeIdeal(config);
-        scoreHorizontalInterQuants(config);
-        scoreForbiddenQuants(config);
+        var breakdown = new Demerits(
+            config.demerits,
+            scoreStemLengths(config),
+            scoreSlopeDirection(config),
+            scoreSlopeMusical(config),
+            scoreSlopeIdeal(config),
+            scoreHorizontalInterQuants(config),
+            scoreForbiddenQuants(config)
+        );
+
+        config.breakdown = breakdown;
+        config.demerits = breakdown.total();
     }
 
     /**
@@ -753,8 +885,9 @@ final class BeamScoring {
      * French beaming (see issue #652, which reintroduces it).
      *
      * @param config the candidate to score
+     * @return the demerits charged
      */
-    private void scoreStemLengths(BeamConfiguration config) {
+    private double scoreStemLengths(BeamConfiguration config) {
         var total = 0.0;
 
         for (var i = 0; i < stems.size(); i++) {
@@ -767,7 +900,7 @@ final class BeamScoring {
                 * shrinkExtraWeight(dirSign * (currentY - info.idealYUpSs()), SHRINK_EXTRA_WEIGHT_FACTOR);
         }
 
-        config.demerits += total / Math.max(stems.size(), 1);
+        return total / Math.max(stems.size(), 1);
     }
 
     /**
@@ -776,20 +909,21 @@ final class BeamScoring {
      * damped slope was near zero anyway.
      *
      * @param config the candidate to score
+     * @return the demerits charged
      */
-    private void scoreSlopeDirection(BeamConfiguration config) {
+    private double scoreSlopeDirection(BeamConfiguration config) {
         var dy = config.dy();
         var dampedDy = unquantedRightY - unquantedLeftY;
 
         if (Math.signum(dampedDy) == Math.signum(dy)) {
-            return;
+            return 0.0;
         }
 
         if (dy == 0.0 && Math.abs(dampedDy / xSpan) <= ROUND_TO_ZERO_SLOPE) {
-            config.demerits += HINT_DIRECTION_PENALTY;
-        } else {
-            config.demerits += DAMPING_DIRECTION_PENALTY;
+            return HINT_DIRECTION_PENALTY;
         }
+
+        return DAMPING_DIRECTION_PENALTY;
     }
 
     /**
@@ -797,9 +931,10 @@ final class BeamScoring {
      * the music itself suggests.
      *
      * @param config the candidate to score
+     * @return the demerits charged
      */
-    private void scoreSlopeMusical(BeamConfiguration config) {
-        config.demerits += MUSICAL_DIRECTION_FACTOR
+    private double scoreSlopeMusical(BeamConfiguration config) {
+        return MUSICAL_DIRECTION_FACTOR
             * Math.max(0.0, Math.abs(config.dy()) - Math.abs(musicalDy));
     }
 
@@ -807,11 +942,12 @@ final class BeamScoring {
      * Port of {@code score_slope_ideal}: penalizes deviation from the damped slope.
      *
      * @param config the candidate to score
+     * @return the demerits charged
      */
-    private void scoreSlopeIdeal(BeamConfiguration config) {
+    private double scoreSlopeIdeal(BeamConfiguration config) {
         var dampedDy = unquantedRightY - unquantedLeftY;
         var deviation = Math.abs(dampedDy) - Math.abs(config.dy());
-        config.demerits += shrinkExtraWeight(deviation, SHRINK_EXTRA_WEIGHT_FACTOR) * IDEAL_SLOPE_FACTOR;
+        return shrinkExtraWeight(deviation, SHRINK_EXTRA_WEIGHT_FACTOR) * IDEAL_SLOPE_FACTOR;
     }
 
     /**
@@ -820,18 +956,21 @@ final class BeamScoring {
      * is worse than the generic forbidden-quant case.
      *
      * @param config the candidate to score
+     * @return the demerits charged
      */
-    private void scoreHorizontalInterQuants(BeamConfiguration config) {
+    private double scoreHorizontalInterQuants(BeamConfiguration config) {
         if (config.dy() != 0.0 || Math.abs(config.leftY) >= STAFF_RADIUS_SS) {
-            return;
+            return 0.0;
         }
 
         var yshift = config.leftY - ROUND_HALF_UP_OFFSET;
         var rounded = Math.floor(yshift + ROUND_HALF_UP_OFFSET);
 
         if (Math.abs(rounded - yshift) < HORIZONTAL_INTER_QUANT_TOLERANCE_SS) {
-            config.demerits += HORIZONTAL_INTER_QUANT_PENALTY;
+            return HORIZONTAL_INTER_QUANT_PENALTY;
         }
+
+        return 0.0;
     }
 
     /**
@@ -840,8 +979,9 @@ final class BeamScoring {
      * specific quants that make a secondary beam land badly.
      *
      * @param config the candidate to score
+     * @return the demerits charged
      */
-    private void scoreForbiddenQuants(BeamConfiguration config) {
+    private double scoreForbiddenQuants(BeamConfiguration config) {
         var edgeBeamCountLeft = stems.get(0).beamCount();
         var edgeBeamCountRight = stems.get(stems.size() - 1).beamCount();
         var maxEdgeBeamCount = Math.max(edgeBeamCountLeft, edgeBeamCountRight);
@@ -900,7 +1040,7 @@ final class BeamScoring {
             }
         }
 
-        config.demerits += demerits;
+        return demerits;
     }
 
     // ---------------------------------------------------------------------
@@ -928,6 +1068,7 @@ final class BeamScoring {
      */
     private BeamPosition solve() {
         computeStemInfos();
+        logInputs();
 
         if (stems.size() < 2 || xSpan == 0.0) {
             var y = stemInfos.isEmpty() ? 0.0 : stemInfos.get(0).idealYUpSs();
@@ -961,7 +1102,91 @@ final class BeamScoring {
             }
         }
 
+        logChoice(configs, best);
+
         return new BeamPosition(best.leftY, best.rightY);
+    }
+
+    // ---------------------------------------------------------------------
+    // Debug output
+    // ---------------------------------------------------------------------
+
+    /** Logs the group's inputs and the stem info derived from them. */
+    private void logInputs() {
+        if (!LOG.isDebugEnabled()) {
+            return;
+        }
+
+        LOG.debug(
+            "beam group: stems={} dir={} forcedFraction={} maxBeamCount={} xSpan={}",
+            stems.size(),
+            dirSign > 0 ? "up" : "down",
+            fmt(forcedFraction),
+            maxBeamCount,
+            fmt(xSpan)
+        );
+
+        for (var i = 0; i < stems.size(); i++) {
+            var stem = stems.get(i);
+            var info = stemInfos.get(i);
+            LOG.debug(
+                "  stem[{}] x={} headPos={} headY={} beams={} ideal={} shortest={}",
+                i,
+                fmt(stem.xSs()),
+                stem.headHalfPos(),
+                fmt(stem.headYUpSs()),
+                stem.beamCount(),
+                fmt(info.idealYUpSs()),
+                fmt(info.shortestYUpSs())
+            );
+        }
+    }
+
+    /**
+     * Logs the winning candidate alongside the best flat candidate, so a beam that
+     * came out angled can be compared scorer-by-scorer against the flat option that
+     * lost to it.
+     *
+     * @param configs every scored candidate
+     * @param best    the winner
+     */
+    private void logChoice(List<BeamConfiguration> configs, BeamConfiguration best) {
+        if (!LOG.isDebugEnabled()) {
+            return;
+        }
+
+        LOG.debug("  candidates={}", configs.size());
+        logConfig("winner", best);
+
+        BeamConfiguration bestFlat = null;
+
+        for (var config : configs) {
+            if (Math.abs(config.dy()) < BEAM_EPS && (bestFlat == null || config.demerits < bestFlat.demerits)) {
+                bestFlat = config;
+            }
+        }
+
+        if (bestFlat == null) {
+            LOG.debug("  best flat: none in range");
+        } else if (bestFlat != best) {
+            logConfig("best flat", bestFlat);
+        }
+    }
+
+    /**
+     * @param label  what the candidate is (winner, best flat, …)
+     * @param config the candidate to describe
+     */
+    private static void logConfig(String label, BeamConfiguration config) {
+        LOG.debug(
+            "  {}: left={} right={} dy={} demerits={} [{}]",
+            label,
+            fmt(config.leftY),
+            fmt(config.rightY),
+            fmt(config.dy()),
+            fmt(config.demerits),
+            config.breakdown
+        );
     }
 
     // ---------------------------------------------------------------------

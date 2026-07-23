@@ -74,6 +74,18 @@ class BeamScoringTest extends UnitTest {
     // must keep a positive (Y-up) slope.
     private static final int[] ASCENDING_HALF_POSITIONS = { -6, -4, -2 };
 
+    // LilyPond's `\relative c'' { g16[ d'16 16 g,8] }`: G4 D5 D5 G4, stems down.
+    // The edge heads share a pitch but not a beam count, which is what makes this
+    // a regression guard — see testMixedBeamCountsWithEqualEdgeHeadsIsFlat.
+    private static final int[] MIXED_COUNT_HALF_POSITIONS = { -2, 2, 2, -2 };
+    private static final int[] MIXED_COUNT_BEAM_COUNTS = { 2, 2, 2, 1 };
+
+    /** The two G4s are stems-down against their default, the two D5s are not. */
+    private static final double HALF_THE_STEMS_FORCED = 0.5;
+
+    /** LilyPond 2.26 reports {@code Beam.positions = (-4.0 . -4.0)} for that group. */
+    private static final double LILYPOND_FLAT_BEAM_Y_UP_SS = -4.0;
+
     private static BeamScoring scoringFor(int[] halfPositions, int dirSign) {
         var stems = new ArrayList<BeamScoring.StemInput>(halfPositions.length);
 
@@ -169,5 +181,38 @@ class BeamScoringTest extends UnitTest {
         assertThat(scoring.unquantedRightY() - scoring.unquantedLeftY())
             .as("ascending heads give a beam rising in Y-up space")
             .isGreaterThan(BeamScoring.BEAM_EPS);
+    }
+
+    /**
+     * Stem info must be derived from the group's maximum beam count, not each
+     * stem's own, exactly as {@code Stem::calc_stem_info} does via
+     * {@code Beam::get_direction_beam_count}. Per-stem counts give the two edge
+     * stems different ideal ends despite identical heads, which hides the
+     * {@code dy == 0} case from {@code least_squares_positions} and tilts a beam
+     * LilyPond draws flat.
+     */
+    @Test
+    void testMixedBeamCountsWithEqualEdgeHeadsIsFlat() {
+        var stems = new ArrayList<BeamScoring.StemInput>(MIXED_COUNT_HALF_POSITIONS.length);
+
+        for (var i = 0; i < MIXED_COUNT_HALF_POSITIONS.length; i++) {
+            stems.add(new BeamScoring.StemInput(
+                FIRST_STEM_X_SS + i * STEM_SPACING_SS,
+                MIXED_COUNT_HALF_POSITIONS[i] / 2.0,
+                MIXED_COUNT_HALF_POSITIONS[i],
+                MIXED_COUNT_BEAM_COUNTS[i]
+            ));
+        }
+
+        var position = BeamScoring.solve(stems, DIR_DOWN, HALF_THE_STEMS_FORCED);
+
+        assertAll(
+            () -> assertThat(position.rightYUpSs())
+                .as("equal edge heads give a flat beam")
+                .isCloseTo(position.leftYUpSs(), within(BeamScoring.BEAM_EPS)),
+            () -> assertThat(position.leftYUpSs())
+                .as("beam sits where LilyPond puts it")
+                .isCloseTo(LILYPOND_FLAT_BEAM_Y_UP_SS, within(BeamScoring.BEAM_EPS))
+        );
     }
 }

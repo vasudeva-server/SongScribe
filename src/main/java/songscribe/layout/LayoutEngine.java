@@ -577,6 +577,9 @@ public class LayoutEngine {
             if (!stemInputs.isEmpty()) {
                 var dirSign = stemDirection.isUp() ? 1 : -1;
                 var forcedFraction = memberCount > 0 ? (double) forcedStemCount / memberCount : 0.0;
+
+                LOG.debug("--- beam elements {}..{} ---", beamStart, beamEnd);
+
                 var beamPosition = BeamScoring.solve(stemInputs, dirSign, forcedFraction);
                 var leftYUpSs = beamPosition.leftYUpSs();
                 var rightYUpSs = beamPosition.rightYUpSs();
