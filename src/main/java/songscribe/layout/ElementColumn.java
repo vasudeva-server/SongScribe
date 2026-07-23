@@ -177,6 +177,24 @@ public final class ElementColumn {
         return element.getType().isGraceNote();
     }
 
+    /**
+     * Returns whether this column's element renders a stem (a pitched or grace note shorter than
+     * a whole note).
+     */
+    public boolean hasStem() {
+        return element.getType().isNoteWithStem();
+    }
+
+    /**
+     * Returns the stem direction of this column's element. Only meaningful when {@link #hasStem()}
+     * is {@code true} — for rests, whole notes, and barlines this returns whatever direction the
+     * underlying element happens to hold (default {@code DOWN}), which callers must not treat as a
+     * real stem direction.
+     */
+    public StaffElement.Direction getDirection() {
+        return element.getDirection();
+    }
+
     // ==========================================================================
     // Grace Notes
     // ==========================================================================
@@ -325,12 +343,32 @@ public final class ElementColumn {
     }
 
     /**
+     * Returns this column's notehead-center staff position converted to ss. Screen-down convention:
+     * a more negative value is higher on the staff. Single source of truth for the absolute vertical
+     * anchor shared by {@link #getAbsoluteTopYSs()}, {@link #getAbsoluteBottomYSs()}, and the optical
+     * spacing corrections.
+     */
+    public double getPositionSs() {
+        return Staff.spToSs(getElement().getStaffPosition());
+    }
+
+    /**
      * Returns the absolute layout-Y top of this column: the element's staff position converted
      * to ss, plus the note-local stem top extent. Single source of truth for the absolute top used
      * when building skyline contours.
      */
     public double getAbsoluteTopYSs() {
-        return Staff.spToSs(getElement().getStaffPosition()) + getStemTopSs();
+        return getPositionSs() + getStemTopSs();
+    }
+
+    /**
+     * Returns the absolute layout-Y bottom of this column: the element's notehead-center position
+     * plus the note-local stem bottom extent. Single source of truth for the absolute bottom used
+     * when measuring vertical overlap between columns. Screen-down convention: this is the
+     * numerically larger (lower) of the column's two vertical extremes.
+     */
+    public double getAbsoluteBottomYSs() {
+        return getPositionSs() + getStemBottomSs();
     }
 
     // ==========================================================================

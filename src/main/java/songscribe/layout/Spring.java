@@ -38,9 +38,16 @@ package songscribe.layout;
  *   <li>{@code rigid} — a gap whose length never changes from its natural (default): it takes no
  *       lyric lift and does not participate in the water-fill, consuming a fixed slice of the span.
  *       Used for grace-host pairs, which pack at a fixed distance regardless of the line's fit.</li>
+ *   <li>{@code levelOffsetSs} — the part of this gap the solver excludes from whitespace levelling:
+ *       the previous column's glyph ink at the start of the gap, plus any optical-spacing
+ *       correction. Under compression the gap levels to {@code levelOffset + weight × U}, so gaps
+ *       with thin left glyphs (barlines) compress like their neighbours in visual-whitespace terms,
+ *       and optical corrections survive compression as relative offsets instead of being levelled
+ *       away.</li>
  * </ul>
  */
-public record Spring(double restSs, double strutSs, double complianceSs, double weight, boolean rigid) {
+public record Spring(
+    double restSs, double strutSs, double complianceSs, double weight, boolean rigid, double levelOffsetSs) {
 
     /** A gap with no reduction: it levels to the full common unit under compression. */
     public static final double NORMAL_WEIGHT = 1.0;
@@ -55,11 +62,20 @@ public record Spring(double restSs, double strutSs, double complianceSs, double 
     }
 
     /**
-     * Creates a {@link Spring} with an explicit solver {@code weight} and {@code rigid} flag.
-     * {@code complianceSs} is derived from {@code restSs} and {@code strutSs}.
+     * Creates a {@link Spring} with an explicit solver {@code weight} and {@code rigid} flag and no
+     * level offset. {@code complianceSs} is derived from {@code restSs} and {@code strutSs}.
      */
     public static Spring of(double restSs, double strutSs, double weight, boolean rigid) {
-        return new Spring(restSs, strutSs, Math.max(0, restSs - strutSs), weight, rigid);
+        return of(restSs, strutSs, weight, rigid, 0.0);
+    }
+
+    /**
+     * Creates a {@link Spring} with an explicit solver {@code weight}, {@code rigid} flag, and
+     * {@code levelOffsetSs}. {@code complianceSs} is derived from {@code restSs} and
+     * {@code strutSs}.
+     */
+    public static Spring of(double restSs, double strutSs, double weight, boolean rigid, double levelOffsetSs) {
+        return new Spring(restSs, strutSs, Math.max(0, restSs - strutSs), weight, rigid, levelOffsetSs);
     }
 
     /**
@@ -71,11 +87,22 @@ public record Spring(double restSs, double strutSs, double complianceSs, double 
     }
 
     /**
-     * Returns a copy of this spring with a new rest gap, keeping the strut, weight and rigid flag and
-     * recomputing {@code complianceSs} from the new rest. The strut is a hard collision floor and so
-     * is unaffected by rest adjustments (e.g. the lyric lift pass).
+     * Returns a copy of this spring with a new rest gap, keeping the strut, weight, rigid flag and
+     * level offset, and recomputing {@code complianceSs} from the new rest. The strut is a hard
+     * collision floor and so is unaffected by rest adjustments (e.g. the lyric lift pass).
      */
     public Spring withRestSs(double newRestSs) {
-        return of(newRestSs, strutSs, weight, rigid);
+        return of(newRestSs, strutSs, weight, rigid, levelOffsetSs);
+    }
+
+    /**
+     * Returns a copy of this spring with an optical-spacing correction folded in: the correction is
+     * added to both the rest (so the uncompressed ideal reflects it) and the level offset (so it
+     * survives compression as a relative offset to the levelled whitespace rather than being
+     * levelled away). The strut is untouched — corrections are perceptual nudges, never
+     * collision-safety changes.
+     */
+    public Spring withCorrectionSs(double correctionSs) {
+        return of(restSs + correctionSs, strutSs, weight, rigid, levelOffsetSs + correctionSs);
     }
 }

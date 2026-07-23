@@ -25,6 +25,8 @@ import java.util.List;
 import java.util.function.ToDoubleFunction;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Line;
 import songscribe.engraving.SMuFLConstants;
@@ -65,6 +67,8 @@ import songscribe.engraving.SMuFLConstants;
  * }</pre>
  */
 public class HorizontalSpacingCalculator {
+
+    private static final Logger LOG = LoggerFactory.getLogger(HorizontalSpacingCalculator.class);
 
     /**
      * Minimum horizontal gap between adjacent note columns — the single minimum gap
@@ -243,7 +247,12 @@ public class HorizontalSpacingCalculator {
         var rigid = prev.isGraceNote();
         var weight = isTightBeamGap(prev, curr) ? BEAM_GROUP_INTERNAL_REST_FACTOR : Spring.NORMAL_WEIGHT;
 
-        return Spring.of(restSs, strutSs, weight, rigid);
+        // The gap's glyph-ink component becomes the spring's level offset, so the whitespace-aware
+        // solver levels the visual gap (rest minus ink) rather than the origin-to-origin delta. The
+        // weight matches the reducing factor applied to the line rest in the base rest, so
+        // levelOffset + weight × lineRest reproduces the base rest exactly — whitespace levelling is
+        // a strict generalisation of the rest model, not a second spacing scheme.
+        return Spring.of(restSs, strutSs, weight, rigid, leftInkSs(prev));
     }
 
     /**
@@ -382,12 +391,85 @@ public class HorizontalSpacingCalculator {
      * @return the anchor, the lifted spring chain, and the solver's verdict
      */
     public static LineSolution solveLine(List<ElementColumn> columns, Line line, double staffRightMarginSs) {
-        var springs = LyricLift.applyLyricLift(buildSprings(columns, line), columns);
+        var lifted = LyricLift.applyLyricLift(buildSprings(columns, line), columns);
+        var springs = OpticalSpacing.applyCorrections(lifted, columns);
         var firstXSs = calculateAnchorXSs(columns.getFirst(), line);
-        var result = solveChain(
-            springs, firstXSs, trailingReservationSs(columns.getLast(), line), staffRightMarginSs);
+        var reservationSs = trailingReservationSs(columns.getLast(), line);
+        var result = solveChain(springs, firstXSs, reservationSs, staffRightMarginSs);
+
+        if (LOG.isDebugEnabled()) {
+            logLineSolve(columns, line, lifted, springs, result, staffRightMarginSs - firstXSs - reservationSs);
+        }
 
         return new LineSolution(firstXSs, springs, result);
+    }
+
+    /**
+     * Debug dump of one line solve: a header with the available span, the chain's natural span and
+     * the solver's verdict, then one row per gap with the pre-correction rest, the optical
+     * correction delta, the strut floor, the resulting natural length, and the solved (possibly
+     * compressed) length — so ideal-vs-compressed spacing can be compared per gap from the log
+     * alone. Only ever called under {@code LOG.isDebugEnabled()}.
+     */
+    private static void logLineSolve(
+        List<ElementColumn> columns,
+        Line line,
+        List<Spring> lifted,
+        List<Spring> corrected,
+        SpringSolveResult result,
+        double availableSpanSs) {
+
+        var solvedSs = result.gapLengthsSs();
+        var naturalSpanSs = 0.0;
+
+        for (var spring : corrected) {
+            naturalSpanSs += spring.naturalLengthSs();
+        }
+
+        String verdict;
+
+        if (solvedSs == null) {
+            verdict = "INFEASIBLE";
+        } else if (naturalSpanSs <= availableSpanSs) {
+            verdict = "uncompressed";
+        } else {
+            verdict = "compressed";
+        }
+
+        var sb = new StringBuilder();
+        sb.append(String.format(
+            "solveLine[line %d]: available=%.2f natural=%.2f -> %s",
+            line.getSong().indexOfLine(line), availableSpanSs, naturalSpanSs, verdict));
+
+        for (var i = 0; i < corrected.size(); i++) {
+            var before = lifted.get(i);
+            var after = corrected.get(i);
+            sb.append(String.format(
+                "%n  gap %2d %-22s -> %-22s rest=%5.2f corr=%+5.2f off=%5.2f strut=%5.2f natural=%5.2f solved=%s%s",
+                i,
+                describeForLog(columns.get(i)),
+                describeForLog(columns.get(i + 1)),
+                before.restSs(),
+                after.restSs() - before.restSs(),
+                after.levelOffsetSs(),
+                after.strutSs(),
+                after.naturalLengthSs(),
+                solvedSs == null ? "-" : String.format("%5.2f", solvedSs[i]),
+                after.rigid() ? " (rigid)" : ""));
+        }
+
+        LOG.debug("{}", sb);
+    }
+
+    /** Compact per-column label for {@link #logLineSolve}: element type, and stem direction plus notehead-center Ss when stemmed. */
+    private static String describeForLog(ElementColumn column) {
+        var type = column.getElement().getType();
+
+        if (!column.hasStem()) {
+            return type.name();
+        }
+
+        return String.format("%s(%s@%.1f)", type.name(), column.getDirection(), column.getPositionSs());
     }
 
     /**
@@ -421,19 +503,25 @@ public class HorizontalSpacingCalculator {
     private static double baseRestSs(ElementColumn prev, ElementColumn curr, double lineRestSs) {
         if (prev.isGraceNote()) {
             // Grace note → host note: a fixed absolute gap that never varies with the song's line
-            // rest — the grace note always packs against its host at the same distance. The gap is
-            // measured to the host note head, so the host's accidental does not widen it; the
-            // note-collision strut, which does use the full left extent, keeps the glyphs apart
-            // (refs #418).
-            return prev.getRightExtentSs() + GRACE_HOST_REST_SS;
+            // rest — the grace note always packs against its host at the same distance (refs #418).
+            return leftInkSs(prev) + GRACE_HOST_REST_SS;
         }
 
         var gapSs = isBeamInternalGap(prev, curr) ? beamInternalGapSs(prev, curr, lineRestSs) : lineRestSs;
+        return leftInkSs(prev) + gapSs;
+    }
 
-        // Augmentation is excluded so dots and falls never push the next column beyond the
-        // comfortable gap; the note-collision strut takes over when they would actually collide
-        // (refs #441, #496).
-        return prev.getRightExtentExcludingAugmentationSs() + gapSs;
+    /**
+     * Returns the glyph-ink component a gap starting at {@code prev} carries: the span from
+     * {@code prev}'s origin to its right ink edge. This is the non-whitespace part of the gap's base
+     * rest, and the part {@link SpringSpacer} excludes from whitespace levelling. A grace
+     * gap is measured to the host note head, so the host's accidental does not widen it; for any
+     * other gap, augmentation is excluded so dots and falls never push the next column beyond the
+     * comfortable gap — in both cases the note-collision strut, which does use the full extents,
+     * keeps the glyphs apart (refs #418, #441, #496).
+     */
+    private static double leftInkSs(ElementColumn prev) {
+        return prev.isGraceNote() ? prev.getRightExtentSs() : prev.getRightExtentExcludingAugmentationSs();
     }
 
     /**

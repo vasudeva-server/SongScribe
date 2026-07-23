@@ -51,6 +51,12 @@ class SpringTest extends UnitTest {
 
     private static final double DELTA = 1e-9;
 
+    // --- Phase 5: level offset defaulting, preservation, and the withCorrectionSs derivation ---
+    private static final double NO_LEVEL_OFFSET_SS = 0.0;
+    private static final double LEVEL_OFFSET_SS = 0.75;
+    private static final double WIDENING_CORRECTION_SS = 0.4;
+    private static final double NARROWING_CORRECTION_SS = -0.3;
+
     @Test
     void testOfComputesComplianceAsRestMinusStrutWhenRestExceedsStrut() {
         var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS);
@@ -98,5 +104,66 @@ class SpringTest extends UnitTest {
         assertThat(spring.weight()).isEqualTo(TIGHT_WEIGHT);
         assertThat(spring.rigid()).isTrue();
         assertThat(spring.complianceSs()).isCloseTo(NEW_REST_SS - STRUT_BELOW_REST_SS, within(DELTA));
+    }
+
+    @Test
+    void testTwoArgOfDefaultsLevelOffsetToZero() {
+        var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS);
+
+        assertThat(spring.levelOffsetSs()).isEqualTo(NO_LEVEL_OFFSET_SS);
+    }
+
+    @Test
+    void testFourArgOfDefaultsLevelOffsetToZero() {
+        var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS, TIGHT_WEIGHT, true);
+
+        assertThat(spring.levelOffsetSs()).isEqualTo(NO_LEVEL_OFFSET_SS);
+    }
+
+    @Test
+    void testFiveArgOfSetsLevelOffset() {
+        var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS, TIGHT_WEIGHT, true, LEVEL_OFFSET_SS);
+
+        assertThat(spring.levelOffsetSs()).isEqualTo(LEVEL_OFFSET_SS);
+        assertThat(spring.weight()).isEqualTo(TIGHT_WEIGHT);
+        assertThat(spring.rigid()).isTrue();
+    }
+
+    @Test
+    void testWithRestSsPreservesLevelOffset() {
+        var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS, TIGHT_WEIGHT, true, LEVEL_OFFSET_SS)
+            .withRestSs(NEW_REST_SS);
+
+        assertThat(spring.levelOffsetSs()).isEqualTo(LEVEL_OFFSET_SS);
+    }
+
+    @Test
+    void testWithCorrectionSsAddsCorrectionToRestAndLevelOffset() {
+        var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS, TIGHT_WEIGHT, false, LEVEL_OFFSET_SS)
+            .withCorrectionSs(WIDENING_CORRECTION_SS);
+
+        assertThat(spring.restSs()).isCloseTo(REST_ABOVE_STRUT_SS + WIDENING_CORRECTION_SS, within(DELTA));
+        assertThat(spring.levelOffsetSs()).isCloseTo(LEVEL_OFFSET_SS + WIDENING_CORRECTION_SS, within(DELTA));
+    }
+
+    @Test
+    void testWithCorrectionSsPreservesStrutWeightAndRigidAndRecomputesCompliance() {
+        var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS, TIGHT_WEIGHT, true, LEVEL_OFFSET_SS)
+            .withCorrectionSs(WIDENING_CORRECTION_SS);
+
+        assertThat(spring.strutSs()).isEqualTo(STRUT_BELOW_REST_SS);
+        assertThat(spring.weight()).isEqualTo(TIGHT_WEIGHT);
+        assertThat(spring.rigid()).isTrue();
+        assertThat(spring.complianceSs())
+            .isCloseTo(REST_ABOVE_STRUT_SS + WIDENING_CORRECTION_SS - STRUT_BELOW_REST_SS, within(DELTA));
+    }
+
+    @Test
+    void testWithCorrectionSsSubtractsFromBothChannelsForANegativeCorrection() {
+        var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS, TIGHT_WEIGHT, false, LEVEL_OFFSET_SS)
+            .withCorrectionSs(NARROWING_CORRECTION_SS);
+
+        assertThat(spring.restSs()).isCloseTo(REST_ABOVE_STRUT_SS + NARROWING_CORRECTION_SS, within(DELTA));
+        assertThat(spring.levelOffsetSs()).isCloseTo(LEVEL_OFFSET_SS + NARROWING_CORRECTION_SS, within(DELTA));
     }
 }

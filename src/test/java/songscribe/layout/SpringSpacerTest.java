@@ -112,6 +112,26 @@ class SpringSpacerTest extends UnitTest {
     private static final double RIGID_INFEASIBLE_SPAN_SS = 3.5;
     private static final double RIGID_FEASIBLE_SPAN_SS = 4.0;
 
+    // --- Whitespace levelling (Phase 5): two free gaps sharing a rest/strut/weight but differing by
+    // a level offset, compressed enough that neither hits its strut or natural. ---
+    private static final double LEVEL_OFFSET_TEST_REST_SS = 5.0;
+    private static final double LEVEL_OFFSET_DELTA_SS = 1.0;
+    private static final double LEVEL_OFFSET_TEST_SPAN_SS = 7.0;
+    private static final double NO_LEVEL_OFFSET_SS = 0.0;
+
+    // --- The Phase-4 barline scenario: a thin-ink (small-offset) gap and a normal-ink gap that share
+    // the same whitespace contribution, so whitespace levelling compresses them by the same amount
+    // instead of exempting the small-natural gap the way origin-delta levelling did. ---
+    private static final double BARLINE_OFFSET_SS = 0.3;
+    private static final double NOTEHEAD_OFFSET_SS = 1.0;
+    private static final double COMMON_WHITESPACE_SS = 2.5;
+    private static final double BARLINE_REST_SS = BARLINE_OFFSET_SS + COMMON_WHITESPACE_SS;
+    private static final double NOTEHEAD_REST_SS = NOTEHEAD_OFFSET_SS + COMMON_WHITESPACE_SS;
+    private static final double WHITESPACE_LEVELLING_SPAN_SS = 5.0;
+
+    /** A small offset shared by both gaps in the strut-priority test; must not outrank the strut. */
+    private static final double STRUT_PRIORITY_OFFSET_SS = 0.2;
+
     @Test
     void testChainThatFitsKeepsNaturalLengths() {
         var springs = List.of(
@@ -456,6 +476,94 @@ class SpringSpacerTest extends UnitTest {
         var gapLengthsSs = solvedGapLengthsSs(feasible);
         assertThat(gapLengthsSs[0]).isEqualTo(RIGID_REST_SS, within(TOLERANCE_SS));
         assertThat(gapLengthsSs[1]).isEqualTo(RIGID_STIFF_NEIGHBOR_STRUT_SS, within(TOLERANCE_SS));
+    }
+
+    /**
+     * Two free gaps sharing rest, strut and weight but differing by a level offset of
+     * {@link #LEVEL_OFFSET_DELTA_SS}: under compression, with neither gap hitting its strut or
+     * natural length, the offset survives as an exact relative shift between their solved lengths.
+     */
+    @Test
+    void testLevelOffsetSurvivesCompressionAsARelativeShift() {
+        var noOffsetSpring = Spring.of(
+            LEVEL_OFFSET_TEST_REST_SS, DEFAULT_STRUT_SS, Spring.NORMAL_WEIGHT, false, NO_LEVEL_OFFSET_SS);
+        var offsetSpring = Spring.of(
+            LEVEL_OFFSET_TEST_REST_SS, DEFAULT_STRUT_SS, Spring.NORMAL_WEIGHT, false, LEVEL_OFFSET_DELTA_SS);
+        var springs = List.of(noOffsetSpring, offsetSpring);
+
+        var result = SpringSpacer.solve(springs, LEVEL_OFFSET_TEST_SPAN_SS);
+
+        var gapLengthsSs = solvedGapLengthsSs(result);
+        assertThat(gapLengthsSs[1] - gapLengthsSs[0]).isCloseTo(LEVEL_OFFSET_DELTA_SS, within(TOLERANCE_SS));
+        assertThat(sumOf(result)).isEqualTo(LEVEL_OFFSET_TEST_SPAN_SS, within(TOLERANCE_SS));
+    }
+
+    /**
+     * The Phase-4 barline scenario: a thin-ink gap (small offset, small natural) and a normal-ink gap
+     * that share the same whitespace contribution behind their differing ink. Origin-delta levelling
+     * (weight × U alone) would clamp the thin-ink gap at its small natural and exempt it from
+     * compression entirely; whitespace levelling compresses both gaps by the identical amount instead,
+     * so the thin-ink gap ends up below its own natural just like its neighbour.
+     */
+    @Test
+    void testSmallNaturalOffsetGapCompressesUnderWhitespaceLevellingInsteadOfBeingExempt() {
+        var barlineSpring = Spring.of(
+            BARLINE_REST_SS, DEFAULT_STRUT_SS, Spring.NORMAL_WEIGHT, false, BARLINE_OFFSET_SS);
+        var noteheadSpring = Spring.of(
+            NOTEHEAD_REST_SS, DEFAULT_STRUT_SS, Spring.NORMAL_WEIGHT, false, NOTEHEAD_OFFSET_SS);
+        var springs = List.of(barlineSpring, noteheadSpring);
+
+        var result = SpringSpacer.solve(springs, WHITESPACE_LEVELLING_SPAN_SS);
+
+        var gapLengthsSs = solvedGapLengthsSs(result);
+        assertThat(gapLengthsSs[0])
+            .as("the thin-ink gap must compress below its own natural, not be exempted")
+            .isLessThan(BARLINE_REST_SS);
+        assertThat(gapLengthsSs[1]).isLessThan(NOTEHEAD_REST_SS);
+        assertThat(gapLengthsSs[0] - BARLINE_OFFSET_SS)
+            .as("both gaps give up the same whitespace once their own ink is excluded")
+            .isCloseTo(gapLengthsSs[1] - NOTEHEAD_OFFSET_SS, within(TOLERANCE_SS));
+    }
+
+    /**
+     * A chain whose springs all carry an explicit zero level offset must solve identically to the
+     * pre-Phase-5 origin-delta behaviour ({@link #testOverflowEqualizesGapLengths}) — a regression
+     * guard proving whitespace levelling is a strict generalisation, not a second spacing scheme.
+     */
+    @Test
+    void testAllOffsetZeroChainSolvesIdenticallyToOriginDeltaBehavior() {
+        var springs = List.of(
+            Spring.of(SLACK_REST_SS, DEFAULT_STRUT_SS, Spring.NORMAL_WEIGHT, false, NO_LEVEL_OFFSET_SS),
+            Spring.of(STIFF_REST_SS, DEFAULT_STRUT_SS, Spring.NORMAL_WEIGHT, false, NO_LEVEL_OFFSET_SS));
+        var availableSpanSs = SLACK_REST_SS + STIFF_REST_SS - TEST_DEFICIT_SS;
+
+        var result = SpringSpacer.solve(springs, availableSpanSs);
+
+        var expectedLevelSs = availableSpanSs / springs.size();
+        assertThat(result.gapLengthsSs())
+            .containsExactly(new double[] {expectedLevelSs, expectedLevelSs}, within(TOLERANCE_SS));
+    }
+
+    /**
+     * A strut floor still wins over an offset-based target: the shallow-strut gap's
+     * {@code offset + weight × U} falls under its own high strut and pins there, exactly as it does
+     * with no offset at all ({@link #testHighStrutGapPinsAtItsStrutAndOthersAbsorbTheRest}).
+     */
+    @Test
+    void testStrutFloorStillWinsOverOffsetBasedTarget() {
+        var shallowSpring = Spring.of(
+            FREEZE_REST_SS, FREEZE_SHALLOW_STRUT_SS, Spring.NORMAL_WEIGHT, false, STRUT_PRIORITY_OFFSET_SS);
+        var deepSpring = Spring.of(
+            FREEZE_REST_SS, FREEZE_DEEP_STRUT_SS, Spring.NORMAL_WEIGHT, false, STRUT_PRIORITY_OFFSET_SS);
+        var springs = List.of(shallowSpring, deepSpring);
+        var availableSpanSs = 2 * FREEZE_REST_SS - FREEZE_DEFICIT_SS;
+
+        var result = SpringSpacer.solve(springs, availableSpanSs);
+
+        var gapLengthsSs = solvedGapLengthsSs(result);
+        assertThat(gapLengthsSs[0]).isEqualTo(FREEZE_SHALLOW_STRUT_SS, within(TOLERANCE_SS));
+        assertThat(gapLengthsSs[1]).isGreaterThan(FREEZE_DEEP_STRUT_SS);
+        assertThat(sumOf(result)).isEqualTo(availableSpanSs, within(TOLERANCE_SS));
     }
 
     /**

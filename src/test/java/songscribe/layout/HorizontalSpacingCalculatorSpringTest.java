@@ -112,6 +112,11 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     /** A negative (leftward) target extent, so the glissando floor exceeds the comfortable rest. */
     private static final double TARGET_LEFT_EXTENT_SS = -2.0;
 
+    /** A dot width added to the plain head, so a dotted column's right extent differs from its
+     *  augmentation-excluded right extent — proving the level offset uses the latter. */
+    private static final double DOT_AUGMENTATION_WIDTH_SS = 0.5;
+    private static final double DOTTED_RIGHT_EXTENT_SS = HEAD_RIGHT_EXTENT_SS + DOT_AUGMENTATION_WIDTH_SS;
+
     /** Wide enough that a three-column line solves without any compression. */
     private static final double GENEROUS_MARGIN_SS = 100.0;
     /** Narrower than the anchor alone, so not even the struts fit. */
@@ -322,6 +327,50 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
 
         assertThat(atDefault.restSs()).isCloseTo(expectedRestSs, within(TOLERANCE));
         assertThat(atScaled.restSs()).isCloseTo(expectedRestSs, within(TOLERANCE));
+    }
+
+    // ==========================================================================
+    // Level offset (Phase 5): the spring's non-whitespace component
+    // ==========================================================================
+
+    // Excludes augmentation, mirroring the comfortable rest — a dot must not widen the offset any
+    // more than it widens the base rest.
+    @Test
+    void testBuildSpringSetsLevelOffsetToPrevRightExtentExcludingAugmentationForNormalGap() {
+        var spring = HorizontalSpacingCalculator.buildSpring(
+            dottedColumn(DOTTED_RIGHT_EXTENT_SS), plainColumn(), DEFAULT_LINE_REST_SS);
+
+        assertThat(spring.levelOffsetSs()).isCloseTo(HEAD_RIGHT_EXTENT_SS, within(TOLERANCE));
+        assertThat(spring.levelOffsetSs()).isLessThan(DOTTED_RIGHT_EXTENT_SS);
+    }
+
+    // A grace→host gap measures its offset to the host notehead, so the grace's own flag must not
+    // widen it — the full right extent (no augmentation to exclude on a grace column) is correct here.
+    @Test
+    void testBuildSpringSetsLevelOffsetToPrevRightExtentForGraceToHostGap() {
+        var graceColumn = column(
+            ElementType.GRACE_QUAVER, NO_LEFT_EXTENT_SS, GRACE_RIGHT_EXTENT_SS, null, 0.0, false);
+
+        var spring = HorizontalSpacingCalculator.buildSpring(graceColumn, plainColumn(), DEFAULT_LINE_REST_SS);
+
+        assertThat(spring.levelOffsetSs()).isCloseTo(GRACE_RIGHT_EXTENT_SS, within(TOLERANCE));
+    }
+
+    // The Phase-5 consistency invariant: levelOffset + weight × lineRest reproduces the base rest
+    // exactly, for both a normal gap (weight 1) and a tight beam-internal gap (weight BEAM_FACTOR) —
+    // whitespace levelling is a strict generalisation of the rest model, not a second spacing scheme.
+    @Test
+    void testBuildSpringLevelOffsetPlusWeightTimesLineRestReproducesBaseRest() {
+        var plainSpring = HorizontalSpacingCalculator.buildSpring(plainColumn(), plainColumn(), DEFAULT_LINE_REST_SS);
+        assertThat(plainSpring.levelOffsetSs() + plainSpring.weight() * DEFAULT_LINE_REST_SS)
+            .isCloseTo(plainSpring.restSs(), within(TOLERANCE));
+
+        var beamSpring = HorizontalSpacingCalculator.buildSpring(
+            beamedSemiquaverColumn(FIRST_BEAM_GROUP_ID),
+            beamedSemiquaverColumn(FIRST_BEAM_GROUP_ID),
+            DEFAULT_LINE_REST_SS);
+        assertThat(beamSpring.levelOffsetSs() + beamSpring.weight() * DEFAULT_LINE_REST_SS)
+            .isCloseTo(beamSpring.restSs(), within(TOLERANCE));
     }
 
     // ==========================================================================

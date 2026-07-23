@@ -25,8 +25,12 @@ import java.util.List;
 /**
  * Solves a chain of {@link Spring}s against an available span by weighted water-filling: it drains
  * every free gap to a common unit level {@code U}, giving gap {@code i} the length
- * {@code weight_i × U} and clamping each up to its strut (collision floor) and down to its natural
- * length, keeping note spacing as uniform as the struts allow.
+ * {@code levelOffset_i + weight_i × U} and clamping each up to its strut (collision floor) and down
+ * to its natural length. The level offset is the gap's non-whitespace component (left-glyph ink
+ * plus optical corrections, see {@link Spring#levelOffsetSs}), so the fill levels <em>visual
+ * whitespace</em> rather than raw origin-to-origin deltas: thin-left-glyph gaps (barline→note)
+ * compress alongside their neighbours instead of being exempted by their small natural length, and
+ * optical corrections survive compression as relative offsets instead of being levelled away.
  * <p>
  * The solver is compress-only: a chain that already fits is left at its natural length, which
  * keeps lines ragged-right and preserves the even lyric lift the builder applied.
@@ -137,6 +141,7 @@ public final class SpringSpacer {
         var floorSumSs = 0.0;
         var rigidTotalSs = 0.0;
         var freeWeight = 0.0;
+        var freeOffsetSs = 0.0;
         var freeCount = 0;
 
         // Rigid gaps (grace→host) never move: pin each to its natural length and hold it out of the
@@ -151,6 +156,7 @@ public final class SpringSpacer {
             } else {
                 floorSumSs += spring.strutSs();
                 freeWeight += spring.weight();
+                freeOffsetSs += spring.levelOffsetSs();
                 freeCount++;
             }
         }
@@ -175,7 +181,9 @@ public final class SpringSpacer {
         // violates a bound. Clamping the worst violator is always correct — it sits on that bound in
         // the final fit — and permanently removes one gap, so the loop is bounded by freeCount passes.
         for (var pass = 0; pass < gapCount; pass++) {
-            var unitLevelSs = budgetSs / freeWeight;
+            // The still-free gaps' offsets are consumed off the top of the budget; only the
+            // remaining whitespace is levelled by weight.
+            var unitLevelSs = (budgetSs - freeOffsetSs) / freeWeight;
 
             var worstGap = -1;
             var worstViolationSs = 0.0;
@@ -186,11 +194,11 @@ public final class SpringSpacer {
                     continue;
                 }
 
-                // The gap's weighted share of the level. Below its strut floor -> it holds more than
-                // its share (clamp up to the strut). Above its natural length -> compress-only
-                // forbids stretching (clamp down to natural).
+                // The gap's offset plus its weighted share of the level. Below its strut floor -> it
+                // holds more than its share (clamp up to the strut). Above its natural length ->
+                // compress-only forbids stretching (clamp down to natural).
                 var spring = springs.get(i);
-                var targetSs = spring.weight() * unitLevelSs;
+                var targetSs = spring.levelOffsetSs() + spring.weight() * unitLevelSs;
                 var belowStrutSs = spring.strutSs() - targetSs;
                 var aboveNaturalSs = targetSs - naturalSs[i];
 
@@ -207,11 +215,13 @@ public final class SpringSpacer {
                 }
             }
 
-            // No free gap violates a bound: each rests at its weighted share of the common level.
+            // No free gap violates a bound: each rests at its offset plus its weighted share of the
+            // common level.
             if (worstGap < 0) {
                 for (var i = 0; i < gapCount; i++) {
                     if (!clamped[i]) {
-                        lengthsSs[i] = springs.get(i).weight() * unitLevelSs;
+                        var spring = springs.get(i);
+                        lengthsSs[i] = spring.levelOffsetSs() + spring.weight() * unitLevelSs;
                     }
                 }
 
@@ -224,6 +234,7 @@ public final class SpringSpacer {
 
             budgetSs -= lengthsSs[worstGap];
             freeWeight -= worstSpring.weight();
+            freeOffsetSs -= worstSpring.levelOffsetSs();
             clamped[worstGap] = true;
             freeCount--;
         }

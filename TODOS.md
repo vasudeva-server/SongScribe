@@ -281,3 +281,35 @@ already do direction-aware glyph selection.
 
 **Depends on / blocked by:** Nothing — can be picked up any time the parity
 test above starts failing, or proactively as defensive hardening.
+
+## Port LilyPond's knee correction into `OpticalSpacing`
+
+**What:** Add a fourth optical-spacing correction to
+`songscribe.layout.OpticalSpacing` for "knees" — a beam that changes stem
+direction mid-group (e.g. up-stem note beamed to a down-stem note) — porting
+LilyPond's separate `knee_correction` (`lily/note-spacing.cc`).
+
+**Why:** The Issue #560 optical-spacing pass deliberately leaves knees
+uncorrected: `oppositeStemCorrectionSs` early-returns `0.0` when the two columns
+share a beam group but have opposite stem directions (the knee guard). That is a
+safe no-op, not the correct spacing — LilyPond applies a distinct horizontal
+nudge for knees because the interlocking stems read optically closer than the
+notehead gap suggests. Until this lands, knee'd beam groups are spaced as if the
+correction did not exist, a known visual divergence from LilyPond for that one
+case.
+
+**Context:** The plug-in point already exists and is commented: the knee guard
+in `OpticalSpacing.oppositeStemCorrectionSs` (added by Issue #560) is exactly
+where the current code bails out; a knee correction would replace that
+early-return with a real formula. LilyPond's `knee_correction` is separate from
+the `stem_spacing_correction`/`same_direction_correction` this issue ported, so
+it needs its own hand-tuned constant (source: `NoteSpacing.knee-spacing-correction`
+default in `scm/define-grobs.scm`) and its own named `*_MAX_CORRECTION_SS`
+constant alongside the existing three. Reuse the existing `verticalOverlapSs` and
+`saturatedMagnitudeSs` helpers. Note SongScribe's confirmed-monophonic model may
+simplify LilyPond's chord-aware version the same way `sameDirectionCorrectionSs`
+was simplified. Requires a Phase-4-style visual check plus unit tests mirroring
+`OpticalSpacingTest`.
+
+**Depends on / blocked by:** Issue #560 (the `OpticalSpacing` pass and its knee
+guard) landing first.
