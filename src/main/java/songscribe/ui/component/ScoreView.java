@@ -1136,9 +1136,7 @@ public final class ScoreView
             scorePanel.invalidate();
         }
 
-        if (scrollPane != null) {
-            scrollPane.validate();
-        }
+        runWithoutViewportBlit(JScrollPane::validate);
 
         repaint();
     }
@@ -1220,11 +1218,60 @@ public final class ScoreView
      * EDT-only, per the {@code ZoomController} contract.
      */
     public void applyZoomPercent(int newPercent, @Nullable Point anchorPoint) {
+        runWithoutViewportBlit(
+            scoreScrollPane -> applyZoomPercentAndReanchor(scoreScrollPane, newPercent, anchorPoint)
+        );
+
+        repaint();
+    }
+
+    /**
+     * Runs {@code body} against this view's scroll pane with the viewport's blit
+     * optimization disabled, restoring the previous scroll mode afterward. Does nothing
+     * when this view has no scroll pane yet. Safe to nest — each level restores the mode
+     * it found.
+     * <p>
+     * A relayout that resizes the content or moves the scroll position invalidates every
+     * pixel in the viewport, but JViewport's blit optimization cannot know that. In
+     * {@code BLIT_SCROLL_MODE} every scroll-position change — an explicit
+     * {@code setViewPosition}, and the clamping one {@code ViewportLayout} performs from
+     * inside {@code validate()} — synchronously copies the pixels already on screen to the
+     * new offset and repaints only the newly exposed strip. That puts a frame of the
+     * <em>previous</em> rendering, shifted, on screen before the queued repaint draws the
+     * score afresh: glaring on a large jump such as 800% to 400% zoom, imperceptible when
+     * the per-step delta is tiny, as during a pinch or slider drag.
+     * {@code SIMPLE_SCROLL_MODE} paints from scratch instead, so no stale pixels ever reach
+     * the screen; the previous mode is restored so ordinary scrolling keeps the blit.
+     * Refs #651.
+     */
+    private void runWithoutViewportBlit(Consumer<JScrollPane> body) {
         if (scrollPane == null) {
             return;
         }
 
         var viewport = scrollPane.getViewport();
+        var previousScrollMode = viewport.getScrollMode();
+        viewport.setScrollMode(JViewport.SIMPLE_SCROLL_MODE);
+
+        try {
+            body.accept(scrollPane);
+        } finally {
+            viewport.setScrollMode(previousScrollMode);
+        }
+    }
+
+    /**
+     * Applies {@code newPercent} to this view's {@link ViewScale}, re-lays out the page at
+     * the new zoom, and scrolls so that {@code anchorPoint} — in this view's local (content)
+     * coordinate space, or the viewport's horizontal center and top edge when null — stays
+     * put on screen. The body of {@link #applyZoomPercent}.
+     */
+    private void applyZoomPercentAndReanchor(
+        JScrollPane scoreScrollPane,
+        int newPercent,
+        @Nullable Point anchorPoint
+    ) {
+        var viewport = scoreScrollPane.getViewport();
         var extentSize = viewport.getExtentSize();
 
         Point anchorViewportOffset;
@@ -1263,7 +1310,7 @@ public final class ScoreView
             scorePanel.invalidate();
         }
 
-        scrollPane.validate();
+        scoreScrollPane.validate();
 
         var zoomRatio = newPercent / (double) oldPercent;
         var view = viewport.getView();
@@ -1281,8 +1328,6 @@ public final class ScoreView
         );
 
         viewport.setViewPosition(newViewPosition);
-
-        repaint();
     }
 
     /**
