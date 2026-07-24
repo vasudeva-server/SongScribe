@@ -1931,9 +1931,11 @@ class ScoreViewControllerTest extends UnitTest {
         }
 
         @Test
-        void testSongDidChangeRestartsRepaintDebounceTimer() {
+        void testSongDidChangeArmsRepaintDebounce() {
             // Row 40: every call to songDidChange (with a non-null mainPanel) must
-            // restart the debounce timer regardless of mutation type.
+            // retrigger the repaint debounce regardless of mutation type. Only the arming is
+            // observable from here — that a further trigger extends the deadline, and that the
+            // action eventually repaints, is Debounce's contract and is proved in DebounceTest.
             controller.songDidChange(
                 new SongDidChangeNotification(
                     List.of(new MetadataChange(MetadataField.ATTRIBUTION, new Song().getMetadata(), new Song().getMetadata())),
@@ -1941,7 +1943,14 @@ class ScoreViewControllerTest extends UnitTest {
                 )
             );
 
-            assertThat(controller.repaintDebounceTimer.isRunning()).isTrue();
+            assertThat(controller.repaintDebounce.isArmed()).isTrue();
+        }
+
+        @AfterEach
+        void tearDown() {
+            // songDidChange arms a real Swing timer bound to this test's mock ScoreView, and a
+            // Swing timer outlives the test method that armed it.
+            controller.repaintDebounce.cancel();
         }
     }
 

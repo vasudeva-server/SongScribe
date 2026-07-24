@@ -35,9 +35,13 @@ import songscribe.UnitTest;
  * Unit tests for {@link ActivationGate} covering:
  * <ul>
  *   <li>Row 48 — {@code activate()} makes glass pane visible;
- *       {@code deactivate()} hides it and stops the timer</li>
- *   <li>Row 49 — {@code appRaisedToForeground()} restarts the cmd+Tab timer</li>
+ *       {@code deactivate()} hides it and cancels the debounce</li>
+ *   <li>Row 49 — {@code appRaisedToForeground()} retriggers the cmd+Tab debounce</li>
  * </ul>
+ * These cases cover the wiring only — that the gate arms and cancels the debounce it owns.
+ * Whether a trigger actually extends the deadline, and whether the action eventually runs, is
+ * {@link songscribe.util.Debounce}'s own contract and is proved in {@code DebounceTest}; from
+ * out here {@code isArmed()} cannot tell an extended window from the remainder of an old one.
  */
 @RequiresDisplay
 class ActivationGateTest extends UnitTest {
@@ -54,22 +58,22 @@ class ActivationGateTest extends UnitTest {
 
     @AfterEach
     void tearDown() {
-        // Always stop the timer to avoid background threads leaking between tests.
-        var timer = ActivationGate.cmdTabTimer;
+        // Always cancel the debounce to avoid background threads leaking between tests.
+        var debounce = ActivationGate.cmdTabDebounce;
 
-        if (timer != null) {
-            timer.stop();
+        if (debounce != null) {
+            debounce.cancel();
         }
 
         frame.dispose();
         // Reset static state so each test starts clean.
         ActivationGate.glassPane = null;
-        ActivationGate.cmdTabTimer = null;
+        ActivationGate.cmdTabDebounce = null;
     }
 
     // -----------------------------------------------------------------------
     // Row 48: activate() makes glass pane visible; deactivate() hides it and
-    // stops the timer
+    // cancels the debounce
     // -----------------------------------------------------------------------
 
     @Test
@@ -105,56 +109,58 @@ class ActivationGateTest extends UnitTest {
 
     @Test
     @SuppressWarnings("NullAway")
-    void testDeactivateStopsTimer() {
-        // Start the timer by calling appRaisedToForeground, then deactivate.
+    void testDeactivateCancelsDebounce() {
+        // Arm the debounce by calling appRaisedToForeground, then deactivate.
         ActivationGate.appRaisedToForeground();
         ActivationGate.deactivate();
 
-        var timer = ActivationGate.cmdTabTimer;
-        assertThat(timer).isNotNull();
+        var debounce = ActivationGate.cmdTabDebounce;
+        assertThat(debounce).isNotNull();
 
-        if (timer == null) {
+        if (debounce == null) {
             return; // unreachable — satisfies NullAway
         }
 
-        assertThat(timer.isRunning()).isFalse();
+        assertThat(debounce.isArmed()).isFalse();
     }
 
     // -----------------------------------------------------------------------
-    // Row 49: appRaisedToForeground() restarts the cmd+Tab timer
+    // Row 49: appRaisedToForeground() retriggers the cmd+Tab debounce
     // -----------------------------------------------------------------------
 
     @Test
     @SuppressWarnings("NullAway")
-    void testAppRaisedToForegroundStartsTimer() {
-        var timer = ActivationGate.cmdTabTimer;
-        assertThat(timer).isNotNull();
+    void testAppRaisedToForegroundArmsDebounce() {
+        var debounce = ActivationGate.cmdTabDebounce;
+        assertThat(debounce).isNotNull();
 
-        if (timer == null) {
+        if (debounce == null) {
             return; // unreachable — satisfies NullAway
         }
 
-        assertThat(timer.isRunning()).isFalse();
+        assertThat(debounce.isArmed()).isFalse();
 
         ActivationGate.appRaisedToForeground();
 
-        assertThat(timer.isRunning()).isTrue();
+        assertThat(debounce.isArmed()).isTrue();
     }
 
     @Test
     @SuppressWarnings("NullAway")
-    void testAppRaisedToForegroundRestartsAlreadyRunningTimer() {
-        // Start once, then call again — timer must still be running (restarted).
+    void testAppRaisedToForegroundKeepsDebounceArmedWhenAlreadyArmed() {
+        // Named for what this can actually prove: a second trigger must not disarm the debounce.
+        // That it also pushes the deadline out is Debounce's contract, tested there — isArmed()
+        // reads the same either way.
         ActivationGate.appRaisedToForeground();
         ActivationGate.appRaisedToForeground();
 
-        var timer = ActivationGate.cmdTabTimer;
-        assertThat(timer).isNotNull();
+        var debounce = ActivationGate.cmdTabDebounce;
+        assertThat(debounce).isNotNull();
 
-        if (timer == null) {
+        if (debounce == null) {
             return; // unreachable — satisfies NullAway
         }
 
-        assertThat(timer.isRunning()).isTrue();
+        assertThat(debounce.isArmed()).isTrue();
     }
 }

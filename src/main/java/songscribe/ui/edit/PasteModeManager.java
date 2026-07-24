@@ -227,10 +227,6 @@ public final class PasteModeManager {
         newOverlay.setBounds(0, 0, layeredPane.getWidth(), layeredPane.getHeight());
         layeredPane.add(newOverlay, JLayeredPane.PALETTE_LAYER);
 
-        // syncTargetToMouse above may already have tracked a target, before this overlay
-        // existed to carry the cursor suppression.
-        updateOverlayCursor();
-
         layeredPane.revalidate();
         layeredPane.repaint();
     }
@@ -362,34 +358,6 @@ public final class PasteModeManager {
         targetLineComponent = null;
         targetIndex = -1;
         insertionMarkerOverlay.setTarget(null, -1);
-        updateOverlayCursor();
-    }
-
-    /**
-     * Suppresses the system cursor on the paste overlay while an insertion point is being
-     * tracked, and restores it otherwise.
-     * <p>
-     * Needed in addition to the {@code ScoreView}-level suppression that
-     * {@code LineOverlayComponent} applies for the marker: the paste overlay lives on
-     * {@link MainFrame}'s {@link JLayeredPane} rather than inside the score, and is sized
-     * full-bleed over the whole pane, so it — not the {@code LineComponent} underneath — is the
-     * deepest component under the pointer, and Swing resolves the cursor from there. The score's
-     * suppression cannot reach it because it is a sibling of the content, not a descendant.
-     * <p>
-     * Keyed to the tracked target rather than to paste mode as a whole so the cursor still
-     * appears over the toolbar and everywhere else the full-bleed overlay covers but no
-     * insertion point exists.
-     */
-    private void updateOverlayCursor() {
-        var currentOverlay = overlay;
-
-        if (currentOverlay == null) {
-            return;
-        }
-
-        // Null rather than the default cursor, so the overlay goes back to inheriting from the
-        // layered pane instead of pinning an explicit default over the whole window.
-        currentOverlay.setCursor(targetLineComponent == null ? null : UIUtils.HIDDEN_CURSOR);
     }
 
     /**
@@ -427,7 +395,6 @@ public final class PasteModeManager {
             targetLineComponent = lineComponent;
             targetIndex = index;
             insertionMarkerOverlay.setTarget(lineComponent, index);
-            updateOverlayCursor();
         }
     }
 

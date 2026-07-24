@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.ApplicationDidBecomeActiveNotification;
 import songscribe.message.notification.ApplicationDidEnterBackgroundNotification;
+import songscribe.util.Debounce;
 
 /**
  * Suppresses the mouse click that brings the application window to the foreground.
@@ -47,7 +48,7 @@ import songscribe.message.notification.ApplicationDidEnterBackgroundNotification
 public final class ActivationGate {
     private static final int CMD_TAB_DELAY_MS = 300;
     static @Nullable JPanel glassPane = null;
-    static @Nullable Timer cmdTabTimer = null;
+    static @Nullable Debounce cmdTabDebounce = null;
 
     private ActivationGate() {
     }
@@ -69,9 +70,8 @@ public final class ActivationGate {
 
         frame.setGlassPane(glassPane);
 
-        // Timer for Cmd+Tab case: deactivate glass pane if no click arrives
-        cmdTabTimer = new Timer(CMD_TAB_DELAY_MS, e -> deactivate());
-        cmdTabTimer.setRepeats(false);
+        // Cmd+Tab case: deactivate the glass pane if no click arrives
+        cmdTabDebounce = Debounce.rescheduling(CMD_TAB_DELAY_MS, ActivationGate::deactivate);
     }
 
     /**
@@ -92,14 +92,14 @@ public final class ActivationGate {
      * activation (Cmd+Tab) to work without suppressing the next click.
      */
     public static void appRaisedToForeground() {
-        if (cmdTabTimer != null) {
-            cmdTabTimer.restart();
+        if (cmdTabDebounce != null) {
+            cmdTabDebounce.trigger();
         }
     }
 
     static void deactivate() {
-        if (cmdTabTimer != null) {
-            cmdTabTimer.stop();
+        if (cmdTabDebounce != null) {
+            cmdTabDebounce.cancel();
         }
 
         if (glassPane != null) {

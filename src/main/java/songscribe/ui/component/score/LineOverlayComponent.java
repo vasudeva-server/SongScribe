@@ -93,6 +93,12 @@ public abstract class LineOverlayComponent extends JComponent {
     /** The target line's origin expressed in this component's own pixel coordinates. */
     private final Point lineOriginInComponentPx = new Point();
 
+    /**
+     * Whether this overlay suppresses the system cursor while visible — see
+     * {@link #setHidesCursor(boolean)}.
+     */
+    private boolean hidesCursor;
+
     protected LineOverlayComponent(OverlayHost host) {
         this.host = host;
         setOpaque(false);
@@ -104,14 +110,6 @@ public abstract class LineOverlayComponent extends JComponent {
         // paints either way (the bounds are 0x0); this keeps the flag honest rather than relying
         // on the first validation pass to correct it.
         setVisible(false);
-
-        // The overlay itself is topmost under the pointer whenever it is visible, so its own
-        // cursor must be hidden permanently: the host-level toggle below only covers the line
-        // beneath, and Swing shows the cursor of the deepest component under the pointer
-        // regardless of whether that component has mouse listeners.
-        if (hidesCursorWhenVisible()) {
-            setCursor(UIUtils.HIDDEN_CURSOR);
-        }
     }
 
     /**
@@ -213,16 +211,31 @@ public abstract class LineOverlayComponent extends JComponent {
     protected abstract void renderOverlay(Graphics2D g2);
 
     /**
-     * Whether this overlay suppresses the system cursor on its target line while visible.
+     * Sets whether this overlay suppresses the system cursor on its target line while visible,
+     * applying the change immediately.
      * <p>
-     * The hover preview and the paste-mode insertion marker both draw exactly where the system
-     * arrow would otherwise sit, obscuring the ink they exist to show; the marker itself is the
-     * position indicator, so the arrow is redundant clutter on top of it. Overridden by the
-     * overlays for which that applies — false by default, since it is not true of every overlay
-     * (the slide previews, for instance, draw to one side of the cursor rather than under it).
+     * Off until something turns it on, which today only the hover preview does: it draws exactly
+     * where the system arrow would otherwise sit, obscuring the ink it exists to show, so the
+     * arrow is suppressed while the pointer rests on it and restored the moment the mouse moves
+     * again — see {@code PreviewElementManager.cursorDidMove}.
+     * <p>
+     * Both this component's cursor and the host's have to be set. The host covers the line
+     * underneath, but wherever this overlay's own ink lies it is itself the deepest component
+     * under the pointer, and Swing resolves the cursor from the deepest component regardless of
+     * whether that component has mouse listeners.
+     * <p>
+     * Package-private rather than protected: this is driven by the managers that own the
+     * overlays, not overridden or called by subclasses, and no subclass outside this package has
+     * business reaching for it.
      */
-    protected boolean hidesCursorWhenVisible() {
-        return false;
+    final void setHidesCursor(boolean hides) {
+        if (hides == hidesCursor) {
+            return;
+        }
+
+        hidesCursor = hides;
+        setCursor(hides ? UIUtils.HIDDEN_CURSOR : null);
+        updateHostCursor();
     }
 
     /**
@@ -357,19 +370,17 @@ public abstract class LineOverlayComponent extends JComponent {
 
     /**
      * Recomputes {@code hostComponent}'s cursor from the overlays currently parented to it,
-     * suppressing the system cursor while any visible one opts in via
-     * {@link #hidesCursorWhenVisible()}.
+     * suppressing the system cursor while any visible one has opted in via
+     * {@link #setHidesCursor(boolean)}.
      * <p>
      * The host, not the target line, is the right place: it is the shared ancestor of both the
      * line and this overlay, so hiding the cursor there covers the line underneath as well as
-     * the overlay's own ink (which additionally carries a permanent hidden cursor of its own —
-     * see the constructor).
+     * the overlay's own ink (which additionally carries a hidden cursor of its own — see
+     * {@link #setHidesCursor(boolean)}).
      * <p>
-     * Derived from the children on every call rather than tracked in a per-overlay flag because
-     * a host is shared: in paste mode the insertion marker and the hover preview both suppress
-     * the cursor on the same {@code ScoreView}, so whichever hides second would otherwise
-     * restore the cursor out from under the one still showing, and its own flag would say the
-     * cursor was already hidden and never re-apply it.
+     * Derived from the children on every call rather than from the caller's own state, because a
+     * host is shared by every overlay attached to it: one overlay showing or hiding must not
+     * restore the cursor out from under another that is still suppressing it.
      * <p>
      * Clears to null rather than to {@link Cursor#getDefaultCursor()} so the host keeps
      * inheriting from its own ancestors; planting an explicit default is what breaks
@@ -385,7 +396,7 @@ public abstract class LineOverlayComponent extends JComponent {
         for (var i = 0; i < hostComponent.getComponentCount(); i++) {
             if (hostComponent.getComponent(i) instanceof LineOverlayComponent overlay
                 && overlay.isVisible()
-                && overlay.hidesCursorWhenVisible()) {
+                && overlay.hidesCursor) {
                 hideCursor = true;
                 break;
             }

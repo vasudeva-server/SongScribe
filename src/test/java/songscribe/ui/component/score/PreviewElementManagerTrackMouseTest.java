@@ -77,7 +77,16 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
         editModeManagerMock.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
     }
 
-    /** A mock MouseEvent reporting the given coordinates and alt-key state. */
+    /**
+     * A mock MouseEvent reporting the given coordinates and alt-key state.
+     * <p>
+     * Only the component-relative coordinates are stubbed, so {@code getXOnScreen()} and
+     * {@code getYOnScreen()} both answer Mockito's int default of 0. {@code trackMouse}'s
+     * cursor-dwell path keys off the <i>screen</i> position, so every event built here looks
+     * like the same point and only the first one counts as a move. That is harmless for the
+     * cases below, which assert on preview tracking rather than the cursor — but a test added
+     * here that means to exercise the dwell has to stub the screen coordinates too.
+     */
     private static MouseEvent mouseEvent(int xPx, int yPx, boolean altDown) {
         var e = mock(MouseEvent.class);
         when(e.getX()).thenReturn(xPx);

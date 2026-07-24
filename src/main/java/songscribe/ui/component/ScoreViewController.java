@@ -85,6 +85,7 @@ import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.dom.EndingValidationResult;
 import songscribe.ui.selection.TupletToggleInfo;
 import songscribe.undo.OpNames;
+import songscribe.util.Debounce;
 
 /**
  * Coordinates message handling for the ScoreView component.
@@ -110,8 +111,8 @@ public final class ScoreViewController {
     @Nullable
     private TupletToggleInfo cachedTupletToggleInfo = null;
 
-    // Timer for debouncing repaints when layout changes occur
-    final Timer repaintDebounceTimer;
+    // Debounces repaints when layout changes occur
+    final Debounce repaintDebounce;
 
     public ScoreViewController(
         ScoreView score,
@@ -125,8 +126,7 @@ public final class ScoreViewController {
         this.selectionCoordinator = selectionCoordinator;
         this.clipboardManager = clipboardManager;
 
-        repaintDebounceTimer = new Timer(REPAINT_DEBOUNCE_DELAY_MS, e -> score.repaint());
-        repaintDebounceTimer.setRepeats(false);
+        repaintDebounce = Debounce.rescheduling(REPAINT_DEBOUNCE_DELAY_MS, score::repaint);
 
         MessageCenter.subscribe(this);
     }
@@ -379,7 +379,7 @@ public final class ScoreViewController {
         }
 
         // Debounce repaints to batch multiple rapid changes
-        repaintDebounceTimer.restart();
+        repaintDebounce.trigger();
     }
 
     /**

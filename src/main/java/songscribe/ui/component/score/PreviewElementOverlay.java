@@ -92,11 +92,6 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
     }
 
     @Override
-    protected boolean hidesCursorWhenVisible() {
-        return true;
-    }
-
-    @Override
     protected @Nullable Rectangle2D getInkBoundsSs() {
         var line = getTargetLine();
 
