@@ -37,11 +37,13 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
+import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -407,6 +409,30 @@ class NoteRendererTest extends UnitTest {
                 .build();
         }
 
+        /**
+         * Mirrors {@link #buildInvariantsWithStemLayout} but puts the note under a
+         * beam, so {@code renderStem} takes its beamed branch. The beam needs a
+         * second member to span; only the first note is ever rendered.
+         */
+        private static LineInvariants buildBeamedInvariantsWithStemLayout(
+            StaffElement note, LayoutResult.StemLayout stemLayout
+        ) {
+            var line = detachedLine();
+            var beamPartner = ElementType.QUAVER.newInstance();
+            line.addElement(note);
+            line.addElement(beamPartner);
+            line.addBeaming(new Beam(note, beamPartner));
+
+            var layoutResult = LayoutResult.builder()
+                .putStemLayout(note, stemLayout)
+                .build();
+
+            return RenderContextTestHelper.newContext(new Song())
+                .setCurrentLine(line)
+                .setLayoutResult(layoutResult)
+                .build();
+        }
+
         // renderStem draws stemLeftXSs/drawTop/(drawBottom-drawTop) directly as the fill Shape's
         // local coordinates (translate() on a mock does not transform the Shape argument), so an
         // unbeamed up-stem's rendered length is exactly -shape.getBounds2D().getMinY().
@@ -511,6 +537,76 @@ class NoteRendererTest extends UnitTest {
             var renderedLengthSs = renderedUpStemLengthSs(note, stemLayout);
 
             assertThat(renderedLengthSs).isCloseTo(NoteGeometry.FORCED_STEM_FLOOR_SS, within(TOLERANCE));
+        }
+
+        // A beamed note's drawn stem is tucked inside the beam by half its thickness;
+        // with no BeamLayout the beam is unthickened, so that inset is exactly half of
+        // BEAM_THICKNESS_SS.
+        private static final double BEAM_INSET_SS = LineThickness.BEAM_THICKNESS_SS / 2.0;
+
+        // How far below FORCED_STEM_FLOOR_SS the beamed stem is driven — comfortably
+        // past it, so the assertion cannot pass on rounding alone.
+        private static final double SUB_FLOOR_MARGIN_SS = 0.25;
+
+        // Enough forced shortening to drive the stem below FORCED_STEM_FLOOR_SS, which
+        // is what quanting does to the inner stems of a concave beam group.
+        private static final double SUB_FLOOR_SHORTENING_SS =
+            SMuFLConstants.STEM_LENGTH_SS - NoteGeometry.FORCED_STEM_FLOOR_SS + SUB_FLOOR_MARGIN_SS;
+
+        /**
+         * The counterpart of {@link #renderedUpStemLengthSs} for a beamed note. The
+         * drawn shape stops half a beam short of the logical tip, so the inset is
+         * added back to recover the stem length {@code renderStem} settled on.
+         */
+        private static double renderedBeamedUpStemLengthSs(
+            StaffElement note, LayoutResult.StemLayout stemLayout
+        ) {
+            var invariants = buildBeamedInvariantsWithStemLayout(note, stemLayout);
+            var recording = recordingG2();
+
+            NoteRenderer.getInstance().render(invariants, ElementFrame.LINE_LEVEL, note, recording.g2());
+
+            assertThat(recording.filledShapes()).describedAs("stem fill call").hasSize(1);
+            return -recording.filledShapes().getFirst().getBounds2D().getMinY() + BEAM_INSET_SS;
+        }
+
+        // The quanted beam position is authoritative for a beamed note: LilyPond's
+        // quanting legitimately puts a stem below FORCED_STEM_FLOOR_SS, and flooring it
+        // back up would push the stem past the beam edge it is supposed to meet. The
+        // floor applies only on the unbeamed branch — see the test above, which pins
+        // that half of the contract.
+        @Test
+        void testBeamedStemBelowTheForcedStemFloorIsNotClampedUp() {
+            var note = ElementType.QUAVER.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(0);
+            var stemLayout =
+                new LayoutResult.StemLayout(0.0, 0.0, 0.0, SUB_FLOOR_SHORTENING_SS, false);
+
+            var renderedLengthSs = renderedBeamedUpStemLengthSs(note, stemLayout);
+
+            assertThat(renderedLengthSs)
+                .describedAs("the quanted length survives, rather than being floored")
+                .isCloseTo(SMuFLConstants.STEM_LENGTH_SS - SUB_FLOOR_SHORTENING_SS, within(TOLERANCE))
+                .isLessThan(NoteGeometry.FORCED_STEM_FLOOR_SS);
+        }
+
+        // Guards the same branch from the other side: the beamed path must not be a
+        // blanket "ignore forcedShorteningSs" — an ordinary beamed stem that stays
+        // above the floor still shortens by exactly what the layout asked for.
+        @Test
+        void testBeamedStemAboveTheForcedStemFloorStillHonorsForcedShortening() {
+            var note = ElementType.QUAVER.newInstance();
+            note.setUpper(true);
+            note.setStaffPosition(0);
+            var forcedShorteningSs = 0.3;
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, forcedShorteningSs, false);
+
+            var renderedLengthSs = renderedBeamedUpStemLengthSs(note, stemLayout);
+
+            assertThat(renderedLengthSs)
+                .isCloseTo(SMuFLConstants.STEM_LENGTH_SS - forcedShorteningSs, within(TOLERANCE))
+                .isGreaterThan(NoteGeometry.FORCED_STEM_FLOOR_SS);
         }
     }
 

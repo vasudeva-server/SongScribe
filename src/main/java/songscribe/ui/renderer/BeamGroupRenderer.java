@@ -54,6 +54,14 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
     private static final double CLIP_SLOP_SS = 0.25;   // extra clipping margin (~2 px)
     private static final double BEAM_STUB_SS = 1.0;  // 8px
 
+    // The round pen that rounds a drawn beam's corners (see drawBeam).  Immutable
+    // and built from constants, so it is shared rather than rebuilt per repaint.
+    private static final BasicStroke BLOT_STROKE = new BasicStroke(
+        (float) LineThickness.BEAM_BLOT_DIAMETER_SS,
+        BasicStroke.CAP_ROUND,
+        BasicStroke.JOIN_ROUND
+    );
+
     // Singleton instance
     private static final BeamGroupRenderer INSTANCE = new BeamGroupRenderer();
 
@@ -343,11 +351,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
             }
 
             g2.setColor(selected ? selectionColor : RenderingUtils.ELEMENT_COLOR);
-            g2.setStroke(new BasicStroke(
-                (float) LineThickness.BEAM_BLOT_DIAMETER_SS,
-                BasicStroke.CAP_ROUND,
-                BasicStroke.JOIN_ROUND
-            ));
+            g2.setStroke(BLOT_STROKE);
             g2.fill(beam);
             g2.draw(beam);
         }

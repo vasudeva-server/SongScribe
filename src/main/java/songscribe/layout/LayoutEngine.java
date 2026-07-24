@@ -82,8 +82,9 @@ public class LayoutEngine {
     static final double CLEF_X_POSITION_SS = 0.625;  // 5px
 
     // Beam geometry constants (staff-space units unless noted)
-    static final double BEAM_DEPTH_SS = 0.4;        // beam thickness
-    private static final double BEAM_SHIFT_SS = 0.625;      // gap between stacked beam levels
+    // Not the drawn beam thickness (that is LineThickness.BEAM_THICKNESS_SS) — only
+    // the base the raster-thickening factor scales.
+    static final double BEAM_DEPTH_SS = 0.4;
     private static final double MIN_STEM_SS = SMuFLConstants.STEM_LENGTH_SS;
 
     // Tie geometry constants (LilyPond slur_shape port).
@@ -535,15 +536,13 @@ public class LayoutEngine {
             // Collect the group's stems in BeamScoring's scoring space (Y-up positive,
             // y=0 at the middle staff line, X measured from the first stem).  Elements
             // without a column are skipped, mirroring computeBeamElementGeometry.
-            var stemInputs = new ArrayList<BeamScoring.StemInput>(beamEnd - beamStart + 1);
+            var memberCount = beamEnd - beamStart + 1;
+            var stemInputs = new ArrayList<BeamScoring.StemInput>(memberCount);
             var firstColumnXSs = 0.0;
-            var haveFirstColumn = false;
             var forcedStemCount = 0;
-            var memberCount = 0;
 
             for (var i = beamStart; i <= beamEnd; i++) {
                 var element = line.getElement(i);
-                memberCount++;
 
                 // LilyPond Beam::forced_stem_count: a middle-line head is never "forced".
                 if (element.getStaffPosition() != 0
@@ -557,9 +556,8 @@ public class LayoutEngine {
                     continue;
                 }
 
-                if (!haveFirstColumn) {
+                if (stemInputs.isEmpty()) {
                     firstColumnXSs = column.getXSs();
-                    haveFirstColumn = true;
                 }
 
                 stemInputs.add(new BeamScoring.StemInput(
@@ -576,7 +574,7 @@ public class LayoutEngine {
 
             if (!stemInputs.isEmpty()) {
                 var dirSign = stemDirection.isUp() ? 1 : -1;
-                var forcedFraction = memberCount > 0 ? (double) forcedStemCount / memberCount : 0.0;
+                var forcedFraction = (double) forcedStemCount / memberCount;
 
                 LOG.debug("--- beam elements {}..{} ---", beamStart, beamEnd);
 
@@ -605,7 +603,7 @@ public class LayoutEngine {
             //   stemsDown: topYSs = elementAnchorYSs,                     bottomYSs = beamYSs (below notehead, larger Y)
             var stemLayouts = new HashMap<StaffElement, LayoutResult.StemLayout>();
 
-            if (haveFirstColumn) {
+            if (!stemInputs.isEmpty()) {
                 for (var i = beamStart; i <= beamEnd; i++) {
                     var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemDirection.isUp(), slope, firstColumnXSs, startYSs);
 

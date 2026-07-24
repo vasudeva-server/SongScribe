@@ -106,6 +106,45 @@ class LineThicknessTest extends UnitTest {
                     .isGreaterThan(0.0)
                     .isLessThan(LineThickness.BEAM_THICKNESS_SS);
         }
+
+        // The values above are all relational, so they pin the constants' intent but
+        // not their magnitude: BEAM_THICKNESS_SS could drift to 0.4 and still differ
+        // from Bravura's recommendation, and BEAM_TRANSLATION_SS could lose its
+        // halving and still exceed the beam thickness. These constants are a port —
+        // LilyPond's own numbers are the specification, so they are restated here as
+        // a drift guard, which is the one case where duplicating a value earns its
+        // keep.
+
+        /** LilyPond {@code beam-thickness}, scm/define-grobs.scm. */
+        private static final double LILYPOND_BEAM_THICKNESS_SS = 0.48;
+
+        /** LilyPond {@code blot-diameter}, 0.4 pt at scm/paper.scm's 5 pt staff space. */
+        private static final double LILYPOND_BLOT_DIAMETER_SS = 0.08;
+
+        /** A staff space, in staff spaces — the unit LilyPond's formula works in. */
+        private static final double STAFF_SPACE_SS = 1.0;
+
+        @Test
+        void testBeamConstantsMatchTheirLilyPondSources() {
+            assertAll(
+                () -> assertThat(LineThickness.BEAM_THICKNESS_SS)
+                        .as("LilyPond beam-thickness")
+                        .isEqualTo(LILYPOND_BEAM_THICKNESS_SS),
+                () -> assertThat(LineThickness.BEAM_BLOT_DIAMETER_SS)
+                        .as("LilyPond blot-diameter at a 5 pt staff space")
+                        .isEqualTo(LILYPOND_BLOT_DIAMETER_SS));
+        }
+
+        @Test
+        void testBeamTranslationMatchesLilyPondsFewerThanFourBeamsFormula() {
+            // Beam::get_beam_translation, beam.cc: (2 * staffSpace + staffLine -
+            // beamThickness) / 2. Recomputed from the other constants so a dropped
+            // term or a lost halving in LineThickness fails here.
+            var expectedTranslationSs =
+                (2 * STAFF_SPACE_SS + LineThickness.STAFF_LINE_SS - LineThickness.BEAM_THICKNESS_SS) / 2;
+
+            assertThat(LineThickness.BEAM_TRANSLATION_SS).isEqualTo(expectedTranslationSs);
+        }
     }
 
     // -----------------------------------------------------------------------

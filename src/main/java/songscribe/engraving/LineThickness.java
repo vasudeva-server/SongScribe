@@ -52,18 +52,25 @@ public final class LineThickness {
     public static final double BEAM_THICKNESS_SS = 0.48;
 
     /**
+     * A staff space, expressed in staff spaces. Named so that ported LilyPond
+     * formulas below read the way the originals do, in which the staff space is an
+     * explicit term rather than an anonymous factor.
+     */
+    private static final double STAFF_SPACE_SS = 1.0;
+
+    /**
      * Center-to-center distance between adjacent beams in a stack, in staff
      * spaces. Ported from LilyPond's {@code Beam::get_beam_translation}
      * (beam.cc), whose fewer-than-four-beams branch is
-     * {@code (2 * staffSpace + staffLine - beamThickness) / 2}. A staff space is
-     * 1.0 in these units, hence the bare {@code 2.0}. SongScribe never stacks more
-     * than three beams (32nd notes), so the four-or-more branch is unreachable and
-     * is not ported.
+     * {@code (2 * staffSpace + staffLine - beamThickness) / 2}. SongScribe never
+     * stacks more than three beams (32nd notes), so the four-or-more branch is
+     * unreachable and is not ported.
      *
      * <p>This is wider than beam thickness plus Bravura's {@code beamSpacing} of
      * 0.25: LilyPond leaves a larger gap between stacked beams.
      */
-    public static final double BEAM_TRANSLATION_SS = (2.0 + STAFF_LINE_SS - BEAM_THICKNESS_SS) / 2.0;
+    public static final double BEAM_TRANSLATION_SS =
+        (2 * STAFF_SPACE_SS + STAFF_LINE_SS - BEAM_THICKNESS_SS) / 2;
 
     /**
      * Diameter of the rounded corner applied to a drawn beam, in staff spaces.

@@ -91,6 +91,11 @@ class BeamScoringTest extends UnitTest {
     private static final double LILYPOND_FLAT_BEAM_Y_UP_SS = -4.0;
 
     private static final int SIXTEENTH_NOTE_BEAM_COUNT = 2;
+    private static final int THIRTY_SECOND_NOTE_BEAM_COUNT = 3;
+
+    // Heads far enough below the staff that the ideal stem end would land below the
+    // middle line, so both of calc_stem_info's clamps come into play.
+    private static final int[] LOW_HALF_POSITIONS = { -12, -12, -12 };
 
     // Concave trigger (a), `is_concave_single_notes` above && below: inner heads
     // reach past the interval covered by the first and last head on both sides.
@@ -516,5 +521,318 @@ class BeamScoringTest extends UnitTest {
                     .isLessThan(BeamScoring.BEAM_EPS);
             }
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Three-beam (32nd note) groups
+    // ------------------------------------------------------------------
+
+    /**
+     * @param beamCount beams per stem
+     * @return the height of that beam stack, centre of outermost to outer edge
+     */
+    private static double heightOfBeams(int beamCount) {
+        return BeamScoring.BEAM_THICKNESS_SS + (beamCount - 1) * BeamScoring.BEAM_TRANSLATION_SS;
+    }
+
+    /**
+     * {@code calc_stem_info}'s second clamp keeps the <em>lowest</em> beam of a
+     * stack off the second staff line. At one or two beams the stack is short
+     * enough that the bound sits below the middle line, where the preceding
+     * clamp-to-zero already dominates, so the line is inert for every group the
+     * rest of this suite builds. Only a three-beam stack pushes the bound above
+     * zero and makes it bind — without this test the clamp could be deleted
+     * outright and nothing would fail.
+     */
+    @Test
+    void testThreeBeamStackClampsTheIdealStemEndToTheSecondStaffLine() {
+        var lowHeadYUpSs = LOW_HALF_POSITIONS[0] / 2.0;
+        var stem = new BeamScoring.StemInput(
+            FIRST_STEM_X_SS, lowHeadYUpSs, LOW_HALF_POSITIONS[0], THIRTY_SECOND_NOTE_BEAM_COUNT);
+        var stems = stemsFor(LOW_HALF_POSITIONS, THIRTY_SECOND_NOTE_BEAM_COUNT);
+
+        var threeBeamIdealYUpSs = new BeamScoring(stems, DIR_UP, NO_FORCED_STEMS)
+            .calcStemInfo(stem)
+            .idealYUpSs();
+        var oneBeamIdealYUpSs =
+            new BeamScoring(stemsFor(LOW_HALF_POSITIONS, EIGHTH_NOTE_BEAM_COUNT), DIR_UP, NO_FORCED_STEMS)
+                .calcStemInfo(stem)
+                .idealYUpSs();
+
+        var expectedFloorSs = -BeamScoring.STAFF_LINE_STEP_SS
+            - BeamScoring.BEAM_THICKNESS_SS
+            + heightOfBeams(THIRTY_SECOND_NOTE_BEAM_COUNT);
+
+        assertAll(
+            () -> assertThat(threeBeamIdealYUpSs)
+                .as("a three-beam stack is held at the second-staff-line floor")
+                .isCloseTo(expectedFloorSs, within(BeamScoring.BEAM_EPS)),
+            () -> assertThat(oneBeamIdealYUpSs)
+                .as("one beam clamps to the middle line instead, leaving the floor inert")
+                .isCloseTo(0.0, within(BeamScoring.BEAM_EPS)),
+            () -> assertThat(expectedFloorSs)
+                .as("the floor only binds because it is above the clamp-to-zero")
+                .isGreaterThan(0.0));
+    }
+
+    /**
+     * {@code BEAMED_EXTREME_MINIMUM_FREE_LENGTHS_SS} has only two entries, so a
+     * three-beam group indexes past its end and relies on {@code robust_list_ref}'s
+     * clamp to the last entry. An unclamped lookup would throw here.
+     */
+    @Test
+    void testThreeBeamStackClampsTheExtremeMinimumLookupToTheLastEntry() {
+        var extremeMinimums = BeamScoring.BEAMED_EXTREME_MINIMUM_FREE_LENGTHS_SS;
+        var lowHeadYUpSs = LOW_HALF_POSITIONS[0] / 2.0;
+        var stem = new BeamScoring.StemInput(
+            FIRST_STEM_X_SS, lowHeadYUpSs, LOW_HALF_POSITIONS[0], THIRTY_SECOND_NOTE_BEAM_COUNT);
+
+        var shortestYUpSs = new BeamScoring(
+            stemsFor(LOW_HALF_POSITIONS, THIRTY_SECOND_NOTE_BEAM_COUNT), DIR_UP, NO_FORCED_STEMS)
+            .calcStemInfo(stem)
+            .shortestYUpSs();
+
+        var expectedShortestYUpSs = lowHeadYUpSs
+            + extremeMinimums[extremeMinimums.length - 1]
+            + heightOfBeams(THIRTY_SECOND_NOTE_BEAM_COUNT)
+            - BeamScoring.BEAM_THICKNESS_SS / 2.0;
+
+        assertAll(
+            () -> assertThat(THIRTY_SECOND_NOTE_BEAM_COUNT)
+                .as("the lookup really does run past the end of the table")
+                .isGreaterThan(extremeMinimums.length),
+            () -> assertThat(shortestYUpSs)
+                .as("the last entry is reused for the out-of-range beam count")
+                .isCloseTo(expectedShortestYUpSs, within(BeamScoring.BEAM_EPS)));
+    }
+
+    // ------------------------------------------------------------------
+    // Individual demerit scorers
+    // ------------------------------------------------------------------
+
+    /**
+     * @param beamCount beams per stem of the group
+     * @return the demerit {@code score_forbidden_quants} charges per hit
+     */
+    private static double extraDemeritFor(int beamCount) {
+        return BeamScoring.SECONDARY_BEAM_DEMERIT / beamCount;
+    }
+
+    /**
+     * A staff line falling inside the white gap between a beam and the next beam
+     * position reads as a printing error. Nothing in the solve-level tests can tell
+     * this scorer apart from the other five — it could return a constant 0 and every
+     * one of them would still pass — so it is charged directly here.
+     */
+    @Test
+    void testStaffLinesInsideABeamGapAreCharged() {
+        var scoring = new BeamScoring(
+            stemsFor(ASCENDING_HALF_POSITIONS, EIGHTH_NOTE_BEAM_COUNT), DIR_UP, NO_FORCED_STEMS);
+
+        // The gap below a stems-up beam at y spans roughly (y - 0.62, y - 0.19), so
+        // the middle staff line sits inside it at 0.4 and clear of it at 1.0.
+        var beamOverMiddleLineY = 0.4;
+        var beamClearOfEveryLineY = 1.0;
+
+        assertAll(
+            () -> assertThat(scoring.staffLinesInBeamGaps(beamOverMiddleLineY, EIGHTH_NOTE_BEAM_COUNT))
+                .as("a staff line inside the gap is charged")
+                .isGreaterThan(0.0),
+            () -> assertThat(scoring.staffLinesInBeamGaps(beamClearOfEveryLineY, EIGHTH_NOTE_BEAM_COUNT))
+                .as("a gap with no staff line in it is free")
+                .isEqualTo(0.0));
+    }
+
+    /**
+     * The second block of {@code score_forbidden_quants} penalizes a secondary beam
+     * that lands badly against the staff, but only when the beam slopes the wrong
+     * way for its direction. Each guard is exercised on its own.
+     */
+    @Test
+    void testSecondaryBeamQuantIsChargedOnlyWhenTheBeamSlopesTheWrongWay() {
+        var scoring = new BeamScoring(
+            stemsFor(ASCENDING_HALF_POSITIONS, SIXTEENTH_NOTE_BEAM_COUNT), DIR_UP, NO_FORCED_STEMS);
+
+        // A stems-up beam sitting on a staff line, flat — the bad case.
+        var sitY = BeamScoring.SIT_SS;
+        var flatDy = 0.0;
+        var rightWayDy = 1.0;
+
+        assertAll(
+            () -> assertThat(scoring.badSecondaryQuant(sitY, SIXTEENTH_NOTE_BEAM_COUNT, flatDy))
+                .as("a flat stems-up beam on a sit quant is charged")
+                .isCloseTo(extraDemeritFor(SIXTEENTH_NOTE_BEAM_COUNT), within(BeamScoring.BEAM_EPS)),
+            () -> assertThat(scoring.badSecondaryQuant(sitY, SIXTEENTH_NOTE_BEAM_COUNT, rightWayDy))
+                .as("the same quant is free once the beam slopes with its direction")
+                .isEqualTo(0.0),
+            () -> assertThat(scoring.badSecondaryQuant(sitY, EIGHTH_NOTE_BEAM_COUNT, flatDy))
+                .as("a single beam has no secondary beam to place badly")
+                .isEqualTo(0.0));
+    }
+
+    /**
+     * The three-beam arm of the same block, which no other test can reach: it
+     * penalizes {@code straddle} rather than {@code sit}, and is gated on a beam
+     * count the rest of the suite never builds.
+     */
+    @Test
+    void testThreeBeamStraddleQuantIsChargedSeparatelyFromTheTwoBeamCase() {
+        var scoring = new BeamScoring(
+            stemsFor(ASCENDING_HALF_POSITIONS, THIRTY_SECOND_NOTE_BEAM_COUNT), DIR_UP, NO_FORCED_STEMS);
+
+        // An integral Y is a straddle quant; flat, so the slope is the wrong way.
+        var straddleY = 1.0;
+        var flatDy = 0.0;
+
+        assertAll(
+            () -> assertThat(scoring.badSecondaryQuant(straddleY, THIRTY_SECOND_NOTE_BEAM_COUNT, flatDy))
+                .as("three beams on a straddle quant are charged")
+                .isCloseTo(extraDemeritFor(THIRTY_SECOND_NOTE_BEAM_COUNT), within(BeamScoring.BEAM_EPS)),
+            () -> assertThat(scoring.badSecondaryQuant(straddleY, SIXTEENTH_NOTE_BEAM_COUNT, flatDy))
+                .as("two beams leave the straddle quant alone")
+                .isEqualTo(0.0));
+    }
+
+    /**
+     * {@code score_horizontal_inter_quants} exists to steer a flat beam inside the
+     * staff off an inter quant. The solve-level tests only check that the winner
+     * landed on <em>some</em> quant, so they cannot see this scorer at all.
+     */
+    @Test
+    void testHorizontalInterQuantIsChargedOnlyForFlatBeamsInsideTheStaff() {
+        var scoring = new BeamScoring(
+            stemsFor(ASCENDING_HALF_POSITIONS, EIGHTH_NOTE_BEAM_COUNT), DIR_UP, NO_FORCED_STEMS);
+
+        var interYInsideStaff = BeamScoring.INTER_SS;
+        var interYOutsideStaff = BeamScoring.STAFF_RADIUS_SS + BeamScoring.INTER_SS;
+        var straddleYInsideStaff = 0.0;
+        var slopedRightY = interYInsideStaff + 1.0;
+
+        assertAll(
+            () -> assertThat(scoring.scoreHorizontalInterQuants(interYInsideStaff, interYInsideStaff))
+                .as("a flat beam on an inter quant inside the staff is charged")
+                .isCloseTo(BeamScoring.HORIZONTAL_INTER_QUANT_PENALTY, within(BeamScoring.BEAM_EPS)),
+            () -> assertThat(scoring.scoreHorizontalInterQuants(interYInsideStaff, slopedRightY))
+                .as("a sloped beam is not this scorer's concern")
+                .isEqualTo(0.0),
+            () -> assertThat(scoring.scoreHorizontalInterQuants(straddleYInsideStaff, straddleYInsideStaff))
+                .as("a straddle quant is fine")
+                .isEqualTo(0.0),
+            () -> assertThat(scoring.scoreHorizontalInterQuants(interYOutsideStaff, interYOutsideStaff))
+                .as("outside the staff there is no staff line to sit wrong against")
+                .isEqualTo(0.0));
+    }
+
+    /**
+     * The stem-length scorer charges the {@code STEM_LENGTH_LIMIT_PENALTY} cliff
+     * only when a stem is driven below its shortest allowed end. Driving one stem
+     * past that point must cost orders of magnitude more than the gentle
+     * deviation-from-ideal term.
+     */
+    @Test
+    void testStemLengthScorerChargesTheLimitPenaltyBelowTheShortestEnd() {
+        var scoring = scoringFor(ASCENDING_HALF_POSITIONS, DIR_UP);
+        var idealLeftY = scoring.unquantedLeftY();
+        var idealRightY = scoring.unquantedRightY();
+
+        // Pulling a stems-up beam down shortens every stem beneath its minimum.
+        var collapsedDropSs = 4.0;
+
+        var atIdeal = scoring.scoreStemLengths(idealLeftY, idealRightY);
+        var collapsed = scoring.scoreStemLengths(
+            idealLeftY - collapsedDropSs, idealRightY - collapsedDropSs);
+
+        assertAll(
+            () -> assertThat(collapsed)
+                .as("stems below their shortest end hit the penalty cliff")
+                .isGreaterThan(atIdeal + BeamScoring.STEM_LENGTH_LIMIT_PENALTY),
+            () -> assertThat(atIdeal)
+                .as("the fitted position sits near the ideal, well under the cliff")
+                .isLessThan(BeamScoring.STEM_LENGTH_LIMIT_PENALTY));
+    }
+
+    // ------------------------------------------------------------------
+    // Quant range and feasibility
+    // ------------------------------------------------------------------
+
+    /**
+     * The quant range is inclusive of its bound. Narrowing {@code >=} to {@code >}
+     * would silently discard a legitimate candidate at the edge of the window.
+     */
+    @Test
+    void testQuantRangeIncludesItsOwnBound() {
+        var headYUpSs = HEAD_BELOW_MIDDLE_Y_UP_SS;
+        var upward = new BeamScoring(
+            stemsFor(ASCENDING_HALF_POSITIONS, EIGHTH_NOTE_BEAM_COUNT), DIR_UP, NO_FORCED_STEMS);
+        var downward = new BeamScoring(
+            stemsFor(ASCENDING_HALF_POSITIONS, EIGHTH_NOTE_BEAM_COUNT), DIR_DOWN, NO_FORCED_STEMS);
+
+        var upBound = upward.quantBound(headYUpSs, EIGHTH_NOTE_BEAM_COUNT);
+        var downBound = downward.quantBound(headYUpSs, EIGHTH_NOTE_BEAM_COUNT);
+        var pastBoundSs = 1.0;
+
+        assertAll(
+            () -> assertThat(upward.withinQuantRange(upBound, upBound))
+                .as("stems up: a candidate exactly on the bound is in range")
+                .isTrue(),
+            () -> assertThat(upward.withinQuantRange(upBound - pastBoundSs, upBound))
+                .as("stems up: below the bound is out of range")
+                .isFalse(),
+            () -> assertThat(downward.withinQuantRange(downBound, downBound))
+                .as("stems down: a candidate exactly on the bound is in range")
+                .isTrue(),
+            () -> assertThat(downward.withinQuantRange(downBound + pastBoundSs, downBound))
+                .as("stems down: above the bound is out of range")
+                .isFalse(),
+            () -> assertThat(upBound)
+                .as("the bound clears the notehead on the stem side")
+                .isGreaterThan(headYUpSs),
+            () -> assertThat(downBound)
+                .as("mirrored for stems down")
+                .isLessThan(headYUpSs));
+    }
+
+    /**
+     * {@code shift_region_to_valid} relocates a beam that would leave a stem below
+     * its shortest end, and LilyPond's {@code point_in_interval} steps
+     * {@code FEASIBLE_POINT_INSET_SS} <em>past</em> the bound rather than sitting on
+     * it — otherwise half the quant window would land back in infeasible territory.
+     * Asserting the outcome tolerance-style (as the stem-length floor test does)
+     * cannot tell that shift apart from the stem-length demerit doing the work, so
+     * the relocated position is pinned exactly here.
+     */
+    @Test
+    void testFeasibilityShiftStepsPastTheBoundRatherThanOntoIt() {
+        var contour = STEEP_ASCENDING_HALF_POSITIONS;
+        var scoring = scoringFor(contour, DIR_UP);
+        var stems = stemsFor(contour, EIGHTH_NOTE_BEAM_COUNT);
+        var xSpan = stems.get(stems.size() - 1).xSs() - stems.get(0).xSs();
+        var slope = (scoring.unquantedRightY() - scoring.unquantedLeftY()) / xSpan;
+
+        // The intersection over stems of the feasible left-end Y values.
+        var feasibleBound = -Double.MAX_VALUE;
+
+        for (var stem : stems) {
+            var shortestYUpSs = scoring.calcStemInfo(stem).shortestYUpSs();
+            feasibleBound = Math.max(feasibleBound, shortestYUpSs - slope * stem.xSs());
+        }
+
+        assertThat(scoring.unquantedLeftY())
+            .as("the shift lands a full inset past the feasibility bound")
+            .isCloseTo(feasibleBound + BeamScoring.FEASIBLE_POINT_INSET_SS, within(BeamScoring.BEAM_EPS));
+    }
+
+    /**
+     * {@code solve}'s documented contract for a group with no stems at all. The
+     * LayoutEngine guards against this today, but the entry point is package-visible
+     * and states the behavior, so it is pinned rather than left to that caller.
+     */
+    @Test
+    void testSolveWithNoStemsReturnsAFlatBeamOnTheMiddleLine() {
+        var position = BeamScoring.solve(List.of(), DIR_UP, NO_FORCED_STEMS);
+
+        assertAll(
+            () -> assertThat(position.leftYUpSs()).isEqualTo(0.0),
+            () -> assertThat(position.rightYUpSs()).isEqualTo(0.0));
     }
 }
