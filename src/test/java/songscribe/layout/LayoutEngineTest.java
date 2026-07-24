@@ -132,6 +132,26 @@ class LayoutEngineTest extends UnitTest {
     /** Smallest group with both an edge stem and more than one inner stem to compare. */
     private static final int FRENCH_GROUP_SIZE = 4;
 
+    // Row 24b — grace-note-inside-a-beam constants. The pitches reproduce the reported case:
+    // in BeamScoring's Y-up half-space, the heads read 3, 2, 1, 6, 2, and the grace note's 1
+    // is the only value below the interval the first and last heads span. Including it makes
+    // is_concave_single_notes fire and force the beam flat; the real notes alone do not.
+    private static final int GRACE_GROUP_SIZE = 5;
+    private static final int GRACE_INDEX = 2;
+    private static final int SP_GRACE_FIRST = -3;
+    private static final int SP_GRACE_INNER = -2;
+    private static final int SP_GRACE_NOTE = -1;
+    private static final int SP_GRACE_PEAK = -6;
+
+    /**
+     * A second grace-note pitch, one staff position from {@link #SP_GRACE_NOTE}. Measured: if
+     * the grace note reaches the scorer, these two pitches place the beam 0.81 ss apart.
+     */
+    private static final int SP_GRACE_NOTE_ALT = 0;
+
+    /** Staff position that puts a whole group's stems down, so a grace note's must not follow. */
+    private static final int SP_DOWN_STEM_GROUP = -4;
+
     // Row 25 — tie geometry constant
     /** Staff position shared by both tied notes. */
     private static final int SP_TIE_NOTE = 2;
@@ -699,6 +719,121 @@ class LayoutEngineTest extends UnitTest {
         assertThat(storedLevels)
             .describedAs("the engine stores one shortening level for each inner sixteenth stem, none for the edges")
             .containsExactly(0, 1, 1, 0);
+    }
+
+    /**
+     * Beams the given note types into one group at the given staff positions. Both arrays are
+     * in element order and must be the same length.
+     */
+    private static Line beamedLineAt(ElementType[] types, int[] staffPositions) {
+        var line = detachedLine();
+
+        for (var i = 0; i < types.length; i++) {
+            var element = types[i].newInstance();
+            element.setStaffPosition(staffPositions[i]);
+            line.addElement(element);
+        }
+
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(types.length - 1)));
+        return line;
+    }
+
+    /**
+     * The reported case: a grace note inserted between the sixteenths of one beamed run, at
+     * the given pitch. Only the grace note's staff position varies, so two calls differing
+     * in {@code gracePos} produce beams that must be identical if the grace note is
+     * correctly excluded from beam scoring — same element count, same column spacing.
+     */
+    private static Line lineWithGraceInsideBeamGroup(int gracePos) {
+        return beamedLineAt(
+            new ElementType[] {
+                ElementType.SEMIQUAVER, ElementType.SEMIQUAVER,
+                ElementType.GRACE_QUAVER,
+                ElementType.SEMIQUAVER, ElementType.SEMIQUAVER,
+            },
+            new int[] {SP_GRACE_FIRST, SP_GRACE_INNER, gracePos, SP_GRACE_PEAK, SP_GRACE_INNER});
+    }
+
+    private static LayoutResult.BeamLayout onlyBeamLayout(Line line, LayoutResult result) {
+        return require(result.getBeamLayout(require(line.findBeamAt(0), "Beam")), "BeamLayout");
+    }
+
+    // T18c: A grace note may be inserted inside a beam group's span, but it takes no part in
+    //       the beaming. Its stem must keep the short grace length instead of being stretched
+    //       to the beam, which is what happens if the beam pass treats it as one of its stems.
+    @Test
+    void testGraceNoteInsideABeamGroupKeepsItsOwnStemLength() {
+        var line = lineWithGraceInsideBeamGroup(SP_GRACE_NOTE);
+        var result = require(engine().layout(line), "LayoutResult");
+        var graceStem = require(result.getStemLayout(line.getElement(GRACE_INDEX)), "grace StemLayout");
+
+        assertThat(graceStem.lengtheningSs())
+            .describedAs("a grace note is never lengthened to reach a beam it is not part of")
+            .isEqualTo(0.0);
+        assertThat(graceStem.bottomYSs() - graceStem.topYSs())
+            .describedAs("the grace stem stays at the grace length")
+            .isCloseTo(SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS, within(TOLERANCE));
+    }
+
+    // The counterpart: the real stems of the same group are still measured to the beam, so the
+    // exclusion above cannot have been achieved by skipping the whole group.
+    @Test
+    void testBeamedStemsAroundAGraceNoteAreStillMeasuredToTheBeam() {
+        var line = lineWithGraceInsideBeamGroup(SP_GRACE_NOTE);
+        var result = require(engine().layout(line), "LayoutResult");
+        var beamLayout = onlyBeamLayout(line, result);
+
+        assertThat(beamLayout.stems().keySet())
+            .describedAs("every stem of the group except the grace note is beam-measured")
+            .doesNotContain(line.getElement(GRACE_INDEX))
+            .hasSize(GRACE_GROUP_SIZE - 1);
+    }
+
+    // A grace note's pitch must not reach BeamScoring at all. Laying the same run out twice,
+    // varying only the grace note's pitch, pins that directly and without depending on which
+    // quant the scorer picks: identical real notes must produce an identical beam. The two
+    // pitches are chosen because they place the beam 0.81 ss apart when the grace note is
+    // wrongly scored as a stem, which is far outside TOLERANCE.
+    @Test
+    void testGraceNotePitchDoesNotMoveTheBeam() {
+        var oneGracePitch = lineWithGraceInsideBeamGroup(SP_GRACE_NOTE);
+        var otherGracePitch = lineWithGraceInsideBeamGroup(SP_GRACE_NOTE_ALT);
+        var oneBeam =
+            onlyBeamLayout(oneGracePitch, require(engine().layout(oneGracePitch), "LayoutResult"));
+        var otherBeam =
+            onlyBeamLayout(otherGracePitch, require(engine().layout(otherGracePitch), "LayoutResult"));
+
+        assertThat(oneBeam.startYSs())
+            .describedAs("moving only the grace note may not move the beam")
+            .isCloseTo(otherBeam.startYSs(), within(TOLERANCE));
+        assertThat(oneBeam.slope())
+            .describedAs("nor change its slope")
+            .isCloseTo(otherBeam.slope(), within(TOLERANCE));
+    }
+
+    // Grace notes always point up (StaffElement.defaultDirection). A group whose own stems
+    // point down must not drag an interposed grace note down with it.
+    @Test
+    void testGraceNoteKeepsItsUpStemInADownStemBeamGroup() {
+        var line = beamedLineAt(
+            new ElementType[] {
+                ElementType.SEMIQUAVER, ElementType.SEMIQUAVER,
+                ElementType.GRACE_QUAVER,
+                ElementType.SEMIQUAVER, ElementType.SEMIQUAVER,
+            },
+            new int[] {
+                SP_DOWN_STEM_GROUP, SP_DOWN_STEM_GROUP, SP_DOWN_STEM_GROUP,
+                SP_DOWN_STEM_GROUP, SP_DOWN_STEM_GROUP,
+            });
+
+        require(engine().layout(line), "LayoutResult");
+
+        assertThat(line.getElement(0).getDirection())
+            .describedAs("the group's own stems point down")
+            .isEqualTo(StaffElement.Direction.DOWN);
+        assertThat(line.getElement(GRACE_INDEX).getDirection())
+            .describedAs("the grace note keeps its upward stem")
+            .isEqualTo(StaffElement.Direction.UP);
     }
 
     // T19: Tie endpoints attach at the notehead's facing (span-side) edge plus note-head-gap while the

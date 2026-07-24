@@ -87,6 +87,9 @@ public class LayoutEngine {
     static final double BEAM_DEPTH_SS = 0.4;
     private static final double MIN_STEM_SS = SMuFLConstants.STEM_LENGTH_SS;
 
+    /** Decimal format for the staff-space values in this class's beam debug output. */
+    private static final String STEM_LOG_FORMAT = "%.3f";
+
     // Tie geometry constants (LilyPond slur_shape port).
     //
     // Two LilyPond unit families are involved. "Position-space" tie-details are in
@@ -458,8 +461,15 @@ public class LayoutEngine {
             var beamEnd = beam.getEndElementIndex();
             var direction = groupStemDirection(line, beamStart, beamEnd);
 
+            LOG.debug("stem dirs: group {}..{} -> {}", beamStart, beamEnd, direction);
+
             for (var i = beamStart; i <= beamEnd; i++) {
                 var element = line.getElement(i);
+
+                if (!participatesInBeaming(element)) {
+                    LOG.debug("  [{}] GRACE keeps its own direction {}", i, element.getDirection());
+                    continue;
+                }
 
                 if (element.isStemDirectionAuto()) {
                     element.setDirection(direction);
@@ -469,17 +479,39 @@ public class LayoutEngine {
     }
 
     /**
+     * Returns whether {@code element} takes part in the beaming of a group whose span it
+     * falls inside.
+     *
+     * <p>A grace note can be inserted between two beamed notes, but it never joins their
+     * beams: it keeps its own upward stem direction, its own short stem, and its own flag,
+     * and it must not influence where the beam is placed. Every loop that walks a beam's
+     * index range therefore has to step over it rather than treat it as a member.
+     */
+    private static boolean participatesInBeaming(StaffElement element) {
+        return !element.getType().isGraceNote();
+    }
+
+    /**
      * Determines the shared stem direction for a beamed group from its pitch contour.
      * The first manual override in the group wins; otherwise the direction follows the
      * contour (staff position 0 = middle line; positive = below midpoint in Y-down, so
      * stems up). (min + max) is compared to 0 rather than dividing, to keep integer arithmetic.
+     * <p>
+     * Grace notes in the span are ignored: they are not beamed, so neither their pitch nor a
+     * manual direction set on them may decide which way the group's stems point.
      */
     private StaffElement.Direction groupStemDirection(Line line, int beamStart, int beamEnd) {
         var minStaffPos = Integer.MAX_VALUE;
         var maxStaffPos = Integer.MIN_VALUE;
 
         for (var i = beamStart; i <= beamEnd; i++) {
-            var pos = line.getElement(i).getStaffPosition();
+            var element = line.getElement(i);
+
+            if (!participatesInBeaming(element)) {
+                continue;
+            }
+
+            var pos = element.getStaffPosition();
 
             if (pos < minStaffPos) {
                 minStaffPos = pos;
@@ -494,7 +526,7 @@ public class LayoutEngine {
         for (var i = beamStart; i <= beamEnd; i++) {
             var element = line.getElement(i);
 
-            if (!element.isStemDirectionAuto()) {
+            if (participatesInBeaming(element) && !element.isStemDirectionAuto()) {
                 return element.getDirection();
             }
         }
@@ -536,13 +568,22 @@ public class LayoutEngine {
             // Collect the group's stems in BeamScoring's scoring space (Y-up positive,
             // y=0 at the middle staff line, X measured from the first stem).  Elements
             // without a column are skipped, mirroring computeBeamElementGeometry.
-            var memberCount = beamEnd - beamStart + 1;
-            var stemInputs = new ArrayList<BeamScoring.StemInput>(memberCount);
+            var spanSize = beamEnd - beamStart + 1;
+            var stemInputs = new ArrayList<BeamScoring.StemInput>(spanSize);
             var firstColumnXSs = 0.0;
             var forcedStemCount = 0;
+            var memberCount = 0;
 
             for (var i = beamStart; i <= beamEnd; i++) {
                 var element = line.getElement(i);
+
+                // A grace note inside the span is not one of the beam's stems: its pitch must
+                // not tilt the beam, skew the concaveness test, or dilute forcedFraction.
+                if (!participatesInBeaming(element)) {
+                    continue;
+                }
+
+                memberCount++;
 
                 // LilyPond Beam::forced_stem_count: a middle-line head is never "forced".
                 if (element.getStaffPosition() != 0
@@ -565,7 +606,21 @@ public class LayoutEngine {
                     -Staff.spToSs(element.getStaffPosition()),
                     -element.getStaffPosition(),
                     BeamMath.beamCount(element)));
+
+                if (LOG.isDebugEnabled()) {
+                    LOG.debug(
+                        "  scoring input [{}] {} sp={} dir={} beams={}",
+                        i,
+                        element.getType(),
+                        element.getStaffPosition(),
+                        element.getDirection(),
+                        BeamMath.beamCount(element));
+                }
             }
+
+            LOG.debug(
+                "  span={} beamMembers={} scoredStems={} forcedStemCount={}",
+                spanSize, memberCount, stemInputs.size(), forcedStemCount);
 
             // Beam geometry in SongScribe layout space (Y-down positive).  startYSs is
             // the beam's outer edge at the first stem; slope is Y-down per X.
@@ -605,6 +660,12 @@ public class LayoutEngine {
 
             if (!stemInputs.isEmpty()) {
                 for (var i = beamStart; i <= beamEnd; i++) {
+                    // A grace note's stem stops at its own length instead of running to the
+                    // beam, so it is left to calculateUnbeamedStems rather than measured here.
+                    if (!participatesInBeaming(line.getElement(i))) {
+                        continue;
+                    }
+
                     var geometry = computeBeamElementGeometry(line, i, elementToColumn, stemDirection.isUp(), slope, firstColumnXSs, startYSs);
 
                     if (geometry == null) {
@@ -633,6 +694,23 @@ public class LayoutEngine {
                     // than in NoteRenderer so the per-paint path stays a field read, matching
                     // stubRight above.
                     var frenchShorteningLevels = BeamMath.frenchBeamShortening(line, i, beamStart, beamEnd);
+
+                    if (LOG.isDebugEnabled()) {
+                        LOG.debug(
+                            "  stem [{}] {} sp={} dir={} elementY={} beamY={} stemLen={} "
+                                + "(natural={}) lengthening={} forcedShort={} french={}",
+                            i,
+                            element.getType(),
+                            element.getStaffPosition(),
+                            element.getDirection(),
+                            String.format(STEM_LOG_FORMAT, elementYSs),
+                            String.format(STEM_LOG_FORMAT, beamYSs),
+                            String.format(STEM_LOG_FORMAT, stemLenSs),
+                            String.format(STEM_LOG_FORMAT, MIN_STEM_SS),
+                            String.format(STEM_LOG_FORMAT, lengtheningSs),
+                            String.format(STEM_LOG_FORMAT, forcedShorteningSs),
+                            frenchShorteningLevels);
+                    }
 
                     stemLayouts.put(
                         element,
@@ -664,8 +742,13 @@ public class LayoutEngine {
     }
 
     /**
-     * Calculates stem geometry for all elements not covered by a beam group.
+     * Calculates stem geometry for all elements whose stems are not drawn to a beam.
      * Populates {@code builder} with a {@link LayoutResult.StemLayout} for each such element.
+     * <p>
+     * A grace note sitting inside a beam's span belongs here too. Its column is flagged
+     * beamed — {@link Line#findBeamAt} answers by index range — but its stem stops at the
+     * grace length rather than running to the beam, so {@code calculateBeams} leaves it to
+     * this pass.
      */
     private void calculateUnbeamedStems(
         Line line,
@@ -674,7 +757,8 @@ public class LayoutEngine {
         for (var col : columns) {
             var element = col.getElement();
 
-            if (col.isBeamed() || !element.getType().isNoteWithStem()) {
+            if ((col.isBeamed() && participatesInBeaming(element))
+                || !element.getType().isNoteWithStem()) {
                 continue;
             }
 
