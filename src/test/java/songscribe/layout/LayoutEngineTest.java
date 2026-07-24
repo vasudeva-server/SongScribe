@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.within;
 import module java.desktop;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
@@ -35,6 +36,7 @@ import songscribe.UnitTest;
 import songscribe.dom.Attribution;
 import songscribe.dom.Beam;
 import songscribe.dom.Clef;
+import songscribe.dom.Line;
 import songscribe.dom.Tie;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.Song;
@@ -96,6 +98,28 @@ class LayoutEngineTest extends UnitTest {
     private static final int SP_CONTOUR_MIDDLE = 8;
     /** Last note of the non-linear beam contour. */
     private static final int SP_CONTOUR_LAST = 4;
+
+    // Row 47 (#579) — the concave triplet `g8 d'8 e,8`: G4, D5, E4. The group's
+    // extremes sum above the middle line, so the stems point up and the middle
+    // note (the highest pitch) is the one nearest the beam.
+    private static final int SP_579_FIRST = 2;
+    private static final int SP_579_MIDDLE = -2;
+    private static final int SP_579_LAST = 4;
+
+    // Row 48 — a contour whose quanted middle stem lands below the forced-stem floor
+    private static final int SP_SUB_FLOOR_FIRST = -2;
+    private static final int SP_SUB_FLOOR_MIDDLE = -1;
+    private static final int SP_SUB_FLOOR_LAST = 4;
+
+    // Row 49 — a group straddling the middle line: the extremes cancel, so the group
+    // is stemmed down and the lower note's stem is forced against its default
+    // direction while the upper note's is not.
+    private static final int SP_FORCED_ABOVE = -5;
+    private static final int SP_FORCED_BELOW = 5;
+    /** One of the two stems of the row-49 group is forced. */
+    private static final double ROW_49_FORCED_FRACTION = 0.5;
+    /** The forced fraction the row-49 group would have if forcing were never counted. */
+    private static final double NO_FORCED_STEMS = 0.0;
 
     // Row 22 — flat-beam snapping constant
     /** Odd staff position; equal for both notes in the beam so the slope is 0. */
@@ -1158,6 +1182,167 @@ class LayoutEngineTest extends UnitTest {
         assertThat(LayoutEngine.beamCount(ElementType.DEMI_SEMIQUAVER.newInstance()))
             .describedAs("DEMI_SEMIQUAVER has three flags")
             .isEqualTo(DEMI_SEMIQUAVER_BEAMS);
+    }
+
+    /**
+     * Builds a beamed line of quavers (or another beamable type) at the given staff
+     * positions and returns the notes in order.
+     */
+    private static List<StaffElement> beamedNotes(Line line, ElementType type, int... staffPositions) {
+        var notes = new ArrayList<StaffElement>(staffPositions.length);
+
+        for (var staffPosition : staffPositions) {
+            var note = type.newInstance();
+            note.setStaffPosition(staffPosition);
+            line.addElement(note);
+            notes.add(note);
+        }
+
+        line.addBeaming(new Beam(notes.get(0), notes.get(notes.size() - 1)));
+        return notes;
+    }
+
+    /**
+     * @param result the laid-out line
+     * @param note   a beamed note of that line
+     * @return the note's stem length in staff spaces
+     */
+    private static double stemLengthSs(LayoutResult result, StaffElement note) {
+        var stem = require(result.getStemLayout(note), "StemLayout");
+        return stem.bottomYSs() - stem.topYSs();
+    }
+
+    // T47 (#579): the concave triplet g8 d'8 e,8 gets a flat beam, and the middle
+    //      note — the one nearest the beam — ends up with the shortest stem, which
+    //      stays above LilyPond's extreme minimum stem length.
+    @Test
+    void testConcaveTripletGetsAFlatBeamWithTheMiddleStemShortest() {
+        var line = detachedLine();
+        var notes = beamedNotes(line, ElementType.QUAVER, SP_579_FIRST, SP_579_MIDDLE, SP_579_LAST);
+
+        var beam = require(line.findBeamAt(0), "Beam at index 0");
+        var result = require(engine().layout(line), "LayoutResult");
+        var beamLayout = require(result.getBeamLayout(beam), "BeamLayout");
+
+        var firstLengthSs = stemLengthSs(result, notes.get(0));
+        var middleLengthSs = stemLengthSs(result, notes.get(1));
+        var lastLengthSs = stemLengthSs(result, notes.get(2));
+
+        // The stem reaches the beam's outer edge, hence the half-thickness term.
+        var extremeMinimumSs = BeamScoring.BEAMED_EXTREME_MINIMUM_FREE_LENGTHS_SS[0]
+            + LineThickness.BEAM_THICKNESS_SS / 2.0;
+
+        assertThat(beamLayout.slope())
+            .describedAs("a concave group is beamed flat")
+            .isCloseTo(0.0, within(TOLERANCE));
+        assertThat(middleLengthSs)
+            .describedAs("the middle note is nearest the beam, so its stem is the shortest")
+            .isLessThan(firstLengthSs)
+            .isLessThan(lastLengthSs);
+        assertThat(middleLengthSs)
+            .describedAs("even the shortest stem clears the extreme minimum stem length")
+            .isGreaterThanOrEqualTo(extremeMinimumSs - TOLERANCE);
+    }
+
+    // T48 (Phase 6 task 7): quanting may shorten a beamed stem past the forced-stem
+    //      floor. The layout must express that length verbatim, and NoteRenderer
+    //      must not floor it back up to FORCED_STEM_FLOOR_SS for a beamed note —
+    //      the beam stays where quanting put it, so a floored stem would overshoot
+    //      it. This pins the layout half of that contract; the renderer applies the
+    //      floor only on its unbeamed branch (NoteRenderer.renderStem).
+    @Test
+    void testBeamedStemShorterThanTheForcedStemFloorKeepsItsQuantedLength() {
+        var line = detachedLine();
+        var notes = beamedNotes(
+            line, ElementType.QUAVER, SP_SUB_FLOOR_FIRST, SP_SUB_FLOOR_MIDDLE, SP_SUB_FLOOR_LAST);
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var shortNote = notes.get(1);
+        var stem = require(result.getStemLayout(shortNote), "StemLayout");
+
+        // What NoteRenderer.renderStem computes for a beamed note, from the same fields.
+        var renderedLengthSs =
+            SMuFLConstants.STEM_LENGTH_SS + stem.lengtheningSs() - stem.forcedShorteningSs();
+
+        assertThat(stem.forcedShorteningSs())
+            .describedAs("this contour shortens the middle stem past the forced-shortening cap")
+            .isGreaterThan(NoteGeometry.MAX_FORCED_SHORTEN_SS);
+        assertThat(renderedLengthSs)
+            .describedAs("the rendered length is the quanted length, not the floor")
+            .isLessThan(NoteGeometry.FORCED_STEM_FLOOR_SS)
+            .isCloseTo(stemLengthSs(result, shortNote), within(TOLERANCE));
+    }
+
+    // T49 (Phase 6 task 8a): a group with a forced-direction member is scored with a
+    //      non-zero forcedFraction, which shortens its stems. Solving the same stems
+    //      with no forced members must put the beam somewhere else — otherwise the
+    //      forced count never reached BeamScoring.
+    @Test
+    void testForcedDirectionGroupIsScoredWithItsForcedFraction() {
+        var line = detachedLine();
+        var notes = beamedNotes(line, ElementType.SEMIQUAVER, SP_FORCED_ABOVE, SP_FORCED_BELOW);
+
+        var beam = require(line.findBeamAt(0), "Beam at index 0");
+        var result = require(engine().layout(line), "LayoutResult");
+        var beamLayout = require(result.getBeamLayout(beam), "BeamLayout");
+
+        var firstXSs = result.getElementXSs(notes.get(0));
+        var stems = new ArrayList<BeamScoring.StemInput>(notes.size());
+
+        for (var note : notes) {
+            stems.add(new BeamScoring.StemInput(
+                result.getElementXSs(note) - firstXSs,
+                -Staff.spToSs(note.getStaffPosition()),
+                -note.getStaffPosition(),
+                BeamMath.beamCount(note)));
+        }
+
+        var dirSign = beamLayout.stemsUp() ? 1 : -1;
+        var forced = BeamScoring.solve(stems, dirSign, ROW_49_FORCED_FRACTION);
+        var unforced = BeamScoring.solve(stems, dirSign, NO_FORCED_STEMS);
+        var forcedStartYSs =
+            -forced.leftYUpSs() - dirSign * LineThickness.BEAM_THICKNESS_SS / 2.0;
+
+        assertThat(beamLayout.stemsUp())
+            .describedAs("the group's extremes cancel, so the stems point down")
+            .isFalse();
+        assertThat(beamLayout.startYSs())
+            .describedAs("the beam is placed with the group's forced fraction")
+            .isCloseTo(forcedStartYSs, within(TOLERANCE));
+
+        // Closer to the noteheads means a smaller Y in direction-multiplied space.
+        assertThat(dirSign * forced.leftYUpSs())
+            .describedAs("forcing a stem pulls the beam's left edge toward the noteheads")
+            .isLessThan(dirSign * unforced.leftYUpSs());
+        assertThat(dirSign * forced.rightYUpSs())
+            .describedAs("forcing a stem pulls the beam's right edge toward the noteheads")
+            .isLessThan(dirSign * unforced.rightYUpSs());
+    }
+
+    // T50 (Phase 6 task 8b): an all-natural-direction group has no forced stems, and
+    //      laying the same content out twice yields identical beam geometry.
+    @Test
+    void testUnforcedGroupGeometryIsDeterministic() {
+        var firstLine = detachedLine();
+        beamedNotes(firstLine, ElementType.QUAVER, SP_BEAM_BELOW_1, SP_BEAM_BELOW_2);
+        var secondLine = detachedLine();
+        beamedNotes(secondLine, ElementType.QUAVER, SP_BEAM_BELOW_1, SP_BEAM_BELOW_2);
+
+        var firstBeam = require(firstLine.findBeamAt(0), "Beam at index 0");
+        var secondBeam = require(secondLine.findBeamAt(0), "Beam at index 0");
+        var firstLayout = require(
+            require(engine().layout(firstLine), "LayoutResult").getBeamLayout(firstBeam),
+            "BeamLayout");
+        var secondLayout = require(
+            require(engine().layout(secondLine), "LayoutResult").getBeamLayout(secondBeam),
+            "BeamLayout");
+
+        assertThat(secondLayout.slope())
+            .describedAs("beam slope is deterministic")
+            .isCloseTo(firstLayout.slope(), within(TOLERANCE));
+        assertThat(secondLayout.startYSs())
+            .describedAs("beam position is deterministic")
+            .isCloseTo(firstLayout.startYSs(), within(TOLERANCE));
     }
 
     @Nested

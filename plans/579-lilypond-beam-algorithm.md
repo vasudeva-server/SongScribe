@@ -56,8 +56,8 @@ Reproduce a compact version of this as an ASCII header comment atop `BeamScoring
 | 2 | [Ideal Positions: Least-Squares + Damping + Region Shift](#-phase-2-ideal-positions-least-squares--damping--region-shift) | ✅ Complete | Opus 4.8, high |
 | 3 | [Quant Generation + Demerit Scoring + Solve](#-phase-3-quant-generation--demerit-scoring--solve) | ✅ Complete | Opus 4.8, high |
 | 4 | [Wire Into LayoutEngine](#-phase-4-wire-into-layoutengine) | ✅ Complete | Fable 5 (or Opus 4.8), high |
-| 5 | [Manual Verification](#-phase-5-manual-verification) | ⏳ Pending | N/A — manual |
-| 6 | [Test Coverage](#-phase-6-test-coverage) | ⏳ Pending | Sonnet 4.6, medium |
+| 5 | [Manual Verification](#-phase-5-manual-verification) | ✅ Complete | N/A — manual |
+| 6 | [Test Coverage](#-phase-6-test-coverage) | ✅ Complete | Sonnet 4.6, medium |
 
 ## ✅ Phase 1: BeamScoring Scaffold + Stem Info
 
@@ -175,9 +175,9 @@ Replace the beam-geometry computation inside `LayoutEngine.calculateBeams` (`src
 6. Run `./scripts/compile.sh` exactly — must report SUCCESS.
 7. Run `./scripts/test.sh unit`. All unit tests must pass. Beyond the tests in task 5, do not edit tests to make them pass — a failure elsewhere means a port or conversion bug; fix the production code. (E2e tests may also encode old beam geometry; they require user approval to run — do NOT run them; note any expected e2e impact in the completion report for Phase 5's user session.)
 
-## ⏳ Phase 5: Manual Verification
+## ✅ Phase 5: Manual Verification
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** 4  <br>
 **Recommended model/effort:** N/A — manual verification by the user; do not delegate to a subagent.
 
@@ -188,9 +188,9 @@ Replace the beam-geometry computation inside `LayoutEngine.calculateBeams` (`src
 3. Check groups with forced-direction stems (e.g. groups straddling the middle line, manual direction overrides) and stacked-beam groups (16th/32nd): stems visibly shortened but legible, secondary beams not colliding with staff lines.
 4. Open several existing songs with beamed content and confirm no regressions (beams into noteheads, tuplet brackets/articulations still clearing beams — the stacker adapts via `StemLayout.topYSs`). Confirm resolution of issue #579 before Phase 6 proceeds.
 
-## ⏳ Phase 6: Test Coverage
+## ✅ Phase 6: Test Coverage
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** 5  <br>
 **Recommended model/effort:** Sonnet 4.6, medium effort — mostly mechanical test authoring, but `BeamScoring` expectation values must be derived from the ported formulas, not guessed.
 
