@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import module java.desktop;
 
@@ -55,6 +56,27 @@ class NoteRendererTest extends UnitTest {
     // Staff positions: even = on a line, odd = in a space
     private static final int ON_LINE_STAFF_POSITION = 0;
     private static final int IN_SPACE_STAFF_POSITION = 1;
+
+    // A beamed note's drawn stem is tucked inside the beam by half its thickness, so
+    // recovering the length renderStem settled on means adding that inset back. This is
+    // the unthickened half; a thickened beam adds half its thickening on top.
+    private static final double BEAM_INSET_SS = LineThickness.BEAM_THICKNESS_SS / 2.0;
+
+    /** A mock Graphics2D paired with the local (pre-transform) shapes it filled. */
+    private record RecordingG2(Graphics2D g2, List<Shape> filledShapes) {}
+
+    private static RecordingG2 recordingG2() {
+        var g2 = mock(Graphics2D.class);
+        when(g2.getTransform()).thenReturn(new AffineTransform());
+        var filledShapes = new ArrayList<Shape>();
+        doAnswer(invocation -> {
+            filledShapes.add(invocation.getArgument(0));
+            return null;
+        }).when(g2).fill(any(Shape.class));
+        doAnswer(invocation -> null).when(g2).translate(anyDouble(), anyDouble());
+
+        return new RecordingG2(g2, filledShapes);
+    }
 
     // ==========================================================================
     // getNoteHeadGlyph (row 1)
@@ -378,22 +400,6 @@ class NoteRendererTest extends UnitTest {
 
         private static final double TOLERANCE = 1e-9;
 
-        /** A mock Graphics2D paired with the local (pre-transform) shapes it filled. */
-        private record RecordingG2(Graphics2D g2, List<Shape> filledShapes) {}
-
-        private static RecordingG2 recordingG2() {
-            var g2 = mock(Graphics2D.class);
-            when(g2.getTransform()).thenReturn(new AffineTransform());
-            var filledShapes = new ArrayList<Shape>();
-            doAnswer(invocation -> {
-                filledShapes.add(invocation.getArgument(0));
-                return null;
-            }).when(g2).fill(any(Shape.class));
-            doAnswer(invocation -> null).when(g2).translate(anyDouble(), anyDouble());
-
-            return new RecordingG2(g2, filledShapes);
-        }
-
         private static LineInvariants buildInvariantsWithStemLayout(
             StaffElement note, LayoutResult.StemLayout stemLayout
         ) {
@@ -464,7 +470,7 @@ class NoteRendererTest extends UnitTest {
             note.setUpper(true);
             note.setStaffPosition(0);
             var forcedShorteningSs = 0.3;
-            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, forcedShorteningSs, false);
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, forcedShorteningSs, false, 0);
 
             var renderedLengthSs = renderedUpStemLengthSs(note, stemLayout);
 
@@ -477,7 +483,7 @@ class NoteRendererTest extends UnitTest {
             var note = ElementType.CROTCHET.newInstance();
             note.setUpper(true);
             note.setStaffPosition(0);
-            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, 0.0, false);
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, 0.0, false, 0);
 
             var renderedLengthSs = renderedUpStemLengthSs(note, stemLayout);
 
@@ -491,7 +497,7 @@ class NoteRendererTest extends UnitTest {
             note.setStaffPosition(0);
             var lengtheningSs = 0.8;
             var forcedShorteningSs = 0.3;
-            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, lengtheningSs, forcedShorteningSs, false);
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, lengtheningSs, forcedShorteningSs, false, 0);
 
             var renderedLengthSs = renderedUpStemLengthSs(note, stemLayout);
 
@@ -505,7 +511,7 @@ class NoteRendererTest extends UnitTest {
             note.setUpper(false);
             note.setStaffPosition(0);
             var forcedShorteningSs = 0.3;
-            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, forcedShorteningSs, false);
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, forcedShorteningSs, false, 0);
 
             var renderedLengthSs = renderedDownStemLengthSs(note, stemLayout);
 
@@ -518,7 +524,7 @@ class NoteRendererTest extends UnitTest {
             var note = ElementType.CROTCHET.newInstance();
             note.setUpper(false);
             note.setStaffPosition(0);
-            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, 0.0, false);
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, 0.0, false, 0);
 
             var renderedLengthSs = renderedDownStemLengthSs(note, stemLayout);
 
@@ -532,17 +538,12 @@ class NoteRendererTest extends UnitTest {
             note.setStaffPosition(0);
             var outOfRangeForcedShorteningSs = SMuFLConstants.STEM_LENGTH_SS;
             var stemLayout =
-                new LayoutResult.StemLayout(0.0, 0.0, 0.0, outOfRangeForcedShorteningSs, false);
+                new LayoutResult.StemLayout(0.0, 0.0, 0.0, outOfRangeForcedShorteningSs, false, 0);
 
             var renderedLengthSs = renderedUpStemLengthSs(note, stemLayout);
 
             assertThat(renderedLengthSs).isCloseTo(NoteGeometry.FORCED_STEM_FLOOR_SS, within(TOLERANCE));
         }
-
-        // A beamed note's drawn stem is tucked inside the beam by half its thickness;
-        // with no BeamLayout the beam is unthickened, so that inset is exactly half of
-        // BEAM_THICKNESS_SS.
-        private static final double BEAM_INSET_SS = LineThickness.BEAM_THICKNESS_SS / 2.0;
 
         // How far below FORCED_STEM_FLOOR_SS the beamed stem is driven — comfortably
         // past it, so the assertion cannot pass on rounding alone.
@@ -581,7 +582,7 @@ class NoteRendererTest extends UnitTest {
             note.setUpper(true);
             note.setStaffPosition(0);
             var stemLayout =
-                new LayoutResult.StemLayout(0.0, 0.0, 0.0, SUB_FLOOR_SHORTENING_SS, false);
+                new LayoutResult.StemLayout(0.0, 0.0, 0.0, SUB_FLOOR_SHORTENING_SS, false, 0);
 
             var renderedLengthSs = renderedBeamedUpStemLengthSs(note, stemLayout);
 
@@ -600,13 +601,139 @@ class NoteRendererTest extends UnitTest {
             note.setUpper(true);
             note.setStaffPosition(0);
             var forcedShorteningSs = 0.3;
-            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, forcedShorteningSs, false);
+            var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, forcedShorteningSs, false, 0);
 
             var renderedLengthSs = renderedBeamedUpStemLengthSs(note, stemLayout);
 
             assertThat(renderedLengthSs)
                 .isCloseTo(SMuFLConstants.STEM_LENGTH_SS - forcedShorteningSs, within(TOLERANCE))
                 .isGreaterThan(NoteGeometry.FORCED_STEM_FLOOR_SS);
+        }
+    }
+
+    // ==========================================================================
+    // renderStem — French beaming pulls inner stems back to the innermost beam
+    // ==========================================================================
+
+    @Nested
+    class RenderStemFrenchBeaming {
+
+        // Where the stem of an unshortened beamed note ends: the outer beam.
+        private static final double OUTER_BEAM_LENGTH_SS = SMuFLConstants.STEM_LENGTH_SS;
+
+        // What LayoutEngine stores for a stem with one beam passing through it, and for
+        // one with two. Which stems get which is BeamMathTest's and LayoutEngineTest's
+        // subject; here the level count is an input, so the arithmetic can be pinned
+        // without building a note group that happens to produce it.
+        private static final int ONE_BEAM_THROUGH = 1;
+        private static final int TWO_BEAMS_THROUGH = 2;
+
+        // A thickening large enough to be unmistakable in the assertions, and of the
+        // same order as the real one (LayoutEngine caps it at BEAM_DEPTH_SS * 0.088).
+        private static final double THICKENING_SS = 0.04;
+
+        /**
+         * Renders a beamed note whose layout asked for {@code frenchShorteningLevels}
+         * levels of French shortening, and returns the length of the stem actually
+         * drawn — the beam inset added back, so an unshortened stem measures exactly
+         * {@link SMuFLConstants#STEM_LENGTH_SS}.
+         *
+         * <p>Passing a {@code thickeningSs} of 0 registers no {@link
+         * LayoutResult.BeamLayout} at all, matching an unthickened beam.
+         */
+        private static double renderedStemLengthSs(
+            boolean upper, int frenchShorteningLevels, double thickeningSs
+        ) {
+            var line = detachedLine();
+            var note = ElementType.SEMIQUAVER.newInstance();
+            note.setUpper(upper);
+            note.setStaffPosition(ON_LINE_STAFF_POSITION);
+            var beamPartner = ElementType.SEMIQUAVER.newInstance();
+            line.addElement(note);
+            line.addElement(beamPartner);
+            var beam = new Beam(note, beamPartner);
+            line.addBeaming(beam);
+
+            var stemLayout =
+                new LayoutResult.StemLayout(0.0, 0.0, 0.0, 0.0, false, frenchShorteningLevels);
+            var builder = LayoutResult.builder().putStemLayout(note, stemLayout);
+
+            if (thickeningSs != 0.0) {
+                builder.putBeamLayout(beam, new LayoutResult.BeamLayout(
+                    0.0, 0.0, upper, thickeningSs, Map.of(note, stemLayout)));
+            }
+
+            var invariants = RenderContextTestHelper.newContext(new Song())
+                .setCurrentLine(line)
+                .setLayoutResult(builder.build())
+                .build();
+            var recording = recordingG2();
+
+            NoteRenderer.getInstance().render(invariants, ElementFrame.LINE_LEVEL, note, recording.g2());
+
+            assertThat(recording.filledShapes()).describedAs("stem fill call").hasSize(1);
+            var bounds = recording.filledShapes().getFirst().getBounds2D();
+
+            // Mirrors RenderStemForcedShortening: an up-stem grows toward -Y, a down-stem
+            // toward +Y, and either way the drawn end stops one inset short of the tip.
+            var drawnLengthSs = upper ? -bounds.getMinY() : bounds.getMaxY();
+            return drawnLengthSs + BEAM_INSET_SS + thickeningSs / 2.0;
+        }
+
+        private static double renderedUpStemLengthSs(int frenchShorteningLevels) {
+            return renderedStemLengthSs(true, frenchShorteningLevels, 0.0);
+        }
+
+        @Test
+        void testStemWithOneBeamThroughItStopsAtTheSecondaryBeam() {
+            assertThat(renderedUpStemLengthSs(ONE_BEAM_THROUGH))
+                .describedAs("a stem with one beam through it ends one beam translation early")
+                .isCloseTo(
+                    OUTER_BEAM_LENGTH_SS - LineThickness.BEAM_TRANSLATION_SS, within(TOLERANCE));
+        }
+
+        // The shortening scales with the level count rather than being a fixed one-beam
+        // trim; two values are the minimum needed to rule out a hardcoded step.
+        @Test
+        void testStemWithTwoBeamsThroughItStopsTwoBeamsShort() {
+            assertThat(renderedUpStemLengthSs(TWO_BEAMS_THROUGH))
+                .describedAs("a stem with two beams through it ends two beam translations early")
+                .isCloseTo(
+                    OUTER_BEAM_LENGTH_SS - TWO_BEAMS_THROUGH * LineThickness.BEAM_TRANSLATION_SS,
+                    within(TOLERANCE));
+        }
+
+        // The counterpart of the tests above: a stem the layout did not shorten must
+        // render exactly as it did before French beaming existed.
+        @Test
+        void testUnshortenedStemStillReachesTheOuterBeam() {
+            assertThat(renderedUpStemLengthSs(0))
+                .describedAs("a stem with no beam through it runs out to the outer beam")
+                .isCloseTo(OUTER_BEAM_LENGTH_SS, within(TOLERANCE));
+        }
+
+        // Down stems take the other branch of renderStem's direction split, so the
+        // shortening has to be pinned there too — the same up/down pairing every test
+        // in RenderStemForcedShortening follows.
+        @Test
+        void testDownStemWithOneBeamThroughItStopsAtTheSecondaryBeam() {
+            assertThat(renderedStemLengthSs(false, ONE_BEAM_THROUGH, 0.0))
+                .describedAs("an inner down-stem ends one beam translation early")
+                .isCloseTo(
+                    OUTER_BEAM_LENGTH_SS - LineThickness.BEAM_TRANSLATION_SS, within(TOLERANCE));
+        }
+
+        // Thickening widens the gap between stacked beams by the same amount it widens
+        // each beam, so the step back must grow with it. Without this the shortening
+        // could multiply the unthickened translation and still pass every test above,
+        // leaving thickened inner stems hanging short of the beam they should touch.
+        @Test
+        void testShorteningStepsByTheThickenedTranslation() {
+            assertThat(renderedStemLengthSs(true, ONE_BEAM_THROUGH, THICKENING_SS))
+                .describedAs("the step back grows with the beam thickening")
+                .isCloseTo(
+                    OUTER_BEAM_LENGTH_SS - LineThickness.beamTranslationSs(THICKENING_SS),
+                    within(TOLERANCE));
         }
     }
 

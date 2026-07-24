@@ -295,10 +295,8 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var thickeningSs = (beamLayout != null) ? beamLayout.thickeningSs() : 0.0;
         var effectiveBeamDepthSs = LineThickness.BEAM_THICKNESS_SS + thickeningSs;
         var beamDepthSs = isUpper ? effectiveBeamDepthSs : -effectiveBeamDepthSs;
-        // Thickening widens each beam, so it also widens the step between stacked
-        // beams; without it a thickened stack would overlap.
         var innerBeamOffsetSs =
-            (LineThickness.BEAM_TRANSLATION_SS + thickeningSs) * recursionLevel * (isUpper ? 1 : -1);
+            LineThickness.beamTranslationSs(thickeningSs) * recursionLevel * (isUpper ? 1 : -1);
 
         // --- First note stem geometry ---
         var firstStemLayout = layoutResult.getStemLayout(beginNote);

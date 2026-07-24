@@ -129,6 +129,9 @@ class LayoutEngineTest extends UnitTest {
     /** Staff position shared by both notes in the stub-direction beam test. */
     private static final int SP_STUB_NOTE = 2;
 
+    /** Smallest group with both an edge stem and more than one inner stem to compare. */
+    private static final int FRENCH_GROUP_SIZE = 4;
+
     // Row 25 — tie geometry constant
     /** Staff position shared by both tied notes. */
     private static final int SP_TIE_NOTE = 2;
@@ -669,6 +672,33 @@ class LayoutEngineTest extends UnitTest {
         assertThat(stem.stubRight())
             .describedAs("stub direction for semiquaver at group start must be right")
             .isTrue();
+    }
+
+    // T18b: French beaming is resolved during layout, not at paint time. The rule itself is
+    //       BeamMathTest's subject; this pins that the engine actually stores its answer, since
+    //       nothing else connects BeamMath.frenchBeamShortening to what NoteRenderer draws.
+    @Test
+    void testFrenchShorteningIsStoredOnlyForInnerStemsOfABeamGroup() {
+        var line = detachedLine();
+        var notes = new ArrayList<StaffElement>();
+
+        for (var i = 0; i < FRENCH_GROUP_SIZE; i++) {
+            var semiquaver = ElementType.SEMIQUAVER.newInstance();
+            semiquaver.setStaffPosition(SP_STUB_NOTE);
+            line.addElement(semiquaver);
+            notes.add(semiquaver);
+        }
+
+        line.addBeaming(new Beam(notes.getFirst(), notes.getLast()));
+
+        var result = require(engine().layout(line), "LayoutResult");
+        var storedLevels = notes.stream()
+            .map(note -> require(result.getStemLayout(note), "StemLayout").frenchShorteningLevels())
+            .toList();
+
+        assertThat(storedLevels)
+            .describedAs("the engine stores one shortening level for each inner sixteenth stem, none for the edges")
+            .containsExactly(0, 1, 1, 0);
     }
 
     // T19: Tie endpoints attach at the notehead's facing (span-side) edge plus note-head-gap while the

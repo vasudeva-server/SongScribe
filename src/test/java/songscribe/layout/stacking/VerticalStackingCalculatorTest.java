@@ -218,7 +218,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         var builder = LayoutResult.builder();
         // Provide a StemLayout so seedNoteBounds uses stemLayout.bottomYSs() as botSs.
         // topYSs is above center (negative); bottomYSs is the downward stem tip.
-        builder.putStemLayout(note, new LayoutResult.StemLayout(-2.0, stemBotSs, 0.0, 0.0, false));
+        builder.putStemLayout(note, new LayoutResult.StemLayout(-2.0, stemBotSs, 0.0, 0.0, false, 0));
 
         var calculator = new VerticalStackingCalculator();
         calculator.calculate(

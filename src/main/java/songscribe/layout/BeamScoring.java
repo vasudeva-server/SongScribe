@@ -955,8 +955,11 @@ final class BeamScoring {
      * Port of {@code score_stem_lengths}, minus the knee branches. The whole group
      * shares one direction, so LilyPond's per-direction score/count split collapses
      * to a single running total. The {@code base_lengths_} term is structurally 0
-     * here: it is the French-beaming stem-end correction, and SongScribe has no
-     * French beaming (see issue #652, which reintroduces it).
+     * here: it is the offset from the beam position to the beam rank a stem
+     * terminates at, and every SongScribe stem terminates at the outer beam.
+     * French beaming (issue #652) does not change that — it shortens inner stems
+     * at drawing time only, and LilyPond likewise excludes it from quanting
+     * ("French Beaming is irrelevant for beam quanting", {@code beam-quanting.cc}).
      *
      * @param leftY  the beam center Y at the first stem
      * @param rightY the beam center Y at the last stem

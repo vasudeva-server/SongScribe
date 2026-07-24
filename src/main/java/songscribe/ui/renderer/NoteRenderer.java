@@ -285,6 +285,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         var stemLayout = layoutResult.getStemLayout(note);
         var lengtheningSs = (stemLayout != null) ? stemLayout.lengtheningSs() : 0.0;
         var forcedShorteningSs = (stemLayout != null) ? stemLayout.forcedShorteningSs() : 0.0;
+        var frenchShorteningLevels = (stemLayout != null) ? stemLayout.frenchShorteningLevels() : 0;
 
         var beamThickeningSs = 0.0;
 
@@ -318,9 +319,18 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         // so it tucks inside the beam rather than peeking past the outer edge
         // when the beam is angled. The logical stem tip retains the full length
         // for beam positioning.
-        var beamInsetSs = beamed
-            ? HALF_BEAM_THICKNESS_SS + beamThickeningSs / 2.0
-            : 0.0;
+        //
+        // French beaming pulls an inner stem back by one further beam translation
+        // per beam that passes straight through it, so it stops at the centre of
+        // the innermost beam it carries instead of running out to the outer one.
+        // The translation comes from the same helper BeamGroupRenderer steps its
+        // inner beams by, so the stem lands on the beam at any thickening.
+        var beamInsetSs = 0.0;
+
+        if (beamed) {
+            beamInsetSs = HALF_BEAM_THICKNESS_SS + beamThickeningSs / 2.0
+                + frenchShorteningLevels * LineThickness.beamTranslationSs(beamThickeningSs);
+        }
 
         double stemTipY;
         double drawTop;

@@ -187,4 +187,80 @@ public final class BeamMath {
         return begin >= 0 && noteTypeInLevel(line, begin, level) &&
             end < line.elementCount() && noteTypeInLevel(line, end, level);
     }
+
+    // -------------------------------------------------------------------------
+    // French beaming
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns how many beam levels the stem at index {@code i} within the beam
+     * group [{@code beamStart}, {@code beamEnd}] is shortened by under French
+     * beaming — i.e. the number of beam translations between the outer beam and
+     * the innermost beam that passes straight <em>through</em> this stem.
+     *
+     * <p>A stem is shortened only for beams that pass through it, so it still
+     * terminates on a beam rather than in mid-air. Following LilyPond
+     * ({@code Beam::set_stem_lengths}, which intersects each stem's left and
+     * right beaming slices), the count is the number of beam levels shared with
+     * <em>both</em> neighbours, less one for the level the stem must still reach.
+     *
+     * <p>So a stem returns 0 — and runs out to the outer beam as usual — exactly
+     * when it shares no more than the outer beam with a neighbour: the first and
+     * last stem of a group, every stem carrying a single beam, and every stem
+     * whose <em>secondary</em> beam breaks. A break at a deeper level still
+     * shortens: in a 16th/32nd/32nd/16th group the second stem is where the 32nd
+     * sub-beam starts, yet it stops one level short, on the 16th beam. A stub is
+     * not a level the stem must reach either — it sits nearer the notehead and is
+     * covered on the way.
+     *
+     * <p>This is a drawing-time correction only: the logical stem tip stays at
+     * the outer beam, which is what beam placement and the stacker read.
+     */
+    public static int frenchBeamShortening(Line line, int i, int beamStart, int beamEnd) {
+        if (i <= beamStart || i >= beamEnd) {
+            return 0;
+        }
+
+        // A note's beams always run 0..beamCount-1, so LilyPond's intersection of the
+        // stem's left and right beaming slices is simply the smallest of the three
+        // counts — the beams that reach this stem from both sides pass through it.
+        var leftBeams = neighborBeamCount(line, i, -1);
+        var ownBeams = beamCountInBeam(line, i);
+        var rightBeams = neighborBeamCount(line, i, 1);
+        var beamsThrough = Math.min(ownBeams, Math.min(leftBeams, rightBeams));
+
+        return Math.max(0, beamsThrough - 1);
+    }
+
+    /**
+     * Returns how many beams the element at {@code index} contributes to a beam it sits
+     * under, or 0 if it takes no beam at all.
+     *
+     * <p>Unlike {@link #beamCount}, which reports the flag count a note type would carry
+     * on its own, this reports 0 for anything unbeamable — a rest or a longer note inside
+     * a beam's span stops a beam rather than carrying one across.
+     */
+    private static int beamCountInBeam(Line line, int index) {
+        var element = line.getElement(index);
+        return element.getType().isBeamable() ? beamCount(element) : 0;
+    }
+
+    /**
+     * Returns {@link #beamCountInBeam} for the nearest element to one side of
+     * {@code index} that takes part in beaming, stepping by {@code step} (-1 for the
+     * left neighbour, 1 for the right); 0 if the line runs out first.
+     *
+     * <p>Grace notes are stepped over. One can be inserted between two beamed notes
+     * without joining their beams, so the beam that decides this stem's length is the one
+     * continuing to the note on the far side of it, not the grace note's own flag.
+     */
+    private static int neighborBeamCount(Line line, int index, int step) {
+        for (var i = index + step; i >= 0 && i < line.elementCount(); i += step) {
+            if (!line.getElement(i).getType().isGraceNote()) {
+                return beamCountInBeam(line, i);
+            }
+        }
+
+        return 0;
+    }
 }

@@ -692,7 +692,7 @@ class StructuralStackerTest extends UnitTest {
 
             var builder = new LayoutResult.Builder();
             builder.putStemLayout(column.getElement(),
-                new LayoutResult.StemLayout(beamTopYSs, 0.0, 0.0, 0.0, false));
+                new LayoutResult.StemLayout(beamTopYSs, 0.0, 0.0, 0.0, false, 0));
             var stacker = newStacker(builder);
 
             assertThat(stacker.rawObstacleTopSs(column)).isCloseTo(beamTopYSs, within(TOLERANCE));
@@ -710,7 +710,7 @@ class StructuralStackerTest extends UnitTest {
 
             var builder = new LayoutResult.Builder();
             builder.putStemLayout(column.getElement(),
-                new LayoutResult.StemLayout(beamTopYSs, 0.0, 0.0, 0.0, false));
+                new LayoutResult.StemLayout(beamTopYSs, 0.0, 0.0, 0.0, false, 0));
             var stacker = newStacker(builder);
 
             assertThat(stacker.rawObstacleTopSs(column)).isCloseTo(naturalTopYSs, within(TOLERANCE));

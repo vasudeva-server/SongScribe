@@ -1420,13 +1420,18 @@ public final class LayoutResult {
      *                   Bracket-independent — not a tuplet trim.
      * @param stubRight  For partial-beam notes: true if the stub extends to the right, false to the left.
      *                   Meaningless for full-beam and unbeamed notes.
+     * @param frenchShorteningLevels Number of beam levels (not staff spaces) the <em>drawn</em> stem stops
+     *                   short of the outer beam under French beaming; 0 for unbeamed notes and for every
+     *                   stem that runs out to the outer beam. See {@link BeamMath#frenchBeamShortening}.
+     *                   Drawing-time only: the logical tip described by the Y values above is unaffected.
      */
     public record StemLayout(
         double topYSs,
         double bottomYSs,
         double lengtheningSs,
         double forcedShorteningSs,
-        boolean stubRight) {}
+        boolean stubRight,
+        int frenchShorteningLevels) {}
 
     /**
      * Immutable beam geometry for a beam group, computed during layout.

@@ -629,9 +629,15 @@ public class LayoutEngine {
                     // Delegated to BeamMath so the writer can use the same rule.
                     var stubRight = BeamMath.stubRight(line, i, beamStart, beamEnd);
 
+                    // How far back French beaming pulls the drawn stem. Resolved here rather
+                    // than in NoteRenderer so the per-paint path stays a field read, matching
+                    // stubRight above.
+                    var frenchShorteningLevels = BeamMath.frenchBeamShortening(line, i, beamStart, beamEnd);
+
                     stemLayouts.put(
                         element,
-                        new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, forcedShorteningSs, stubRight));
+                        new LayoutResult.StemLayout(
+                            topYSs, bottomYSs, lengtheningSs, forcedShorteningSs, stubRight, frenchShorteningLevels));
                 }
             }
 
@@ -701,7 +707,7 @@ public class LayoutEngine {
 
             builder.putStemLayout(
                 element,
-                new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, forcedShorteningSs, false));
+                new LayoutResult.StemLayout(topYSs, bottomYSs, lengtheningSs, forcedShorteningSs, false, 0));
         }
     }
 

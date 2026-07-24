@@ -73,6 +73,20 @@ public final class LineThickness {
         (2 * STAFF_SPACE_SS + STAFF_LINE_SS - BEAM_THICKNESS_SS) / 2;
 
     /**
+     * Center-to-center distance between adjacent beams in a stack that has been
+     * thickened by {@code thickeningSs}, in staff spaces.
+     *
+     * <p>Beams grow downward from their center line, so thickening widens the gap
+     * between stacked beams by the same amount it widens each beam. Both the
+     * renderer that draws the inner beams and the one that stops a French-beamed
+     * stem on one must step by this exact distance, or the stem tip lands off the
+     * beam it is supposed to touch — hence the single definition here.
+     */
+    public static double beamTranslationSs(double thickeningSs) {
+        return BEAM_TRANSLATION_SS + thickeningSs;
+    }
+
+    /**
      * Diameter of the rounded corner applied to a drawn beam, in staff spaces.
      * LilyPond's {@code blot-diameter} is 0.4 pt (scm/paper.scm) against a default
      * staff space of 5 pt, giving 0.08 staff spaces. {@code Lookup::beam} insets
