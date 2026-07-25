@@ -191,6 +191,68 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(((BeamingRemoval) mutations.getFirst()).line()).isSameAs(env.line());
     }
 
+    @Test
+    void testToggleBeamingExcludesTrailingGraceNote() {
+        var env = setupEnv(quaver(), quaver(), graceQuaver());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleBeaming();
+
+        var mutations = captureSingleDidChange().getMutations();
+        assertThat(mutations).hasSize(1);
+        var addition = (BeamingAddition) mutations.getFirst();
+        assertThat(addition.beam().getAnchorElementIndex()).isEqualTo(0);
+        assertThat(addition.beam().getEndElementIndex())
+            .as("beam ends at the last non-grace note")
+            .isEqualTo(1);
+    }
+
+    @Test
+    void testToggleBeamingExcludesLeadingGraceNote() {
+        var env = setupEnv(graceQuaver(), quaver(), quaver());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleBeaming();
+
+        var mutations = captureSingleDidChange().getMutations();
+        assertThat(mutations).hasSize(1);
+        var addition = (BeamingAddition) mutations.getFirst();
+        assertThat(addition.beam().getAnchorElementIndex())
+            .as("beam starts at the first non-grace note")
+            .isEqualTo(1);
+        assertThat(addition.beam().getEndElementIndex()).isEqualTo(2);
+    }
+
+    @Test
+    void testToggleTupletExcludesTrailingGraceNote() {
+        var env = setupEnv(crotchet(), crotchet(), graceQuaver());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        var ops = env.operations();
+        ops.toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), ops.canToggleTuplet());
+
+        var mutations = captureSingleDidChange().getMutations();
+        assertThat(mutations).hasSize(1);
+        var addition = (TupletAddition) mutations.getFirst();
+        assertThat(addition.tuplet().getAnchorElementIndex()).isEqualTo(0);
+        assertThat(addition.tuplet().getEndElementIndex())
+            .as("tuplet ends at the last non-grace note")
+            .isEqualTo(1);
+    }
+
+    @Test
+    void testToggleTupletExcludesLeadingGraceNote() {
+        var env = setupEnv(graceQuaver(), crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        var ops = env.operations();
+        ops.toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), ops.canToggleTuplet());
+
+        var mutations = captureSingleDidChange().getMutations();
+        assertThat(mutations).hasSize(1);
+        var addition = (TupletAddition) mutations.getFirst();
+        assertThat(addition.tuplet().getAnchorElementIndex())
+            .as("tuplet starts at the first non-grace note")
+            .isEqualTo(1);
+        assertThat(addition.tuplet().getEndElementIndex()).isEqualTo(2);
+    }
+
     // -----------------------------------------------------------------------
     // Tie
     // -----------------------------------------------------------------------

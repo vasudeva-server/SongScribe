@@ -398,6 +398,21 @@ class ElementColumnBuilderTest extends UnitTest {
         assertThat(columns.get(3).getBeamGroupId()).isNotEqualTo(columns.get(1).getBeamGroupId());
     }
 
+    // #592: a grace note sitting inside a beam span is not a beam member — the beam passes over
+    // it, so its column stays unbeamed and keeps its own flag.
+    @Test
+    void testBuildColumnsLeavesAGraceNoteInsideABeamSpanUnbeamed() {
+        var line = lineWith(ElementType.QUAVER, ElementType.GRACE_QUAVER, ElementType.QUAVER);
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
+
+        var columns = new ElementColumnBuilder(mock(LyricRenderMetrics.class)).buildColumns(line);
+
+        assertThat(columns.get(0).isBeamed()).isTrue();
+        assertThat(columns.get(2).isBeamed()).isTrue();
+        assertThat(columns.get(1).isBeamed()).isFalse();
+        assertThat(columns.get(1).getBeamGroupId()).isEqualTo(ElementColumn.NO_BEAM_GROUP);
+    }
+
     // Row 22: calculateStemTop/BottomSs for stem-up, stem-down, and stemless elements
     @Nested
     class StemGeometry {

@@ -33,6 +33,10 @@ public final class StaffElementFactory {
         return ElementType.QUAVER.newInstance();
     }
 
+    public static StaffElement graceQuaver() {
+        return ElementType.GRACE_QUAVER.newInstance();
+    }
+
     public static StaffElement crotchetRest() {
         return ElementType.CROTCHET_REST.newInstance();
     }

@@ -89,14 +89,23 @@ public final class MusicEditOperations {
 
         var line = state.getLine();
 
+        // The beam spans the selection's non-grace endpoints; a leading or trailing grace
+        // note is left outside it (refs #592).
+        var beginIndex = state.getNonGraceSelectionBegin();
+        var endIndex = state.getNonGraceSelectionEnd();
+
+        if (beginIndex < 0 || beginIndex == endIndex) {
+            return;
+        }
+
         line.withModification(() -> {
-            var beginBeam = line.findBeamAt(state.getSelectionBegin());
-            var endBeam = line.findBeamAt(state.getSelectionEnd());
+            var beginBeam = line.findBeamAt(beginIndex);
+            var endBeam = line.findBeamAt(endIndex);
 
             //noinspection ObjectEquality
             if (beginBeam == null || beginBeam != endBeam) {
-                var anchorElement = line.getElement(state.getSelectionBegin());
-                var endElement = line.getElement(state.getSelectionEnd());
+                var anchorElement = line.getElement(beginIndex);
+                var endElement = line.getElement(endIndex);
                 line.addBeaming(new Beam(anchorElement, endElement));
             } else {
                 line.removeBeaming(beginBeam);
@@ -171,6 +180,18 @@ public final class MusicEditOperations {
         var line = state.getLine();
         var existing = info.existing();
 
+        // The tuplet spans the selection's non-grace endpoints; a leading or trailing grace
+        // note is left outside it (refs #592).
+        var beginIndex = state.getNonGraceSelectionBegin();
+        var endIndex = state.getNonGraceSelectionEnd();
+
+        // canToggleTuplet() rejects a selection without two non-grace elements, so reaching
+        // this with no usable span means the caller passed stale info.
+        if (beginIndex < 0 || beginIndex == endIndex) {
+            throw new IllegalStateException(
+                "toggleTuplet requires at least two non-grace elements in the selection");
+        }
+
         if (tupletSize == 0) {
             if (existing == null) {
                 throw new IllegalStateException(
@@ -183,8 +204,8 @@ public final class MusicEditOperations {
 
         if (existing == null) {
             line.withModification(() -> line.addTuplet(new Tuplet(
-                line.getElement(state.getSelectionBegin()),
-                line.getElement(state.getSelectionEnd()),
+                line.getElement(beginIndex),
+                line.getElement(endIndex),
                 tupletSize)));
             return;
         }
@@ -199,8 +220,8 @@ public final class MusicEditOperations {
 
             if (existing.getGrade() != tupletSize) {
                 line.addTuplet(new Tuplet(
-                    line.getElement(state.getSelectionBegin()),
-                    line.getElement(state.getSelectionEnd()),
+                    line.getElement(beginIndex),
+                    line.getElement(endIndex),
                     tupletSize));
             }
         });
@@ -627,7 +648,9 @@ public final class MusicEditOperations {
                     continue;
                 }
 
-                var beam = line.findBeamAt(i);
+                // A grace note sitting inside a beam span is not a member — the beam passes
+                // over it and it keeps its own stem, so it flips on its own (refs #592).
+                var beam = note.getType().isGraceNote() ? null : line.findBeamAt(i);
 
                 if (beam != null) {
                     // Modify the whole beam group together, once per group. The group's new
@@ -637,6 +660,10 @@ public final class MusicEditOperations {
                         var newDirection = flippedDirection(line, anchorIndex, change);
 
                         for (var j = anchorIndex; j <= beam.getEndElementIndex(); j++) {
+                            if (line.getElement(j).getType().isGraceNote()) {
+                                continue;
+                            }
+
                             applyStemChange(line, j, stemFields, newDirection);
                         }
                     }

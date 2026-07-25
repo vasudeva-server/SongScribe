@@ -118,8 +118,11 @@ public class ElementColumnBuilder {
      * @return The constructed ElementColumn
      */
     public ElementColumn buildColumn(StaffElement element, Line line, int elementIndex) {
-        // Determine beam membership first — needed for right extent calculation
-        return buildColumnForBeam(element, line.findBeamAt(elementIndex));
+        // Determine beam membership first — needed for right extent calculation. A grace
+        // note sitting inside a beam span is not a member: the beam passes over it and it
+        // keeps its own short stem and flag (refs #592).
+        var beam = element.getType().isGraceNote() ? null : line.findBeamAt(elementIndex);
+        return buildColumnForBeam(element, beam);
     }
 
     /**

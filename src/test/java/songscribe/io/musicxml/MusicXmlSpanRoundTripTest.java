@@ -64,6 +64,16 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         return nodes.getLength() == 0 ? null : nodes.item(0).getTextContent().trim();
     }
 
+    /**
+     * Returns the number of {@code <time-modification>} elements in the document — one per
+     * note that the writer treats as a tuplet member.
+     */
+    private static int timeModificationCount(String xml) throws Exception {
+        var factory = DocumentBuilderFactory.newInstance();
+        var doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
+        return doc.getElementsByTagName("time-modification").getLength();
+    }
+
     /** Grade 3 (triplet): 3 actual notes in the time of 2 normal notes. */
     private static final int TRIPLET_GRADE = 3;
 
@@ -183,6 +193,39 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(tuplets).as("tuplet count after triplet+verticalPos round-trip").hasSize(1);
         assertRangeElementEquals(tuplets.get(0), 0, 2, TRIPLET_GRADE, TUPLET_VERTICAL_POSITION_SS);
+    }
+
+    // #592: a grace note may sit inside a tuplet span without joining it, so it takes no
+    // <time-modification> — only the three tupleted crotchets do.
+    @Test
+    void testGraceNoteInsideTupletSpanTakesNoTimeModification() throws Exception {
+        var song = buildSong(line -> {
+            var note0 = ElementType.CROTCHET.newInstance();
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
+            var note3 = ElementType.CROTCHET.newInstance();
+            line.addElement(note0);
+            line.addElement(grace);
+            line.addElement(note2);
+            line.addElement(note3);
+            line.addTuplet(new Tuplet(note0, note3, TRIPLET_GRADE));
+        });
+
+        var xml = writeToString(song);
+
+        assertThat(timeModificationCount(xml))
+            .as("one <time-modification> per tupleted note, none for the grace note")
+            .isEqualTo(TRIPLET_GRADE);
+
+        // The reader must re-collapse the span across the gap the skipped grace note leaves.
+        var line2 = roundTrip(song).getLine(0);
+        var tuplets = line2.findRangeElements(Tuplet.class);
+
+        assertThat(tuplets).as("tuplet count after grace-in-span round-trip").hasSize(1);
+        assertRangeElementEquals(tuplets.get(0), 0, 3, TRIPLET_GRADE, 0);
+        assertThat(line2.getElement(1).getType().isGraceNote())
+            .as("interior grace note survives inside the tuplet span")
+            .isTrue();
     }
 
     @Test

@@ -400,6 +400,102 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.hasEndingSelection()).isFalse();
     }
 
+    // -- canToggleBeaming / canToggleTuplet with grace notes (refs #592) --
+
+    /**
+     * Builds a detached line from {@code types} and returns a state with all of it selected.
+     */
+    private static LineSelectionState selectAllOf(ElementType... types) {
+        var line = detachedLine();
+
+        for (var type : types) {
+            line.addElement(type.newInstance());
+        }
+
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(types.length - 1);
+        return state;
+    }
+
+    @Test
+    void testGraceHostPairInsideSelectionCanToggleBeaming() {
+        var state = selectAllOf(ElementType.QUAVER, ElementType.GRACE_QUAVER, ElementType.QUAVER);
+
+        assertThat(state.canToggleBeaming()).isTrue();
+        assertThat(state.getNonGraceSelectionBegin()).isEqualTo(0);
+        assertThat(state.getNonGraceSelectionEnd()).isEqualTo(2);
+    }
+
+    @Test
+    void testLeadingGraceNoteIsExcludedFromTheBeamSpan() {
+        var state = selectAllOf(ElementType.GRACE_QUAVER, ElementType.QUAVER, ElementType.QUAVER);
+
+        assertThat(state.canToggleBeaming()).isTrue();
+        assertThat(state.getNonGraceSelectionBegin()).isEqualTo(1);
+        assertThat(state.getNonGraceSelectionEnd()).isEqualTo(2);
+    }
+
+    @Test
+    void testSingleNoteWithGraceNoteCannotToggleBeaming() {
+        var state = selectAllOf(ElementType.GRACE_QUAVER, ElementType.QUAVER);
+
+        assertThat(state.canToggleBeaming()).isFalse();
+    }
+
+    // The leading QUAVER makes the grace-note exemption in the range check actually run; a
+    // fixture whose first element is already unbeamable would short-circuit before reaching it.
+    @Test
+    void testGraceNoteDoesNotMakeUnbeamableSelectionBeamable() {
+        var state = selectAllOf(ElementType.QUAVER, ElementType.GRACE_QUAVER, ElementType.CROTCHET);
+
+        assertThat(state.canToggleBeaming())
+            .as("the unbeamable crotchet still blocks beaming")
+            .isFalse();
+    }
+
+    @Test
+    void testOnlyGraceNotesSelectedCannotToggleBeaming() {
+        var state = selectAllOf(ElementType.GRACE_QUAVER, ElementType.GRACE_QUAVER);
+
+        assertThat(state.canToggleBeaming()).isFalse();
+        assertThat(state.getNonGraceSelectionBegin()).isEqualTo(-1);
+        assertThat(state.getNonGraceSelectionEnd()).isEqualTo(-1);
+    }
+
+    @Test
+    void testGraceHostPairInsideSelectionCanToggleTuplet() {
+        var state = selectAllOf(ElementType.CROTCHET, ElementType.GRACE_QUAVER, ElementType.CROTCHET);
+
+        assertThat(state.canToggleTuplet().canToggle()).isTrue();
+    }
+
+    @Test
+    void testSingleNoteWithGraceNoteCannotToggleTuplet() {
+        var state = selectAllOf(ElementType.GRACE_QUAVER, ElementType.CROTCHET);
+
+        assertThat(state.canToggleTuplet().canToggle()).isFalse();
+    }
+
+    @Test
+    void testTupletCoverageIgnoresTrailingGraceNote() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.GRACE_QUAVER.newInstance());
+        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(1), TupletAction.Tuplet.TRIPLET.getSize()));
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(2);
+
+        var info = state.canToggleTuplet();
+
+        assertThat(info.canToggle()).isTrue();
+        assertThat(info.coversExisting())
+            .as("the trailing grace note does not stop the selection from covering the tuplet")
+            .isTrue();
+    }
+
     // -- canToggleTuplet --
 
     @Test

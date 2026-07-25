@@ -202,6 +202,12 @@ final class MusicXmlSpanIndex {
             }
 
             for (int i = anchorIdx; i <= endIdx; i++) {
+                // A grace note inside the span is not a beam member — the beam passes
+                // over it, so it carries no <beam> of its own (refs #592).
+                if (line.getElement(i).getType().isGraceNote()) {
+                    continue;
+                }
+
                 builders[i].beamLevelValues = computeNoteBeamValues(line, i, anchorIdx, endIdx);
             }
         }
@@ -233,6 +239,12 @@ final class MusicXmlSpanIndex {
             builders[endIdx].isTupletEnd = true;
 
             for (int i = anchorIdx; i <= endIdx; i++) {
+                // A grace note inside the span is not a tuplet member — it takes no
+                // <time-modification> (refs #592).
+                if (line.getElement(i).getType().isGraceNote()) {
+                    continue;
+                }
+
                 builders[i].tuplet = tuplet;
             }
         }

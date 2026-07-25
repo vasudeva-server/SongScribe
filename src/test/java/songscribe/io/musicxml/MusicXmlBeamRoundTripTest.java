@@ -358,4 +358,25 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
             .as("interior grace note survives inside the beam group")
             .isTrue();
     }
+
+    // #592: the beam passes over an interior grace note rather than including it, so the
+    // grace note emits no <beam> of its own while its neighbours still begin and end the group.
+    @Test
+    void testGraceNoteInsideBeamGroupEmitsNoBeamElement() throws Exception {
+        var song = buildSong(line -> {
+            var note0 = ElementType.QUAVER.newInstance();
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var note2 = ElementType.QUAVER.newInstance();
+            line.addElement(note0);
+            line.addElement(grace);
+            line.addElement(note2);
+            line.addBeaming(new Beam(note0, note2));
+        });
+
+        var xml = writeToString(song);
+
+        assertThat(beamValue(xml, 0, PRIMARY_BEAM_NUMBER)).as("note 0 primary beam").isEqualTo("begin");
+        assertThat(beamValue(xml, 1, PRIMARY_BEAM_NUMBER)).as("grace note primary beam").isNull();
+        assertThat(beamValue(xml, 2, PRIMARY_BEAM_NUMBER)).as("note 2 primary beam").isEqualTo("end");
+    }
 }

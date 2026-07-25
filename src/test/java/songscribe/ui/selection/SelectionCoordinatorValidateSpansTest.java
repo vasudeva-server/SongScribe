@@ -216,6 +216,31 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
             .isEmpty();
     }
 
+    // #592: a grace note is not a beam member, so the beam legitimately passes over one and the
+    // interior check must not treat it as a puncture even though it is not beamable.
+    @Test
+    void testBeamSurvivesGraceNoteInTheInterior() {
+        // Beam over [0..2] with a grace note at index 1; replacing the last element with a
+        // sixteenth keeps every real member beamable, so the beam must be left alone.
+        var notes = List.<StaffElement>of(
+            ElementType.QUAVER.newInstance(),
+            ElementType.GRACE_QUAVER.newInstance(),
+            ElementType.QUAVER.newInstance()
+        );
+        var coordinator = createCoordinator(notes, List.of(SIXTEENTH_ACTION));
+        var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
+        line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
+        capturedMutations.clear();
+
+        ReflectionTestHelper.selectNote(coordinator, 2);
+        coordinator.applyActionToSelection(SIXTEENTH_ACTION, true, null);
+
+        assertThat(mutationsOfType(BeamingRemoval.class))
+            .as("an interior grace note does not puncture the beam")
+            .isEmpty();
+        assertThat(mutationsOfType(BeamingAddition.class)).isEmpty();
+    }
+
     @Test
     void testBeamKilledWhenTrimLeavesFewerThanTwoElements() {
         // Two eighths with a beam over [0..1]; replacing one element with a

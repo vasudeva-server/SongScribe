@@ -792,10 +792,14 @@ public final class SelectionCoordinator {
             }
 
             // Check for any non-beamable element in the interior of the trimmed span.
+            // Grace notes are exempt: they are not beam members, so a beam legitimately
+            // passes over one (refs #592).
             var hasInteriorInvalid = false;
 
             for (var i = newStart; i <= newEnd; i++) {
-                if (!line.getElement(i).getType().isBeamable()) {
+                var type = line.getElement(i).getType();
+
+                if (!type.isBeamable() && !type.isGraceNote()) {
                     hasInteriorInvalid = true;
                     break;
                 }

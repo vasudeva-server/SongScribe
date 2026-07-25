@@ -397,21 +397,70 @@ public final class LineSelectionState {
     // -------------------------------------------------------------------------
 
     /**
+     * Returns the index of the first element in the selection that is not a grace note,
+     * or -1 if the selection is empty or holds nothing but grace notes.
+     *
+     * <p>Grace notes are transparent to beams and tuplets: the group spans the selection's
+     * non-grace endpoints and any grace note in between stays outside the group, so a
+     * grace/host pair may sit inside a beamed or tupleted selection (refs #592).
+     */
+    public int getNonGraceSelectionBegin() {
+        if (!hasElementSelection()) {
+            return -1;
+        }
+
+        for (var i = selectionBegin; i <= selectionEnd; i++) {
+            if (!line.getElement(i).getType().isGraceNote()) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * Returns the index of the last element in the selection that is not a grace note,
+     * or -1 if the selection is empty or holds nothing but grace notes.
+     *
+     * @see #getNonGraceSelectionBegin()
+     */
+    public int getNonGraceSelectionEnd() {
+        if (!hasElementSelection()) {
+            return -1;
+        }
+
+        for (var i = selectionEnd; i >= selectionBegin; i--) {
+            if (!line.getElement(i).getType().isGraceNote()) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
      * Returns whether the current selection can be beamed/unbeamed.
      */
     public boolean canToggleBeaming() {
-        if (getSelectionSize() < 2) {
+        var beginIndex = getNonGraceSelectionBegin();
+        var endIndex = getNonGraceSelectionEnd();
+
+        // Fewer than two non-grace elements — there is nothing to join.
+        if (beginIndex < 0 || beginIndex == endIndex) {
             return false;
         }
 
         //noinspection SimplifiableIfStatement
-        if (!IntStream.rangeClosed(selectionBegin, selectionEnd).allMatch(
-                i -> line.getElement(i).getType().isBeamable())) {
+        if (!IntStream.rangeClosed(beginIndex, endIndex).allMatch(i -> {
+            var type = line.getElement(i).getType();
+            return type.isGraceNote() || type.isBeamable();
+        })) {
             return false;
         }
 
         // Conflict: beaming would connect what a tie already connects.
-        return !(shouldConnectBeamSelection() && !shouldConnectTieSelection());
+        return !(shouldConnectBeamSelection(beginIndex, endIndex)
+            && !shouldConnectTieSelection(beginIndex, endIndex));
     }
 
     /**
@@ -440,8 +489,11 @@ public final class LineSelectionState {
         var exactTie = line.findExactTie(selectionBegin, selectionEnd);
         var shouldConnect = exactTie == null;
 
-        // Conflict: tying would connect what a beam already connects.
-        if (shouldConnect && !shouldConnectBeamSelection()) {
+        // Conflict: tying would connect what a beam already connects. The raw selection bounds
+        // are correct here, unlike beaming/tupleting: a tie needs exactly two elements, so there
+        // is no interior for a grace note to sit in, and the isPitchedNote() check above already
+        // rejects a grace note at either endpoint (refs #592).
+        if (shouldConnect && !shouldConnectBeamSelection(selectionBegin, selectionEnd)) {
             canTie = false;
             return false;
         }
@@ -458,20 +510,31 @@ public final class LineSelectionState {
      */
     @SuppressWarnings("ObjectEquality")
     public TupletToggleInfo canToggleTuplet() {
-        if (getSelectionSize() < 2) {
+        var beginIndex = getNonGraceSelectionBegin();
+        var endIndex = getNonGraceSelectionEnd();
+
+        // Fewer than two non-grace elements — there is nothing to group.
+        if (beginIndex < 0 || beginIndex == endIndex) {
             return new TupletToggleInfo(false, null, false);
         }
 
         Tuplet firstTuplet = null;
 
-        for (var i = selectionBegin; i <= selectionEnd; i++) {
-            if (!line.getElement(i).getType().isPitchedNote()) {
+        for (var i = beginIndex; i <= endIndex; i++) {
+            var type = line.getElement(i).getType();
+
+            // A grace note rides along inside the span without joining the tuplet.
+            if (type.isGraceNote()) {
+                continue;
+            }
+
+            if (!type.isPitchedNote()) {
                 return new TupletToggleInfo(false, null, false);
             }
 
             var currentTuplet = line.findTupletAt(i);
 
-            if (i == selectionBegin) {
+            if (i == beginIndex) {
                 firstTuplet = currentTuplet;
             } else if (currentTuplet != firstTuplet) {
                 return new TupletToggleInfo(false, null, false);
@@ -479,8 +542,8 @@ public final class LineSelectionState {
         }
 
         var coversExisting = (firstTuplet != null)
-            && (selectionBegin == firstTuplet.getAnchorElementIndex())
-            && (selectionEnd == firstTuplet.getEndElementIndex());
+            && (beginIndex == firstTuplet.getAnchorElementIndex())
+            && (endIndex == firstTuplet.getEndElementIndex());
 
         return new TupletToggleInfo(true, firstTuplet, coversExisting);
     }
@@ -507,24 +570,24 @@ public final class LineSelectionState {
     }
 
     /**
-     * Returns whether a new beam should connect the selection endpoints (add mode), as opposed
-     * to the selection already being covered by an existing beam (remove mode).
+     * Returns whether a new beam should connect the span endpoints (add mode), as opposed
+     * to the span already being covered by an existing beam (remove mode).
      */
-    private boolean shouldConnectBeamSelection() {
-        var beginBeam = line.findBeamAt(selectionBegin);
-        var endBeam = line.findBeamAt(selectionEnd);
+    private boolean shouldConnectBeamSelection(int beginIndex, int endIndex) {
+        var beginBeam = line.findBeamAt(beginIndex);
+        var endBeam = line.findBeamAt(endIndex);
 
         //noinspection ObjectEquality
         return (beginBeam == null) || (beginBeam != endBeam);
     }
 
     /**
-     * Returns whether a new tie should connect the selection endpoints (add mode), as opposed
-     * to the selection already being covered by an existing tie (remove mode).
+     * Returns whether a new tie should connect the span endpoints (add mode), as opposed
+     * to the span already being covered by an existing tie (remove mode).
      */
-    private boolean shouldConnectTieSelection() {
-        var beginTie = line.findTieAt(selectionBegin);
-        var endTie = line.findTieAt(selectionEnd);
+    private boolean shouldConnectTieSelection(int beginIndex, int endIndex) {
+        var beginTie = line.findTieAt(beginIndex);
+        var endTie = line.findTieAt(endIndex);
 
         //noinspection ObjectEquality
         return (beginTie == null) || (beginTie != endTie);
