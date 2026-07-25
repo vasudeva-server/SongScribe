@@ -220,14 +220,33 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
             return noteA;
         }
 
-        /** A breath mark between connected notes removes the glissando. */
+        /** A breath mark between connected notes is blocked, leaving the glissando intact. */
         @Test
-        void testInsertingBreathMarkRemovesConnectingGlissando() {
-            var noteA = insertBetweenConnectedNotes(ElementType.BREATH_MARK);
+        void testInsertingBreathMarkIsBlockedByConnectingGlissando() {
+            song.setLineWidthSs(WIDE_LINE_SS);
 
+            song.withoutMutationTracking(() -> {
+                var noteA = ElementType.CROTCHET.newInstance();
+                noteA.setGlissando();
+                line.addElement(noteA);  // index 0
+                line.addElement(ElementType.CROTCHET.newInstance());  // index 1
+            });
+
+            var noteA = line.getElement(0);
+            var countBefore = line.effectiveElementCount();
+
+            setPreviewElement(ElementType.BREATH_MARK.newInstance());
+            PreviewElementManager.setCurrentXIndex(1);
+            PreviewElementManager.setXPosSsMatchesElement(false);
+
+            PreviewElementManager.handleClick(lc);
+
+            assertThat(line.effectiveElementCount())
+                .as("breath mark insertion blocked: element count unchanged")
+                .isEqualTo(countBefore);
             assertThat(noteA.hasGlissando())
-                .as("connected glissando removed when a breath mark is inserted")
-                .isFalse();
+                .as("connected glissando retained when breath mark insertion is blocked")
+                .isTrue();
         }
 
         /** A rest between connected notes removes the glissando. */
