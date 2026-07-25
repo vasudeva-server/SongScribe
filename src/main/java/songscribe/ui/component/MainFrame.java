@@ -22,6 +22,7 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -1080,9 +1081,46 @@ public class MainFrame extends JFrame implements Printable {
         Prefs.put(PrefsKey.PLAY_WITH_REPEATS, message.isSelected());
     }
 
+    /**
+     * The title bar area drawn by the app when macOS full window content is in
+     * effect. Because the app's content covers the native title bar, macOS never
+     * sees the clicks that would normally zoom the window, so the standard
+     * double-click-to-zoom gesture is reimplemented here.
+     */
     private static final class TitlePanel extends JPanel {
+        private static final int DOUBLE_CLICK_COUNT = 2;
+
         private TitlePanel() {
             super(new BorderLayout());
+
+            addMouseListener(
+                new MouseAdapter() {
+                    @Override
+                    public void mouseClicked(MouseEvent e) {
+                        if (
+                            SwingUtilities.isLeftMouseButton(e) &&
+                            e.getClickCount() == DOUBLE_CLICK_COUNT
+                        ) {
+                            toggleZoom();
+                        }
+                    }
+                }
+            );
+        }
+
+        private void toggleZoom() {
+            if (!(SwingUtilities.getWindowAncestor(this) instanceof Frame frame)) {
+                return;
+            }
+
+            var isZoomed = (frame.getExtendedState() & Frame.MAXIMIZED_BOTH) ==
+                Frame.MAXIMIZED_BOTH;
+
+            if (isZoomed) {
+                frame.setExtendedState(Frame.NORMAL);
+            } else {
+                frame.setExtendedState(Frame.MAXIMIZED_BOTH);
+            }
         }
 
         @Override
