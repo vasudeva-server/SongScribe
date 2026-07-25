@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.Staff;
+import songscribe.util.LogUtils;
 
 /**
  * Port of LilyPond's beam-positioning pipeline ({@code Beam_scoring_problem}),
@@ -398,7 +399,7 @@ final class BeamScoring {
      * @param stage the name of the stage that just ran
      */
     private void logStage(String stage) {
-        if (!LOG.isDebugEnabled()) {
+        if (!LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
             return;
         }
 
@@ -534,7 +535,7 @@ final class BeamScoring {
             damping = 0.0;
         }
 
-        if (LOG.isDebugEnabled()) {
+        if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
             LOG.debug(
                 "  concaveness={} forcedFlat={} (>= {} forces flat)",
                 fmt(concaveness),
@@ -551,7 +552,7 @@ final class BeamScoring {
             unquantedLeftY += (dy - dampedDy) / 2.0;
             unquantedRightY -= (dy - dampedDy) / 2.0;
 
-            if (LOG.isDebugEnabled()) {
+            if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
                 LOG.debug("  damping: dy {} -> {}", fmt(dy), fmt(dampedDy));
             }
         }
@@ -572,7 +573,7 @@ final class BeamScoring {
 
         var singleNotesConcave = isConcaveSingleNotes(stemHeadHalfPositions, dirSign);
 
-        if (LOG.isDebugEnabled()) {
+        if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
             LOG.debug(
                 "  headPositions={} isConcaveSingleNotes={}",
                 Arrays.toString(stemHeadHalfPositions),
@@ -843,7 +844,7 @@ final class BeamScoring {
         // quant offset; Java's (int) cast has exactly that behavior.
         var baseLeft = (int) unquantedLeftY;
         var baseRight = (int) unquantedRightY;
-        var debug = LOG.isDebugEnabled();
+        var debug = LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR);
 
         Candidate best = null;
         Candidate bestFlat = null;
@@ -1184,13 +1185,16 @@ final class BeamScoring {
         var best = chooseBestConfiguration();
 
         if (best == null) {
-            LOG.debug(
-                "No viable beam quanting found; using unquanted y. stems={} xSpan={} left={} right={}",
-                stemCount,
-                xSpan,
-                unquantedLeftY,
-                unquantedRightY
-            );
+            if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+                LOG.debug(
+                    "No viable beam quanting found; using unquanted y. stems={} xSpan={} left={} right={}",
+                    stemCount,
+                    xSpan,
+                    unquantedLeftY,
+                    unquantedRightY
+                );
+            }
+
             return new BeamPosition(unquantedLeftY, unquantedRightY);
         }
 
@@ -1203,7 +1207,7 @@ final class BeamScoring {
 
     /** Logs the group's inputs and the stem info derived from them. */
     private void logInputs() {
-        if (!LOG.isDebugEnabled()) {
+        if (!LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
             return;
         }
 
@@ -1239,7 +1243,7 @@ final class BeamScoring {
      * @param bestFlat   the best flat candidate, or null if none was in range
      */
     private void logChoice(int considered, Candidate best, @Nullable Candidate bestFlat) {
-        if (!LOG.isDebugEnabled()) {
+        if (!LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
             return;
         }
 

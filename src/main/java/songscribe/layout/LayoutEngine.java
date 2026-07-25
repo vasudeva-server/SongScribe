@@ -45,6 +45,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.stacking.VerticalStackingCalculator;
 import songscribe.shape.BezierBow;
+import songscribe.util.LogUtils;
 
 
 /**
@@ -456,18 +457,25 @@ public class LayoutEngine {
             }
         }
 
+        var debugBeams = LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR);
+
         for (var beam : line.findRangeElements(Beam.class)) {
             var beamStart = beam.getAnchorElementIndex();
             var beamEnd = beam.getEndElementIndex();
             var direction = groupStemDirection(line, beamStart, beamEnd);
 
-            LOG.debug("stem dirs: group {}..{} -> {}", beamStart, beamEnd, direction);
+            if (debugBeams) {
+                LOG.debug("stem dirs: group {}..{} -> {}", beamStart, beamEnd, direction);
+            }
 
             for (var i = beamStart; i <= beamEnd; i++) {
                 var element = line.getElement(i);
 
                 if (!BeamMath.participatesInBeaming(element)) {
-                    LOG.debug("  [{}] GRACE keeps its own direction {}", i, element.getDirection());
+                    if (debugBeams) {
+                        LOG.debug("  [{}] GRACE keeps its own direction {}", i, element.getDirection());
+                    }
+
                     continue;
                 }
 
@@ -526,7 +534,10 @@ public class LayoutEngine {
         // The contour asks for an upward beam. A grace stem always points up, so an upward beam
         // is the only one it can be trapped under; send the beam below rather than bury it.
         if (BeamMath.graceStemTouchesBeamAbove(line, beamStart, beamEnd, minStaffPos)) {
-            LOG.debug("  grace stem forces group {}..{} to beam below", beamStart, beamEnd);
+            if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+                LOG.debug("  grace stem forces group {}..{} to beam below", beamStart, beamEnd);
+            }
+
             return StaffElement.Direction.DOWN;
         }
 
@@ -602,7 +613,7 @@ public class LayoutEngine {
                     -element.getStaffPosition(),
                     BeamMath.beamCount(element)));
 
-                if (LOG.isDebugEnabled()) {
+                if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
                     LOG.debug(
                         "  scoring input [{}] {} sp={} dir={} beams={}",
                         i,
@@ -613,9 +624,11 @@ public class LayoutEngine {
                 }
             }
 
-            LOG.debug(
-                "  span={} beamMembers={} scoredStems={} forcedStemCount={}",
-                spanSize, memberCount, stemInputs.size(), forcedStemCount);
+            if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+                LOG.debug(
+                    "  span={} beamMembers={} scoredStems={} forcedStemCount={}",
+                    spanSize, memberCount, stemInputs.size(), forcedStemCount);
+            }
 
             // Beam geometry in SongScribe layout space (Y-down positive).  startYSs is
             // the beam's outer edge at the first stem; slope is Y-down per X.
@@ -626,7 +639,9 @@ public class LayoutEngine {
                 var dirSign = stemDirection.isUp() ? 1 : -1;
                 var forcedFraction = (double) forcedStemCount / memberCount;
 
-                LOG.debug("--- beam elements {}..{} ---", beamStart, beamEnd);
+                if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+                    LOG.debug("--- beam elements {}..{} ---", beamStart, beamEnd);
+                }
 
                 var beamPosition = BeamScoring.solve(stemInputs, dirSign, forcedFraction);
                 var leftYUpSs = beamPosition.leftYUpSs();
@@ -690,7 +705,7 @@ public class LayoutEngine {
                     // stubRight above.
                     var frenchShorteningLevels = BeamMath.frenchBeamShortening(line, i, beamStart, beamEnd);
 
-                    if (LOG.isDebugEnabled()) {
+                    if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
                         LOG.debug(
                             "  stem [{}] {} sp={} dir={} elementY={} beamY={} stemLen={} "
                                 + "(natural={}) lengthening={} forcedShort={} french={}",
@@ -884,7 +899,7 @@ public class LayoutEngine {
             var outerCpYSs = shoulderYSs + arcSignSs * TIE_MID_THICKNESS_SS;
             var innerCpYSs = shoulderYSs - arcSignSs * TIE_MID_THICKNESS_SS;
 
-            if (LOG.isDebugEnabled()) {
+            if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_TIES_ENV_VAR)) {
                 // LilyPond position convention (positive = up) for direct ground-truth comparison:
                 // LilyPond ss is positive-up, SongScribe ss is positive-down, so negate and ×2.
                 LOG.debug(
