@@ -258,6 +258,28 @@ public final class GraceModeManager {
     }
 
     /**
+     * Returns the index of the grace note whose host-note insertion preview is showing on
+     * {@code lineComponent}, or -1 when no host preview is showing there.
+     * <p>
+     * Gates the preview glissando between the already-inserted grace note and the host ghost
+     * (refs #650): while the host is only a preview the grace note carries no slide of its own,
+     * so the connecting line is render-only state derived from here rather than from the DOM.
+     * The index rides along with the predicate so {@link #graceNoteIndex} needs no accessor of
+     * its own outside this package.
+     */
+    public int hostPreviewGraceIndexOn(LineComponent lineComponent) {
+        return isShowingHostPreviewOn(lineComponent) ? graceNoteIndex : -1;
+    }
+
+    /**
+     * Returns whether the host-note insertion preview is showing on {@code lineComponent}, i.e.
+     * the grace note is waiting for the host the user is positioning.
+     */
+    boolean isShowingHostPreviewOn(LineComponent lineComponent) {
+        return state == State.GRACE_NOTE_INSERT && lineComponent == graceLineComponent;
+    }
+
+    /**
      * Returns the host-note insertion preview cached on entry to {@link State#GRACE_NOTE_INSERT}.
      * Null if not in that state or the host note would not fit on the line (in which case
      * {@link #enterGraceNoteInsert} would have aborted and reset the state).
@@ -806,6 +828,12 @@ public final class GraceModeManager {
         justEnteredInsert = false;
         pendingCancel = false;
         pendingConnect = false;
+
+        // The host preview's connecting glissando is gated on the state cleared just above, and
+        // nothing else takes the overlays down on the way out of grace mode: a commit would leave
+        // the preview line doubling the real glissando it just became, and an abort would leave
+        // one running to a grace note that has already been removed.
+        PreviewElementManager.previewElementDidChange();
     }
 
     // -------------------------------------------------------------------------

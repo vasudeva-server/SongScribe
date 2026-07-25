@@ -286,6 +286,46 @@ public final class SlideRenderer {
     }
 
     /**
+     * Renders a preview glissando from the note at {@code sourceIndex} to the hover preview
+     * element, which sits at {@code previewElementXSs} instead of in the layout.
+     * <p>
+     * Used while the grace-note host insertion preview is showing: the host note exists only as
+     * the ghost the user is positioning, so its geometry cannot be looked up the way
+     * {@link #renderPreviewGlissando}'s target is. Everything else — the attach extents, the
+     * end trimming, the minimum length — is the committed glissando's geometry.
+     *
+     * @param g2                Graphics context (staff-space coordinate system)
+     * @param sourceIndex       Index of the source note in the line
+     * @param line              The line containing the source note
+     * @param previewElement    The hover preview element to connect to
+     * @param previewElementXSs The preview element's origin X in the line's staff spaces
+     * @param invariants        Line invariants
+     */
+    public void renderPreviewGlissandoToPreviewElement(
+        Graphics2D g2,
+        int sourceIndex,
+        Line line,
+        StaffElement previewElement,
+        double previewElementXSs,
+        LineInvariants invariants
+    ) {
+        if (sourceIndex < 0 || sourceIndex >= line.elementCount()) {
+            return;
+        }
+
+        var middleLineYSs = invariants.getMiddleLineYSs();
+        var src = resolveNoteContext(
+            line.getElement(sourceIndex), sourceIndex, line,
+            invariants.getLayoutResult(), middleLineYSs
+        );
+
+        // A preview element is not on the line, so no beam can span it.
+        var tgt = noteContextAt(previewElement, previewElementXSs, false, middleLineYSs);
+
+        render(g2, src, tgt, null, g2.getColor());
+    }
+
+    /**
      * Renders a preview fall glyph trailing the source note.
      * <p>
      * Used when the slide tool is active and the mouse hovers over the fall zone. No notehead is
@@ -406,8 +446,21 @@ public final class SlideRenderer {
         StaffElement note, int noteIndex, Line line,
         LayoutResult layoutResult, double middleLineYSs
     ) {
-        var beamed = line.findBeamAt(noteIndex) != null;
-        var elementXSs = layoutResult.getElementXSs(note);
+        return noteContextAt(
+            note,
+            layoutResult.getElementXSs(note),
+            line.findBeamAt(noteIndex) != null,
+            middleLineYSs
+        );
+    }
+
+    /**
+     * Resolves the geometry context for a note at an explicitly given origin X, for a note the
+     * layout cannot be asked about because it is not on the line — the hover preview element.
+     */
+    static NoteContext noteContextAt(
+        StaffElement note, double elementXSs, boolean beamed, double middleLineYSs
+    ) {
         var cy = RenderingUtils.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
 
         // Compute the stem-free attach extent once and widen it to the stem-full extent for the

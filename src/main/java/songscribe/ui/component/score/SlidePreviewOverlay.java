@@ -26,12 +26,10 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.SlideZone;
-import songscribe.ui.component.ScoreView;
 import songscribe.ui.renderer.DisplayList;
 import songscribe.ui.renderer.LineInvariants;
 import songscribe.ui.renderer.RecordingGraphics2D;
 import songscribe.util.GraphicUtils;
-import songscribe.util.GraphicsState;
 
 /**
  * Shared base for the two slide-tool hover previews — the trailing {@link SlideZone#FALL} glyph
@@ -102,15 +100,5 @@ public abstract class SlidePreviewOverlay extends RecordedInkOverlay {
         }
 
         return getDisplayListInkSs();
-    }
-
-    @Override
-    protected void renderOverlay(Graphics2D g2) {
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
-            // The renderer deliberately never sets a color, so the recorded ink is monochrome and
-            // the preview color is applied once, here.
-            g2.setColor(ScoreView.getPreviewElementColor());
-            replayInk(g2);
-        }
     }
 }

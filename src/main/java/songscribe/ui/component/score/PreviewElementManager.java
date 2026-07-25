@@ -163,6 +163,15 @@ public final class PreviewElementManager {
     private static GlissandoPreviewOverlay glissandoOverlay = null;
 
     /**
+     * The component that draws the connecting glissando between a grace note and the host-note
+     * insertion preview, or null before a host has installed one. Independent of the two
+     * slide-tool previews: it is gated on grace mode rather than on a {@link SlideZone}, and the
+     * note-head preview it connects to is showing at the same time.
+     */
+    @Nullable
+    private static GraceGlissandoPreviewOverlay graceGlissandoOverlay = null;
+
+    /**
      * How long the pointer must stay put before the cursor is hidden over the hover preview.
      * Long enough that the arrow stays available all the while the mouse is in motion, short
      * enough that it is out of the way by the time the user is looking at the ghost they are
@@ -385,6 +394,7 @@ public final class PreviewElementManager {
         overlay = new PreviewElementOverlay(host);
         fallOverlay = new FallPreviewOverlay(host);
         glissandoOverlay = new GlissandoPreviewOverlay(host);
+        graceGlissandoOverlay = new GraceGlissandoPreviewOverlay(host);
 
         for (var installed : installedOverlays()) {
             host.addOverlay(installed);
@@ -396,7 +406,7 @@ public final class PreviewElementManager {
      * hiding each one that no longer applies. Call whenever anything the renderers read has
      * changed — the preview element itself, its decorations, the staff position it sits at, or
      * the slide zone a slide tool is previewing. Each overlay's own gate decides whether it is
-     * the one that should be visible, so a single call here keeps all three in sync without the
+     * the one that should be visible, so a single call here keeps them all in sync without the
      * caller having to know which one currently applies.
      */
     public static void previewElementDidChange() {
@@ -407,15 +417,18 @@ public final class PreviewElementManager {
 
     /**
      * The installed overlays, or an empty list before {@link #installOverlay} (headless
-     * converters never install any). All three are created and cleared together, so the
+     * converters never install any). They are all created and cleared together, so the
      * all-or-nothing check covers each of them.
      */
     private static List<RecordedInkOverlay> installedOverlays() {
-        if (overlay == null || fallOverlay == null || glissandoOverlay == null) {
+        if (overlay == null
+            || fallOverlay == null
+            || glissandoOverlay == null
+            || graceGlissandoOverlay == null) {
             return List.of();
         }
 
-        return List.of(overlay, fallOverlay, glissandoOverlay);
+        return List.of(overlay, fallOverlay, glissandoOverlay, graceGlissandoOverlay);
     }
 
     /**
@@ -480,6 +493,20 @@ public final class PreviewElementManager {
     private static void previewElementDidMove() {
         if (overlay != null) {
             overlay.previewDidMove(currentPreviewLine);
+        }
+
+        // This is the path on which the grace-host glissando first appears. Entering the insert
+        // phase hides the preview element (enterGraceNote) and then restores it
+        // (enterGraceNoteInsert), which resets currentXIndex to -1 and re-enters trackMouse — so
+        // the next move reports a changed x index while the configuration is unchanged, and lands
+        // here. The visibility flag that restore flipped is not one of the fields
+        // configurationChanged tracks, so nothing else would rebuild this overlay's ink.
+        //
+        // Its own X never moves while grace mode holds it (trackMouse pins the mouse X to the
+        // locked insertion slot), so off this transition the rebuild is a no-op beyond a rejected
+        // gate check.
+        if (graceGlissandoOverlay != null) {
+            graceGlissandoOverlay.previewDidChange(currentPreviewLine);
         }
     }
 
@@ -602,6 +629,22 @@ public final class PreviewElementManager {
         var sourceIndex = currentXIndex - 1;
 
         return !sourceAlreadyHasSlide(line, sourceIndex, zone);
+    }
+
+    /**
+     * Returns the index of the grace note that the host-note insertion preview on {@code lc}
+     * would be connected to, or -1 when no connecting glissando should be drawn there.
+     * <p>
+     * The single home for "is the grace-host preview glissando visible". It rides on
+     * {@link #shouldShowPreviewOn}: the connecting line only means anything while the host ghost
+     * it runs to is itself on screen.
+     */
+    static int graceHostPreviewSourceIndexOn(LineComponent lc) {
+        if (!shouldShowPreviewOn(lc)) {
+            return -1;
+        }
+
+        return EditModeManager.getGraceModeManager().hostPreviewGraceIndexOn(lc);
     }
 
     /**
@@ -913,6 +956,14 @@ public final class PreviewElementManager {
     }
 
     /**
+     * Returns the installed grace-host glissando-preview overlay, or null before
+     * {@link #installOverlay}.
+     */
+    static @Nullable GraceGlissandoPreviewOverlay getGraceGlissandoOverlay() {
+        return graceGlissandoOverlay;
+    }
+
+    /**
      * Clears the installed overlays (package-private for test teardown), so a later test's
      * {@link #installOverlay} starts from a clean slate instead of reusing a previous test's
      * overlay instances.
@@ -921,6 +972,7 @@ public final class PreviewElementManager {
         overlay = null;
         fallOverlay = null;
         glissandoOverlay = null;
+        graceGlissandoOverlay = null;
         discardCursorHideDwell();
     }
 

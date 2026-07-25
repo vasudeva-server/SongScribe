@@ -1218,6 +1218,94 @@ class GraceModeManagerTest extends UnitTest {
             assertThat(notification).isInstanceOf(GraceModeStateDidChangeNotification.class);
             assertThat(((GraceModeStateDidChangeNotification) notification).isActive()).isFalse();
         }
+
+        /**
+         * The teardown the host-preview glissando depends on (refs #650). Nothing else takes that
+         * overlay down on the way out of grace mode, and the state its gate reads has just been
+         * cleared — so without this call a commit would leave the preview line doubling the real
+         * glissando it became, and an abort would leave one running to a removed grace note. Driven
+         * through the abort path; {@code commit()} shares the same {@code resetState()}.
+         */
+        @Test
+        void testFinishRebuildsThePreviewOverlays() {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var line = detachedLine();
+            line.addElement(graceNote);
+
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
+            setField(manager, "mouseDownPoint", null);  // triggers finish(cancel=true)
+            manager.setGraceNote(graceNote);
+            setField(manager, "graceNoteIndex", 0);
+            manager.setGraceLine(line);
+            manager.setGraceLineComponent(mock(LineComponent.class));
+
+            var e = mouseEvent(mock(LineComponent.class), MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
+
+            try (var previewElementManagerMock = mockStatic(PreviewElementManager.class)) {
+                manager.mouseReleased(mock(LineComponent.class), e);
+
+                previewElementManagerMock.verify(PreviewElementManager::previewElementDidChange);
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // hostPreviewGraceIndexOn — the grace→host preview glissando's gate (refs #650)
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class HostPreviewGraceIndexOn {
+
+        /** Not 0, so an index that ignored grace mode and took the first element would not match. */
+        private static final int GRACE_NOTE_INDEX = 2;
+
+        private GraceModeManager manager;
+        private LineComponent graceLineComponent;
+
+        @BeforeEach
+        void setUp() {
+            manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            graceLineComponent = mock(LineComponent.class);
+            manager.setGraceLineComponent(graceLineComponent);
+            setField(manager, "graceNoteIndex", GRACE_NOTE_INDEX);
+        }
+
+        @Test
+        void testReturnsTheGraceNoteIndexOnTheGraceLineDuringInsert() {
+            manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
+
+            assertThat(manager.hostPreviewGraceIndexOn(graceLineComponent))
+                .as("the host ghost is being positioned on this line -> its grace note's index")
+                .isEqualTo(GRACE_NOTE_INDEX);
+        }
+
+        @Test
+        void testReturnsMinusOneOnALineOtherThanTheGraceLine() {
+            manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
+
+            assertThat(manager.hostPreviewGraceIndexOn(mock(LineComponent.class)))
+                .as("the grace note is on a different line -> nothing to connect here")
+                .isEqualTo(-1);
+        }
+
+        @Test
+        void testReturnsMinusOneBeforeTheInsertPhase() {
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
+
+            assertThat(manager.hostPreviewGraceIndexOn(graceLineComponent))
+                .as("the grace note is still being placed -> there is no host ghost yet")
+                .isEqualTo(-1);
+        }
+
+        @Test
+        void testReturnsMinusOneWhenGraceModeIsInactive() {
+            manager.setState(GraceModeManager.State.INACTIVE);
+
+            assertThat(manager.hostPreviewGraceIndexOn(graceLineComponent))
+                .as("grace mode is over -> the connecting line has nothing to draw")
+                .isEqualTo(-1);
+        }
     }
 
     // -------------------------------------------------------------------------

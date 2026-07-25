@@ -153,6 +153,9 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         playbackMock.when(PlaybackController::isPlaying).thenReturn(false);
 
         graceModeManagerMock = mock(GraceModeManager.class);
+        // -1 means "no host preview on this line". An unstubbed mock would answer 0, which is a
+        // valid grace-note index, and would switch the connecting glissando on for every test here.
+        when(graceModeManagerMock.hostPreviewGraceIndexOn(any())).thenReturn(-1);
         editModeManagerMock.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManagerMock);
         editModeManagerMock.when(EditModeManager::hasPreviewElement).thenReturn(true);
         editModeManagerMock.when(EditModeManager::isPreviewElementVisible).thenReturn(true);
@@ -542,5 +545,38 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         assertThat(boundsFarAbove)
             .as("a staff-position change that crosses the ledger-line threshold rebuilds the ink")
             .isNotEqualTo(boundsOnStaff);
+    }
+
+    @Test
+    void testXIndexOnlyChangeReanchorsTheGraceGlissandoOverlay() {
+        // The grace→host glissando first appears on exactly this path: entering the insert phase
+        // hides and then restores the preview element, which resets currentXIndex, so the next
+        // move reports a changed index with an unchanged configuration. The visibility flag the
+        // restore flipped is not one of the fields configurationChanged tracks, so if the move
+        // path did not drive this overlay nothing would.
+        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        when(layoutResult.findInsertionIndex(anyDouble(), eq(line))).thenReturn(0);
+        PreviewElementManager.trackMouse(lc, mouseEvent(0, ON_STAFF_Y_PX, false));
+
+        var graceGlissandoOverlay = PreviewElementManager.getGraceGlissandoOverlay();
+
+        if (graceGlissandoOverlay == null) {
+            throw new AssertionError("expected installOverlay to install a grace glissando overlay");
+        }
+
+        // Stands in for the hidePreviewElement(false) grace mode performs on its way into the
+        // insert phase: the overlay is unanchored, and only the move that follows brings it back.
+        graceGlissandoOverlay.previewDidChange(null);
+
+        assertThat(graceGlissandoOverlay.getTargetLine())
+            .as("precondition: the overlay must be unanchored before the move under test")
+            .isNull();
+
+        when(layoutResult.findInsertionIndex(anyDouble(), eq(line))).thenReturn(1);
+        PreviewElementManager.trackMouse(lc, mouseEvent(1, ON_STAFF_Y_PX, false));
+
+        assertThat(graceGlissandoOverlay.getTargetLine())
+            .as("an xIndex-only move re-anchors the grace glissando, not just the note head")
+            .isSameAs(lc);
     }
 }

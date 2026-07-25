@@ -24,8 +24,10 @@ import module java.desktop;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.renderer.DisplayList;
 import songscribe.ui.renderer.RecordingGraphics2D;
+import songscribe.util.GraphicsState;
 
 /**
  * Shared base for the preview overlays that obtain their ink by <b>recording the real renderers</b>
@@ -122,5 +124,20 @@ public abstract class RecordedInkOverlay extends LineOverlayComponent {
     /** Replays the recorded ink in {@code g2}'s current color. */
     protected final void replayInk(Graphics2D g2) {
         displayList.replay(g2);
+    }
+
+    /**
+     * Replays the recorded ink in the preview color. The default for every subclass whose ink is
+     * already in the target line's own coordinate space; {@link PreviewElementOverlay}, whose ink
+     * is relative to the preview element's origin, overrides to add the translate.
+     */
+    @Override
+    protected void renderOverlay(Graphics2D g2) {
+        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+            // The renderers deliberately never set a color, so the recorded ink is monochrome and
+            // the preview color is applied once, here.
+            g2.setColor(ScoreView.getPreviewElementColor());
+            replayInk(g2);
+        }
     }
 }

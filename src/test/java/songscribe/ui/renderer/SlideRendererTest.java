@@ -50,7 +50,7 @@ import songscribe.ui.component.score.LineComponent;
 
 class SlideRendererTest extends UnitTest {
 
-    /** Half-width used to define synthetic column extents in noteContextAt(). */
+    /** Half-width used to define synthetic column extents in noteContextCentredAt(). */
     private static final double HALF_COLUMN_SS = 0.5;
 
     private static final SlideRenderer RENDERER = SlideRenderer.getInstance();
@@ -424,7 +424,7 @@ class SlideRendererTest extends UnitTest {
      * half-column of HALF_COLUMN_SS: glissRightXSs = cxSs + HALF_COLUMN_SS,
      * glissLeftXSs = cxSs - HALF_COLUMN_SS, columnRightXSs = cxSs + HALF_COLUMN_SS.
      */
-    private static SlideRenderer.NoteContext noteContextAt(double cxSs, double cySs) {
+    private static SlideRenderer.NoteContext noteContextCentredAt(double cxSs, double cySs) {
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
         return new SlideRenderer.NoteContext(
@@ -441,8 +441,8 @@ class SlideRendererTest extends UnitTest {
         // Centres exactly 1.0 ss apart: tgt.glissLeft (1.0 - 0.5 = 0.5) coincides with
         // src.glissRight (0.0 + 0.5 = 0.5), so attachLength = 0 ≤ 2*gap. The early guard
         // rejects this before the unit-vector division, preventing a divide-by-zero/NaN.
-        var src = noteContextAt(0.0, 0.0);
-        var tgt = noteContextAt(1.0, 0.0);
+        var src = noteContextCentredAt(0.0, 0.0);
+        var tgt = noteContextCentredAt(1.0, 0.0);
         assertThat(SlideRenderer.computeEndpoints(src, tgt)).isNull();
     }
 
@@ -450,23 +450,23 @@ class SlideRendererTest extends UnitTest {
     void testComputeEndpoints_sameCentreDrawnTooShort_returnsNull() {
         // Same centre: attachLength = 1.0 (tgt.glissLeft = 4.5, src.glissRight = 5.5),
         // drawn length = 1.0 - 2*0.4 = 0.2 < MIN_RECT_LENGTH_SS → null
-        var src = noteContextAt(5.0, 0.0);
-        var tgt = noteContextAt(5.0, 0.0);
+        var src = noteContextCentredAt(5.0, 0.0);
+        var tgt = noteContextCentredAt(5.0, 0.0);
         assertThat(SlideRenderer.computeEndpoints(src, tgt)).isNull();
     }
 
     @Test
     void testComputeEndpoints_shortConnected_returnsNull() {
         // Notes 0.1 ss apart: attachLength = 0.9, drawn = 0.9 - 2*0.4 = 0.1 < MIN_RECT_LENGTH_SS → null
-        var src = noteContextAt(0.0, 0.0);
-        var tgt = noteContextAt(0.1, 0.0);
+        var src = noteContextCentredAt(0.0, 0.0);
+        var tgt = noteContextCentredAt(0.1, 0.0);
         assertThat(SlideRenderer.computeEndpoints(src, tgt)).isNull();
     }
 
     @Test
     void testComputeEndpoints_nullTarget_returnsNull() {
         // No following note to connect to: a connecting glissando cannot be drawn.
-        var src = noteContextAt(0.0, 0.0);
+        var src = noteContextCentredAt(0.0, 0.0);
         assertThat(SlideRenderer.computeEndpoints(src, null)).isNull();
     }
 
@@ -476,8 +476,8 @@ class SlideRendererTest extends UnitTest {
         // startX = 0.0 + 0.5 + 0.4 = 0.9, endX = 10.0 - 0.5 - 0.4 = 9.1
         var srcCx = 0.0;
         var tgtCx = 10.0;
-        var src = noteContextAt(srcCx, 0.0);
-        var tgt = noteContextAt(tgtCx, 0.0);
+        var src = noteContextCentredAt(srcCx, 0.0);
+        var tgt = noteContextCentredAt(tgtCx, 0.0);
 
         var result = SlideRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
@@ -503,12 +503,12 @@ class SlideRendererTest extends UnitTest {
         // shrinks as the line steepens. A shallow (horizontal) glissando has full inset = gap;
         // a 45° glissando has a smaller horizontal inset.
         var shallowResult = SlideRenderer.computeEndpoints(
-            noteContextAt(0.0, 0.0), noteContextAt(10.0, 0.0));
+            noteContextCentredAt(0.0, 0.0), noteContextCentredAt(10.0, 0.0));
         assertThat(shallowResult).isNotNull();
 
         var steepDy = 10.0;
         var steepResult = SlideRenderer.computeEndpoints(
-            noteContextAt(0.0, 0.0), noteContextAt(10.0, steepDy));
+            noteContextCentredAt(0.0, 0.0), noteContextCentredAt(10.0, steepDy));
         assertThat(steepResult).isNotNull();
 
         var attachStartX = HALF_COLUMN_SS;  // src.glissRightXSs = 0 + HALF_COLUMN_SS
@@ -541,7 +541,7 @@ class SlideRendererTest extends UnitTest {
         // the ascending case. Catches a sign error in the Y component of the trim or in atan2.
         var descendingDy = -10.0;
         var result = SlideRenderer.computeEndpoints(
-            noteContextAt(0.0, 0.0), noteContextAt(10.0, descendingDy));
+            noteContextCentredAt(0.0, 0.0), noteContextCentredAt(10.0, descendingDy));
         assertThat(result).isNotNull();
 
         var attachStartX = HALF_COLUMN_SS;        // src.glissRightXSs
@@ -588,5 +588,144 @@ class SlideRendererTest extends UnitTest {
         assertThat(shifted.glissLeftXSs()).isCloseTo(glissLeft + shift, within(0.001));
         assertThat(shifted.glissRightXSs()).isCloseTo(glissRight + shift, within(0.001));
         assertThat(shifted.cySs()).isCloseTo(cy, within(0.001));
+    }
+
+    // ======================================================================
+    // renderPreviewGlissandoToPreviewElement — the grace→host preview line
+    // ======================================================================
+
+    /** The host preview's origin X: far enough right of the source to leave a drawable line. */
+    private static final double PREVIEW_ELEMENT_X_SS = 6.0;
+
+    /** Middle-line Y for the preview-glissando fixtures. */
+    private static final double PREVIEW_MIDDLE_LINE_Y_SS = 4.0;
+
+    /**
+     * Both endpoints sit on the middle line, so the drawn line is horizontal and its ink bounds
+     * are its endpoints exactly in X — {@code drawRoundedLine}'s rectangle spans [0, length] in
+     * line-local coordinates, with no cap bulge past either end.
+     */
+    private static final int PREVIEW_STAFF_POSITION = 0;
+
+    /** The source (grace) note is the fixture line's only element. */
+    private static final int PREVIEW_SOURCE_INDEX = 0;
+
+    private static final double GEOMETRY_TOLERANCE_SS = 0.001;
+
+    /** A line holding one grace note at the origin — the preview glissando's source. */
+    private static Line graceNoteLine() {
+        NoteGeometry.initializeAccidentalWidths();
+
+        var source = ElementType.GRACE_QUAVER.newInstance();
+        source.setStaffPosition(PREVIEW_STAFF_POSITION);
+
+        var line = detachedLine();
+        line.addElement(source);
+
+        return line;
+    }
+
+    private static StaffElement hostPreviewElement() {
+        var previewElement = ElementType.CROTCHET.newInstance();
+        previewElement.setStaffPosition(PREVIEW_STAFF_POSITION);
+        return previewElement;
+    }
+
+    /**
+     * Runs the preview glissando against a recorder and returns the ink it produced, or null when
+     * nothing was drawn. The source note is absent from the empty {@link LayoutResult}, which
+     * reports 0 for it, so the source sits at the origin.
+     */
+    private static @Nullable Rectangle2D recordPreviewGlissando(
+        Line line, int sourceIndex, StaffElement previewElement, LineInvariants invariants
+    ) {
+        var recorder = new RecordingGraphics2D();
+        recorder.setColor(Color.BLACK);
+
+        RENDERER.renderPreviewGlissandoToPreviewElement(
+            recorder, sourceIndex, line, previewElement, PREVIEW_ELEMENT_X_SS, invariants);
+
+        return recorder.displayList().inkBoundsSs();
+    }
+
+    private static LineInvariants previewInvariants(Line line) {
+        return RenderContextTestHelper.newContext(new Song())
+            .setCurrentLine(line)
+            .setMiddleLineYSs(PREVIEW_MIDDLE_LINE_Y_SS)
+            .build();
+    }
+
+    @Test
+    void testRenderPreviewGlissandoToPreviewElement_spansSourceRightEdgeToPreviewLeftEdge() {
+        var line = graceNoteLine();
+        var previewElement = hostPreviewElement();
+        var invariants = previewInvariants(line);
+
+        var inkSs = recordPreviewGlissando(line, PREVIEW_SOURCE_INDEX, previewElement, invariants);
+
+        if (inkSs == null) {
+            throw new AssertionError("expected the preview glissando to draw");
+        }
+
+        var src = SlideRenderer.resolveNoteContext(
+            line.getElement(PREVIEW_SOURCE_INDEX), PREVIEW_SOURCE_INDEX, line,
+            invariants.getLayoutResult(), PREVIEW_MIDDLE_LINE_Y_SS);
+        var tgt = SlideRenderer.noteContextAt(
+            previewElement, PREVIEW_ELEMENT_X_SS, false, PREVIEW_MIDDLE_LINE_Y_SS);
+
+        // Which end attaches where is the whole content of the src/tgt argument order: the source
+        // contributes its right attach edge and the preview its left, each trimmed inward by the
+        // drawn gap. A swap would start at the preview's right edge and end at the source's left.
+        assertThat(inkSs.getMinX())
+            .as("starts one drawn gap right of the grace note's attach edge")
+            .isCloseTo(
+                src.glissRightXSs() + NoteGeometry.GLISSANDO_DRAWN_GAP_SS,
+                within(GEOMETRY_TOLERANCE_SS));
+        assertThat(inkSs.getMaxX())
+            .as("stops one drawn gap left of the host preview's attach edge")
+            .isCloseTo(
+                tgt.glissLeftXSs() - NoteGeometry.GLISSANDO_DRAWN_GAP_SS,
+                within(GEOMETRY_TOLERANCE_SS));
+    }
+
+    @Test
+    void testRenderPreviewGlissandoToPreviewElement_negativeSourceIndex_drawsNothing() {
+        var line = graceNoteLine();
+
+        var inkSs = recordPreviewGlissando(line, -1, hostPreviewElement(), previewInvariants(line));
+
+        assertThat(inkSs)
+            .as("a negative source index has no note to start from -> nothing is drawn")
+            .isNull();
+    }
+
+    @Test
+    void testRenderPreviewGlissandoToPreviewElement_sourceIndexPastEnd_drawsNothing() {
+        var line = graceNoteLine();
+
+        var inkSs = recordPreviewGlissando(
+            line, line.elementCount(), hostPreviewElement(), previewInvariants(line));
+
+        assertThat(inkSs)
+            .as("a source index past the last element has no note to start from -> nothing is drawn")
+            .isNull();
+    }
+
+    @Test
+    void testNoteContextAt_beamedMovesTheDottedAttachEdge() {
+        // beamed is noteContextAt's one input that is not read off the note, and it reaches the
+        // geometry through dot placement: an unbeamed up-stem quaver carries a flag, which pushes
+        // its augmentation dot — and with it the right attach edge — further out.
+        var note = ElementType.QUAVER.newInstance();
+        note.setUpper(true);
+        note.setStaffPosition(PREVIEW_STAFF_POSITION);
+        note.setDotCount(1);
+
+        var unbeamed = SlideRenderer.noteContextAt(note, 0, false, PREVIEW_MIDDLE_LINE_Y_SS);
+        var beamed = SlideRenderer.noteContextAt(note, 0, true, PREVIEW_MIDDLE_LINE_Y_SS);
+
+        assertThat(beamed.glissRightXSs())
+            .as("a beam removes the flag the augmentation dot has to clear")
+            .isLessThan(unbeamed.glissRightXSs());
     }
 }
