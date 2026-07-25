@@ -152,6 +152,29 @@ class LayoutEngineTest extends UnitTest {
     /** Staff position that puts a whole group's stems down, so a grace note's must not follow. */
     private static final int SP_DOWN_STEM_GROUP = -4;
 
+    // Row 24c — a grace note's stem as a factor in the beam-above/below decision. The group's
+    // heads sit at or below the middle line, so its contour asks for a beam above it; whether
+    // that beam would land on the grace note's stem is what these two pitches vary.
+    private static final int SP_UP_STEM_GROUP_LOW = 2;
+    private static final int SP_UP_STEM_GROUP_HIGH = 0;
+
+    /** A grace note high enough that a beam above this group would cross its stem. */
+    private static final int SP_GRACE_UNDER_BEAM = -1;
+
+    /** A grace note low enough that its stem stays clear of the same beam. */
+    private static final int SP_GRACE_CLEAR_OF_BEAM = 4;
+
+    // The two staff positions the collision flips between, for a two-beam stack over this group.
+    // A staff position is half a staff space, so these are the closest a pair can be, and they
+    // straddle the threshold by less than the clearance constant itself: the test that uses them
+    // fails if the clearance changes, if the beam-height estimate drifts, or if the comparison
+    // turns from < into <=.
+    /** Highest grace note that still collides: its stem tip sits 0.29 ss above the threshold. */
+    private static final int SP_GRACE_BARELY_UNDER_BEAM = 1;
+
+    /** Lowest grace note that already clears: its stem tip sits 0.21 ss below the threshold. */
+    private static final int SP_GRACE_BARELY_CLEAR_OF_BEAM = 2;
+
     // Row 25 — tie geometry constant
     /** Staff position shared by both tied notes. */
     private static final int SP_TIE_NOTE = 2;
@@ -833,6 +856,139 @@ class LayoutEngineTest extends UnitTest {
             .isEqualTo(StaffElement.Direction.DOWN);
         assertThat(line.getElement(GRACE_INDEX).getDirection())
             .describedAs("the grace note keeps its upward stem")
+            .isEqualTo(StaffElement.Direction.UP);
+    }
+
+    /**
+     * A run of {@code noteType} whose contour asks for a beam above it, with a grace note at
+     * {@code gracePos} inside the span. Only the note type and the grace note's pitch vary, so
+     * between them they decide whether the beam can stay above: the type sets how far the beam
+     * stack hangs below the outer beam, the pitch sets how far the grace stem reaches up.
+     */
+    private static Line lineWithGraceUnderAnUpwardBeam(ElementType noteType, int gracePos) {
+        return beamedLineAt(
+            new ElementType[] {
+                noteType, noteType,
+                ElementType.GRACE_QUAVER,
+                noteType, noteType,
+            },
+            new int[] {
+                SP_UP_STEM_GROUP_LOW, SP_UP_STEM_GROUP_LOW, gracePos,
+                SP_UP_STEM_GROUP_LOW, SP_UP_STEM_GROUP_HIGH,
+            });
+    }
+
+    private static Line lineWithGraceUnderAnUpwardBeam(int gracePos) {
+        return lineWithGraceUnderAnUpwardBeam(ElementType.SEMIQUAVER, gracePos);
+    }
+
+    private static StaffElement.Direction beamGroupDirectionOf(Line line) {
+        require(engine().layout(line), "LayoutResult");
+        return line.getElement(0).getDirection();
+    }
+
+    // T24c: A grace note keeps its own short upward stem, so a beam drawn above a group it sits in
+    //       can cross that stem and swallow the notehead. The grace note's reach is therefore one
+    //       of the factors in the above/below decision: it sends the beam below rather than be
+    //       buried.
+    @Test
+    void testGraceStemUnderAnUpwardBeamForcesTheBeamBelow() {
+        var line = lineWithGraceUnderAnUpwardBeam(SP_GRACE_UNDER_BEAM);
+
+        require(engine().layout(line), "LayoutResult");
+
+        assertThat(line.getElement(0).getDirection())
+            .describedAs("a grace note the beam would run into pushes the beam below the group")
+            .isEqualTo(StaffElement.Direction.DOWN);
+        assertThat(line.getElement(GRACE_INDEX).getDirection())
+            .describedAs("the grace note still stems up, now clear of the beam")
+            .isEqualTo(StaffElement.Direction.UP);
+    }
+
+    // T24d: The counterpart: the same group, with the grace note low enough to clear the beam,
+    //       keeps the beam the contour asked for — so the rule above is a collision test, not a
+    //       blanket ban on beaming above a grace note.
+    @Test
+    void testGraceStemClearOfAnUpwardBeamLeavesTheBeamAbove() {
+        var line = lineWithGraceUnderAnUpwardBeam(SP_GRACE_CLEAR_OF_BEAM);
+
+        require(engine().layout(line), "LayoutResult");
+
+        assertThat(line.getElement(0).getDirection())
+            .describedAs("a grace note that clears the beam does not move it")
+            .isEqualTo(StaffElement.Direction.UP);
+        assertThat(line.getElement(GRACE_INDEX).getDirection())
+            .describedAs("the grace note stems up either way")
+            .isEqualTo(StaffElement.Direction.UP);
+    }
+
+    // T24e: The two tests above sit well to either side of the threshold, so they would still pass
+    //       with the clearance mis-set or the comparison inverted. This pins where the flip
+    //       actually happens: the adjacent pair of staff positions that straddle it.
+    @Test
+    void testTheGraceStemCollisionFlipsAtItsClearanceThreshold() {
+        assertThat(beamGroupDirectionOf(lineWithGraceUnderAnUpwardBeam(SP_GRACE_BARELY_UNDER_BEAM)))
+            .describedAs("the highest grace note that still collides sends the beam below")
+            .isEqualTo(StaffElement.Direction.DOWN);
+        assertThat(
+            beamGroupDirectionOf(lineWithGraceUnderAnUpwardBeam(SP_GRACE_BARELY_CLEAR_OF_BEAM)))
+            .describedAs("one staff position lower, the same grace note clears and the beam stays")
+            .isEqualTo(StaffElement.Direction.UP);
+    }
+
+    // T24f: The beam's lowest edge is the outer beam plus the stack hanging below it, so a
+    //       thirty-second group reaches further down toward a grace note than a sixteenth one.
+    //       Holding the grace note still and shortening the notes must therefore flip the beam —
+    //       which it does not if the estimate ignores how many beams the group carries.
+    @Test
+    void testAThirdBeamReachesAGraceNoteThatTwoBeamsClear() {
+        assertThat(beamGroupDirectionOf(lineWithGraceUnderAnUpwardBeam(
+            ElementType.SEMIQUAVER, SP_GRACE_BARELY_CLEAR_OF_BEAM)))
+            .describedAs("two beams stop short of this grace note")
+            .isEqualTo(StaffElement.Direction.UP);
+        assertThat(beamGroupDirectionOf(lineWithGraceUnderAnUpwardBeam(
+            ElementType.DEMI_SEMIQUAVER, SP_GRACE_BARELY_CLEAR_OF_BEAM)))
+            .describedAs("a third beam hangs low enough to reach it, sending the beam below")
+            .isEqualTo(StaffElement.Direction.DOWN);
+    }
+
+    // T24g: The collision scan has to walk every grace note in the span, not just the first. Here
+    //       the first one clears and the second does not, so a scan that stops early — or that
+    //       misses the last index — leaves the beam above and buries the second grace note.
+    @Test
+    void testACollidingGraceNoteIsFoundBehindAClearingOne() {
+        var line = beamedLineAt(
+            new ElementType[] {
+                ElementType.SEMIQUAVER,
+                ElementType.GRACE_QUAVER,
+                ElementType.SEMIQUAVER,
+                ElementType.GRACE_QUAVER,
+                ElementType.SEMIQUAVER,
+            },
+            new int[] {
+                SP_UP_STEM_GROUP_LOW, SP_GRACE_CLEAR_OF_BEAM, SP_UP_STEM_GROUP_LOW,
+                SP_GRACE_UNDER_BEAM, SP_UP_STEM_GROUP_HIGH,
+            });
+
+        assertThat(beamGroupDirectionOf(line))
+            .describedAs("a later grace note collides, so the beam still goes below")
+            .isEqualTo(StaffElement.Direction.DOWN);
+    }
+
+    // T24h: A manual stem direction is the engraver's decision and outranks the grace note: the
+    //       override scan returns before the collision check runs. Pinned because it is the one
+    //       case where a grace note is knowingly left under the beam.
+    @Test
+    void testAManualUpStemKeepsTheBeamAboveACollidingGraceNote() {
+        var line = lineWithGraceUnderAnUpwardBeam(SP_GRACE_UNDER_BEAM);
+        var firstNote = line.getElement(0);
+        firstNote.setStemDirectionAuto(false);
+        firstNote.setDirection(StaffElement.Direction.UP);
+
+        require(engine().layout(line), "LayoutResult");
+
+        assertThat(line.getElement(1).getDirection())
+            .describedAs("a manual direction wins over the grace note's collision")
             .isEqualTo(StaffElement.Direction.UP);
     }
 

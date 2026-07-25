@@ -87,6 +87,19 @@ public final class LineThickness {
     }
 
     /**
+     * Total vertical extent of a stack of {@code beamCount} beams, in staff spaces, measured
+     * from the outer edge of the first beam to the outer edge of the last.
+     *
+     * <p>{@code beamCount} is a count, not a level: a lone eighth-note beam is 1 and occupies
+     * exactly {@link #BEAM_THICKNESS_SS}. Every further beam adds one
+     * {@link #BEAM_TRANSLATION_SS} step, since the stack grows by center-to-center distance
+     * rather than by thickness. LilyPond calls this quantity {@code height_of_beams}.
+     */
+    public static double beamStackHeightSs(int beamCount) {
+        return BEAM_THICKNESS_SS + (beamCount - 1) * BEAM_TRANSLATION_SS;
+    }
+
+    /**
      * Diameter of the rounded corner applied to a drawn beam, in staff spaces.
      * LilyPond's {@code blot-diameter} is 0.4 pt (scm/paper.scm) against a default
      * staff space of 5 pt, giving 0.08 staff spaces. {@code Lookup::beam} insets

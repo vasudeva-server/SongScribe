@@ -23,6 +23,9 @@ package songscribe.layout;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.engraving.LineThickness;
+import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.Staff;
 
 /**
  * Pure-static beam-geometry helpers shared by {@link LayoutEngine},
@@ -53,6 +56,18 @@ public final class BeamMath {
      * without hardcoding the count.
      */
     public static final int LEVEL_COUNT = BEAM_LEVELS.length;
+
+    /**
+     * Vertical gap, in staff spaces, a grace note's stem tip must keep below an upward beam
+     * before the beam is pushed to the other side of the staff instead
+     * ({@link #graceStemTouchesBeamAbove}).
+     * <p>
+     * It also absorbs the error in {@link #estimatedBeamBottomAboveYSs}, which places the beam
+     * a natural stem above the group's highest head while the scorer routinely settles a few
+     * tenths of a space lower. Erring low here only means a beam flips that would have been a
+     * near miss; erring high means the grace note is buried, which is the bug this guards.
+     */
+    static final double GRACE_STEM_BEAM_CLEARANCE_SS = 0.5;
 
     private BeamMath() {}
 
@@ -262,5 +277,73 @@ public final class BeamMath {
         }
 
         return 0;
+    }
+
+    // -------------------------------------------------------------------------
+    // Grace notes inside a beam's span
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns whether {@code element} takes part in the beaming of a group whose span it
+     * falls inside.
+     *
+     * <p>A grace note can be inserted between two beamed notes, but it never joins their
+     * beams: it keeps its own upward stem direction, its own short stem, and its own flag,
+     * and it must not influence where the beam is placed. Every loop that walks a beam's
+     * index range therefore has to step over it rather than treat it as a member.
+     */
+    public static boolean participatesInBeaming(StaffElement element) {
+        return !element.getType().isGraceNote();
+    }
+
+    /**
+     * Returns whether any grace note inside [{@code beamStart}, {@code beamEnd}] would have its
+     * stem run into — or come within {@link #GRACE_STEM_BEAM_CLEARANCE_SS} of — a beam drawn above
+     * the group, whose highest member sits at {@code topStaffPosition}.
+     *
+     * <p>A grace note keeps its own short, always-upward stem
+     * ({@link NoteGeometry#effectiveDirection}) instead of running out to the beam, so an upward
+     * beam over a grace note higher than its neighbours crosses the grace stem and swallows the
+     * notehead. The stem tip is the grace note's topmost ink: its flag hangs back down from there.
+     */
+    public static boolean graceStemTouchesBeamAbove(
+        Line line, int beamStart, int beamEnd, int topStaffPosition) {
+        var beamBottomYSs = estimatedBeamBottomAboveYSs(line, beamStart, beamEnd, topStaffPosition);
+
+        for (var i = beamStart; i <= beamEnd; i++) {
+            var element = line.getElement(i);
+
+            if (participatesInBeaming(element)) {
+                continue;
+            }
+
+            var stemTopYSs =
+                Staff.spToSs(element.getStaffPosition()) - SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS;
+
+            if (stemTopYSs < beamBottomYSs + GRACE_STEM_BEAM_CLEARANCE_SS) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Estimates the Y of the lowest edge of the beam stack an upward beam would draw over the
+     * group [{@code beamStart}, {@code beamEnd}], in layout staff spaces (Y down) from the middle
+     * line. {@code topStaffPosition} is the staff position of the group's highest member.
+     *
+     * <p>An estimate is all that is available: the direction has to be settled before columns
+     * exist, and {@link BeamScoring} cannot place the beam without their X positions. So the beam
+     * is assumed to sit a natural stem above the highest head — its outer edge — with the stack of
+     * {@link #beamLevel} beams hanging below it at the renderer's spacing.
+     */
+    private static double estimatedBeamBottomAboveYSs(
+        Line line, int beamStart, int beamEnd, int topStaffPosition) {
+        var beamStackCount = beamLevel(line, beamStart, beamEnd) + 1;
+
+        return Staff.spToSs(topStaffPosition)
+            - SMuFLConstants.STEM_LENGTH_SS
+            + LineThickness.beamStackHeightSs(beamStackCount);
     }
 }

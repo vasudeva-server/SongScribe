@@ -466,7 +466,7 @@ public class LayoutEngine {
             for (var i = beamStart; i <= beamEnd; i++) {
                 var element = line.getElement(i);
 
-                if (!participatesInBeaming(element)) {
+                if (!BeamMath.participatesInBeaming(element)) {
                     LOG.debug("  [{}] GRACE keeps its own direction {}", i, element.getDirection());
                     continue;
                 }
@@ -479,26 +479,14 @@ public class LayoutEngine {
     }
 
     /**
-     * Returns whether {@code element} takes part in the beaming of a group whose span it
-     * falls inside.
-     *
-     * <p>A grace note can be inserted between two beamed notes, but it never joins their
-     * beams: it keeps its own upward stem direction, its own short stem, and its own flag,
-     * and it must not influence where the beam is placed. Every loop that walks a beam's
-     * index range therefore has to step over it rather than treat it as a member.
-     */
-    private static boolean participatesInBeaming(StaffElement element) {
-        return !element.getType().isGraceNote();
-    }
-
-    /**
      * Determines the shared stem direction for a beamed group from its pitch contour.
      * The first manual override in the group wins; otherwise the direction follows the
      * contour (staff position 0 = middle line; positive = below midpoint in Y-down, so
      * stems up). (min + max) is compared to 0 rather than dividing, to keep integer arithmetic.
      * <p>
-     * Grace notes in the span are ignored: they are not beamed, so neither their pitch nor a
-     * manual direction set on them may decide which way the group's stems point.
+     * Grace notes in the span are not members: neither their pitch nor a manual direction set on
+     * them may decide which way the group's stems point. They do get one say, though — a grace
+     * note whose stem would run into a beam placed above it sends the beam below instead.
      */
     private StaffElement.Direction groupStemDirection(Line line, int beamStart, int beamEnd) {
         var minStaffPos = Integer.MAX_VALUE;
@@ -507,7 +495,7 @@ public class LayoutEngine {
         for (var i = beamStart; i <= beamEnd; i++) {
             var element = line.getElement(i);
 
-            if (!participatesInBeaming(element)) {
+            if (!BeamMath.participatesInBeaming(element)) {
                 continue;
             }
 
@@ -526,16 +514,23 @@ public class LayoutEngine {
         for (var i = beamStart; i <= beamEnd; i++) {
             var element = line.getElement(i);
 
-            if (participatesInBeaming(element) && !element.isStemDirectionAuto()) {
+            if (BeamMath.participatesInBeaming(element) && !element.isStemDirectionAuto()) {
                 return element.getDirection();
             }
         }
 
-        if ((minStaffPos + maxStaffPos) > 0) {
-            return StaffElement.Direction.UP;
+        if ((minStaffPos + maxStaffPos) <= 0) {
+            return StaffElement.Direction.DOWN;
         }
 
-        return StaffElement.Direction.DOWN;
+        // The contour asks for an upward beam. A grace stem always points up, so an upward beam
+        // is the only one it can be trapped under; send the beam below rather than bury it.
+        if (BeamMath.graceStemTouchesBeamAbove(line, beamStart, beamEnd, minStaffPos)) {
+            LOG.debug("  grace stem forces group {}..{} to beam below", beamStart, beamEnd);
+            return StaffElement.Direction.DOWN;
+        }
+
+        return StaffElement.Direction.UP;
     }
 
     /**
@@ -579,7 +574,7 @@ public class LayoutEngine {
 
                 // A grace note inside the span is not one of the beam's stems: its pitch must
                 // not tilt the beam, skew the concaveness test, or dilute forcedFraction.
-                if (!participatesInBeaming(element)) {
+                if (!BeamMath.participatesInBeaming(element)) {
                     continue;
                 }
 
@@ -662,7 +657,7 @@ public class LayoutEngine {
                 for (var i = beamStart; i <= beamEnd; i++) {
                     // A grace note's stem stops at its own length instead of running to the
                     // beam, so it is left to calculateUnbeamedStems rather than measured here.
-                    if (!participatesInBeaming(line.getElement(i))) {
+                    if (!BeamMath.participatesInBeaming(line.getElement(i))) {
                         continue;
                     }
 
@@ -757,7 +752,7 @@ public class LayoutEngine {
         for (var col : columns) {
             var element = col.getElement();
 
-            if ((col.isBeamed() && participatesInBeaming(element))
+            if ((col.isBeamed() && BeamMath.participatesInBeaming(element))
                 || !element.getType().isNoteWithStem()) {
                 continue;
             }

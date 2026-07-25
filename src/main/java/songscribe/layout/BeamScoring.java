@@ -297,7 +297,7 @@ final class BeamScoring {
         // Its comment in stem.cc gives the reason — "a8[ a32] must be horizontal"
         // — and only that shared count makes the ideal ends of equal-pitch edge
         // stems agree, which is what lets least_squares_positions see dy == 0.
-        var heightOfBeams = BEAM_THICKNESS_SS + (maxBeamCount - 1) * BEAM_TRANSLATION_SS;
+        var heightOfBeams = LineThickness.beamStackHeightSs(maxBeamCount);
         var halfBeamThickness = BEAM_THICKNESS_SS / 2.0;
 
         // Stems only extend to the center of the beam, hence the half-thickness terms.
