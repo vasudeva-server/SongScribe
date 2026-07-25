@@ -189,13 +189,12 @@ insert/delete question above remains open.
 ## MusicXML attribution export via `AttributionFormatter`
 
 **What:** Wire attribution text into MusicXML export using `AttributionFormatter`
-+ `SongMetadata`, mirroring how `SongIO.writeSong` and `ExportABCAction.writeABC`
-already format attribution.
++ `SongMetadata`, mirroring how `SongIO.writeSong` already formats attribution.
 
 **Why:** The attribution refactor deliberately moved formatting into a
-UI-free `AttributionFormatter` in `songscribe.dom` so IO, ABC, and MusicXML
-could all format from `SongMetadata` without a Swing/pane dependency. ABC and
-`.mssw` IO are wired; MusicXML is the one consumer the design anticipated but
+UI-free `AttributionFormatter` in `songscribe.dom` so IO and MusicXML
+could both format from `SongMetadata` without a Swing/pane dependency.
+`.mssw` IO is wired; MusicXML is the one consumer the design anticipated but
 left unbuilt (target architecture note: "(later) MusicXML"). Until it is wired,
 the no-pane-dependency design sits partially unused for the MusicXML path.
 

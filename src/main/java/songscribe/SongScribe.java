@@ -33,7 +33,6 @@ import org.slf4j.LoggerFactory;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
-import songscribe.converter.AbcConverter;
 import songscribe.error.RuntimeError;
 import songscribe.converter.ImageConverter;
 import songscribe.converter.MidiConverter;
@@ -217,7 +216,6 @@ public final class SongScribe {
             case "midi_converter" -> MidiConverter.main(args);
             case "pdf_converter" -> PDFConverter.main(args);
             case "ui_converter" -> UIConverter.main(args);
-            case "abc_converter" -> AbcConverter.main(args);
             default -> {
                 // macOS system properties are already set above on the main thread.
                 // Bootstrap the UI on the EDT so the splash can appear immediately.

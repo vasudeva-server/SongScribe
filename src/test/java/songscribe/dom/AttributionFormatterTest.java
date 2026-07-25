@@ -423,20 +423,6 @@ class AttributionFormatterTest extends UnitTest {
             .isEqualTo("Words by Sri Chinmoy\nMusic: Traditional Folk Song");
     }
 
-    /**
-     * {@link AttributionFormatter#singleLineText} joins lines with a space.
-     */
-    @Test
-    void testAttributionTextSingleLineJoinsWithSpace() {
-        var song = songWith(Song.SRI_CHINMOY, "Traditional Folk Song", Song.LyricsSource.OTHER, false, "");
-
-        var text = AttributionFormatter.singleLineText(song.getMetadata(), song.showTranslation());
-
-        assertThat(text)
-            .as("attributionTextSingleLine joins lines with space")
-            .isEqualTo("Words by Sri Chinmoy Music: Traditional Folk Song");
-    }
-
     // -------------------------------------------------------------------------
     // oxfordJoin — boundary cases
     // -------------------------------------------------------------------------

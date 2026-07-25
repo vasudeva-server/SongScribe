@@ -614,7 +614,7 @@ public final class Song {
      * Unofficial translations are not credited in the attribution.
      * <p>
      * This is the single authoritative derivation of the translation flag
-     * (decision 4A); rendering, IO, and ABC export pass this to
+     * (decision 4A); rendering and IO pass this to
      * {@link songscribe.dom.AttributionFormatter}.
      */
     public boolean showTranslation() {

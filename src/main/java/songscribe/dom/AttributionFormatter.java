@@ -35,7 +35,7 @@ import songscribe.util.StringUtils;
  * Pure, UI-free formatter that turns a {@link SongMetadata} record (plus the
  * translation flag) into attribution display lines and plain text strings.
  * <p>
- * Used by rendering, IO, ABC export, and (later) MusicXML. Contains no Swing
+ * Used by rendering, IO, and (later) MusicXML. Contains no Swing
  * or AWT imports.
  *
  * <h3>Display pipeline</h3>
@@ -175,19 +175,6 @@ public final class AttributionFormatter {
         return lines(data, showTranslation).stream()
             .map(AttributionLine::text)
             .collect(Collectors.joining("\n"));
-    }
-
-    /**
-     * Returns the attribution as a single space-separated line, for use by ABC export.
-     *
-     * @param data            the song metadata
-     * @param showTranslation {@code true} when the song has a non-empty official translation
-     * @return attribution text with lines separated by {@code " "}
-     */
-    public static String singleLineText(SongMetadata data, boolean showTranslation) {
-        return lines(data, showTranslation).stream()
-            .map(AttributionLine::text)
-            .collect(Collectors.joining(" "));
     }
 
     // -------------------------------------------------------------------------

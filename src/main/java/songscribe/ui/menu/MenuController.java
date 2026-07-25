@@ -46,7 +46,6 @@ import songscribe.prefs.RecentDocumentsManager;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ClearRecentsAction;
 import songscribe.ui.action.CloseWindowAction;
-import songscribe.ui.action.ExportABCAction;
 import songscribe.ui.action.ExportImageAction;
 import songscribe.ui.action.ExportMidiAction;
 import songscribe.ui.action.ExportPDFAction;
@@ -142,7 +141,6 @@ public class MenuController {
         exportMenu.add(ExportSVGAction.createAction(mainFrame));
         exportMenu.add(ExportImageAction.createAction(mainFrame));
         exportMenu.add(ExportMidiAction.createAction(mainFrame));
-        exportMenu.add(ExportABCAction.createAction(mainFrame));
         menu.add(exportMenu);
 
         menu.addSeparator();
