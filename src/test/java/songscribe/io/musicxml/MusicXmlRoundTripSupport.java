@@ -155,13 +155,6 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
         var song = new Song();
 
         song.withoutMutationTracking(() -> {
-            // new Song() installs a default base tempo but does not mirror it onto
-            // a first element. Clear it so the built song is in canonical post-load
-            // form (firstElement.hasTempo ⟺ song.tempo != null): tempo-free unless a
-            // test materializes one on the first element. Otherwise the tempo writer
-            // would emit this unmirrored default and reload it as a spurious
-            // first-note attachment.
-            song.setTempo(null);
             song.removeLine(0);
 
             for (var builder : builders) {

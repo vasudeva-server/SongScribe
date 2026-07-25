@@ -76,7 +76,7 @@ public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
         tempoSection.setTempo(
             change != null
                 ? change.getTempo()
-                : new Tempo(120, Duration.CROTCHET, "Moderate", true)
+                : new Tempo()
         );
     }
 

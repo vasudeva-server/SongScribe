@@ -55,6 +55,7 @@ class SongDefaultsTest extends UnitTest {
         @Test
         void testClearsSongTempoWhenElementIsFirstOfFirstLine() {
             var song = new Song();
+            song.setTempo(new Tempo());
             // addNoteWithTempo inserts before the terminal, so the note lands at index 0.
             song.withoutMutationTracking(() -> {
                 var firstLine = song.getLine(0);
@@ -72,6 +73,7 @@ class SongDefaultsTest extends UnitTest {
         @Test
         void testClearsSongTempoWhenNoPerNoteChangesRemain() {
             var song = new Song();
+            song.setTempo(new Tempo());
             song.withoutMutationTracking(() -> {
                 var secondLine = new Line(song);
                 song.addLine(secondLine);
@@ -92,6 +94,7 @@ class SongDefaultsTest extends UnitTest {
         @Test
         void testKeepsSongTempoWhenOtherPerNoteChangesRemain() {
             var song = new Song();
+            song.setTempo(new Tempo());
             song.withoutMutationTracking(() -> {
                 var firstLine = song.getLine(0);
                 // Add a note with a tempo change on the first line.
@@ -173,24 +176,12 @@ class SongDefaultsTest extends UnitTest {
     @Test
     void testDefaultTempo() {
         var song = new Song();
-        assertThat(song.getTempo()).isNotNull();
-        var tempo = song.getEffectiveTempo();
-        assertThat(tempo.getVisibleTempo()).isEqualTo(120);
-        assertThat(tempo.getTempoType()).isEqualTo(Duration.CROTCHET);
-        assertThat(tempo.getTempoDescription()).isEqualTo("Moderate");
-    }
-
-    @Test
-    void testEffectiveTempoFallbackWhenTempoIsNull() {
-        var song = new Song();
-        song.setTempo(null);
         assertThat(song.getTempo()).isNull();
-
         var tempo = song.getEffectiveTempo();
-        assertThat(tempo.getVisibleTempo()).isEqualTo(120);
-        assertThat(tempo.getTempoType()).isEqualTo(Duration.CROTCHET);
-        assertThat(tempo.getTempoDescription()).isEqualTo("Moderate");
-        assertThat(tempo.shouldShowTempo()).isTrue();
+        assertThat(tempo.getVisibleTempo()).isEqualTo(Tempo.DEFAULT_BPM);
+        assertThat(tempo.getTempoType()).isEqualTo(Tempo.DEFAULT_TYPE);
+        assertThat(tempo.getTempoDescription()).isEqualTo(Tempo.DEFAULT_DESCRIPTION);
+        assertThat(tempo.shouldShowTempo()).isEqualTo(Tempo.DEFAULT_SHOW_TEMPO);
     }
 
     // -----------------------------------------------------------------------
@@ -241,13 +232,14 @@ class SongDefaultsTest extends UnitTest {
     @Test
     void testGetTempoAtFallsBackToEffectiveTempoWhenNoChangeFound() {
         var song = new Song();
-        // No per-note tempo changes; song has default tempo 120.
+        // No per-note tempo changes and no explicit song tempo; falls back to the default.
         assertThat(song.getTempoAt(0, 0))
             .extracting(Tempo::getVisibleTempo)
-            .isEqualTo(song.getEffectiveTempo().getVisibleTempo());
+            .isEqualTo(Tempo.DEFAULT_BPM);
 
-        // Verify identity: the returned object IS the effective tempo.
-        assertThat(song.getTempoAt(0, 0)).isSameAs(song.getEffectiveTempo());
+        // With an explicit song tempo set, the returned object IS that same tempo.
+        song.setTempo(new Tempo());
+        assertThat(song.getTempoAt(0, 0)).isSameAs(song.getTempo());
     }
 
     // Exercises the cross-line continuation: when the queried line carries no tempo

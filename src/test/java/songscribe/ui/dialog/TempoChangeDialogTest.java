@@ -50,9 +50,6 @@ import static org.mockito.Mockito.verify;
  */
 class TempoChangeDialogTest extends MainFrameMockTest {
 
-    private static final int DEFAULT_BPM = 120;
-    private static final String DEFAULT_DESCRIPTION = "Moderate";
-
     private MockedStatic<UIUtils> uiUtilsMock;
     private MockedStatic<Prefs> prefsMock;
     private TempoChangeDialog dialog;
@@ -81,16 +78,16 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         dialog.populateControls(null);
 
         assertThat(dialog.tempoSection.getVisibleTempo())
-            .as("default BPM is 120")
-            .isEqualTo(DEFAULT_BPM);
+            .as("BPM matches the Tempo default")
+            .isEqualTo(Tempo.DEFAULT_BPM);
         assertThat(dialog.tempoSection.getTempoType())
-            .as("default tempo type is CROTCHET")
-            .isEqualTo(Duration.CROTCHET);
+            .as("tempo type matches the Tempo default")
+            .isEqualTo(Tempo.DEFAULT_TYPE);
         assertThat(dialog.tempoSection.getTempoDescription())
-            .as("default description is Moderate")
-            .isEqualTo(DEFAULT_DESCRIPTION);
+            .as("description matches the Tempo default")
+            .isEqualTo(Tempo.DEFAULT_DESCRIPTION);
         assertThat(dialog.tempoSection.isShowOnlyDescription())
-            .as("showTempo=true means showOnlyDescription=false")
+            .as("DEFAULT_SHOW_TEMPO=true means showOnlyDescription=false")
             .isFalse();
     }
 
@@ -200,7 +197,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
     void testApplyChangeAddsNewAttachmentWhenNoneExists() {
         var element = ElementType.CROTCHET.newInstance();
 
-        dialog.tempoSection.setTempo(new Tempo(DEFAULT_BPM, Duration.CROTCHET, DEFAULT_DESCRIPTION, true));
+        dialog.tempoSection.setTempo(new Tempo());
         dialog.applyChange(element);
 
         var added = element.findAttachment(TempoChangeAttachment.class);
@@ -210,7 +207,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         //noinspection ConstantValue -- NullAway guard
         assertThat(added == null ? 0 : added.getTempo().getVisibleTempo())
             .as("new attachment has the configured BPM")
-            .isEqualTo(DEFAULT_BPM);
+            .isEqualTo(Tempo.DEFAULT_BPM);
     }
 
     // ── Row 29: clearChange — removes attachment, then calls clearTempoIfOrphaned ──

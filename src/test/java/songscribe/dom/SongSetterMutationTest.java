@@ -45,6 +45,8 @@ import songscribe.message.notification.SongDidChangeNotification;
 
 class SongSetterMutationTest extends UnitTest {
 
+    private static final int TEMPO_DELTA_BPM = 10;
+
     private Song song;
     private MockedStatic<MessageCenter> messageCenterMock;
 
@@ -195,9 +197,13 @@ class SongSetterMutationTest extends UnitTest {
 
         @Test
         void testSetTempoPostsMutation() {
-            var oldTempo = song.getEffectiveTempo();
+            // A fresh song has no explicit tempo; establish one without tracking so the
+            // notification captured below is solely the setTempo call under test.
+            var oldTempo = new Tempo();
+            song.withoutMutationTracking(() -> song.setTempo(oldTempo));
+
             var newTempo = new Tempo();
-            newTempo.setVisibleTempo(oldTempo.getVisibleTempo() + 10);
+            newTempo.setVisibleTempo(oldTempo.getVisibleTempo() + TEMPO_DELTA_BPM);
 
             song.setTempo(newTempo);
 
@@ -209,6 +215,11 @@ class SongSetterMutationTest extends UnitTest {
 
         @Test
         void testSetTempoSameValuePostsNothing() {
+            // A fresh song has no explicit tempo; establish one without tracking so the
+            // equals-guard below is exercised against a real non-null Tempo rather than
+            // degenerating to a null-vs-null comparison.
+            song.withoutMutationTracking(() -> song.setTempo(new Tempo()));
+
             song.setTempo(song.getTempo());
             verifyNoNotificationPosted();
         }

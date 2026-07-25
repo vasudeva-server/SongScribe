@@ -23,13 +23,22 @@ import songscribe.midi.MidiSequenceBuilder;
 
 public class Tempo {
 
+    // The default tempo produced by the no-arg constructor. Note that
+    // DEFAULT_DESCRIPTION is persisted to MusicXML and read back verbatim, so it is
+    // deliberately not a localized string.
+
+    public static final int DEFAULT_BPM = 120;
+    public static final Duration DEFAULT_TYPE = Duration.CROTCHET;
+    public static final String DEFAULT_DESCRIPTION = "Moderate";
+    public static final boolean DEFAULT_SHOW_TEMPO = true;
+
     private int visibleTempo;
     private Duration tempoType;
     private String tempoDescription;
     private boolean showTempo;
 
     public Tempo() {
-        this(120, Duration.CROTCHET, "Moderate", true);
+        this(DEFAULT_BPM, DEFAULT_TYPE, DEFAULT_DESCRIPTION, DEFAULT_SHOW_TEMPO);
     }
 
     public Tempo(

@@ -187,10 +187,7 @@ class LineQueryTest extends UnitTest {
                 line1.addElement(e1);
             });
 
-            var tempo = song.getTempo();
-            if (tempo == null) {
-                throw new AssertionError("fresh Song should always have a non-null tempo");
-            }
+            var tempo = song.getEffectiveTempo();
             e1.addAttachment(new TempoChangeAttachment(tempo));
 
             // e0 is at index 0, e1 is at index 1 on line1

@@ -424,19 +424,17 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testInsertAtIndexZeroOnFirstLineMigratesTempoAttachment() {
-            // Manually attach a tempo to the current first element (index 0) to simulate
-            // the state that exists after a real song is loaded (loadFrom calls
-            // attachInitialTempoIfNeeded). We use withoutMutationTracking so the setup
-            // itself emits no notification.
-            // new Song() always initializes a non-null Tempo; the explicit guard narrows
-            // the type so NullAway allows passing it to TempoChangeAttachment's constructor.
-            var tempo = song.getTempo();
-            if (tempo == null) {
-                throw new AssertionError("fresh Song should always have a non-null tempo");
-            }
+            // Give the song a tempo and attach it to the current first element (index 0)
+            // to simulate the state that exists after a real song is loaded (loadFrom
+            // calls attachInitialTempoIfNeeded, which only attaches when song.tempo is
+            // non-null). We use withoutMutationTracking so the setup itself emits no
+            // notification.
+            var tempo = new Tempo();
             var originalFirst = line.getElement(0);
-            song.withoutMutationTracking(() ->
-                originalFirst.addAttachment(new TempoChangeAttachment(tempo)));
+            song.withoutMutationTracking(() -> {
+                song.setTempo(tempo);
+                originalFirst.addAttachment(new TempoChangeAttachment(tempo));
+            });
 
             var newFirst = new StaffElement(ElementType.QUAVER);
             song.withModification(() -> line.addElement(0, newFirst));
@@ -2374,7 +2372,10 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testAttachInitialTempoAddsTempoToFirstElement() {
-            // A line with at least one element and no existing tempo attachment must gain one.
+            // A line with at least one element, a song-level tempo, and no existing
+            // tempo attachment must gain one carrying that exact tempo.
+            var tempo = new Tempo();
+            song.setTempo(tempo);
             var element = new StaffElement(ElementType.QUAVER);
             song.withoutMutationTracking(() -> line.addElement(element));
 
@@ -2382,17 +2383,33 @@ class LineMutationTest extends UnitTest {
 
             assertThat(element.findAttachment(TempoChangeAttachment.class))
                 .as("first element should have a TempoChangeAttachment after call")
-                .isNotNull();
+                .isNotNull()
+                .extracting(TempoChangeAttachment::getTempo)
+                .as("the attachment should carry the song's tempo, not a fabricated one")
+                .isSameAs(tempo);
+        }
+
+        @Test
+        void testAttachInitialTempoIsNoOpWhenSongHasNoTempo() {
+            // The core #658 invariant: a song with no explicit tempo (a fresh document,
+            // or one loaded from MusicXML with no <sound tempo>) must not have a tempo
+            // fabricated onto its first element.
+            assertThat(song.getTempo()).isNull();
+            var element = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> line.addElement(element));
+
+            line.attachInitialTempoIfNeeded();
+
+            assertThat(element.findAttachment(TempoChangeAttachment.class))
+                .as("no tempo attachment may be created when the song has no tempo")
+                .isNull();
         }
 
         @Test
         void testAttachInitialTempoIsNoOpWhenAlreadyAttached() {
             // If the first element already has a TempoChangeAttachment, calling again
             // must not add a second one.
-            var tempo = song.getTempo();
-            if (tempo == null) {
-                throw new AssertionError("fresh Song should always have a non-null tempo");
-            }
+            var tempo = song.getEffectiveTempo();
 
             var element = new StaffElement(ElementType.QUAVER);
             song.withoutMutationTracking(() -> line.addElement(element));

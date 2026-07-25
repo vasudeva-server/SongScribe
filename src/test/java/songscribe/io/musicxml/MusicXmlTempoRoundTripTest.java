@@ -123,6 +123,21 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
     // -------------------------------------------------------------------------
 
     @Test
+    void testNoTempoStaysAbsentAfterRoundTrip() throws Exception {
+        // A song with no explicit tempo (e.g. a brand-new document) must not gain
+        // one merely by being saved and reloaded. Regression test for issue #658.
+        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+
+        var xml = writeToString(song);
+        assertThat(xml).as("no <sound tempo> should be written").doesNotContain("<sound tempo");
+
+        var reloaded = roundTrip(song);
+
+        assertThat(reloaded.getTempo()).as("reloaded song must still have no explicit tempo").isNull();
+        assertThat(tempoOf(reloaded.getLine(0), 0)).as("first note carries no tempo").isNull();
+    }
+
+    @Test
     void testBaseTempoOnlyRoundTrips() throws Exception {
         var baseTempo = new Tempo(BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
         var song = buildBaseTempoSong(baseTempo);

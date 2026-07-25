@@ -256,7 +256,6 @@ public final class Song {
     }
 
     public Song() {
-        tempo = new Tempo();
         defaultKeyAccidentalCount = DEFAULT_KEY_ACCIDENTAL_COUNT;
 
         // Suspend mutation tracking so that setup changes don't post a spurious
@@ -412,6 +411,11 @@ public final class Song {
     /**
      * Returns the song's tempo, or a default 120bpm crotchet tempo if none is set.
      * Use this in playback and export contexts where a non-null tempo is required.
+     *
+     * <p>When no tempo is set, each call returns a <em>fresh, unattached</em>
+     * {@link Tempo}: the identity is not stable across calls, and mutating the
+     * returned instance silently discards the edit rather than changing the song.
+     * To modify the song's tempo, use {@link #setTempo} instead.
      */
     public Tempo getEffectiveTempo() {
         return tempo != null ? tempo : new Tempo();
