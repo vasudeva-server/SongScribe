@@ -12,6 +12,46 @@ Review code for reuse, quality, and efficiency. This is an adversarial review, t
 
 IMPORTANT: All reviews MUST apply the Java style rules in addition to the criteria below. When the review is done and fixes are applied, DO NOT run any other commands or skills on your own volition.
 
+## How to Write Findings (applies to every phase and every agent)
+
+The reader has not read the code you are reviewing and does not remember how it
+works. Write every finding, question, and summary so that person understands it
+without opening a single file. This is a hard requirement, not a style
+preference — a finding the reader cannot understand is a failed finding.
+
+**Every finding uses this shape:**
+
+1. **Where** — `file.java:123`, plus the method or class name in plain words
+   ("in the method that draws the beam").
+2. **What the code does now** — one or two plain sentences describing the
+   current behavior. Never assume the reader knows.
+3. **What's wrong with it** — in plain words, including what actually goes wrong
+   for the user or the program. Not "violates encapsulation" but "any other
+   class can change this value behind the object's back, so a bug here would be
+   very hard to trace."
+4. **What to do instead** — the concrete change, described so the reader can
+   picture it.
+
+**Rules for the writing itself:**
+
+- No abbreviations or internal shorthand the reader has not seen spelled out.
+- No bare symbol names as explanation. `ViewScale.applyZoom()` means nothing on
+  its own — say what it does.
+- Full sentences, not telegraphic notes. "Redundant cached field" is not a
+  finding; "the class stores the note count in a field even though it already
+  has the list of notes, so the two can disagree" is.
+- One idea per sentence. Short sentences beat dense ones.
+- Explain *why it matters* concretely — what breaks, when, and who notices. If
+  nothing observable breaks, say that plainly ("nothing breaks today; this is
+  about making it harder to break later").
+- Skip severity labels and grades unless they carry real information; say what
+  the consequence is instead.
+
+**Questions follow the same standard.** Before asking anything, give the reader
+the background needed to answer it: what the code does, what you saw, why you
+are unsure, and what each answer would lead you to do. Never ask a question that
+presumes the reader has the file in mind.
+
 
 ## Phase 1: Determine Scope
 
@@ -70,6 +110,11 @@ Pass only the production scope to agents in Phase 2. The test scope drives Phase
 
 Use the Agent tool to launch all three agents concurrently in a single message. Pass each agent the review target so it has the complete context. When spawning agents, include `model: "sonnet"` in each Agent tool call. The three agents (Reuse, Quality, Efficiency) with `model: sonnet` surface candidate findings that the orchestrator re-validates before fixing.
 
+Copy the entire **How to Write Findings** section above verbatim into each
+agent's prompt, and tell the agent its findings will be shown to a reader who has
+not read the code. An agent that returns dense, jargon-filled findings has not
+done its job.
+
 ### Agent 1: Code Reuse Review
 
 IMPORTANT: This agent must search the **entire codebase**, not just the review target. The goal is to find reuse opportunities between the reviewed code and the rest of the project.
@@ -121,16 +166,26 @@ Wait for Phase 2 (and Phase 2b, if it ran) to complete, then choose the path bas
 ### Path A: `--fix` mode
 
 1. **Fix all findings immediately** — every finding from every agent (Reuse, Quality, Efficiency, and Test Quality if Phase 2b ran), including minor and low-confidence ones. Do not ask any questions or seek approval.
-2. **Summarize** what was fixed when done, grouped by the same axes.
+2. **Summarize** what was fixed when done, grouped by the same axes. Write the summary in plain language per **How to Write Findings** — for each fix, say what the code did before, what it does now, and what that means in practice.
 
 ### Path B: Interactive mode (default)
 
-1. **Present findings.** Output all findings in a single organized summary. Group by: Reuse, Quality, Efficiency (from Phase 2), and — if Phase 2b ran — Test Quality (Correctness → Usefulness → Coverage sub-groups). Add an empty line followed by "Ready for questions."
+1. **Present findings.** Output all findings in a single organized summary. Group by: Reuse, Quality, Efficiency (from Phase 2), and — if Phase 2b ran — Test Quality (Correctness → Usefulness → Coverage sub-groups).
 
-2. **Clarifying questions.** If any findings need clarification (ambiguous code intent, unclear whether something is intentional, etc.), ask them via AskUserQuestion.
+   Rewrite every agent finding in your own words before showing it. Do not pass
+   an agent's text through untouched — the agents write for other agents; you
+   write for a person who has not read the code. Apply **How to Write Findings**
+   to each one: where it is, what the code does now, what's wrong in plain
+   terms, and what you would change. If you cannot explain a finding plainly,
+   you do not understand it well enough to report it — either dig in until you
+   can, or drop it.
 
-3. **Questionable findings.** For any findings you believe are false positives or not worth addressing, present them via AskUserQuestion and ask whether the user wants them fixed anyway. Do not silently skip findings.
+   Then add an empty line followed by "Ready for questions."
 
-4. **Approval.** Once all questions are resolved, use AskUserQuestion to present the final list of issues to fix and ask for approval to proceed (or for further discussion).
+2. **Clarifying questions.** If any findings need clarification (ambiguous code intent, unclear whether something is intentional, etc.), ask them via AskUserQuestion. Give the background in the question text itself: what the code does, what looked off, and what each answer would cause you to do. The answer options must be understandable without looking at the code.
 
-5. **Fix.** After approval, fix the approved issues. Briefly summarize what was fixed when done.
+3. **Questionable findings.** For any findings you believe are false positives or not worth addressing, present them via AskUserQuestion and ask whether the user wants them fixed anyway. Say plainly why you think each one is not worth acting on. Do not silently skip findings.
+
+4. **Approval.** Once all questions are resolved, use AskUserQuestion to present the final list of issues to fix and ask for approval to proceed (or for further discussion). Describe each item in one plain sentence naming the actual change, not a category label.
+
+5. **Fix.** After approval, fix the approved issues. Briefly summarize what was fixed when done, in the same plain language.
