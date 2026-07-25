@@ -65,6 +65,10 @@ public class ElementColumnBuilder {
     // Half note head width (for left/right extent calculation) (ss)
     static final double HALF_NOTE_HEAD_SS = SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0;
 
+    // Non-hyphenated syllables reserve more than the bare space glyph, so consecutive words
+    // read as clearly separated rather than crowded.
+    static final double NON_HYPHENATED_GAP_SPACE_WIDTH_MULTIPLIER = 1.5;
+
     private final LyricRenderMetrics lyricRenderMetrics;
 
     /**
@@ -189,7 +193,8 @@ public class ElementColumnBuilder {
         var syllabic = mainLyric != null ? mainLyric.syllabic() : null;
         var isHyphenated = Lyric.syllabicContinues(syllabic);
         // Every column reserves a gap to the next syllable, so a syllable that follows a
-        // lyric-less element still clears it by the lyric space width. A hyphenated syllable
+        // lyric-less element still clears it by NON_HYPHENATED_GAP_SPACE_WIDTH_MULTIPLIER times
+        // the lyric space width. A hyphenated syllable
         // reserves the bare hyphen glyph advance — glyph plus its side bearings and nothing more,
         // so a lone hyphen sits in the tightest gap that still keeps the syllables apart. The
         // wider LyricRenderMetrics#preferredHyphenCellWidthSs is a distribution cell, not a
@@ -197,7 +202,7 @@ public class ElementColumnBuilder {
         // more than one hyphen (refs #638).
         var gapToNextSyllableSs = isHyphenated
             ? lyricRenderMetrics.hyphenWidthSs()
-            : lyricRenderMetrics.spaceWidthSs();
+            : lyricRenderMetrics.spaceWidthSs() * NON_HYPHENATED_GAP_SPACE_WIDTH_MULTIPLIER;
         // Ideal gap and hard collision floor coincide: this is already the tightest the syllables
         // may sit, so a lyric gap is never widened past what it needs, nor compressed below it.
         column.setMinGapToNextSyllableSs(gapToNextSyllableSs);

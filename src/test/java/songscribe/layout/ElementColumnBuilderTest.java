@@ -333,7 +333,8 @@ class ElementColumnBuilderTest extends UnitTest {
         }
     }
 
-    // Row 20: buildColumn minGap = spaceWidthSs for END and SINGLE syllabic types
+    // Row 20: buildColumn minGap = spaceWidthSs * NON_HYPHENATED_GAP_SPACE_WIDTH_MULTIPLIER for
+    // END and SINGLE syllabic types
     @Test
     void testBuildColumnMinGapIsSpaceWidthForNonHyphenatedSyllable() {
         for (var syllabic : new Lyric.Syllabic[]{Lyric.Syllabic.END, Lyric.Syllabic.SINGLE}) {
@@ -349,8 +350,9 @@ class ElementColumnBuilderTest extends UnitTest {
             var column = new ElementColumnBuilder(metrics).buildColumn(note, line);
 
             assertThat(column.getMinGapToNextSyllableSs())
-                .as("minGap for syllabic %s should equal space width", syllabic)
-                .isEqualTo(NON_HYPHENATED_SPACE_WIDTH_SS);
+                .as("minGap for syllabic %s should equal space width times the multiplier", syllabic)
+                .isEqualTo(NON_HYPHENATED_SPACE_WIDTH_SS
+                    * ElementColumnBuilder.NON_HYPHENATED_GAP_SPACE_WIDTH_MULTIPLIER);
         }
     }
 
