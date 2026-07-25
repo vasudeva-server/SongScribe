@@ -161,6 +161,21 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         }
 
         /**
+         * A breath mark directly after a note that is glissando-connected to the
+         * following note must be blocked — it would unexpectedly break the glissando.
+         */
+        @Test
+        void testBreathMarkAfterGlissandoConnectedNoteIsBlocked() {
+            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
+            line.getElement(0).setGlissando();
+
+            assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, false))
+                .as("breath mark after a glissando-connected note is blocked")
+                .isTrue();
+        }
+
+        /**
          * A breath mark inserted between two notes — preceding element valid, the
          * following element is not a breath mark — is the allowed happy path.
          */

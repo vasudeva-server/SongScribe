@@ -1517,8 +1517,10 @@ public final class PreviewElementManager {
      * be a pitched note or a rest, and it never replaces an existing element. So it is
      * blocked at index 0 (no preceding element), directly after anything other than a
      * note or rest, while the cursor is over an existing element
-     * ({@code overExistingElement}), or when the following element is already a breath
-     * mark (consecutive breath marks are forbidden).
+     * ({@code overExistingElement}), when the preceding element is glissando-connected
+     * to the following note (which would unexpectedly break the glissando), or when the
+     * following element is already a breath mark (consecutive breath marks are
+     * forbidden).
      */
     static boolean isBreathMarkInsertionBlocked(
         @Nullable StaffElement previewElement, int xIndex, Line line, boolean overExistingElement
@@ -1531,9 +1533,12 @@ public final class PreviewElementManager {
             return true;
         }
 
-        var precedingType = line.getElement(xIndex - 1).getType();
+        var precedingElement = line.getElement(xIndex - 1);
+        var precedingType = precedingElement.getType();
 
-        if (!precedingType.isDuration()) {
+        // isDuration() rejects an invalid host (e.g. a grace note); hasGlissando() rejects
+        // a valid host that would have its glissando to the following note broken.
+        if (!precedingType.isDuration() || precedingElement.hasGlissando()) {
             return true;
         }
 
