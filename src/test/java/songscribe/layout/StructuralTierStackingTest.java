@@ -612,6 +612,41 @@ class StructuralTierStackingTest extends UnitTest {
             assertThat(layout.heightSs()).isNotCloseTo(Tuplet.bracketedHeightSs(), within(TOLERANCE));
         }
 
+        @Test
+        void testNumberOnlyTupletCentersNumberOnTheBracketPadding() {
+            // A number-only tuplet draws no bracket, but LilyPond still centers the number on where
+            // the bracket line would be: the ink CENTER — not the ink bottom — sits
+            // TUPLET_BRACKET_PADDING_SS above the tip (issue #653). The reserved box top is the ink
+            // top, so it lands half an ink height beyond that center.
+            var note1 = createNote(0, true);
+            var note2 = createNote(0, true);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+            line.addRangeElement(new Beam(note1, note2));
+
+            var tuplet = new Tuplet(note1, note2, 3);
+            line.addRangeElement(tuplet);
+
+            var result = stackDirectly(
+                List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
+
+            // Same staff-top clamp as the bracketed case: these notes sit at the middle line.
+            var tipCeilingSs = StackingUtils.staffTopClampSs(
+                columnFor(note1, NOTE1_X_SS).getAbsoluteTopYSs())
+                - StructuralStacker.TUPLET_STAFF_PADDING_SS;
+            var expectedInkTopYSs = tipCeilingSs - StructuralStacker.TUPLET_BRACKET_PADDING_SS
+                - Tuplet.TUPLET_NUMBER_INK_HEIGHT_SS / 2.0;
+
+            var layout = require(result.getDecorationLayout(tuplet), "tuplet layout");
+            assertThat(layout.ySs()).isCloseTo(expectedInkTopYSs, within(TOLERANCE));
+
+            // ySs alone only pins margin + height, which is the same sum for both branches by
+            // construction; assert the margin too so a failure localizes to the branch selection.
+            assertThat(layout.marginSs())
+                .isCloseTo(StructuralStacker.TUPLET_NUMBER_MARGIN_SS, within(TOLERANCE));
+        }
+
     }
 
     @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })

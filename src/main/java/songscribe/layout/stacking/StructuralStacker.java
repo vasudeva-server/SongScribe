@@ -86,6 +86,17 @@ public class StructuralStacker {
      */
     public static final double TUPLET_ARM_MARGIN_SS =
         TUPLET_BRACKET_PADDING_SS - Tuplet.BRACKET_ARM_HEIGHT_SS;
+
+    /**
+     * The margin a number-only tuplet needs. LilyPond draws no bracket but still positions the number
+     * from the bracket line: with no knee, {@code Tuplet_number::calc_y_offset} returns the bracket's
+     * {@code positions} midpoint, so the number's ink <em>center</em> — not its bottom — lands
+     * {@link #TUPLET_BRACKET_PADDING_SS} above the tip. Placement reserves the box bottom, which for a
+     * number-only tuplet is the ink bottom, half an ink height below that center (issue #653).
+     */
+    public static final double TUPLET_NUMBER_MARGIN_SS =
+        TUPLET_BRACKET_PADDING_SS - Tuplet.bracketLineOffsetSs();
+
     private final StackingContext context;
     private final StaffExtents structuralExtents;
 
@@ -151,6 +162,7 @@ public class StructuralStacker {
 
             var numberOnly = tuplet.isNumberOnly(line);
             var heightSs = numberOnly ? Tuplet.numberOnlyHeightSs() : Tuplet.bracketedHeightSs();
+            var marginSs = numberOnly ? TUPLET_NUMBER_MARGIN_SS : TUPLET_ARM_MARGIN_SS;
             var anchorXSs = anchorColumn.getXSs();
             var widthSs = tuplet.getSpanWidthSs(anchorXSs, endColumn.getXSs());
 
@@ -172,12 +184,13 @@ public class StructuralStacker {
             // slope, so the box is placed against that ceiling verbatim — re-combining with the flat
             // note skyline (yGetExpanded) would re-flatten an ascending bracket up to its peak,
             // defeating the slope (issue #509). placeAndReserve's geometry inlined: the box bottom
-            // (arm bottom) sits TUPLET_ARM_MARGIN_SS above the tip, so the box top is a further
-            // heightSs out.
+            // (bracketed: the arm bottom; number-only: the number's ink bottom) sits marginSs above
+            // the tip, so the box top is a further heightSs out. Either way the box top lands at
+            // TUPLET_BRACKET_PADDING_SS plus half an ink height above the tip — the number's ink top.
             var leftYSs = computeTupletClearanceLeftYSs(
                 nonRestColumns, this::scriptObstacles, dySs, anchorXSs, widthSs,
                 leftArmXSs, rightArmXSs, this::rawObstacleTopSs);
-            var finalLeftYSs = leftYSs - TUPLET_ARM_MARGIN_SS - heightSs;
+            var finalLeftYSs = leftYSs - marginSs - heightSs;
 
             // Reserve the bracket's true sloped outer edge so later structural elements and line
             // sizing see the tilted silhouette rather than a flat approximation of it.
@@ -187,7 +200,7 @@ public class StructuralStacker {
             // A tuplet has no collision sub-regions.
             builder.putDecorationLayout(tuplet,
                 new LayoutResult.DecorationLayout(
-                    anchorXSs, finalLeftYSs, dySs, widthSs, heightSs, TUPLET_ARM_MARGIN_SS, List.of()));
+                    anchorXSs, finalLeftYSs, dySs, widthSs, heightSs, marginSs, List.of()));
         }
     }
 
