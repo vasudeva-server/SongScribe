@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.within;
 import module java.desktop;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -106,16 +107,37 @@ class LayoutEngineTest extends UnitTest {
     private static final int SP_579_MIDDLE = -2;
     private static final int SP_579_LAST = 4;
 
-    // Row 48 — a contour whose quanted middle stem lands below the forced-stem floor
-    private static final int SP_SUB_FLOOR_FIRST = -2;
-    private static final int SP_SUB_FLOOR_MIDDLE = -1;
-    private static final int SP_SUB_FLOOR_LAST = 4;
+    // Row 48 — contours whose quanted middle stem lands below the forced-stem floor. Each
+    // inner array is one beamed quaver group's staff positions.
+    //
+    // This is a list rather than a single contour because the regime is narrow: quanting
+    // overshoots the cap by only ~0.01 ss, so a change to horizontal spacing can move any
+    // given contour back under it — #560 did exactly that to the single contour originally
+    // pinned here. The entries come from different contour families (ascending, descending,
+    // and wide-leap), so one spacing change is unlikely to disqualify them all. The test
+    // asserts the contract on the first entry that still qualifies and fails loudly if none
+    // do, which is the signal that the regime itself is gone rather than merely relocated.
+    private static final int[][] SP_SUB_FLOOR_CONTOURS = {
+        {-6, -4, 7},
+        {6, 4, -7},
+        {-8, -6, 9},
+        {9, -4, -6},
+        {10, 9, -10},
+        {12, 11, -12},
+    };
 
-    // Row 49 — a group straddling the middle line: the extremes cancel, so the group
-    // is stemmed down and the lower note's stem is forced against its default
-    // direction while the upper note's is not.
-    private static final int SP_FORCED_ABOVE = -5;
-    private static final int SP_FORCED_BELOW = 5;
+    // Row 49 — a group straddling the middle line, so it is stemmed down and the lower
+    // note's stem is forced against its default direction while the upper note's is not.
+    //
+    // The pair is chosen so the forced and unforced solutions land on DIFFERENT quants:
+    // the assertions below compare the two, and on a pair where both solutions quant to
+    // the same beam position the comparison passes no matter what fraction the engine
+    // actually used, which would make the pass-through claim vacuous. This pair keeps a
+    // full staff space between them. A symmetric pair such as (-5, +5) does NOT — it was
+    // the original choice here and went vacuous when horizontal spacing changed (#560),
+    // so prefer margin over symmetry if this ever needs re-picking.
+    private static final int SP_FORCED_ABOVE = -2;
+    private static final int SP_FORCED_BELOW = 1;
     /** One of the two stems of the row-49 group is forced. */
     private static final double ROW_49_FORCED_FRACTION = 0.5;
     /** The forced fraction the row-49 group would have if forcing were never counted. */
@@ -1565,6 +1587,43 @@ class LayoutEngineTest extends UnitTest {
             .isGreaterThanOrEqualTo(extremeMinimumSs - TOLERANCE);
     }
 
+    /** A beamed stem that quanting drove past the forced-shortening cap, with its layout. */
+    private record SubFloorStem(
+        String contour,
+        LayoutResult result,
+        StaffElement note,
+        LayoutResult.StemLayout stem) {
+    }
+
+    /**
+     * Searches {@link #SP_SUB_FLOOR_CONTOURS} for a group whose middle stem quants past
+     * {@link NoteGeometry#MAX_FORCED_SHORTEN_SS}, which is the precondition
+     * {@link #testBeamedStemShorterThanTheForcedStemFloorKeepsItsQuantedLength} needs in order
+     * to say anything. Every listed contour puts its shortest stem in the middle.
+     *
+     * @return the first qualifying contour's middle stem, or null if none of them qualify
+     */
+    private static @Nullable SubFloorStem findSubFloorStem() {
+        for (var staffPositions : SP_SUB_FLOOR_CONTOURS) {
+            var line = detachedLine();
+            var notes = beamedNotes(line, ElementType.QUAVER, staffPositions);
+            var result = engine().layout(line);
+
+            if (result == null) {
+                continue;
+            }
+
+            var note = notes.get(1);
+            var stem = result.getStemLayout(note);
+
+            if (stem != null && stem.forcedShorteningSs() > NoteGeometry.MAX_FORCED_SHORTEN_SS) {
+                return new SubFloorStem(Arrays.toString(staffPositions), result, note, stem);
+            }
+        }
+
+        return null;
+    }
+
     // T48 (Phase 6 task 7): quanting may shorten a beamed stem past the forced-stem
     //      floor. The layout must express that length verbatim, and NoteRenderer
     //      must not floor it back up to FORCED_STEM_FLOOR_SS for a beamed note —
@@ -1573,25 +1632,22 @@ class LayoutEngineTest extends UnitTest {
     //      floor only on its unbeamed branch (NoteRenderer.renderStem).
     @Test
     void testBeamedStemShorterThanTheForcedStemFloorKeepsItsQuantedLength() {
-        var line = detachedLine();
-        var notes = beamedNotes(
-            line, ElementType.QUAVER, SP_SUB_FLOOR_FIRST, SP_SUB_FLOOR_MIDDLE, SP_SUB_FLOOR_LAST);
-
-        var result = require(engine().layout(line), "LayoutResult");
-        var shortNote = notes.get(1);
-        var stem = require(result.getStemLayout(shortNote), "StemLayout");
+        var subFloor = require(
+            findSubFloorStem(),
+            "a contour whose quanting shortens a beamed stem past the forced-shortening cap "
+                + "(no entry in SP_SUB_FLOOR_CONTOURS still reaches that regime)");
+        var stem = subFloor.stem();
 
         // What NoteRenderer.renderStem computes for a beamed note, from the same fields.
         var renderedLengthSs =
             SMuFLConstants.STEM_LENGTH_SS + stem.lengtheningSs() - stem.forcedShorteningSs();
 
-        assertThat(stem.forcedShorteningSs())
-            .describedAs("this contour shortens the middle stem past the forced-shortening cap")
-            .isGreaterThan(NoteGeometry.MAX_FORCED_SHORTEN_SS);
         assertThat(renderedLengthSs)
-            .describedAs("the rendered length is the quanted length, not the floor")
+            .describedAs(
+                "contour %s: the rendered length is the quanted length, not the floor",
+                subFloor.contour())
             .isLessThan(NoteGeometry.FORCED_STEM_FLOOR_SS)
-            .isCloseTo(stemLengthSs(result, shortNote), within(TOLERANCE));
+            .isCloseTo(stemLengthSs(subFloor.result(), subFloor.note()), within(TOLERANCE));
     }
 
     // T49 (Phase 6 task 8a): a group with a forced-direction member is scored with a
@@ -1624,8 +1680,9 @@ class LayoutEngineTest extends UnitTest {
         var forcedStartYSs =
             -forced.leftYUpSs() - dirSign * LineThickness.BEAM_THICKNESS_SS / 2.0;
 
+        // Guards the sign of dirSign below, which flips the direction of both comparisons.
         assertThat(beamLayout.stemsUp())
-            .describedAs("the group's extremes cancel, so the stems point down")
+            .describedAs("the group straddles the middle line, so the stems point down")
             .isFalse();
         assertThat(beamLayout.startYSs())
             .describedAs("the beam is placed with the group's forced fraction")
