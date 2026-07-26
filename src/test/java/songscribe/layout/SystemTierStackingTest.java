@@ -41,11 +41,10 @@ import songscribe.dom.Annotation;
 import songscribe.dom.BeatChange;
 import songscribe.dom.Song;
 import songscribe.dom.Duration;
+import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
-import songscribe.layout.ElementColumn;
-import songscribe.layout.LayoutResult;
 import songscribe.layout.stacking.StackingUtils;
 import songscribe.layout.stacking.SystemStacker;
 import songscribe.layout.stacking.VerticalStackingCalculator;
@@ -384,7 +383,7 @@ class SystemTierStackingTest extends UnitTest {
 
             var annotationFont = fonts.getAnnotationFont();
             var annotWidthSs = annotLeft.computeContentWidthSs(annotationFont);
-            var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(noteLeft);
+            var noteheadWidthSs = NoteGeometry.getGlyphRightEdgeSs(noteLeft);
 
             var layoutLeft = require(result.getDecorationLayout(annotLeft), "left annotation layout");
             var layoutCenter = require(result.getDecorationLayout(annotCenter), "center annotation layout");
@@ -402,6 +401,33 @@ class SystemTierStackingTest extends UnitTest {
             assertThat(layoutRight.xSs())
                 .describedAs("right-aligned (1.0): x = columnX + noteheadWidth - annotWidth")
                 .isCloseTo(NOTE3_X_SS + noteheadWidthSs - annotWidthSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testAnnotationOnRepeatBarlineAnchorsToElementWidth() {
+            // Repeats have no SMuFL glyph to measure, so the anchor falls back to
+            // the element width (see issue #661 — legacy files with "fine" on a repeat).
+            var repeat = ElementType.REPEAT_RIGHT.newInstance();
+            var annotation = new AnnotationAttachment(repeat, new Annotation("fine", 1.0f));
+            repeat.addAttachment(annotation);
+
+            var line = newLine();
+            populate(line, repeat);
+
+            var result = stackColumns(List.of(columnFor(repeat, NOTE1_X_SS)), line);
+
+            var layout = require(
+                result.getDecorationLayout(annotation),
+                "annotation DecorationLayout");
+
+            var annotWidthSs = annotation.computeContentWidthSs(
+                DocumentFonts.defaultFonts().getAnnotationFont());
+
+            assertThat(layout.xSs())
+                .describedAs("right-aligned (1.0): x = columnX + elementWidth - annotWidth")
+                .isCloseTo(
+                    NOTE1_X_SS + ElementType.REPEAT_RIGHT.getElementWidthSs() - annotWidthSs,
+                    within(TOLERANCE));
         }
 
         @Test

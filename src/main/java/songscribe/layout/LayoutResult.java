@@ -1052,7 +1052,7 @@ public final class LayoutResult {
                 // closer to the boundary than to the last element.
                 var previewType = previewElement.getType();
                 var noteheadWidthSs = previewType.isNote()
-                    ? NoteGeometry.getNoteheadRightEdgeSs(previewElement)
+                    ? NoteGeometry.getGlyphRightEdgeSs(previewElement)
                     : previewType.getElementWidthSs();
                 var lastElementRightEdgeSs = lastColumn.getRightEdgeXSs();
                 var remainingRoomSs = boundarySs - lastElementRightEdgeSs;

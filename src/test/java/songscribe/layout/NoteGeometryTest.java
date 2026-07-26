@@ -842,18 +842,18 @@ class NoteGeometryTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Row 26: getNoteheadRightEdgeSs — SMuFL bbox + fallback
+    // Row 26: getGlyphRightEdgeSs — SMuFL bbox
     // -----------------------------------------------------------------------
 
     @Nested
-    class NoteheadRightEdge {
+    class GlyphRightEdge {
 
         @Test
         void testCrotchetRightEdgeMatchesSmuflBbox() {
             var glyph = ElementType.CROTCHET.requireSMuFLGlyph();
             var bbox = SMuFLMetadata.requireBBox(glyph);
 
-            assertThat(NoteGeometry.getNoteheadRightEdgeSs(ElementType.CROTCHET.newInstance()))
+            assertThat(NoteGeometry.getGlyphRightEdgeSs(ElementType.CROTCHET.newInstance()))
                 .isEqualTo(bbox.right());
         }
 

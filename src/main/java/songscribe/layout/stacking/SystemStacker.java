@@ -141,8 +141,15 @@ public class SystemStacker {
         // anchored to the matching point on the notehead: left edge → left,
         // center → center, right edge → right.
         double xAlignment = annotation.getAnnotation().getXAlignment();
-        var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(note);
-        var xSs = columnXSs + xAlignment * (noteheadWidthSs - widthSs);
+
+        // Barlines and repeats have no glyph to measure — they draw from engraving
+        // defaults — so anchor against their layout width instead.
+        var elementType = note.getType();
+        var anchorWidthSs = elementType.getSMuFLGlyph() != null
+            ? NoteGeometry.getGlyphRightEdgeSs(note)
+            : elementType.getElementWidthSs();
+
+        var xSs = columnXSs + xAlignment * (anchorWidthSs - widthSs);
 
         stackAbove(systemExtents, annotation, xSs,
             widthSs, heightSs,

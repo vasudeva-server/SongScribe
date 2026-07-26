@@ -51,7 +51,8 @@ class NoteColumnGeometryTest extends UnitTest {
 
     @Test
     void testCrotchetUpStem_rightSsEqualsStemRightEdge() {
-        // A plain crotchet (stem up) has its right edge driven by the stem right edge.
+        // A plain crotchet (stem up) ends at the stem's right edge, which Bravura places flush
+        // with the notehead's right edge (see testStemOuterEdgesAreFlushWithNoteheadOuterEdges).
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
 
@@ -69,19 +70,24 @@ class NoteColumnGeometryTest extends UnitTest {
     @Test
     void testSemibreve_noStem_noteheadDrivenRight() {
         // A semibreve has no stem and no flag: the right edge is the bare notehead right edge.
+        // The expectation is read straight from the font metadata rather than from
+        // getGlyphRightEdgeSs, which is the very lookup the production path uses — deriving both
+        // sides from it would hide a whole-note-specific error in that lookup.
         var note = ElementType.SEMIBREVE.newInstance();
         note.setUpper(true);
 
         var extent = NoteColumnGeometry.extentSs(note, false);
+        var noteheadBBox = SMuFLMetadata.requireBBox(ElementType.SEMIBREVE.requireSMuFLGlyph());
 
-        assertThat(extent.rightSs())
-            .isCloseTo(NoteGeometry.getNoteheadRightEdgeSs(note), within(TOLERANCE_SS));
+        assertThat(extent.rightSs()).isCloseTo(noteheadBBox.right(), within(TOLERANCE_SS));
         assertThat(extent.leftSs()).isLessThan(extent.rightSs());
     }
 
     @Test
-    void testMinim_hasStemButNoFlag_stemDrivenRight() {
-        // A minim (half note) has a stem but no flag; the stem drives the right edge.
+    void testMinim_hasStemButNoFlag_rightSsEqualsStemRightEdge() {
+        // A minim (half note) has a stem but no flag. The stem's right edge is flush with the
+        // notehead's (see testStemOuterEdgesAreFlushWithNoteheadOuterEdges), so this pins the
+        // shared value rather than proving the stem widened anything.
         var note = ElementType.MINIM.newInstance();
         note.setUpper(true);
 
@@ -111,6 +117,54 @@ class NoteColumnGeometryTest extends UnitTest {
         // outer edge, so both left extents sit at the notehead left edge (0).
         assertThat(downExtent.leftSs()).isCloseTo(0.0, within(TOLERANCE_SS));
         assertThat(downExtent.leftSs()).isCloseTo(upExtent.leftSs(), within(TOLERANCE_SS));
+    }
+
+    // ======================================================================
+    // The font premise the stem-widening guards rest on
+    // ======================================================================
+
+    @Test
+    void testStemOuterEdgesAreFlushWithNoteheadOuterEdges() {
+        // extentSs widens the column only when a stem sticks out past the notehead. With Bravura
+        // no stem ever does, so both guards are inert and the tests above that name the stem as
+        // the driving edge are really pinning a value the notehead already reached. Pinning the
+        // premise here means a font or anchor change that lets a stem protrude fails loudly, at
+        // which point the widening path becomes live and deserves its own test.
+        for (var noteType : ElementType.values()) {
+            if (!noteType.isNoteWithStem()) {
+                continue;
+            }
+
+            var noteheadBBox = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph());
+            var upStemRightSs =
+                NoteGeometry.computeBaseStemGeometry(noteType, StaffElement.Direction.UP).stemLeftXSs()
+                    + NoteGeometry.STEM_WIDTH_SS;
+            var downStemLeftSs =
+                NoteGeometry.computeBaseStemGeometry(noteType, StaffElement.Direction.DOWN).stemLeftXSs();
+
+            // Neither stem reaches past the notehead bbox that drives the column, in either
+            // direction — this is what keeps the widening guards from firing.
+            assertThat(upStemRightSs)
+                .as("%s up-stem right edge within notehead right edge", noteType)
+                .isLessThanOrEqualTo(noteheadBBox.right() + TOLERANCE_SS);
+            assertThat(downStemLeftSs)
+                .as("%s down-stem left edge within notehead left edge", noteType)
+                .isGreaterThanOrEqualTo(noteheadBBox.left() - TOLERANCE_SS);
+
+            // Grace notes are the one type where the two do not merely fail to protrude but sit
+            // far apart: their stem anchors are scaled to the drawn small notehead while the
+            // column still measures the full-size noteheadBlack bbox.
+            if (noteType.isGraceNote()) {
+                continue;
+            }
+
+            assertThat(upStemRightSs)
+                .as("%s up-stem right edge flush with notehead right edge", noteType)
+                .isCloseTo(noteheadBBox.right(), within(TOLERANCE_SS));
+            assertThat(downStemLeftSs)
+                .as("%s down-stem left edge flush with notehead left edge", noteType)
+                .isCloseTo(noteheadBBox.left(), within(TOLERANCE_SS));
+        }
     }
 
     // ======================================================================
@@ -231,9 +285,11 @@ class NoteColumnGeometryTest extends UnitTest {
         note.setUpper(true);
 
         var attachExtent = NoteColumnGeometry.glissandoAttachExtentSs(note, false);
+        var noteheadBBox = SMuFLMetadata.requireBBox(ElementType.CROTCHET.requireSMuFLGlyph());
 
-        assertThat(attachExtent.rightSs())
-            .isCloseTo(NoteGeometry.getNoteheadRightEdgeSs(note), within(TOLERANCE_SS));
+        // Read from the font metadata, not from getGlyphRightEdgeSs: that is the lookup the
+        // production path forwards, so using it here would compare a value against itself.
+        assertThat(attachExtent.rightSs()).isCloseTo(noteheadBBox.right(), within(TOLERANCE_SS));
     }
 
     @Test

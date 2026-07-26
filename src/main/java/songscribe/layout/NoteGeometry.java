@@ -730,12 +730,15 @@ public final class NoteGeometry {
     }
 
     /**
-     * Returns the right edge of the notehead bounding box in staff spaces, relative to note X.
+     * Returns the right edge of the element's primary glyph bounding box in staff spaces,
+     * relative to the element X — the notehead for notes, the rest glyph for rests.
      *
      * <p>The value is read from bravura_metadata.json via SMuFLMetadata. For grace notes this
      * returns the noteheadBlackSmall bbox, which is already at the correct size.
+     *
+     * <p>The element type must have a SMuFL glyph; barlines and repeats do not.
      */
-    public static double getNoteheadRightEdgeSs(StaffElement note) {
+    public static double getGlyphRightEdgeSs(StaffElement note) {
         return SMuFLMetadata.requireBBox(note.getType().requireSMuFLGlyph()).right();
     }
 

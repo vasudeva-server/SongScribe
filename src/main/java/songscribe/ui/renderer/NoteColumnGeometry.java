@@ -97,7 +97,7 @@ final class NoteColumnGeometry {
 
         // ---- augmentation dots (extend right) ----
         var rightSs = NoteGeometry.dotsRightExtentSs(
-            note, beamed, direction, NoteGeometry.getNoteheadRightEdgeSs(note));
+            note, beamed, direction, NoteGeometry.getGlyphRightEdgeSs(note));
 
         // ---- accidental (extend left only) ----
         if (note.getAccidental() != null) {
@@ -138,6 +138,11 @@ final class NoteColumnGeometry {
         var leftSs = stemFree.leftSs();
         var rightSs = stemFree.rightSs();
 
+        // Both widening guards below are inert with Bravura: its stem anchors sit exactly on the
+        // notehead's outer bbox edges (grace stems sit well inside), so a stem never protrudes.
+        // They are kept for fonts that place the anchors differently. NoteColumnGeometryTest pins
+        // that premise, so a font change making these guards live is reported rather than
+        // silently altering layout.
         if (noteType.isNoteWithStem()) {
             var direction = NoteGeometry.effectiveDirection(note);
             var stemGeom = NoteGeometry.computeBaseStemGeometry(noteType, direction);

@@ -688,7 +688,7 @@ class LayoutResultTest extends UnitTest {
         song.setLineWidthSs(marginSs);
 
         var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
-        var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(preview);
+        var noteheadWidthSs = NoteGeometry.getGlyphRightEdgeSs(preview);
         var expected = centeredInRoom(lastColumn.getRightEdgeXSs(), marginSs, noteheadWidthSs);
 
         assertThat(actual).isCloseTo(expected, within(TOLERANCE));
@@ -720,7 +720,7 @@ class LayoutResultTest extends UnitTest {
         var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
 
         var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
-        var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(preview);
+        var noteheadWidthSs = NoteGeometry.getGlyphRightEdgeSs(preview);
         var expected = centeredInRoom(lastColumn.getRightEdgeXSs(), terminalXSs, noteheadWidthSs);
 
         assertThat(actual).isCloseTo(expected, within(TOLERANCE));
@@ -753,7 +753,7 @@ class LayoutResultTest extends UnitTest {
 
         var previewFootprintColumn = previewColumnFor(preview);
         var footprintWidthSs = previewFootprintColumn.getRightExtentSs();
-        var noteheadWidthSs = NoteGeometry.getNoteheadRightEdgeSs(preview);
+        var noteheadWidthSs = NoteGeometry.getGlyphRightEdgeSs(preview);
         assertThat(footprintWidthSs)
             .as("the quaver's flag/dot footprint must be wider than its bare notehead for this test to be meaningful")
             .isGreaterThan(noteheadWidthSs);
@@ -822,7 +822,7 @@ class LayoutResultTest extends UnitTest {
         var terminalXSs = lastEdgeSs + SUB_NOTEHEAD_ROOM_SS;
         assertThat(SUB_NOTEHEAD_ROOM_SS)
             .as("the room left must be narrower than the notehead for this test to be meaningful")
-            .isLessThan(NoteGeometry.getNoteheadRightEdgeSs(preview));
+            .isLessThan(NoteGeometry.getGlyphRightEdgeSs(preview));
 
         var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
         var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
