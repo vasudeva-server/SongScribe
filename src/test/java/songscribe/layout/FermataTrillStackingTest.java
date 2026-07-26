@@ -99,7 +99,7 @@ class FermataTrillStackingTest extends UnitTest {
             // Fermata should be above the staff (negative Y = higher)
             assertThat(layout.ySs()).isLessThan(0.0);
 
-            // The stored x is the glyph's visual left edge, centred on the notehead — not the
+            // The stored x is the glyph's visual left edge, centerd on the notehead — not the
             // column x — so the box center coincides with the notehead center.
             var fermata = require(
                 note.findAttachment(FermataAttachment.class), "fermata attachment");

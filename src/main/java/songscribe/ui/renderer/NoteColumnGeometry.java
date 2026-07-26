@@ -58,7 +58,7 @@ import songscribe.smufl.SMuFLMetadata;
  * Ledger lines are excluded — they are reference lines, not ink the glissando must avoid.
  *
  * <p>The flag is deliberately excluded from both extents because both glissando endpoints
- * are pinned at notehead-centre Y, so the flag (which lives near the stem tip, far
+ * are pinned at notehead-center Y, so the flag (which lives near the stem tip, far
  * above/below) has no ink in the line's path. The results are intentionally uncached —
  * each computation is a handful of O(1) bbox lookups, far cheaper than maintaining a
  * cache (the cache it replaces was needed only because the old Area build was expensive;

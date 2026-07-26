@@ -272,7 +272,7 @@ One component keeps the ordered `LinePanel` list and runs the full-song measurem
 ### 7. Status bar page indicator
 - New `PageStatusBarPanel` (pattern: `ZoomStatusBarPanel`), added as a **center cell** in `StatusBar`'s `GridBagLayout`. The note preview stays at `LINE_START` (`gridx=0`) and the zoom cluster at `LINE_END`; the new panel is horizontally centered between them.
   
-- Shows "Page N of M" where N is the page under the viewport center. Updates on scroll (viewport listener), on repagination, and on zoom — zoom moves the viewport centre over a different page, which is a scroll concern, not a pagination one.
+- Shows "Page N of M" where N is the page under the viewport center. Updates on scroll (viewport listener), on repagination, and on zoom — zoom moves the viewport center over a different page, which is a scroll concern, not a pagination one.
   
 - Clickable: opens a `JPopupMenu` listing pages 1…M; selecting one scrolls that page into view (pattern: the zoom `percentButton` popup).
   

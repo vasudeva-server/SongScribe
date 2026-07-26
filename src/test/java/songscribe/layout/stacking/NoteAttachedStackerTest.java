@@ -56,7 +56,7 @@ class NoteAttachedStackerTest extends UnitTest {
     private static final double TOLERANCE = 1e-9;
 
     // The accent-clears-arc contact lands on a piecewise wedge profile, so the exact push is a
-    // sub-pixel, non-linear function of where the accent centres on the notehead — not worth pinning
+    // sub-pixel, non-linear function of where the accent centers on the notehead — not worth pinning
     // at 1e-9. This tolerance (well under a device pixel) still catches any gross regression. The
     // narrower wedge from #580 shifted where the arc meets the profile's piecewise breakpoints,
     // widening the sub-pixel slack slightly.
@@ -616,7 +616,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
     @Test
     void testFermataBoxIsCenteredOnTheNoteheadNotTheColumnX() {
-        // The fermata's collision box — and the decoration-layout x derived from it — is centred on
+        // The fermata's collision box — and the decoration-layout x derived from it — is centerd on
         // the notehead, exactly where FermataRenderer draws the glyph. Anchoring it at the column x
         // (as this once did) offset the box from the glyph by half the width difference between the
         // fermata and the notehead, so the drawn glyph's inner bottom corner under-cleared a tie to
@@ -636,7 +636,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var boxCenterSs = layout.xSs() + fermata.getContentWidthSs() / 2.0;
         var noteheadCenterSs = START_NOTE_X_SS + NoteGeometry.getNoteheadCenterXSs(note);
         assertThat(boxCenterSs)
-            .describedAs("the fermata box must be centred on the notehead, not the column x")
+            .describedAs("the fermata box must be centerd on the notehead, not the column x")
             .isCloseTo(noteheadCenterSs, within(TOLERANCE));
     }
 
@@ -1043,7 +1043,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
         // Above accent clears the protruding arc by one articulation margin — measured against its
         // wedge, not its box. The arc begins at the note's column X, which is right of the accent's
-        // left edge (the accent is wider than the notehead it is centred on), so even widened by
+        // left edge (the accent is wider than the notehead it is centerd on), so even widened by
         // SCRIPT_HORIZON_PADDING_SS the arc never reaches the wedge's zero-offset cap. Over the arc,
         // the accent's edge has already climbed away from its bounding box by this much. The wedge
         // profile is piecewise, so this reproduces the exact contact only to a sub-pixel tolerance.

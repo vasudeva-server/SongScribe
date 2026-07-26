@@ -78,7 +78,7 @@ public final class ElementColumn {
     // Computed X position of element head left edge (set by HorizontalSpacingCalculator)
     private double xSs = 0;
     // Notehead-only width (grace-reduced or standard head) in staff spaces, excluding stem, flag,
-    // and augmentation dots. Used for lyric centring so neither a flag nor a dot shifts the syllable
+    // and augmentation dots. Used for lyric centering so neither a flag nor a dot shifts the syllable
     // off the notehead. Defaults to the augmentation-excluded right extent — correct for non-notes,
     // and for synthetic test columns that carry no flag — but ElementColumnBuilder overrides it with
     // the true notehead width for note columns (whose right extent may be flag-inflated).
@@ -332,7 +332,7 @@ public final class ElementColumn {
     /**
      * Returns the notehead's own width in staff spaces — the reduced notehead for grace notes, the
      * standard notehead for other notes — excluding the stem, flag, and augmentation dots. Lyric
-     * centring uses this so neither a flag nor a dot shifts the syllable off the notehead (the
+     * centering uses this so neither a flag nor a dot shifts the syllable off the notehead (the
      * Gould/Ross rule, which already excluded dots, extended to the flag). Set by
      * {@link ElementColumnBuilder} for note columns; otherwise the augmentation-excluded right extent.
      */
@@ -342,14 +342,14 @@ public final class ElementColumn {
 
     /**
      * Sets the notehead-only width. Called by {@link ElementColumnBuilder} for note columns so lyric
-     * centring uses the head width rather than the flag-inflated right extent.
+     * centering uses the head width rather than the flag-inflated right extent.
      */
     public void setNoteheadWidthSs(double noteheadWidthSs) {
         this.noteheadWidthSs = noteheadWidthSs;
     }
 
     /**
-     * Returns the absolute X of the notehead centre, excluding the flag and augmentation dots.
+     * Returns the absolute X of the notehead center, excluding the flag and augmentation dots.
      * Used to horizontally anchor lyrics so neither a flag nor a dot shifts the lyric position.
      * Only valid after X position has been set by the spacing calculator.
      */

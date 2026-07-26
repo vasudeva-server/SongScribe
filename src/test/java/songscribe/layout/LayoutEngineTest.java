@@ -254,7 +254,7 @@ class LayoutEngineTest extends UnitTest {
     /** Small natural height whose apex fits below the near line, forcing the flatten-then-give-up fall-through to heighten. */
     private static final double TIE_TEST_TIGHT_NATURAL_HEIGHT_SS = 0.1;
 
-    // Stem-lengthening constants — notes beyond MIN_STEM_SS (3.5 ss) from centre
+    // Stem-lengthening constants — notes beyond MIN_STEM_SS (3.5 ss) from center
     /** Two ledger lines above the staff (sp < 0 → stems down); |spToSs(-8)| = 4.0 → lengtheningSs = 0.5. */
     private static final int SP_LEDGER_ABOVE_2 = -8;
 
@@ -1051,7 +1051,7 @@ class LayoutEngineTest extends UnitTest {
     }
 
     // T19b: A space note whose edge-seat row lands on a staff line is pushed past it, dropping the seat
-    //      below the head box so the endpoints recede to the notehead centre (center attach). Both
+    //      below the head box so the endpoints recede to the notehead center (center attach). Both
     //      endpoints share the pushed Y. SP_TIE_SPACE_CENTER (sp 1, a space) arcs down (stem up) onto the
     //      sp-2 line, so it is pushed by STAFF_LINE_TIE_CLEARANCE_GAP_SS beyond the head-box edge.
     @Test
@@ -1082,22 +1082,22 @@ class LayoutEngineTest extends UnitTest {
             .describedAs("both endpoints share the pushed seat Y")
             .isCloseTo(expectedYSs, within(TOLERANCE));
 
-        // Center attach: the endpoint has receded to the notehead centre plus note-head-gap.
+        // Center attach: the endpoint has receded to the notehead center plus note-head-gap.
         var note1XSs = result.getElementXSs(note1);
         var expectedStartXSs =
             note1XSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2 + LayoutEngine.NOTE_HEAD_GAP_SS;
 
         assertThat(tieLayout.startXSs())
-            .describedAs("a seat below the head box attaches at the notehead centre (center attach)")
+            .describedAs("a seat below the head box attaches at the notehead center (center attach)")
             .isCloseTo(expectedStartXSs, within(TOLERANCE));
 
-        // Right endpoint (mirror image): facing edge is the end note's own centre, minus the gap.
+        // Right endpoint (mirror image): facing edge is the end note's own center, minus the gap.
         var note2XSs = result.getElementXSs(note2);
         var expectedEndXSs =
             note2XSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2 - LayoutEngine.NOTE_HEAD_GAP_SS;
 
         assertThat(tieLayout.endXSs())
-            .describedAs("center-attach endXSs mirrors startXSs: notehead centre minus note-head-gap")
+            .describedAs("center-attach endXSs mirrors startXSs: notehead center minus note-head-gap")
             .isCloseTo(expectedEndXSs, within(TOLERANCE));
     }
 
@@ -1339,7 +1339,7 @@ class LayoutEngineTest extends UnitTest {
     //      outside the staff (TIE_OUTER_STAFF_LINE_SEAT_SS); a space note seats at the head-box edge,
     //      pushed a further clearance when its edge row is a real staff line but not when that row is
     //      off the staff. centerAttach follows: only a seat past the head-box edge recedes the
-    //      endpoints to the notehead centre.
+    //      endpoints to the notehead center.
     @Test
     void testTieSeatSsAcrossStaffPositions() {
         record SeatCase(int sp, int arcSignSs, double expectedSeatSs, boolean centerAttach) {}
@@ -1726,7 +1726,7 @@ class LayoutEngineTest extends UnitTest {
     @Nested
     class UnbeamedStemLengthening {
 
-        // T25a: Note within staff (|sp| ≤ 7): natural stem already clears centre → no lengthening
+        // T25a: Note within staff (|sp| ≤ 7): natural stem already clears center → no lengthening
         @Test
         void testNoteWithinStaffHasNoLengthening() {
             var line = detachedLine();
@@ -1757,7 +1757,7 @@ class LayoutEngineTest extends UnitTest {
                 .describedAs("2 ledger lines above → lengtheningSs")
                 .isCloseTo(LENGTHENING_TWO_LEDGER_LINES, within(TOLERANCE));
             assertThat(stem.bottomYSs())
-                .describedAs("extended down-stem tip must reach staff centre (Y=0)")
+                .describedAs("extended down-stem tip must reach staff center (Y=0)")
                 .isCloseTo(0.0, within(TOLERANCE));
         }
 
@@ -1776,7 +1776,7 @@ class LayoutEngineTest extends UnitTest {
                 .describedAs("3 ledger lines above → lengtheningSs")
                 .isCloseTo(LENGTHENING_THREE_LEDGER_LINES, within(TOLERANCE));
             assertThat(stem.bottomYSs())
-                .describedAs("extended down-stem tip must reach staff centre (Y=0)")
+                .describedAs("extended down-stem tip must reach staff center (Y=0)")
                 .isCloseTo(0.0, within(TOLERANCE));
         }
 
@@ -1795,7 +1795,7 @@ class LayoutEngineTest extends UnitTest {
                 .describedAs("2 ledger lines below → lengtheningSs")
                 .isCloseTo(LENGTHENING_TWO_LEDGER_LINES, within(TOLERANCE));
             assertThat(stem.topYSs())
-                .describedAs("extended up-stem tip must reach staff centre (Y=0)")
+                .describedAs("extended up-stem tip must reach staff center (Y=0)")
                 .isCloseTo(0.0, within(TOLERANCE));
         }
 
@@ -1836,13 +1836,13 @@ class LayoutEngineTest extends UnitTest {
             var stem = require(result.getStemLayout(element), "StemLayout");
 
             assertThat(stem.lengtheningSs())
-                .describedAs("note exactly MIN_STEM_SS from centre needs no lengthening")
+                .describedAs("note exactly MIN_STEM_SS from center needs no lengthening")
                 .isCloseTo(0.0, within(TOLERANCE));
         }
 
-        // T25g: A manual stem pointing AWAY from centre (forced up on a note above the staff) is never lengthened
+        // T25g: A manual stem pointing AWAY from center (forced up on a note above the staff) is never lengthened
         @Test
-        void testManualStemAwayFromCentreIsNotLengthened() {
+        void testManualStemAwayFromCenterIsNotLengthened() {
             var line = detachedLine();
             var element = ElementType.CROTCHET.newInstance();
             element.setStaffPosition(SP_LEDGER_ABOVE_2);
@@ -1854,16 +1854,16 @@ class LayoutEngineTest extends UnitTest {
             var stem = require(result.getStemLayout(element), "StemLayout");
 
             assertThat(stem.lengtheningSs())
-                .describedAs("stem pointing away from centre is not lengthened")
+                .describedAs("stem pointing away from center is not lengthened")
                 .isCloseTo(0.0, within(TOLERANCE));
 
-            // Tip is not lengthened toward centre, but this forced up-stem (opposing defaultDirection
+            // Tip is not lengthened toward center, but this forced up-stem (opposing defaultDirection
             // DOWN at sp <= 0) is still shortened (Ross & Gourlay) -- a distinct, disjoint concern.
             var elementYSs = Staff.spToSs(SP_LEDGER_ABOVE_2);
             var forcedShorteningSs =
                 NoteGeometry.forcedShorteningSs(SP_LEDGER_ABOVE_2, StaffElement.Direction.UP, false);
             assertThat(stem.topYSs())
-                .describedAs("away-from-centre up-stem is not lengthened, but is forced-shortened")
+                .describedAs("away-from-center up-stem is not lengthened, but is forced-shortened")
                 .isCloseTo(elementYSs - SMuFLConstants.STEM_LENGTH_SS + forcedShorteningSs, within(TOLERANCE));
         }
     }

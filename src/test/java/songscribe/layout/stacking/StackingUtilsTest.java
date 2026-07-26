@@ -655,7 +655,7 @@ class StackingUtilsTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // stackStaccato: quantize-position — a collision-pushed dot centre landing exactly on a staff
+    // stackStaccato: quantize-position — a collision-pushed dot center landing exactly on a staff
     // line, within the quantize zone, is snapped one further half-space outward to a space.
     // -------------------------------------------------------------------------
 
@@ -670,12 +670,12 @@ class StackingUtilsTest extends UnitTest {
 
     // With staffPosition = 0 (the middle line), staccatoAnchorCeilingSs(0) = -1.5 (a space), so the
     // uncollided ideal never needs quantizing. A real reservation this far out forces the collision
-    // branch to win, pushing the pre-quantize centre to exactly -2.0 ss — the top staff line —
+    // branch to win, pushing the pre-quantize center to exactly -2.0 ss — the top staff line —
     // which is inside StackingUtils.STACCATO_QUANTIZE_ZONE_SS (2.5 ss).
     private static final double QUANTIZE_COLLISION_SUPPORT_SS = -1.2;
 
     @Test
-    void testStackStaccatoQuantizesCollisionPushedCentreOffStaffLine() {
+    void testStackStaccatoQuantizesCollisionPushedCenterOffStaffLine() {
         var extents = new StaffExtents(LINE_WIDTH_SS);
         extents.ySet(true, QUANTIZE_X_SS, QUANTIZE_WIDTH_SS, QUANTIZE_COLLISION_SUPPORT_SS);
         var element = mock(LineElement.class);
@@ -688,12 +688,12 @@ class StackingUtilsTest extends UnitTest {
             QUANTIZE_STAFF_PADDING_SS, StackingUtils.SCRIPT_HORIZON_PADDING_SS,
             QUANTIZE_STAFF_POSITION, builder);
 
-        // Pre-quantize centre would land at -2.0 (a staff line); quantized, it snaps one further
+        // Pre-quantize center would land at -2.0 (a staff line); quantized, it snaps one further
         // half-space outward to -2.5 (a space), so the dot's top edge is at -2.5 - height/2 = -3.0.
-        var expectedQuantizedCentreSs = -2.5;
-        var expectedTopYSs = expectedQuantizedCentreSs - QUANTIZE_HEIGHT_SS / 2.0;
+        var expectedQuantizedCenterSs = -2.5;
+        var expectedTopYSs = expectedQuantizedCenterSs - QUANTIZE_HEIGHT_SS / 2.0;
         assertThat(returnedYSs)
-            .describedAs("collision-pushed centre on a staff line snaps outward to the next space")
+            .describedAs("collision-pushed center on a staff line snaps outward to the next space")
             .isCloseTo(expectedTopYSs, within(TOLERANCE));
     }
 
@@ -709,7 +709,7 @@ class StackingUtilsTest extends UnitTest {
     private static final double SLOPED_MARGIN_SS = 0.3;
     private static final double SLOPED_STAFF_PADDING_SS = 0.25;
 
-    // A space strictly inside the staff, so stackStaccato takes its centre-anchored branch (the only
+    // A space strictly inside the staff, so stackStaccato takes its center-anchored branch (the only
     // one that ever consulted yGetExpanded) rather than the staff-edge clamp.
     private static final int SLOPED_STAFF_POSITION = -1;
 
@@ -738,16 +738,16 @@ class StackingUtilsTest extends UnitTest {
             SLOPED_STAFF_POSITION, new LayoutResult.Builder());
     }
 
-    /** The dot's top Y for a given support edge, once margin, centring and quantization are applied. */
+    /** The dot's top Y for a given support edge, once margin, centering and quantization are applied. */
     private static double dotTopYForSupportSs(double supportYSs) {
-        var centreYSs = supportYSs - SLOPED_MARGIN_SS - SLOPED_HEIGHT_SS / 2.0;
+        var centerYSs = supportYSs - SLOPED_MARGIN_SS - SLOPED_HEIGHT_SS / 2.0;
 
-        // The pushed centre lands well beyond STACCATO_QUANTIZE_ZONE_SS (2.5 ss), so it is not
+        // The pushed center lands well beyond STACCATO_QUANTIZE_ZONE_SS (2.5 ss), so it is not
         // snapped and the raw sub-tenth-of-a-staff-space difference survives into the placement.
         // Inside the zone, quantization would round both semantics to the same space and hide it.
-        assertThat(Math.abs(centreYSs)).isGreaterThan(StackingUtils.STACCATO_QUANTIZE_ZONE_SS);
+        assertThat(Math.abs(centerYSs)).isGreaterThan(StackingUtils.STACCATO_QUANTIZE_ZONE_SS);
 
-        return centreYSs - SLOPED_HEIGHT_SS / 2.0;
+        return centerYSs - SLOPED_HEIGHT_SS / 2.0;
     }
 
     @Test
@@ -801,11 +801,11 @@ class StackingUtilsTest extends UnitTest {
             SLOPED_STAFF_PADDING_SS, StackingUtils.SCRIPT_HORIZON_PADDING_SS,
             SLOPED_STAFF_POSITION, new LayoutResult.Builder());
 
-        var idealCentreSs = StackingUtils.staccatoAnchorCeilingSs(SLOPED_STAFF_POSITION);
+        var idealCenterSs = StackingUtils.staccatoAnchorCeilingSs(SLOPED_STAFF_POSITION);
 
         assertThat(returnedYSs)
             .describedAs("an unsupported dot sits exactly at its note-relative anchor")
-            .isCloseTo(idealCentreSs - SLOPED_HEIGHT_SS / 2.0, within(TOLERANCE));
+            .isCloseTo(idealCenterSs - SLOPED_HEIGHT_SS / 2.0, within(TOLERANCE));
     }
 
     // -------------------------------------------------------------------------

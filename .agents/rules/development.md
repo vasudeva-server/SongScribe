@@ -42,6 +42,10 @@ Use `{@link ClassName#CONSTANT_NAME}` when the prose refers to the constant *as 
 
 Exception: illustrating an example calculation/formula, where literals are needed to show the math — reference the constant elsewhere in the same doc if possible.
 
+## Spelling
+
+Use the American spelling "center" (and its variants: "centered", "centering") in comments and identifiers, not the British spelling "centre" and its variants.
+
 ## Generated Files
 
 Never edit files in `build/generated-sources/`.

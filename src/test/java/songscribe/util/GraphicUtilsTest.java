@@ -259,7 +259,7 @@ class GraphicUtilsTest extends UnitTest {
         @Test
         void testAngledLineCenteredOnMidpoint() {
             // A line from the origin to (ANGLED_END, ANGLED_END): the placed shape must rotate to the
-            // 45° angle, so its bounds centre lands on the line midpoint (verifying rotation + placement
+            // 45° angle, so its bounds center lands on the line midpoint (verifying rotation + placement
             // for non-axis-aligned lines, the glissando case).
             var bounds = capturePlacedBounds(g2 ->
                 GraphicUtils.drawRoundedLine(g2, 0, 0, ANGLED_END, ANGLED_END, THICKNESS_SS));

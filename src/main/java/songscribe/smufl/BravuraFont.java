@@ -85,7 +85,7 @@ public final class BravuraFont {
      * The outline is scaled uniformly so its bounding box matches the glyph's declared
      * {@link SMuFLMetadata} bbox. The two disagree slightly — Bravura's staccato dot draws 0.34375 ss
      * wide where its metadata claims 0.336 — and everything else in the layout (a script's footprint,
-     * its centring on the notehead) is built from the metadata. LilyPond reconciles the same
+     * its centering on the notehead) is built from the metadata. LilyPond reconciles the same
      * disagreement the same way, scaling the FreeType outline to the metric box before it builds a
      * skyline from it ({@code stencil-integral.cc} {@code add_named_glyph_segments}).
      */

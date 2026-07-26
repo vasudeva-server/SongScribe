@@ -50,7 +50,7 @@ import songscribe.ui.component.score.LineComponent;
 
 class SlideRendererTest extends UnitTest {
 
-    /** Half-width used to define synthetic column extents in noteContextCentredAt(). */
+    /** Half-width used to define synthetic column extents in noteContextCenteredAt(). */
     private static final double HALF_COLUMN_SS = 0.5;
 
     private static final SlideRenderer RENDERER = SlideRenderer.getInstance();
@@ -420,11 +420,11 @@ class SlideRendererTest extends UnitTest {
     // ======================================================================
 
     /**
-     * Builds a NoteContext for a crotchet centred at (cxSs, cySs) with a symmetric
+     * Builds a NoteContext for a crotchet centerd at (cxSs, cySs) with a symmetric
      * half-column of HALF_COLUMN_SS: glissRightXSs = cxSs + HALF_COLUMN_SS,
      * glissLeftXSs = cxSs - HALF_COLUMN_SS, columnRightXSs = cxSs + HALF_COLUMN_SS.
      */
-    private static SlideRenderer.NoteContext noteContextCentredAt(double cxSs, double cySs) {
+    private static SlideRenderer.NoteContext noteContextCenteredAt(double cxSs, double cySs) {
         var note = ElementType.CROTCHET.newInstance();
         note.setUpper(true);
         return new SlideRenderer.NoteContext(
@@ -438,35 +438,35 @@ class SlideRendererTest extends UnitTest {
 
     @Test
     void testComputeEndpoints_zeroAttachLength_returnsNull() {
-        // Centres exactly 1.0 ss apart: tgt.glissLeft (1.0 - 0.5 = 0.5) coincides with
+        // Centers exactly 1.0 ss apart: tgt.glissLeft (1.0 - 0.5 = 0.5) coincides with
         // src.glissRight (0.0 + 0.5 = 0.5), so attachLength = 0 ≤ 2*gap. The early guard
         // rejects this before the unit-vector division, preventing a divide-by-zero/NaN.
-        var src = noteContextCentredAt(0.0, 0.0);
-        var tgt = noteContextCentredAt(1.0, 0.0);
+        var src = noteContextCenteredAt(0.0, 0.0);
+        var tgt = noteContextCenteredAt(1.0, 0.0);
         assertThat(SlideRenderer.computeEndpoints(src, tgt)).isNull();
     }
 
     @Test
-    void testComputeEndpoints_sameCentreDrawnTooShort_returnsNull() {
-        // Same centre: attachLength = 1.0 (tgt.glissLeft = 4.5, src.glissRight = 5.5),
+    void testComputeEndpoints_sameCenterDrawnTooShort_returnsNull() {
+        // Same center: attachLength = 1.0 (tgt.glissLeft = 4.5, src.glissRight = 5.5),
         // drawn length = 1.0 - 2*0.4 = 0.2 < MIN_RECT_LENGTH_SS → null
-        var src = noteContextCentredAt(5.0, 0.0);
-        var tgt = noteContextCentredAt(5.0, 0.0);
+        var src = noteContextCenteredAt(5.0, 0.0);
+        var tgt = noteContextCenteredAt(5.0, 0.0);
         assertThat(SlideRenderer.computeEndpoints(src, tgt)).isNull();
     }
 
     @Test
     void testComputeEndpoints_shortConnected_returnsNull() {
         // Notes 0.1 ss apart: attachLength = 0.9, drawn = 0.9 - 2*0.4 = 0.1 < MIN_RECT_LENGTH_SS → null
-        var src = noteContextCentredAt(0.0, 0.0);
-        var tgt = noteContextCentredAt(0.1, 0.0);
+        var src = noteContextCenteredAt(0.0, 0.0);
+        var tgt = noteContextCenteredAt(0.1, 0.0);
         assertThat(SlideRenderer.computeEndpoints(src, tgt)).isNull();
     }
 
     @Test
     void testComputeEndpoints_nullTarget_returnsNull() {
         // No following note to connect to: a connecting glissando cannot be drawn.
-        var src = noteContextCentredAt(0.0, 0.0);
+        var src = noteContextCenteredAt(0.0, 0.0);
         assertThat(SlideRenderer.computeEndpoints(src, null)).isNull();
     }
 
@@ -476,8 +476,8 @@ class SlideRendererTest extends UnitTest {
         // startX = 0.0 + 0.5 + 0.4 = 0.9, endX = 10.0 - 0.5 - 0.4 = 9.1
         var srcCx = 0.0;
         var tgtCx = 10.0;
-        var src = noteContextCentredAt(srcCx, 0.0);
-        var tgt = noteContextCentredAt(tgtCx, 0.0);
+        var src = noteContextCenteredAt(srcCx, 0.0);
+        var tgt = noteContextCenteredAt(tgtCx, 0.0);
 
         var result = SlideRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
@@ -503,12 +503,12 @@ class SlideRendererTest extends UnitTest {
         // shrinks as the line steepens. A shallow (horizontal) glissando has full inset = gap;
         // a 45° glissando has a smaller horizontal inset.
         var shallowResult = SlideRenderer.computeEndpoints(
-            noteContextCentredAt(0.0, 0.0), noteContextCentredAt(10.0, 0.0));
+            noteContextCenteredAt(0.0, 0.0), noteContextCenteredAt(10.0, 0.0));
         assertThat(shallowResult).isNotNull();
 
         var steepDy = 10.0;
         var steepResult = SlideRenderer.computeEndpoints(
-            noteContextCentredAt(0.0, 0.0), noteContextCentredAt(10.0, steepDy));
+            noteContextCenteredAt(0.0, 0.0), noteContextCenteredAt(10.0, steepDy));
         assertThat(steepResult).isNotNull();
 
         var attachStartX = HALF_COLUMN_SS;  // src.glissRightXSs = 0 + HALF_COLUMN_SS
@@ -541,7 +541,7 @@ class SlideRendererTest extends UnitTest {
         // the ascending case. Catches a sign error in the Y component of the trim or in atan2.
         var descendingDy = -10.0;
         var result = SlideRenderer.computeEndpoints(
-            noteContextCentredAt(0.0, 0.0), noteContextCentredAt(10.0, descendingDy));
+            noteContextCenteredAt(0.0, 0.0), noteContextCenteredAt(10.0, descendingDy));
         assertThat(result).isNotNull();
 
         var attachStartX = HALF_COLUMN_SS;        // src.glissRightXSs

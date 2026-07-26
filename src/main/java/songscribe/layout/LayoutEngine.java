@@ -106,7 +106,7 @@ public class LayoutEngine {
     static final double TIE_SLUR_MAX_FRACTION = 1.0 / 3.1;
 
     /**
-     * LilyPond Tie note-head-gap: pulls both endpoints toward the span centre (an interval shrink,
+     * LilyPond Tie note-head-gap: pulls both endpoints toward the span center (an interval shrink,
      * {@code attachment_x_.widen(-gap)}), not a per-edge offset; staff spaces.
      */
     static final double NOTE_HEAD_GAP_SS = 0.2;
@@ -857,7 +857,7 @@ public class LayoutEngine {
             // tie-formatting-problem.cc generate_configuration). The vertical seat is computed first;
             // the horizontal attachment then follows from it, because LilyPond samples the chord
             // skyline at the seat height — the endpoint sits at the notehead's facing edge while the
-            // seat is within the head box, and recedes to the notehead centre once it drops below.
+            // seat is within the head box, and recedes to the notehead center once it drops below.
             // A tie joins two same-pitch notes, so both endpoints share one Y. The tie is positioned
             // purely note-relative and independent of any articulation, matching LilyPond, where the
             // tie and the note's scripts (staccato, accent) are placed independently.
@@ -874,8 +874,8 @@ public class LayoutEngine {
             var seatSs = tieSeatSs(notePositionSp, arcSignSs, dotRowCoincides);
             var endpointYSs = Staff.spToSs(notePositionSp) + arcSignSs * seatSs;
 
-            // Facing edge while the seat stays within the half-space-tall head box; notehead centre
-            // once it clears the box (LilyPond get_attachment's edge-vs-centre step). dir = +1 for the
+            // Facing edge while the seat stays within the half-space-tall head box; notehead center
+            // once it clears the box (LilyPond get_attachment's edge-vs-center step). dir = +1 for the
             // left endpoint (tie extends rightward), -1 for the right.
             var centerAttach = seatSs > Staff.STAFF_POSITION_OFFSET_SS;
             var startXSs = tieEndpointXSs(startColumn.getXSs(), 1, centerAttach);
@@ -923,15 +923,15 @@ public class LayoutEngine {
      * X of a tie endpoint, in staff spaces (LilyPond tie-formatting-problem.cc {@code get_attachment}).
      * <p>
      * LilyPond samples the chord's skyline outline at the endpoint's seat height, then note-head-gap
-     * pulls the endpoint {@link #NOTE_HEAD_GAP_SS} toward the span centre
+     * pulls the endpoint {@link #NOTE_HEAD_GAP_SS} toward the span center
      * ({@code attachment_x_.widen(-gap)}). That sample is a step: while the seat sits within the head
      * box the outline is the notehead's facing (span-side) edge; once the seat drops below the box the
-     * outline has receded to the notehead centre. The two endpoints are mirror images.
+     * outline has receded to the notehead center. The two endpoints are mirror images.
      *
      * @param noteLeftXSs  the notehead's left edge (its column X), in staff spaces
      * @param dir          +1 for the left endpoint (tie extends rightward), -1 for the right endpoint
      * @param centerAttach true when the seat has cleared the head box, so the endpoint attaches at the
-     *                     notehead centre rather than its facing edge
+     *                     notehead center rather than its facing edge
      */
     static double tieEndpointXSs(double noteLeftXSs, int dir, boolean centerAttach) {
         var centerXSs = noteLeftXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
@@ -942,7 +942,7 @@ public class LayoutEngine {
     }
 
     /**
-     * Distance from the tied notes' shared centre to the tie endpoints, in the arc direction; staff
+     * Distance from the tied notes' shared center to the tie endpoints, in the arc direction; staff
      * spaces. The tie is seated in the staff space adjacent to the note so its endpoints clear the
      * bounding staff lines (LilyPond tie-formatting-problem.cc {@code generate_configuration}).
      * <ul>

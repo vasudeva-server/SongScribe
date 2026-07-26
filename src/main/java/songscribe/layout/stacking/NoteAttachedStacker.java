@@ -141,9 +141,9 @@ public class NoteAttachedStacker {
     private static final StaffExtents.Profile TRILL_PROFILE_ABOVE =
         ShapeProfile.innerEdge(BravuraFont.glyphOutline(SMuFLGlyph.ORNAMENT_TRILL), true);
 
-    // The tr glyph's ink width, used to centre its footprint on the notehead exactly as TrillRenderer
+    // The tr glyph's ink width, used to center its footprint on the notehead exactly as TrillRenderer
     // draws it. Bravura gives ornamentTrill a left bearing of zero, so its box width equals its advance
-    // width, which is the quantity TrillRenderer centres by.
+    // width, which is the quantity TrillRenderer centers by.
     private static final double TRILL_GLYPH_WIDTH_SS =
         SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL).width();
 
@@ -227,7 +227,7 @@ public class NoteAttachedStacker {
         // Tier 1: Articulations, stacked as a script column outside the tie/notehead skyline: the
         // staccato innermost (nearest the note), the accent just outside it. Each clears only what
         // its own footprint overlaps, so an edge-attached tie — whose arc begins beyond the notehead
-        // — leaves the articulations exactly where they'd sit untied, while a centre-attached one,
+        // — leaves the articulations exactly where they'd sit untied, while a center-attached one,
         // which starts on top of the notehead, pushes them outward.
         for (var column : columns) {
             stackStaccatoColumn(column, builder);
@@ -460,8 +460,8 @@ public class NoteAttachedStacker {
      * The reservation spans exactly {@code [startXSs, endXSs]} — where the arc physically is — and
      * never the noteheads it joins. That single rule reproduces LilyPond in both attachment modes:
      * an edge-attached tie starts a {@code NOTE_HEAD_GAP_SS} beyond the notehead, clear of the
-     * scripts, which therefore sit exactly where they would untied; a centre-attached tie (one whose
-     * seat drops past the head box, so {@code tieEndpointXSs} recedes to the notehead centre) starts
+     * scripts, which therefore sit exactly where they would untied; a center-attached tie (one whose
+     * seat drops past the head box, so {@code tieEndpointXSs} recedes to the notehead center) starts
      * inside the head, genuinely overlaps the scripts, and pushes them outward. Reserving the arc
      * across the notehead — as this once did, at the Bezier Y a full notehead-width into the span —
      * forced the second behaviour onto both.
@@ -664,7 +664,7 @@ public class NoteAttachedStacker {
     }
 
     /**
-     * X of an articulation's collision footprint — the glyph's left edge, centred on the notehead,
+     * X of an articulation's collision footprint — the glyph's left edge, centerd on the notehead,
      * which is exactly where {@code ArticulationRenderer} draws it. The note's column x is not the
      * footprint: an accent is wider than a notehead, so anchoring its box at the column x pushes the
      * box off the glyph by half the width difference and makes it collide with whatever sits to the
@@ -723,7 +723,7 @@ public class NoteAttachedStacker {
      * StackingUtils#placeAndReserveClamped}. Shared by the full pipeline's fermata pass and the
      * no-tie preview so the two agree on fermata placement.
      * <p>
-     * The collision footprint is centred on the notehead, exactly where {@code FermataRenderer}
+     * The collision footprint is centerd on the notehead, exactly where {@code FermataRenderer}
      * draws the glyph — not anchored at the column x. Anchoring at the column x offsets the box
      * from the glyph by half the difference between the fermata's width and the notehead's, so it
      * clears the tie at the wrong x and the drawn glyph's inner bottom corner ends up nearer the
@@ -845,7 +845,7 @@ public class NoteAttachedStacker {
 
             if (index == anchorIndex) {
                 // The first note seats the tr glyph as a script: it clears the tie/notehead by the
-                // glyph's real inner edge, centred on the notehead exactly as TrillRenderer draws it.
+                // glyph's real inner edge, centerd on the notehead exactly as TrillRenderer draws it.
                 footprintXSs = column.getXSs()
                     + NoteGeometry.getNoteheadCenterXSs(note) - TRILL_GLYPH_WIDTH_SS / 2.0;
                 profile = TRILL_PROFILE_ABOVE;

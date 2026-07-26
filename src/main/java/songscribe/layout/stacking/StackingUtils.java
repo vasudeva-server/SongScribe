@@ -92,8 +92,8 @@ public final class StackingUtils {
 
     // LilyPond quantize-position zone: the staff plus one staff-position beyond each outer line
     // (LilyPond side-position-interface.cc aligned_side: staff_span.widen(1)). A staccato whose
-    // centre falls within this band is snapped to a space; beyond it, the dot keeps its raw padded
-    // position. In staff-space units, |centre| <= this value.
+    // center falls within this band is snapped to a space; beyond it, the dot keeps its raw padded
+    // position. In staff-space units, |center| <= this value.
     static final double STACCATO_QUANTIZE_ZONE_SS =
         Staff.STAFF_HALF_SS + Staff.STAFF_POSITION_OFFSET_SS;
 
@@ -520,7 +520,7 @@ public final class StackingUtils {
             centerYSs = innerEdgeYSs + heightSs / 2.0;
         }
 
-        // LilyPond quantize-position: snap the dot centre outward to the next off-line space. The
+        // LilyPond quantize-position: snap the dot center outward to the next off-line space. The
         // uncollided anchor already sits in a space, so this only moves a dot that a tie (or other
         // support) has pushed off its anchor, keeping it off the staff line it would otherwise
         // land on.
@@ -540,9 +540,9 @@ public final class StackingUtils {
     }
 
     /**
-     * LilyPond {@code quantize-position} for a staccato dot centre (staff-space, Y-down): within the
+     * LilyPond {@code quantize-position} for a staccato dot center (staff-space, Y-down): within the
      * staff plus one position ({@link #STACCATO_QUANTIZE_ZONE_SS}, LilyPond
-     * {@code staff_span.widen(1)}), snaps the centre <em>outward</em> to the nearest odd staff
+     * {@code staff_span.widen(1)}), snaps the center <em>outward</em> to the nearest odd staff
      * position — a space — so a dot a tie has pushed off its ideal anchor never comes to rest on a
      * staff line. Beyond that zone the dot keeps its raw padded position, since LilyPond does not
      * quantize once the dot has cleared the staff.

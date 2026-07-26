@@ -195,7 +195,7 @@ class ShapeProfileTest extends UnitTest {
         var profile = ShapeProfile.innerEdge(AccentShape.accent(), false);
 
         // The two arms meet at the tip, so the upper boundary has descended to the glyph's vertical
-        // centre there. This is the whole reason the wedge clears a tie so much better than its box.
+        // center there. This is the whole reason the wedge clears a tie so much better than its box.
         assertThat(profile.segments().getLast().yOffsetEndSs())
             .describedAs("the wedge's upper edge reaches mid-height at the tip")
             .isCloseTo(bounds.getHeight() / 2.0, within(FLATNESS_TOLERANCE_SS));

@@ -365,14 +365,14 @@ class NoteGeometryTest extends UnitTest {
 
         private static final double TOLERANCE = 1e-9;
 
-        /** One ledger line below the staff (Y-down): ledger sits above note centre in Y-down. */
+        /** One ledger line below the staff (Y-down): ledger sits above note center in Y-down. */
         private static final int ONE_LEDGER_BELOW_SP = 7;
 
         /** Staff position with 3 ledger lines; the farthest ledger Y exceeds the sharp bbox. */
         private static final int THREE_LEDGERS_BELOW_SP = 11;
 
         /**
-         * The sharp accidental spans the note centre vertically (typical bbox ≈ [-1.5, 1.5]).
+         * The sharp accidental spans the note center vertically (typical bbox ≈ [-1.5, 1.5]).
          * spToSs(-1) = -0.5 is well within that range.
          */
         private static final int LEDGER_WITHIN_ACC_RANGE_SP = -1;

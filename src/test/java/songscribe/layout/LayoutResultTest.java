@@ -106,7 +106,7 @@ class LayoutResultTest extends UnitTest {
         assertThat(anchor.baselineYSs()).isCloseTo(EXPECTED_VERSE_1_BASELINE_SS, within(TOLERANCE));
     }
 
-    // T2b: column-anchored getLyricAnchor centres on the notehead extent (excluding augmentation),
+    // T2b: column-anchored getLyricAnchor centers on the notehead extent (excluding augmentation),
     // so the editor cursor on a dotted note matches where the committed lyric box lands (#451).
     @Test
     void testGetLyricAnchorColumnAnchoredIgnoresDots() {
@@ -115,9 +115,9 @@ class LayoutResultTest extends UnitTest {
         var layoutResult = anchorLayoutBuilder().putElementColumn(element, column).build();
         var anchor = layoutResult.getLyricAnchor(element, testLyricMetrics());
 
-        // Centred on the notehead (excluding the dot), not the full extent that includes it.
+        // Centerd on the notehead (excluding the dot), not the full extent that includes it.
         assertThat(anchor.centerXSs())
-            .as("dotted note: anchor must be centred on the notehead, not shifted right by the dot")
+            .as("dotted note: anchor must be centerd on the notehead, not shifted right by the dot")
             .isCloseTo(ANCHOR_COLUMN_X_SS + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0, within(TOLERANCE));
     }
 
@@ -661,7 +661,7 @@ class LayoutResultTest extends UnitTest {
 
     // On an interior line — which carries no auto-maintained terminal — the staff margin is the
     // boundary. When the line is full enough that the preview's default spacing would overflow
-    // that margin, the preview centres in the room that remains rather than sitting flush against
+    // that margin, the preview centers in the room that remains rather than sitting flush against
     // the margin (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastCentersAgainstMarginOnInteriorLine() {
@@ -697,7 +697,7 @@ class LayoutResultTest extends UnitTest {
     }
 
     // When the line ends with the auto-maintained terminal, the terminal's own column — not the
-    // far staff margin — is the boundary the preview centres against, since the terminal can sit
+    // far staff margin — is the boundary the preview centers against, since the terminal can sit
     // well short of the margin (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastCentersAgainstTerminalWhenLineHasOne() {
@@ -730,7 +730,7 @@ class LayoutResultTest extends UnitTest {
     }
 
     // The centering ignores the preview's flag, accidental, and augmentation dots — only the
-    // notehead itself is centred in the remaining room, so a wide unbeamed quaver with an
+    // notehead itself is centerd in the remaining room, so a wide unbeamed quaver with an
     // accidental and a dot lands further right than centering its full footprint would put it
     // (refs #608).
     @Test
@@ -767,7 +767,7 @@ class LayoutResultTest extends UnitTest {
 
         assertThat(actual).isCloseTo(centeredInRoom(lastEdgeSs, terminalXSs, noteheadWidthSs), within(TOLERANCE));
 
-        // The wider footprint would centre the preview further left; regressing to footprint-based
+        // The wider footprint would center the preview further left; regressing to footprint-based
         // centering would leave the notehead visibly hugging the last element.
         assertThat(actual)
             .as("centering must measure the notehead, not the full flag/accidental/dot footprint")
@@ -775,7 +775,7 @@ class LayoutResultTest extends UnitTest {
     }
 
     // A non-note preview (here a rest) has no notehead, so its full element width — not a SMuFL
-    // notehead bounding box — is what gets centred in the remaining room (refs #608).
+    // notehead bounding box — is what gets centerd in the remaining room (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastCentersNonNotePreviewByElementWidth() {
         var first = ElementType.CROTCHET.newInstance();
@@ -831,7 +831,7 @@ class LayoutResultTest extends UnitTest {
     }
 
     // The boundary check is an overflow check, not a fit check: a preview whose natural right edge
-    // lands exactly on the boundary still uses its natural spacing rather than being re-centred
+    // lands exactly on the boundary still uses its natural spacing rather than being re-centerd
     // (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastKeepsNaturalSpacingWhenPreviewExactlyMeetsBoundary() {
@@ -1107,7 +1107,7 @@ class LayoutResultTest extends UnitTest {
         return (lowSs + highSs) / 2;
     }
 
-    // Where an element of the given width lands when centred between a left edge and a boundary.
+    // Where an element of the given width lands when centerd between a left edge and a boundary.
     private static double centeredInRoom(double leftEdgeSs, double boundarySs, double widthSs) {
         return leftEdgeSs + (boundarySs - leftEdgeSs - widthSs) / 2;
     }

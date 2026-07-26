@@ -278,7 +278,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         // FRACTIONALMETRICS_ON (GraphicUtils.setRenderingHints), so the notehead's origin is NOT
         // snapped to an integer device pixel; rounding the stem to one would shift it off the
         // notehead edge it is meant to sit flush with, and drag beam ends — derived from the same
-        // stem centre — out of alignment with it.
+        // stem center — out of alignment with it.
         var stemLeftXSs = geom.stemLeftXSs();
 
         var layoutResult = invariants.getLayoutResult();
@@ -321,7 +321,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         // for beam positioning.
         //
         // French beaming pulls an inner stem back by one further beam translation
-        // per beam that passes straight through it, so it stops at the centre of
+        // per beam that passes straight through it, so it stops at the center of
         // the innermost beam it carries instead of running out to the outer one.
         // The translation comes from the same helper BeamGroupRenderer steps its
         // inner beams by, so the stem lands on the beam at any thickening.

@@ -192,7 +192,7 @@ public class ElementColumnBuilder {
             beamed
         );
 
-        // Lyric centring must use the notehead alone, not the (possibly flag-inflated) right extent,
+        // Lyric centering must use the notehead alone, not the (possibly flag-inflated) right extent,
         // so a flag never shifts the syllable off the notehead. Non-note columns keep the default
         // (their augmentation-excluded right extent).
         if (element.getType().isNote()) {

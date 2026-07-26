@@ -171,7 +171,7 @@ class TiedScriptStackingTest extends UnitTest {
             var push = accentTopYSs(true) - accentTopYSs(false);
 
             assertThat(push)
-                .describedAs("a centre-attached tie covers the notehead, so it must push the accent out")
+                .describedAs("a center-attached tie covers the notehead, so it must push the accent out")
                 .isGreaterThan(0.0);
 
             assertThat(push)
@@ -205,10 +205,10 @@ class TiedScriptStackingTest extends UnitTest {
      * Both attachment modes are pinned, because they are the two halves of one rule. LilyPond's
      * {@code Script_engraver::acknowledge_tie} adds every tie as a script side-support, yet the tie
      * changes nothing for an edge-attached tie (which begins a {@code NOTE_HEAD_GAP_SS} beyond the
-     * notehead, clear of the script) and pushes hard for a centre-attached one (whose endpoint recedes
-     * to the notehead centre, landing on top of the script). Verified against LilyPond 2.24: tied and
+     * notehead, clear of the script) and pushes hard for a center-attached one (whose endpoint recedes
+     * to the notehead center, landing on top of the script). Verified against LilyPond 2.24: tied and
      * untied {@code d'}, {@code g'} place their accent at staff-position -8.289 and -6.399
-     * respectively, unchanged; centre-attached {@code a'} moves its staccato by a full staff space.
+     * respectively, unchanged; center-attached {@code a'} moves its staccato by a full staff space.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -224,16 +224,16 @@ class TiedScriptStackingTest extends UnitTest {
         private static final int EDGE_ATTACH_SP = 6;
 
         // A space note whose arc-side row is a staff line: the seat is pushed past the head box, so the
-        // endpoints recede to the notehead centre and the arc covers the scripts (centre attach).
-        private static final int CENTRE_ATTACH_SP = 1;
+        // endpoints recede to the notehead center and the arc covers the scripts (center attach).
+        private static final int CENTER_ATTACH_SP = 1;
 
         // Below-staff scripts (sp > 0 → stem up) are pushed to larger Y, since Y increases downward.
         //
-        // The centre-attached tie lifts the dot clear of the notehead, and quantize-position then
-        // snaps the dot's centre outward to the next off-line space — so the push is exactly one staff
+        // The center-attached tie lifts the dot clear of the notehead, and quantize-position then
+        // snaps the dot's center outward to the next off-line space — so the push is exactly one staff
         // space, not the arc's own depth. Matches LilyPond 2.24, which moves the same staccato by a
         // full space.
-        private static final double CENTRE_ATTACH_STACCATO_PUSH_SS = 1.0;
+        private static final double CENTER_ATTACH_STACCATO_PUSH_SS = 1.0;
 
         // Untied at this staff position the dot still sits inside the staff, so its outer edge never
         // reaches the accent: the staff clamp — the bottom line's ink edge plus the script's
@@ -288,13 +288,13 @@ class TiedScriptStackingTest extends UnitTest {
         }
 
         @Test
-        void testCentreAttachedTiePushesScriptsOutward() {
-            var untied = scriptYSs(CENTRE_ATTACH_SP, false);
-            var tied = scriptYSs(CENTRE_ATTACH_SP, true);
+        void testCenterAttachedTiePushesScriptsOutward() {
+            var untied = scriptYSs(CENTER_ATTACH_SP, false);
+            var tied = scriptYSs(CENTER_ATTACH_SP, true);
 
             assertThat(tied.staccatoYSs() - untied.staccatoYSs())
-                .describedAs("centre-attached tie covers the notehead, pushing the staccato a full space")
-                .isCloseTo(CENTRE_ATTACH_STACCATO_PUSH_SS, within(TOLERANCE));
+                .describedAs("center-attached tie covers the notehead, pushing the staccato a full space")
+                .isCloseTo(CENTER_ATTACH_STACCATO_PUSH_SS, within(TOLERANCE));
 
             assertThat(untied.accentYSs())
                 .describedAs("untied, the dot stays within the staff, so the staff clamp seats the accent")

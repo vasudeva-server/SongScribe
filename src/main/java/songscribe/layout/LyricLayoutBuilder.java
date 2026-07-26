@@ -336,18 +336,18 @@ public final class LyricLayoutBuilder {
     /**
      * Returns the left-edge X (staff spaces) at which to place a syllable's lyric box.
      * <p>
-     * Normal notes / rests: centre the entire syllable's advance width on the notehead centre,
+     * Normal notes / rests: center the entire syllable's advance width on the notehead center,
      * excluding the flag and augmentation dots (the established Gould/Ross rule — neither the flag
      * nor the dots are part of the notehead and must not shift the lyric position).
      * <p>
      * Grace notes, by syllable advance width relative to the grace notehead and the grace→host
      * notehead union:
      * <ul>
-     *   <li>narrower than the grace notehead → centre on the grace notehead (a lone narrow glyph
-     *       such as "I" must sit under the notehead, not left-anchored where it reads off-centre);
+     *   <li>narrower than the grace notehead → center on the grace notehead (a lone narrow glyph
+     *       such as "I" must sit under the notehead, not left-anchored where it reads off-center);
      *   <li>at least the notehead width but within the union → left-anchor on the grace notehead's
      *       left edge (the lyric flows rightward toward the host);
-     *   <li>wider than the union → centre on the union so it overhangs each side equally (see
+     *   <li>wider than the union → center on the union so it overhangs each side equally (see
      *       {@link HorizontalSpacingCalculator#graceLyricOverhangSs(double, ElementColumn, ElementColumn)}).
      * </ul>
      * The grace and its host are treated as one unioned column for lyric layout: the grace carries
@@ -365,12 +365,12 @@ public final class LyricLayoutBuilder {
         var element = column.getElement();
 
         // A grace lyric at least as wide as the grace notehead spans toward the host: anchor on the
-        // grace notehead left edge when it fits the grace→host union, else centre on that union.
+        // grace notehead left edge when it fits the grace→host union, else center on that union.
         if (column.isGraceNote() && widthSs >= column.getNoteheadWidthSs()) {
             return column.getXSs() - HorizontalSpacingCalculator.graceLyricOverhangSs(widthSs, column, hostColumn);
         }
 
-        // Narrow grace lyric or any normal note/rest: centre the syllable on the notehead, which
+        // Narrow grace lyric or any normal note/rest: center the syllable on the notehead, which
         // excludes the flag and augmentation dots (getNoteheadCenterXSs) so neither shifts the lyric.
         return column.getNoteheadCenterXSs() - widthSs / 2.0;
     }

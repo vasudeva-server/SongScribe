@@ -100,13 +100,13 @@ class ArticulationStackingTest extends UnitTest {
      */
     /**
      * The x an articulation's {@link LayoutResult.DecorationLayout} carries: the glyph's left edge,
-     * centred on the notehead — where {@code ArticulationRenderer} draws it, and so where it
+     * centerd on the notehead — where {@code ArticulationRenderer} draws it, and so where it
      * collides. Not the note's column x; an accent is wider than a notehead.
      * <p>
-     * This asserts the <em>wiring</em> — that the stacker centres the box on the notehead rather than
+     * This asserts the <em>wiring</em> — that the stacker centers the box on the notehead rather than
      * anchoring it at the column x, the bug this guards against. It cannot catch an error inside
      * {@link NoteGeometry#getNoteheadCenterXSs} itself, which is what {@code NoteGeometryTest} is
-     * for; recomputing that centre here would only have hidden such an error behind the same call
+     * for; recomputing that center here would only have hidden such an error behind the same call
      * chain the production code uses.
      */
     private static double centeredArticulationXSs(StaffElement note, double widthSs) {
@@ -157,7 +157,7 @@ class ArticulationStackingTest extends UnitTest {
      * How far past the staccato dot's box edge the accent's inner edge descends — the whole of what
      * the two outlines buy over two boxes.
      * <p>
-     * Both glyphs are centred on the notehead, so the dot sits centred within the accent's box.
+     * Both glyphs are centerd on the notehead, so the dot sits centerd within the accent's box.
      * LilyPond widens the <em>support</em> by {@code horizon-padding}, not the element's own edge
      * (skyline.cc {@code internal_distance} pads {@code dim}), which puts the support's near edge a
      * {@link StackingUtils#SCRIPT_HORIZON_PADDING_SS} left of the dot.
@@ -523,7 +523,7 @@ class ArticulationStackingTest extends UnitTest {
                 "staccato DecorationLayout");
 
             assertThat(layout.xSs())
-                .describedAs("articulation box is centred on the notehead, not anchored at column x")
+                .describedAs("articulation box is centerd on the notehead, not anchored at column x")
                 .isCloseTo(centeredArticulationXSs(note, layout.widthSs()), within(TOLERANCE));
         }
 

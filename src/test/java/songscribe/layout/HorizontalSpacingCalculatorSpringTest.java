@@ -83,7 +83,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     private static final int FIRST_BEAM_GROUP_ID = 0;
     private static final int SECOND_BEAM_GROUP_ID = 1;
 
-    /** A notehead wider than the plain head, so its centre offset differs and the {@code c} term shows. */
+    /** A notehead wider than the plain head, so its center offset differs and the {@code c} term shows. */
     private static final double WIDE_HEAD_RIGHT_EXTENT_SS = 1.5;
 
     /** A lone syllable wide enough that its reserved footprint exceeds the note-collision floor. */
@@ -470,7 +470,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         assertThat(HYPHEN_COLLISION_GAP_SS).isLessThan(SPACE_COLLISION_GAP_SS);
     }
 
-    // A lone syllable still reserves its own footprint in the collision floor — the notehead-centred
+    // A lone syllable still reserves its own footprint in the collision floor — the notehead-centerd
     // half that overhangs toward the gap plus one inter-syllable space — even though its unlyriced
     // neighbour has nothing to collide with. A wide enough lone syllable makes that reservation exceed
     // the note-collision floor, so it is the binding constraint.
@@ -480,8 +480,8 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
 
         var spring = HorizontalSpacingCalculator.buildSpring(loneSyllable, plainColumn(), DEFAULT_LINE_REST_SS);
 
-        var noteheadCentreOffsetSs = HEAD_RIGHT_EXTENT_SS / 2;
-        var reservedRightSs = LONE_SYLLABLE_WIDTH_SS / 2 + noteheadCentreOffsetSs;
+        var noteheadCenterOffsetSs = HEAD_RIGHT_EXTENT_SS / 2;
+        var reservedRightSs = LONE_SYLLABLE_WIDTH_SS / 2 + noteheadCenterOffsetSs;
         var expectedStrutSs = reservedRightSs + SPACE_COLLISION_GAP_SS;
 
         assertThat(spring.strutSs()).isCloseTo(expectedStrutSs, within(TOLERANCE));
@@ -584,11 +584,11 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
             HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
     }
 
-    // The syllable floor centres each syllable on its notehead (excluding accidentals/dots), so when
+    // The syllable floor centers each syllable on its notehead (excluding accidentals/dots), so when
     // two syllable columns have differing notehead widths the floor is right + gap + left with
     // right = w/2 + c_prev and left = w/2 − c_curr — not the naive w + gap that ignores the offsets.
     @Test
-    void testBuildSpringCentresSyllableFloorOnNoteheadForDifferingNoteheadWidths() {
+    void testBuildSpringCentersSyllableFloorOnNoteheadForDifferingNoteheadWidths() {
         var prev = syllableColumn(WIDE_HEAD_RIGHT_EXTENT_SS, SYLLABLE_WIDTH_SS);
         var curr = syllableColumn(HEAD_RIGHT_EXTENT_SS, SYLLABLE_WIDTH_SS);
 
@@ -601,7 +601,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         var expectedStrutSs = rightSs + SPACE_COLLISION_GAP_SS + leftSs;
 
         assertThat(spring.strutSs()).isCloseTo(expectedStrutSs, within(TOLERANCE));
-        // The notehead-centring (c_prev − c_curr) term makes this differ from the naive w + gap.
+        // The notehead-centering (c_prev − c_curr) term makes this differ from the naive w + gap.
         assertThat(expectedStrutSs).isNotCloseTo(SYLLABLE_WIDTH_SS + SPACE_COLLISION_GAP_SS, within(TOLERANCE));
         // The syllable floor binds over the note-collision floor.
         assertThat(expectedStrutSs)

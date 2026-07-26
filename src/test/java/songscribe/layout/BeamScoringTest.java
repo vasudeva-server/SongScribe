@@ -529,7 +529,7 @@ class BeamScoringTest extends UnitTest {
 
     /**
      * @param beamCount beams per stem
-     * @return the height of that beam stack, centre of outermost to outer edge
+     * @return the height of that beam stack, center of outermost to outer edge
      */
     private static double heightOfBeams(int beamCount) {
         return BeamScoring.BEAM_THICKNESS_SS + (beamCount - 1) * BeamScoring.BEAM_TRANSLATION_SS;

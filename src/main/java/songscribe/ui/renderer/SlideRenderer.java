@@ -44,13 +44,13 @@ import songscribe.util.GraphicsState;
  * <p>
  * A connecting glissando attaches at the stem-free extents of the two notes — the leading note's
  * right edge and the trailing note's left edge (notehead, augmentation dots, and accidental, but
- * not the stem or flag) — each at its own notehead-centre Y. The drawn line is a sub-segment of
+ * not the stem or flag) — each at its own notehead-center Y. The drawn line is a sub-segment of
  * that attach-to-attach ray, trimmed by {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS} along the line
  * direction at each end, so it stays collinear with the ray and clears the noteheads by a constant
  * distance regardless of slope.
  * <p>
  * A fall's glyph is drawn {@link NoteGeometry#FALL_GAP_SS} past the host note's column edge, at the
- * note's notehead-centre Y, and its drawn rect is cached on the {@link StaffElement.Fall} for
+ * note's notehead-center Y, and its drawn rect is cached on the {@link StaffElement.Fall} for
  * hit-testing.
  * <p>
  * Slide data is stored on the source note via {@link StaffElement#getSlide()}.
@@ -186,7 +186,7 @@ public final class SlideRenderer {
 
     /**
      * Draws the {@code brassFallLipShort} glyph one {@link NoteGeometry#FALL_GAP_SS} past
-     * the host note's column right edge, at the note's notehead-centre Y, and returns the glyph's
+     * the host note's column right edge, at the note's notehead-center Y, and returns the glyph's
      * axis-aligned drawn rect in layout space.
      */
     private Rectangle2D drawFallGlyph(Graphics2D g2, NoteContext src, Color color) {
@@ -402,7 +402,7 @@ public final class SlideRenderer {
     // ==========================================================================
 
     /**
-     * Resolved geometry for a single note in layout space: notehead-centre Y, the stem-full
+     * Resolved geometry for a single note in layout space: notehead-center Y, the stem-full
      * column right edge (the fall anchor), and the stem-free glissando attachment extents.
      */
     record NoteContext(
@@ -438,7 +438,7 @@ public final class SlideRenderer {
     ) {}
 
     /**
-     * Resolves the geometry context for a note at the given index: notehead-centre Y, the
+     * Resolves the geometry context for a note at the given index: notehead-center Y, the
      * stem-full column right edge (fall anchor), and the stem-free glissando attach extents,
      * all translated into layout space.
      */
@@ -499,7 +499,7 @@ public final class SlideRenderer {
      * <p>
      * The attachment points are the stem-free column extents — the leading note's right
      * ({@link NoteContext#glissRightXSs}) and the trailing note's left
-     * ({@link NoteContext#glissLeftXSs}) — each at its own notehead-centre Y. The drawn line
+     * ({@link NoteContext#glissLeftXSs}) — each at its own notehead-center Y. The drawn line
      * is a sub-segment of the attach-to-attach ray, trimmed by
      * {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS} <em>along the line direction</em> at each
      * end. Because the gap is measured along the line, its horizontal component is
@@ -519,7 +519,7 @@ public final class SlideRenderer {
             return null;
         }
 
-        // Attachment points: stem-free extents, each at its own notehead-centre Y.
+        // Attachment points: stem-free extents, each at its own notehead-center Y.
         var attachStartX = src.glissRightXSs();
         var attachStartY = src.cySs();
         var attachEndX = tgt.glissLeftXSs();

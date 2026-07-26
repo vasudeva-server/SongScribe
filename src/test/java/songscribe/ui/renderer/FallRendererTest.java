@@ -43,7 +43,7 @@ import songscribe.smufl.SMuFLMetadata;
 /**
  * Verifies the new fall-specific rendering: a {@link StaffElement.Fall} draws the
  * {@code brassFallLipShort} glyph one {@link NoteGeometry#FALL_GAP_SS} past the host
- * note's column-right edge, at the note's notehead-centre Y, caches the glyph's drawn rect, and is
+ * note's column-right edge, at the note's notehead-center Y, caches the glyph's drawn rect, and is
  * selected when that rect is clicked.
  */
 class FallRendererTest extends UnitTest {
@@ -88,7 +88,7 @@ class FallRendererTest extends UnitTest {
             mock(Graphics2D.class), line, note, 0, invariants, ElementFrame.LINE_LEVEL);
 
         // The glyph hangs one gap past the note's column-right edge (elementX is 0 for an unmapped
-        // note), at the note's notehead-centre Y; its drawn rect is the glyph bbox translated there.
+        // note), at the note's notehead-center Y; its drawn rect is the glyph bbox translated there.
         var columnRightXSs = NoteColumnGeometry.extentSs(note, false).rightSs();
         var glyphXSs = columnRightXSs + NoteGeometry.FALL_GAP_SS;
         var glyphYSs = RenderingUtils.noteStaffPositionToCoordinateSs(

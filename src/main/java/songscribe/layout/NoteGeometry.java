@@ -487,7 +487,7 @@ public final class NoteGeometry {
      * Returns the bounding box of the accidental drawn for a note, in staff-space units.
      *
      * <p>Horizontal coordinates are relative to the notehead glyph origin (x = 0).
-     * Vertical coordinates are relative to the note centre (y = 0), using Y-down convention.
+     * Vertical coordinates are relative to the note center (y = 0), using Y-down convention.
      *
      * <p>Returns {@code null} when the note has no accidental, or when it is a grace note:
      * grace-note accidentals are deliberately not reserved into the structural stacking layer
@@ -671,9 +671,9 @@ public final class NoteGeometry {
     }
 
     /**
-     * Returns the X of the notehead's centre relative to the note's column X, in staff spaces.
+     * Returns the X of the notehead's center relative to the note's column X, in staff spaces.
      * <p>
-     * Anything that must sit centred over the notehead — an articulation, a dynamic, a fermata —
+     * Anything that must sit centerd over the notehead — an articulation, a dynamic, a fermata —
      * measures from here, not from the column X: the column is as wide as the whole element, and an
      * accent or a dynamic is wider than the head itself.
      */

@@ -385,7 +385,7 @@ public class HorizontalSpacingCalculator {
      * {@link #FIRST_NOTE_OFFSET_SS} past the header. When the first column bears a wide syllable
      * that would overhang left of the note glyph and crowd the clef/key signature, the origin is
      * pushed right so the syllable's left edge keeps the same separation from the header the note
-     * glyph gets. Lyrics centre on the notehead centre, so the syllable's left edge sits at
+     * glyph gets. Lyrics center on the notehead center, so the syllable's left edge sits at
      * {@code origin + rightExtentExclAug/2 − syllableWidth/2} (refs #330).
      */
     public static double calculateAnchorXSs(ElementColumn firstColumn, Line line) {
@@ -603,7 +603,7 @@ public class HorizontalSpacingCalculator {
      * on each side. The union spans the grace's right extent as the host faces it (the physical
      * grace→host gap includes the grace flag only where the flag is beside the host, matching
      * {@link #rightExtentFacingSs} — the union has to be the distance actually laid out or the
-     * syllable centres off its own notes), the fixed {@link #GRACE_HOST_REST_SS} grace→host gap, and
+     * syllable centers off its own notes), the fixed {@link #GRACE_HOST_REST_SS} grace→host gap, and
      * the host's notehead width (neither the host's flag nor its dots widen the union). The width is a
      * parameter rather than read off the grace so callers can supply a per-verse box width. Returns 0
      * when the syllable fits the union (it then left-anchors on the grace notehead and imposes no
@@ -746,7 +746,7 @@ public class HorizontalSpacingCalculator {
      * Returns how far {@code column}'s syllable reaches left of the column origin (its notehead's
      * left edge), used when the column is the right side of a gap. A grace column defers to its host
      * {@code afterColumn} via the grace–host lyric union overhang; a normal syllable-bearing column
-     * reaches half its width minus the notehead-centre offset; anything else reaches nothing.
+     * reaches half its width minus the notehead-center offset; anything else reaches nothing.
      */
     static double lyricLeftExtentSs(ElementColumn column, @Nullable ElementColumn afterColumn) {
         if (column.isGraceNote() && afterColumn != null) {
@@ -765,7 +765,7 @@ public class HorizontalSpacingCalculator {
      * left edge), used when the column is the left side of a gap. A grace column reaches nothing
      * (its lyric is deferred to the host). A host of a grace ({@code beforeColumn} is a grace)
      * reaches the grace lyric's right spill past the union. A normal syllable-bearing column reaches
-     * half its width plus the notehead-centre offset; anything else reaches nothing.
+     * half its width plus the notehead-center offset; anything else reaches nothing.
      */
     static double lyricRightExtentSs(ElementColumn column, @Nullable ElementColumn beforeColumn) {
         if (column.isGraceNote()) {

@@ -249,7 +249,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             .isEqualTo(1);
     }
 
-    // computeLyricBoxLeftXSs: normal note box is centered on the note column centre
+    // computeLyricBoxLeftXSs: normal note box is centered on the note column center
     // (columnXSs + rightExtentExcludingAugmentationSs/2), minus half the syllable width.
     // Uses a verse-2 lyric so the builder measures width via lyricBoxWidthSs(text)
     // rather than the cached syllableWidthSs; the oracle calls lyricBoxWidthSs independently.
@@ -271,17 +271,17 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var box = boxes.getFirst();
 
-        // Independent oracle: box left = note centre (excluding augmentation) − half syllable width
+        // Independent oracle: box left = note center (excluding augmentation) − half syllable width
         var syllableWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
         var noteCenterXSs = noteXSs + col.getRightExtentExcludingAugmentationSs() / 2.0;
         var expectedBoxLeftXSs = noteCenterXSs - syllableWidthSs / 2.0;
 
         assertThat(box.xSs())
-            .as("lyric box left edge = note centre (excluding augmentation) − halfWidth")
+            .as("lyric box left edge = note center (excluding augmentation) − halfWidth")
             .isCloseTo(expectedBoxLeftXSs, within(TOLERANCE));
     }
 
-    // Dotted note: the lyric box must be centred on the notehead extent
+    // Dotted note: the lyric box must be centerd on the notehead extent
     // (rightExtentExcludingAugmentationSs), not the full extent that includes the dot.
     // Dots must not shift the lyric to the right (#451).
     @Test
@@ -316,13 +316,13 @@ class LyricLayoutBuilderTest extends UnitTest {
         var expectedBoxLeftXSs = noteCenterXSs - syllableWidthSs / 2.0;
 
         assertThat(boxes.getFirst().xSs())
-            .as("dotted note: lyric box must be centred on notehead centre, not shifted right by the dot")
+            .as("dotted note: lyric box must be centerd on notehead center, not shifted right by the dot")
             .isCloseTo(expectedBoxLeftXSs, within(TOLERANCE));
     }
 
     // Flagged note (unbeamed quaver/semiquaver): the flag folds into the augmentation-excluded right
     // extent (max of notehead and flag right edge), reaching past the notehead — but the lyric box
-    // must stay centred on the notehead, not shifted right by the flag. The Gould/Ross rule that
+    // must stay centerd on the notehead, not shifted right by the flag. The Gould/Ross rule that
     // already excludes dots, extended to the flag.
     @Test
     void testFlaggedNoteLyricBoxIgnoresFlag() {
@@ -358,7 +358,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         var expectedBoxLeftXSs = noteCenterXSs - syllableWidthSs / 2.0;
 
         assertThat(boxes.getFirst().xSs())
-            .as("flagged note: lyric box must be centred on notehead centre, not shifted right by the flag")
+            .as("flagged note: lyric box must be centerd on notehead center, not shifted right by the flag")
             .isCloseTo(expectedBoxLeftXSs, within(TOLERANCE));
     }
 

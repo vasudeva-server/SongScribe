@@ -97,7 +97,7 @@ class LyricLiftTest extends UnitTest {
     private static final double PHASE2_RATIO_NORMAL_REST_SS =
         DEFAULT_LINE_REST_SS * (BEAM_GAP_REQUIREMENT_SS / BEAM_REST_SS);
 
-    // --- Notehead-centring: two syllables whose noteheads differ in width, so the (c_prev − c_curr)
+    // --- Notehead-centering: two syllables whose noteheads differ in width, so the (c_prev − c_curr)
     // term shifts the requirement away from the naive w + minGap.
     private static final double PLAIN_HEAD_RIGHT_EXTENT_SS = 1.0;
     private static final double WIDE_HEAD_RIGHT_EXTENT_SS = 1.5;
@@ -197,7 +197,7 @@ class LyricLiftTest extends UnitTest {
             0.0, rightExtentSs, 0.0, 0.0, null, NO_SYLLABLE_WIDTH_SS, false);
     }
 
-    /** A syllable column with the given notehead right extent, so its centre offset can be exercised. */
+    /** A syllable column with the given notehead right extent, so its center offset can be exercised. */
     private static ElementColumn syllableColumnWithHead(
         double rightExtentSs, double syllableWidthSs, double minGapSs) {
 
@@ -393,11 +393,11 @@ class LyricLiftTest extends UnitTest {
         assertThat(lifted.get(SECOND_GAP).restSs()).isCloseTo(DEFAULT_LINE_REST_SS, within(TOLERANCE));
     }
 
-    // The lyric requirement centres each syllable on its notehead (excluding accidentals/dots), so
+    // The lyric requirement centers each syllable on its notehead (excluding accidentals/dots), so
     // when two syllable columns have differing notehead widths the requirement is right + minGap +
     // left with right = w/2 + c_prev and left = w/2 − c_curr — not the naive w + minGap.
     @Test
-    void testCentresLyricRequirementOnNoteheadForDifferingNoteheadWidths() {
+    void testCentersLyricRequirementOnNoteheadForDifferingNoteheadWidths() {
         var columns = List.of(
             syllableColumnWithHead(WIDE_HEAD_RIGHT_EXTENT_SS, NOTEHEAD_SYLLABLE_WIDTH_SS, NOTEHEAD_MIN_GAP_SS),
             syllableColumnWithHead(PLAIN_HEAD_RIGHT_EXTENT_SS, NOTEHEAD_SYLLABLE_WIDTH_SS, NOTEHEAD_MIN_GAP_SS));
@@ -412,7 +412,7 @@ class LyricLiftTest extends UnitTest {
         var expectedRequirementSs = rightSs + NOTEHEAD_MIN_GAP_SS + leftSs;
 
         assertThat(lifted.get(FIRST_GAP).restSs()).isCloseTo(expectedRequirementSs, within(TOLERANCE));
-        // The notehead-centring (c_prev − c_curr) term makes this differ from the naive w + minGap.
+        // The notehead-centering (c_prev − c_curr) term makes this differ from the naive w + minGap.
         assertThat(expectedRequirementSs)
             .isNotCloseTo(NOTEHEAD_SYLLABLE_WIDTH_SS + NOTEHEAD_MIN_GAP_SS, within(TOLERANCE));
     }
