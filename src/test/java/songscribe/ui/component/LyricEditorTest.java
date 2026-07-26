@@ -36,6 +36,7 @@ import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.FocusEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
 import javax.swing.JComponent;
@@ -1141,5 +1142,169 @@ class LyricEditorTest extends LyricEditorTestSupport {
         assertThat(element.getLyricForVerse(1))
             .extracting(Lyric::syllabic, Lyric::compound, Lyric::extend)
             .containsExactly(Lyric.Syllabic.BEGIN, true, Lyric.Extend.START);
+    }
+
+    // -----------------------------------------------------------------------
+    // Alt-A → long a
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testAltAInsertsLongAAndDropsTheOptionCharacter() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        var typed = fireAltA(editor, false);
+
+        assertThat(editor.getText()).isEqualTo(LyricEditor.LONG_A);
+        assertThat(typed.isConsumed())
+            .as("the Option-A character must not reach the document on top of the long a")
+            .isTrue();
+    }
+
+    @Test
+    void testAltShiftAInsertsCapitalLongA() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        fireAltA(editor, true);
+
+        assertThat(editor.getText()).isEqualTo(LyricEditor.LONG_A_CAPITAL);
+    }
+
+    @Test
+    void testAltAReplacesTheSelectedText() {
+        var element = crotchet();
+        var existingLyric = "ho";
+        setMainLyric(element, existingLyric);
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        // The constructor prefills and selects the existing lyric.
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        // Assert the precondition rather than trusting it: without a live selection this
+        // would silently become an insert-at-caret test under a name promising a replace.
+        assertThat(editor.getSelectedText())
+            .as("the constructor must leave the existing lyric selected")
+            .isEqualTo(existingLyric);
+
+        fireAltA(editor, false);
+
+        assertThat(editor.getText()).isEqualTo(LyricEditor.LONG_A);
+    }
+
+    @Test
+    void testAltAObeysTheLengthLimit() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        var fullText = "a".repeat(LyricEditor.MAX_LENGTH_CHARS);
+        editor.setText(fullText);
+        editor.setCaretPosition(fullText.length());
+        editor.attachListeners();
+
+        var toolkitMock = mock(Toolkit.class);
+
+        try (var toolkitStatic = mockStatic(Toolkit.class)) {
+            toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
+            fireAltA(editor, false);
+            verify(toolkitMock).beep();
+        }
+
+        assertThat(editor.getText()).isEqualTo(fullText);
+    }
+
+    /**
+     * These tests drive the editor's key listeners directly, so Swing's own character
+     * insertion never runs. Leaving a key typed event unconsumed is therefore the most a
+     * unit test can check — whether the character then lands in the document is Swing's
+     * part, and only using the app on a Mac confirms the whole path.
+     */
+    @Test
+    void testOtherOptionCharactersAreNotSwallowed() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        // The drop is scoped to the key typed event of the Alt-A press that set it up, so
+        // an accented character typed right afterwards must be left for Swing to insert.
+        fireAltA(editor, false);
+        var typed = fireOptionC(editor);
+
+        assertThat(typed.isConsumed())
+            .as("Option-C must not be dropped by the preceding Alt-A")
+            .isFalse();
+        assertThat(editor.getText())
+            .as("Option-C must not be mistaken for the shortcut and insert a second long a")
+            .isEqualTo(LyricEditor.LONG_A);
+    }
+
+    @Test
+    void testAltAInsertsAtTheCaretInsideExistingText() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("cat");
+        // Caret between "c" and "at", nothing selected — the everyday case neither the
+        // empty-field nor the fully-selected test covers.
+        editor.setCaretPosition(1);
+        editor.attachListeners();
+
+        fireAltA(editor, false);
+
+        assertThat(editor.getText()).isEqualTo("c" + LyricEditor.LONG_A + "at");
+    }
+
+    // Alt-A must not claim these combinations: doing so would swallow a system shortcut, or
+    // turn an AltGr layout's accented letter into a long a.
+
+    @Test
+    void testControlAltAIsNotTheLongAShortcut() {
+        assertAltACombinationIsIgnored(InputEvent.CTRL_DOWN_MASK);
+    }
+
+    @Test
+    void testMetaAltAIsNotTheLongAShortcut() {
+        assertAltACombinationIsIgnored(InputEvent.META_DOWN_MASK);
+    }
+
+    @Test
+    void testAltGraphAIsNotTheLongAShortcut() {
+        assertAltACombinationIsIgnored(InputEvent.ALT_GRAPH_DOWN_MASK);
+    }
+
+    /**
+     * Fires Alt-A with {@code extraModifier} also held and asserts the editor ignored it
+     * completely: no long a inserted, and the character the layout would produce left for
+     * Swing rather than dropped.
+     */
+    private void assertAltACombinationIsIgnored(int extraModifier) {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        var typed = fireAltAWithExtraModifier(editor, extraModifier);
+
+        assertThat(editor.getText()).as("no long a may be inserted").isEmpty();
+        assertThat(typed.isConsumed()).as("the layout's own character must survive").isFalse();
     }
 }

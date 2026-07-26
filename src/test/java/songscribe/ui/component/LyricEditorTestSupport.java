@@ -65,6 +65,20 @@ abstract class LyricEditorTestSupport extends UnitTest {
     protected static final LyricRenderMetrics LYRIC_METRICS =
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
 
+    /** What a US macOS layout types for Option-A and Option-Shift-A. */
+    private static final char OPTION_A = 'å';
+    private static final char OPTION_A_CAPITAL = 'Å';
+
+    /** What the same layout types for Option-C, an Option combination the editor leaves alone. */
+    private static final char OPTION_C = 'ç';
+
+    /**
+     * Stands in for whatever an Alt-A combination the editor must ignore would produce — an
+     * AltGr layout's accented letter, say. The editor decides on the key code and modifiers
+     * alone and never reads this character, so its exact value does not matter.
+     */
+    private static final char EXCLUDED_COMBINATION_CHAR = 'ą';
+
     protected Song song;
     protected ScoreView score;
 
@@ -223,12 +237,57 @@ abstract class LyricEditorTestSupport extends UnitTest {
             new ActionEvent(editor, ActionEvent.ACTION_PERFORMED, ""));
     }
 
-    protected void fireWordChar(LyricEditor editor, char ch) {
-        var event = new KeyEvent(editor, KeyEvent.KEY_TYPED, 0L, 0, KeyEvent.VK_UNDEFINED, ch);
+    /**
+     * Simulates an Option combination the way macOS delivers it: a key pressed for
+     * {@code keyCode} with Option down, followed by a key typed carrying the character the
+     * layout produces for it. Returns that key typed event so the caller can assert whether
+     * the editor dropped it or left it for Swing to insert.
+     */
+    private static KeyEvent fireOptionCombination(
+        LyricEditor editor,
+        int keyCode,
+        int modifiers,
+        char optionChar
+    ) {
+        var pressed = new KeyEvent(editor, KeyEvent.KEY_PRESSED, 0L, modifiers, keyCode, optionChar);
+        var typed =
+            new KeyEvent(editor, KeyEvent.KEY_TYPED, 0L, modifiers, KeyEvent.VK_UNDEFINED, optionChar);
 
         for (var listener : editor.getKeyListeners()) {
-            listener.keyTyped(event);
+            listener.keyPressed(pressed);
         }
+
+        for (var listener : editor.getKeyListeners()) {
+            listener.keyTyped(typed);
+        }
+
+        return typed;
+    }
+
+    /** Simulates Alt-A, or Alt-Shift-A when {@code shift} — the long-a mapping. */
+    protected KeyEvent fireAltA(LyricEditor editor, boolean shift) {
+        var modifiers = InputEvent.ALT_DOWN_MASK | (shift ? InputEvent.SHIFT_DOWN_MASK : 0);
+
+        return fireOptionCombination(
+            editor, KeyEvent.VK_A, modifiers, shift ? OPTION_A_CAPITAL : OPTION_A);
+    }
+
+    /** Simulates Option-C, an Option combination the editor does not map. */
+    protected KeyEvent fireOptionC(LyricEditor editor) {
+        return fireOptionCombination(editor, KeyEvent.VK_C, InputEvent.ALT_DOWN_MASK, OPTION_C);
+    }
+
+    /**
+     * Simulates Alt-A with {@code extraModifier} also held — one of the combinations the
+     * editor must not claim, so it never shadows a system shortcut or an AltGr character.
+     * Returns the key typed event so the caller can assert it was left alone.
+     */
+    protected KeyEvent fireAltAWithExtraModifier(LyricEditor editor, int extraModifier) {
+        return fireOptionCombination(
+            editor,
+            KeyEvent.VK_A,
+            InputEvent.ALT_DOWN_MASK | extraModifier,
+            EXCLUDED_COMBINATION_CHAR);
     }
 
     protected void fireFocusLost(LyricEditor editor) {

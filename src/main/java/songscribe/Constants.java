@@ -21,9 +21,6 @@ package songscribe;
 
 public final class Constants {
 
-    public static final String UNDERSCORE = "_";
-    public static final String HYPHEN = "-";
-    public static final String SOFT_HYPHEN = Character.toString('\u00AD');
     public static final String NON_BREAKING_HYPHEN = Character.toString('\u2011');
     public static final String PACKAGE_NAME = "SongScribe";
 
