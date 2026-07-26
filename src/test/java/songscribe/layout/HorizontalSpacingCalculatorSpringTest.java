@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 
@@ -104,6 +105,15 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     private static final double NARROW_GRACE_SYLLABLE_WIDTH_SS = 2.0;
     /** {@link #SYLLABLE_TEXT}'s first grapheme — narrower than the grace notehead it centers on. */
     private static final double FIRST_GRAPHEME_WIDTH_SS = 0.5;
+    /** A grace lyric that fits the union on its own, but not once its minimum melisma follows it. */
+    private static final double MELISMA_SPILL_SYLLABLE_WIDTH_SS = 3.5;
+    /** What is actually drawn for that lyric: the syllable followed by its minimum-length melisma. */
+    private static final double MELISMA_SPILL_CONTENT_WIDTH_SS =
+        MELISMA_SPILL_SYLLABLE_WIDTH_SS + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS;
+    /** Verse the spacing path lays out — the one a column's measured syllable belongs to. */
+    private static final int MAIN_VERSE = 1;
+    private static final boolean HAS_MELISMA = true;
+    private static final boolean NO_MELISMA = false;
 
     private static final int SINGLE_GAP = 1;
     private static final int TWO_GAPS = 2;
@@ -206,6 +216,25 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         graceColumn.setMinCollisionGapToNextSyllableSs(SPACE_COLLISION_GAP_SS);
         graceColumn.setSyllableFirstGraphemeWidthSs(FIRST_GRAPHEME_WIDTH_SS);
         return graceColumn;
+    }
+
+    /**
+     * A grace column whose element starts the pair's own melisma, as {@code Line.syncGraceHostMelisma}
+     * writes it. Pair it with {@link #melismaHostColumn()} — the spacing path reads both lyrics
+     * before it reserves anything for the extender.
+     */
+    private static ElementColumn melismaGraceColumn(double syllableWidthSs) {
+        var graceColumn = graceSyllableColumn(syllableWidthSs);
+        graceColumn.getElement().lyrics.add(
+            new Lyric(MAIN_VERSE, SYLLABLE_TEXT, Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
+        return graceColumn;
+    }
+
+    /** A plain column carrying the text-less STOP that ends its grace's melisma. */
+    private static ElementColumn melismaHostColumn() {
+        var hostColumn = plainColumn();
+        hostColumn.getElement().lyrics.add(new Lyric(MAIN_VERSE, "", Lyric.Extend.STOP, null, false));
+        return hostColumn;
     }
 
     // --- Real built columns, for the tests that need true flag/notehead/stem geometry (#560) ---
@@ -585,6 +614,68 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
             within(TOLERANCE));
         assertThat(hostToNext.strutSs()).isCloseTo(
             HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
+    }
+
+    // The drawn melisma is part of the grace lyric's footprint: a syllable that fits the union but
+    // whose melisma spills past it pushes the host→next strut out by that spill, so the extender
+    // keeps its minimum length instead of being clamped off the following syllable.
+    @Test
+    void testBuildSpringPushesHostToNextStrutOutByTheGraceMelismaTail() {
+        var grace = melismaGraceColumn(MELISMA_SPILL_SYLLABLE_WIDTH_SS);
+        var host = melismaHostColumn();
+        var next = plainColumn();
+
+        // Precondition: the syllable fits the union alone, and overflows it once the melisma is added.
+        assertThat(MELISMA_SPILL_SYLLABLE_WIDTH_SS).isLessThan(UNION_WIDTH_SS);
+        assertThat(MELISMA_SPILL_CONTENT_WIDTH_SS).isGreaterThan(UNION_WIDTH_SS);
+
+        var spring = HorizontalSpacingCalculator.buildSpring(
+            host, next, DEFAULT_LINE_REST_SS, grace, null);
+
+        // Syllable and melisma are centered on the union, so the melisma ends as far past the union's
+        // right edge as the syllable begins before its left edge.
+        var melismaEndSs = UNION_WIDTH_SS + (MELISMA_SPILL_CONTENT_WIDTH_SS - UNION_WIDTH_SS) / 2;
+        var expectedStrutSs = (melismaEndSs - GRACE_HOST_GAP_SS) + SPACE_COLLISION_GAP_SS;
+
+        assertThat(spring.strutSs()).isCloseTo(expectedStrutSs, within(TOLERANCE));
+        // The melisma tail binds over the note-collision floor.
+        assertThat(expectedStrutSs)
+            .isGreaterThan(HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS);
+    }
+
+    // The tail is reserved because the pair really carries a melisma, not because the grace bears a
+    // lyric: the same syllable on a pair with no melisma reserves the syllable alone, which here
+    // stays under the note-collision floor.
+    @Test
+    void testBuildSpringReservesNoMelismaTailWhenThePairCarriesNone() {
+        var grace = graceSyllableColumn(MELISMA_SPILL_SYLLABLE_WIDTH_SS);
+        var host = plainColumn();
+        var next = plainColumn();
+
+        var spring = HorizontalSpacingCalculator.buildSpring(
+            host, next, DEFAULT_LINE_REST_SS, grace, null);
+        var melismaSpring = HorizontalSpacingCalculator.buildSpring(
+            melismaHostColumn(), next, DEFAULT_LINE_REST_SS,
+            melismaGraceColumn(MELISMA_SPILL_SYLLABLE_WIDTH_SS), null);
+
+        assertThat(spring.strutSs()).isCloseTo(
+            HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
+        assertThat(spring.strutSs()).isLessThan(melismaSpring.strutSs());
+    }
+
+    // A grace syllable that already spans the union has no melisma drawn, so the pair reserves the
+    // syllable alone — the undrawn extender adds nothing to the strut.
+    @Test
+    void testBuildSpringReservesNoMelismaTailOnceTheSyllableSpansTheUnion() {
+        var grace = melismaGraceColumn(WIDE_GRACE_SYLLABLE_WIDTH_SS);
+        var host = melismaHostColumn();
+        var next = plainColumn();
+
+        var spring = HorizontalSpacingCalculator.buildSpring(
+            host, next, DEFAULT_LINE_REST_SS, grace, null);
+
+        var expectedStrutSs = WIDE_GRACE_HOST_RIGHT_EXTENT_SS + SPACE_COLLISION_GAP_SS;
+        assertThat(spring.strutSs()).isCloseTo(expectedStrutSs, within(TOLERANCE));
     }
 
     // The syllable floor centers each syllable on its notehead (excluding accidentals/dots), so when
@@ -1174,11 +1265,14 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     @Test
     void testGraceLyricOffsetTreatsAMissingHostAsNoUnion() {
         var grace = graceSyllableColumn(WIDE_GRACE_SYLLABLE_WIDTH_SS);
+        var unionWithoutHostSs = HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(grace, null);
 
         var leftOffsetSs = HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
-            WIDE_GRACE_SYLLABLE_WIDTH_SS, FIRST_GRAPHEME_WIDTH_SS, grace, null);
+            WIDE_GRACE_SYLLABLE_WIDTH_SS, FIRST_GRAPHEME_WIDTH_SS, unionWithoutHostSs, grace,
+            NO_MELISMA);
 
-        var unionWithoutHostSs = GRACE_RIGHT_EXTENT_SS + GRACE_HOST_REST_SS;
+        assertThat(unionWithoutHostSs)
+            .isCloseTo(GRACE_RIGHT_EXTENT_SS + GRACE_HOST_REST_SS, within(TOLERANCE));
         assertThat(leftOffsetSs)
             .isCloseTo(-(WIDE_GRACE_SYLLABLE_WIDTH_SS - unionWithoutHostSs) / 2, within(TOLERANCE));
     }
@@ -1191,12 +1285,162 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     void testGraceLyricOffsetCentersTheFirstGraphemeOnTheNotehead() {
         var grace = graceSyllableColumn(NARROW_GRACE_SYLLABLE_WIDTH_SS);
         var host = plainColumn();
+        var unionWidthSs = HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(grace, host);
 
         var leftOffsetSs = HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
-            NARROW_GRACE_SYLLABLE_WIDTH_SS, FIRST_GRAPHEME_WIDTH_SS, grace, host);
+            NARROW_GRACE_SYLLABLE_WIDTH_SS, FIRST_GRAPHEME_WIDTH_SS, unionWidthSs, grace, NO_MELISMA);
 
         assertThat(leftOffsetSs)
             .isCloseTo((GRACE_RIGHT_EXTENT_SS - FIRST_GRAPHEME_WIDTH_SS) / 2, within(TOLERANCE));
+    }
+
+    /**
+     * A grace lyric that fits the union on its own but not once its melisma is added is centered —
+     * syllable and melisma together — on the union, so the pair's ink overhangs it equally on both
+     * sides. Without the melisma the same syllable keeps the first-grapheme centering.
+     */
+    @Test
+    void testGraceLyricOffsetCentersTheSyllableAndItsMelismaOnTheUnion() {
+        var grace = graceSyllableColumn(MELISMA_SPILL_SYLLABLE_WIDTH_SS);
+        var host = plainColumn();
+        var unionWidthSs = HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(grace, host);
+
+        // Precondition: the syllable fits the union alone, and overflows it once the melisma is added.
+        assertThat(MELISMA_SPILL_SYLLABLE_WIDTH_SS).isLessThan(UNION_WIDTH_SS);
+        assertThat(MELISMA_SPILL_CONTENT_WIDTH_SS).isGreaterThan(UNION_WIDTH_SS);
+
+        var leftOffsetSs = HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
+            MELISMA_SPILL_SYLLABLE_WIDTH_SS, FIRST_GRAPHEME_WIDTH_SS, unionWidthSs, grace,
+            HAS_MELISMA);
+
+        assertThat(leftOffsetSs)
+            .isCloseTo(-(MELISMA_SPILL_CONTENT_WIDTH_SS - UNION_WIDTH_SS) / 2, within(TOLERANCE));
+
+        var noMelismaOffsetSs = HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
+            MELISMA_SPILL_SYLLABLE_WIDTH_SS, FIRST_GRAPHEME_WIDTH_SS, unionWidthSs, grace,
+            NO_MELISMA);
+
+        assertThat(noMelismaOffsetSs)
+            .as("only the melisma pushes the syllable off the first-grapheme centering")
+            .isCloseTo((GRACE_RIGHT_EXTENT_SS - FIRST_GRAPHEME_WIDTH_SS) / 2, within(TOLERANCE));
+    }
+
+    /**
+     * A grace syllable at least as wide as the union is centered on the union, and its melisma —
+     * which would start where the syllable already ends — is not drawn, so nothing past the syllable
+     * is reserved.
+     */
+    @Test
+    void testGraceLyricOffsetIgnoresTheMelismaOnceTheSyllableSpansTheUnion() {
+        var grace = graceSyllableColumn(WIDE_GRACE_SYLLABLE_WIDTH_SS);
+        var host = plainColumn();
+        var unionWidthSs = HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(grace, host);
+
+        assertThat(HorizontalSpacingCalculator.graceSyllableSpansUnion(
+            WIDE_GRACE_SYLLABLE_WIDTH_SS, unionWidthSs)).isTrue();
+
+        var leftOffsetSs = HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
+            WIDE_GRACE_SYLLABLE_WIDTH_SS, FIRST_GRAPHEME_WIDTH_SS, unionWidthSs, grace, HAS_MELISMA);
+
+        assertThat(leftOffsetSs).isCloseTo(-WIDE_GRACE_OVERHANG_SS, within(TOLERANCE));
+    }
+
+    /**
+     * The boundary of the spans-the-union rule: a syllable exactly as wide as the union already ends
+     * at the host's notehead right edge, which is where the pair's melisma would have ended. An
+     * exclusive comparison would place the syllable as though a melisma followed it and draw that
+     * melisma with zero length.
+     */
+    @Test
+    void testGraceSyllableExactlyAsWideAsTheUnionSpansIt() {
+        var grace = graceSyllableColumn(UNION_WIDTH_SS);
+        var host = plainColumn();
+        var unionWidthSs = HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(grace, host);
+
+        // Precondition: the column geometry really does put the syllable on the boundary.
+        assertThat(unionWidthSs).isCloseTo(UNION_WIDTH_SS, within(TOLERANCE));
+
+        assertThat(HorizontalSpacingCalculator.graceSyllableSpansUnion(UNION_WIDTH_SS, unionWidthSs))
+            .as("a syllable exactly as wide as the union already reaches the host")
+            .isTrue();
+
+        var leftOffsetSs = HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
+            UNION_WIDTH_SS, FIRST_GRAPHEME_WIDTH_SS, unionWidthSs, grace, HAS_MELISMA);
+
+        assertThat(leftOffsetSs)
+            .as("the syllable sits on the union with no melisma shifting it left")
+            .isCloseTo(0.0, within(TOLERANCE));
+    }
+
+    // ==========================================================================
+    // The pair's own melisma
+    //
+    // pairCarriesGraceHostMelisma decides whether anything past the syllable is reserved and placed,
+    // so each of its conditions is exercised on its own: a pair one condition short carries no
+    // melisma of its own, and treating it as though it did would reserve room for a line that is
+    // never drawn — or, for the CONTINUE case, cut a longer melisma off at the immediate host.
+    // ==========================================================================
+
+    /** The grace's half of the pair's own melisma: a non-hyphenated syllable that starts it. */
+    private static Lyric graceMelismaStart() {
+        return new Lyric(MAIN_VERSE, SYLLABLE_TEXT, Lyric.Extend.START, Lyric.Syllabic.SINGLE, false);
+    }
+
+    /** The host's half: the text-less STOP carrier that ends it. */
+    private static Lyric hostMelismaStop() {
+        return new Lyric(MAIN_VERSE, "", Lyric.Extend.STOP, null, false);
+    }
+
+    @Test
+    void testPairCarriesItsOwnMelismaWhenTheGraceStartsItAndTheHostStopsIt() {
+        assertThat(HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(
+            graceMelismaStart(), hostMelismaStop())).isTrue();
+    }
+
+    @Test
+    void testPairCarriesNoMelismaWithoutAGraceLyric() {
+        assertThat(HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(null, hostMelismaStop()))
+            .as("a host STOP alone belongs to a melisma that started somewhere else")
+            .isFalse();
+    }
+
+    @Test
+    void testPairCarriesNoMelismaWhenTheGraceStartsNone() {
+        var plainGraceLyric =
+            new Lyric(MAIN_VERSE, SYLLABLE_TEXT, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+
+        assertThat(HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(
+            plainGraceLyric, hostMelismaStop()))
+            .as("a grace syllable with no START opens no melisma of its own")
+            .isFalse();
+    }
+
+    @Test
+    void testPairCarriesNoMelismaWhenTheGraceSyllableIsHyphenated() {
+        var hyphenatedGraceLyric =
+            new Lyric(MAIN_VERSE, SYLLABLE_TEXT, Lyric.Extend.START, Lyric.Syllabic.BEGIN, false);
+
+        assertThat(HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(
+            hyphenatedGraceLyric, hostMelismaStop()))
+            .as("a hyphenated grace syllable draws a hyphen to the next syllable, not a melisma")
+            .isFalse();
+    }
+
+    @Test
+    void testPairCarriesNoMelismaWithoutAHostLyric() {
+        assertThat(HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(graceMelismaStart(), null))
+            .as("with nothing on the host to end it, the melisma runs past the pair")
+            .isFalse();
+    }
+
+    @Test
+    void testPairCarriesNoMelismaWhenTheHostCarriesItOnward() {
+        var hostCarryOn = new Lyric(MAIN_VERSE, "", Lyric.Extend.CONTINUE, null, false);
+
+        assertThat(HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(
+            graceMelismaStart(), hostCarryOn))
+            .as("a host that carries the melisma onward ends it somewhere past the pair")
+            .isFalse();
     }
 
     // ==========================================================================

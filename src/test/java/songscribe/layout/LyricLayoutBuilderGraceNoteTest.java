@@ -57,12 +57,38 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
     private static final double FLAG_INFLATED_GRACE_RIGHT_EXTENT_SS = ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS * 2;
     /** A multi-grapheme syllable, so the first grapheme is distinguishable from the whole box. */
     private static final String GRACE_SYLLABLE = "la";
+    /**
+     * A syllable wider than the whole grace-host union, so it reaches its host on its own and the
+     * pair's melisma has nowhere left to be drawn.
+     */
+    private static final String UNION_SPANNING_SYLLABLE = "strength";
+    /**
+     * A syllable that fits the union on its own but not once its minimum-length melisma follows it,
+     * so the two together are centered on the union.
+     */
+    private static final String MELISMA_SPILLING_SYLLABLE = "lala";
     private static final double GRACE_X_SS = 5.0;
     private static final double HOST_X_SS = 9.0;
+    // The host at the ideal grace→host distance: one fixed grace→host rest past the grace's ink.
+    // A test that reasons about the ideal union has to lay the pair out here, since that is the only
+    // distance at which the ideal union and the union actually spaced coincide.
+    private static final double PACKED_HOST_X_SS =
+        GRACE_X_SS + ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS
+            + HorizontalSpacingCalculator.GRACE_HOST_REST_SS;
+    // How much wider than ideal a solved grace→host gap can be — the optical correction measured for
+    // a stem-up grace against a stem-down host. The exact amount does not matter to the tests below,
+    // only that the pair ends up at a distance the ideal-union formula does not predict.
+    private static final double OPTICAL_WIDENING_SS = 0.38;
     private static final double NEXT_X_SS = 13.0;
     // Close enough behind the host that a melisma ending at the host notehead would run into the
     // following syllable's box, so the follow-syllable clamp has something to pull back.
     private static final double CROWDED_NEXT_X_SS = 10.0;
+    // A run of columns past the first grace-host pair, for a melisma that spans several notes before
+    // ending at a second pair's host. Spread far enough apart that each candidate anchor the melisma
+    // could have stopped at is distinguishable from the one it must actually reach.
+    private static final double SPAN_MIDDLE_X_SS = 13.0;
+    private static final double SPAN_LATER_GRACE_X_SS = 17.0;
+    private static final double SPAN_LATER_HOST_X_SS = 20.0;
     private static final double LINE_WIDTH_SS = 100.0;
     private static final int LYRICS_FONT_SIZE = 12;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, LYRICS_FONT_SIZE);
@@ -383,5 +409,236 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         assertThat(extenders.getFirst().endXSs())
             .as("the extender is pulled back to one lyric space before the following syllable")
             .isCloseTo(maxEndXSs, within(POSITION_TOLERANCE_SS));
+    }
+
+    // (g) A grace syllable at least as wide as the grace-host union already reaches its host, so the
+    // melisma — still there in the model — is not drawn at all, and the syllable stays centered on
+    // the union.
+    @Test
+    void testGraceMelismaIsNotDrawnWhenTheSyllableAlreadySpansTheUnion() {
+        var grace = graceQuaver();
+        setLyric(grace, Lyric.Syllabic.SINGLE, UNION_SPANNING_SYLLABLE, Lyric.Extend.START);
+        var host = crotchet();
+        setCarrier(host, Lyric.Extend.STOP);
+        addToLine(grace, host);
+
+        var widthSs = LYRIC_METRICS.lyricBoxWidthSs(UNION_SPANNING_SYLLABLE);
+        var graceCol = graceColumn(grace, GRACE_X_SS, widthSs);
+        var hostCol = normalColumn(host, PACKED_HOST_X_SS);
+        var unionWidthSs = HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(graceCol, hostCol);
+
+        // Precondition: the syllable alone spans the union, which is what suppresses the melisma.
+        assertThat(widthSs)
+            .as("the syllable must span the union to exercise the suppression path")
+            .isGreaterThanOrEqualTo(unionWidthSs);
+
+        var result = LyricLayoutBuilder.build(
+            List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        assertThat(connectorsOfKind(result, LyricConnectorLayout.Kind.EXTENDER))
+            .as("a syllable that already reaches the host leaves nothing for an extender to show")
+            .isEmpty();
+        assertThat(result.hasTrailingContinuation())
+            .as("dropping the drawn extender must not leak the melisma onto the next line")
+            .isFalse();
+
+        var graceBox = boxesOf(result, grace).getFirst();
+        assertThat(graceBox.xSs())
+            .as("the syllable stays centered on the union, overhanging it equally on both sides")
+            .isCloseTo(GRACE_X_SS - (widthSs - unionWidthSs) / 2, within(POSITION_TOLERANCE_SS));
+    }
+
+    // (h) A grace syllable that fits the union but whose minimum-length melisma spills past it is
+    // laid out with that melisma: the two are centered on the union together.
+    @Test
+    void testGraceSyllableAndItsMelismaAreCenteredOnTheUnionWhenTheySpillPastIt() {
+        var grace = graceQuaver();
+        setLyric(grace, Lyric.Syllabic.SINGLE, MELISMA_SPILLING_SYLLABLE, Lyric.Extend.START);
+        var host = crotchet();
+        setCarrier(host, Lyric.Extend.STOP);
+        addToLine(grace, host);
+
+        var widthSs = LYRIC_METRICS.lyricBoxWidthSs(MELISMA_SPILLING_SYLLABLE);
+        var graceCol = graceColumn(grace, GRACE_X_SS, widthSs);
+        var hostCol = normalColumn(host, PACKED_HOST_X_SS);
+        var unionWidthSs = HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(graceCol, hostCol);
+        var contentWidthSs = widthSs + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS;
+
+        // Precondition: the syllable fits the union alone, and overflows it once the melisma follows.
+        assertThat(widthSs).isLessThan(unionWidthSs);
+        assertThat(contentWidthSs).isGreaterThan(unionWidthSs);
+
+        var result = LyricLayoutBuilder.build(
+            List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var expectedBoxXSs = GRACE_X_SS - (contentWidthSs - unionWidthSs) / 2;
+        var graceBox = boxesOf(result, grace).getFirst();
+        assertThat(graceBox.xSs())
+            .as("syllable and melisma are centered on the union as one")
+            .isCloseTo(expectedBoxXSs, within(POSITION_TOLERANCE_SS));
+
+        var extenders = connectorsOfKind(result, LyricConnectorLayout.Kind.EXTENDER);
+        assertThat(extenders).hasSize(1);
+
+        var extender = extenders.getFirst();
+        assertThat(extender.startXSs())
+            .as("the melisma starts where the syllable box ends")
+            .isCloseTo(graceBox.xSs() + graceBox.widthSs(), within(POSITION_TOLERANCE_SS));
+        assertThat(extender.endXSs())
+            .as("the melisma keeps its minimum length, ending past the host's notehead")
+            .isCloseTo(expectedBoxXSs + contentWidthSs, within(POSITION_TOLERANCE_SS));
+        assertThat(extender.endXSs())
+            .isGreaterThan(PACKED_HOST_X_SS + SMuFLConstants.NOTE_HEAD_WIDTH_SS);
+    }
+
+    // (i) The grace→host gap the solver produces is not the ideal one — OpticalSpacing corrects it
+    // for the two notes' stem geometry, and a strut can clamp it — so the syllable and its melisma
+    // have to be centered on the union as spaced, not on the union the ideal formula predicts.
+    @Test
+    void testGraceSyllableAndItsMelismaAreCenteredOnTheUnionAsSpaced() {
+        var grace = graceQuaver();
+        setLyric(grace, Lyric.Syllabic.SINGLE, MELISMA_SPILLING_SYLLABLE, Lyric.Extend.START);
+        var host = crotchet();
+        setCarrier(host, Lyric.Extend.STOP);
+        addToLine(grace, host);
+
+        var widthSs = LYRIC_METRICS.lyricBoxWidthSs(MELISMA_SPILLING_SYLLABLE);
+        var graceCol = graceColumn(grace, GRACE_X_SS, widthSs);
+        var hostCol = normalColumn(host, PACKED_HOST_X_SS + OPTICAL_WIDENING_SS);
+        var idealUnionWidthSs = HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(graceCol, hostCol);
+        var spacedUnionWidthSs = hostCol.getNoteheadRightEdgeXSs() - GRACE_X_SS;
+        var contentWidthSs = widthSs + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS;
+
+        // Precondition: the pair was spaced wider than ideal, and the content still spills past it.
+        assertThat(spacedUnionWidthSs).isGreaterThan(idealUnionWidthSs);
+        assertThat(contentWidthSs).isGreaterThan(spacedUnionWidthSs);
+
+        var result = LyricLayoutBuilder.build(
+            List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var graceBox = boxesOf(result, grace).getFirst();
+        var extender = connectorsOfKind(result, LyricConnectorLayout.Kind.EXTENDER).getFirst();
+
+        assertThat((graceBox.xSs() + extender.endXSs()) / 2)
+            .as("syllable and melisma straddle the center of the union as spaced")
+            .isCloseTo(GRACE_X_SS + spacedUnionWidthSs / 2, within(POSITION_TOLERANCE_SS));
+        assertThat(graceBox.xSs())
+            .as("centering on the ideal union would have left the content half the error too far left")
+            .isNotCloseTo(
+                GRACE_X_SS - (contentWidthSs - idealUnionWidthSs) / 2, within(POSITION_TOLERANCE_SS));
+    }
+
+    // (j) The melisma reaching a host need not be the one its own grace started: Line.syncGraceHostMelisma
+    // leaves a host that already carries an extender onward without a STOP of its own, so a melisma can
+    // start at one grace, run through its host and past several notes, and stop at a second pair's host.
+    // Dropping a self-spanning syllable's melisma belongs only to the pair that started it — applied here
+    // it would erase a line spanning the whole run.
+    @Test
+    void testMelismaEndingAtALaterPairSurvivesAStartingSyllableThatSpansItsOwnUnion() {
+        var grace = graceQuaver();
+        setLyric(grace, Lyric.Syllabic.SINGLE, UNION_SPANNING_SYLLABLE, Lyric.Extend.START);
+        var host = crotchet();
+        setCarrier(host, Lyric.Extend.CONTINUE);
+        var middle = crotchet();
+        var laterGrace = graceQuaver();
+        setCarrier(laterGrace, Lyric.Extend.CONTINUE);
+        var laterHost = crotchet();
+        setCarrier(laterHost, Lyric.Extend.STOP);
+        addToLine(grace, host, middle, laterGrace, laterHost);
+
+        var widthSs = LYRIC_METRICS.lyricBoxWidthSs(UNION_SPANNING_SYLLABLE);
+        var graceCol = graceColumn(grace, GRACE_X_SS, widthSs);
+        var hostCol = normalColumn(host, PACKED_HOST_X_SS);
+        var columns = List.of(
+            graceCol,
+            hostCol,
+            normalColumn(middle, SPAN_MIDDLE_X_SS),
+            graceColumn(laterGrace, SPAN_LATER_GRACE_X_SS),
+            normalColumn(laterHost, SPAN_LATER_HOST_X_SS));
+
+        // Precondition: the starting syllable spans its own pair, which is what suppresses a melisma
+        // belonging to that pair — the melisma here belongs to a later one.
+        assertThat(widthSs)
+            .as("the starting syllable must span its own union to arm the suppression")
+            .isGreaterThanOrEqualTo(hostCol.getNoteheadRightEdgeXSs() - GRACE_X_SS);
+
+        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var extenders = connectorsOfKind(result, LyricConnectorLayout.Kind.EXTENDER);
+        assertThat(extenders)
+            .as("a melisma that outlives its starting pair must not be dropped with that pair's own")
+            .hasSize(1);
+        assertThat(extenders.getFirst().endXSs())
+            .as("the melisma ends at the notehead of the host that actually carries the STOP")
+            .isCloseTo(
+                SPAN_LATER_HOST_X_SS + SMuFLConstants.NOTE_HEAD_WIDTH_SS,
+                within(POSITION_TOLERANCE_SS));
+        assertThat(result.hasTrailingContinuation())
+            .as("the melisma is closed on this line, so nothing continues onto the next")
+            .isFalse();
+    }
+
+    // (k) A lyric-bearing grace ending the line has no host to measure against: the union falls back to
+    // the ideal hostless one, and with no host lyric the pair can carry no melisma of its own, so a
+    // melisma the grace starts dangles onto the next line instead of closing at a host.
+    @Test
+    void testGraceEndingTheLineIsLaidOutAgainstTheHostlessUnion() {
+        var grace = graceQuaver();
+        setLyric(grace, Lyric.Syllabic.SINGLE, UNION_SPANNING_SYLLABLE, Lyric.Extend.START);
+        addToLine(grace);
+
+        var widthSs = LYRIC_METRICS.lyricBoxWidthSs(UNION_SPANNING_SYLLABLE);
+        var graceCol = graceColumn(grace, GRACE_X_SS, widthSs);
+        var hostlessUnionWidthSs =
+            HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(graceCol, null);
+
+        // Precondition: the syllable spans the hostless union, so it takes the center-on-union branch.
+        assertThat(widthSs)
+            .as("the syllable must span the hostless union to exercise the centering path")
+            .isGreaterThanOrEqualTo(hostlessUnionWidthSs);
+
+        var result = LyricLayoutBuilder.build(List.of(graceCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var graceBox = boxesOf(result, grace).getFirst();
+        assertThat(graceBox.xSs())
+            .as("with no host, the syllable centers on the grace's own extent plus the grace-host rest")
+            .isCloseTo(
+                GRACE_X_SS - (widthSs - hostlessUnionWidthSs) / 2, within(POSITION_TOLERANCE_SS));
+
+        assertThat(connectorsOfKind(result, LyricConnectorLayout.Kind.DANGLING_EXTENDER))
+            .as("a melisma with no host on this line continues onto the next")
+            .hasSize(1);
+        assertThat(result.hasTrailingContinuation()).isTrue();
+    }
+
+    // (l) The exact boundary of the spans-the-union rule: a syllable precisely as wide as the union
+    // already ends at the host's notehead, which is where its melisma would have ended. Were the
+    // comparison exclusive, the melisma would be drawn with zero length — a stray tick at the notehead.
+    @Test
+    void testGraceMelismaIsNotDrawnWhenTheSyllableExactlyMeetsTheHost() {
+        var grace = graceQuaver();
+        setLyric(grace, Lyric.Syllabic.SINGLE, GRACE_SYLLABLE, Lyric.Extend.START);
+        var host = crotchet();
+        setCarrier(host, Lyric.Extend.STOP);
+        addToLine(grace, host);
+
+        var hostCol = normalColumn(host, HOST_X_SS);
+        // Verse 1 lays out the width measured onto the column rather than re-measuring the text, so
+        // handing it the union itself puts the syllable exactly on the boundary — bit for bit, since
+        // this is the same expression the builder measures the spaced union with.
+        var unionWidthSs = hostCol.getNoteheadRightEdgeXSs() - GRACE_X_SS;
+        var graceCol = graceColumn(grace, GRACE_X_SS, unionWidthSs);
+
+        var result = LyricLayoutBuilder.build(
+            List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        assertThat(connectorsOfKind(result, LyricConnectorLayout.Kind.EXTENDER))
+            .as("a syllable that exactly meets the host leaves the melisma no length to be drawn in")
+            .isEmpty();
+
+        var graceBox = boxesOf(result, grace).getFirst();
+        assertThat(graceBox.xSs())
+            .as("the syllable sits on the union exactly, overhanging neither side")
+            .isCloseTo(GRACE_X_SS, within(POSITION_TOLERANCE_SS));
     }
 }

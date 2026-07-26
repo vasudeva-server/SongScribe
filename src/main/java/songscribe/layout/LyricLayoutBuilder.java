@@ -58,7 +58,10 @@ import songscribe.dom.StaffElement;
  *   <li>host of a paired grace note → emits no lyric box (the syllable belongs to the grace); a
  *       STOP on it ends the active EXTENDER exactly as the note case above, closing the automatic
  *       grace-host melisma, while any other lyric state passes through so a hyphen or extender
- *       from the grace reaches the next lyric-bearing element</li>
+ *       from the grace reaches the next lyric-bearing element. The one exception is a grace
+ *       syllable that already spans the grace-host union
+ *       ({@link HorizontalSpacingCalculator#graceSyllableSpansUnion}): the syllable itself already
+ *       reaches the host, so the melisma — real in the model — is not drawn at all</li>
  * </ul>
  * <p>
  * Spans that extend past the last column produce a {@link LyricConnectorLayout.Kind#DANGLING_EXTENDER}
@@ -169,7 +172,8 @@ public final class LyricLayoutBuilder {
             // hyphens and extenders originating from the grace reach the next lyric-bearing element.
             if (isHostOfPairedGraceColumn(columns, columnIndex)) {
                 if (extend == Lyric.Extend.STOP) {
-                    state.closeExtenderPastHead(connectors, verse, column.getNoteheadRightEdgeXSs());
+                    state.closeGraceHostExtender(
+                        connectors, verse, column.getNoteheadRightEdgeXSs(), columnIndex);
                 }
 
                 continue;
@@ -215,8 +219,20 @@ public final class LyricLayoutBuilder {
             var widthSs = (verse == 1)
                 ? column.getSyllableWidthSs()
                 : lyricRenderMetrics.lyricBoxWidthSs(text);
-            var hostColumn = columnIndex + 1 < columns.size() ? columns.get(columnIndex + 1) : null;
-            var boxXSs = computeLyricBoxLeftXSs(column, hostColumn, text, widthSs, lyricRenderMetrics);
+            // A grace's host is the column immediately after it, resolved once here so the union the
+            // syllable is placed on and the melisma that shares that placement are read off the same
+            // column. Null for anything but a grace, and for a grace ending the line.
+            var hostColumn = column.isGraceNote() && columnIndex + 1 < columns.size()
+                ? columns.get(columnIndex + 1)
+                : null;
+            var hostLyric = hostColumn != null
+                ? hostColumn.getElement().getLyricForVerse(verse)
+                : null;
+            var graceUnionWidthSs = column.isGraceNote()
+                ? spacedGraceHostUnionWidthSs(columns, columnIndex, column, hostColumn)
+                : 0;
+            var boxXSs = computeLyricBoxLeftXSs(
+                column, lyric, hostLyric, widthSs, graceUnionWidthSs, lyricRenderMetrics);
             var box = new LyricBoxLayout(boxXSs, widthSs, verse, text);
             boxesByElement.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
 
@@ -247,6 +263,8 @@ public final class LyricLayoutBuilder {
                 state.extenderActive = true;
                 state.extenderStartXSs = syllableEndXSs;
                 state.extenderColumnIndex = columnIndex;
+                state.syllableSpansGraceHostUnion = column.isGraceNote()
+                    && HorizontalSpacingCalculator.graceSyllableSpansUnion(widthSs, graceUnionWidthSs);
             }
         }
 
@@ -341,26 +359,67 @@ public final class LyricLayoutBuilder {
      * nor the dots are part of the notehead and must not shift the lyric position).
      * <p>
      * Grace notes: the grace and its host are treated as one unioned column for lyric layout — the
-     * grace carries the lyric, the host never does, and {@code hostColumn} is the column immediately
-     * after the grace. The offset from the grace's origin comes from
+     * grace carries the lyric, the host never does. The offset from the grace's origin comes from
      * {@link HorizontalSpacingCalculator#graceLyricLeftOffsetSs}, which the spacing calculator also
-     * reads to reserve the neighbour space, so the box is drawn exactly where space was reserved.
+     * reads to reserve the neighbour space, so the box is drawn where space was reserved. The pair's
+     * own melisma is part of what that offset places, so whether the pair carries one is derived from
+     * {@code hostLyric} — the host's lyric for this verse — and passed along, as is
+     * {@code graceUnionWidthSs}, the union as this line was actually spaced, which is the one input
+     * the reservation cannot share (see {@link #spacedGraceHostUnionWidthSs}).
      */
     private static double computeLyricBoxLeftXSs(
         ElementColumn column,
-        @Nullable ElementColumn hostColumn,
-        String text,
+        Lyric lyric,
+        @Nullable Lyric hostLyric,
         double widthSs,
+        double graceUnionWidthSs,
         LyricRenderMetrics lyricRenderMetrics) {
 
         if (column.isGraceNote()) {
             return column.getXSs() + HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
-                widthSs, lyricRenderMetrics.firstGraphemeWidthSs(text), column, hostColumn);
+                widthSs,
+                lyricRenderMetrics.firstGraphemeWidthSs(lyric.text()),
+                graceUnionWidthSs,
+                column,
+                HorizontalSpacingCalculator.pairCarriesGraceHostMelisma(lyric, hostLyric));
         }
 
         // Center the syllable on the notehead, which excludes the flag and augmentation dots
         // (getNoteheadCenterXSs) so neither shifts the lyric.
         return column.getNoteheadCenterXSs() - widthSs / 2.0;
+    }
+
+    /**
+     * Returns the width of the grace–host lyric union this grace's syllable is laid out on, measured
+     * from the two columns' final X positions rather than rebuilt from the ideal grace→host gap.
+     * <p>
+     * {@link HorizontalSpacingCalculator#idealGraceHostUnionWidthSs} has to assume that gap is exactly
+     * {@link HorizontalSpacingCalculator#GRACE_HOST_REST_SS}, because it is asked for while the line
+     * is still being solved. The gap the solver produced also carries the {@link OpticalSpacing}
+     * stem correction, any strut that clamped it, and any compression. Lyric layout runs after the
+     * solve, so it can read the union off the notes themselves — and it has to: centering a syllable
+     * and its melisma on the ideal width when a different width was drawn leaves them off the pair by
+     * half the difference, which is a third of a staff space for a stem-up grace against a stem-down
+     * host.
+     * <p>
+     * Measuring needs a host the union really ends at, which is what pairing establishes: an
+     * unpaired grace's neighbour is an ordinary note carrying a lyric of its own, not the far edge of
+     * a union. An unpaired grace therefore keeps the ideal width — which is also the width
+     * {@link HorizontalSpacingCalculator} reserved against, since the reservation path treats the
+     * next column as the grace's host whether or not the two are paired, so the box still lands where
+     * space was made for it.
+     */
+    private static double spacedGraceHostUnionWidthSs(
+        List<ElementColumn> columns,
+        int graceIndex,
+        ElementColumn grace,
+        @Nullable ElementColumn hostColumn) {
+
+        if (hostColumn != null && isHostOfPairedGraceColumn(columns, graceIndex + 1)) {
+            return hostColumn.getNoteheadRightEdgeXSs() - grace.getXSs();
+        }
+
+        return HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(grace, hostColumn);
     }
 
     private static boolean isHostOfPairedGraceColumn(List<ElementColumn> columns, int index) {
@@ -448,6 +507,9 @@ public final class LyricLayoutBuilder {
         boolean extenderActive;
         double extenderStartXSs;
         int extenderColumnIndex = LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
+        // Set when the active extender starts at a grace whose syllable already spans the grace-host
+        // union; such an extender is dropped rather than drawn (see closeGraceHostExtender).
+        boolean syllableSpansGraceHostUnion;
         double pendingHyphenStartXSs = -1.0;
         int pendingHyphenColumnIndex = LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
 
@@ -479,6 +541,40 @@ public final class LyricLayoutBuilder {
          */
         void closeExtenderPastHead(List<? super LyricConnectorLayout> connectors, int verse, double headRightEdgeXSs) {
             closeExtender(connectors, verse, Math.max(extenderStartXSs + MIN_MELISMA_LENGTH_SS, headRightEdgeXSs));
+        }
+
+        /**
+         * Ends at {@code hostColumnIndex}'s host the melisma that reaches it. Normally that is
+         * {@link #closeExtenderPastHead}, but when this host's <em>own</em> grace started the
+         * melisma and that grace's syllable already spans the pair
+         * ({@link HorizontalSpacingCalculator#graceSyllableSpansUnion}) the extender is dropped
+         * instead of emitted: it would start where it was going to end, so there is nothing left for
+         * a reader to see. The melisma stays in the model either way — this decides only whether it
+         * is drawn.
+         * <p>
+         * The melisma reaching this host need not be this pair's own: {@code Line.syncGraceHostMelisma}
+         * leaves a host alone when it already carries an extender onward, so a melisma can start at
+         * one grace, run through its host and several notes, and stop at a second grace's host.
+         * {@link #syllableSpansGraceHostUnion} describes the grace the melisma <em>started</em> at, so
+         * it only licenses dropping the line when that grace is this host's own — the column
+         * immediately before it. Applied to any other melisma it would erase a line spanning many
+         * notes.
+         */
+        void closeGraceHostExtender(
+            List<? super LyricConnectorLayout> connectors,
+            int verse,
+            double headRightEdgeXSs,
+            int hostColumnIndex) {
+
+            if (extenderActive
+                && syllableSpansGraceHostUnion
+                && extenderColumnIndex == hostColumnIndex - 1) {
+
+                extenderActive = false;
+                return;
+            }
+
+            closeExtenderPastHead(connectors, verse, headRightEdgeXSs);
         }
     }
 
