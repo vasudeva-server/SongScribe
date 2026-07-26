@@ -314,6 +314,7 @@ public final class LyricEditor extends MyJTextField {
         SwingUtilities.invokeLater(editor::requestFocusInWindow);
         score.revalidate();
         score.repaint(editor.getBounds());
+        editor.repaintHyphenChainPreview();
     }
 
     public LyricEditor(ScoreView score, Line line, StaffElement element) {
@@ -540,6 +541,11 @@ public final class LyricEditor extends MyJTextField {
     /** Returns the line containing {@link #getActiveElement()}. */
     public Line getActiveLine() {
         return line;
+    }
+
+    /** Returns the verse this editor session is editing. */
+    public int getActiveVerse() {
+        return CURRENT_VERSE;
     }
 
     @Override
@@ -1893,11 +1899,24 @@ public final class LyricEditor extends MyJTextField {
         parent.remove(this);
         score.setActiveLyricEditor(null);
         parent.repaint(bounds.x, bounds.y, bounds.width, bounds.height);
+        repaintHyphenChainPreview();
 
         // We want to notify actions that editing has ended so they can update their enabled state,
         // but only when not advancing to another lyric editor.
         if (isDoneEditing) {
             MessageCenter.post(new TextEditingDidChangeNotification(false));
+        }
+    }
+
+    /**
+     * Repaints the whole line, because an unclosed hyphen chain is engraved up to wherever this
+     * editor sits and so changes shape when the editor opens or closes. That chain starts to the
+     * left of the editor, outside the bounds the open and dismiss paths repaint, and advancing
+     * with a lone hyphen writes nothing to the model, so no mutation-driven repaint follows either.
+     */
+    private void repaintHyphenChainPreview() {
+        if (lineComponent != null) {
+            lineComponent.repaint();
         }
     }
 

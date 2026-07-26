@@ -61,6 +61,9 @@ public final class LineInvariants {
     /** Color for an existing element that will be replaced by the current preview element. */
     static final Color REPLACED_ELEMENT_COLOR = new Color(249, 161, 161);
 
+    /** Verse reported by {@link #getActivelyEditedVerse()} when no lyric editor is open. */
+    public static final int NO_VERSE = -1;
+
     // ==========================================================================
     // Instance Fields
     // ==========================================================================
@@ -75,6 +78,7 @@ public final class LineInvariants {
     private final LyricRenderMetrics lyricRenderMetrics;
     @Nullable
     private final StaffElement activelyEditedElement;
+    private final int activelyEditedVerse;
     private final LineComponent.@Nullable SelectionProvider selectionProvider;
     private final boolean editMode;
     private final Color selectionColor;
@@ -102,6 +106,7 @@ public final class LineInvariants {
         this.layoutResult = layoutResult;
         this.lyricRenderMetrics = lyricRenderMetrics;
         activelyEditedElement = b.activelyEditedElement;
+        activelyEditedVerse = b.activelyEditedVerse;
         selectionProvider = b.selectionProvider;
         editMode = b.editMode;
         selectionColor = b.selectionColor;
@@ -208,6 +213,14 @@ public final class LineInvariants {
     @Nullable
     public StaffElement getActivelyEditedElement() {
         return activelyEditedElement;
+    }
+
+    /**
+     * Returns the verse being edited in the lyric overlay, or {@link #NO_VERSE}
+     * when no editor is open.
+     */
+    public int getActivelyEditedVerse() {
+        return activelyEditedVerse;
     }
 
     /**
@@ -471,6 +484,7 @@ public final class LineInvariants {
         private LyricRenderMetrics lyricRenderMetrics;
         @Nullable
         private StaffElement activelyEditedElement;
+        private int activelyEditedVerse = NO_VERSE;
         private LineComponent.@Nullable SelectionProvider selectionProvider;
         private boolean editMode;
         private Color selectionColor = ScoreView.getSelectionColor();
@@ -510,6 +524,12 @@ public final class LineInvariants {
 
         public Builder setActivelyEditedElement(@Nullable StaffElement activelyEditedElement) {
             this.activelyEditedElement = activelyEditedElement;
+            return this;
+        }
+
+        /** Sets the verse being edited, or {@link #NO_VERSE} when no editor is open. */
+        public Builder setActivelyEditedVerse(int activelyEditedVerse) {
+            this.activelyEditedVerse = activelyEditedVerse;
             return this;
         }
 

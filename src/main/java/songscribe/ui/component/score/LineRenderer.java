@@ -161,13 +161,24 @@ class LineRenderer {
         var score = lc.getScoreView();
         var activeEditor = score.getActiveLyricEditor();
 
+        // The edited element and verse are only meaningful as a pair, so derive both from one
+        // check rather than letting two conditions drift apart.
+        StaffElement editedElement = null;
+        var editedVerse = LineInvariants.NO_VERSE;
+
+        if (activeEditor != null) {
+            editedElement = activeEditor.getActiveElement();
+            editedVerse = activeEditor.getActiveVerse();
+        }
+
         return LineInvariants.builder(song, score)
             .setCurrentLine(line)
             .setLineIndex(lineIndex)
             .setMiddleLineYSs(lc.getMiddleLineYSs())
             .setLayoutResult(layoutResult)
             .setLyricRenderMetrics(score.getLyricRenderMetrics())
-            .setActivelyEditedElement(activeEditor != null ? activeEditor.getActiveElement() : null)
+            .setActivelyEditedElement(editedElement)
+            .setActivelyEditedVerse(editedVerse)
             .setSelectionProvider(lc.getSelectionProvider())
             .setEditMode(lc.isEditMode())
             .setPlayingNoteIndex(lc.getPlayingNoteIndex())

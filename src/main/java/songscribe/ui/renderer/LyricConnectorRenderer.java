@@ -88,7 +88,8 @@ public final class LyricConnectorRenderer {
      * @param ctx render context with a populated layout result and song metrics
      */
     public void render(Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
-        var connectors = invariants.getLayoutResult().getLyricConnectors();
+        var layoutResult = invariants.getLayoutResult();
+        var connectors = layoutResult.getLyricConnectors();
 
         if (connectors.isEmpty()) {
             return;
@@ -96,22 +97,70 @@ public final class LyricConnectorRenderer {
 
         var lyricRenderMetrics = invariants.getLyricRenderMetrics();
         var hyphenGv = getHyphenGlyphVector(lyricRenderMetrics.scaledLyricsFont());
+        var chainPreviewEndXSs = hyphenChainPreviewEndXSs(invariants);
+        var editedVerse = invariants.getActivelyEditedVerse();
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
             g2.setFont(lyricRenderMetrics.scaledLyricsFont());
             g2.setStroke(EXTENDER_STROKE);
 
             for (var connector : connectors) {
-                var ySs = invariants.getLayoutResult().verseYSsInLine(connector.verseIndex(), lyricRenderMetrics);
+                var ySs = layoutResult.verseYSsInLine(connector.verseIndex(), lyricRenderMetrics);
                 g2.setColor(invariants.getLyricConnectorColor(connector.sourceElementIndex(), connector.verseIndex()));
 
                 switch (connector.kind()) {
-                    case HYPHEN -> drawHyphen(g2, connector, ySs, lyricRenderMetrics, hyphenGv);
-                    case DANGLING_HYPHEN -> drawSingleCenteredHyphen(g2, connector, ySs, lyricRenderMetrics, hyphenGv);
+                    case HYPHEN -> drawHyphens(
+                        g2, connector.startXSs(), connector.endXSs(), ySs, lyricRenderMetrics, hyphenGv);
+
+                    case DANGLING_HYPHEN -> {
+                        // While the lyric editor is open past the syllable that opened this chain, engrave
+                        // the chain up to the edited element instead of parking a single hyphen in the first
+                        // gap, so the chain visibly grows as the user hyphenates their way along the line.
+                        var previewsChain = connector.verseIndex() == editedVerse
+                            && !Double.isNaN(chainPreviewEndXSs)
+                            && chainPreviewEndXSs > connector.startXSs();
+
+                        if (previewsChain) {
+                            drawHyphens(
+                                g2, connector.startXSs(), chainPreviewEndXSs, ySs, lyricRenderMetrics, hyphenGv);
+                        } else {
+                            drawSingleCenteredHyphen(
+                                g2, connector.startXSs(), connector.endXSs(), ySs, lyricRenderMetrics, hyphenGv);
+                        }
+                    }
+
                     case EXTENDER, DANGLING_EXTENDER -> drawExtender(g2, connector, ySs);
                 }
             }
         }
+    }
+
+    /**
+     * Returns the X (staff spaces) at which an unclosed hyphen chain should end while the lyric
+     * editor is open, or {@link Double#NaN} when no editor is open or the edited element is not on
+     * this line.
+     * <p>
+     * The chain ends at the edited element's column left edge — the same end the layout pass gives
+     * a dangling hyphen — rather than at the editor's own left edge, so the preview keeps the
+     * geometry the connector already has and the editor simply overlays whatever it covers. The
+     * final {@link LyricConnectorLayout.Kind#HYPHEN} ends at the closing syllable's lyric box
+     * instead, so the hyphens shift slightly when that syllable is committed; its width cannot be
+     * known before it is typed.
+     */
+    private static double hyphenChainPreviewEndXSs(LineInvariants invariants) {
+        var editedElement = invariants.getActivelyEditedElement();
+
+        if (editedElement == null) {
+            return Double.NaN;
+        }
+
+        var editedColumn = invariants.getLayoutResult().getElementColumn(editedElement);
+
+        if (editedColumn == null) {
+            return Double.NaN;
+        }
+
+        return editedColumn.getLeftEdgeXSs();
     }
 
     private GlyphVector getHyphenGlyphVector(Font scaledLyricsFont) {
@@ -120,19 +169,20 @@ public final class LyricConnectorRenderer {
             font -> font.createGlyphVector(GraphicUtils.SCREEN_FRC, "-"));
     }
 
-    private static void drawHyphen(
+    private static void drawHyphens(
         Graphics2D g2,
-        LyricConnectorLayout connector,
+        double startXSs,
+        double endXSs,
         double ySs,
         LyricRenderMetrics metrics,
         GlyphVector hyphenGv
     ) {
-        var gapSs = connector.endXSs() - connector.startXSs();
+        var gapSs = endXSs - startXSs;
         var preferredCellWidthSs = metrics.preferredHyphenCellWidthSs();
         var count = (int) Math.floor(gapSs / preferredCellWidthSs);
 
         if (count <= 1) {
-            drawSingleCenteredHyphen(g2, connector, ySs, metrics, hyphenGv);
+            drawSingleCenteredHyphen(g2, startXSs, endXSs, ySs, metrics, hyphenGv);
             return;
         }
 
@@ -140,19 +190,20 @@ public final class LyricConnectorRenderer {
         var offsetSs = (gapSs - count * preferredCellWidthSs) / 2.0;
 
         for (var i = 0; i < count; i++) {
-            var cellCenterXSs = connector.startXSs() + offsetSs + (i + 0.5) * preferredCellWidthSs;
+            var cellCenterXSs = startXSs + offsetSs + (i + 0.5) * preferredCellWidthSs;
             g2.drawGlyphVector(hyphenGv, (float) (cellCenterXSs - hyphenWidthSs / 2.0), (float) ySs);
         }
     }
 
     private static void drawSingleCenteredHyphen(
         Graphics2D g2,
-        LyricConnectorLayout connector,
+        double startXSs,
+        double endXSs,
         double ySs,
         LyricRenderMetrics metrics,
         GlyphVector hyphenGv
     ) {
-        var centerXSs = (connector.startXSs() + connector.endXSs()) / 2.0;
+        var centerXSs = (startXSs + endXSs) / 2.0;
         g2.drawGlyphVector(hyphenGv, (float) (centerXSs - metrics.hyphenWidthSs() / 2.0), (float) ySs);
     }
 

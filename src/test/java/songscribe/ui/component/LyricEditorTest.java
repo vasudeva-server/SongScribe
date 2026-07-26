@@ -40,6 +40,7 @@ import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
 import javax.swing.JComponent;
+import javax.swing.JPanel;
 import javax.swing.KeyStroke;
 
 import org.junit.jupiter.api.AfterEach;
@@ -57,6 +58,7 @@ import songscribe.dom.Song;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.ViewScale;
+import songscribe.ui.component.score.LineComponent;
 
 @SuppressWarnings({ "OverlyBroadThrowsClause", "DataFlowIssue" })
 class LyricEditorTest extends LyricEditorTestSupport {
@@ -102,6 +104,46 @@ class LyricEditorTest extends LyricEditorTestSupport {
             messageCenterMock.close();
             messageCenterMock = null;
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // Hyphen chain preview: opening and closing the editor reshapes an unclosed
+    // chain that starts left of the editor, so the whole line must be repainted.
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testOpeningEditorRepaintsWholeLine() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var lineComponent = mock(LineComponent.class);
+        when(score.getLineComponent(song.indexOfLine(line))).thenReturn(lineComponent);
+
+        LyricEditor.openOn(score, line, element);
+
+        // An unclosed hyphen chain is engraved up to the editor but starts to its left, outside the
+        // editor-sized region openOn otherwise repaints.
+        verify(lineComponent).repaint();
+    }
+
+    @Test
+    void testDismissingEditorRepaintsWholeLine() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var lineComponent = mock(LineComponent.class);
+        when(score.getLineComponent(song.indexOfLine(line))).thenReturn(lineComponent);
+
+        var editor = new LyricEditor(score, line, element);
+        new JPanel().add(editor);
+
+        editor.dismiss(false);
+
+        // Advancing with a lone hyphen writes nothing to the model, so no mutation-driven repaint
+        // follows the dismiss — without this repaint the preview chain would linger on screen.
+        verify(lineComponent).repaint();
     }
 
     @Test

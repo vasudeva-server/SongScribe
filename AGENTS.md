@@ -22,6 +22,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 **MANDATORY:** If a task touches anything involving any of the areas below — even tangentially — read the linked guide first. Default to reading: a defensive read of a short guide is far cheaper than scanning the codebase to infer patterns, and inferred patterns are often wrong because the conventions are not always visible at the call site. Do not rely on prior knowledge; these subsystems have project-specific conventions that override language and framework defaults.
 
 - **User-facing strings** (new, changed, moved, or referenced): [Strings](.agents/guides/strings.md).
+- **Lyrics or verses** — syllables, hyphen chains, melismas, the lyric editor, or anything indexed by verse: [Lyrics and Verses](.agents/guides/lyrics.md).
 - **Pixels, staff-spaces, or conversion between them**: [Unit Conversion](.agents/guides/unit-conversion.md).
 - **Zoom** — `ViewScale`, `ScoreView`'s zoom-apply path, `ZoomController`, the `Ss`/`DocPx`/`ViewPx` unit types, or the paint-transform scale factor: [Zoom](.agents/guides/zoom.md).
 - **MBassador message bus** — posting, subscribing, `@Handler` methods, or reading code that uses them: [Message System](.agents/guides/messages.md).

@@ -23,6 +23,7 @@ package songscribe.ui.renderer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -30,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static songscribe.layout.LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import module java.desktop;
@@ -37,9 +39,14 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.UnitTest;
+import songscribe.dom.ElementType;
 import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 import songscribe.engraving.Staff;
+import songscribe.layout.ElementColumnTestHelper;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricConnectorLayout;
 import songscribe.layout.LyricConnectorLayout.Kind;
@@ -51,6 +58,31 @@ class LyricConnectorRendererTest extends UnitTest {
     private static final double TOLERANCE = 0.0001;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final double HYPHEN_WIDTH_SS = 0.875;
+
+    // Hyphen chain preview: an unclosed chain opened at CHAIN_START_XSS, whose layout-assigned end
+    // is the next element at CHAIN_NEXT_ELEMENT_XSS, while the lyric editor sits further along the
+    // line at EDITOR_COLUMN_XSS.
+    private static final int EDITED_VERSE = 1;
+    private static final int UNEDITED_VERSE = 2;
+    private static final double NO_COLUMN_XSS = -1.0;
+    private static final double CHAIN_START_XSS = 8.0;
+    private static final double CHAIN_NEXT_ELEMENT_XSS = 12.0;
+    private static final double EDITOR_COLUMN_XSS = 20.0;
+    private static final double EDITOR_COLUMN_BEFORE_CHAIN_XSS = 2.0;
+    private static final double NO_LEFT_EXTENT_SS = 0.0;
+
+    /**
+     * A left extent wide enough that the edited column's left edge is tellable apart from its X and
+     * from its right edge, which all coincide when the column has no extents.
+     */
+    private static final double EDITOR_COLUMN_LEFT_EXTENT_SS = -1.5;
+
+    /**
+     * An editor sitting close enough past the chain start that the gap fits only one hyphen, so the
+     * preview takes the single-centered-hyphen fallback over its own gap rather than over the
+     * connector's.
+     */
+    private static final double EDITOR_COLUMN_ONE_HYPHEN_AWAY_XSS = 10.0;
 
     // Synthetic line geometry. The above-staff content is below the painted floor, so the
     // staff is drawn at MIN_ABOVE_STAFF_SS rather than at the measured 1 ss — and the verse
@@ -89,6 +121,37 @@ class LyricConnectorRendererTest extends UnitTest {
         List<LyricConnectorLayout> connectors,
         double staffToLyricsGapSs
     ) {
+        return builderWith(connectors, staffToLyricsGapSs, null, NO_COLUMN_XSS);
+    }
+
+    /**
+     * As {@link #builderWith(List, double)}, but with the lyric editor open on {@code editedElement}.
+     * A non-negative {@code editedColumnXSs} also lays that element out at that X, standing in for an
+     * editor open on a note of this line; {@link #NO_COLUMN_XSS} leaves it unlaid-out, standing in for
+     * an editor open on another line.
+     */
+    private static LineInvariants.Builder builderWith(
+        List<LyricConnectorLayout> connectors,
+        double staffToLyricsGapSs,
+        @Nullable StaffElement editedElement,
+        double editedColumnXSs
+    ) {
+        return builderWith(connectors, staffToLyricsGapSs, editedElement, editedColumnXSs, NO_LEFT_EXTENT_SS);
+    }
+
+    /**
+     * As {@link #builderWith(List, double, StaffElement, double)}, but the edited element's column
+     * also reaches {@code editedColumnLeftExtentSs} to the left of its X, as a column with a
+     * leading accidental does. Left extents are negative, so the column's left edge — the measure
+     * the chain preview is supposed to end at — lands left of {@code editedColumnXSs}.
+     */
+    private static LineInvariants.Builder builderWith(
+        List<LyricConnectorLayout> connectors,
+        double staffToLyricsGapSs,
+        @Nullable StaffElement editedElement,
+        double editedColumnXSs,
+        double editedColumnLeftExtentSs
+    ) {
         var layoutBuilder = LayoutResult.builder()
             .setContentAboveStaffSs(CONTENT_ABOVE_STAFF_SS)
             .setContentBelowStaffSs(CONTENT_BELOW_STAFF_SS);
@@ -97,10 +160,22 @@ class LyricConnectorRendererTest extends UnitTest {
             layoutBuilder.addLyricConnector(connector);
         }
 
+        if (editedElement != null && editedColumnXSs >= 0) {
+            layoutBuilder.putElementColumn(
+                editedElement,
+                ElementColumnTestHelper.columnAt(editedElement, editedColumnXSs, editedColumnLeftExtentSs));
+        }
+
         return RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutBuilder.build())
+            .setActivelyEditedElement(editedElement)
+            .setActivelyEditedVerse(editedElement != null ? EDITED_VERSE : LineInvariants.NO_VERSE)
             .setLyricRenderMetrics(
                 new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, HYPHEN_WIDTH_SS, 0.0, staffToLyricsGapSs));
+    }
+
+    private static StaffElement note() {
+        return ElementType.CROTCHET.newInstance();
     }
 
     @Test
@@ -289,5 +364,270 @@ class LyricConnectorRendererTest extends UnitTest {
         // All hyphens are at the same verse baseline (verse 1)
         yCap.getAllValues().forEach(y ->
             assertThat(y.doubleValue()).isCloseTo(VERSE_1_BASELINE_SS, within(TOLERANCE)));
+    }
+
+    // ======================================================================
+    // Hyphen chain preview — an unclosed chain engraved up to the open editor
+    // ======================================================================
+
+    @Test
+    void testDanglingHyphenEngravedUpToOpenEditor() {
+        var editedElement = note();
+        var connector = new LyricConnectorLayout(
+            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, EDITED_VERSE, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var invariants =
+            builderWith(List.of(connector), STAFF_TO_LYRICS_GAP_SS, editedElement, EDITOR_COLUMN_XSS).build();
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
+
+        // The chain runs to the editor, not to the connector's own end, so it is a distributed run
+        // over CHAIN_START_XSS..EDITOR_COLUMN_XSS rather than one hyphen centered in the first gap.
+        assertHyphenRunBetween(g2, CHAIN_START_XSS, EDITOR_COLUMN_XSS);
+    }
+
+    @Test
+    void testDanglingHyphenEndsAtEditedColumnLeftEdgeNotItsX() {
+        var editedElement = note();
+        var connector = new LyricConnectorLayout(
+            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, EDITED_VERSE, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var invariants = builderWith(
+            List.of(connector),
+            STAFF_TO_LYRICS_GAP_SS,
+            editedElement,
+            EDITOR_COLUMN_XSS,
+            EDITOR_COLUMN_LEFT_EXTENT_SS).build();
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
+
+        // The edited column reaches left of its own X, so its left edge, X and right edge are three
+        // different numbers. The chain must stop at the left edge: ending at the column's X or right
+        // edge instead would run the hyphens under the note's leading accidental.
+        assertHyphenRunBetween(g2, CHAIN_START_XSS, EDITOR_COLUMN_XSS + EDITOR_COLUMN_LEFT_EXTENT_SS);
+    }
+
+    @Test
+    void testDanglingHyphenIgnoresEditorExactlyAtChainStart() {
+        var editedElement = note();
+        var connector = new LyricConnectorLayout(
+            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, EDITED_VERSE, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var invariants = builderWith(
+            List.of(connector), STAFF_TO_LYRICS_GAP_SS, editedElement, CHAIN_START_XSS).build();
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
+
+        // The editor sits exactly on the syllable that opened the chain, leaving no gap to engrave.
+        // Previewing a zero-width run here would drop the hyphen at the chain start instead of at
+        // the midpoint of the chain's own gap.
+        assertSingleHyphenCenteredInChainGap(g2);
+    }
+
+    @Test
+    void testDanglingHyphenPreviewTooNarrowForTwoHyphensDrawsOneCenteredOnTheEditor() {
+        var editedElement = note();
+        var connector = new LyricConnectorLayout(
+            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, EDITED_VERSE, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var invariants = builderWith(
+            List.of(connector), STAFF_TO_LYRICS_GAP_SS, editedElement, EDITOR_COLUMN_ONE_HYPHEN_AWAY_XSS).build();
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
+
+        // Only one hyphen fits, so the run collapses to a single hyphen — but centered in the gap up
+        // to the editor, not in the connector's own wider gap.
+        assertSingleHyphenCenteredBetween(g2, CHAIN_START_XSS, EDITOR_COLUMN_ONE_HYPHEN_AWAY_XSS);
+    }
+
+    @Test
+    void testClosedHyphenRunUnaffectedByOpenEditor() {
+        var editedElement = note();
+        var connector = new LyricConnectorLayout(
+            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, EDITED_VERSE, Kind.HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var invariants =
+            builderWith(List.of(connector), STAFF_TO_LYRICS_GAP_SS, editedElement, EDITOR_COLUMN_XSS).build();
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
+
+        // Growing toward the editor belongs to unclosed chains only. A hyphen run already closed by
+        // its following syllable keeps its own span, however far along the line the editor sits.
+        assertHyphenRunBetween(g2, CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS);
+    }
+
+    @Test
+    void testExtenderUnaffectedByOpenEditor() {
+        var editedElement = note();
+        var connector = new LyricConnectorLayout(
+            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, EDITED_VERSE, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
+        var invariants =
+            builderWith(List.of(connector), STAFF_TO_LYRICS_GAP_SS, editedElement, EDITOR_COLUMN_XSS).build();
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
+
+        // The preview stretches hyphen chains only; an extender keeps the span layout gave it.
+        var lineCap = ArgumentCaptor.forClass(Shape.class);
+        verify(g2, times(1)).draw(lineCap.capture());
+
+        var drawn = (Line2D.Double) lineCap.getValue();
+
+        assertThat(drawn.x1).isCloseTo(CHAIN_START_XSS, within(TOLERANCE));
+        assertThat(drawn.x2).isCloseTo(CHAIN_NEXT_ELEMENT_XSS, within(TOLERANCE));
+    }
+
+    @Test
+    void testPreviewAppliesOnlyToTheEditedVerseInTheSamePass() {
+        var editedElement = note();
+        var editedVerseChain = new LyricConnectorLayout(
+            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, EDITED_VERSE, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var otherVerseChain = new LyricConnectorLayout(
+            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, UNEDITED_VERSE, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var invariants = builderWith(
+            List.of(editedVerseChain, otherVerseChain),
+            STAFF_TO_LYRICS_GAP_SS,
+            editedElement,
+            EDITOR_COLUMN_XSS).build();
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
+
+        // Both chains have identical geometry and differ only by verse, so they are told apart by
+        // the baseline they are drawn on. Only the edited verse's chain may grow toward the editor.
+        var xCap = ArgumentCaptor.forClass(Float.class);
+        var yCap = ArgumentCaptor.forClass(Float.class);
+        var previewedCount = hyphenCountBetween(CHAIN_START_XSS, EDITOR_COLUMN_XSS);
+
+        verify(g2, times(previewedCount + 1)).drawGlyphVector(any(GlyphVector.class), xCap.capture(), yCap.capture());
+
+        var otherVerseBaselineSs = VERSE_1_BASELINE_SS + verseRowHeightSs();
+        var xs = xCap.getAllValues();
+        var ys = yCap.getAllValues();
+        var editedVerseXs = new ArrayList<Double>();
+        var otherVerseXs = new ArrayList<Double>();
+
+        for (var i = 0; i < xs.size(); i++) {
+            if (Math.abs(ys.get(i) - otherVerseBaselineSs) < TOLERANCE) {
+                otherVerseXs.add(xs.get(i).doubleValue());
+            } else {
+                editedVerseXs.add(xs.get(i).doubleValue());
+            }
+        }
+
+        assertHyphenXsCloseTo(editedVerseXs, expectedHyphenRunXs(CHAIN_START_XSS, EDITOR_COLUMN_XSS));
+
+        var unpreviewedCenterXSs = (CHAIN_START_XSS + CHAIN_NEXT_ELEMENT_XSS) / 2.0;
+
+        assertThat(otherVerseXs).hasSize(1);
+        assertThat(otherVerseXs.getFirst())
+            .isCloseTo(unpreviewedCenterXSs - HYPHEN_WIDTH_SS / 2.0, within(TOLERANCE));
+    }
+
+    @Test
+    void testDanglingHyphenIgnoresEditorInAnotherVerse() {
+        var editedElement = note();
+        var connector = new LyricConnectorLayout(
+            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, UNEDITED_VERSE, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var invariants =
+            builderWith(List.of(connector), STAFF_TO_LYRICS_GAP_SS, editedElement, EDITOR_COLUMN_XSS).build();
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
+
+        assertSingleHyphenCenteredInChainGap(g2);
+    }
+
+    @Test
+    void testDanglingHyphenIgnoresEditorBeforeChainStart() {
+        var editedElement = note();
+        var connector = new LyricConnectorLayout(
+            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, EDITED_VERSE, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var invariants = builderWith(
+            List.of(connector), STAFF_TO_LYRICS_GAP_SS, editedElement, EDITOR_COLUMN_BEFORE_CHAIN_XSS).build();
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
+
+        assertSingleHyphenCenteredInChainGap(g2);
+    }
+
+    @Test
+    void testDanglingHyphenIgnoresEditorOnAnotherLine() {
+        var editedElement = note();
+        var connector = new LyricConnectorLayout(
+            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, EDITED_VERSE, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        var invariants =
+            builderWith(List.of(connector), STAFF_TO_LYRICS_GAP_SS, editedElement, NO_COLUMN_XSS).build();
+        var g2 = mock(Graphics2D.class);
+
+        LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
+
+        assertSingleHyphenCenteredInChainGap(g2);
+    }
+
+    /** Asserts the unpreviewed rendering: one hyphen centered in the chain's own layout gap. */
+    private static void assertSingleHyphenCenteredInChainGap(Graphics2D g2) {
+        assertSingleHyphenCenteredBetween(g2, CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS);
+    }
+
+    /** Asserts exactly one hyphen was drawn, centered between {@code startXSs} and {@code endXSs}. */
+    private static void assertSingleHyphenCenteredBetween(Graphics2D g2, double startXSs, double endXSs) {
+        var xCap = ArgumentCaptor.forClass(Float.class);
+        verify(g2, times(1)).drawGlyphVector(any(GlyphVector.class), xCap.capture(), anyFloat());
+
+        var centerXSs = (startXSs + endXSs) / 2.0;
+
+        assertThat(xCap.getValue().doubleValue())
+            .isCloseTo(centerXSs - HYPHEN_WIDTH_SS / 2.0, within(TOLERANCE));
+    }
+
+    /**
+     * Asserts the hyphens drawn are exactly the distributed run that spans {@code startXSs} to
+     * {@code endXSs} — both the number of them and where each one sits.
+     */
+    private static void assertHyphenRunBetween(Graphics2D g2, double startXSs, double endXSs) {
+        var expectedXs = expectedHyphenRunXs(startXSs, endXSs);
+        var xCap = ArgumentCaptor.forClass(Float.class);
+
+        verify(g2, times(expectedXs.size())).drawGlyphVector(any(GlyphVector.class), xCap.capture(), anyFloat());
+
+        var actualXs = xCap.getAllValues().stream().map(Float::doubleValue).toList();
+
+        assertHyphenXsCloseTo(actualXs, expectedXs);
+    }
+
+    /** Asserts {@code actualXs} matches {@code expectedXs} in order, within the usual tolerance. */
+    private static void assertHyphenXsCloseTo(List<Double> actualXs, List<Double> expectedXs) {
+        assertThat(actualXs).hasSameSizeAs(expectedXs);
+
+        for (var i = 0; i < expectedXs.size(); i++) {
+            assertThat(actualXs.get(i)).isCloseTo(expectedXs.get(i), within(TOLERANCE));
+        }
+    }
+
+    /** Returns how many hyphens the renderer distributes across {@code startXSs}..{@code endXSs}. */
+    private static int hyphenCountBetween(double startXSs, double endXSs) {
+        return (int) Math.floor((endXSs - startXSs) / preferredHyphenCellWidthSs());
+    }
+
+    /** Returns the left edge of every hyphen in the run spanning {@code startXSs}..{@code endXSs}. */
+    private static List<Double> expectedHyphenRunXs(double startXSs, double endXSs) {
+        var preferredCellWidthSs = preferredHyphenCellWidthSs();
+        var gapSs = endXSs - startXSs;
+        var count = hyphenCountBetween(startXSs, endXSs);
+        var offsetSs = (gapSs - count * preferredCellWidthSs) / 2.0;
+        var xs = new ArrayList<Double>();
+
+        for (var i = 0; i < count; i++) {
+            var cellCenterXSs = startXSs + offsetSs + (i + 0.5) * preferredCellWidthSs;
+            xs.add(cellCenterXSs - HYPHEN_WIDTH_SS / 2.0);
+        }
+
+        return xs;
+    }
+
+    private static double preferredHyphenCellWidthSs() {
+        return LyricRenderMetrics.HYPHEN_WIDENING_FACTOR * HYPHEN_WIDTH_SS;
     }
 }

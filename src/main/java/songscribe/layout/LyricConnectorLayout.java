@@ -26,7 +26,10 @@ package songscribe.layout;
  * Coordinates are in staff spaces, relative to the line's left edge. {@link Kind#HYPHEN}
  * spans are drawn with one or more hyphens distributed across the gap; a
  * {@link Kind#DANGLING_HYPHEN} draws exactly one hyphen centered in the gap between the
- * syllable end and the next eligible element on the same line; {@link Kind#EXTENDER}
+ * syllable end and the next eligible element on the same line — except while the lyric
+ * editor is open past that syllable, where the renderer engraves the chain up to the
+ * edited element instead so it grows as the user hyphenates along the line;
+ * {@link Kind#EXTENDER}
  * lines run horizontally from {@code startXSs} to {@code endXSs}; a
  * {@link Kind#DANGLING_EXTENDER} is an extender that reaches the end of the line without
  * a closing element — it is anchored to the right edge of the last eligible element on
