@@ -26,6 +26,7 @@ import static java.awt.event.KeyEvent.*;
 
 import songscribe.Strings;
 import songscribe.ui.component.LyricEditor;
+import songscribe.ui.component.LyricTargetResolver;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 
@@ -66,7 +67,8 @@ public final class EditLyricAction extends UIAction {
             return false;
         }
 
-        return LyricEditor.isLyricTargetEligible(activeLineState.getLine(), activeLineState.getSelectionBegin());
+        return LyricTargetResolver.resolveLyricTarget(
+            activeLineState.getLine(), activeLineState.getSelectionBegin()) >= 0;
     }
 
     @Override
@@ -79,7 +81,14 @@ public final class EditLyricAction extends UIAction {
                 "EditLyricAction fired with no selected element — REQUIRES_SINGLE_SELECTION should have prevented this");
         }
 
-        scoreView.deselect();
-        LyricEditor.openOn(scoreView, element.getLine(), element);
+        var line = element.getLine();
+        var targetIndex = LyricTargetResolver.resolveLyricTarget(line, line.getElementIndex(element));
+
+        if (targetIndex < 0) {
+            throw new IllegalStateException(
+                "EditLyricAction fired on an element with no lyric target — enableFromSelection should have prevented this");
+        }
+
+        LyricEditor.deselectAndOpenOn(scoreView, line, targetIndex);
     }
 }

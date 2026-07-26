@@ -773,6 +773,38 @@ public final class ScoreView
     }
 
     @Override
+    public void editLyricOnSelection() {
+        // Leaving SELECT mode clears the selection, so a live selection already implies
+        // the mode gate that EditLyricAction spells out; playback does not clear it.
+        if (PlaybackController.isPlaying()) {
+            return;
+        }
+
+        var selection = selectionCoordinator.getSelection();
+
+        if (selection == null) {
+            return;
+        }
+
+        // EditLyricAction is disabled unless exactly one element is selected, and a
+        // selected staff line reports itself as a selection spanning the whole line.
+        // Requiring a single element keeps Return in step with the menu command rather
+        // than silently picking one note out of a range the user never singled out.
+        if (selection.begin() != selection.end()) {
+            return;
+        }
+
+        var line = selection.line();
+        var targetIndex = LyricTargetResolver.resolveLyricTarget(line, selection.begin());
+
+        if (targetIndex < 0) {
+            return;
+        }
+
+        LyricEditor.deselectAndOpenOn(this, line, targetIndex);
+    }
+
+    @Override
     public void zoomByWheel(double preciseWheelRotation, Point viewPoint) {
         ZoomController.zoomByWheel(preciseWheelRotation, viewPoint);
     }

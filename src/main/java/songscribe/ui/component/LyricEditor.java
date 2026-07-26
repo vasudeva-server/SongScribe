@@ -67,7 +67,7 @@ import songscribe.util.UIUtils;
  *  ┌───────────────────────────────────────────────────────────┐
  *  │ LyricEditor lifecycle                                     │
  *  │                                                           │
- *  │   EditLyricAction.actionPerformed                          │
+ *  │   EditLyricAction / Enter / double-click                  │
  *  │           │                                               │
  *  │           ▼                                               │
  *  │   new LyricEditor(line, element)                          │
@@ -270,8 +270,8 @@ public final class LyricEditor extends MyJTextField {
 
     /**
      * Constructs a {@link LyricEditor} on {@code element}, attaches it to {@code score},
-     * and gives it focus. Used by both {@link EditLyricAction} and
-     * {@link #advance()} so the open sequence is centralized.
+     * and gives it focus. Used by {@link #advance()} and {@link #deselectAndOpenOn} so the
+     * open sequence is centralized; every user gesture arrives through the latter.
      */
     public static void openOn(ScoreView score, Line line, StaffElement element) {
         var editor = new LyricEditor(score, line, element);
@@ -1297,17 +1297,15 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Returns true when {@code index} is a structurally valid lyric target: a pitched note,
-     * rest, or grace note that is NOT the host of a paired grace note. This is the single
-     * source of truth for the host-block rule used by both action enablement and navigation.
+     * Deselects and opens the editor on the element at {@code index} in {@code line}.
+     * Every caller that opens the editor in response to a user gesture goes through here,
+     * so the gesture's own selection is always cleared first. Tab/Shift-Tab navigation
+     * within an already-open editor calls {@link #openOn} directly instead: there is no
+     * selection to clear, the editor having taken focus when it opened.
      */
-    public static boolean isLyricTargetEligible(Line line, int index) {
-        if (line.isHostOfPairedGraceNote(index)) {
-            return false;
-        }
-
-        var type = line.getElement(index).getType();
-        return type.isPitchedNote() || type.isRest() || type.isGraceNote();
+    public static void deselectAndOpenOn(ScoreView score, Line line, int index) {
+        score.deselect();
+        openOn(score, line, line.getElement(index));
     }
 
     /** Package-private for testing. */
@@ -1315,7 +1313,8 @@ public final class LyricEditor extends MyJTextField {
         var count = searchLine.effectiveElementCount();
 
         for (var i = currentIndex + 1; i < count; i++) {
-            if (isLyricTargetEligible(searchLine, i) && searchLine.getElement(i).isEligibleForLyric(verse)) {
+            if (LyricTargetResolver.isLyricTargetEligible(searchLine, i)
+                && searchLine.getElement(i).isEligibleForLyric(verse)) {
                 return i;
             }
         }
@@ -1326,7 +1325,8 @@ public final class LyricEditor extends MyJTextField {
     /** Package-private for testing. */
     static int findPreviousEligibleIndex(Line searchLine, int currentIndex, int verse) {
         for (var i = currentIndex - 1; i >= 0; i--) {
-            if (isLyricTargetEligible(searchLine, i) && searchLine.getElement(i).isEligibleForLyric(verse)) {
+            if (LyricTargetResolver.isLyricTargetEligible(searchLine, i)
+                && searchLine.getElement(i).isEligibleForLyric(verse)) {
                 return i;
             }
         }

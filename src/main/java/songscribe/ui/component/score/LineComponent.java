@@ -33,6 +33,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.component.ComponentNames;
 import songscribe.ui.component.LyricEditor;
+import songscribe.ui.component.LyricTargetResolver;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.PasteModeManager;
@@ -168,6 +169,14 @@ public class LineComponent extends ScoreComponent
     /** True when the previous line's lyric extender continues into this line. */
     private boolean hasLeadingLyricContinuation;
 
+    /**
+     * Element index hit by the most recent press, or -1 when that press hit no element.
+     * {@link NoteDragHandler} computes this on press and discards it on release, so it is
+     * captured in {@link #mouseReleased} for {@link #mouseClicked} — which runs next — to
+     * reuse instead of scanning the line's elements a second time for the same point.
+     */
+    private int pressHitIndex = -1;
+
     /** Handles selection, hit-testing, and drag logic. */
     private final LineSelectionHandler selectionHandler = new LineSelectionHandler(this);
 
@@ -180,6 +189,9 @@ public class LineComponent extends ScoreComponent
     // ==========================================================================
     // Constants
     // ==========================================================================
+
+    /** Click count that identifies a double-click in a {@link MouseEvent}. */
+    private static final int DOUBLE_CLICK_COUNT = 2;
 
     /**
      * Creates a new LineComponent.
@@ -749,21 +761,69 @@ public class LineComponent extends ScoreComponent
         var lyricHit = hitTestLyric(e.getPoint());
 
         if (lyricHit != null) {
-            if (e.getClickCount() == 2 && line != null && getScoreView().getActiveLyricEditor() == null) {
+            if (e.getClickCount() == DOUBLE_CLICK_COUNT
+                && line != null
+                && getScoreView().getActiveLyricEditor() == null) {
                 var lyric = lyricHit.element().getLyricForVerse(lyricHit.verse());
 
                 if (lyric != null && !lyric.text().isBlank()) {
-                    getScoreView().deselect();
-                    LyricEditor.openOn(getScoreView(), line, lyricHit.element());
+                    LyricEditor.deselectAndOpenOn(
+                        getScoreView(), line, line.getElementIndex(lyricHit.element()));
                 }
             }
 
             return;
         }
 
+        if (editLyricOnDoubleClickedElement(e)) {
+            return;
+        }
+
         if (!selectionHandler.handleClick(e)) {
             PreviewElementManager.handleClick(this);
         }
+    }
+
+    /**
+     * Opens the lyric editor on a double-clicked element, returning true when it did.
+     * <p>
+     * The gesture is a plain double-click in SELECT mode; in EDIT mode it takes Alt, which
+     * {@link #mousePressed} has already turned into a permanent switch to SELECT mode by the
+     * time the click arrives. {@code isSelectionActive} is the gate for exactly that pair of
+     * cases, and additionally rules out the adjustment modes and playback. Shift is excluded
+     * separately: shift+click extends the selection, and this method runs before the
+     * selection handler sees the click, so without the guard a shift+double-click would
+     * discard the selection the user was building.
+     */
+    private boolean editLyricOnDoubleClickedElement(MouseEvent e) {
+        var scoreView = getScoreView();
+
+        if (e.getClickCount() != DOUBLE_CLICK_COUNT
+            || e.isShiftDown()
+            || line == null
+            || scoreView.getActiveLyricEditor() != null
+            || !selectionHandler.isSelectionActive(e)) {
+            return false;
+        }
+
+        // The press already hit-tested this point for every element the drag handler
+        // admits; only the cases it declines (a rest, say) still need the scan.
+        var hitIndex = pressHitIndex >= 0
+            ? pressHitIndex
+            : ElementHitTest.hitTestElement(this, getViewScale().toDocumentPoint(e.getPoint()));
+
+        if (hitIndex == -1) {
+            return false;
+        }
+
+        var targetIndex = LyricTargetResolver.resolveLyricTarget(line, hitIndex);
+
+        if (targetIndex < 0) {
+            return false;
+        }
+
+        LyricEditor.deselectAndOpenOn(scoreView, line, targetIndex);
+        return true;
     }
 
     @Override
@@ -802,6 +862,10 @@ public class LineComponent extends ScoreComponent
 
     @Override
     public void mouseReleased(MouseEvent e) {
+        // Capture before handleRelease() clears it. Refreshed on every release, so
+        // mouseClicked can never read a value left over from an earlier press.
+        pressHitIndex = noteDragHandler.isDragActive() ? noteDragHandler.getDragElementIndex() : -1;
+
         if (getGraceModeManager().mouseReleased(this, e)) {
             return;
         }

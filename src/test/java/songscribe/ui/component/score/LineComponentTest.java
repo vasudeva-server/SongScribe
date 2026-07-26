@@ -22,17 +22,21 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.util.List;
+import java.util.function.Consumer;
 
 import javax.swing.JPanel;
 
@@ -42,6 +46,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import songscribe.UnitTest;
+import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.layout.InsertionSpacingCalculator.InsertionResult;
@@ -49,10 +55,13 @@ import songscribe.layout.LayoutResult;
 import songscribe.layout.LineSpacing;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.engraving.Staff;
+import songscribe.ui.Mode;
 import songscribe.ui.ViewScale;
+import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
+import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -700,8 +709,174 @@ class LineComponentTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // Double-click on an element opens the lyric editor
+    // -------------------------------------------------------------------------
+
+    /**
+     * These tests drive the real {@code mouseClicked} routing and assert on whether the lyric
+     * editor was asked to open. Two collaborators are stubbed so the tests isolate the routing
+     * rather than re-testing logic covered elsewhere: which element lies under the cursor
+     * (covered by {@link ElementHitTestTest}) and which element a gesture resolves to (covered
+     * by {@code LyricEditorEligibilityTest}). Opening is observed by stubbing
+     * {@link LyricEditor} statically, since the call to {@code deselectAndOpenOn} is the
+     * method's only observable effect.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class DoubleClickLyricEditing {
+
+        /** Index the stubbed hit test reports as lying under the cursor. */
+        private static final int HIT_INDEX = 0;
+
+        private ScoreView mockScoreView;
+        private Line line;
+
+        @BeforeEach
+        void setUp() {
+            mockScoreView = mock(ScoreView.class);
+            when(mockScoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            when(mockScoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
+            // SELECT mode with no editor open is the state the gesture is designed for.
+            when(mockScoreView.getMode()).thenReturn(Mode.SELECT);
+            when(mockScoreView.getActiveLyricEditor()).thenReturn(null);
+            lc.setScoreView(mockScoreView);
+
+            var song = new Song();
+            line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+            lc.song = song;
+            lc.setLine(line, 0);
+            // Inject a clean layout so the heavyweight layout engine never runs. The stub
+            // reports no lyric under the cursor, so the click falls through to the element
+            // branch under test rather than the double-click-on-lyric-text branch above it.
+            lc.layoutResult = mock(LayoutResult.class);
+            lc.layoutDirty = false;
+        }
+
+        /**
+         * Runs {@code mouseClicked} with the edit-mode managers and the element hit test
+         * stubbed, and hands the test the static LyricEditor stub to assert against.
+         */
+        private void clickWith(MouseEvent event, Consumer<MockedStatic<LyricEditor>> assertions) {
+            var graceMock = mock(GraceModeManager.class);
+            var pasteMock = mock(PasteModeManager.class);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                 MockedStatic<ElementHitTest> hitTest = mockStatic(ElementHitTest.class);
+                 MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+                hitTest.when(() -> ElementHitTest.hitTestElement(any(LineComponent.class), any(Point.class)))
+                    .thenReturn(HIT_INDEX);
+
+                lc.mouseClicked(event);
+
+                assertions.accept(lyricEditor);
+            }
+        }
+
+        @Test
+        void testPlainDoubleClickOpensTheEditorOnTheClickedElement() {
+            clickWith(
+                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
+                lyricEditor -> lyricEditor.verify(
+                    () -> LyricEditor.deselectAndOpenOn(mockScoreView, line, HIT_INDEX)));
+        }
+
+        @Test
+        void testSingleClickDoesNotOpenTheEditor() {
+            // Without the click-count check every ordinary click on a note would pop open
+            // a text field instead of selecting the note.
+            clickWith(
+                clickEvent(SINGLE_CLICK, NO_MODIFIERS),
+                MockedStatic::verifyNoInteractions);
+        }
+
+        @Test
+        void testShiftDoubleClickDoesNotOpenTheEditor() {
+            // Shift+click extends a selection. This method runs before the selection handler
+            // sees the click, so without the guard it would discard the selection being built.
+            clickWith(
+                clickEvent(DOUBLE_CLICK, MouseEvent.SHIFT_DOWN_MASK),
+                MockedStatic::verifyNoInteractions);
+        }
+
+        @Test
+        void testDoubleClickDoesNotOpenASecondEditorWhileOneIsOpen() {
+            // Without this guard a second editor would be stacked on the first, losing
+            // whatever the user had typed into it.
+            when(mockScoreView.getActiveLyricEditor()).thenReturn(mock(LyricEditor.class));
+
+            clickWith(
+                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
+                lyricEditor -> lyricEditor.verify(
+                    () -> LyricEditor.deselectAndOpenOn(any(), any(), anyInt()), never()));
+        }
+
+        @Test
+        void testDoubleClickOutsideSelectModeDoesNotOpenTheEditor() {
+            // Adjustment modes are not a context for editing lyrics.
+            when(mockScoreView.getMode()).thenReturn(Mode.ADJUSTMENT);
+
+            clickWith(
+                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
+                MockedStatic::verifyNoInteractions);
+        }
+
+        @Test
+        void testDoubleClickThatHitsNoElementDoesNotOpenTheEditor() {
+            // Without the miss guard the editor would be asked to open on element -1.
+            var graceMock = mock(GraceModeManager.class);
+            var pasteMock = mock(PasteModeManager.class);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                 MockedStatic<ElementHitTest> hitTest = mockStatic(ElementHitTest.class);
+                 MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+                hitTest.when(() -> ElementHitTest.hitTestElement(any(LineComponent.class), any(Point.class)))
+                    .thenReturn(NO_HIT);
+
+                lc.mouseClicked(clickEvent(DOUBLE_CLICK, NO_MODIFIERS));
+
+                lyricEditor.verifyNoInteractions();
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Helper
     // -------------------------------------------------------------------------
+
+    /** Click count identifying a single click in a {@link MouseEvent}. */
+    private static final int SINGLE_CLICK = 1;
+
+    /** Click count identifying a double-click in a {@link MouseEvent}. */
+    private static final int DOUBLE_CLICK = 2;
+
+    /** Empty modifier mask, for a click with no modifier key held. */
+    private static final int NO_MODIFIERS = 0;
+
+    /** Sentinel returned by the element hit test when the point hit no element. */
+    private static final int NO_HIT = -1;
+
+    /** Creates a left-button click event with the given click count and modifier mask. */
+    private static MouseEvent clickEvent(int clickCount, int modifiers) {
+        var source = new JPanel();
+        return new MouseEvent(
+            source,
+            MouseEvent.MOUSE_CLICKED,
+            0L,         // when (not examined by production code)
+            modifiers,
+            10, 10,     // x, y
+            10, 10,     // xAbs, yAbs
+            clickCount,
+            false,      // popupTrigger
+            MouseEvent.BUTTON1
+        );
+    }
 
     /** Creates a minimal mouse event with the given id and button on a fresh JPanel source. */
     private static MouseEvent mouseEvent(int id, int button) {

@@ -530,8 +530,9 @@ class ScoreInputHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------
-    // Rows 246-254: KeyAction(VK_ENTER) places the paste-mode fragment and
-    // returns before touching the selection coordinator
+    // Rows 246-254: KeyAction(VK_ENTER) places the paste-mode fragment or,
+    // outside paste mode, opens the lyric editor on the selection — either
+    // way returning before touching the selection coordinator
     // -------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -539,9 +540,10 @@ class ScoreInputHandlerTest extends UnitTest {
     class EnterKeyPressed {
 
         @Test
-        void testEnterCallsPasteModeManagerPlaceAndSkipsSelectionHandling() {
+        void testEnterInPasteModeCallsPlaceAndSkipsSelectionHandling() {
             var callback = mock(InputHandlerCallback.class);
             var pasteModeManager = mock(PasteModeManager.class);
+            when(pasteModeManager.isInProgress()).thenReturn(true);
 
             try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
@@ -549,8 +551,26 @@ class ScoreInputHandlerTest extends UnitTest {
                 pressArrowKey(callback, KeyEvent.VK_ENTER);
 
                 verify(pasteModeManager).place();
-                // The VK_ENTER branch returns immediately after place(), so the
-                // arrow-key selection path below it must never run.
+                verify(callback, never()).editLyricOnSelection();
+                // The VK_ENTER branch returns immediately, so the arrow-key
+                // selection path below it must never run.
+                verify(callback, never()).getSelectionCoordinator();
+            }
+        }
+
+        @Test
+        void testEnterOutsidePasteModeOpensLyricEditorOnSelection() {
+            var callback = mock(InputHandlerCallback.class);
+            var pasteModeManager = mock(PasteModeManager.class);
+            when(pasteModeManager.isInProgress()).thenReturn(false);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                pressArrowKey(callback, KeyEvent.VK_ENTER);
+
+                verify(callback).editLyricOnSelection();
+                verify(pasteModeManager, never()).place();
                 verify(callback, never()).getSelectionCoordinator();
             }
         }

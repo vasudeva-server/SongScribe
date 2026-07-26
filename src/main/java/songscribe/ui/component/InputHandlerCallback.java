@@ -55,6 +55,12 @@ public interface InputHandlerCallback {
     void extendSelectionTo(int targetIndex);
 
     /**
+     * Opens the lyric editor on the first note in the current selection, in response to
+     * Return/Enter. A selection holding no note, and no selection at all, are both no-ops.
+     */
+    void editLyricOnSelection();
+
+    /**
      * Zooms in or out around {@code viewPoint} (in this view's local coordinate
      * space) in response to a Cmd+wheel (macOS) or Ctrl+wheel (other platforms)
      * gesture. {@code preciseWheelRotation} is the raw rotation from the

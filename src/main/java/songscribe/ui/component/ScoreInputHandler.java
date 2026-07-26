@@ -258,9 +258,17 @@ public final class ScoreInputHandler extends KeyAdapter
         public void actionPerformed(ActionEvent e) {
             // Return/Enter places the clipboard fragment at the tracked insertion point
             // while paste mode is active; with no tracked point it is a no-op and the
-            // paste stays pending. Outside paste mode the binding remains a no-op.
+            // paste stays pending. Outside paste mode it opens the lyric editor on the
+            // current selection.
             if (code == KeyEvent.VK_ENTER) {
-                EditModeManager.getPasteModeManager().place();
+                var pasteModeManager = EditModeManager.getPasteModeManager();
+
+                if (pasteModeManager.isInProgress()) {
+                    pasteModeManager.place();
+                } else {
+                    callback.editLyricOnSelection();
+                }
+
                 return;
             }
 

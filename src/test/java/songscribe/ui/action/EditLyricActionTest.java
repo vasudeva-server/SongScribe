@@ -27,15 +27,13 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
 import songscribe.RequiresDisplay;
-import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
+import songscribe.dom.ElementType;
 import songscribe.ui.component.LyricEditor;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
@@ -64,15 +62,37 @@ class EditLyricActionTest extends MainFrameMockTest {
 
     @Test
     void testActionPerformedOpensEditorForSelectedElement() {
-        var mockElement = mock(StaffElement.class);
-        var mockLine = mock(Line.class);
-        when(mockElement.getLine()).thenReturn(mockLine);
-        when(mockEnv().coordinator().getSingleSelectedElement()).thenReturn(mockElement);
+        var line = detachedLine();
+        var note = ElementType.CROTCHET.newInstance();
+        line.addElement(note);
+        when(mockEnv().coordinator().getSingleSelectedElement()).thenReturn(note);
 
         try (var lyricEditorMock = mockStatic(LyricEditor.class)) {
             action.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "edit-lyric"));
             var score = mockEnv().score();
-            lyricEditorMock.verify(() -> LyricEditor.openOn(score, mockLine, mockElement));
+            lyricEditorMock.verify(() -> LyricEditor.deselectAndOpenOn(score, line, 0));
+        }
+    }
+
+    /**
+     * A note that hosts a paired grace note carries no lyric of its own — the pair's lyric
+     * lives on the grace note — so the command opens the editor on the grace note beside it
+     * rather than on the selected host. This matches the double-click and Return gestures.
+     */
+    @Test
+    void testActionPerformedOnGraceHostOpensEditorOnTheGraceNote() {
+        var line = detachedLine();
+        var grace = ElementType.GRACE_QUAVER.newInstance();
+        grace.setGlissando();
+        line.addElement(grace);
+        var host = ElementType.CROTCHET.newInstance();
+        line.addElement(host);
+        when(mockEnv().coordinator().getSingleSelectedElement()).thenReturn(host);
+
+        try (var lyricEditorMock = mockStatic(LyricEditor.class)) {
+            action.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "edit-lyric"));
+            var score = mockEnv().score();
+            lyricEditorMock.verify(() -> LyricEditor.deselectAndOpenOn(score, line, 0));
         }
     }
 

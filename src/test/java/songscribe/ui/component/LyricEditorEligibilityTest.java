@@ -31,14 +31,19 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 
 /**
- * Tests for {@link LyricEditor#isLyricTargetEligible} and the package-private
- * navigation helpers {@code findNextEligibleIndex} / {@code findPreviousEligibleIndex}.
+ * Tests for {@link LyricTargetResolver#isLyricTargetEligible}, the gesture target resolver
+ * {@link LyricTargetResolver#resolveLyricTarget}, and the package-private navigation
+ * helpers {@code findNextEligibleIndex} / {@code findPreviousEligibleIndex} on
+ * {@link LyricEditor}.
  * <p>
  * Line layout used throughout: [normal(0), grace(1)+CONNECTED, host(2), normal(3)]
  */
 class LyricEditorEligibilityTest extends UnitTest {
 
     private static final int VERSE = 1;
+
+    /** Sentinel returned by the resolvers when a gesture has no lyric target. */
+    private static final int NO_TARGET = -1;
 
     // Indices within the shared test line
     private static final int INDEX_NORMAL_BEFORE = 0;
@@ -65,23 +70,23 @@ class LyricEditorEligibilityTest extends UnitTest {
 
     @Test
     void testEligibleForGraceNote() {
-        assertThat(LyricEditor.isLyricTargetEligible(line, INDEX_GRACE)).isTrue();
+        assertThat(LyricTargetResolver.isLyricTargetEligible(line, INDEX_GRACE)).isTrue();
     }
 
     @Test
     void testEligibleForNormalNoteAfterHost() {
-        assertThat(LyricEditor.isLyricTargetEligible(line, INDEX_NORMAL_AFTER)).isTrue();
+        assertThat(LyricTargetResolver.isLyricTargetEligible(line, INDEX_NORMAL_AFTER)).isTrue();
     }
 
     @Test
     void testEligibleForNormalNoteBeforeGrace() {
-        assertThat(LyricEditor.isLyricTargetEligible(line, INDEX_NORMAL_BEFORE)).isTrue();
+        assertThat(LyricTargetResolver.isLyricTargetEligible(line, INDEX_NORMAL_BEFORE)).isTrue();
     }
 
     @Test
     void testNotEligibleForHostOfPairedGrace() {
         // The host must always be blocked — the grace carries the lyric for the pair.
-        assertThat(LyricEditor.isLyricTargetEligible(line, INDEX_HOST)).isFalse();
+        assertThat(LyricTargetResolver.isLyricTargetEligible(line, INDEX_HOST)).isFalse();
     }
 
     // ---- findNextEligibleIndex ----
@@ -113,5 +118,41 @@ class LyricEditorEligibilityTest extends UnitTest {
         // Retreating from the host itself must land on the grace (host is skipped for navigation).
         var previous = LyricEditor.findPreviousEligibleIndex(line, INDEX_HOST, VERSE);
         assertThat(previous).isEqualTo(INDEX_GRACE);
+    }
+
+    // ---- resolveLyricTarget ----
+
+    @Test
+    void testResolveTargetOnHostRedirectsToGrace() {
+        // The host carries no lyric of its own, so a gesture aimed at it opens on the grace.
+        assertThat(LyricTargetResolver.resolveLyricTarget(line, INDEX_HOST)).isEqualTo(INDEX_GRACE);
+    }
+
+    @Test
+    void testResolveTargetOnGraceStaysOnGrace() {
+        assertThat(LyricTargetResolver.resolveLyricTarget(line, INDEX_GRACE)).isEqualTo(INDEX_GRACE);
+    }
+
+    @Test
+    void testResolveTargetOnPlainNoteStaysPut() {
+        assertThat(LyricTargetResolver.resolveLyricTarget(line, INDEX_NORMAL_BEFORE))
+            .isEqualTo(INDEX_NORMAL_BEFORE);
+    }
+
+    @Test
+    void testResolveTargetOnRestStaysOnRest() {
+        // A rest can carry a lyric, so every gesture resolves to it rather than declining.
+        var restIndex = line.elementCount();
+        line.addElement(ElementType.CROTCHET_REST.newInstance());
+
+        assertThat(LyricTargetResolver.resolveLyricTarget(line, restIndex)).isEqualTo(restIndex);
+    }
+
+    @Test
+    void testResolveTargetOnNonDurationElementHasNoTarget() {
+        var barIndex = line.elementCount();
+        line.addElement(ElementType.SINGLE_BARLINE.newInstance());
+
+        assertThat(LyricTargetResolver.resolveLyricTarget(line, barIndex)).isEqualTo(NO_TARGET);
     }
 }

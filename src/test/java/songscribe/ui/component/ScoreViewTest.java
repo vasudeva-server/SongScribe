@@ -53,6 +53,7 @@ import org.xml.sax.SAXException;
 import songscribe.RequiresDisplay;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
@@ -68,6 +69,8 @@ import songscribe.engraving.Staff;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.ui.component.score.MainPanel;
+import songscribe.ui.playback.PlaybackController;
+import songscribe.ui.selection.LineSelectionState;
 
 /**
  * Unit tests for {@link ScoreView} behaviors not covered by {@link ScoreViewSetFontsTest}:
@@ -913,6 +916,166 @@ class ScoreViewTest extends UnitTest {
             assertThat(scoreView.isInitialized()).isTrue();
             // Callback must not have been invoked.
             assertThat(capturedFile.get()).isNull();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // editLyricOnSelection — the Return/Enter path into the lyric editor
+    // -------------------------------------------------------------------------
+
+    /**
+     * Every test here drives the real {@link ScoreView#editLyricOnSelection()} against a real
+     * selection coordinator and asserts on whether the editor was asked to open. Opening is
+     * observed by stubbing {@link LyricEditor} statically: the production method's only
+     * observable effect is the call to {@code deselectAndOpenOn}, so verifying that call (or
+     * its absence) is what distinguishes "opened on the right element" from "declined".
+     * <p>
+     * Line layout used throughout: [normal(0), grace(1)+CONNECTED, host(2), rest(3)]
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class EditLyricOnSelection {
+
+        private static final int INDEX_NORMAL = 0;
+        private static final int INDEX_GRACE = 1;
+        private static final int INDEX_HOST = 2;
+        private static final int INDEX_REST = 3;
+
+        private ScoreView scoreView;
+        private Line line;
+        private LineSelectionState selectionState;
+
+        @BeforeEach
+        void setUp() {
+            scoreView = new ScoreView(null);
+
+            var song = new Song();
+            line = song.getLine(0);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(ElementType.CROTCHET.newInstance());
+
+                var grace = ElementType.GRACE_QUAVER.newInstance();
+                grace.setGlissando();
+                line.addElement(grace);
+
+                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(ElementType.CROTCHET_REST.newInstance());
+            });
+
+            selectionState = new LineSelectionState(line);
+
+            var coordinator = scoreView.getSelectionCoordinator();
+            coordinator.registerLineState(0, selectionState);
+            coordinator.activateLine(0);
+        }
+
+        /** Selects exactly one element, the shape the menu command also requires. */
+        private void selectSingle(int index) {
+            selectionState.setSelectionFromClick(index);
+        }
+
+        @Test
+        void testOpensOnTheSingleSelectedNote() {
+            selectSingle(INDEX_NORMAL);
+
+            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+                scoreView.editLyricOnSelection();
+
+                lyricEditor.verify(
+                    () -> LyricEditor.deselectAndOpenOn(scoreView, line, INDEX_NORMAL));
+            }
+        }
+
+        @Test
+        void testOpensOnTheGraceWhenItsHostIsSelected() {
+            // The host carries no lyric of its own; the pair's lyric lives on the grace note.
+            selectSingle(INDEX_HOST);
+
+            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+                scoreView.editLyricOnSelection();
+
+                lyricEditor.verify(
+                    () -> LyricEditor.deselectAndOpenOn(scoreView, line, INDEX_GRACE));
+            }
+        }
+
+        @Test
+        void testOpensOnASelectedRest() {
+            // A rest can carry a lyric, matching what the menu command allows.
+            selectSingle(INDEX_REST);
+
+            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+                scoreView.editLyricOnSelection();
+
+                lyricEditor.verify(() -> LyricEditor.deselectAndOpenOn(scoreView, line, INDEX_REST));
+            }
+        }
+
+        @Test
+        void testDoesNothingWithNoSelection() {
+            // Without the null-selection guard this would dereference a null selection.
+            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+                scoreView.editLyricOnSelection();
+
+                lyricEditor.verifyNoInteractions();
+            }
+        }
+
+        @Test
+        void testDoesNothingWithAMultiElementSelection() {
+            // The menu command is disabled unless exactly one element is selected; Return
+            // must not silently pick one note out of a range the user never singled out.
+            selectionState.setSelectionRange(INDEX_NORMAL, INDEX_HOST);
+
+            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+                scoreView.editLyricOnSelection();
+
+                lyricEditor.verifyNoInteractions();
+            }
+        }
+
+        @Test
+        void testDoesNothingWithAWholeLineSelected() {
+            // A selected staff line reports itself as a selection spanning every element,
+            // so this is the multi-element guard seen through the other gesture that hits it.
+            selectionState.setLineSelected(true);
+
+            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+                scoreView.editLyricOnSelection();
+
+                lyricEditor.verifyNoInteractions();
+            }
+        }
+
+        @Test
+        void testDoesNothingWhenTheSelectedElementHasNoLyricTarget() {
+            // Without this guard the editor would be asked to open on element -1.
+            var barlineIndex = line.elementCount();
+            line.getSong().withoutMutationTracking(
+                () -> line.addElement(ElementType.SINGLE_BARLINE.newInstance()));
+            selectSingle(barlineIndex);
+
+            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+                scoreView.editLyricOnSelection();
+
+                lyricEditor.verifyNoInteractions();
+            }
+        }
+
+        @Test
+        void testDoesNothingDuringPlayback() {
+            selectSingle(INDEX_NORMAL);
+
+            try (MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class);
+                 MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+
+                playback.when(PlaybackController::isPlaying).thenReturn(true);
+
+                scoreView.editLyricOnSelection();
+
+                lyricEditor.verifyNoInteractions();
+            }
         }
     }
 }

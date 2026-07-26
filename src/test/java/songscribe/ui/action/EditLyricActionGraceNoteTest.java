@@ -94,9 +94,12 @@ class EditLyricActionGraceNoteTest extends MainFrameMockTest {
     }
 
     @Test
-    void testDisabledForHostOfPairedGraceNote() {
+    void testEnabledForHostOfPairedGraceNote() {
+        // The host carries no lyric of its own, but the command is still offered: it
+        // redirects to the grace note that holds the pair's lyric, matching what a
+        // double-click or Return on the same host does.
         hostOfPairedGraceAt(1);
-        assertThat(action.enableFromSelection(true, mockScore)).isFalse();
+        assertThat(action.enableFromSelection(true, mockScore)).isTrue();
     }
 
 @Test
