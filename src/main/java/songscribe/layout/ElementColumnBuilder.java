@@ -192,6 +192,10 @@ public class ElementColumnBuilder {
             beamed
         );
 
+        if (syllable != null) {
+            column.setSyllableFirstGraphemeWidthSs(lyricRenderMetrics.firstGraphemeWidthSs(syllable));
+        }
+
         // Lyric centering must use the notehead alone, not the (possibly flag-inflated) right extent,
         // so a flag never shifts the syllable off the notehead. Non-note columns keep the default
         // (their augmentation-excluded right extent).

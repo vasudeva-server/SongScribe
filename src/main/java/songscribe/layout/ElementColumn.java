@@ -61,6 +61,9 @@ public final class ElementColumn {
     private final @Nullable String syllable;
     private final double syllableWidthSs;
     private final boolean beamed;
+    // Width of the syllable's first grapheme cluster — what a grace note centers on its notehead.
+    // Measured by ElementColumnBuilder; falls back to the whole syllable width.
+    private double syllableFirstGraphemeWidthSs;
     // Minimum required gap between this column's right edge and the next column's syllable
     // left edge. Always set by ElementColumnBuilder: lyric space width for non-hyphenated or
     // lyric-less columns, hyphen cell width for hyphenated ones.
@@ -121,6 +124,7 @@ public final class ElementColumn {
         this.stemBottomSs = stemBottomSs;
         this.syllable = syllable;
         this.syllableWidthSs = syllableWidthSs;
+        this.syllableFirstGraphemeWidthSs = syllableWidthSs;
         this.beamed = beamed;
     }
 
@@ -469,6 +473,23 @@ public final class ElementColumn {
      */
     public double getSyllableWidthSs() {
         return syllableWidthSs;
+    }
+
+    /**
+     * Returns the measured width of the syllable's first grapheme cluster in staff spaces, which is
+     * what a grace note centers on its notehead (see
+     * {@link HorizontalSpacingCalculator#graceLyricLeftOffsetSs}). Defaults to the whole syllable
+     * width until {@link ElementColumnBuilder} measures it, so a column built without it behaves as
+     * though the syllable were a single grapheme.
+     *
+     * @return First grapheme width, or 0 if no syllable
+     */
+    public double getSyllableFirstGraphemeWidthSs() {
+        return syllableFirstGraphemeWidthSs;
+    }
+
+    void setSyllableFirstGraphemeWidthSs(double syllableFirstGraphemeWidthSs) {
+        this.syllableFirstGraphemeWidthSs = syllableFirstGraphemeWidthSs;
     }
 
     /**

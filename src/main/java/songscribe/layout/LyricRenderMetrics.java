@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import module java.desktop;
 
+import java.text.BreakIterator;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -92,6 +93,28 @@ public record LyricRenderMetrics(
         }
 
         return ScaleContext.textWidthSs(lyricsFont, text).value();
+    }
+
+    /**
+     * Returns the width in staff spaces of {@code text}'s first grapheme cluster — one
+     * user-perceived character, so a base letter plus its combining marks measures as a unit.
+     * A grace note anchors this first cluster on its notehead rather than the whole syllable,
+     * so the syllable reads as beginning at the grace note.
+     */
+    public double firstGraphemeWidthSs(String text) {
+        if (text.isEmpty()) {
+            return 0.0;
+        }
+
+        var graphemes = BreakIterator.getCharacterInstance();
+        graphemes.setText(text);
+        var firstBoundary = graphemes.next();
+
+        if (firstBoundary == BreakIterator.DONE) {
+            return lyricBoxWidthSs(text);
+        }
+
+        return lyricBoxWidthSs(text.substring(0, firstBoundary));
     }
 
     /**

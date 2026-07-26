@@ -55,6 +55,8 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
     // A real unbeamed grace quaver's right extent reaches past the small notehead to the flag tip;
     // double the notehead width stands in for that so a notehead-vs-flag centering bug is detectable.
     private static final double FLAG_INFLATED_GRACE_RIGHT_EXTENT_SS = ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS * 2;
+    /** A multi-grapheme syllable, so the first grapheme is distinguishable from the whole box. */
+    private static final String GRACE_SYLLABLE = "la";
     private static final double GRACE_X_SS = 5.0;
     private static final double HOST_X_SS = 9.0;
     private static final double NEXT_X_SS = 13.0;
@@ -221,6 +223,37 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         assertThat(graceBox.xSs())
             .as("narrow grace lyric centers on the notehead, ignoring the flag-inflated right extent")
             .isCloseTo(noteheadCenterXSs - widthSs / 2.0, within(POSITION_TOLERANCE_SS));
+    }
+
+    // A grace lyric too wide to fit under the small notehead centers its FIRST GRAPHEME on the
+    // notehead, so the syllable reads as beginning at the grace note and flows rightward toward the
+    // host — it is not left-anchored on the notehead's left edge.
+    @Test
+    void testWideGraceLyricCentersItsFirstGraphemeOnTheNotehead() {
+        var grace = graceQuaver();
+        setLyric(grace, Lyric.Syllabic.SINGLE, GRACE_SYLLABLE);
+        var host = crotchet();
+        addToLine(grace, host);
+
+        var widthSs = LYRIC_METRICS.lyricBoxWidthSs(GRACE_SYLLABLE);
+        var firstGraphemeWidthSs = LYRIC_METRICS.firstGraphemeWidthSs(GRACE_SYLLABLE);
+        assertThat(widthSs)
+            .as("the syllable must exceed the grace notehead to exercise the first-grapheme path")
+            .isGreaterThan(ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS);
+
+        var graceCol = graceColumn(grace, GRACE_X_SS, widthSs);
+        var hostCol = normalColumn(host, HOST_X_SS);
+        var result =
+            LyricLayoutBuilder.build(List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var noteheadCenterXSs = GRACE_X_SS + ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS / 2.0;
+        var graceBox = boxesOf(result, grace).getFirst();
+        assertThat(graceBox.xSs())
+            .as("grace lyric centers its first grapheme on the grace notehead")
+            .isCloseTo(noteheadCenterXSs - firstGraphemeWidthSs / 2.0, within(POSITION_TOLERANCE_SS));
+        assertThat(graceBox.xSs())
+            .as("the syllable must not be left-anchored on the notehead")
+            .isNotCloseTo(GRACE_X_SS, within(POSITION_TOLERANCE_SS));
     }
 
     // (c) A hyphen opened on the grace lyric reaches the next lyric-bearing element

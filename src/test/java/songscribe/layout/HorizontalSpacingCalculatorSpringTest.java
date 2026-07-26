@@ -102,6 +102,8 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         (WIDE_GRACE_SYLLABLE_WIDTH_SS - WIDE_GRACE_OVERHANG_SS) - GRACE_HOST_GAP_SS;
     /** A grace lyric that fits within the union (≤ the grace→host gap), so it overhangs nothing. */
     private static final double NARROW_GRACE_SYLLABLE_WIDTH_SS = 2.0;
+    /** {@link #SYLLABLE_TEXT}'s first grapheme — narrower than the grace notehead it centers on. */
+    private static final double FIRST_GRAPHEME_WIDTH_SS = 0.5;
 
     private static final int SINGLE_GAP = 1;
     private static final int TWO_GAPS = 2;
@@ -202,6 +204,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
             ElementType.GRACE_QUAVER, NO_LEFT_EXTENT_SS, GRACE_RIGHT_EXTENT_SS,
             SYLLABLE_TEXT, syllableWidthSs, false);
         graceColumn.setMinCollisionGapToNextSyllableSs(SPACE_COLLISION_GAP_SS);
+        graceColumn.setSyllableFirstGraphemeWidthSs(FIRST_GRAPHEME_WIDTH_SS);
         return graceColumn;
     }
 
@@ -1169,15 +1172,31 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
      * a null host).
      */
     @Test
-    void testGraceLyricOverhangTreatsAMissingHostAsNoUnion() {
+    void testGraceLyricOffsetTreatsAMissingHostAsNoUnion() {
         var grace = graceSyllableColumn(WIDE_GRACE_SYLLABLE_WIDTH_SS);
 
-        var overhangSs = HorizontalSpacingCalculator.graceLyricOverhangSs(
-            WIDE_GRACE_SYLLABLE_WIDTH_SS, grace, null);
+        var leftOffsetSs = HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
+            WIDE_GRACE_SYLLABLE_WIDTH_SS, FIRST_GRAPHEME_WIDTH_SS, grace, null);
 
         var unionWithoutHostSs = GRACE_RIGHT_EXTENT_SS + GRACE_HOST_REST_SS;
-        assertThat(overhangSs)
-            .isCloseTo((WIDE_GRACE_SYLLABLE_WIDTH_SS - unionWithoutHostSs) / 2, within(TOLERANCE));
+        assertThat(leftOffsetSs)
+            .isCloseTo(-(WIDE_GRACE_SYLLABLE_WIDTH_SS - unionWithoutHostSs) / 2, within(TOLERANCE));
+    }
+
+    /**
+     * A grace lyric that fits the union centers its first grapheme on the grace notehead, so the
+     * syllable begins at the grace note rather than being left-anchored on it.
+     */
+    @Test
+    void testGraceLyricOffsetCentersTheFirstGraphemeOnTheNotehead() {
+        var grace = graceSyllableColumn(NARROW_GRACE_SYLLABLE_WIDTH_SS);
+        var host = plainColumn();
+
+        var leftOffsetSs = HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
+            NARROW_GRACE_SYLLABLE_WIDTH_SS, FIRST_GRAPHEME_WIDTH_SS, grace, host);
+
+        assertThat(leftOffsetSs)
+            .isCloseTo((GRACE_RIGHT_EXTENT_SS - FIRST_GRAPHEME_WIDTH_SS) / 2, within(TOLERANCE));
     }
 
     // ==========================================================================

@@ -340,20 +340,11 @@ public final class LyricLayoutBuilder {
      * excluding the flag and augmentation dots (the established Gould/Ross rule — neither the flag
      * nor the dots are part of the notehead and must not shift the lyric position).
      * <p>
-     * Grace notes, by syllable advance width relative to the grace notehead and the grace→host
-     * notehead union:
-     * <ul>
-     *   <li>narrower than the grace notehead → center on the grace notehead (a lone narrow glyph
-     *       such as "I" must sit under the notehead, not left-anchored where it reads off-center);
-     *   <li>at least the notehead width but within the union → left-anchor on the grace notehead's
-     *       left edge (the lyric flows rightward toward the host);
-     *   <li>wider than the union → center on the union so it overhangs each side equally (see
-     *       {@link HorizontalSpacingCalculator#graceLyricOverhangSs(double, ElementColumn, ElementColumn)}).
-     * </ul>
-     * The grace and its host are treated as one unioned column for lyric layout: the grace carries
-     * the lyric, the host never does, and {@code hostColumn} is the column immediately after the
-     * grace. The first two regimes keep the syllable's ink within the notehead→host footprint, so
-     * they impose no extra neighbour reservation (the spacing extents stay zero).
+     * Grace notes: the grace and its host are treated as one unioned column for lyric layout — the
+     * grace carries the lyric, the host never does, and {@code hostColumn} is the column immediately
+     * after the grace. The offset from the grace's origin comes from
+     * {@link HorizontalSpacingCalculator#graceLyricLeftOffsetSs}, which the spacing calculator also
+     * reads to reserve the neighbour space, so the box is drawn exactly where space was reserved.
      */
     private static double computeLyricBoxLeftXSs(
         ElementColumn column,
@@ -362,16 +353,13 @@ public final class LyricLayoutBuilder {
         double widthSs,
         LyricRenderMetrics lyricRenderMetrics) {
 
-        var element = column.getElement();
-
-        // A grace lyric at least as wide as the grace notehead spans toward the host: anchor on the
-        // grace notehead left edge when it fits the grace→host union, else center on that union.
-        if (column.isGraceNote() && widthSs >= column.getNoteheadWidthSs()) {
-            return column.getXSs() - HorizontalSpacingCalculator.graceLyricOverhangSs(widthSs, column, hostColumn);
+        if (column.isGraceNote()) {
+            return column.getXSs() + HorizontalSpacingCalculator.graceLyricLeftOffsetSs(
+                widthSs, lyricRenderMetrics.firstGraphemeWidthSs(text), column, hostColumn);
         }
 
-        // Narrow grace lyric or any normal note/rest: center the syllable on the notehead, which
-        // excludes the flag and augmentation dots (getNoteheadCenterXSs) so neither shifts the lyric.
+        // Center the syllable on the notehead, which excludes the flag and augmentation dots
+        // (getNoteheadCenterXSs) so neither shifts the lyric.
         return column.getNoteheadCenterXSs() - widthSs / 2.0;
     }
 

@@ -598,31 +598,49 @@ public class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the position-independent grace-lyric overhang: how far a grace note's syllable of
-     * width {@code syllableWidthSs} spills past the grace-notehead-left → host-notehead-right union
-     * on each side. The union spans the grace's right extent as the host faces it (the physical
-     * grace→host gap includes the grace flag only where the flag is beside the host, matching
-     * {@link #rightExtentFacingSs} — the union has to be the distance actually laid out or the
-     * syllable centers off its own notes), the fixed {@link #GRACE_HOST_REST_SS} grace→host gap, and
-     * the host's notehead width (neither the host's flag nor its dots widen the union). The width is a
-     * parameter rather than read off the grace so callers can supply a per-verse box width. Returns 0
-     * when the syllable fits the union (it then left-anchors on the grace notehead and imposes no
-     * neighbour constraint).
+     * Returns the position-independent offset from a grace note's column origin (its notehead left
+     * edge) to the left edge of its syllable box — negative when the syllable starts left of the
+     * notehead. Single source of truth for where a grace lyric sits: {@link LyricLayoutBuilder} adds
+     * it to the grace's X to place the box, and the extent methods below derive the neighbour
+     * reservations from the same number, so the space reserved always matches the space drawn.
+     * <p>
+     * The grace and its host are one unioned column for lyric layout. The union spans the grace's
+     * right extent as the host faces it (the physical grace→host gap includes the grace flag only
+     * where the flag is beside the host, matching {@link #rightExtentFacingSs} — the union has to be
+     * the distance actually laid out or the syllable centers off its own notes), the fixed
+     * {@link #GRACE_HOST_REST_SS} grace→host gap, and the host's notehead width (neither the host's
+     * flag nor its dots widen the union). The widths are parameters rather than read off the grace so
+     * callers can supply a per-verse box width.
+     * <ul>
+     *   <li>syllable narrower than the grace notehead → center the whole syllable on the notehead;
+     *   <li>syllable within the union → center its <em>first grapheme</em> on the notehead, so the
+     *       syllable reads as beginning at the grace note and flows rightward toward the host;
+     *   <li>syllable wider than the union → center it on the union so it overhangs each side equally.
+     * </ul>
      */
-    public static double graceLyricOverhangSs(
-        double syllableWidthSs, ElementColumn grace, @Nullable ElementColumn host) {
+    public static double graceLyricLeftOffsetSs(
+        double syllableWidthSs,
+        double firstGraphemeWidthSs,
+        ElementColumn grace,
+        @Nullable ElementColumn host) {
 
-        // An unpaired grace (the line's last column, before its host is entered) has no union to
-        // spill past — only its own extent reserves space, at its full width since there is no host
-        // span to face.
-        if (host == null) {
-            return Math.max(0, (syllableWidthSs - (grace.getRightExtentSs() + GRACE_HOST_REST_SS)) / 2);
+        var noteheadWidthSs = grace.getNoteheadWidthSs();
+
+        if (syllableWidthSs < noteheadWidthSs) {
+            return (noteheadWidthSs - syllableWidthSs) / 2;
         }
 
-        var unionWidthSs = rightExtentFacingSs(grace, host)
-            + GRACE_HOST_REST_SS
-            + host.getNoteheadWidthSs();
-        return Math.max(0, (syllableWidthSs - unionWidthSs) / 2);
+        // An unpaired grace (the line's last column, before its host is entered) has no host span to
+        // face, so its union is its own full extent plus the gap the host will sit past.
+        var unionWidthSs = host == null
+            ? grace.getRightExtentSs() + GRACE_HOST_REST_SS
+            : rightExtentFacingSs(grace, host) + GRACE_HOST_REST_SS + host.getNoteheadWidthSs();
+
+        if (syllableWidthSs <= unionWidthSs) {
+            return (noteheadWidthSs - firstGraphemeWidthSs) / 2;
+        }
+
+        return -(syllableWidthSs - unionWidthSs) / 2;
     }
 
     /**
@@ -744,13 +762,18 @@ public class HorizontalSpacingCalculator {
 
     /**
      * Returns how far {@code column}'s syllable reaches left of the column origin (its notehead's
-     * left edge), used when the column is the right side of a gap. A grace column defers to its host
-     * {@code afterColumn} via the grace–host lyric union overhang; a normal syllable-bearing column
-     * reaches half its width minus the notehead-center offset; anything else reaches nothing.
+     * left edge), used when the column is the right side of a gap. A grace column reaches however far
+     * {@link #graceLyricLeftOffsetSs} places its box left of the origin; a normal syllable-bearing
+     * column reaches half its width minus the notehead-center offset; anything else reaches nothing.
      */
     static double lyricLeftExtentSs(ElementColumn column, @Nullable ElementColumn afterColumn) {
         if (column.isGraceNote() && afterColumn != null) {
-            return graceLyricOverhangSs(column.getSyllableWidthSs(), column, afterColumn);
+            var leftOffsetSs = graceLyricLeftOffsetSs(
+                column.getSyllableWidthSs(),
+                column.getSyllableFirstGraphemeWidthSs(),
+                column,
+                afterColumn);
+            return Math.max(0, -leftOffsetSs);
         }
 
         if (column.hasSyllable()) {
@@ -764,8 +787,9 @@ public class HorizontalSpacingCalculator {
      * Returns how far {@code column}'s syllable reaches right of the column origin (its notehead's
      * left edge), used when the column is the left side of a gap. A grace column reaches nothing
      * (its lyric is deferred to the host). A host of a grace ({@code beforeColumn} is a grace)
-     * reaches the grace lyric's right spill past the union. A normal syllable-bearing column reaches
-     * half its width plus the notehead-center offset; anything else reaches nothing.
+     * reaches however far the grace lyric's right edge lands past the host's own origin. A normal
+     * syllable-bearing column reaches half its width plus the notehead-center offset; anything else
+     * reaches nothing.
      */
     static double lyricRightExtentSs(ElementColumn column, @Nullable ElementColumn beforeColumn) {
         if (column.isGraceNote()) {
@@ -774,9 +798,13 @@ public class HorizontalSpacingCalculator {
 
         if (beforeColumn != null && beforeColumn.isGraceNote()) {
             var syllableWidthSs = beforeColumn.getSyllableWidthSs();
-            var overhangSs = graceLyricOverhangSs(syllableWidthSs, beforeColumn, column);
+            var leftOffsetSs = graceLyricLeftOffsetSs(
+                syllableWidthSs,
+                beforeColumn.getSyllableFirstGraphemeWidthSs(),
+                beforeColumn,
+                column);
             var graceHostGapSs = rightExtentFacingSs(beforeColumn, column) + GRACE_HOST_REST_SS;
-            return Math.max(0, (syllableWidthSs - overhangSs) - graceHostGapSs);
+            return Math.max(0, (leftOffsetSs + syllableWidthSs) - graceHostGapSs);
         }
 
         if (column.hasSyllable()) {
