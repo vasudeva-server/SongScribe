@@ -54,7 +54,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
     private static final double POSITION_TOLERANCE_SS = 0.0001;
     // A real unbeamed grace quaver's right extent reaches past the small notehead to the flag tip;
     // double the notehead width stands in for that so a notehead-vs-flag centring bug is detectable.
-    private static final double FLAG_INFLATED_GRACE_RIGHT_EXTENT_SS = ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS * 2;
+    private static final double FLAG_INFLATED_GRACE_RIGHT_EXTENT_SS = ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS * 2;
     private static final double GRACE_X_SS = 5.0;
     private static final double HOST_X_SS = 9.0;
     private static final double NEXT_X_SS = 13.0;
@@ -62,9 +62,18 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
     // following syllable's box, so the follow-syllable clamp has something to pull back.
     private static final double CROWDED_NEXT_X_SS = 10.0;
     private static final double LINE_WIDTH_SS = 100.0;
-    private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+    private static final int LYRICS_FONT_SIZE = 12;
+    private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, LYRICS_FONT_SIZE);
     private static final LyricRenderMetrics LYRIC_METRICS =
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
+    // Every glyph of a monospaced font is one advance wide, so even "I" measures wider than the
+    // 0.885 ss grace notehead at LYRICS_FONT_SIZE. The centre-on-notehead path needs a syllable that
+    // actually fits the notehead, which only a smaller font gives.
+    private static final int NARROW_LYRICS_FONT_SIZE = 8;
+    private static final Font NARROW_LYRICS_FONT =
+        new Font(Font.MONOSPACED, Font.PLAIN, NARROW_LYRICS_FONT_SIZE);
+    private static final LyricRenderMetrics NARROW_LYRIC_METRICS =
+        new LyricRenderMetrics(NARROW_LYRICS_FONT, NARROW_LYRICS_FONT, 0.0, 0.0, 0.0);
 
     private Song song;
     private Line line;
@@ -151,7 +160,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
 
     /** Grace-note column carrying a syllable of {@code syllableWidthSs} (see {@link #normalColumn}). */
     private static ElementColumn graceColumn(StaffElement element, double xSs, double syllableWidthSs) {
-        return column(element, xSs, ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS, syllableWidthSs);
+        return column(element, xSs, ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS, syllableWidthSs);
     }
 
     private static ElementColumn column(
@@ -179,10 +188,10 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         addToLine(grace, host);
 
         // Precondition: "I" is narrower than the grace notehead, so it takes the centre-on-notehead path.
-        var widthSs = LYRIC_METRICS.lyricBoxWidthSs("I");
+        var widthSs = NARROW_LYRIC_METRICS.lyricBoxWidthSs("I");
         assertThat(widthSs)
             .as("the syllable must be narrower than the grace notehead to exercise the centring path")
-            .isLessThan(ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS);
+            .isLessThan(ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS);
 
         // Grace column whose right extent reaches past the small notehead to the flag tip, but whose
         // notehead width is the small head (as ElementColumnBuilder sets it). If centring used the
@@ -194,10 +203,11 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
             FLAG_INFLATED_GRACE_RIGHT_EXTENT_SS,
             FLAG_INFLATED_GRACE_RIGHT_EXTENT_SS,
             0.0, 0.0, null, widthSs, false);
-        graceCol.setNoteheadWidthSs(ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS);
+        graceCol.setNoteheadWidthSs(ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS);
         graceCol.setXSs(GRACE_X_SS);
         var hostCol = normalColumn(host, HOST_X_SS);
-        var result = LyricLayoutBuilder.build(List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result =
+            LyricLayoutBuilder.build(List.of(graceCol, hostCol), NARROW_LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes())
             .as("host of paired grace must contribute no lyric box")
@@ -206,7 +216,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         var graceBoxes = boxesOf(result, grace);
         assertThat(graceBoxes).hasSize(1);
 
-        var noteheadCenterXSs = GRACE_X_SS + ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS / 2.0;
+        var noteheadCenterXSs = GRACE_X_SS + ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS / 2.0;
         var graceBox = graceBoxes.getFirst();
         assertThat(graceBox.xSs())
             .as("narrow grace lyric centres on the notehead, ignoring the flag-inflated right extent")

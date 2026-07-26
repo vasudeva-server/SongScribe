@@ -170,14 +170,14 @@ class LyricLiftTest extends UnitTest {
         return column(ElementType.CROTCHET, null, NO_SYLLABLE_WIDTH_SS, NARROW_MIN_GAP_SS, false, NO_BEAM_GROUP_ID);
     }
 
-    /** A rigid gap's input rest, low enough that any lift would visibly change it if applied. */
-    private static final double RIGID_INPUT_REST_SS = 2.0;
+    /** A lift-exempt gap's input rest, low enough that any lift would visibly change it if applied. */
+    private static final double LIFT_EXEMPT_INPUT_REST_SS = 2.0;
 
     private static Spring spring(double restSs) {
         return Spring.of(restSs, STRUT_SS);
     }
 
-    private static Spring rigidSpring(double restSs) {
+    private static Spring liftExemptSpring(double restSs) {
         return Spring.of(restSs, STRUT_SS, Spring.NORMAL_WEIGHT, true);
     }
 
@@ -333,22 +333,22 @@ class LyricLiftTest extends UnitTest {
         assertThat(lifted).isEmpty();
     }
 
-    // A rigid gap (grace→host) keeps its default rest and imposes no lyric requirement: the wide
-    // syllable on the normal gap drives the even lift, and the rigid gap is passed through untouched.
+    // A lift-exempt gap (grace→host) keeps its default rest and imposes no lyric requirement: the wide
+    // syllable on the normal gap drives the even lift, and the exempt gap is passed through untouched.
     @Test
-    void testRigidGapIsNotLiftedAndDoesNotDriveTheLift() {
+    void testLiftExemptGapIsNotLiftedAndDoesNotDriveTheLift() {
         var columns = List.of(
             plainSyllableColumn(WIDE_SYLLABLE_WIDTH_SS, WIDE_MIN_GAP_SS),
             narrowSyllableColumn(),
             lyricLessColumn());
-        var springs = List.of(spring(DEFAULT_LINE_REST_SS), rigidSpring(RIGID_INPUT_REST_SS));
+        var springs = List.of(spring(DEFAULT_LINE_REST_SS), liftExemptSpring(LIFT_EXEMPT_INPUT_REST_SS));
 
         var lifted = LyricLift.applyLyricLift(springs, columns);
 
-        // The wide pair lifts the normal gap; the rigid gap keeps its default rest, unlifted.
+        // The wide pair lifts the normal gap; the exempt gap keeps its default rest, unlifted.
         assertThat(lifted.get(FIRST_GAP).restSs()).isCloseTo(UNIFORM_LIFTED_REST_SS, within(TOLERANCE));
-        assertThat(lifted.get(SECOND_GAP).restSs()).isCloseTo(RIGID_INPUT_REST_SS, within(TOLERANCE));
-        assertThat(lifted.get(SECOND_GAP).rigid()).isTrue();
+        assertThat(lifted.get(SECOND_GAP).restSs()).isCloseTo(LIFT_EXEMPT_INPUT_REST_SS, within(TOLERANCE));
+        assertThat(lifted.get(SECOND_GAP).liftExempt()).isTrue();
     }
 
     // ==========================================================================
@@ -356,20 +356,20 @@ class LyricLiftTest extends UnitTest {
     // ==========================================================================
 
     // A wide grace lyric spills past the grace→host union; that right overhang is carried into the
-    // host→next gap and lifts it, while the rigid grace→host gap is passed through untouched.
+    // host→next gap and lifts it, while the exempt grace→host gap is passed through untouched.
     @Test
     void testLiftsHostToNextGapByWideGraceLyricOverhang() {
         var columns = List.of(
             graceColumn(GRACE_RIGHT_EXTENT_SS, WIDE_GRACE_SYLLABLE_WIDTH_SS, GRACE_MIN_GAP_SS),
             hostColumn(PLAIN_HEAD_RIGHT_EXTENT_SS),
             lyricLessColumn());
-        var springs = List.of(rigidSpring(RIGID_INPUT_REST_SS), spring(DEFAULT_LINE_REST_SS));
+        var springs = List.of(liftExemptSpring(LIFT_EXEMPT_INPUT_REST_SS), spring(DEFAULT_LINE_REST_SS));
 
         var lifted = LyricLift.applyLyricLift(springs, columns);
 
-        // The rigid grace→host gap imposes no requirement and keeps its default rest.
-        assertThat(lifted.get(FIRST_GAP).rigid()).isTrue();
-        assertThat(lifted.get(FIRST_GAP).restSs()).isCloseTo(RIGID_INPUT_REST_SS, within(TOLERANCE));
+        // The exempt grace→host gap imposes no requirement and keeps its default rest.
+        assertThat(lifted.get(FIRST_GAP).liftExempt()).isTrue();
+        assertThat(lifted.get(FIRST_GAP).restSs()).isCloseTo(LIFT_EXEMPT_INPUT_REST_SS, within(TOLERANCE));
         // The host→next gap lifts to the grace lyric's right overhang plus the grace's comfortable gap.
         var expectedRequirementSs = WIDE_GRACE_HOST_RIGHT_EXTENT_SS + GRACE_MIN_GAP_SS;
         assertThat(lifted.get(SECOND_GAP).restSs()).isCloseTo(expectedRequirementSs, within(TOLERANCE));
@@ -384,7 +384,7 @@ class LyricLiftTest extends UnitTest {
             graceColumn(GRACE_RIGHT_EXTENT_SS, NARROW_GRACE_SYLLABLE_WIDTH_SS, GRACE_MIN_GAP_SS),
             hostColumn(PLAIN_HEAD_RIGHT_EXTENT_SS),
             lyricLessColumn());
-        var springs = List.of(rigidSpring(RIGID_INPUT_REST_SS), spring(DEFAULT_LINE_REST_SS));
+        var springs = List.of(liftExemptSpring(LIFT_EXEMPT_INPUT_REST_SS), spring(DEFAULT_LINE_REST_SS));
 
         var lifted = LyricLift.applyLyricLift(springs, columns);
 

@@ -43,6 +43,10 @@ class ElementColumnBuilderTest extends UnitTest {
 
     private static final int DOUBLE_DOT_COUNT = 2;
 
+    // ElementType derives the grace head from the notehead bbox, ElementColumnBuilder from the
+    // notehead width constant; the two round the same glyph metric independently.
+    private static final double GRACE_HEAD_TOLERANCE_SS = 1e-9;
+
     // Arbitrary non-zero values used only as mock stubs to pin exact return path in buildColumn
     private static final double HYPHEN_GLYPH_WIDTH_SS = 0.5;
     private static final double NON_HYPHENATED_SPACE_WIDTH_SS = 0.3;
@@ -206,6 +210,26 @@ class ElementColumnBuilderTest extends UnitTest {
         assertThat(fallExcludingExtent).isEqualTo(plainExtent);
     }
 
+    /**
+     * The grace notehead spacing reserves must be the one the renderer paints: the regular black
+     * notehead in the grace-scaled font. Cross-checked against {@link ElementType}'s independently
+     * derived element bounds, which the renderer's own geometry is built from.
+     *
+     * <p>Guards the #560 regression: this used to read SMuFL's {@code noteheadBlackSmall} bbox, but
+     * Bravura's {@code *Small} glyphs are cue-<em>staff</em> glyphs — that box is 1.408 ss, wider
+     * than the full-size notehead it is supposed to shrink, so every grace column charged 0.52 ss of
+     * ink that is never drawn.
+     */
+    @Test
+    void testGraceNoteheadWidthIsTheGraceScaledHeadTheRendererPaints() {
+        assertThat(ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS)
+            .as("spacing must reserve the grace head that is actually drawn")
+            .isCloseTo(ElementType.GRACE_QUAVER.getElementWidthSs(), within(GRACE_HEAD_TOLERANCE_SS));
+        assertThat(ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS)
+            .as("a grace head is narrower than a full-size one")
+            .isLessThan(SMuFLConstants.NOTE_HEAD_WIDTH_SS);
+    }
+
     // T5: Grace quaver uses the small notehead + small-stem anchor, regular uses full-size — exact values
     @Test
     void testGraceQuaverExtentSmallerThanRegularQuaver() {
@@ -216,7 +240,7 @@ class ElementColumnBuilderTest extends UnitTest {
             NoteGeometry.computeBaseStemGeometry(ElementType.GRACE_QUAVER, StaffElement.Direction.UP).stemLeftXSs();
         var flagBBoxRight = SMuFLMetadata.requireBBox(SMuFLGlyph.FLAG_8TH_UP).right();
         var expectedGrace = Math.max(
-            ElementColumnBuilder.NOTE_HEAD_SMALL_WIDTH_SS,
+            ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS,
             NoteGeometry.getGraceFlagOriginXSs(graceStemLeftXSs) + ElementType.GRACE_NOTE_SCALE * flagBBoxRight);
         var expectedRegular = Math.max(
             SMuFLConstants.NOTE_HEAD_WIDTH_SS,
@@ -513,6 +537,24 @@ class ElementColumnBuilderTest extends UnitTest {
             // Rest has no stem: bottom = HALF_NOTE_HEAD_SS
             var rest = element(ElementType.CROTCHET_REST);
             assertThat(builder.calculateStemBottomSs(rest)).isEqualTo(ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+        }
+
+        @Test
+        void testStemTopSsGraceNoteIsTheGraceTipWhateverDirectionItStores() {
+            // A grace note always draws an up stem, on the shorter grace stem, and is never
+            // forced-shortened — so its baked top is the grace tip even when it stores DOWN.
+            var grace = element(ElementType.GRACE_QUAVER);
+            grace.setDirection(StaffElement.Direction.DOWN);
+
+            assertThat(builder.calculateStemTopSs(grace)).isEqualTo(-SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS);
+        }
+
+        @Test
+        void testStemBottomSsGraceNoteIsTheNoteheadBottomWhateverDirectionItStores() {
+            var grace = element(ElementType.GRACE_QUAVER);
+            grace.setDirection(StaffElement.Direction.DOWN);
+
+            assertThat(builder.calculateStemBottomSs(grace)).isEqualTo(ElementColumnBuilder.HALF_NOTE_HEAD_SS);
         }
     }
 }

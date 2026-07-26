@@ -232,6 +232,18 @@ public final class NoteGeometry {
         return Math.min(MAX_FORCED_SHORTEN_SS, shortenSs);
     }
 
+    /**
+     * Returns the stem length for a note {@code type}: the shortened grace stem for grace notes, the
+     * standard stem otherwise. Single source of truth for the length shared by the drawn stem
+     * ({@link #computeBaseStemGeometry}) and the column's baked vertical extent
+     * ({@link ElementColumnBuilder#calculateStemTopSs}).
+     */
+    public static double stemLengthSs(ElementType noteType) {
+        return noteType.isGraceNote()
+            ? SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS
+            : SMuFLConstants.STEM_LENGTH_SS;
+    }
+
     public static StemGeometry computeBaseStemGeometry(ElementType noteType, StaffElement.Direction direction) {
         var isGrace = noteType.isGraceNote();
         var anchor = isGrace ? STEM_UP_SE_BLACK_SMALL : stemSideAnchor(noteType, direction);
@@ -241,7 +253,7 @@ public final class NoteGeometry {
         // stem width) and its LEFT edge for down-stems (use the anchor directly). Both leave the
         // stem's outer edge flush with the notehead's outer edge, overlapping inward by its width.
         var stemLeftX = direction.isUp() ? anchorX - STEM_WIDTH_SS : anchorX;
-        var stemLength = isGrace ? SMuFLConstants.GRACE_NOTE_STEM_LENGTH_SS : SMuFLConstants.STEM_LENGTH_SS;
+        var stemLength = stemLengthSs(noteType);
 
         return new StemGeometry(stemLeftX, anchor.y(), stemLength);
     }

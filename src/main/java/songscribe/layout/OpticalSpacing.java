@@ -51,15 +51,21 @@ import songscribe.engraving.Staff;
  *       a bug — it is not "fixed" by inflating the constants.</li>
  * </ul>
  *
- * <p><b>Grace notes are out of scope.</b> LilyPond routes grace columns out of note-spacing entirely
- * — a separate {@code Grace_spacing_engraver} builds a {@code GraceSpacing} spanner and grace columns
- * are floated as loose columns ({@code lily/grace-spacing-engraver.cc},
- * {@code lily/spacing-loose-columns.cc}), so {@code note-spacing.cc}/{@code staff-spacing.cc} never
- * see a grace column. SongScribe has no separate grace pass, so every correction below explicitly
- * early-returns zero when either column is a grace note ({@link ElementColumn#isGraceNote}),
- * reproducing LilyPond's structural exclusion with a guard.
+ * <p><b>Grace notes take corrections too.</b> LilyPond floats grace columns out of the main spacing
+ * chain as loose columns, but when it drapes them back around their neighbours it still runs each
+ * resulting gap through {@code Note_spacing::get_spacing} — and so through
+ * {@code stem_dir_correction} ({@code lily/spacing-loose-columns.cc}). SongScribe has no separate
+ * grace pass, so a grace column is simply an ordinary column here: the gap <em>into</em> a grace and
+ * the gap <em>out of</em> it to its host are both corrected. A grace note always stems up
+ * ({@link NoteGeometry#effectiveDirection}) on a shortened stem, so its vertical span is narrower
+ * than a full note's and the overlap ramp yields a correspondingly gentler correction — the geometry
+ * does the scaling, no grace-specific constant is needed.
  *
- * <p>A "knee" (a beam that changes stem direction mid-group) is also explicitly out of scope —
+ * <p>The grace→host gap is {@code liftExempt} — it takes no lyric lift — but that says nothing about
+ * corrections: it is corrected like every other gap, so the fixed distance the grace packs at is an
+ * optical one rather than a mechanical one.
+ *
+ * <p>A "knee" (a beam that changes stem direction mid-group) is explicitly out of scope —
  * LilyPond has a separate {@code knee_correction} for it that this port does not implement.
  *
  * <pre>
@@ -78,13 +84,15 @@ import songscribe.engraving.Staff;
  *
  *     verticalOverlapSs = min(bottoms) - max(tops)   (&gt; 0 only where the spans intersect)
  *
+ *     A grace note is a stem-UP row like any other, on its shorter grace stem.
+ *
  *     prev       curr        fires when                                  correction (Ss)
  *     -------------------------------------------------------------------------------------------
- *     stem UP    stem DOWN   overlap&gt;0, not knee, not grace               +ramp * OPPOSITE_STEM_MAX_CORRECTION_SS
- *     stem DOWN  stem UP     overlap&gt;0, not knee, not grace               -ramp * OPPOSITE_STEM_MAX_CORRECTION_SS
- *     stem X     stem X      |deltaPos|&gt;SAME_DIRECTION_THRESHOLD_SS,      +-SAME_DIRECTION_MAX_CORRECTION_SS
- *                            not grace                                    (widen if curr higher)
- *     barline    stem DOWN   overlap(staff span, curr)&gt;0, not grace       +ramp * BARLINE_DOWNSTEM_MAX_CORRECTION_SS
+ *     stem UP    stem DOWN   overlap&gt;0, not knee                          +ramp * OPPOSITE_STEM_MAX_CORRECTION_SS
+ *     stem DOWN  stem UP     overlap&gt;0, not knee                          -ramp * OPPOSITE_STEM_MAX_CORRECTION_SS
+ *     stem X     stem X      |deltaPos|&gt;SAME_DIRECTION_THRESHOLD_SS       +-SAME_DIRECTION_MAX_CORRECTION_SS
+ *                                                                         (widen if curr higher)
+ *     barline    stem DOWN   overlap(staff span, curr)&gt;0                  +ramp * BARLINE_DOWNSTEM_MAX_CORRECTION_SS
  *     otherwise                                                           0
  *         ramp = min(overlapSs / STEM_OVERLAP_SATURATION_SS, 1.0)
  * </pre>
@@ -121,6 +129,9 @@ public final class OpticalSpacing {
     /**
      * Applies the opposite-stem and same-direction optical-spacing corrections to {@code springs}.
      *
+     * <p>Unlike {@link LyricLift#applyLyricLift}, which skips lift-exempt gaps, every gap is
+     * corrected here — the exemption is from the lyric lift only.
+     *
      * @param springs One spring per adjacent column pair, as built by
      *                {@link HorizontalSpacingCalculator#buildSprings}
      * @param columns The columns those springs span; {@code springs.size() + 1} entries
@@ -131,14 +142,6 @@ public final class OpticalSpacing {
 
         for (var i = 0; i < springs.size(); i++) {
             var spring = springs.get(i);
-
-            // A rigid gap (grace->host) packs at a fixed distance and never changes - same
-            // convention as LyricLift.applyLyricLift.
-            if (spring.rigid()) {
-                corrected.add(spring);
-                continue;
-            }
-
             var prev = columns.get(i);
             var curr = columns.get(i + 1);
             var correctionSs = oppositeStemCorrectionSs(prev, curr)
@@ -159,7 +162,11 @@ public final class OpticalSpacing {
         return Math.min(bottomA, bottomB) - Math.max(topA, topB);
     }
 
-    private static double verticalOverlapSs(ElementColumn a, ElementColumn b) {
+    /**
+     * Package-private (rather than private) so {@code OpticalSpacingTest} and
+     * {@link HorizontalSpacingCalculator}'s per-gap debug dump can read the ramp's input directly.
+     */
+    static double verticalOverlapSs(ElementColumn a, ElementColumn b) {
         return verticalOverlapSs(
             a.getAbsoluteTopYSs(), a.getAbsoluteBottomYSs(),
             b.getAbsoluteTopYSs(), b.getAbsoluteBottomYSs());
@@ -177,15 +184,12 @@ public final class OpticalSpacing {
      * Widens the gap when {@code prev} stems up and {@code curr} stems down (their noteheads sit
      * close together, so the stems visually crowd the gap), and narrows it in the opposite case,
      * ramped by how much the two columns' vertical spans overlap.
+     *
+     * <p>Package-private so the per-gap debug dump can report this term on its own rather than only
+     * as part of the summed correction.
      */
-    private static double oppositeStemCorrectionSs(ElementColumn prev, ElementColumn curr) {
+    static double oppositeStemCorrectionSs(ElementColumn prev, ElementColumn curr) {
         if (!prev.hasStem() || !curr.hasStem()) {
-            return 0.0;
-        }
-
-        // Grace-note gaps are governed by grace spacing, not these optical corrections - LilyPond
-        // routes grace columns out of note-spacing entirely, so exclude them here.
-        if (prev.isGraceNote() || curr.isGraceNote()) {
             return 0.0;
         }
 
@@ -212,13 +216,12 @@ public final class OpticalSpacing {
     /**
      * Widens or narrows the gap between two same-direction-stem notes by a fixed step when their
      * staff positions differ enough to look uneven, based on which of the two sits lower.
+     *
+     * <p>Package-private so the per-gap debug dump can report this term on its own rather than only
+     * as part of the summed correction.
      */
-    private static double sameDirectionCorrectionSs(ElementColumn prev, ElementColumn curr) {
+    static double sameDirectionCorrectionSs(ElementColumn prev, ElementColumn curr) {
         if (!prev.hasStem() || !curr.hasStem()) {
-            return 0.0;
-        }
-
-        if (prev.isGraceNote() || curr.isGraceNote()) {
             return 0.0;
         }
 
@@ -242,16 +245,13 @@ public final class OpticalSpacing {
      * Widens the gap after a barline when {@code curr} stems down, ramped by how much the downstem
      * column's vertical span overlaps the barline's own span (the full staff height, symmetric about
      * the middle line). Unconditionally additive - a downstem right after a barline always gets a
-     * little more room, never less.
+     * little more room, never less. A grace note never reaches the formula: it always stems up.
+     *
+     * <p>Package-private so the per-gap debug dump can report this term on its own rather than only
+     * as part of the summed correction.
      */
-    private static double downstemAfterBarlineCorrectionSs(ElementColumn prev, ElementColumn curr) {
+    static double downstemAfterBarlineCorrectionSs(ElementColumn prev, ElementColumn curr) {
         if (!prev.isBarline() || !curr.hasStem() || curr.getDirection() != StaffElement.Direction.DOWN) {
-            return 0.0;
-        }
-
-        // A barline is not a grace note, so only curr can be one; exclude it for the same reason as
-        // the other two corrections.
-        if (curr.isGraceNote()) {
             return 0.0;
         }
 

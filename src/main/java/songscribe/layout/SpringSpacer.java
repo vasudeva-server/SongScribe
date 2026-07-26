@@ -41,15 +41,17 @@ import java.util.List;
  * matching this engine's non-proportional principle: beyond the hard collision floor, glyph width
  * and rhythmic value do not dictate how far apart two columns sit.
  * <p>
- * Two per-spring properties break that uniformity by design, both folded into the spring by the
- * builder so this class needs no beam/grace knowledge of its own:
- * <ul>
- *   <li>{@code weight} — a tight beam-internal gap carries {@code weight < 1}, so it levels to
- *       {@code weight × U} and stays proportionally tighter than a normal gap at every compression
- *       level. Its strut still clamps the result, so a hard collision floor always wins.</li>
- *   <li>{@code rigid} — a grace→host gap is pinned to its natural length and excluded from the
- *       water-fill entirely, consuming a fixed slice of the span before the free gaps are levelled.</li>
- * </ul>
+ * One per-spring property breaks that uniformity by design, folded into the spring by the builder so
+ * this class needs no beam/grace knowledge of its own: {@code weight}. A tight beam-internal gap
+ * carries {@code weight < 1}, so it levels to {@code weight × U} and stays proportionally tighter
+ * than a normal gap at every compression level. Its strut still clamps the result, so a hard
+ * collision floor always wins.
+ * <p>
+ * Every gap participates in the fill — there is no pinned-and-excluded case. A gap that must not
+ * give (or must give only a little) says so through its strut, which the builder raises to the floor
+ * it wants; a grace→host gap uses exactly that mechanism to bound how far it can tighten. This keeps
+ * "how far may this gap compress?" a single question with a single answer per spring, rather than a
+ * flag the solver has to special-case.
  * <p>
  * This class is lyric-unaware: syllable requirements are already folded into each spring's
  * rest/strut by the spring builder and the lyric lift.
@@ -65,9 +67,8 @@ public final class SpringSpacer {
      * Each gap starts at its natural length {@code max(rest, strut)} — {@code max} rather than
      * {@code rest} because a wide-glyph gap can have {@code rest < strut}, in which case the strut
      * wins and the gap starts on its floor. Such a gap simply never gives; it is one whose strut
-     * equals its natural length, and the water-fill below leaves it there. A {@code rigid} gap is
-     * likewise pinned to its natural length, but explicitly (by flag), and is held out of the
-     * water-fill so it consumes a fixed slice of the span.
+     * equals its natural length, and the water-fill below leaves it there. That is the only way a
+     * gap can be immovable — there is no separate pinning flag.
      *
      * <pre>
      *   natural = SUM max(rest_i, strut_i)
@@ -75,16 +76,16 @@ public final class SpringSpacer {
      *          natural &lt;= availableSpanSs                 natural &gt; availableSpanSs
      *                   |                                           |
      *                   v                                           v
-     *          +------------------+          floorSum = SUM strut_i (free) + SUM natural_i (rigid)
+     *          +------------------+          floorSum = SUM strut_i
      *          |     SOLVED       |                            |
      *          | gap = natural    |            floorSum &gt; available   floorSum &lt;= available
      *          | (ragged right,   |                    |                     |
      *          |  O(n), no loop)  |                    v                     v
      *          +------------------+             +-------------+       WEIGHTED WATER-FILL to unit U:
-     *                                           | INFEASIBLE  |       rigid gaps pinned at natural;
-     *                                           | (struts do  |       SUM clamp(w_i·U, strut_i,
-     *                                           |  not fit)   |           natural_i) = budget
-     *                                           +-------------+          (budget = available − rigid)
+     *                                           | INFEASIBLE  |       SUM clamp(w_i·U, strut_i,
+     *                                           | (struts do  |           natural_i) = availableSpanSs
+     *                                           |  not fit)   |
+     *                                           +-------------+
      *                                                                        |
      *                                                                        v
      *                                           length_i = clamp(w_i·U, strut_i, natural_i)
@@ -126,8 +127,8 @@ public final class SpringSpacer {
      * Weighted water-fill: finds the common unit level {@code U} that makes the gaps sum to
      * {@code availableSpanSs}, giving free gap {@code i} the length {@code weight_i × U}, clamped up
      * to its strut (collision floor) and down to its natural length (compress-only, so no gap is
-     * stretched past where it started). Rigid gaps are pinned to their natural length and taken out
-     * of the fill up front. {@code lengthsSs} enters at natural length and is mutated in place.
+     * stretched past where it started). Every gap enters the fill. {@code lengthsSs} enters at
+     * natural length and is mutated in place.
      */
     private static SpringSolveResult compress(
         List<Spring> springs,
@@ -139,47 +140,26 @@ public final class SpringSpacer {
         var naturalSs = lengthsSs.clone();
         var clamped = new boolean[gapCount];
         var floorSumSs = 0.0;
-        var rigidTotalSs = 0.0;
         var freeWeight = 0.0;
         var freeOffsetSs = 0.0;
-        var freeCount = 0;
 
-        // Rigid gaps (grace→host) never move: pin each to its natural length and hold it out of the
-        // fill. Every other gap can give down to its strut and contributes its weight to the level.
         for (var i = 0; i < gapCount; i++) {
             var spring = springs.get(i);
-
-            if (spring.rigid()) {
-                clamped[i] = true;               // lengthsSs[i] already holds the natural length
-                rigidTotalSs += naturalSs[i];
-                floorSumSs += naturalSs[i];
-            } else {
-                floorSumSs += spring.strutSs();
-                freeWeight += spring.weight();
-                freeOffsetSs += spring.levelOffsetSs();
-                freeCount++;
-            }
+            floorSumSs += spring.strutSs();
+            freeWeight += spring.weight();
+            freeOffsetSs += spring.levelOffsetSs();
         }
 
-        // Every free gap on its strut, every rigid gap on its default, and the chain still
-        // overflows: no fit exists.
+        // Every gap on its strut and the chain still overflows: no fit exists.
         if (availableSpanSs < floorSumSs) {
             return SpringSolveResult.infeasible();
         }
 
-        // Defensive: unreachable under the current invariants. An all-rigid chain has
-        // floorSumSs == naturalSpanSs, and compress() is only entered when naturalSpanSs exceeds
-        // availableSpanSs, so the infeasibility check above always returns first. Kept because it
-        // is the only thing standing between a broken invariant and a 0/0 unit level below.
-        if (freeCount == 0) {
-            return SpringSolveResult.solved(lengthsSs);
-        }
-
-        var budgetSs = availableSpanSs - rigidTotalSs;
+        var budgetSs = availableSpanSs;
 
         // Each pass levels the still-free gaps to weight_i × U, then clamps the single gap that most
         // violates a bound. Clamping the worst violator is always correct — it sits on that bound in
-        // the final fit — and permanently removes one gap, so the loop is bounded by freeCount passes.
+        // the final fit — and permanently removes one gap, so the loop is bounded by gapCount passes.
         for (var pass = 0; pass < gapCount; pass++) {
             // The still-free gaps' offsets are consumed off the top of the budget; only the
             // remaining whitespace is levelled by weight.
@@ -236,7 +216,6 @@ public final class SpringSpacer {
             freeWeight -= worstSpring.weight();
             freeOffsetSs -= worstSpring.levelOffsetSs();
             clamped[worstGap] = true;
-            freeCount--;
         }
 
         // Unreachable when feasible: availableSpanSs >= floorSumSs guarantees the last free gap can

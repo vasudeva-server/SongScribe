@@ -79,30 +79,30 @@ class SpringTest extends UnitTest {
     }
 
     @Test
-    void testTwoArgOfDefaultsToNormalWeightAndNotRigid() {
+    void testTwoArgOfDefaultsToNormalWeightAndNotLiftExempt() {
         var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS);
 
         assertThat(spring.weight()).isEqualTo(Spring.NORMAL_WEIGHT);
-        assertThat(spring.rigid()).isFalse();
+        assertThat(spring.liftExempt()).isFalse();
     }
 
     @Test
-    void testFourArgOfCarriesWeightAndRigid() {
+    void testFourArgOfCarriesWeightAndLiftExempt() {
         var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS, TIGHT_WEIGHT, true);
 
         assertThat(spring.weight()).isEqualTo(TIGHT_WEIGHT);
-        assertThat(spring.rigid()).isTrue();
+        assertThat(spring.liftExempt()).isTrue();
         assertThat(spring.complianceSs()).isCloseTo(EXPECTED_COMPLIANCE_SS, within(DELTA));
     }
 
     @Test
-    void testWithRestSsPreservesWeightAndRigidAndRecomputesCompliance() {
+    void testWithRestSsPreservesWeightAndLiftExemptAndRecomputesCompliance() {
         var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS, TIGHT_WEIGHT, true)
             .withRestSs(NEW_REST_SS);
 
         assertThat(spring.restSs()).isEqualTo(NEW_REST_SS);
         assertThat(spring.weight()).isEqualTo(TIGHT_WEIGHT);
-        assertThat(spring.rigid()).isTrue();
+        assertThat(spring.liftExempt()).isTrue();
         assertThat(spring.complianceSs()).isCloseTo(NEW_REST_SS - STRUT_BELOW_REST_SS, within(DELTA));
     }
 
@@ -126,7 +126,7 @@ class SpringTest extends UnitTest {
 
         assertThat(spring.levelOffsetSs()).isEqualTo(LEVEL_OFFSET_SS);
         assertThat(spring.weight()).isEqualTo(TIGHT_WEIGHT);
-        assertThat(spring.rigid()).isTrue();
+        assertThat(spring.liftExempt()).isTrue();
     }
 
     @Test
@@ -147,13 +147,13 @@ class SpringTest extends UnitTest {
     }
 
     @Test
-    void testWithCorrectionSsPreservesStrutWeightAndRigidAndRecomputesCompliance() {
+    void testWithCorrectionSsPreservesStrutWeightAndLiftExemptAndRecomputesCompliance() {
         var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS, TIGHT_WEIGHT, true, LEVEL_OFFSET_SS)
             .withCorrectionSs(WIDENING_CORRECTION_SS);
 
         assertThat(spring.strutSs()).isEqualTo(STRUT_BELOW_REST_SS);
         assertThat(spring.weight()).isEqualTo(TIGHT_WEIGHT);
-        assertThat(spring.rigid()).isTrue();
+        assertThat(spring.liftExempt()).isTrue();
         assertThat(spring.complianceSs())
             .isCloseTo(REST_ABOVE_STRUT_SS + WIDENING_CORRECTION_SS - STRUT_BELOW_REST_SS, within(DELTA));
     }

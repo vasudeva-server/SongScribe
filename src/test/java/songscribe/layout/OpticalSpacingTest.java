@@ -111,7 +111,7 @@ class OpticalSpacingTest extends UnitTest {
         return stemColumn(ElementType.CROTCHET, NEUTRAL_STAFF_POSITION_SP, direction, NEUTRAL_STEM_TOP_SS, overlapSs);
     }
 
-    /** A grace-note counterpart to {@link #overlappingStemColumn}, for the grace-guard tests. */
+    /** A grace-note counterpart to {@link #overlappingStemColumn}, for the grace-note tests. */
     private static ElementColumn graceOverlappingColumn(StaffElement.Direction direction, double overlapSs) {
         return stemColumn(
             ElementType.GRACE_QUAVER, NEUTRAL_STAFF_POSITION_SP, direction, NEUTRAL_STEM_TOP_SS, overlapSs);
@@ -122,7 +122,7 @@ class OpticalSpacingTest extends UnitTest {
         return stemColumn(ElementType.CROTCHET, staffPositionSp, direction, NEUTRAL_STEM_TOP_SS, NEUTRAL_STEM_BOTTOM_SS);
     }
 
-    /** A grace-note counterpart to {@link #positionedColumn}, for the grace-guard tests. */
+    /** A grace-note counterpart to {@link #positionedColumn}, for the grace-note tests. */
     private static ElementColumn gracePositionedColumn(StaffElement.Direction direction, int staffPositionSp) {
         return stemColumn(
             ElementType.GRACE_QUAVER, staffPositionSp, direction, NEUTRAL_STEM_TOP_SS, NEUTRAL_STEM_BOTTOM_SS);
@@ -178,7 +178,7 @@ class OpticalSpacingTest extends UnitTest {
             -FAR_BEYOND_STAFF_SS, FAR_BEYOND_STAFF_SS);
     }
 
-    /** A grace-note counterpart to {@link #downstemColumnSpanningFarBeyondStaff}, for the grace guard. */
+    /** A grace-note counterpart to {@link #downstemColumnSpanningFarBeyondStaff}, for the grace-note tests. */
     private static ElementColumn graceDownstemColumnSpanningFarBeyondStaff() {
         return stemColumn(
             ElementType.GRACE_QUAVER, NEUTRAL_STAFF_POSITION_SP, StaffElement.Direction.DOWN,
@@ -372,38 +372,47 @@ class OpticalSpacingTest extends UnitTest {
     }
 
     // ==========================================================================
-    // Grace-note guard
+    // Grace notes — corrected like any other column, always on an up stem
     // ==========================================================================
 
     @Test
-    void testOppositeStemCorrectionIsZeroWhenPrevIsAGraceNote() {
+    void testGraceNoteColumnAlwaysReportsAnUpStemWhateverDirectionItStores() {
+        var grace = gracePositionedColumn(StaffElement.Direction.DOWN, NEUTRAL_STAFF_POSITION_SP);
+
+        assertThat(grace.getDirection()).isEqualTo(StaffElement.Direction.UP);
+    }
+
+    @Test
+    void testOppositeStemCorrectionWidensAGraceToDownstemHostGap() {
         var prev = graceOverlappingColumn(StaffElement.Direction.UP, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
         var curr = overlappingStemColumn(StaffElement.Direction.DOWN, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
 
-        assertThat(correctionDeltaSs(prev, curr)).isCloseTo(0.0, within(TOLERANCE));
+        assertThat(correctionDeltaSs(prev, curr))
+            .isCloseTo(OpticalSpacing.OPPOSITE_STEM_MAX_CORRECTION_SS, within(TOLERANCE));
     }
 
     @Test
-    void testOppositeStemCorrectionIsZeroWhenCurrIsAGraceNote() {
-        var prev = overlappingStemColumn(StaffElement.Direction.UP, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
+    void testOppositeStemCorrectionNarrowsADownstemToGraceGap() {
+        // The gap into a grace note: the grace's own up stem makes this the down-then-up case, so it
+        // narrows exactly as a normal down-then-up pair would.
+        var prev = overlappingStemColumn(StaffElement.Direction.DOWN, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
         var curr = graceOverlappingColumn(StaffElement.Direction.DOWN, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
 
-        assertThat(correctionDeltaSs(prev, curr)).isCloseTo(0.0, within(TOLERANCE));
+        assertThat(correctionDeltaSs(prev, curr))
+            .isCloseTo(-OpticalSpacing.OPPOSITE_STEM_MAX_CORRECTION_SS, within(TOLERANCE));
     }
 
     @Test
-    void testSameDirectionCorrectionIsZeroWhenEitherColumnIsAGraceNote() {
-        var normalPrev = positionedColumn(StaffElement.Direction.DOWN, NEUTRAL_STAFF_POSITION_SP);
-        var normalCurr = positionedColumn(StaffElement.Direction.DOWN, SAME_DIRECTION_ABOVE_THRESHOLD_SP);
+    void testSameDirectionCorrectionAppliesBetweenAGraceNoteAndAnUpstemNeighbour() {
         var gracePrev = gracePositionedColumn(StaffElement.Direction.DOWN, NEUTRAL_STAFF_POSITION_SP);
-        var graceCurr = gracePositionedColumn(StaffElement.Direction.DOWN, SAME_DIRECTION_ABOVE_THRESHOLD_SP);
+        var lowerCurr = positionedColumn(StaffElement.Direction.UP, SAME_DIRECTION_ABOVE_THRESHOLD_SP);
 
-        assertThat(correctionDeltaSs(gracePrev, normalCurr)).isCloseTo(0.0, within(TOLERANCE));
-        assertThat(correctionDeltaSs(normalPrev, graceCurr)).isCloseTo(0.0, within(TOLERANCE));
+        assertThat(correctionDeltaSs(gracePrev, lowerCurr))
+            .isCloseTo(-OpticalSpacing.SAME_DIRECTION_MAX_CORRECTION_SS, within(TOLERANCE));
     }
 
     @Test
-    void testDownstemAfterBarlineCorrectionIsZeroWhenCurrIsAGraceNote() {
+    void testDownstemAfterBarlineCorrectionIsZeroForAGraceNoteBecauseItStemsUp() {
         var prev = barlineColumn();
         var curr = graceDownstemColumnSpanningFarBeyondStaff();
 
@@ -445,14 +454,21 @@ class OpticalSpacingTest extends UnitTest {
     // ==========================================================================
 
     @Test
-    void testRigidSpringPassesThroughUnchanged() {
-        var prev = overlappingStemColumn(StaffElement.Direction.UP, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
+    void testLiftExemptGraceHostSpringIsCorrectedAndStaysExempt() {
+        // The exemption is from the lyric lift only, so the grace→host distance takes the same
+        // optical nudge as any other gap.
+        var prev = graceOverlappingColumn(StaffElement.Direction.UP, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
         var curr = overlappingStemColumn(StaffElement.Direction.DOWN, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
-        var rigidSpring = Spring.of(BASE_REST_SS, BASE_STRUT_SS, Spring.NORMAL_WEIGHT, true);
+        var exemptSpring = Spring.of(BASE_REST_SS, BASE_STRUT_SS, Spring.NORMAL_WEIGHT, true);
 
-        var corrected = OpticalSpacing.applyCorrections(List.of(rigidSpring), List.of(prev, curr));
+        var corrected = OpticalSpacing.applyCorrections(List.of(exemptSpring), List.of(prev, curr)).getFirst();
 
-        assertThat(corrected.getFirst()).isSameAs(rigidSpring);
+        assertThat(corrected.restSs())
+            .isCloseTo(BASE_REST_SS + OpticalSpacing.OPPOSITE_STEM_MAX_CORRECTION_SS, within(TOLERANCE));
+        assertThat(corrected.naturalLengthSs())
+            .isCloseTo(BASE_REST_SS + OpticalSpacing.OPPOSITE_STEM_MAX_CORRECTION_SS, within(TOLERANCE));
+        assertThat(corrected.liftExempt()).isTrue();
+        assertThat(corrected.strutSs()).isEqualTo(BASE_STRUT_SS);
     }
 
     @Test
@@ -484,7 +500,7 @@ class OpticalSpacingTest extends UnitTest {
     // ==========================================================================
 
     @Test
-    void testCorrectionShiftsRestAndLevelOffsetByTheSameDeltaAndLeavesStrutWeightRigidUntouched() {
+    void testCorrectionShiftsRestAndLevelOffsetByTheSameDeltaAndLeavesStrutWeightExemptionUntouched() {
         var prev = overlappingStemColumn(StaffElement.Direction.UP, OVERLAP_BELOW_SATURATION_SS);
         var curr = overlappingStemColumn(StaffElement.Direction.DOWN, OVERLAP_BELOW_SATURATION_SS);
         var originalSpring = Spring.of(BASE_REST_SS, BASE_STRUT_SS, CHANNEL_TEST_WEIGHT, false, BASE_LEVEL_OFFSET_SS);
@@ -498,6 +514,6 @@ class OpticalSpacingTest extends UnitTest {
             .isCloseTo(expectedCorrectionSs, within(TOLERANCE));
         assertThat(corrected.strutSs()).isEqualTo(originalSpring.strutSs());
         assertThat(corrected.weight()).isEqualTo(originalSpring.weight());
-        assertThat(corrected.rigid()).isEqualTo(originalSpring.rigid());
+        assertThat(corrected.liftExempt()).isEqualTo(originalSpring.liftExempt());
     }
 }

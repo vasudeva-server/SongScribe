@@ -186,13 +186,15 @@ public final class ElementColumn {
     }
 
     /**
-     * Returns the stem direction of this column's element. Only meaningful when {@link #hasStem()}
-     * is {@code true} — for rests, whole notes, and barlines this returns whatever direction the
-     * underlying element happens to hold (default {@code DOWN}), which callers must not treat as a
-     * real stem direction.
+     * Returns the <em>drawn</em> stem direction of this column's element
+     * ({@link NoteGeometry#effectiveDirection}), so a grace note reports {@code UP} — the only
+     * direction it ever renders — rather than whatever direction it happens to store. Only
+     * meaningful when {@link #hasStem()} is {@code true}: for rests, whole notes, and barlines this
+     * returns whatever direction the underlying element happens to hold (default {@code DOWN}),
+     * which callers must not treat as a real stem direction.
      */
     public StaffElement.Direction getDirection() {
-        return element.getDirection();
+        return NoteGeometry.effectiveDirection(element);
     }
 
     // ==========================================================================
@@ -259,6 +261,49 @@ public final class ElementColumn {
      */
     public double getFlagExtentSs() {
         return rightExtentExcludingAugmentationSs - noteheadWidthSs;
+    }
+
+    /**
+     * Returns how far this column's ink reaches right of its origin <em>as met by a neighbour whose
+     * left-facing band is</em> {@code [neighbourTopYSs, neighbourBottomYSs]} (absolute layout Y,
+     * screen-down Ss — see {@link #getLeftFacingTopYSs()}). This is {@link #getRightExtentSs()},
+     * except that a flag hanging entirely clear of that band is not charged.
+     *
+     * <p>{@link #getRightExtentSs()} is a bounding box: it collapses a two-level ink profile — the
+     * notehead at the note's own height, the flag up at the stem tip — into the wider of the two, at
+     * every height. That is the right answer for a neighbour standing beside the flag, and the wrong
+     * one for a neighbour four steps below it, which is pushed away for a collision that cannot
+     * happen. The flag is the only glyph that can widen a note column past its notehead
+     * ({@link #getFlagExtentSs()}), so discounting it is the whole of the correction.
+     *
+     * <p>Once augmentation is present the flag no longer sets the right edge — dots stack to the
+     * right of it ({@link NoteGeometry#firstDotXSs}) and a fall reaches past it — so there is nothing
+     * to discount and the full extent stands.
+     *
+     * @param neighbourTopYSs    top (higher, numerically smaller) of the neighbour's vertical span
+     * @param neighbourBottomYSs bottom (lower, numerically larger) of the neighbour's vertical span
+     */
+    public double getRightExtentFacingSs(double neighbourTopYSs, double neighbourBottomYSs) {
+        if (getFlagExtentSs() <= 0 || rightExtentSs > rightExtentExcludingAugmentationSs) {
+            return rightExtentSs;
+        }
+
+        var flagBoundsSs = NoteGeometry.flagBBoxLocalSs(element.getType(), getDirection(), beamed);
+
+        if (flagBoundsSs == null) {
+            return rightExtentSs;
+        }
+
+        // The bbox is note-local; getPositionSs() lifts it onto the same absolute axis as the span.
+        var positionSs = getPositionSs();
+        var flagTopYSs = positionSs + flagBoundsSs.getMinY();
+        var flagBottomYSs = positionSs + flagBoundsSs.getMaxY();
+
+        if (flagBottomYSs <= neighbourTopYSs || flagTopYSs >= neighbourBottomYSs) {
+            return noteheadWidthSs;
+        }
+
+        return rightExtentSs;
     }
 
     /**
@@ -359,6 +404,32 @@ public final class ElementColumn {
      */
     public double getAbsoluteTopYSs() {
         return getPositionSs() + getStemTopSs();
+    }
+
+    /**
+     * Returns the top (higher, numerically smaller) of this column's <em>left-facing</em> vertical
+     * span — the band of ink a neighbour approaching from the left can actually meet, which is not
+     * the same as the column's whole span ({@link #getAbsoluteTopYSs()}).
+     *
+     * <p>An up-stem hangs off the notehead's <em>right</em> edge and carries its flag with it, a
+     * column-width away from anything on the left; only the notehead itself faces left. So the
+     * left-facing band starts at the notehead top in every case, and the column's own top counts only
+     * when the stem points down — which {@link #getLeftFacingBottomYSs()} covers, since a down-stem
+     * reaches downward.
+     */
+    public double getLeftFacingTopYSs() {
+        return getPositionSs() - ElementColumnBuilder.HALF_NOTE_HEAD_SS;
+    }
+
+    /**
+     * Returns the bottom (lower, numerically larger) of this column's left-facing vertical span. A
+     * down-stem sits on the notehead's left edge, so it and its flag do face left and the span runs
+     * all the way to the stem tip; for an up-stem or a stemless element
+     * {@link #getAbsoluteBottomYSs()} is already the notehead bottom.
+     * See {@link #getLeftFacingTopYSs()} for why the two ends are asymmetric.
+     */
+    public double getLeftFacingBottomYSs() {
+        return getAbsoluteBottomYSs();
     }
 
     /**

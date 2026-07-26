@@ -85,11 +85,20 @@ public class HorizontalSpacingCalculator {
      */
     public static final double DEFAULT_COLUMN_GAP_SS = 2.5;  // 20px
     /**
-     * Fixed gap between a grace note and its host note. The grace note always packs against its host
-     * at this distance, independent of the song's line rest — the one gap that never varies. Shared
-     * by the spring path ({@link #buildSpring}) and the grace-insertion lock preview.
+     * Ideal gap between a grace note and its host note. The grace note packs against its host at this
+     * distance independent of the song's line rest and of the line's syllables — the one gap the
+     * lyric lift never widens. {@link OpticalSpacing} nudges it for the host's stem geometry, and a
+     * compressed line may tighten it by up to {@link #GRACE_HOST_COMPRESSION_ALLOWANCE_SS}, so the
+     * distance is optical rather than mechanical. Shared by the spring path ({@link #buildSpring})
+     * and the grace-insertion lock preview.
      */
     public static final double GRACE_HOST_REST_SS = 2.0;  // 16px
+    /**
+     * How far a compressed line may tighten a grace→host gap below {@link #GRACE_HOST_REST_SS}. Wide
+     * enough that the grace tightens visibly along with its neighbours rather than standing proud of
+     * them, narrow enough that the grace never reads as belonging to the note on its other side.
+     */
+    public static final double GRACE_HOST_COMPRESSION_ALLOWANCE_SS = 0.5;  // 4px
     /**
      * Reducing factor applied to the line rest for a gap internal to a beam group whose two notes
      * are both shorter than an eighth note (sixteenths and faster). A pair touching an eighth note
@@ -163,7 +172,38 @@ public class HorizontalSpacingCalculator {
 
         // Distance from previous column's center to current column's center
         // = previous column's right extent + MIN_COLUMN_GAP + abs(current column's left extent)
-        return prevColumn.getRightExtentSs() + MIN_COLUMN_GAP_SS + Math.abs(currColumn.getLeftExtentSs());
+        return rightExtentFacingSs(prevColumn, currColumn)
+            + MIN_COLUMN_GAP_SS
+            + Math.abs(currColumn.getLeftExtentSs());
+    }
+
+    /**
+     * Returns how far {@code prev}'s ink reaches right of its origin as {@code curr} meets it — the
+     * single source of truth for the left-hand ink of every gap, so the ideal rest, the collision
+     * strut, the glissando reservation and the grace–host lyric union can never disagree about how
+     * wide the column before the gap is.
+     *
+     * <p>For a grace note this is {@link ElementColumn#getRightExtentFacingSs} against {@code curr}'s
+     * <em>left-facing</em> band ({@link ElementColumn#getLeftFacingTopYSs}) — not its whole span,
+     * which would include an up-stem standing a column-width clear on the far side of the notehead
+     * and so would report an overlap with the grace's flag that no reader can see. A grace's flag is
+     * over a third of its right extent, and it packs against its host at a fixed
+     * {@link #GRACE_HOST_REST_SS} where that inflation is the difference between a grace that reads
+     * as attached and one that floats. Charging the flag when it hangs well above the host is what
+     * made a high grace sit visibly further from its host than a low one (refs #560).
+     *
+     * <p>Every other column is charged its full {@link ElementColumn#getRightExtentSs()}. An ordinary
+     * flagged note has the same two-level ink profile, but its gap is a full line rest that dwarfs the
+     * flag, so the same discount would buy invisible tightening in exchange for loosening the
+     * collision floor of every unbeamed eighth on the page. Generalising it is a separate decision,
+     * and wants LilyPond's skyline machinery rather than a one-glyph special case.
+     */
+    private static double rightExtentFacingSs(ElementColumn prev, ElementColumn curr) {
+        if (!prev.isGraceNote()) {
+            return prev.getRightExtentSs();
+        }
+
+        return prev.getRightExtentFacingSs(curr.getLeftFacingTopYSs(), curr.getLeftFacingBottomYSs());
     }
 
     // ==========================================================================
@@ -184,7 +224,7 @@ public class HorizontalSpacingCalculator {
      * <pre>
      *   prev ──────────────── delta-X ───────────────▶ curr
      *
-     *   base rest  ┌ grace note prev ──▶ rightExtent + GRACE_HOST_REST_SS   (fixed, never scales)
+     *   base rest  ┌ grace note prev ──▶ prevRight + GRACE_HOST_REST_SS     (fixed, never scales)
      *              ├ same beam group ──▶ rightExtentExclAug + factor × lineRest  (0.6× both ≤16th,
      *              │                                                              else 1.0×)
      *              └ otherwise ────────▶ rightExtentExclAug + lineRest                      (1.0×)
@@ -195,9 +235,14 @@ public class HorizontalSpacingCalculator {
      *                                                     floor = 1 space, or bare hyphen if hyphenated)
      *              , glissando reservation    prevRight − currLeft
      *                                                   + MIN_GLISSANDO_RESERVATION_SS
-     *                                                                 (prev has a glissando) )
+     *                                                                 (prev has a glissando)
+     *              , grace compression floor  rest − GRACE_HOST_COMPRESSION_ALLOWANCE_SS
+     *                                                                 (prev is a grace note) )
      *
      *   compliance = max(0, rest − strut)     ← rest ≤ strut ⇒ the gap starts frozen
+     *
+     *   prevRight = rightExtentFacingSs(prev, curr) — prev's full right extent, except that a grace
+     *               note's flag is not charged when it hangs clear of curr's left-facing band
      * </pre>
      *
      * @param prev       Previous column
@@ -215,9 +260,10 @@ public class HorizontalSpacingCalculator {
      * so the syllable-collision floor can honour a grace–host lyric union: {@code beforePrev} is the
      * column two before {@code curr} (used to detect that {@code prev} hosts a grace), and
      * {@code afterCurr} is the column just after {@code curr} (used as a grace's host when
-     * {@code curr} is itself a grace). Neighbour-independent floors — the note-collision strut and
-     * the glissando reservation — stay full-column. See {@link #buildSpring(ElementColumn,
-     * ElementColumn, double)} for the base rest / strut / compliance model.
+     * {@code curr} is itself a grace). The note-collision strut and the glissando reservation ignore
+     * both outer neighbours — they are measured from the pair's own extents alone. See
+     * {@link #buildSpring(ElementColumn, ElementColumn, double)} for the base rest / strut /
+     * compliance model.
      *
      * @param prev       Previous column
      * @param curr       Current column
@@ -238,13 +284,16 @@ public class HorizontalSpacingCalculator {
             calculateMinimumColumnSpacingSs(prev, curr),
             Math.max(
                 syllableCollisionFloorSs(prev, curr, beforePrev, afterCurr),
-                glissandoReservationFloorSs(prev, curr)));
+                Math.max(
+                    glissandoReservationFloorSs(prev, curr),
+                    graceCompressionFloorSs(prev, restSs))));
 
-        // A grace→host gap is rigid: it packs at a fixed distance and never compresses or lifts. A
-        // tight beam-internal gap (both notes shorter than an eighth) keeps its reduction factor as
-        // the solver weight, so it stays proportionally tighter than a normal gap under compression,
-        // not only at rest.
-        var rigid = prev.isGraceNote();
+        // A grace→host gap takes no lyric lift: its ideal is a fixed distance that must not grow
+        // with the line's syllables. It still compresses, bounded by the floor above. A tight
+        // beam-internal gap (both notes shorter than an eighth) keeps its reduction factor as the
+        // solver weight, so it stays proportionally tighter than a normal gap under compression, not
+        // only at rest.
+        var liftExempt = prev.isGraceNote();
         var weight = isTightBeamGap(prev, curr) ? BEAM_GROUP_INTERNAL_REST_FACTOR : Spring.NORMAL_WEIGHT;
 
         // The gap's glyph-ink component becomes the spring's level offset, so the whitespace-aware
@@ -252,7 +301,27 @@ public class HorizontalSpacingCalculator {
         // weight matches the reducing factor applied to the line rest in the base rest, so
         // levelOffset + weight × lineRest reproduces the base rest exactly — whitespace levelling is
         // a strict generalisation of the rest model, not a second spacing scheme.
-        return Spring.of(restSs, strutSs, weight, rigid, leftInkSs(prev));
+        return Spring.of(restSs, strutSs, weight, liftExempt, leftInkSs(prev, curr));
+    }
+
+    /**
+     * Returns how far a grace→host gap may compress below its ideal, expressed as a strut floor, or
+     * 0 for any other gap. The grace sits at a fixed distance from its host, but a fixed distance
+     * that could never give would make an optical widening able to turn an otherwise-fittable line
+     * infeasible, and would leave the grace standing proud of the whitespace level on a compressed
+     * line. Allowing {@link #GRACE_HOST_COMPRESSION_ALLOWANCE_SS} of give lets the gap tighten along
+     * with its neighbours while staying recognisably the grace gap.
+     *
+     * <p>The allowance is measured from the <em>uncorrected</em> ideal {@code baseRestSs}, since
+     * {@link OpticalSpacing} shifts rests without touching struts; a corrected gap therefore ends up
+     * with slightly more or less give than the allowance, which is immaterial at these magnitudes.
+     */
+    private static double graceCompressionFloorSs(ElementColumn prev, double baseRestSs) {
+        if (!prev.isGraceNote()) {
+            return 0;
+        }
+
+        return baseRestSs - GRACE_HOST_COMPRESSION_ALLOWANCE_SS;
     }
 
     /**
@@ -407,9 +476,11 @@ public class HorizontalSpacingCalculator {
     /**
      * Debug dump of one line solve: a header with the available span, the chain's natural span and
      * the solver's verdict, then one row per gap with the pre-correction rest, the optical
-     * correction delta, the strut floor, the resulting natural length, and the solved (possibly
-     * compressed) length — so ideal-vs-compressed spacing can be compared per gap from the log
-     * alone. Only ever called under {@code LOG.isDebugEnabled()}.
+     * correction delta, the strut floor, the resulting natural length, the solved (possibly
+     * compressed) length, and the ink-to-ink white that length leaves — so ideal-vs-compressed
+     * spacing, and length-vs-perceived-white, can both be compared per gap from the log alone. A gap
+     * whose correction was non-zero gets a second line breaking it into its three terms. Only ever
+     * called under {@code LOG.isDebugEnabled()}.
      */
     private static void logLineSolve(
         List<ElementColumn> columns,
@@ -444,24 +515,70 @@ public class HorizontalSpacingCalculator {
         for (var i = 0; i < corrected.size(); i++) {
             var before = lifted.get(i);
             var after = corrected.get(i);
+            var prev = columns.get(i);
+            var curr = columns.get(i + 1);
+            var placedSs = solvedSs == null ? null : solvedSs[i];
             sb.append(String.format(
-                "%n  gap %2d %-22s -> %-22s rest=%5.2f corr=%+5.2f off=%5.2f strut=%5.2f natural=%5.2f solved=%s%s",
+                "%n  gap %2d %-34s -> %-34s rest=%5.2f corr=%+5.2f off=%5.2f strut=%5.2f natural=%5.2f solved=%s white=%s%s",
                 i,
-                describeForLog(columns.get(i)),
-                describeForLog(columns.get(i + 1)),
+                describeForLog(prev),
+                describeForLog(curr),
                 before.restSs(),
                 after.restSs() - before.restSs(),
                 after.levelOffsetSs(),
                 after.strutSs(),
                 after.naturalLengthSs(),
-                solvedSs == null ? "-" : String.format("%5.2f", solvedSs[i]),
-                after.rigid() ? " (rigid)" : ""));
+                placedSs == null ? "    -" : String.format("%5.2f", placedSs),
+                placedSs == null ? "    -" : String.format("%5.2f", whitespaceSs(placedSs, prev, curr)),
+                after.liftExempt() ? " (no lift)" : ""));
+            appendCorrectionBreakdown(sb, prev, curr);
         }
 
         LOG.debug("{}", sb);
     }
 
-    /** Compact per-column label for {@link #logLineSolve}: element type, and stem direction plus notehead-center Ss when stemmed. */
+    /**
+     * The ink-to-ink gap a solved spring actually leaves on screen: the origin-to-origin
+     * {@code placedSs} less {@code prev}'s right extent and less {@code curr}'s left extent (which is
+     * negative when it has an accidental). This — not the spring length — is the white the eye
+     * judges, and it is what makes two gaps with equal solved lengths look unequal when the columns
+     * flanking them carry different amounts of ink.
+     */
+    private static double whitespaceSs(double placedSs, ElementColumn prev, ElementColumn curr) {
+        return placedSs - rightExtentFacingSs(prev, curr) + curr.getLeftExtentSs();
+    }
+
+    /**
+     * Appends the per-term breakdown of a gap's optical correction, plus the two geometric inputs
+     * that drive the note-to-note terms, so a correction that fired can be told apart from one that
+     * was skipped and from one that cancelled against another. Emits nothing when no term fired.
+     */
+    private static void appendCorrectionBreakdown(StringBuilder sb, ElementColumn prev, ElementColumn curr) {
+        var oppositeSs = OpticalSpacing.oppositeStemCorrectionSs(prev, curr);
+        var sameSs = OpticalSpacing.sameDirectionCorrectionSs(prev, curr);
+        var barlineSs = OpticalSpacing.downstemAfterBarlineCorrectionSs(prev, curr);
+
+        if (oppositeSs == 0.0 && sameSs == 0.0 && barlineSs == 0.0) {
+            return;
+        }
+
+        sb.append(String.format(
+            "%n         corr: opposite=%+.2f same=%+.2f barline=%+.2f", oppositeSs, sameSs, barlineSs));
+
+        if (prev.hasStem() && curr.hasStem()) {
+            sb.append(String.format(
+                " (overlap=%.2f deltaPos=%+.2f)",
+                OpticalSpacing.verticalOverlapSs(prev, curr),
+                curr.getPositionSs() - prev.getPositionSs()));
+        }
+    }
+
+    /**
+     * Compact per-column label for {@link #logLineSolve}: element type, and when stemmed the stem
+     * direction, the notehead-center Ss, and the column's whole vertical span. The span is what the
+     * overlap ramp reads, and it is where a grace note differs from a full note of the same value —
+     * shorter stem, smaller head — so it has to be visible next to the correction it produced.
+     */
     private static String describeForLog(ElementColumn column) {
         var type = column.getElement().getType();
 
@@ -469,28 +586,40 @@ public class HorizontalSpacingCalculator {
             return type.name();
         }
 
-        return String.format("%s(%s@%.1f)", type.name(), column.getDirection(), column.getPositionSs());
+        return String.format(
+            "%s(%s@%.1f %.1f..%.1f)",
+            type.name(),
+            column.getDirection(),
+            column.getPositionSs(),
+            column.getAbsoluteTopYSs(),
+            column.getAbsoluteBottomYSs());
     }
 
     /**
      * Returns the position-independent grace-lyric overhang: how far a grace note's syllable of
      * width {@code syllableWidthSs} spills past the grace-notehead-left → host-notehead-right union
-     * on each side. The union spans the grace's right extent (the physical grace→host gap includes
-     * the grace flag), the fixed {@link #GRACE_HOST_REST_SS} grace→host gap, and the host's notehead
-     * width (neither the host's flag nor its dots widen the union). The width is a parameter rather
-     * than read off the grace so callers can supply a per-verse box width. Returns 0 when the
-     * syllable fits the union (it then left-anchors on the grace notehead and imposes no neighbour
-     * constraint).
+     * on each side. The union spans the grace's right extent as the host faces it (the physical
+     * grace→host gap includes the grace flag only where the flag is beside the host, matching
+     * {@link #rightExtentFacingSs} — the union has to be the distance actually laid out or the
+     * syllable centres off its own notes), the fixed {@link #GRACE_HOST_REST_SS} grace→host gap, and
+     * the host's notehead width (neither the host's flag nor its dots widen the union). The width is a
+     * parameter rather than read off the grace so callers can supply a per-verse box width. Returns 0
+     * when the syllable fits the union (it then left-anchors on the grace notehead and imposes no
+     * neighbour constraint).
      */
     public static double graceLyricOverhangSs(
         double syllableWidthSs, ElementColumn grace, @Nullable ElementColumn host) {
 
         // An unpaired grace (the line's last column, before its host is entered) has no union to
-        // spill past — only its own extent reserves space.
-        var hostNoteheadWidthSs = host != null ? host.getNoteheadWidthSs() : 0;
-        var unionWidthSs = grace.getRightExtentSs()
+        // spill past — only its own extent reserves space, at its full width since there is no host
+        // span to face.
+        if (host == null) {
+            return Math.max(0, (syllableWidthSs - (grace.getRightExtentSs() + GRACE_HOST_REST_SS)) / 2);
+        }
+
+        var unionWidthSs = rightExtentFacingSs(grace, host)
             + GRACE_HOST_REST_SS
-            + hostNoteheadWidthSs;
+            + host.getNoteheadWidthSs();
         return Math.max(0, (syllableWidthSs - unionWidthSs) / 2);
     }
 
@@ -504,11 +633,11 @@ public class HorizontalSpacingCalculator {
         if (prev.isGraceNote()) {
             // Grace note → host note: a fixed absolute gap that never varies with the song's line
             // rest — the grace note always packs against its host at the same distance (refs #418).
-            return leftInkSs(prev) + GRACE_HOST_REST_SS;
+            return leftInkSs(prev, curr) + GRACE_HOST_REST_SS;
         }
 
         var gapSs = isBeamInternalGap(prev, curr) ? beamInternalGapSs(prev, curr, lineRestSs) : lineRestSs;
-        return leftInkSs(prev) + gapSs;
+        return leftInkSs(prev, curr) + gapSs;
     }
 
     /**
@@ -518,10 +647,14 @@ public class HorizontalSpacingCalculator {
      * gap is measured to the host note head, so the host's accidental does not widen it; for any
      * other gap, augmentation is excluded so dots and falls never push the next column beyond the
      * comfortable gap — in both cases the note-collision strut, which does use the full extents,
-     * keeps the glyphs apart (refs #418, #441, #496).
+     * keeps the glyphs apart (refs #418, #441, #496). A grace's extent is the one {@code curr} faces
+     * ({@link #rightExtentFacingSs}), so the ideal gap and the strut discount the grace's flag on the
+     * same terms.
      */
-    private static double leftInkSs(ElementColumn prev) {
-        return prev.isGraceNote() ? prev.getRightExtentSs() : prev.getRightExtentExcludingAugmentationSs();
+    private static double leftInkSs(ElementColumn prev, ElementColumn curr) {
+        return prev.isGraceNote()
+            ? rightExtentFacingSs(prev, curr)
+            : prev.getRightExtentExcludingAugmentationSs();
     }
 
     /**
@@ -529,7 +662,7 @@ public class HorizontalSpacingCalculator {
      * gap packs proportionally tighter than a normal gap, which takes the full line rest (factor
      * {@code 1}). Mirrors the branch selection in {@link #baseRestSs}, and is the factor the lyric
      * lift scales each gap's share of the lift by, so tight gaps stay proportionally tight. Grace
-     * gaps are rigid and excluded from the lift, so they never reach this method through that path.
+     * gaps are excluded from the lift, so they never reach this method through that path.
      */
     public static double restFactorFor(ElementColumn prev, ElementColumn curr) {
         if (isTightBeamGap(prev, curr)) {
@@ -640,7 +773,7 @@ public class HorizontalSpacingCalculator {
         if (beforeColumn != null && beforeColumn.isGraceNote()) {
             var syllableWidthSs = beforeColumn.getSyllableWidthSs();
             var overhangSs = graceLyricOverhangSs(syllableWidthSs, beforeColumn, column);
-            var graceHostGapSs = beforeColumn.getRightExtentSs() + GRACE_HOST_REST_SS;
+            var graceHostGapSs = rightExtentFacingSs(beforeColumn, column) + GRACE_HOST_REST_SS;
             return Math.max(0, (syllableWidthSs - overhangSs) - graceHostGapSs);
         }
 
@@ -663,7 +796,9 @@ public class HorizontalSpacingCalculator {
             return 0;
         }
 
-        return prev.getRightExtentSs() - curr.getLeftExtentSs() + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
+        return rightExtentFacingSs(prev, curr)
+            - curr.getLeftExtentSs()
+            + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
     }
 
     // ==========================================================================

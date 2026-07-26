@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.when;
 
+import java.awt.Font;
 import java.util.Collections;
 import java.util.List;
 
@@ -34,6 +35,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 
 /**
  * Tests for {@link HorizontalSpacingCalculator#buildSpring} and
@@ -203,6 +205,37 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         return graceColumn;
     }
 
+    // --- Real built columns, for the tests that need true flag/notehead/stem geometry (#560) ---
+
+    /** Staff positions (Sp) far enough apart that a flag at one clears a notehead at the other. */
+    private static final int HIGH_STAFF_POSITION_SP = -4;   // top staff line
+    private static final int MIDDLE_STAFF_POSITION_SP = -1; // space above the middle line
+    private static final int LOW_STAFF_POSITION_SP = 2;     // fourth staff line
+
+    private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+
+    /**
+     * A column carrying the geometry the layout really builds — flag bounds, stem length, notehead
+     * width — rather than the hand-supplied extents the synthetic helpers above use. Detached, so it
+     * has no beam membership and keeps its flag.
+     */
+    private static ElementColumn builtColumn(
+        ElementType type, int staffPositionSp, StaffElement.Direction direction) {
+
+        var element = type.newInstance();
+        element.setStaffPosition(staffPositionSp);
+        element.setDirection(direction);
+        return new ElementColumnBuilder(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0))
+            .buildDetachedColumn(element);
+    }
+
+    /** A built grace column with an outgoing glissando, so its reservation floor is armed. */
+    private static ElementColumn builtGlissandoGraceColumn(int staffPositionSp) {
+        var grace = builtColumn(ElementType.GRACE_QUAVER, staffPositionSp, StaffElement.Direction.UP);
+        grace.getElement().setGlissando();
+        return grace;
+    }
+
     /** A hyphenated syllable column: its collision floor to the next syllable is the bare hyphen. */
     private static ElementColumn hyphenatedSyllableColumn() {
         var syllableColumn = column(
@@ -244,7 +277,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
 
         // The reduction is carried as the solver weight, so it survives compression, not just rest.
         assertThat(spring.weight()).isEqualTo(BEAM_FACTOR);
-        assertThat(spring.rigid()).isFalse();
+        assertThat(spring.liftExempt()).isFalse();
     }
 
     // Two adjacent beam groups must not be merged: the gap between them is a normal gap (refs #418).
@@ -282,14 +315,19 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         var spring = HorizontalSpacingCalculator.buildSpring(graceColumn, plainColumn(), DEFAULT_LINE_REST_SS);
 
         var expectedRestSs = GRACE_RIGHT_EXTENT_SS + GRACE_HOST_REST_SS;
-        var expectedStrutSs = GRACE_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS;
+        // The grace allowance floor sits above the note-collision floor, so it governs the strut:
+        // the gap may give exactly its allowance and no more.
+        var expectedStrutSs = expectedRestSs - HorizontalSpacingCalculator.GRACE_HOST_COMPRESSION_ALLOWANCE_SS;
 
+        assertThat(expectedStrutSs)
+            .isGreaterThan(GRACE_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS);
         assertThat(spring.restSs()).isCloseTo(expectedRestSs, within(TOLERANCE));
         assertThat(spring.strutSs()).isCloseTo(expectedStrutSs, within(TOLERANCE));
-        assertThat(spring.complianceSs()).isCloseTo(expectedRestSs - expectedStrutSs, within(TOLERANCE));
+        assertThat(spring.complianceSs())
+            .isCloseTo(HorizontalSpacingCalculator.GRACE_HOST_COMPRESSION_ALLOWANCE_SS, within(TOLERANCE));
 
-        // A grace→host gap is rigid: fixed at its default, never lifted or compressed.
-        assertThat(spring.rigid()).isTrue();
+        // A grace→host gap takes no lyric lift; it still compresses, bounded by the strut above.
+        assertThat(spring.liftExempt()).isTrue();
     }
 
     // ==========================================================================
@@ -484,9 +522,9 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
 
     // Bug 1 regression: a wide grace lyric must NOT inflate the grace→host strut. The grace defers
     // its right extent to the host and the host bears no syllable, so the syllable floor is 0 and the
-    // strut stays at the note-collision floor — keeping the rigid gap fixed at GRACE_HOST_REST_SS.
+    // strut stays on the grace allowance floor, keeping the gap's give at its allowance.
     @Test
-    void testBuildSpringKeepsGraceToHostStrutAtNoteCollisionFloorUnderWideGraceLyric() {
+    void testBuildSpringKeepsGraceToHostStrutOnTheAllowanceFloorUnderWideGraceLyric() {
         var grace = graceSyllableColumn(WIDE_GRACE_SYLLABLE_WIDTH_SS);
         var host = plainColumn();
         var afterHost = plainColumn();
@@ -494,12 +532,14 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         var spring = HorizontalSpacingCalculator.buildSpring(
             grace, host, DEFAULT_LINE_REST_SS, null, afterHost);
 
-        // The strut holds at the note-collision floor — the wide grace syllable does not inflate it.
+        var expectedRestSs = GRACE_RIGHT_EXTENT_SS + GRACE_HOST_REST_SS;
+
+        // The strut holds on the allowance floor — the wide grace syllable does not inflate it.
         assertThat(spring.strutSs()).isCloseTo(
-            GRACE_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
-        // The gap is rigid and its rest stays at the fixed grace→host distance.
-        assertThat(spring.rigid()).isTrue();
-        assertThat(spring.restSs()).isCloseTo(GRACE_RIGHT_EXTENT_SS + GRACE_HOST_REST_SS, within(TOLERANCE));
+            expectedRestSs - HorizontalSpacingCalculator.GRACE_HOST_COMPRESSION_ALLOWANCE_SS, within(TOLERANCE));
+        // The gap takes no lyric lift and its rest stays at the fixed grace→host distance.
+        assertThat(spring.liftExempt()).isTrue();
+        assertThat(spring.restSs()).isCloseTo(expectedRestSs, within(TOLERANCE));
     }
 
     // Bug 2 fix: the part of a wide grace lyric that spills past the host notehead is attributed to
@@ -522,7 +562,9 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     }
 
     // A grace lyric that fits within the grace→host union overhangs nothing, so it imposes no
-    // syllable constraint on either flanking gap — both struts stay at their note-collision floors.
+    // syllable constraint on either flanking gap — each strut stays on the floor it would have with
+    // no lyric at all (the grace allowance floor for grace→host, the note-collision floor for
+    // host→next).
     @Test
     void testBuildSpringImposesNoLyricConstraintOnNeighbourGapsUnderNarrowGraceLyric() {
         var grace = graceSyllableColumn(NARROW_GRACE_SYLLABLE_WIDTH_SS);
@@ -535,7 +577,9 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
             host, next, DEFAULT_LINE_REST_SS, grace, null);
 
         assertThat(graceToHost.strutSs()).isCloseTo(
-            GRACE_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
+            GRACE_RIGHT_EXTENT_SS + GRACE_HOST_REST_SS
+                - HorizontalSpacingCalculator.GRACE_HOST_COMPRESSION_ALLOWANCE_SS,
+            within(TOLERANCE));
         assertThat(hostToNext.strutSs()).isCloseTo(
             HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
     }
@@ -1100,5 +1144,78 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         var unionWithoutHostSs = GRACE_RIGHT_EXTENT_SS + GRACE_HOST_REST_SS;
         assertThat(overhangSs)
             .isCloseTo((WIDE_GRACE_SYLLABLE_WIDTH_SS - unionWithoutHostSs) / 2, within(TOLERANCE));
+    }
+
+    // ==========================================================================
+    // Vertical-aware grace ink (refs #560)
+    //
+    // These use real built columns rather than the synthetic ones above, because the behaviour is
+    // driven by geometry the synthetic constructor cannot express: the flag's own vertical bounds and
+    // the notehead width underneath it.
+    // ==========================================================================
+
+    /**
+     * A glissando grace whose flag hangs well above its host's notehead reserves only its notehead,
+     * so both the ideal gap and the glissando floor shrink by the flag's width. This is the
+     * screenshot case in #560: a grace on the top staff line with its host four steps below.
+     */
+    @Test
+    void testGraceHostGapDropsAFlagHangingClearOfTheHost() {
+        var grace = builtGlissandoGraceColumn(HIGH_STAFF_POSITION_SP);
+        var host = builtColumn(ElementType.CROTCHET, LOW_STAFF_POSITION_SP, StaffElement.Direction.UP);
+
+        var spring = HorizontalSpacingCalculator.buildSpring(grace, host, DEFAULT_LINE_REST_SS);
+
+        var noteheadWidthSs = grace.getNoteheadWidthSs();
+        assertThat(spring.restSs())
+            .as("the grace packs against its host measured from the notehead, not the distant flag")
+            .isCloseTo(noteheadWidthSs + GRACE_HOST_REST_SS, within(TOLERANCE));
+        assertThat(spring.strutSs()).isCloseTo(
+            noteheadWidthSs - host.getLeftExtentSs() + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS,
+            within(TOLERANCE));
+        // The discount is what moved these — without it both would sit a flag's width wider.
+        assertThat(grace.getRightExtentSs()).isGreaterThan(noteheadWidthSs);
+    }
+
+    /**
+     * The same grace–host pair, but with the flag level with the host's notehead, keeps the full
+     * flag-inflated extent: the flag really is beside the host there, so the gap must clear it.
+     */
+    @Test
+    void testGraceHostGapChargesAFlagThatMeetsTheHost() {
+        var grace = builtGlissandoGraceColumn(LOW_STAFF_POSITION_SP);
+        var host = builtColumn(ElementType.CROTCHET, MIDDLE_STAFF_POSITION_SP, StaffElement.Direction.DOWN);
+
+        var spring = HorizontalSpacingCalculator.buildSpring(grace, host, DEFAULT_LINE_REST_SS);
+
+        var rightExtentSs = grace.getRightExtentSs();
+        assertThat(spring.restSs()).isCloseTo(rightExtentSs + GRACE_HOST_REST_SS, within(TOLERANCE));
+        assertThat(spring.strutSs()).isCloseTo(
+            rightExtentSs - host.getLeftExtentSs() + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS,
+            within(TOLERANCE));
+        assertThat(rightExtentSs).isGreaterThan(grace.getNoteheadWidthSs());
+    }
+
+    /**
+     * The discount is deliberately scoped to grace notes: an ordinary flagged note in the identical
+     * geometry keeps its full extent, so the collision floor of every unbeamed eighth on the page is
+     * untouched.
+     */
+    @Test
+    void testFlaggedNonGraceKeepsItsFullExtentFacingAClearHost() {
+        var quaver = builtColumn(ElementType.QUAVER, HIGH_STAFF_POSITION_SP, StaffElement.Direction.UP);
+        quaver.getElement().setGlissando();
+        var host = builtColumn(ElementType.CROTCHET, LOW_STAFF_POSITION_SP, StaffElement.Direction.UP);
+
+        // Precondition: this quaver's flag does clear the host's left-facing band, so only the
+        // grace-only gate can be keeping the full extent.
+        assertThat(quaver.getRightExtentFacingSs(host.getLeftFacingTopYSs(), host.getLeftFacingBottomYSs()))
+            .isLessThan(quaver.getRightExtentSs());
+
+        var spring = HorizontalSpacingCalculator.buildSpring(quaver, host, DEFAULT_LINE_REST_SS);
+
+        assertThat(spring.strutSs()).isCloseTo(
+            quaver.getRightExtentSs() - host.getLeftExtentSs() + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS,
+            within(TOLERANCE));
     }
 }

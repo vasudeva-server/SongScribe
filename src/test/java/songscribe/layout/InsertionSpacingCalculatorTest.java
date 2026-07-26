@@ -47,10 +47,6 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 import songscribe.font.DocumentFonts;
-import songscribe.layout.ElementColumn;
-import songscribe.layout.ElementColumnBuilder;
-import songscribe.layout.HorizontalSpacingCalculator;
-import songscribe.layout.InsertionSpacingCalculator;
 
 class InsertionSpacingCalculatorTest extends UnitTest {
 
@@ -103,10 +99,10 @@ class InsertionSpacingCalculatorTest extends UnitTest {
      * inside the margin. This is the boundary {@code fitsWithinLine} solves against.
      */
     private static double fullyCompressedWidthSs(InsertionSpacingCalculator.InsertionResult result) {
-        // A rigid gap (grace→host) is pinned to its natural length, not its strut — mirroring
+        // Every gap gives down to its strut — mirroring
         // SpringSpacer.compress, so this is the solver's true floor rather than an underestimate.
         var floorSpanSs = result.projectedSprings().stream()
-            .mapToDouble(spring -> spring.rigid() ? spring.naturalLengthSs() : spring.strutSs())
+            .mapToDouble(Spring::strutSs)
             .sum();
         return result.projectedFirstXSs() + floorSpanSs + result.projectedTrailingReservationSs();
     }
@@ -282,10 +278,10 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
         /**
          * The narrowest margin the chain can still be solved within: every gap frozen on its strut.
-         * A rigid gap is pinned to its natural length instead, mirroring {@code SpringSpacer.compress}.
+         * Every gap gives down to its strut, mirroring {@code SpringSpacer.compress}.
          */
         double compressedFloorSs() {
-            return widthSs(spring -> spring.rigid() ? spring.naturalLengthSs() : spring.strutSs());
+            return widthSs(Spring::strutSs);
         }
     }
 
@@ -912,7 +908,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     }
 
     /**
-     * The line width at which the projected fragment chain is fully compressed — every non-rigid
+     * The line width at which the projected fragment chain is fully compressed — every
      * gap frozen on its strut — the boundary {@link
      * InsertionSpacingCalculator.FragmentInsertionResult#fitsWithinLine} solves against. The
      * fragment analogue of {@link #fullyCompressedWidthSs(InsertionSpacingCalculator.InsertionResult)}.
@@ -921,7 +917,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         InsertionSpacingCalculator.FragmentInsertionResult result) {
 
         var floorSpanSs = result.projectedSprings().stream()
-            .mapToDouble(spring -> spring.rigid() ? spring.naturalLengthSs() : spring.strutSs())
+            .mapToDouble(Spring::strutSs)
             .sum();
         return result.projectedFirstXSs() + floorSpanSs + result.projectedTrailingReservationSs();
     }

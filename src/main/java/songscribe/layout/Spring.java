@@ -35,9 +35,10 @@ package songscribe.layout;
  *       gap ({@code weight < 1}) stays proportionally tighter than a normal gap ({@code weight == 1})
  *       at every compression level, not just at rest. The strut still clamps the result, so a hard
  *       collision floor always wins over the reduction.</li>
- *   <li>{@code rigid} — a gap whose length never changes from its natural (default): it takes no
- *       lyric lift and does not participate in the water-fill, consuming a fixed slice of the span.
- *       Used for grace-host pairs, which pack at a fixed distance regardless of the line's fit.</li>
+ *   <li>{@code liftExempt} — a gap that takes no share of the lyric lift and imposes no lyric
+ *       requirement of its own ({@link LyricLift#applyLyricLift}). Used for grace-host pairs, whose
+ *       ideal is a fixed distance that must not grow with the line's syllables. It says nothing
+ *       about compression: an exempt gap water-fills and gives down to its strut like any other.</li>
  *   <li>{@code levelOffsetSs} — the part of this gap the solver excludes from whitespace levelling:
  *       the previous column's glyph ink at the start of the gap, plus any optical-spacing
  *       correction. Under compression the gap levels to {@code levelOffset + weight × U}, so gaps
@@ -47,35 +48,35 @@ package songscribe.layout;
  * </ul>
  */
 public record Spring(
-    double restSs, double strutSs, double complianceSs, double weight, boolean rigid, double levelOffsetSs) {
+    double restSs, double strutSs, double complianceSs, double weight, boolean liftExempt, double levelOffsetSs) {
 
     /** A gap with no reduction: it levels to the full common unit under compression. */
     public static final double NORMAL_WEIGHT = 1.0;
 
     /**
-     * Creates a normal {@link Spring} ({@link #NORMAL_WEIGHT}, not rigid) with {@code complianceSs}
-     * derived from {@code restSs} and {@code strutSs}: the amount by which the rest gap exceeds the
-     * strut, floored at zero.
+     * Creates a normal {@link Spring} ({@link #NORMAL_WEIGHT}, not lift-exempt) with
+     * {@code complianceSs} derived from {@code restSs} and {@code strutSs}: the amount by which the
+     * rest gap exceeds the strut, floored at zero.
      */
     public static Spring of(double restSs, double strutSs) {
         return of(restSs, strutSs, NORMAL_WEIGHT, false);
     }
 
     /**
-     * Creates a {@link Spring} with an explicit solver {@code weight} and {@code rigid} flag and no
-     * level offset. {@code complianceSs} is derived from {@code restSs} and {@code strutSs}.
+     * Creates a {@link Spring} with an explicit solver {@code weight} and {@code liftExempt} flag
+     * and no level offset. {@code complianceSs} is derived from {@code restSs} and {@code strutSs}.
      */
-    public static Spring of(double restSs, double strutSs, double weight, boolean rigid) {
-        return of(restSs, strutSs, weight, rigid, 0.0);
+    public static Spring of(double restSs, double strutSs, double weight, boolean liftExempt) {
+        return of(restSs, strutSs, weight, liftExempt, 0.0);
     }
 
     /**
-     * Creates a {@link Spring} with an explicit solver {@code weight}, {@code rigid} flag, and
+     * Creates a {@link Spring} with an explicit solver {@code weight}, {@code liftExempt} flag, and
      * {@code levelOffsetSs}. {@code complianceSs} is derived from {@code restSs} and
      * {@code strutSs}.
      */
-    public static Spring of(double restSs, double strutSs, double weight, boolean rigid, double levelOffsetSs) {
-        return new Spring(restSs, strutSs, Math.max(0, restSs - strutSs), weight, rigid, levelOffsetSs);
+    public static Spring of(double restSs, double strutSs, double weight, boolean liftExempt, double levelOffsetSs) {
+        return new Spring(restSs, strutSs, Math.max(0, restSs - strutSs), weight, liftExempt, levelOffsetSs);
     }
 
     /**
@@ -87,12 +88,12 @@ public record Spring(
     }
 
     /**
-     * Returns a copy of this spring with a new rest gap, keeping the strut, weight, rigid flag and
-     * level offset, and recomputing {@code complianceSs} from the new rest. The strut is a hard
+     * Returns a copy of this spring with a new rest gap, keeping the strut, weight, lift-exempt flag
+     * and level offset, and recomputing {@code complianceSs} from the new rest. The strut is a hard
      * collision floor and so is unaffected by rest adjustments (e.g. the lyric lift pass).
      */
     public Spring withRestSs(double newRestSs) {
-        return of(newRestSs, strutSs, weight, rigid, levelOffsetSs);
+        return of(newRestSs, strutSs, weight, liftExempt, levelOffsetSs);
     }
 
     /**
@@ -103,6 +104,6 @@ public record Spring(
      * collision-safety changes.
      */
     public Spring withCorrectionSs(double correctionSs) {
-        return of(restSs + correctionSs, strutSs, weight, rigid, levelOffsetSs + correctionSs);
+        return of(restSs + correctionSs, strutSs, weight, liftExempt, levelOffsetSs + correctionSs);
     }
 }

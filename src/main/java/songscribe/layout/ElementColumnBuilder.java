@@ -58,9 +58,19 @@ import songscribe.smufl.SMuFLMetadata;
  */
 public class ElementColumnBuilder {
 
-    // Small note head width from SMuFL noteheadBlackSmall bounding box (ss)
-    public static final double NOTE_HEAD_SMALL_WIDTH_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK_SMALL).width();
+    /**
+     * Grace notehead width (ss) — the regular black notehead at {@link ElementType#GRACE_NOTE_SCALE},
+     * which is exactly what {@code NoteRenderer.renderNoteHead} paints for a grace note (the
+     * {@code NOTEHEAD_BLACK} glyph in the grace-scaled font).
+     *
+     * <p>Deliberately <em>not</em> SMuFL's {@code noteheadBlackSmall}: Bravura's {@code *Small}
+     * optional glyphs are cue-<em>staff</em> glyphs, sized for a reduced staff rather than reduced
+     * against a full-size one, so that bbox is 1.408 ss — wider than the full-size notehead it is
+     * supposed to shrink, and 0.52 ss wider than the head actually drawn. Reserving it made every
+     * grace column charge phantom ink into its gaps (refs #560).
+     */
+    public static final double GRACE_NOTE_HEAD_WIDTH_SS =
+        SMuFLConstants.NOTE_HEAD_WIDTH_SS * ElementType.GRACE_NOTE_SCALE;
 
     // Half note head width (for left/right extent calculation) (ss)
     static final double HALF_NOTE_HEAD_SS = SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0;
@@ -327,7 +337,7 @@ public class ElementColumnBuilder {
      */
     private static double getNoteheadRightExtent(ElementType type) {
         return type.isGraceNote()
-            ? NOTE_HEAD_SMALL_WIDTH_SS
+            ? GRACE_NOTE_HEAD_WIDTH_SS
             : SMuFLConstants.NOTE_HEAD_WIDTH_SS;
     }
 
@@ -351,6 +361,11 @@ public class ElementColumnBuilder {
      * A stem forced into its unnatural direction is shortened (Ross &amp; Gourlay), so the reported
      * tip floats correspondingly lower — this keeps {@code getAbsoluteTopYSs()} on the real tip.
      *
+     * <p>The direction and the length are the <em>drawn</em> ones
+     * ({@link NoteGeometry#effectiveDirection}, {@link NoteGeometry#stemLengthSs}), so a grace note
+     * — which always stems up on a shortened stem regardless of the direction it stores — reports
+     * the tip it actually renders rather than a full-length stem in a direction it never draws.
+     *
      * @param element The element
      * @return Stem top Y position in ss (relative to staff, negative = above)
      */
@@ -362,11 +377,13 @@ public class ElementColumnBuilder {
             return -HALF_NOTE_HEAD_SS;
         }
 
+        var direction = NoteGeometry.effectiveDirection(element);
+
         // Stem up: stem extends upward, so the top is the stem tip (shortened if forced)
-        if (element.getDirection().isUp()) {
+        if (direction.isUp()) {
             var forcedShorteningSs = NoteGeometry.forcedShorteningSs(
-                element.getStaffPosition(), element.getDirection(), elementType.isGraceNote());
-            return -(SMuFLConstants.STEM_LENGTH_SS - forcedShorteningSs);
+                element.getStaffPosition(), direction, elementType.isGraceNote());
+            return -(NoteGeometry.stemLengthSs(elementType) - forcedShorteningSs);
         }
 
         // Stem down: top is just above element head
@@ -379,7 +396,8 @@ public class ElementColumnBuilder {
      * For stem-up or stemless elements, this is the element head bottom.
      *
      * A stem forced into its unnatural direction is shortened (Ross &amp; Gourlay), so the reported
-     * tip floats correspondingly higher.
+     * tip floats correspondingly higher. Direction and length are the drawn ones — see
+     * {@link #calculateStemTopSs}.
      *
      * @param element The element
      * @return Stem bottom Y position in ss (relative to staff, positive = below)
@@ -392,11 +410,13 @@ public class ElementColumnBuilder {
             return HALF_NOTE_HEAD_SS;
         }
 
+        var direction = NoteGeometry.effectiveDirection(element);
+
         // Stem down: stem extends downward, so the bottom is the stem tip (shortened if forced)
-        if (element.getDirection().isDown()) {
+        if (direction.isDown()) {
             var forcedShorteningSs = NoteGeometry.forcedShorteningSs(
-                element.getStaffPosition(), element.getDirection(), elementType.isGraceNote());
-            return SMuFLConstants.STEM_LENGTH_SS - forcedShorteningSs;
+                element.getStaffPosition(), direction, elementType.isGraceNote());
+            return NoteGeometry.stemLengthSs(elementType) - forcedShorteningSs;
         }
 
         // Stem up: bottom is just below element head

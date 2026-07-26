@@ -97,20 +97,16 @@ class SpringSpacerTest extends UnitTest {
     /** A span that forces compression (natural is 3 × rest) but leaves every strut slack. */
     private static final double WEIGHTED_SPAN_SS = 6.0;
 
-    /** A rigid gap (grace→host) and its normal neighbours, for the pin-and-exclude tests. */
-    private static final double RIGID_REST_SS = 3.0;
-    private static final double RIGID_STRUT_SS = 1.0;
-    private static final double RIGID_NEIGHBOR_REST_SS = 5.0;
-    private static final double RIGID_NEIGHBOR_STRUT_SS = 1.0;
-    /** Compresses the two neighbours (natural 13) while the rigid gap holds its default. */
-    private static final double RIGID_COMPRESS_SPAN_SS = 9.0;
-
-    /** A rigid gap plus a stiff neighbour, to show the rigid floor is its natural, not its strut. */
-    private static final double RIGID_STIFF_NEIGHBOR_REST_SS = 2.0;
-    private static final double RIGID_STIFF_NEIGHBOR_STRUT_SS = 1.0;
-    /** Below rigid-natural (3) + neighbour-strut (1) = 4, though the two struts alone sum to 2. */
-    private static final double RIGID_INFEASIBLE_SPAN_SS = 3.5;
-    private static final double RIGID_FEASIBLE_SPAN_SS = 4.0;
+    /** A grace→host-shaped gap — a narrow allowance between rest and strut — and its neighbours. */
+    private static final double GRACE_REST_SS = 3.0;
+    private static final double GRACE_ALLOWANCE_SS = 0.5;
+    private static final double GRACE_STRUT_SS = GRACE_REST_SS - GRACE_ALLOWANCE_SS;
+    private static final double GRACE_NEIGHBOR_REST_SS = 5.0;
+    private static final double GRACE_NEIGHBOR_STRUT_SS = 1.0;
+    /** Well below the chain's natural (13), so the fill drives the grace gap onto its allowance floor. */
+    private static final double GRACE_COMPRESS_SPAN_SS = 6.0;
+    /** Above the chain's natural (13) so nothing compresses, but low enough to prove no stretching. */
+    private static final double GRACE_UNCOMPRESSED_SPAN_SS = 20.0;
 
     // --- Whitespace levelling (Phase 5): two free gaps sharing a rest/strut/weight but differing by
     // a level offset, compressed enough that neither hits its strut or natural. ---
@@ -435,47 +431,65 @@ class SpringSpacerTest extends UnitTest {
     }
 
     /**
-     * A rigid gap (grace→host) holds its natural length under compression while its neighbours give;
-     * it consumes a fixed slice of the span rather than levelling with the rest.
+     * A grace→host gap's give is bounded by its strut, not by a flag: under heavy compression it
+     * tightens with its neighbours but stops on the allowance floor its builder set, while the
+     * neighbours keep giving past it.
      */
     @Test
-    void testRigidGapKeepsNaturalLengthWhileNeighboursCompress() {
+    void testGraceShapedGapCompressesOnlyDownToItsAllowanceFloor() {
         var springs = List.of(
-            Spring.of(RIGID_REST_SS, RIGID_STRUT_SS, Spring.NORMAL_WEIGHT, true),
-            Spring.of(RIGID_NEIGHBOR_REST_SS, RIGID_NEIGHBOR_STRUT_SS),
-            Spring.of(RIGID_NEIGHBOR_REST_SS, RIGID_NEIGHBOR_STRUT_SS));
+            graceSpring(),
+            Spring.of(GRACE_NEIGHBOR_REST_SS, GRACE_NEIGHBOR_STRUT_SS),
+            Spring.of(GRACE_NEIGHBOR_REST_SS, GRACE_NEIGHBOR_STRUT_SS));
 
-        var result = SpringSpacer.solve(springs, RIGID_COMPRESS_SPAN_SS);
+        var result = SpringSpacer.solve(springs, GRACE_COMPRESS_SPAN_SS);
 
         var gapLengthsSs = solvedGapLengthsSs(result);
 
-        // The rigid gap stays on its default (natural = max(rest, strut) = rest).
-        assertThat(gapLengthsSs[0]).isEqualTo(RIGID_REST_SS, within(TOLERANCE_SS));
+        // It gave exactly its allowance and no more.
+        assertThat(gapLengthsSs[0]).isEqualTo(GRACE_STRUT_SS, within(TOLERANCE_SS));
 
-        // The two normal neighbours split the remaining budget evenly and compress below their rest.
-        var expectedNeighborSs = (RIGID_COMPRESS_SPAN_SS - RIGID_REST_SS) / 2;
-        assertThat(gapLengthsSs[1]).isEqualTo(expectedNeighborSs, within(TOLERANCE_SS));
-        assertThat(gapLengthsSs[2]).isEqualTo(expectedNeighborSs, within(TOLERANCE_SS));
-        assertThat(expectedNeighborSs).isLessThan(RIGID_NEIGHBOR_REST_SS);
-        assertThat(sumOf(result)).isEqualTo(RIGID_COMPRESS_SPAN_SS, within(TOLERANCE_SS));
+        // The neighbours, with more slack, are driven below where the grace gap stopped.
+        assertThat(gapLengthsSs[1]).isLessThan(GRACE_STRUT_SS);
+        assertThat(gapLengthsSs[1]).isEqualTo(gapLengthsSs[2], within(TOLERANCE_SS));
+        assertThat(sumOf(result)).isEqualTo(GRACE_COMPRESS_SPAN_SS, within(TOLERANCE_SS));
+    }
+
+    /** A grace→host gap is never stretched past its ideal on a line that fits. */
+    @Test
+    void testGraceShapedGapIsNotStretchedOnAnUncompressedLine() {
+        var springs = List.of(
+            graceSpring(),
+            Spring.of(GRACE_NEIGHBOR_REST_SS, GRACE_NEIGHBOR_STRUT_SS),
+            Spring.of(GRACE_NEIGHBOR_REST_SS, GRACE_NEIGHBOR_STRUT_SS));
+
+        var gapLengthsSs = solvedGapLengthsSs(SpringSpacer.solve(springs, GRACE_UNCOMPRESSED_SPAN_SS));
+
+        assertThat(gapLengthsSs[0]).isEqualTo(GRACE_REST_SS, within(TOLERANCE_SS));
     }
 
     /**
-     * A rigid gap's floor is its natural length, not its strut: a span that would fit if the rigid
-     * gap could compress to its strut is infeasible, while the span that clears its natural fits.
+     * {@code liftExempt} is a lyric-lift concern only: the solver must not read it, so flipping it
+     * cannot change a single solved length.
      */
     @Test
-    void testRigidGapFloorIsNaturalNotStrut() {
-        var springs = List.of(
-            Spring.of(RIGID_REST_SS, RIGID_STRUT_SS, Spring.NORMAL_WEIGHT, true),
-            Spring.of(RIGID_STIFF_NEIGHBOR_REST_SS, RIGID_STIFF_NEIGHBOR_STRUT_SS));
+    void testLiftExemptFlagDoesNotAffectTheSolve() {
+        var exempt = List.of(
+            Spring.of(GRACE_REST_SS, GRACE_STRUT_SS, Spring.NORMAL_WEIGHT, true),
+            Spring.of(GRACE_NEIGHBOR_REST_SS, GRACE_NEIGHBOR_STRUT_SS));
+        var notExempt = List.of(
+            Spring.of(GRACE_REST_SS, GRACE_STRUT_SS, Spring.NORMAL_WEIGHT, false),
+            Spring.of(GRACE_NEIGHBOR_REST_SS, GRACE_NEIGHBOR_STRUT_SS));
 
-        assertThat(SpringSpacer.solve(springs, RIGID_INFEASIBLE_SPAN_SS).isInfeasible()).isTrue();
+        assertThat(solvedGapLengthsSs(SpringSpacer.solve(exempt, GRACE_COMPRESS_SPAN_SS)))
+            .containsExactly(
+                solvedGapLengthsSs(SpringSpacer.solve(notExempt, GRACE_COMPRESS_SPAN_SS)),
+                within(TOLERANCE_SS));
+    }
 
-        var feasible = SpringSpacer.solve(springs, RIGID_FEASIBLE_SPAN_SS);
-        var gapLengthsSs = solvedGapLengthsSs(feasible);
-        assertThat(gapLengthsSs[0]).isEqualTo(RIGID_REST_SS, within(TOLERANCE_SS));
-        assertThat(gapLengthsSs[1]).isEqualTo(RIGID_STIFF_NEIGHBOR_STRUT_SS, within(TOLERANCE_SS));
+    /** A grace→host-shaped spring: lift-exempt, with only its allowance of give. */
+    private static Spring graceSpring() {
+        return Spring.of(GRACE_REST_SS, GRACE_STRUT_SS, Spring.NORMAL_WEIGHT, true);
     }
 
     /**

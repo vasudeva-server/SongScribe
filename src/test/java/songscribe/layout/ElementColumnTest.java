@@ -21,7 +21,9 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
+import java.awt.Font;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,12 +49,42 @@ class ElementColumnTest extends UnitTest {
     private static final double EXPECTED_LEFT_EDGE = 8.5;  // 10.0 + (-1.5)
     private static final double EXPECTED_RIGHT_EDGE = 12.0; // 10.0 + 2.0
 
+    private static final double POSITION_TOLERANCE_SS = 1e-9;
+
+    // Staff positions (Sp, positive = below the middle line) far enough apart that a flag at one
+    // hangs entirely clear of a notehead at the other.
+    private static final int HIGH_STAFF_POSITION_SP = -4;   // top staff line
+    private static final int MIDDLE_STAFF_POSITION_SP = -1; // space above the middle line
+    private static final int LOW_STAFF_POSITION_SP = 2;     // fourth staff line
+
+    private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+    private static final LyricRenderMetrics LYRIC_METRICS =
+        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
+
     private static StaffElement element(ElementType type) {
         return type.newInstance();
     }
 
     private static ElementColumn columnFor(StaffElement element) {
         return new ElementColumn(element, List.of(), 0, 0, 0, 0, null, 0, false);
+    }
+
+    /**
+     * A column with real geometry — flag bounds, stem length, notehead width — as the layout builds
+     * it, rather than the synthetic extents the other tests here pass in by hand. Detached, so it
+     * carries no beam membership and keeps its flag.
+     */
+    private static ElementColumn builtColumn(StaffElement element) {
+        return new ElementColumnBuilder(LYRIC_METRICS).buildDetachedColumn(element);
+    }
+
+    private static ElementColumn builtColumn(
+        ElementType type, int staffPositionSp, StaffElement.Direction direction) {
+
+        var element = element(type);
+        element.setStaffPosition(staffPositionSp);
+        element.setDirection(direction);
+        return builtColumn(element);
     }
 
     @Test
@@ -173,5 +205,90 @@ class ElementColumnTest extends UnitTest {
 
         assertThat(columnFor(glissandoNote).hasGlissando()).isTrue();
         assertThat(columnFor(element(ElementType.CROTCHET)).hasGlissando()).isFalse();
+    }
+
+    // ==========================================================================
+    // Left-facing band and the flag discount (refs #560)
+    // ==========================================================================
+
+    @Test
+    void testLeftFacingBandIsTheNoteheadAloneForAnUpStem() {
+        var upStem = builtColumn(ElementType.CROTCHET, LOW_STAFF_POSITION_SP, StaffElement.Direction.UP);
+        var positionSs = upStem.getPositionSs();
+
+        // The up-stem reaches well above the notehead, but it stands on the notehead's right edge,
+        // so nothing approaching from the left can meet it.
+        assertThat(upStem.getAbsoluteTopYSs()).isLessThan(positionSs - ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+        assertThat(upStem.getLeftFacingTopYSs())
+            .isCloseTo(positionSs - ElementColumnBuilder.HALF_NOTE_HEAD_SS, within(POSITION_TOLERANCE_SS));
+        assertThat(upStem.getLeftFacingBottomYSs())
+            .isCloseTo(positionSs + ElementColumnBuilder.HALF_NOTE_HEAD_SS, within(POSITION_TOLERANCE_SS));
+    }
+
+    @Test
+    void testLeftFacingBandReachesTheStemTipForADownStem() {
+        var downStem = builtColumn(ElementType.CROTCHET, HIGH_STAFF_POSITION_SP, StaffElement.Direction.DOWN);
+
+        // A down-stem sits on the notehead's LEFT edge, so it does face left and the band must cover it.
+        assertThat(downStem.getLeftFacingBottomYSs())
+            .isCloseTo(downStem.getAbsoluteBottomYSs(), within(POSITION_TOLERANCE_SS));
+        assertThat(downStem.getLeftFacingBottomYSs())
+            .isGreaterThan(downStem.getPositionSs() + ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+    }
+
+    @Test
+    void testRightExtentFacingDropsAGraceFlagHangingClearOfTheNeighbour() {
+        var grace = builtColumn(ElementType.GRACE_QUAVER, HIGH_STAFF_POSITION_SP, StaffElement.Direction.UP);
+        var host = builtColumn(ElementType.CROTCHET, LOW_STAFF_POSITION_SP, StaffElement.Direction.UP);
+
+        // Precondition: the flag really is what inflates this column's right extent.
+        assertThat(grace.getFlagExtentSs()).isPositive();
+
+        assertThat(grace.getRightExtentFacingSs(host.getLeftFacingTopYSs(), host.getLeftFacingBottomYSs()))
+            .as("a flag four steps above the neighbour's notehead is ink nowhere near the gap")
+            .isCloseTo(grace.getNoteheadWidthSs(), within(POSITION_TOLERANCE_SS));
+    }
+
+    @Test
+    void testRightExtentFacingChargesAGraceFlagThatMeetsTheNeighbour() {
+        var grace = builtColumn(ElementType.GRACE_QUAVER, LOW_STAFF_POSITION_SP, StaffElement.Direction.UP);
+        var host = builtColumn(ElementType.CROTCHET, MIDDLE_STAFF_POSITION_SP, StaffElement.Direction.DOWN);
+
+        assertThat(grace.getRightExtentFacingSs(host.getLeftFacingTopYSs(), host.getLeftFacingBottomYSs()))
+            .as("a flag level with the neighbour's notehead is charged in full")
+            .isCloseTo(grace.getRightExtentSs(), within(POSITION_TOLERANCE_SS));
+    }
+
+    @Test
+    void testRightExtentFacingChargesTheFullExtentWhenAugmentationReachesPastTheFlag() {
+        var dottedQuaver = element(ElementType.QUAVER);
+        dottedQuaver.setDotCount(1);
+        dottedQuaver.setStaffPosition(HIGH_STAFF_POSITION_SP);
+        dottedQuaver.setDirection(StaffElement.Direction.UP);
+        var dotted = builtColumn(dottedQuaver);
+        var neighbour = builtColumn(ElementType.CROTCHET, LOW_STAFF_POSITION_SP, StaffElement.Direction.UP);
+
+        // Preconditions: the flag clears the neighbour's band (so only the dot can hold the extent
+        // out), and the dot really does reach past the flag.
+        assertThat(builtColumn(ElementType.QUAVER, HIGH_STAFF_POSITION_SP, StaffElement.Direction.UP)
+            .getRightExtentFacingSs(neighbour.getLeftFacingTopYSs(), neighbour.getLeftFacingBottomYSs()))
+            .isLessThan(dotted.getRightExtentSs());
+        assertThat(dotted.getRightExtentSs()).isGreaterThan(dotted.getRightExtentExcludingAugmentationSs());
+
+        assertThat(dotted.getRightExtentFacingSs(
+            neighbour.getLeftFacingTopYSs(), neighbour.getLeftFacingBottomYSs()))
+            .as("a dot stacks to the right of the flag, so there is nothing to discount")
+            .isCloseTo(dotted.getRightExtentSs(), within(POSITION_TOLERANCE_SS));
+    }
+
+    @Test
+    void testRightExtentFacingChargesTheFullExtentWithoutAFlag() {
+        var crotchet = builtColumn(ElementType.CROTCHET, HIGH_STAFF_POSITION_SP, StaffElement.Direction.UP);
+        var neighbour = builtColumn(ElementType.CROTCHET, LOW_STAFF_POSITION_SP, StaffElement.Direction.UP);
+
+        assertThat(crotchet.getFlagExtentSs()).isZero();
+        assertThat(crotchet.getRightExtentFacingSs(
+            neighbour.getLeftFacingTopYSs(), neighbour.getLeftFacingBottomYSs()))
+            .isCloseTo(crotchet.getRightExtentSs(), within(POSITION_TOLERANCE_SS));
     }
 }
