@@ -82,8 +82,12 @@ class LineSelectionHandler {
     /**
      * Hit-tests the given point against all selectable elements in this line.
      * <p>
-     * The cascade tests note heads first, then slides, then staff-line proximity.
+     * The cascade tests note heads first, then slides, then endings, then staff-line
+     * proximity.
      * If nothing is hit, {@link HitResult.Nothing} is returned.
+     * <p>
+     * The point must already be in document pixels. This differs from the
+     * {@code is…} helpers below, which take view pixels and convert internally.
      */
     HitResult hitTest(Point point) {
         var elementIndex = ElementHitTest.hitTestElement(lc, point);
@@ -119,12 +123,31 @@ class LineSelectionHandler {
             return new HitResult.Ending(ending);
         }
 
-        if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS
-                && clickXSs <= headerRightEdgeSs()) {
+        if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS && isWithinHeaderXSs(clickXSs)) {
             return new HitResult.StaffLine();
         }
 
         return new HitResult.Nothing();
+    }
+
+    /**
+     * Returns whether the given point, in view pixels, falls in the staff-line hit
+     * region — on the staff lines within the header (clef and optional key signature)
+     * area. Whether a click there actually selects the line depends on the caller's
+     * mode and playback checks; this reports only the hit region.
+     */
+    boolean isStaffLineHit(Point viewPoint) {
+        return hitTest(lc.getViewScale().toDocumentPoint(viewPoint)) instanceof HitResult.StaffLine;
+    }
+
+    /**
+     * Returns whether the given point, in view pixels, is horizontally within the staff
+     * header, regardless of its Y. Unlike {@link #isStaffLineHit}, this covers the whole
+     * header column, since no element can be inserted anywhere in it.
+     */
+    boolean isWithinHeaderX(Point viewPoint) {
+        var docPoint = lc.getViewScale().toDocumentPoint(viewPoint);
+        return isWithinHeaderXSs(ScaleContext.pxToSs(docPoint.x));
     }
 
     // ======================================================================
@@ -380,13 +403,14 @@ class LineSelectionHandler {
     // ======================================================================
 
     /**
-     * Returns the right edge of the staff header (clef + optional key signature)
-     * in staff-space units. Clicks at or before this X select the staff lines.
+     * Returns whether the given X, in staff-space units, is within this line's staff
+     * header (clef + optional key signature). Clicks at or before that X select the
+     * staff lines.
      */
-    private double headerRightEdgeSs() {
+    private boolean isWithinHeaderXSs(double xSs) {
         var line = lc.getLine();
         var keyAccidentalCount = line != null ? line.getKeyAccidentalCount() : 0;
-        return HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(keyAccidentalCount);
+        return HorizontalSpacingCalculator.isWithinHeaderXSs(xSs, keyAccidentalCount);
     }
 
     private int hitTestSlideAtPoint(double clickXSs, double clickYSs) {

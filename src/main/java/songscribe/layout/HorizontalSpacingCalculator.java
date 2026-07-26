@@ -142,6 +142,19 @@ public class HorizontalSpacingCalculator {
         return SMuFLConstants.G_CLEF_WIDTH_SS + keyAccidentalCount * KEY_ACCIDENTAL_WIDTH_SS;
     }
 
+    /**
+     * Returns whether the given X, in staff-space units, falls within the staff header
+     * (clef + optional key signature). A point exactly on the header's right edge counts
+     * as inside, so this agrees with the staff-line hit region.
+     *
+     * @param xSs                X position in staff-space units
+     * @param keyAccidentalCount Number of accidentals in the key signature
+     * @return whether the X is within the header
+     */
+    public static boolean isWithinHeaderXSs(double xSs, int keyAccidentalCount) {
+        return xSs <= calculateHeaderRightEdgeSs(keyAccidentalCount);
+    }
+
     // ==========================================================================
     // First Note Positioning
     // ==========================================================================

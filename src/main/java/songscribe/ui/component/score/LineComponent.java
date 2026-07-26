@@ -717,7 +717,11 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (getScoreView().getMode() == Mode.EDIT && hitTestLyric(e.getPoint()) != null) {
+        // No preview anywhere in the clef/key signature column or over the lyrics, since
+        // a click there does not insert an element. The header test is two comparisons,
+        // so it runs before the lyric test, which loops over every element in the line.
+        if (getScoreView().getMode() == Mode.EDIT
+            && (selectionHandler.isWithinHeaderX(e.getPoint()) || hitTestLyric(e.getPoint()) != null)) {
             clearPreviewElement();
             return;
         }
@@ -779,21 +783,33 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (!selectionHandler.handleClick(e)) {
-            PreviewElementManager.handleClick(this);
+        if (selectionHandler.handleClick(e)) {
+            return;
         }
+
+        // Nothing is inserted anywhere in the clef/key signature column. mouseMoved
+        // normally clears the preview there, but it cannot when the header widens under
+        // a stationary mouse — a key signature change leaves a stale preview inside the
+        // header with no mouse movement to re-clear it.
+        if (selectionHandler.isWithinHeaderX(e.getPoint())) {
+            return;
+        }
+
+        PreviewElementManager.handleClick(this);
     }
 
     /**
      * Opens the lyric editor on a double-clicked element, returning true when it did.
      * <p>
-     * The gesture is a plain double-click in SELECT mode; in EDIT mode it takes Alt, which
-     * {@link #mousePressed} has already turned into a permanent switch to SELECT mode by the
-     * time the click arrives. {@code isSelectionActive} is the gate for exactly that pair of
-     * cases, and additionally rules out the adjustment modes and playback. Shift is excluded
-     * separately: shift+click extends the selection, and this method runs before the
-     * selection handler sees the click, so without the guard a shift+double-click would
-     * discard the selection the user was building.
+     * The gesture is a plain double-click in SELECT mode; in EDIT mode it needs
+     * {@link #mousePressed} to have already switched permanently to SELECT mode by the time
+     * the click arrives, which Alt does anywhere and a plain click does on the staff lines in
+     * the clef/key signature column. {@code isSelectionActive} is the gate for exactly those
+     * cases, and additionally rules out the adjustment modes and playback. The staff-line
+     * route never reaches the editor, since no element sits in that column for the hit test
+     * below to find. Shift is excluded separately: shift+click extends the selection, and this
+     * method runs before the selection handler sees the click, so without the guard a
+     * shift+double-click would discard the selection the user was building.
      */
     private boolean editLyricOnDoubleClickedElement(MouseEvent e) {
         var scoreView = getScoreView();
@@ -836,8 +852,13 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // Alt+click in EDIT mode: switch to SELECT, then fall through to normal handling
-        if (e.isAltDown() && scoreView != null && scoreView.getMode() == Mode.EDIT) {
+        // In EDIT mode, alt+click anywhere and a plain click on the staff lines in the
+        // clef/key signature area both switch to SELECT mode, then fall through to normal
+        // handling so the rest of this method acts as if we had been in SELECT mode all
+        // along.
+        if (scoreView != null
+            && scoreView.getMode() == Mode.EDIT
+            && (e.isAltDown() || selectionHandler.isStaffLineHit(e.getPoint()))) {
             Actions.SELECT_MODE_ACTION.perform(this);
         }
 
