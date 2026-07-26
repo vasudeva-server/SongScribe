@@ -136,6 +136,13 @@ class NoteColumnGeometryTest extends UnitTest {
             }
 
             var noteheadBBox = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph());
+
+            // A grace note is the regular glyph drawn at GRACE_NOTE_SCALE, and both the column
+            // (via getGlyphRightEdgeSs) and the stem anchors work at that scale, so the bbox has
+            // to be scaled to be compared against them.
+            var scale = noteType.isGraceNote() ? ElementType.GRACE_NOTE_SCALE : 1f;
+            var noteheadLeftSs = scale * noteheadBBox.left();
+            var noteheadRightSs = scale * noteheadBBox.right();
             var upStemRightSs =
                 NoteGeometry.computeBaseStemGeometry(noteType, StaffElement.Direction.UP).stemLeftXSs()
                     + NoteGeometry.STEM_WIDTH_SS;
@@ -146,24 +153,25 @@ class NoteColumnGeometryTest extends UnitTest {
             // direction — this is what keeps the widening guards from firing.
             assertThat(upStemRightSs)
                 .as("%s up-stem right edge within notehead right edge", noteType)
-                .isLessThanOrEqualTo(noteheadBBox.right() + TOLERANCE_SS);
+                .isLessThanOrEqualTo(noteheadRightSs + TOLERANCE_SS);
             assertThat(downStemLeftSs)
                 .as("%s down-stem left edge within notehead left edge", noteType)
-                .isGreaterThanOrEqualTo(noteheadBBox.left() - TOLERANCE_SS);
+                .isGreaterThanOrEqualTo(noteheadLeftSs - TOLERANCE_SS);
 
-            // Grace notes are the one type where the two do not merely fail to protrude but sit
-            // far apart: their stem anchors are scaled to the drawn small notehead while the
-            // column still measures the full-size noteheadBlack bbox.
+            assertThat(upStemRightSs)
+                .as("%s up-stem right edge flush with notehead right edge", noteType)
+                .isCloseTo(noteheadRightSs, within(TOLERANCE_SS));
+
+            // A grace note takes its down-stem anchor from the up-stem anchor
+            // (computeBaseStemGeometry), so its down-stem sits at the notehead's right edge rather
+            // than its left. It still cannot protrude, which is all the widening guard cares about.
             if (noteType.isGraceNote()) {
                 continue;
             }
 
-            assertThat(upStemRightSs)
-                .as("%s up-stem right edge flush with notehead right edge", noteType)
-                .isCloseTo(noteheadBBox.right(), within(TOLERANCE_SS));
             assertThat(downStemLeftSs)
                 .as("%s down-stem left edge flush with notehead left edge", noteType)
-                .isCloseTo(noteheadBBox.left(), within(TOLERANCE_SS));
+                .isCloseTo(noteheadLeftSs, within(TOLERANCE_SS));
         }
     }
 

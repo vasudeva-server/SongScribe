@@ -848,6 +848,8 @@ class NoteGeometryTest extends UnitTest {
     @Nested
     class GlyphRightEdge {
 
+        private static final double TOLERANCE = 1e-9;
+
         @Test
         void testCrotchetRightEdgeMatchesSmuflBbox() {
             var glyph = ElementType.CROTCHET.requireSMuFLGlyph();
@@ -855,6 +857,18 @@ class NoteGeometryTest extends UnitTest {
 
             assertThat(NoteGeometry.getGlyphRightEdgeSs(ElementType.CROTCHET.newInstance()))
                 .isEqualTo(bbox.right());
+        }
+
+        @Test
+        void testGraceNoteRightEdgeIsScaledDown() {
+            // A grace note draws the regular black notehead at GRACE_NOTE_SCALE, so the measured
+            // edge must be scaled too — the unscaled bbox overstates the drawn ink.
+            var bbox = SMuFLMetadata.requireBBox(ElementType.GRACE_QUAVER.requireSMuFLGlyph());
+            var expected = ElementType.GRACE_NOTE_SCALE * bbox.right();
+
+            assertThat(NoteGeometry.getGlyphRightEdgeSs(ElementType.GRACE_QUAVER.newInstance()))
+                .isCloseTo(expected, within(TOLERANCE))
+                .isLessThan(bbox.right());
         }
 
     }
