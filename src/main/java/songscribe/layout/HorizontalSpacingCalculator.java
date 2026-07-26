@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 import songscribe.dom.Line;
 import songscribe.engraving.SMuFLConstants;
+import songscribe.util.LogUtils;
 
 
 /**
@@ -466,7 +467,7 @@ public class HorizontalSpacingCalculator {
         var reservationSs = trailingReservationSs(columns.getLast(), line);
         var result = solveChain(springs, firstXSs, reservationSs, staffRightMarginSs);
 
-        if (LOG.isDebugEnabled()) {
+        if (LogUtils.isTracingSpacing(LOG)) {
             logLineSolve(columns, line, lifted, springs, result, staffRightMarginSs - firstXSs - reservationSs);
         }
 
@@ -480,7 +481,7 @@ public class HorizontalSpacingCalculator {
      * compressed) length, and the ink-to-ink white that length leaves — so ideal-vs-compressed
      * spacing, and length-vs-perceived-white, can both be compared per gap from the log alone. A gap
      * whose correction was non-zero gets a second line breaking it into its three terms. Only ever
-     * called under {@code LOG.isDebugEnabled()}.
+     * called under {@link LogUtils#isTracingSpacing}, i.e. with {@code DEBUG_SPACING} set.
      */
     private static void logLineSolve(
         List<ElementColumn> columns,
@@ -552,6 +553,7 @@ public class HorizontalSpacingCalculator {
      * Appends the per-term breakdown of a gap's optical correction, plus the two geometric inputs
      * that drive the note-to-note terms, so a correction that fired can be told apart from one that
      * was skipped and from one that cancelled against another. Emits nothing when no term fired.
+     * Only ever called under {@link LogUtils#isTracingSpacing}.
      */
     private static void appendCorrectionBreakdown(StringBuilder sb, ElementColumn prev, ElementColumn curr) {
         var oppositeSs = OpticalSpacing.oppositeStemCorrectionSs(prev, curr);

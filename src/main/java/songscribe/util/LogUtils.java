@@ -35,6 +35,12 @@ public final class LogUtils {
     private static final String DEBUG_LYRICS_ENV_VAR = "DEBUG_LYRICS";
 
     /**
+     * Env var that must be set (to {@code 1} or {@code true}) to enable horizontal-spacing debug
+     * logging.
+     */
+    private static final String DEBUG_SPACING_ENV_VAR = "DEBUG_SPACING";
+
+    /**
      * Whether {@link #DEBUG_BEAMS_ENV_VAR} was set when the JVM started.
      *
      * <p>The environment cannot change during a run, so each subsystem's flag is read once here
@@ -48,6 +54,9 @@ public final class LogUtils {
 
     /** Whether {@link #DEBUG_LYRICS_ENV_VAR} was set when the JVM started. */
     private static final boolean DEBUG_LYRICS_ENABLED = isEnvVarSet(DEBUG_LYRICS_ENV_VAR);
+
+    /** Whether {@link #DEBUG_SPACING_ENV_VAR} was set when the JVM started. */
+    private static final boolean DEBUG_SPACING_ENABLED = isEnvVarSet(DEBUG_SPACING_ENV_VAR);
 
     private LogUtils() {
     }
@@ -80,6 +89,16 @@ public final class LogUtils {
      */
     public static boolean isTracingLyrics(Logger logger) {
         return isTracing(logger, DEBUG_LYRICS_ENABLED);
+    }
+
+    /**
+     * Whether horizontal-spacing tracing should run: {@code DEBUG_SPACING} was set in the
+     * environment AND {@code logger} has debug enabled.
+     *
+     * @param logger the logger the caller is about to log to
+     */
+    public static boolean isTracingSpacing(Logger logger) {
+        return isTracing(logger, DEBUG_SPACING_ENABLED);
     }
 
     /**

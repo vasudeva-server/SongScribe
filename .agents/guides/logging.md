@@ -38,7 +38,8 @@ LOG.warn("Failed to switch theme: {}", e.getMessage());
 ## Debug-gated tracing (per-subsystem env var flags)
 
 Some subsystems produce `debug`-level tracing that is too noisy to enable
-globally (e.g. beam scoring, tie layout, lyric editing). These are gated
+globally (e.g. beam scoring, tie layout, lyric editing, horizontal spacing).
+These are gated
 behind a dedicated env var per subsystem, checked through `LogUtils`
 (`src/main/java/songscribe/util/LogUtils.java`), rather than relying on the
 logger's level alone.
