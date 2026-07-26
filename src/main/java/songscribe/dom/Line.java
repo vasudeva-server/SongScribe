@@ -795,7 +795,11 @@ public class Line {
         return -1;
     }
 
-    private int previousLyricBearingIndex(int fromIndex, int verse) {
+    /**
+     * Walks backward from {@code fromIndex - 1} and returns the index of the first element whose
+     * {@code verse} lyric is non-null, or {@code -1} if there is none.
+     */
+    public int previousLyricBearingIndex(int fromIndex, int verse) {
         for (var i = fromIndex - 1; i >= 0; i--) {
             if (elements.get(i).getLyricForVerse(verse) != null) {
                 return i;
@@ -811,7 +815,11 @@ public class Line {
             || lyric.compound();
     }
 
-    private boolean hasFollowingTextBearingLyric(int fromIndex, int verse) {
+    /**
+     * Whether the first element after {@code fromIndex} that carries a {@code verse} lyric
+     * carries a syllable of its own, rather than being a melisma carrier.
+     */
+    public boolean hasFollowingTextBearingLyric(int fromIndex, int verse) {
         var forwardIndex = nextLyricBearingIndex(fromIndex, verse);
 
         if (forwardIndex < 0) {
@@ -828,62 +836,9 @@ public class Line {
      * output; see {@code LyricEditor}, which traces the same edits from the editor's side.
      */
     private static void trace(String format, @Nullable Object... args) {
-        if (isTracing()) {
+        if (LogUtils.isTracingLyrics(LOG)) {
             LOG.debug(format, args);
         }
-    }
-
-    /**
-     * Whether lyric tracing is on: {@code DEBUG_LYRICS} set in the environment and this logger at
-     * debug level. The env half is a constant the JIT folds away when unset; the level is looked
-     * up live, so it must not be hoisted into a constant of its own.
-     */
-    private static boolean isTracing() {
-        return LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_LYRICS_ENABLED);
-    }
-
-    /**
-     * A one-line rendering of every element's {@code verse} lyric, for debug logging. Each
-     * element appears as its index followed by its state: {@code -} for no lyric, {@code ~}
-     * for a carrier (no syllable of its own), otherwise the quoted text and its syllabic.
-     * The extender state and the compound flag follow when they are set. For example:
-     *
-     * <pre>0="a"/SINGLE/START 1=~/STOP 2="b"/SINGLE 3=-</pre>
-     *
-     * <p>Callers must gate this on {@code DEBUG_LYRICS} — it builds a string every time.
-     */
-    public String lyricRowDescription(int verse) {
-        var description = new StringBuilder();
-
-        for (var i = 0; i < elements.size(); i++) {
-            if (i > 0) {
-                description.append(' ');
-            }
-
-            description.append(i).append('=');
-            var lyric = elements.get(i).getLyricForVerse(verse);
-
-            if (lyric == null) {
-                description.append('-');
-                continue;
-            }
-
-            if (lyric.syllabic() == null) {
-                description.append('~');
-            } else {
-                description.append('"').append(lyric.text()).append("\"/").append(lyric.syllabic());
-            }
-
-            if (lyric.extend() != Lyric.Extend.NONE) {
-                description.append('/').append(lyric.extend());
-            }
-
-            if (lyric.compound()) {
-                description.append("/compound");
-            }
-        }
-
-        return description.toString();
     }
 
     /**

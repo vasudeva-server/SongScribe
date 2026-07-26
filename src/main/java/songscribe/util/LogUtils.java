@@ -41,30 +41,59 @@ public final class LogUtils {
      * rather than at every log site. Being {@code static final} also lets the JIT fold a disabled
      * subsystem's log guards away as dead code.
      */
-    public static final boolean DEBUG_BEAMS_ENABLED = isEnvVarSet(DEBUG_BEAMS_ENV_VAR);
+    private static final boolean DEBUG_BEAMS_ENABLED = isEnvVarSet(DEBUG_BEAMS_ENV_VAR);
 
     /** Whether {@link #DEBUG_TIES_ENV_VAR} was set when the JVM started. */
-    public static final boolean DEBUG_TIES_ENABLED = isEnvVarSet(DEBUG_TIES_ENV_VAR);
+    private static final boolean DEBUG_TIES_ENABLED = isEnvVarSet(DEBUG_TIES_ENV_VAR);
 
     /** Whether {@link #DEBUG_LYRICS_ENV_VAR} was set when the JVM started. */
-    public static final boolean DEBUG_LYRICS_ENABLED = isEnvVarSet(DEBUG_LYRICS_ENV_VAR);
+    private static final boolean DEBUG_LYRICS_ENABLED = isEnvVarSet(DEBUG_LYRICS_ENV_VAR);
 
     private LogUtils() {
     }
 
     /**
-     * Whether a subsystem's debug logging should run: the subsystem's own flag is set AND
-     * {@code logger} has debug enabled. Keeps noisy, subsystem-specific output (e.g. beam
-     * scoring) silent when debug logging is turned on for other purposes.
+     * Whether beam-scoring tracing should run: {@code DEBUG_BEAMS} was set in the environment
+     * AND {@code logger} has debug enabled.
+     *
+     * @param logger the logger the caller is about to log to
+     */
+    public static boolean isTracingBeams(Logger logger) {
+        return isTracing(logger, DEBUG_BEAMS_ENABLED);
+    }
+
+    /**
+     * Whether tie-layout tracing should run: {@code DEBUG_TIES} was set in the environment AND
+     * {@code logger} has debug enabled.
+     *
+     * @param logger the logger the caller is about to log to
+     */
+    public static boolean isTracingTies(Logger logger) {
+        return isTracing(logger, DEBUG_TIES_ENABLED);
+    }
+
+    /**
+     * Whether lyric-editing tracing should run: {@code DEBUG_LYRICS} was set in the environment
+     * AND {@code logger} has debug enabled.
+     *
+     * @param logger the logger the caller is about to log to
+     */
+    public static boolean isTracingLyrics(Logger logger) {
+        return isTracing(logger, DEBUG_LYRICS_ENABLED);
+    }
+
+    /**
+     * Whether a subsystem's debug logging should run. Keeps noisy, subsystem-specific output
+     * (e.g. beam scoring) silent when debug logging is turned on for other purposes.
+     *
+     * <p>Private so that a subsystem's flag can only be reached through the matching
+     * {@code isTracingXxx} method above — passing another subsystem's flag by mistake would
+     * silently gate the output on the wrong environment variable.
      *
      * <p>The subsystem flag is tested first because it is a cached constant, while the logger's
      * level is a live lookup that can change during the run.
-     *
-     * @param logger  the logger the caller is about to log to
-     * @param enabled the subsystem's flag, e.g. {@link #DEBUG_BEAMS_ENABLED}
-     * @return whether both the subsystem flag and {@code logger}'s debug level are enabled
      */
-    public static boolean isDebugEnabled(Logger logger, boolean enabled) {
+    private static boolean isTracing(Logger logger, boolean enabled) {
         return enabled && logger.isDebugEnabled();
     }
 

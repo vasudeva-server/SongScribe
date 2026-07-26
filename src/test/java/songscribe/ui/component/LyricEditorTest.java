@@ -785,35 +785,8 @@ class LyricEditorTest extends LyricEditorTestSupport {
     // Phase 2: _ (underscore) overhaul
     // -----------------------------------------------------------------------
 
-    @Test
-    void testUnderscoreAtEndOfTextMakesNextElementAMelismaCarrier() {
-        var element = crotchet();
-        var next = crotchet();
-        var afterNext = crotchet();
-        var line = song.getLine(0);
-        song.withoutMutationTracking(() -> line.addElement(element));
-        song.withoutMutationTracking(() -> line.addElement(next));
-        song.withoutMutationTracking(() -> line.addElement(afterNext));
-
-        messageCenterMock = mockStatic(MessageCenter.class);
-        var editor = new LyricEditor(score, line, element);
-        editor.setText("ho");
-        editor.setCaretPosition(editor.getText().length());
-        editor.attachListeners();
-        fireUnderscore(editor);
-
-        captureSingleDidChange();
-        assertThat(element.getMainLyric())
-            .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
-            .containsExactly(Lyric.Syllabic.SINGLE, false, "ho", Lyric.Extend.START);
-        assertThat(next.getLyricForVerse(1))
-            .extracting(Lyric::text, Lyric::extend)
-            .containsExactly("", Lyric.Extend.STOP);
-
-        var captor = ArgumentCaptor.forClass(LyricEditor.class);
-        verify(score, atLeastOnce()).addOverlay(captor.capture());
-        assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(afterNext);
-    }
+    // Underscore at the end of unselected text is covered by
+    // LyricEditorBehaviorMatrixTest.Underscore#u2_nonEmptyTextCaretEndNotExtenderStartsMelismaOnNext.
 
     @Test
     void testUnderscoreOnFullySelectedTextReplacesLyricWithMelisma() {

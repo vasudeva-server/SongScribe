@@ -24,6 +24,7 @@ import module java.desktop;
 
 import java.awt.event.MouseEvent;
 import java.util.Collections;
+import java.util.function.Supplier;
 
 import javax.swing.event.DocumentEvent;
 import javax.swing.text.AttributeSet;
@@ -918,23 +919,60 @@ public final class LyricEditor extends MyJTextField {
      * a keystroke actually changed. Guarded because rendering the row walks the entire line.
      */
     private void logState(String action) {
-        if (!isTracing()) {
+        if (!LogUtils.isTracingLyrics(LOG)) {
             return;
         }
 
         LOG.debug("{} | index={} text='{}' commit='{}' placeholder={} extender={} sel={}..{} caret={} | {}",
             action, line.getElementIndex(element), getText(), commitText(), placeholder,
             openedAsExtender, getSelectionStart(), getSelectionEnd(), getCaretPosition(),
-            line.lyricRowDescription(CURRENT_VERSE));
+            lyricRowDescription());
     }
 
     /**
-     * Whether the lyric machinery's tracing is on: {@code DEBUG_LYRICS} set in the environment
-     * and this logger at debug level. The tracing is a firehose — a full state dump per
-     * keystroke — so it stays silent when debug logging is turned on for anything else.
+     * A one-line rendering of every element's lyric in the edited verse, for the trace above.
+     * Each element appears as its index followed by its state: {@code -} for no lyric, {@code ~}
+     * for a carrier (no syllable of its own), otherwise the quoted text and its syllabic. The
+     * extender state and the compound flag follow when they are set. For example:
+     *
+     * <pre>0="a"/SINGLE/START 1=~/STOP 2="b"/SINGLE 3=-</pre>
+     *
+     * <p>Called only from {@link #logState}, which has already checked that tracing is on — this
+     * walks the whole line and builds a string every time.
      */
-    private static boolean isTracing() {
-        return LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_LYRICS_ENABLED);
+    private String lyricRowDescription() {
+        var description = new StringBuilder();
+        var elements = line.getElements();
+
+        for (var i = 0; i < elements.size(); i++) {
+            if (i > 0) {
+                description.append(' ');
+            }
+
+            description.append(i).append('=');
+            var lyric = elements.get(i).getLyricForVerse(CURRENT_VERSE);
+
+            if (lyric == null) {
+                description.append('-');
+                continue;
+            }
+
+            if (lyric.syllabic() == null) {
+                description.append('~');
+            } else {
+                description.append('"').append(lyric.text()).append("\"/").append(lyric.syllabic());
+            }
+
+            if (lyric.extend() != Lyric.Extend.NONE) {
+                description.append('/').append(lyric.extend());
+            }
+
+            if (lyric.compound()) {
+                description.append("/compound");
+            }
+        }
+
+        return description.toString();
     }
 
     /**
@@ -942,15 +980,28 @@ public final class LyricEditor extends MyJTextField {
      * it with {@link #logState} where the state that drove the decision also matters.
      */
     private static void trace(String format, @Nullable Object... args) {
-        if (isTracing()) {
+        if (LogUtils.isTracingLyrics(LOG)) {
             LOG.debug(format, args);
         }
     }
 
     /** Beeps the keystroke away, recording why it was refused. */
     private void reject(String reason) {
-        if (isTracing()) {
+        if (LogUtils.isTracingLyrics(LOG)) {
             logState("reject (" + reason + ')');
+        }
+
+        UIUtils.beep();
+    }
+
+    /**
+     * Beeps the keystroke away, recording why. Takes the reason as a supplier so a reason that
+     * has to be assembled from surrounding state is never built while tracing is off; use
+     * {@link #reject(String)} for a reason that is already a plain literal.
+     */
+    private void reject(Supplier<String> reason) {
+        if (LogUtils.isTracingLyrics(LOG)) {
+            logState("reject (" + reason.get() + ')');
         }
 
         UIUtils.beep();
@@ -982,7 +1033,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         var currentIndex = line.getElementIndex(element);
-        var backIndex = findPreviousLyricBearingIndex(currentIndex);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, CURRENT_VERSE);
 
         if (backIndex < 0) {
             return false;
@@ -994,25 +1045,7 @@ public final class LyricEditor extends MyJTextField {
             return false;
         }
 
-        return hasFollowingSyllable(currentIndex);
-    }
-
-    /**
-     * Whether the first lyric-bearing element after {@code fromIndex} carries a syllable of its
-     * own, i.e. is text-bearing rather than a melisma carrier.
-     */
-    private boolean hasFollowingSyllable(int fromIndex) {
-        var effectiveCount = line.effectiveElementCount();
-
-        for (var i = fromIndex + 1; i < effectiveCount; i++) {
-            var lyric = line.getElement(i).getLyricForVerse(CURRENT_VERSE);
-
-            if (lyric != null) {
-                return lyric.syllabic() != null;
-            }
-        }
-
-        return false;
+        return line.hasFollowingTextBearingLyric(currentIndex, CURRENT_VERSE);
     }
 
     /**
@@ -1023,7 +1056,7 @@ public final class LyricEditor extends MyJTextField {
      * <p>Must be called inside an open modification bracket.
      */
     private void breakHyphenChain() {
-        var backIndex = findPreviousLyricBearingIndex(line.getElementIndex(element));
+        var backIndex = line.previousLyricBearingIndex(line.getElementIndex(element), CURRENT_VERSE);
 
         if (backIndex < 0) {
             trace("breakHyphenChain: no predecessor to end the word at");
@@ -1082,7 +1115,7 @@ public final class LyricEditor extends MyJTextField {
         var text = commitText();
         var existingLyric = element.getLyricForVerse(CURRENT_VERSE);
 
-        if (isTracing()) {
+        if (LogUtils.isTracingLyrics(LOG)) {
             logState("commit " + kind + '/' + extend);
         }
 
@@ -1093,6 +1126,10 @@ public final class LyricEditor extends MyJTextField {
 
         if (openingRole != null && getText().isEmpty()) {
             trace("commit: {} placeholder was cleared, breaking its chain", openingRole);
+
+            // The element is giving the role up, so it no longer describes this element —
+            // keep the field in step with the model the way extendChainBackward does.
+            placeholder = null;
 
             switch (openingRole) {
                 case HYPHEN -> breakHyphenChain();
@@ -1247,7 +1284,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private void openIndexOrDismiss(int nextIndex) {
-        if (isTracing()) {
+        if (LogUtils.isTracingLyrics(LOG)) {
             logState(nextIndex >= 0 ? "moving to " + nextIndex : "no target element, dismissing");
         }
 
@@ -1345,7 +1382,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         var currentIndex = line.getElementIndex(element);
-        var backIndex = findPreviousLyricBearingIndex(currentIndex);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, CURRENT_VERSE);
         var backLyric = backIndex >= 0
             ? line.getElement(backIndex).getLyricForVerse(CURRENT_VERSE)
             : null;
@@ -1358,7 +1395,7 @@ public final class LyricEditor extends MyJTextField {
         var backSyllabic = backLyric.syllabic();
 
         if (!Lyric.syllabicContinues(backSyllabic)) {
-            reject("lone hyphen after a word-final syllable (" + backSyllabic + ')');
+            reject(() -> "lone hyphen after a word-final syllable (" + backSyllabic + ')');
             return;
         }
 
@@ -1443,7 +1480,7 @@ public final class LyricEditor extends MyJTextField {
         var nextLyric = line.getElement(nextIndex).getLyricForVerse(CURRENT_VERSE);
 
         if (nextLyric != null && !nextLyric.text().isEmpty()) {
-            reject("underscore blocked: element " + nextIndex + " already has a syllable");
+            reject(() -> "underscore blocked: element " + nextIndex + " already has a syllable");
             return;
         }
 
@@ -1461,15 +1498,15 @@ public final class LyricEditor extends MyJTextField {
      * predecessor. Beeps without mutating when there is no predecessor to start the melisma.
      */
     private void replaceLyricWithMelisma() {
-        if (findPreviousLyricBearingIndex(line.getElementIndex(element)) < 0) {
+        var currentIndex = line.getElementIndex(element);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, CURRENT_VERSE);
+
+        if (backIndex < 0) {
             reject("no preceding lyric for this element to carry a melisma from");
             return;
         }
 
-        // Clear the field before building the chain: the advance() that follows commits the
-        // editor's text, which would otherwise write the syllable back over the new carrier.
-        setText("");
-        extendChainBackward();
+        extendChainBackward(currentIndex, backIndex);
     }
 
     /**
@@ -1519,9 +1556,14 @@ public final class LyricEditor extends MyJTextField {
             line.adjustSuccessorAfterMelismaCarrier(nextIndex, CURRENT_VERSE);
         });
 
-        if (isTracing()) {
+        // This element now holds a melisma-starting syllable, whatever role it opened with, so
+        // the commit that follows must not end that role on its way out.
+        placeholder = null;
+
+        if (LogUtils.isTracingLyrics(LOG)) {
             logState("startMelismaOnNextElement done, carrier at " + nextIndex);
         }
+
         openIndexOrDismiss(findNextEligibleIndex(line, nextIndex, CURRENT_VERSE));
     }
 
@@ -1534,17 +1576,28 @@ public final class LyricEditor extends MyJTextField {
      */
     private void extendChainBackward() {
         var currentIndex = line.getElementIndex(element);
-        var backIndex = findPreviousLyricBearingIndex(currentIndex);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, CURRENT_VERSE);
 
         if (backIndex < 0) {
             reject("no preceding lyric to extend a chain from");
             return;
         }
 
+        extendChainBackward(currentIndex, backIndex);
+    }
+
+    /**
+     * Builds the chain described by {@link #extendChainBackward()}, for callers that have
+     * already located the current element and the lyric-bearing element before it.
+     *
+     * @param currentIndex the element the editor is open on, which becomes the chain's carrier
+     * @param backIndex    the lyric-bearing element the chain runs back to, never negative
+     */
+    private void extendChainBackward(int currentIndex, int backIndex) {
         var backElement = line.getElement(backIndex);
         var backLyric = backElement.getLyricForVerse(CURRENT_VERSE);
 
-        // Invariant: findPreviousLyricBearingIndex only returns indices with non-null lyrics.
+        // Invariant: previousLyricBearingIndex only returns indices with non-null lyrics.
         if (backLyric == null) {
             throw RuntimeError.exit("Predecessor at " + backIndex + " lost verse " + CURRENT_VERSE + " lyric between scan and rewrite");
         }
@@ -1587,8 +1640,12 @@ public final class LyricEditor extends MyJTextField {
         });
 
         // This element is now the chain's carrier, whatever role it opened with, so the
-        // commit that follows must not end that role on its way out.
+        // commit that follows must not end that role on its way out. Clearing the field is
+        // what stops that commit writing anything back over the carrier — both a syllable the
+        // melisma just replaced and a placeholder, which is no longer read as empty once the
+        // role it stood for is gone.
         placeholder = null;
+        setText("");
         suppressDismissAdjustment = true;
         logState("extendChainBackward done");
         advance();
@@ -1679,7 +1736,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private void terminatePrecedingContinueChain(int currentIndex) {
-        var backIndex = findPreviousLyricBearingIndex(currentIndex);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, CURRENT_VERSE);
 
         if (backIndex < 0) {
             return;
@@ -1789,20 +1846,6 @@ public final class LyricEditor extends MyJTextField {
         if (isDoneEditing) {
             MessageCenter.post(new TextEditingDidChangeNotification(false));
         }
-    }
-
-    /**
-     * Walks backward from {@code fromIndex - 1} and returns the index of the first
-     * element whose {@code CURRENT_VERSE} lyric is non-null, or {@code -1} if none.
-     */
-    private int findPreviousLyricBearingIndex(int fromIndex) {
-        for (var i = fromIndex - 1; i >= 0; i--) {
-            if (line.getElement(i).getLyricForVerse(CURRENT_VERSE) != null) {
-                return i;
-            }
-        }
-
-        return -1;
     }
 
     /** Test-only hook to set the focused state without a real focus event. */
