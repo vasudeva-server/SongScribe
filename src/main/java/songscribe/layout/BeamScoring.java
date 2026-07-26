@@ -66,6 +66,15 @@ final class BeamScoring {
 
     private static final Logger LOG = LoggerFactory.getLogger(BeamScoring.class);
 
+    /**
+     * Whether beam-scoring tracing is on: {@code DEBUG_BEAMS} set in the environment and this
+     * logger at debug level. The env half is a constant the JIT folds away when unset; the level
+     * is looked up live, so it must not be hoisted into a constant of its own.
+     */
+    private static boolean isTracing() {
+        return LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENABLED);
+    }
+
     // ---------------------------------------------------------------------
     // Grob defaults (scm/define-grobs.scm), indexed by beamCount - 1 with
     // LilyPond's robust_list_ref clamp-to-last behavior.
@@ -399,7 +408,7 @@ final class BeamScoring {
      * @param stage the name of the stage that just ran
      */
     private void logStage(String stage) {
-        if (!LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+        if (!isTracing()) {
             return;
         }
 
@@ -535,7 +544,7 @@ final class BeamScoring {
             damping = 0.0;
         }
 
-        if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+        if (isTracing()) {
             LOG.debug(
                 "  concaveness={} forcedFlat={} (>= {} forces flat)",
                 fmt(concaveness),
@@ -552,7 +561,7 @@ final class BeamScoring {
             unquantedLeftY += (dy - dampedDy) / 2.0;
             unquantedRightY -= (dy - dampedDy) / 2.0;
 
-            if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+            if (isTracing()) {
                 LOG.debug("  damping: dy {} -> {}", fmt(dy), fmt(dampedDy));
             }
         }
@@ -573,7 +582,7 @@ final class BeamScoring {
 
         var singleNotesConcave = isConcaveSingleNotes(stemHeadHalfPositions, dirSign);
 
-        if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+        if (isTracing()) {
             LOG.debug(
                 "  headPositions={} isConcaveSingleNotes={}",
                 Arrays.toString(stemHeadHalfPositions),
@@ -844,7 +853,7 @@ final class BeamScoring {
         // quant offset; Java's (int) cast has exactly that behavior.
         var baseLeft = (int) unquantedLeftY;
         var baseRight = (int) unquantedRightY;
-        var debug = LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR);
+        var debug = isTracing();
 
         Candidate best = null;
         Candidate bestFlat = null;
@@ -1185,7 +1194,7 @@ final class BeamScoring {
         var best = chooseBestConfiguration();
 
         if (best == null) {
-            if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+            if (isTracing()) {
                 LOG.debug(
                     "No viable beam quanting found; using unquanted y. stems={} xSpan={} left={} right={}",
                     stemCount,
@@ -1207,7 +1216,7 @@ final class BeamScoring {
 
     /** Logs the group's inputs and the stem info derived from them. */
     private void logInputs() {
-        if (!LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+        if (!isTracing()) {
             return;
         }
 
@@ -1243,7 +1252,7 @@ final class BeamScoring {
      * @param bestFlat   the best flat candidate, or null if none was in range
      */
     private void logChoice(int considered, Candidate best, @Nullable Candidate bestFlat) {
-        if (!LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+        if (!isTracing()) {
             return;
         }
 

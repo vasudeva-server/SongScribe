@@ -80,6 +80,20 @@ public class LayoutEngine {
 
     private static final Logger LOG = LoggerFactory.getLogger(LayoutEngine.class);
 
+    /**
+     * Whether beam tracing is on: {@code DEBUG_BEAMS} set in the environment and this logger at
+     * debug level. The env half is a constant the JIT folds away when unset; the level is looked
+     * up live, so it must not be hoisted into a constant of its own.
+     */
+    private static boolean isTracingBeams() {
+        return LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENABLED);
+    }
+
+    /** Whether tie tracing is on — see {@link #isTracingBeams()}, gated on {@code DEBUG_TIES}. */
+    private static boolean isTracingTies() {
+        return LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_TIES_ENABLED);
+    }
+
     static final double CLEF_X_POSITION_SS = 0.625;  // 5px
 
     // Beam geometry constants (staff-space units unless noted)
@@ -457,7 +471,7 @@ public class LayoutEngine {
             }
         }
 
-        var debugBeams = LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR);
+        var debugBeams = isTracingBeams();
 
         for (var beam : line.findRangeElements(Beam.class)) {
             var beamStart = beam.getAnchorElementIndex();
@@ -534,7 +548,7 @@ public class LayoutEngine {
         // The contour asks for an upward beam. A grace stem always points up, so an upward beam
         // is the only one it can be trapped under; send the beam below rather than bury it.
         if (BeamMath.graceStemTouchesBeamAbove(line, beamStart, beamEnd, minStaffPos)) {
-            if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+            if (isTracingBeams()) {
                 LOG.debug("  grace stem forces group {}..{} to beam below", beamStart, beamEnd);
             }
 
@@ -613,7 +627,7 @@ public class LayoutEngine {
                     -element.getStaffPosition(),
                     BeamMath.beamCount(element)));
 
-                if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+                if (isTracingBeams()) {
                     LOG.debug(
                         "  scoring input [{}] {} sp={} dir={} beams={}",
                         i,
@@ -624,7 +638,7 @@ public class LayoutEngine {
                 }
             }
 
-            if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+            if (isTracingBeams()) {
                 LOG.debug(
                     "  span={} beamMembers={} scoredStems={} forcedStemCount={}",
                     spanSize, memberCount, stemInputs.size(), forcedStemCount);
@@ -639,7 +653,7 @@ public class LayoutEngine {
                 var dirSign = stemDirection.isUp() ? 1 : -1;
                 var forcedFraction = (double) forcedStemCount / memberCount;
 
-                if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+                if (isTracingBeams()) {
                     LOG.debug("--- beam elements {}..{} ---", beamStart, beamEnd);
                 }
 
@@ -705,7 +719,7 @@ public class LayoutEngine {
                     // stubRight above.
                     var frenchShorteningLevels = BeamMath.frenchBeamShortening(line, i, beamStart, beamEnd);
 
-                    if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_BEAMS_ENV_VAR)) {
+                    if (isTracingBeams()) {
                         LOG.debug(
                             "  stem [{}] {} sp={} dir={} elementY={} beamY={} stemLen={} "
                                 + "(natural={}) lengthening={} forcedShort={} french={}",
@@ -899,7 +913,7 @@ public class LayoutEngine {
             var outerCpYSs = shoulderYSs + arcSignSs * TIE_MID_THICKNESS_SS;
             var innerCpYSs = shoulderYSs - arcSignSs * TIE_MID_THICKNESS_SS;
 
-            if (LogUtils.isDebugEnabled(LOG, LogUtils.DEBUG_TIES_ENV_VAR)) {
+            if (isTracingTies()) {
                 // LilyPond position convention (positive = up) for direct ground-truth comparison:
                 // LilyPond ss is positive-up, SongScribe ss is positive-down, so negate and ×2.
                 LOG.debug(
