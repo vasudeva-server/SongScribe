@@ -73,4 +73,19 @@ public final class InsertLineAction extends UIAction {
     protected void performAction(ActionEvent e) {
         MessageCenter.post(new InsertLineCommand(shift));
     }
+
+    @Override
+    public boolean updateEnabledState() {
+        if (!super.updateEnabledState()) {
+            return false;
+        }
+
+        if (shift == ADD) {
+            return true;
+        }
+
+        var isEnabled = requireScoreView().getSelectionCoordinator().hasLineSelection();
+        setEnabled(isEnabled);
+        return isEnabled;
+    }
 }

@@ -31,9 +31,11 @@ import org.mockito.MockedStatic;
 import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.InsertLineCommand;
+import songscribe.message.notification.MusicSelectionDidChangeNotification;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 class InsertLineActionTest extends MainFrameMockTest {
 
@@ -101,5 +103,67 @@ class InsertLineActionTest extends MainFrameMockTest {
         var captor = ArgumentCaptor.forClass(InsertLineCommand.class);
         messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
         assertThat(captor.getValue().getShift()).isEqualTo(1);
+    }
+
+    // updateEnabledState — add-line is always enabled; before/after require a line selection
+
+    @Test
+    void testAddLineEnabledWithoutLineSelection() {
+        when(mockEnv().coordinator().hasLineSelection()).thenReturn(false);
+
+        var action = InsertLineAction.createAddLineAction(mainFrame());
+        action.setEnabled(false);
+
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(action.isEnabled()).isTrue();
+    }
+
+    @Test
+    void testInsertLineBeforeEnabledWhenLineSelected() {
+        when(mockEnv().coordinator().hasLineSelection()).thenReturn(true);
+
+        var action = InsertLineAction.createInsertLineBeforeAction(mainFrame());
+        action.setEnabled(false);
+
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(action.isEnabled()).isTrue();
+    }
+
+    @Test
+    void testInsertLineBeforeDisabledWithoutLineSelection() {
+        when(mockEnv().coordinator().hasLineSelection()).thenReturn(false);
+
+        var action = InsertLineAction.createInsertLineBeforeAction(mainFrame());
+        action.setEnabled(true);
+
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(action.isEnabled()).isFalse();
+    }
+
+    @Test
+    void testInsertLineAfterEnabledWhenLineSelected() {
+        when(mockEnv().coordinator().hasLineSelection()).thenReturn(true);
+
+        var action = InsertLineAction.createInsertLineAfterAction(mainFrame());
+        action.setEnabled(false);
+
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(action.isEnabled()).isTrue();
+    }
+
+    @Test
+    void testInsertLineAfterDisabledWithoutLineSelection() {
+        when(mockEnv().coordinator().hasLineSelection()).thenReturn(false);
+
+        var action = InsertLineAction.createInsertLineAfterAction(mainFrame());
+        action.setEnabled(true);
+
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(action.isEnabled()).isFalse();
     }
 }
