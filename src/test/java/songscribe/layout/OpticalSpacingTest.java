@@ -154,6 +154,25 @@ class OpticalSpacingTest extends UnitTest {
     }
 
     /**
+     * A stemless rest deliberately given the direction and vertical span of a real note, so the only
+     * thing keeping its correction at zero is the {@code hasStem()} guard. A rest built by
+     * {@link #restColumn()} has a degenerate zero-height span, which zeroes the overlap ramp on its
+     * own — a guard test using it would pass whether or not the guard existed.
+     *
+     * <p>Its staff position is deliberately not a parameter: a rest is a {@code StructuralElement},
+     * whose {@code getStaffPosition()} returns the type default and ignores anything set on the
+     * element, so the position delta has to be created by moving the <em>note</em> instead.
+     */
+    private static ElementColumn stemLikeRestColumn(StaffElement.Direction direction, double stemBottomSs) {
+        var column = new ElementColumn(
+            ElementType.CROTCHET_REST.newInstance(), Collections.emptyList(),
+            NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS, NEUTRAL_STEM_TOP_SS, stemBottomSs, null, 0.0, false);
+        column.getElement().setDirection(direction);
+
+        return column;
+    }
+
+    /**
      * A candidate {@code curr} for the downstem-after-barline correction: its span, measured against
      * the barline's full staff-height span, overlaps by exactly {@code overlapSs} (for
      * {@code overlapSs} up to {@code 2 * Staff.STAFF_HALF_SS}).
@@ -423,19 +442,47 @@ class OpticalSpacingTest extends UnitTest {
     // Guard conditions shared by the opposite-stem and same-direction corrections
     // ==========================================================================
 
-    @Test
-    void testCorrectionIsZeroWhenPrevLacksAStem() {
-        var prev = restColumn();
-        var curr = overlappingStemColumn(StaffElement.Direction.DOWN, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
+    // Each of these pairs a stemless rest with a note, with the rest's direction, position and span
+    // set so that every condition *other* than hasStem() is satisfied. Removing the guard from the
+    // correction under test therefore makes the case fire, and the test fail.
 
+    @Test
+    void testOppositeStemCorrectionIsZeroWhenPrevLacksAStem() {
+        var prev = stemLikeRestColumn(StaffElement.Direction.DOWN, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
+        var curr = overlappingStemColumn(StaffElement.Direction.UP, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
+
+        // Opposite directions and a saturated span overlap: everything but the stem is in place.
+        assertThat(OpticalSpacing.verticalOverlapSs(prev, curr)).isPositive();
         assertThat(correctionDeltaSs(prev, curr)).isCloseTo(0.0, within(TOLERANCE));
     }
 
     @Test
-    void testCorrectionIsZeroWhenCurrLacksAStem() {
+    void testOppositeStemCorrectionIsZeroWhenCurrLacksAStem() {
         var prev = overlappingStemColumn(StaffElement.Direction.UP, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
-        var curr = restColumn();
+        var curr = stemLikeRestColumn(StaffElement.Direction.DOWN, OVERLAP_AT_OR_ABOVE_SATURATION_SS);
 
+        assertThat(OpticalSpacing.verticalOverlapSs(prev, curr)).isPositive();
+        assertThat(correctionDeltaSs(prev, curr)).isCloseTo(0.0, within(TOLERANCE));
+    }
+
+    @Test
+    void testSameDirectionCorrectionIsZeroWhenPrevLacksAStem() {
+        var prev = stemLikeRestColumn(StaffElement.Direction.DOWN, NEUTRAL_STEM_BOTTOM_SS);
+        var curr = positionedColumn(StaffElement.Direction.DOWN, SAME_DIRECTION_ABOVE_THRESHOLD_SP);
+
+        // Same direction and a position delta past the threshold: everything but the stem is in place.
+        assertThat(Math.abs(curr.getPositionSs() - prev.getPositionSs()))
+            .isGreaterThan(OpticalSpacing.SAME_DIRECTION_THRESHOLD_SS);
+        assertThat(correctionDeltaSs(prev, curr)).isCloseTo(0.0, within(TOLERANCE));
+    }
+
+    @Test
+    void testSameDirectionCorrectionIsZeroWhenCurrLacksAStem() {
+        var prev = positionedColumn(StaffElement.Direction.DOWN, SAME_DIRECTION_ABOVE_THRESHOLD_SP);
+        var curr = stemLikeRestColumn(StaffElement.Direction.DOWN, NEUTRAL_STEM_BOTTOM_SS);
+
+        assertThat(Math.abs(curr.getPositionSs() - prev.getPositionSs()))
+            .isGreaterThan(OpticalSpacing.SAME_DIRECTION_THRESHOLD_SS);
         assertThat(correctionDeltaSs(prev, curr)).isCloseTo(0.0, within(TOLERANCE));
     }
 

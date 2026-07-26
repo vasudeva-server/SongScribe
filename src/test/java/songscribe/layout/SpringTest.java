@@ -31,19 +31,9 @@ import songscribe.UnitTest;
  */
 class SpringTest extends UnitTest {
 
-    // Rest gap comfortably larger than the strut, so compliance should be their difference.
+    // Rest gap comfortably larger than the strut, so the gap has slack to give up.
     private static final double REST_ABOVE_STRUT_SS = 3.0;
     private static final double STRUT_BELOW_REST_SS = 1.0;
-    private static final double EXPECTED_COMPLIANCE_SS = REST_ABOVE_STRUT_SS - STRUT_BELOW_REST_SS;
-
-    // Rest and strut equal: no slack to give up.
-    private static final double REST_EQUALS_STRUT_SS = 2.0;
-
-    // Rest smaller than strut: compliance must still floor at zero, not go negative.
-    private static final double REST_BELOW_STRUT_SS = 1.0;
-    private static final double STRUT_ABOVE_REST_SS = 2.5;
-
-    private static final double NO_COMPLIANCE_SS = 0.0;
 
     // A tight beam-internal reduction weight, and a fresh rest for the withRestSs preservation test.
     private static final double TIGHT_WEIGHT = 0.6;
@@ -56,27 +46,6 @@ class SpringTest extends UnitTest {
     private static final double LEVEL_OFFSET_SS = 0.75;
     private static final double WIDENING_CORRECTION_SS = 0.4;
     private static final double NARROWING_CORRECTION_SS = -0.3;
-
-    @Test
-    void testOfComputesComplianceAsRestMinusStrutWhenRestExceedsStrut() {
-        var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS);
-
-        assertThat(spring.complianceSs()).isCloseTo(EXPECTED_COMPLIANCE_SS, within(DELTA));
-    }
-
-    @Test
-    void testOfComputesZeroComplianceWhenRestEqualsStrut() {
-        var spring = Spring.of(REST_EQUALS_STRUT_SS, REST_EQUALS_STRUT_SS);
-
-        assertThat(spring.complianceSs()).isCloseTo(NO_COMPLIANCE_SS, within(DELTA));
-    }
-
-    @Test
-    void testOfFloorsComplianceAtZeroWhenRestIsBelowStrut() {
-        var spring = Spring.of(REST_BELOW_STRUT_SS, STRUT_ABOVE_REST_SS);
-
-        assertThat(spring.complianceSs()).isCloseTo(NO_COMPLIANCE_SS, within(DELTA));
-    }
 
     @Test
     void testTwoArgOfDefaultsToNormalWeightAndNotLiftExempt() {
@@ -92,18 +61,17 @@ class SpringTest extends UnitTest {
 
         assertThat(spring.weight()).isEqualTo(TIGHT_WEIGHT);
         assertThat(spring.liftExempt()).isTrue();
-        assertThat(spring.complianceSs()).isCloseTo(EXPECTED_COMPLIANCE_SS, within(DELTA));
     }
 
     @Test
-    void testWithRestSsPreservesWeightAndLiftExemptAndRecomputesCompliance() {
+    void testWithRestSsPreservesWeightAndLiftExempt() {
         var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS, TIGHT_WEIGHT, true)
             .withRestSs(NEW_REST_SS);
 
         assertThat(spring.restSs()).isEqualTo(NEW_REST_SS);
+        assertThat(spring.strutSs()).isEqualTo(STRUT_BELOW_REST_SS);
         assertThat(spring.weight()).isEqualTo(TIGHT_WEIGHT);
         assertThat(spring.liftExempt()).isTrue();
-        assertThat(spring.complianceSs()).isCloseTo(NEW_REST_SS - STRUT_BELOW_REST_SS, within(DELTA));
     }
 
     @Test
@@ -147,15 +115,13 @@ class SpringTest extends UnitTest {
     }
 
     @Test
-    void testWithCorrectionSsPreservesStrutWeightAndLiftExemptAndRecomputesCompliance() {
+    void testWithCorrectionSsPreservesStrutWeightAndLiftExempt() {
         var spring = Spring.of(REST_ABOVE_STRUT_SS, STRUT_BELOW_REST_SS, TIGHT_WEIGHT, true, LEVEL_OFFSET_SS)
             .withCorrectionSs(WIDENING_CORRECTION_SS);
 
         assertThat(spring.strutSs()).isEqualTo(STRUT_BELOW_REST_SS);
         assertThat(spring.weight()).isEqualTo(TIGHT_WEIGHT);
         assertThat(spring.liftExempt()).isTrue();
-        assertThat(spring.complianceSs())
-            .isCloseTo(REST_ABOVE_STRUT_SS + WIDENING_CORRECTION_SS - STRUT_BELOW_REST_SS, within(DELTA));
     }
 
     @Test

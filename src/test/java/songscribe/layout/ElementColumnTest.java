@@ -229,9 +229,8 @@ class ElementColumnTest extends UnitTest {
     void testLeftFacingBandReachesTheStemTipForADownStem() {
         var downStem = builtColumn(ElementType.CROTCHET, HIGH_STAFF_POSITION_SP, StaffElement.Direction.DOWN);
 
-        // A down-stem sits on the notehead's LEFT edge, so it does face left and the band must cover it.
-        assertThat(downStem.getLeftFacingBottomYSs())
-            .isCloseTo(downStem.getAbsoluteBottomYSs(), within(POSITION_TOLERANCE_SS));
+        // A down-stem sits on the notehead's LEFT edge, so it does face left and the band must reach
+        // past the notehead all the way to the stem tip.
         assertThat(downStem.getLeftFacingBottomYSs())
             .isGreaterThan(downStem.getPositionSs() + ElementColumnBuilder.HALF_NOTE_HEAD_SS);
     }

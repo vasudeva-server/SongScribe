@@ -231,7 +231,7 @@ class LyricLiftTest extends UnitTest {
     }
 
     @Test
-    void testKeepsStrutsAndRecomputesCompliance() {
+    void testKeepsStrutsWhileLiftingTheRest() {
         var columns = List.of(
             plainSyllableColumn(LEAD_SYLLABLE_WIDTH_SS, LEAD_MIN_GAP_SS),
             narrowSyllableColumn());
@@ -239,10 +239,12 @@ class LyricLiftTest extends UnitTest {
 
         var lifted = LyricLift.applyLyricLift(springs, columns);
 
+        // The lift moves the rest only; the strut is a collision floor and must survive untouched,
+        // leaving the gap free to give back down to it under compression.
         var liftedSpring = lifted.get(FIRST_GAP);
         assertThat(liftedSpring.strutSs()).isCloseTo(STRUT_SS, within(TOLERANCE));
-        assertThat(liftedSpring.complianceSs())
-            .isCloseTo(LEAD_REQUIREMENT_SS - STRUT_SS, within(TOLERANCE));
+        assertThat(liftedSpring.restSs()).isCloseTo(LEAD_REQUIREMENT_SS, within(TOLERANCE));
+        assertThat(liftedSpring.naturalLengthSs()).isCloseTo(LEAD_REQUIREMENT_SS, within(TOLERANCE));
     }
 
     // ==========================================================================

@@ -258,7 +258,6 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
 
         assertThat(spring.restSs()).isCloseTo(expectedRestSs, within(TOLERANCE));
         assertThat(spring.strutSs()).isCloseTo(expectedStrutSs, within(TOLERANCE));
-        assertThat(spring.complianceSs()).isCloseTo(expectedRestSs - expectedStrutSs, within(TOLERANCE));
     }
 
     @Test
@@ -273,7 +272,6 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
 
         assertThat(spring.restSs()).isCloseTo(expectedRestSs, within(TOLERANCE));
         assertThat(spring.strutSs()).isCloseTo(expectedStrutSs, within(TOLERANCE));
-        assertThat(spring.complianceSs()).isCloseTo(expectedRestSs - expectedStrutSs, within(TOLERANCE));
 
         // The reduction is carried as the solver weight, so it survives compression, not just rest.
         assertThat(spring.weight()).isEqualTo(BEAM_FACTOR);
@@ -323,7 +321,9 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
             .isGreaterThan(GRACE_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS);
         assertThat(spring.restSs()).isCloseTo(expectedRestSs, within(TOLERANCE));
         assertThat(spring.strutSs()).isCloseTo(expectedStrutSs, within(TOLERANCE));
-        assertThat(spring.complianceSs())
+
+        // The give between where the gap starts and where it may not pass is exactly the allowance.
+        assertThat(spring.naturalLengthSs() - spring.strutSs())
             .isCloseTo(HorizontalSpacingCalculator.GRACE_HOST_COMPRESSION_ALLOWANCE_SS, within(TOLERANCE));
 
         // A grace→host gap takes no lyric lift; it still compresses, bounded by the strut above.
@@ -432,7 +432,8 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         assertThat(spring.restSs()).isCloseTo(expectedRestSs, within(TOLERANCE));
         assertThat(spring.strutSs()).isCloseTo(expectedStrutSs, within(TOLERANCE));
         assertThat(spring.strutSs()).isGreaterThan(spring.restSs());
-        assertThat(spring.complianceSs()).isEqualTo(0.0);
+        // rest < strut, so the gap starts pinned on its floor with nothing to give.
+        assertThat(spring.naturalLengthSs()).isCloseTo(expectedStrutSs, within(TOLERANCE));
     }
 
     // Both columns bear a non-hyphenated syllable, so the syllable-collision floor governs the
@@ -505,7 +506,6 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         // The reservation exceeds the note-collision floor, so it is what binds.
         assertThat(expectedStrutSs)
             .isGreaterThan(HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS);
-        assertThat(spring.complianceSs()).isCloseTo(spring.restSs() - expectedStrutSs, within(TOLERANCE));
     }
 
     @Test
@@ -905,6 +905,40 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         var naturalGapSs = HEAD_RIGHT_EXTENT_SS + DEFAULT_LINE_REST_SS;
         assertThat(gapLengthsSs[0]).isCloseTo(naturalGapSs, within(TOLERANCE));
         assertThat(gapLengthsSs[1]).isCloseTo(naturalGapSs, within(TOLERANCE));
+    }
+
+    /**
+     * The whole-line solve runs the optical-spacing pass, not just build → lift → solve. Every other
+     * {@code solveLine} test here uses the synthetic column helpers, whose zero-height spans and
+     * shared staff position make every correction structurally zero — so none of them would notice
+     * if {@link OpticalSpacing#applyCorrections} were dropped from the pipeline. This one uses real
+     * built geometry chosen to make the opposite-stem term fire, and pins the solved gap to the
+     * uncorrected natural length *plus* that term.
+     */
+    @Test
+    void testSolveLineAppliesOpticalCorrectionsToTheSolvedGap() {
+        // An up-stem low on the staff and a down-stem high on it: their spans overlap deeply, which
+        // is what arms the opposite-stem correction.
+        var prev = builtColumn(ElementType.CROTCHET, LOW_STAFF_POSITION_SP, StaffElement.Direction.UP);
+        var curr = builtColumn(ElementType.CROTCHET, HIGH_STAFF_POSITION_SP, StaffElement.Direction.DOWN);
+        var columns = List.of(prev, curr);
+
+        var correctionSs = OpticalSpacing.oppositeStemCorrectionSs(prev, curr);
+
+        // Guard the fixture: a zero correction here would make the assertion below vacuous.
+        assertThat(correctionSs).isNotEqualTo(0.0);
+
+        var uncorrectedNaturalSs = HorizontalSpacingCalculator
+            .buildSpring(prev, curr, DEFAULT_LINE_REST_SS)
+            .naturalLengthSs();
+
+        var solution = HorizontalSpacingCalculator.solveLine(columns, detachedLine(), GENEROUS_MARGIN_SS);
+
+        assertThat(solution.isInfeasible()).isFalse();
+
+        var gapLengthsSs = solvedGapLengthsSs(solution.result());
+        assertThat(gapLengthsSs).hasSize(1);
+        assertThat(gapLengthsSs[0]).isCloseTo(uncorrectedNaturalSs + correctionSs, within(TOLERANCE));
     }
 
     /** A margin too narrow for even the struts makes the whole-line solve report infeasible. */

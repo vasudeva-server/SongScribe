@@ -220,7 +220,8 @@ class SpringSpacerTest extends UnitTest {
             Spring.of(TIGHT_REST_SS, TIGHT_STRUT_SS),
             Spring.of(TIGHT_REST_SS, TIGHT_STRUT_SS));
 
-        assertThat(springs.getFirst().complianceSs()).isEqualTo(NO_COMPLIANCE_SS);
+        // rest == strut → the gap starts on its floor with nothing left to give.
+        assertThat(springs.getFirst().naturalLengthSs()).isEqualTo(TIGHT_STRUT_SS);
 
         var result = SpringSpacer.solve(springs, 2 * TIGHT_STRUT_SS - BELOW_TOTAL_STRUT_SS);
 
@@ -263,9 +264,9 @@ class SpringSpacerTest extends UnitTest {
 
     @Test
     void testWideGlyphGapStartsAtItsStrutAndNeverGives() {
-        // rest < strut → natural length is the strut and compliance is zero.
+        // rest < strut → natural length is the strut, so the gap starts on its floor and never gives.
         var wideGlyphSpring = Spring.of(WIDE_GLYPH_REST_SS, WIDE_GLYPH_STRUT_SS);
-        assertThat(wideGlyphSpring.complianceSs()).isEqualTo(NO_COMPLIANCE_SS);
+        assertThat(wideGlyphSpring.naturalLengthSs()).isEqualTo(WIDE_GLYPH_STRUT_SS);
 
         var springs = List.of(wideGlyphSpring, Spring.of(DEFAULT_REST_SS, DEFAULT_STRUT_SS));
         var naturalSpanSs = WIDE_GLYPH_STRUT_SS + DEFAULT_REST_SS;

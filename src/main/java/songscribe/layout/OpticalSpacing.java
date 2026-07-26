@@ -92,7 +92,7 @@ import songscribe.engraving.Staff;
  *     stem DOWN  stem UP     overlap&gt;0, not knee                          -ramp * OPPOSITE_STEM_MAX_CORRECTION_SS
  *     stem X     stem X      |deltaPos|&gt;SAME_DIRECTION_THRESHOLD_SS       +-SAME_DIRECTION_MAX_CORRECTION_SS
  *                                                                         (widen if curr higher)
- *     barline    stem DOWN   overlap(staff span, curr)&gt;0                  +ramp * BARLINE_DOWNSTEM_MAX_CORRECTION_SS
+ *     barline    stem DOWN   overlap(staff span, curr)&gt;0                  +ramp * DOWNSTEM_BARLINE_MAX_CORRECTION_SS
  *     otherwise                                                           0
  *         ramp = min(overlapSs / STEM_OVERLAP_SATURATION_SS, 1.0)
  * </pre>
@@ -127,7 +127,8 @@ public final class OpticalSpacing {
     }
 
     /**
-     * Applies the opposite-stem and same-direction optical-spacing corrections to {@code springs}.
+     * Applies the opposite-stem, same-direction, and downstem-after-barline optical-spacing
+     * corrections to {@code springs}.
      *
      * <p>Unlike {@link LyricLift#applyLyricLift}, which skips lift-exempt gaps, every gap is
      * corrected here — the exemption is from the lyric lift only.
@@ -158,18 +159,20 @@ public final class OpticalSpacing {
      * Length of the 1-D overlap between two vertical spans [topA, bottomA] and [topB, bottomB] in the
      * screen-down Ss convention (smaller = higher). Non-positive when the spans do not intersect.
      */
-    private static double verticalOverlapSs(double topA, double bottomA, double topB, double bottomB) {
-        return Math.min(bottomA, bottomB) - Math.max(topA, topB);
+    private static double verticalOverlapSs(
+        double topASs, double bottomASs, double topBSs, double bottomBSs) {
+
+        return Math.min(bottomASs, bottomBSs) - Math.max(topASs, topBSs);
     }
 
     /**
      * Package-private (rather than private) so {@code OpticalSpacingTest} and
      * {@link HorizontalSpacingCalculator}'s per-gap debug dump can read the ramp's input directly.
      */
-    static double verticalOverlapSs(ElementColumn a, ElementColumn b) {
+    static double verticalOverlapSs(ElementColumn columnA, ElementColumn columnB) {
         return verticalOverlapSs(
-            a.getAbsoluteTopYSs(), a.getAbsoluteBottomYSs(),
-            b.getAbsoluteTopYSs(), b.getAbsoluteBottomYSs());
+            columnA.getAbsoluteTopYSs(), columnA.getAbsoluteBottomYSs(),
+            columnB.getAbsoluteTopYSs(), columnB.getAbsoluteBottomYSs());
     }
 
     /**
@@ -177,7 +180,7 @@ public final class OpticalSpacing {
      * {@link #STEM_OVERLAP_SATURATION_SS}, saturating at {@code maxSs} beyond that.
      */
     private static double saturatedMagnitudeSs(double overlapSs, double maxSs) {
-        return Math.min(overlapSs / STEM_OVERLAP_SATURATION_SS, 1.0) * maxSs;
+        return Math.clamp(overlapSs / STEM_OVERLAP_SATURATION_SS, 0.0, 1.0) * maxSs;
     }
 
     /**
@@ -199,8 +202,7 @@ public final class OpticalSpacing {
 
         // Opposite-direction stems sharing one beam group is a "knee" - out of scope, so no
         // correction is applied for that case.
-        if (prev.getBeamGroupId() != ElementColumn.NO_BEAM_GROUP
-            && prev.getBeamGroupId() == curr.getBeamGroupId()) {
+        if (prev.sharesBeamGroupWith(curr)) {
             return 0.0;
         }
 

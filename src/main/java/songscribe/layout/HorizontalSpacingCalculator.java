@@ -677,7 +677,7 @@ public class HorizontalSpacingCalculator {
      * beam groups have distinct ids, so the gap between them is a normal gap (refs #418).
      */
     private static boolean isBeamInternalGap(ElementColumn prev, ElementColumn curr) {
-        return prev.isBeamed() && curr.isBeamed() && prev.getBeamGroupId() == curr.getBeamGroupId();
+        return prev.sharesBeamGroupWith(curr);
     }
 
     /**

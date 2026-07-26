@@ -521,6 +521,16 @@ public final class ElementColumn {
         return beamGroupId;
     }
 
+    /**
+     * Returns whether this column and {@code other} sit in the same beam group. False when either is
+     * unbeamed — {@link #NO_BEAM_GROUP} never matches itself, so two unbeamed columns do not count as
+     * sharing a group. Single source of truth for the "one beam spans this gap" question, which the
+     * beam-internal rest reduction and {@link OpticalSpacing}'s knee exclusion both ask.
+     */
+    public boolean sharesBeamGroupWith(ElementColumn other) {
+        return beamGroupId != NO_BEAM_GROUP && beamGroupId == other.beamGroupId;
+    }
+
     void setBeamGroupId(int beamGroupId) {
         this.beamGroupId = beamGroupId;
     }
