@@ -42,6 +42,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import songscribe.dom.Lyric;
+import songscribe.dom.StaffElement;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
@@ -483,7 +484,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             messageCenterMock = mockStatic(MessageCenter.class);
             var editor = new LyricEditor(score, line, e1);
-            assertThat(editor.getText()).isEmpty();
+            assertThat(editor.getText()).isEqualTo("_");
             editor.attachListeners();
             fireSpace(editor);
 
@@ -512,7 +513,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             messageCenterMock = mockStatic(MessageCenter.class);
             var editor = new LyricEditor(score, line, e1);
-            assertThat(editor.getText()).isEmpty();
+            assertThat(editor.getText()).isEqualTo("_");
             editor.attachListeners();
             fireSpace(editor);
 
@@ -539,7 +540,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             song.withoutMutationTracking(() -> line.addElement(element));
 
             var editor = new LyricEditor(score, line, element);
-            assertThat(editor.getText()).isEmpty();
+            assertThat(editor.getText()).isEqualTo("_");
             editor.attachListeners();
 
             var toolkitMock = mock(Toolkit.class);
@@ -638,6 +639,44 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             var captor = ArgumentCaptor.forClass(LyricEditor.class);
             verify(score, atLeastOnce()).addOverlay(captor.capture());
             assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(nextNote);
+        }
+
+        // Hyphenating the syllable that started a melisma drops the melisma, so the carriers
+        // it fed are stale — the editor must advance onto a cleared element, not one that
+        // still looks like a carrier.
+        @Test
+        void h_hyphenOnMelismaStartClearsForwardCarriers() {
+            var e0 = crotchet();
+            e0.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "a", Lyric.Extend.START);
+            var e1 = crotchet();
+            e1.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
+            var e2 = crotchet();
+            e2.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "b", Lyric.Extend.NONE);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(e0));
+            song.withoutMutationTracking(() -> line.addElement(e1));
+            song.withoutMutationTracking(() -> line.addElement(e2));
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, line, e0);
+            assertThat(editor.getText()).isEqualTo("a");
+            editor.attachListeners();
+            fireHyphen(editor);
+
+            captureSingleDidChange();
+            assertThat(e0.getMainLyric())
+                .extracting(Lyric::text, Lyric::syllabic, Lyric::extend)
+                .containsExactly("a", Lyric.Syllabic.BEGIN, Lyric.Extend.NONE);
+            assertThat(e1.getLyricForVerse(1)).isNull();
+            assertThat(e2.getMainLyric())
+                .extracting(Lyric::text, Lyric::syllabic)
+                .containsExactly("b", Lyric.Syllabic.END);
+
+            var captor = ArgumentCaptor.forClass(LyricEditor.class);
+            verify(score, atLeastOnce()).addOverlay(captor.capture());
+            var nextEditor = requireLastNonNull(captor);
+            assertThat(nextEditor.getActiveElement()).isSameAs(e1);
+            assertThat(nextEditor.getText()).isEqualTo("-");
         }
 
         @Test
@@ -997,11 +1036,44 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             verify(score, never()).addOverlay(any());
         }
 
-        // U2: Non-empty text, caret at end, not extender, next eligible → beep (Phase 2)
+        // U2: Non-empty text, caret at end, not extender, next eligible has no syllable →
+        //     commit as START, next becomes the STOP carrier, advance past it
         @Test
-        void u2_nonEmptyTextCaretEndNotExtenderBeeps() {
+        void u2_nonEmptyTextCaretEndNotExtenderStartsMelismaOnNext() {
             var element = crotchet();
             var nextNote = crotchet();
+            var afterNext = crotchet();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(element));
+            song.withoutMutationTracking(() -> line.addElement(nextNote));
+            song.withoutMutationTracking(() -> line.addElement(afterNext));
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, line, element);
+            editor.setText("do");
+            editor.setCaretPosition(editor.getText().length());
+            editor.attachListeners();
+            fireUnderscore(editor);
+
+            captureSingleDidChange();
+            assertThat(element.getMainLyric())
+                .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
+                .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
+            assertThat(nextNote.getLyricForVerse(1))
+                .extracting(Lyric::text, Lyric::extend)
+                .containsExactly("", Lyric.Extend.STOP);
+
+            var captor = ArgumentCaptor.forClass(LyricEditor.class);
+            verify(score, atLeastOnce()).addOverlay(captor.capture());
+            assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(afterNext);
+        }
+
+        // U2b: Non-empty text, caret at end, next eligible already has a syllable → beep
+        @Test
+        void u2b_nonEmptyTextCaretEndNextHasSyllableBeeps() {
+            var element = crotchet();
+            var nextNote = crotchet();
+            nextNote.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "re", Lyric.Extend.NONE);
             var line = song.getLine(0);
             song.withoutMutationTracking(() -> line.addElement(element));
             song.withoutMutationTracking(() -> line.addElement(nextNote));
@@ -1019,6 +1091,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
                 verify(toolkitMock).beep();
             }
 
+            assertThat(element.getLyricForVerse(1)).isNull();
             verify(score, never()).addOverlay(any());
         }
 
@@ -1045,9 +1118,10 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             verify(score, never()).addOverlay(any());
         }
 
-        // U4: Non-empty text, caret at end, openedAsExtender, next eligible → beep (Phase 2)
+        // U4: Non-empty text, caret at end, openedAsExtender, next eligible → break the incoming
+        //     chain, commit as START, next becomes the STOP carrier
         @Test
-        void u4_nonEmptyTextCaretEndOpenedAsExtenderBeeps() {
+        void u4_nonEmptyTextCaretEndOpenedAsExtenderStartsNewMelisma() {
             var e0 = crotchet();
             e0.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "Do", Lyric.Extend.START);
             var e1 = crotchet();
@@ -1058,20 +1132,24 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             song.withoutMutationTracking(() -> line.addElement(e1));
             song.withoutMutationTracking(() -> line.addElement(e2));
 
+            messageCenterMock = mockStatic(MessageCenter.class);
             // Opening on CONTINUE element sets openedAsExtender = true
             var editor = new LyricEditor(score, line, e1);
             editor.setText("do");
             editor.setCaretPosition(editor.getText().length());
             editor.attachListeners();
+            fireUnderscore(editor);
 
-            var toolkitMock = mock(Toolkit.class);
-
-            try (var toolkitStatic = mockStatic(Toolkit.class)) {
-                toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
-                fireUnderscore(editor);
-                verify(toolkitMock).beep();
-            }
-
+            captureSingleDidChange();
+            assertThat(e0.getMainLyric())
+                .extracting(Lyric::text, Lyric::extend)
+                .containsExactly("Do", Lyric.Extend.NONE);
+            assertThat(e1.getMainLyric())
+                .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
+                .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
+            assertThat(e2.getLyricForVerse(1))
+                .extracting(Lyric::extend)
+                .isEqualTo(Lyric.Extend.STOP);
             verify(score, never()).addOverlay(any());
         }
 
@@ -1155,8 +1233,9 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             verify(score, never()).addOverlay(any());
         }
 
-        // U8: Empty, BEGIN/MIDDLE predecessor, next eligible → rewrite predecessor extend to START,
-        //     fill intervening CONTINUE, current CONTINUE, advance
+        // U8: Empty, BEGIN/MIDDLE predecessor, next eligible → rewrite predecessor extend to START
+        //     and end its word (a melisma start is never hyphenated), fill intervening CONTINUE,
+        //     current CONTINUE, advance
         @Test
         void u8_emptyBeginPredecessorNextEligibleRewritesAndAdvances() {
             var predecessor = crotchet();
@@ -1177,7 +1256,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             captureSingleDidChange();
             assertThat(predecessor.getMainLyric())
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
-                .containsExactly(Lyric.Syllabic.BEGIN, false, "Su", Lyric.Extend.START);
+                .containsExactly(Lyric.Syllabic.SINGLE, false, "Su", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
                 .extracting(Lyric::extend)
                 .isEqualTo(Lyric.Extend.STOP);
@@ -1276,7 +1355,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             captureSingleDidChange();
             assertThat(predecessor.getMainLyric())
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
-                .containsExactly(Lyric.Syllabic.BEGIN, false, "Su", Lyric.Extend.START);
+                .containsExactly(Lyric.Syllabic.SINGLE, false, "Su", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
                 .extracting(Lyric::extend)
                 .isEqualTo(Lyric.Extend.STOP);
@@ -1432,6 +1511,280 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
                 assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ha");
                 assertThat(editor.getParent()).isNull();
             }
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // P1–P9: hyphen placeholder ("a" - "mi", editor opened on the middle note)
+    // M1–M5: melisma placeholder (editor opened on a carrier)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
+    @Nested
+    class Placeholders {
+
+        /** Builds "a" (BEGIN) — gap — "mi" (END) and returns the gap element. */
+        private StaffElement chainWithGap(StaffElement first, StaffElement gap, StaffElement last) {
+            first.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "a", Lyric.Extend.NONE);
+            last.setLyricForVerse(1, Lyric.Syllabic.END, false, "mi", Lyric.Extend.NONE);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(first));
+            song.withoutMutationTracking(() -> line.addElement(gap));
+            song.withoutMutationTracking(() -> line.addElement(last));
+            return gap;
+        }
+
+        // P1: gap spanned by a word's hyphen → prefilled with a selected "-"
+        @Test
+        void p1_gapInsideChainOpensWithSelectedPlaceholder() {
+            var gap = chainWithGap(crotchet(), crotchet(), crotchet());
+
+            var editor = new LyricEditor(score, song.getLine(0), gap);
+
+            assertThat(editor.getText()).isEqualTo("-");
+            assertThat(editor.getSelectedText()).isEqualTo("-");
+        }
+
+        // P2: no syllable after the gap — the chain dangles, so no placeholder
+        @Test
+        void p2_gapWithNoFollowingSyllableOpensEmpty() {
+            var first = crotchet();
+            first.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "a", Lyric.Extend.NONE);
+            var gap = crotchet();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(first));
+            song.withoutMutationTracking(() -> line.addElement(gap));
+
+            var editor = new LyricEditor(score, line, gap);
+
+            assertThat(editor.getText()).isEmpty();
+        }
+
+        // P3: predecessor ends its word — the gap is not inside a chain
+        @Test
+        void p3_gapAfterWordFinalSyllableOpensEmpty() {
+            var first = crotchet();
+            first.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.NONE);
+            var gap = crotchet();
+            var last = crotchet();
+            last.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "mi", Lyric.Extend.NONE);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(first));
+            song.withoutMutationTracking(() -> line.addElement(gap));
+            song.withoutMutationTracking(() -> line.addElement(last));
+
+            var editor = new LyricEditor(score, line, gap);
+
+            assertThat(editor.getText()).isEmpty();
+        }
+
+        // P4: a note with no chain role at all opens empty
+        @Test
+        void p4_unrelatedNoteOpensEmpty() {
+            var element = crotchet();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(element));
+
+            var editor = new LyricEditor(score, line, element);
+
+            assertThat(editor.getText()).isEmpty();
+        }
+
+        // P5: placeholder left intact — Tab commits nothing and the chain survives
+        @Test
+        void p5_tabWithPlaceholderIntactLeavesChainUnchanged() {
+            var first = crotchet();
+            var last = crotchet();
+            var gap = chainWithGap(first, crotchet(), last);
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, song.getLine(0), gap);
+            editor.attachListeners();
+            fireTab(editor);
+
+            verifyNoSongDidChange();
+            assertThat(gap.getLyricForVerse(1)).isNull();
+            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
+        }
+
+        // P6: placeholder deleted, then committed → the word ends at the predecessor
+        @Test
+        void p6_clearedPlaceholderCommitBreaksChain() {
+            var first = crotchet();
+            var last = crotchet();
+            var gap = chainWithGap(first, crotchet(), last);
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, song.getLine(0), gap);
+            editor.attachListeners();
+            editor.setText("");
+            fireEnter(editor);
+
+            captureSingleDidChange();
+            assertThat(gap.getLyricForVerse(1)).isNull();
+            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
+        // P7: Space wipes out the placeholder, which breaks the chain, then advances
+        @Test
+        void p7_spaceBreaksChainAndAdvances() {
+            var first = crotchet();
+            var last = crotchet();
+            var gap = chainWithGap(first, crotchet(), last);
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, song.getLine(0), gap);
+            editor.attachListeners();
+            fireSpace(editor);
+
+            captureSingleDidChange();
+            assertThat(gap.getLyricForVerse(1)).isNull();
+            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
+
+            var captor = ArgumentCaptor.forClass(LyricEditor.class);
+            verify(score, atLeastOnce()).addOverlay(captor.capture());
+            assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(last);
+        }
+
+        // P8: typing over the placeholder commits an ordinary syllable inside the word
+        @Test
+        void p8_textTypedOverPlaceholderCommitsSyllable() {
+            var first = crotchet();
+            var last = crotchet();
+            var gap = chainWithGap(first, crotchet(), last);
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, song.getLine(0), gap);
+            editor.attachListeners();
+            editor.setText("la");
+            fireHyphen(editor);
+
+            captureSingleDidChange();
+            assertThat(gap.getMainLyric())
+                .extracting(Lyric::text, Lyric::syllabic)
+                .containsExactly("la", Lyric.Syllabic.MIDDLE);
+            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
+        }
+
+        // P9: Escape after clearing the placeholder cancels — the chain is left alone
+        @Test
+        void p9_escapeAfterClearingPlaceholderLeavesChainIntact() {
+            var first = crotchet();
+            var last = crotchet();
+            var gap = chainWithGap(first, crotchet(), last);
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, song.getLine(0), gap);
+            editor.attachListeners();
+            editor.setText("");
+            fireEscape(editor);
+
+            verifyNoSongDidChange();
+            assertThat(gap.getLyricForVerse(1)).isNull();
+            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
+        }
+
+        /** Builds "Do" (START) — CONTINUE — STOP and returns the middle carrier. */
+        private StaffElement melismaWithCarrier(StaffElement first, StaffElement middle, StaffElement last) {
+            first.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "Do", Lyric.Extend.START);
+            middle.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
+            last.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(first));
+            song.withoutMutationTracking(() -> line.addElement(middle));
+            song.withoutMutationTracking(() -> line.addElement(last));
+            return middle;
+        }
+
+        // M1: a CONTINUE carrier opens with a selected extender placeholder
+        @Test
+        void m1_continueCarrierOpensWithSelectedPlaceholder() {
+            var carrier = melismaWithCarrier(crotchet(), crotchet(), crotchet());
+
+            var editor = new LyricEditor(score, song.getLine(0), carrier);
+
+            assertThat(editor.getText()).isEqualTo("_");
+            assertThat(editor.getSelectedText()).isEqualTo("_");
+        }
+
+        // M2: the STOP carrier that ends a melisma gets the placeholder too
+        @Test
+        void m2_stopCarrierOpensWithPlaceholder() {
+            var first = crotchet();
+            first.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "Do", Lyric.Extend.START);
+            var carrier = crotchet();
+            carrier.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(first));
+            song.withoutMutationTracking(() -> line.addElement(carrier));
+
+            var editor = new LyricEditor(score, line, carrier);
+
+            assertThat(editor.getText()).isEqualTo("_");
+        }
+
+        // M3: placeholder left intact — Tab commits nothing and the melisma survives
+        @Test
+        void m3_tabWithPlaceholderIntactLeavesMelismaUnchanged() {
+            var first = crotchet();
+            var last = crotchet();
+            var carrier = melismaWithCarrier(first, crotchet(), last);
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, song.getLine(0), carrier);
+            editor.attachListeners();
+            fireTab(editor);
+
+            verifyNoSongDidChange();
+            assertThat(first.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.START);
+            assertThat(carrier.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.CONTINUE);
+            assertThat(last.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.STOP);
+        }
+
+        // M4: placeholder deleted, then committed → the carrier is dropped and the melisma
+        //     collapses, since only this note and the STOP sustained it
+        @Test
+        void m4_clearedPlaceholderCommitBreaksMelisma() {
+            var first = crotchet();
+            var last = crotchet();
+            var carrier = melismaWithCarrier(first, crotchet(), last);
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, song.getLine(0), carrier);
+            editor.attachListeners();
+            editor.setText("");
+            fireEnter(editor);
+
+            captureSingleDidChange();
+            assertThat(first.getMainLyric())
+                .extracting(Lyric::text, Lyric::extend)
+                .containsExactly("Do", Lyric.Extend.NONE);
+            assertThat(carrier.getLyricForVerse(1)).isNull();
+            assertThat(last.getLyricForVerse(1)).isNull();
+        }
+
+        // M5: Escape after clearing the placeholder cancels — the melisma is left alone
+        @Test
+        void m5_escapeAfterClearingPlaceholderLeavesMelismaIntact() {
+            var first = crotchet();
+            var last = crotchet();
+            var carrier = melismaWithCarrier(first, crotchet(), last);
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, song.getLine(0), carrier);
+            editor.attachListeners();
+            editor.setText("");
+            fireEscape(editor);
+
+            verifyNoSongDidChange();
+            assertThat(first.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.START);
+            assertThat(carrier.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.CONTINUE);
+            assertThat(last.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.STOP);
         }
     }
 }

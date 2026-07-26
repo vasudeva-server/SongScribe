@@ -177,4 +177,31 @@ class LyricEditorGraceMelismaTest extends LyricEditorTestSupport {
             .as("the host now carries the chain onward").isEqualTo(Lyric.Extend.CONTINUE);
         assertThat(requireLyric(noteAfter).extend()).isEqualTo(Lyric.Extend.STOP);
     }
+
+    /**
+     * {@code _} typed after a syllable on a paired grace runs the melisma past the host, whose
+     * own {@code STOP} — established by the syllable's commit — must give way to a
+     * {@code CONTINUE} so the chain closes on the next eligible element instead.
+     */
+    @Test
+    void testUnderscoreOnAPairedGraceSyllableExtendsThroughTheHost() {
+        // Strip the shared chain fixture: this case starts from a pair with no lyric at all.
+        chainRoot.lyrics.clear();
+        grace.lyrics.clear();
+        host.lyrics.clear();
+
+        var editor = new LyricEditor(score, line, grace);
+        editor.setText("Re");
+        editor.setCaretPosition(editor.getText().length());
+        editor.attachListeners();
+        fireUnderscore(editor);
+
+        var graceLyric = requireLyric(grace);
+        assertThat(graceLyric.text()).isEqualTo("Re");
+        assertThat(graceLyric.extend()).isEqualTo(Lyric.Extend.START);
+
+        assertThat(requireLyric(host).extend())
+            .as("the host carries the chain past the pair").isEqualTo(Lyric.Extend.CONTINUE);
+        assertThat(requireLyric(noteAfter).extend()).isEqualTo(Lyric.Extend.STOP);
+    }
 }

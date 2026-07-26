@@ -30,6 +30,8 @@ import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
@@ -56,6 +58,8 @@ import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 
 public class Line {
+
+    private static final Logger LOG = LoggerFactory.getLogger(Line.class);
 
     private static final int[][] FLAT_SHARP_ORDINAL = new int[][]{
         new int[]{0, 3, 6, 2, 5, 1, 4},
@@ -721,6 +725,9 @@ public class Line {
 
         var newCompound = !isWordEnd && isCompound;
 
+        LOG.debug("setSyllableBoundary({}, wordEnd={}, compound={}): {} -> {}, prevContinues={}",
+            index, isWordEnd, isCompound, lyric.syllabic(), newSyllabic, prevContinues);
+
         if (newSyllabic != lyric.syllabic() || newCompound != lyric.compound()) {
             modifyElement(index, ElementField.LYRIC, () ->
                 replaceSyllabicAndCompound(index, verse, newSyllabic, newCompound));
@@ -733,16 +740,22 @@ public class Line {
         var nextIndex = nextLyricBearingIndex(index, verse);
 
         if (nextIndex < 0) {
+            LOG.debug("fixSuccessorSyllabic({}): no lyric-bearing successor", index);
             return;
         }
 
         var nextLyric = elements.get(nextIndex).getLyricForVerse(verse);
 
         if (nextLyric == null || nextLyric.syllabic() == null) {
+            LOG.debug("fixSuccessorSyllabic({}): successor {} is a carrier, nothing to fix",
+                index, nextIndex);
             return;
         }
 
         var newSyllabic = deriveSyllabic(predecessorContinues, Lyric.syllabicContinues(nextLyric.syllabic()));
+
+        LOG.debug("fixSuccessorSyllabic({}): successor {} {} -> {}, predecessorContinues={}",
+            index, nextIndex, nextLyric.syllabic(), newSyllabic, predecessorContinues);
 
         if (newSyllabic != nextLyric.syllabic()) {
             modifyElement(nextIndex, ElementField.LYRIC, () ->
@@ -809,12 +822,92 @@ public class Line {
     }
 
     /**
+     * A one-line rendering of every element's {@code verse} lyric, for debug logging. Each
+     * element appears as its index followed by its state: {@code -} for no lyric, {@code ~}
+     * for a carrier (no syllable of its own), otherwise the quoted text and its syllabic.
+     * The extender state and the compound flag follow when they are set. For example:
+     *
+     * <pre>0="a"/SINGLE/START 1=~/STOP 2="b"/SINGLE 3=-</pre>
+     *
+     * <p>Guard calls with {@link Logger#isDebugEnabled()} — this builds a string every time.
+     */
+    public String lyricRowDescription(int verse) {
+        var description = new StringBuilder();
+
+        for (var i = 0; i < elements.size(); i++) {
+            if (i > 0) {
+                description.append(' ');
+            }
+
+            description.append(i).append('=');
+            var lyric = elements.get(i).getLyricForVerse(verse);
+
+            if (lyric == null) {
+                description.append('-');
+                continue;
+            }
+
+            if (lyric.syllabic() == null) {
+                description.append('~');
+            } else {
+                description.append('"').append(lyric.text()).append("\"/").append(lyric.syllabic());
+            }
+
+            if (lyric.extend() != Lyric.Extend.NONE) {
+                description.append('/').append(lyric.extend());
+            }
+
+            if (lyric.compound()) {
+                description.append("/compound");
+            }
+        }
+
+        return description.toString();
+    }
+
+    /**
+     * Repairs the syllabic of the first text-bearing lyric after {@code index}, given that the
+     * element at {@code index} has just become a melisma carrier. A melisma is sung on a single
+     * non-hyphenated syllable, so the chain always ends the word that ran into it and that
+     * syllable can no longer be a word continuation ({@link Lyric.Syllabic#MIDDLE} becomes
+     * {@link Lyric.Syllabic#BEGIN}, {@link Lyric.Syllabic#END} becomes
+     * {@link Lyric.Syllabic#SINGLE}). Intervening carriers are skipped — they hold no syllabic
+     * of their own.
+     *
+     * <p>Must be called inside a modification bracket, after the carrier at {@code index} has
+     * been written.
+     */
+    public void adjustSuccessorAfterMelismaCarrier(int index, int verse) {
+        for (var i = index + 1; i < elements.size(); i++) {
+            var lyric = elements.get(i).getLyricForVerse(verse);
+
+            if (lyric == null || lyric.syllabic() == null) {
+                continue;
+            }
+
+            var newSyllabic = deriveSyllabic(false, Lyric.syllabicContinues(lyric.syllabic()));
+
+            LOG.debug("adjustSuccessorAfterMelismaCarrier({}): successor {} {} -> {}",
+                index, i, lyric.syllabic(), newSyllabic);
+
+            if (newSyllabic != lyric.syllabic()) {
+                var successorIndex = i;
+                modifyElement(successorIndex, ElementField.LYRIC, () ->
+                    replaceSyllabicAndCompound(successorIndex, verse, newSyllabic, lyric.compound()));
+            }
+
+            return;
+        }
+    }
+
+    /**
      * Repairs syllabic chain markers on the neighbors of a just-deleted verse lyric.
      * Must be called inside a modification bracket, after the lyric at {@code index}
      * has already been cleared.
      */
     public void adjustNeighborsForLyricDeletion(int index, int verse) {
         var backIndex = previousLyricBearingIndex(index, verse);
+        LOG.debug("adjustNeighborsForLyricDeletion({}): predecessor={}", index, backIndex);
 
         if (backIndex >= 0) {
             var backLyric = elements.get(backIndex).getLyricForVerse(verse);
@@ -824,6 +917,8 @@ public class Line {
             }
 
             if (backLyric.extend() == Lyric.Extend.CONTINUE) {
+                LOG.debug("adjustNeighborsForLyricDeletion({}): closing chain, {} CONTINUE -> STOP",
+                    index, backIndex);
                 var backElement = elements.get(backIndex);
                 modifyElement(backIndex, ElementField.LYRIC, () ->
                     backElement.setLyricForVerse(verse,
@@ -833,6 +928,8 @@ public class Line {
             }
 
             if (isWordContinuingLyric(backLyric) && !hasFollowingTextBearingLyric(backIndex, verse)) {
+                LOG.debug("adjustNeighborsForLyricDeletion({}): ending dangling word at {}",
+                    index, backIndex);
                 // setSyllableBoundary also adjusts the next lyric-bearing element.
                 setSyllableBoundary(backIndex, verse, true, false);
             }
@@ -1041,6 +1138,9 @@ public class Line {
         var hostLyric = hostElement.getLyricForVerse(verse);
         var graceCarries = graceLyric != null && graceLyric.isCarrier();
         var graceHasSyllable = graceLyric != null && !graceCarries && !graceLyric.text().isBlank();
+
+        LOG.debug("syncGraceHostMelisma(grace={}, host={}): paired={} graceCarries={} graceHasSyllable={} host={}",
+            graceIndex, hostIndex, isPaired, graceCarries, graceHasSyllable, hostLyric);
 
         if (isPaired && graceHasSyllable) {
             setExtendForVerse(graceIndex, verse, Lyric.Extend.START);

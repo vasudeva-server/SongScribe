@@ -564,8 +564,9 @@ class LyricEditorTest extends LyricEditorTestSupport {
         song.withoutMutationTracking(() -> line.addElement(element));
 
         var editor = new LyricEditor(score, line, element);
-        // Text is empty — openedAsExtender is true — dismiss without typing.
-        assertThat(editor.getText()).isEmpty();
+        // openedAsExtender is true, so the editor holds the extender placeholder — dismiss
+        // without touching it.
+        assertThat(editor.getText()).isEqualTo("_");
 
         messageCenterMock = mockStatic(MessageCenter.class);
         fireEscape(editor);
@@ -785,12 +786,75 @@ class LyricEditorTest extends LyricEditorTestSupport {
     // -----------------------------------------------------------------------
 
     @Test
-    void testUnderscoreOnNonEmptyTextBeeps() {
+    void testUnderscoreAtEndOfTextMakesNextElementAMelismaCarrier() {
         var element = crotchet();
+        var next = crotchet();
+        var afterNext = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+        song.withoutMutationTracking(() -> line.addElement(next));
+        song.withoutMutationTracking(() -> line.addElement(afterNext));
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("ho");
+        editor.setCaretPosition(editor.getText().length());
+        editor.attachListeners();
+        fireUnderscore(editor);
+
+        captureSingleDidChange();
+        assertThat(element.getMainLyric())
+            .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
+            .containsExactly(Lyric.Syllabic.SINGLE, false, "ho", Lyric.Extend.START);
+        assertThat(next.getLyricForVerse(1))
+            .extracting(Lyric::text, Lyric::extend)
+            .containsExactly("", Lyric.Extend.STOP);
+
+        var captor = ArgumentCaptor.forClass(LyricEditor.class);
+        verify(score, atLeastOnce()).addOverlay(captor.capture());
+        assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(afterNext);
+    }
+
+    @Test
+    void testUnderscoreOnFullySelectedTextReplacesLyricWithMelisma() {
+        var predecessor = crotchet();
+        predecessor.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.NONE);
+        var element = crotchet();
+        setMainLyric(element, "ho");
+        var next = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(predecessor));
+        song.withoutMutationTracking(() -> line.addElement(element));
+        song.withoutMutationTracking(() -> line.addElement(next));
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        // The constructor prefills the existing lyric and selects it, which is the state
+        // the user sees when the editor opens on a syllable.
+        var editor = new LyricEditor(score, line, element);
+        assertThat(editor.getText()).isEqualTo("ho");
+        editor.attachListeners();
+        fireUnderscore(editor);
+
+        captureSingleDidChange();
+        assertThat(predecessor.getMainLyric())
+            .extracting(Lyric::text, Lyric::extend)
+            .containsExactly("do", Lyric.Extend.START);
+        assertThat(element.getLyricForVerse(1))
+            .extracting(Lyric::text, Lyric::extend)
+            .containsExactly("", Lyric.Extend.STOP);
+
+        var captor = ArgumentCaptor.forClass(LyricEditor.class);
+        verify(score, atLeastOnce()).addOverlay(captor.capture());
+        assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(next);
+    }
+
+    @Test
+    void testUnderscoreOnFullySelectedTextWithoutPredecessorBeepsAndKeepsText() {
+        var element = crotchet();
+        setMainLyric(element, "ho");
         var next = crotchet();
         var line = detachedLineWith(element, next);
         var editor = new LyricEditor(score, line, element);
-        editor.setText("ho");
         editor.attachListeners();
 
         var toolkitMock = mock(Toolkit.class);
@@ -802,6 +866,9 @@ class LyricEditorTest extends LyricEditorTestSupport {
         }
 
         assertThat(editor.getText()).isEqualTo("ho");
+        assertThat(element.getMainLyric())
+            .extracting(Lyric::text, Lyric::extend)
+            .containsExactly("ho", Lyric.Extend.NONE);
     }
 
     @Test
