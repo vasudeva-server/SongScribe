@@ -564,19 +564,19 @@ public class SongSettingsDialog extends StandardDialog {
             var section = new BaseDialog.TitledSection(
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_SECTION_TITLE_OF_SONG)
             );
+            addFilledFieldRow(
+                section,
+                Strings.get(Strings.DIALOG_SONG_SETTINGS_SONG_TITLE),
+                titleField
+            );
+
+            addSeparator(section);
+
             addLabeledField(
                 section,
                 Strings.get(Strings.DIALOG_SONG_SETTINGS_NUMBER),
                 numberField,
                 BaseDialog.LabelPosition.LEFT
-            );
-
-            addSeparator(section);
-
-            addFilledFieldRow(
-                section,
-                Strings.get(Strings.DIALOG_SONG_SETTINGS_SONG_TITLE),
-                titleField
             );
 
             addSeparator(section);
