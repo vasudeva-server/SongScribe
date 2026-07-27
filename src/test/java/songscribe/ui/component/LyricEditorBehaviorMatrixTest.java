@@ -162,7 +162,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     class TabKey {
 
         @Test
-        void k1_changedTextCommitsWordFinalAndAdvances() {
+        void k1_changedTextKeepsTheStoredShapeAndAdvances() {
             var element = crotchet();
             element.setLyricForVerse(1, Lyric.Syllabic.BEGIN, true, "ho", Lyric.Extend.START);
             var nextNote = crotchet();
@@ -176,17 +176,111 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             fireTab(editor);
 
+            // One modification: the commit writes the chain-derived syllabic directly, so the
+            // boundary pass has nothing to correct on this element.
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
             assertThat(((ElementModification) notification.getMutations().getFirst()).fields())
                 .containsExactly(ElementField.LYRIC);
             assertThat(element.getMainLyric())
-                .extracting(Lyric::syllabic, Lyric::compound, Lyric::extend)
-                .containsExactly(Lyric.Syllabic.SINGLE, false, Lyric.Extend.NONE);
+                .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
+                .containsExactly("ha", Lyric.Syllabic.BEGIN, true, Lyric.Extend.START);
 
             var captor = ArgumentCaptor.forClass(LyricEditor.class);
             verify(score, atLeastOnce()).addOverlay(captor.capture());
             assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(nextNote);
+        }
+
+        // The editor opened on a syllable hyphenated on BOTH sides, so its stored role is MIDDLE
+        // rather than BEGIN. Editing the text must leave it hyphenated in both directions.
+        @Test
+        void k1b_changedTextOnAMiddleSyllableKeepsBothHyphens() {
+            var first = crotchet();
+            first.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "glo", Lyric.Extend.NONE);
+            var element = crotchet();
+            element.setLyricForVerse(1, Lyric.Syllabic.MIDDLE, false, "ri", Lyric.Extend.NONE);
+            var last = crotchet();
+            last.setLyricForVerse(1, Lyric.Syllabic.END, false, "a", Lyric.Extend.NONE);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(first));
+            song.withoutMutationTracking(() -> line.addElement(element));
+            song.withoutMutationTracking(() -> line.addElement(last));
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, line, element);
+            editor.setText("ro");
+
+            fireTab(editor);
+
+            var notification = captureSingleDidChange();
+            assertThat(notification.getMutations()).hasSize(1);
+            assertThat(element.getMainLyric())
+                .extracting(Lyric::text, Lyric::syllabic, Lyric::extend)
+                .containsExactly("ro", Lyric.Syllabic.MIDDLE, Lyric.Extend.NONE);
+            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
+        }
+
+        // A plain one-note word that also sustains a melisma over the note after it. Editing the
+        // text must keep both the standalone role and the sustain — only a shape-declaring key
+        // may change either.
+        @Test
+        void k1c_changedTextOnAMelismaStartingWordKeepsTheMelisma() {
+            var element = crotchet();
+            element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "Do", Lyric.Extend.START);
+            var carrier = crotchet();
+            carrier.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(element));
+            song.withoutMutationTracking(() -> line.addElement(carrier));
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, line, element);
+            editor.setText("Da");
+
+            fireTab(editor);
+
+            var notification = captureSingleDidChange();
+            assertThat(notification.getMutations()).hasSize(1);
+
+            // SINGLE, not BEGIN: a word-final commit must not grow a hyphen toward the carrier.
+            assertThat(element.getMainLyric())
+                .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
+                .containsExactly("Da", Lyric.Syllabic.SINGLE, false, Lyric.Extend.START);
+
+            // The carrier still ends the melisma the edited syllable starts.
+            assertThat(carrier.getLyricForVerse(1))
+                .extracting(Lyric::syllabic, Lyric::extend)
+                .containsExactly(null, Lyric.Extend.STOP);
+        }
+
+        // Erasing a syllable's text leaves no shape to keep, so its entry goes away and the
+        // syllable it was hyphenated to is re-lettered as a word of its own. The melisma matters:
+        // a syllable-less lyric may not claim to start one, so keeping the stored shape here
+        // would be rejected outright rather than merely looking wrong.
+        @Test
+        void k1d_erasedTextRemovesTheSyllableAndRelettersTheNext() {
+            var element = crotchet();
+            element.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "ho", Lyric.Extend.START);
+            var nextNote = crotchet();
+            nextNote.setLyricForVerse(1, Lyric.Syllabic.END, false, "ri", Lyric.Extend.NONE);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(element));
+            song.withoutMutationTracking(() -> line.addElement(nextNote));
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, line, element);
+            editor.setText("");
+
+            fireTab(editor);
+
+            captureSingleDidChange();
+            assertThat(element.getLyricForVerse(1)).isNull();
+
+            // The hyphen has nothing left to start from, so "ri" becomes a word of its own.
+            assertThat(nextNote.getMainLyric())
+                .extracting(Lyric::text, Lyric::syllabic, Lyric::extend)
+                .containsExactly("ri", Lyric.Syllabic.SINGLE, Lyric.Extend.NONE);
         }
 
         @Test
@@ -224,26 +318,34 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     class ShiftTabKey {
 
         @Test
-        void k3_changedTextCommitsWordFinalAndRetreats() {
+        void k3_changedTextKeepsTheStoredShapeAndRetreats() {
             var prevNote = crotchet();
             prevNote.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.NONE);
             var element = crotchet();
-            element.setLyricForVerse(1, Lyric.Syllabic.END, false, "re", Lyric.Extend.NONE);
+            element.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "re", Lyric.Extend.NONE);
+            var nextNote = crotchet();
+            nextNote.setLyricForVerse(1, Lyric.Syllabic.END, false, "mi", Lyric.Extend.NONE);
             var line = song.getLine(0);
             song.withoutMutationTracking(() -> line.addElement(prevNote));
             song.withoutMutationTracking(() -> line.addElement(element));
+            song.withoutMutationTracking(() -> line.addElement(nextNote));
 
             messageCenterMock = mockStatic(MessageCenter.class);
             var editor = new LyricEditor(score, line, element);
-            editor.setText("mi");
+            editor.setText("ra");
 
             fireShiftTab(editor);
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
             assertThat(element.getMainLyric())
-                .extracting(Lyric::syllabic, Lyric::compound, Lyric::extend)
-                .containsExactly(Lyric.Syllabic.SINGLE, false, Lyric.Extend.NONE);
+                .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
+                .containsExactly("ra", Lyric.Syllabic.BEGIN, false, Lyric.Extend.NONE);
+
+            // The hyphen forward survives: committing the edit word-final would demote this to END.
+            assertThat(nextNote.getMainLyric())
+                .extracting(Lyric::text, Lyric::syllabic)
+                .containsExactly("mi", Lyric.Syllabic.END);
 
             var captor = ArgumentCaptor.forClass(LyricEditor.class);
             verify(score, atLeastOnce()).addOverlay(captor.capture());
@@ -274,6 +376,33 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             assertThat(element.getMainLyric())
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.BEGIN, true, Lyric.Extend.START);
+        }
+
+        @Test
+        void k4b_changedTextKeepsTheStoredShapeAndDismisses() {
+            var element = crotchet();
+            element.setLyricForVerse(1, Lyric.Syllabic.BEGIN, true, "ho", Lyric.Extend.START);
+            var nextNote = crotchet();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(element));
+            song.withoutMutationTracking(() -> line.addElement(nextNote));
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, line, element);
+            editor.setText("ha");
+
+            fireEnter(editor);
+
+            var notification = captureSingleDidChange();
+            assertThat(notification.getMutations()).hasSize(1);
+
+            // Editing the text does not make Enter drop the hyphen, compound join or melisma.
+            assertThat(element.getMainLyric())
+                .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
+                .containsExactly("ha", Lyric.Syllabic.BEGIN, true, Lyric.Extend.START);
+
+            // Enter dismisses rather than advancing.
+            verify(score, never()).addOverlay(any());
         }
     }
 
@@ -1521,9 +1650,12 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
         @Test
         void f2_focusedTrueCommitsAndDismisses() {
             var element = crotchet();
-            element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "ho", Lyric.Extend.NONE);
+            element.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "ho", Lyric.Extend.NONE);
+            var nextNote = crotchet();
+            nextNote.setLyricForVerse(1, Lyric.Syllabic.END, false, "ri", Lyric.Extend.NONE);
             var line = song.getLine(0);
             song.withoutMutationTracking(() -> line.addElement(element));
+            song.withoutMutationTracking(() -> line.addElement(nextNote));
 
             var editor = new LyricEditor(score, line, element);
             editor.setText("ha");
@@ -1537,7 +1669,14 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
-            assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ha");
+
+            // Losing focus after an edit keeps the hyphen to the next syllable.
+            assertThat(element.getMainLyric())
+                .extracting(Lyric::text, Lyric::syllabic, Lyric::extend)
+                .containsExactly("ha", Lyric.Syllabic.BEGIN, Lyric.Extend.NONE);
+            assertThat(nextNote.getMainLyric())
+                .extracting(Lyric::text, Lyric::syllabic)
+                .containsExactly("ri", Lyric.Syllabic.END);
             assertThat(editor.getParent()).isNull();
         }
 
@@ -1874,6 +2013,32 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             assertThat(first.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.START);
             assertThat(carrier.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.CONTINUE);
             assertThat(last.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.STOP);
+        }
+
+        // M3b: real text typed over the placeholder, then Tab. The note stops being a text-less
+        //      carrier and becomes a syllable of its own, so the melisma through it collapses.
+        @Test
+        void m3b_typedTextOverCarrierDropsTheCarrierAndCommitsAPlainSyllable() {
+            var first = crotchet();
+            var last = crotchet();
+            var carrier = melismaWithCarrier(first, crotchet(), last);
+
+            messageCenterMock = mockStatic(MessageCenter.class);
+            var editor = new LyricEditor(score, song.getLine(0), carrier);
+            editor.attachListeners();
+            editor.setText("la");
+            fireTab(editor);
+
+            captureSingleDidChange();
+
+            // A text-bearing lyric must never keep a carrier's null syllabic or its extender.
+            assertThat(carrier.getMainLyric())
+                .extracting(Lyric::text, Lyric::syllabic, Lyric::extend)
+                .containsExactly("la", Lyric.Syllabic.SINGLE, Lyric.Extend.NONE);
+
+            // The melisma that ran through this note no longer has anything to sustain it.
+            assertThat(first.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.NONE);
+            assertThat(last.getLyricForVerse(1)).isNull();
         }
 
         // M4: placeholder deleted, then committed → the carrier is dropped and the melisma

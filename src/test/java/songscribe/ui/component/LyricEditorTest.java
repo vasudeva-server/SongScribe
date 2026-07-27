@@ -402,6 +402,66 @@ class LyricEditorTest extends LyricEditorTestSupport {
     }
 
     @Test
+    void testAdvanceWithChangedTextKeepsTheHyphenToTheFollowingSyllable() {
+        var current = crotchet();
+        current.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "ho", Lyric.Extend.NONE);
+        var nextNote = crotchet();
+        nextNote.setLyricForVerse(1, Lyric.Syllabic.END, false, "ri", Lyric.Extend.NONE);
+        var line = detachedLineWith(current, nextNote);
+
+        var editor = new LyricEditor(score, line, current);
+        editor.setText("ha");
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        editor.advance();
+
+        assertThat(current.getMainLyric())
+            .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
+            .containsExactly("ha", Lyric.Syllabic.BEGIN, false, Lyric.Extend.NONE);
+        assertThat(nextNote.getMainLyric())
+            .extracting(Lyric::text, Lyric::syllabic)
+            .containsExactly("ri", Lyric.Syllabic.END);
+
+        var captor = ArgumentCaptor.forClass(LyricEditor.class);
+        verify(score, atLeastOnce()).addOverlay(captor.capture());
+        assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(nextNote);
+    }
+
+    @Test
+    void testRetreatWithChangedTextKeepsTheHyphenToTheFollowingSyllable() {
+        // The predecessor continues into the edited syllable, so the syllable's stored role is
+        // MIDDLE, not BEGIN — retreating over a hyphen must leave that chain untouched.
+        var previous = crotchet();
+        previous.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "do", Lyric.Extend.NONE);
+        var current = crotchet();
+        current.setLyricForVerse(1, Lyric.Syllabic.MIDDLE, false, "ho", Lyric.Extend.NONE);
+        var nextNote = crotchet();
+        nextNote.setLyricForVerse(1, Lyric.Syllabic.END, false, "ri", Lyric.Extend.NONE);
+        var line = detachedLineWith(previous, current, nextNote);
+
+        var editor = new LyricEditor(score, line, current);
+        editor.setText("ha");
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        editor.retreat();
+
+        assertThat(current.getMainLyric())
+            .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
+            .containsExactly("ha", Lyric.Syllabic.MIDDLE, false, Lyric.Extend.NONE);
+        assertThat(previous.getMainLyric())
+            .extracting(Lyric::text, Lyric::syllabic)
+            .containsExactly("do", Lyric.Syllabic.BEGIN);
+        assertThat(nextNote.getMainLyric())
+            .extracting(Lyric::text, Lyric::syllabic)
+            .containsExactly("ri", Lyric.Syllabic.END);
+
+        // Without this, the test would pass just as well if retreat() moved forward.
+        var captor = ArgumentCaptor.forClass(LyricEditor.class);
+        verify(score, atLeastOnce()).addOverlay(captor.capture());
+        assertThat(requireLastNonNull(captor).getActiveElement()).isSameAs(previous);
+    }
+
+    @Test
     void testRetreatWithUnchangedTextPreservesExistingBoundary() {
         var previous = crotchet();
         previous.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "ho", Lyric.Extend.NONE);

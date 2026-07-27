@@ -737,6 +737,109 @@ public class Line {
         fixSuccessorSyllabic(index, verse, !isWordEnd);
     }
 
+    /**
+     * Writes the {@code verse} lyric at {@code index} with its syllabic already derived from
+     * chain context, then re-letters the following syllable if this write changed what that
+     * one must be.
+     *
+     * <p>Use this rather than {@link #setSyllableBoundary} whenever the text itself is being
+     * written: deriving the syllabic here means one {@link ElementField#LYRIC} modification for
+     * this element. Writing a placeholder syllabic and letting the boundary pass correct it
+     * costs a second one whenever the derived value differs from the placeholder.
+     * {@code setSyllableBoundary} remains the entry point for re-lettering a lyric whose text is
+     * <em>not</em> changing.
+     *
+     * <p>The syllabic follows the lyric's own kind: {@code null} for a melisma carrier (which
+     * has no syllable of its own), and the chain-derived value for a text-bearing syllable. For
+     * an erased syllable it is {@link Lyric.Syllabic#SINGLE}, but that value never reaches
+     * storage — blank text with {@link Lyric.Extend#NONE} makes
+     * {@link StaffElement#setLyricForVerse} drop the verse entry outright, so the syllabic is
+     * discarded along with it.
+     *
+     * <p>Must be called from inside a {@link #withModification(Runnable)} bracket.
+     *
+     * @param index      the element index on this line
+     * @param verse      the verse number (typically 1)
+     * @param text       the syllable text; blank for a carrier or an erased syllable
+     * @param extend     melisma extender state for the lyric
+     * @param isWordEnd  {@code true} when this syllable terminates the word (no continuation)
+     * @param isCompound {@code true} when this syllable joins the next via a compound-word
+     *                   boundary; ignored when {@code isWordEnd} is {@code true}
+     */
+    public void writeLyricForVerse(int index, int verse, String text, Lyric.Extend extend,
+            boolean isWordEnd, boolean isCompound) {
+        var isCarrier = Lyric.isCarrier(extend);
+
+        // isBlank, not isEmpty, to match StaffElement.setLyricForVerse: it drops the entry for
+        // any blank text, so whitespace-only text must not be treated as a syllable here or the
+        // successor would be re-lettered as though one followed it.
+        var letters = !isCarrier && !text.isBlank();
+
+        // Stricter than isWordEnd alone: a lyric with no text of its own continues nothing,
+        // whatever the caller asked for. Callers that pre-compute a commit's continues-status
+        // from isWordEnd by itself (LyricEditor.CommitIntent) must therefore never pass a
+        // continuing request with blank text, or their answer and this one diverge.
+        var continuesIntoNext = letters && !isWordEnd;
+
+        Lyric.@Nullable Syllabic syllabic;
+
+        if (isCarrier) {
+            syllabic = null;
+        } else if (letters) {
+            syllabic = deriveSyllabic(previousLyricContinues(index, verse), continuesIntoNext);
+        } else {
+            syllabic = Lyric.Syllabic.SINGLE;
+        }
+
+        var compound = continuesIntoNext && isCompound;
+
+        trace("writeLyricForVerse({}, '{}', {}): syllabic={}, compound={}",
+            index, text, extend, syllabic, compound);
+
+        var element = elements.get(index);
+
+        // Skip a write that would store what is already there, as setSyllableBoundary and
+        // fixSuccessorSyllabic do: an ElementModification costs two element clones plus an undo
+        // entry the user could step back into for no visible change.
+        if (!storesSameLyric(element.getLyricForVerse(verse), text, extend, syllabic, compound)) {
+            modifyElement(index, ElementField.LYRIC, () ->
+                element.setLyricForVerse(verse, syllabic, compound, text, extend));
+        }
+
+        if (letters) {
+            fixSuccessorSyllabic(index, verse, continuesIntoNext);
+        }
+    }
+
+    /**
+     * Whether {@code existing} already holds exactly what {@link #writeLyricForVerse} would store
+     * for these values, making the write a no-op. Mirrors {@link StaffElement#setLyricForVerse}'s
+     * truth table, and deliberately reports "different" for the combinations that method rejects
+     * (text on a carrier, blank text with {@link Lyric.Extend#START}) so the write still runs and
+     * still throws.
+     */
+    private static boolean storesSameLyric(@Nullable Lyric existing, String text,
+            Lyric.Extend extend, Lyric.@Nullable Syllabic syllabic, boolean compound) {
+        var isBlank = text.isBlank();
+
+        if (Lyric.isCarrier(extend)) {
+            // A carrier's stored state is fixed by its extend alone: empty text, null syllabic,
+            // not compound.
+            return isBlank && existing != null && existing.extend() == extend;
+        }
+
+        if (isBlank) {
+            // Blank text with NONE removes the verse entry rather than storing anything.
+            return extend == Lyric.Extend.NONE && existing == null;
+        }
+
+        return existing != null
+            && existing.text().equals(text)
+            && existing.extend() == extend
+            && existing.syllabic() == syllabic
+            && existing.compound() == compound;
+    }
+
     private void fixSuccessorSyllabic(int index, int verse, boolean predecessorContinues) {
         var nextIndex = nextLyricBearingIndex(index, verse);
 

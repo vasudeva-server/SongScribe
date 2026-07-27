@@ -50,7 +50,6 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.action.EditLyricAction;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.undo.OpNames;
 import songscribe.layout.InsetsSs;
@@ -428,7 +427,11 @@ public final class LyricEditor extends MyJTextField {
         fontMetrics = getFontMetrics(zoomedFont);
     }
 
-    /** The three legal shapes a committed syllable can have. */
+    /**
+     * The three legal shapes a committed syllable can have. Only a shape-declaring key picks
+     * one directly; a neutral commit takes whatever shape the lyric already has, via
+     * {@link #neutralCommitSpec()}.
+     */
     public enum CommitKind {
         /** Word-final syllable: SINGLE or END, compound = false. */
         WORD_FINAL,
@@ -441,14 +444,28 @@ public final class LyricEditor extends MyJTextField {
     private record CommitSpec(CommitKind kind, Lyric.Extend extend) {}
 
     /**
-     * The three spacing-relevant booleans a {@code (kind, extend)} pair implies. Derived in one
-     * place so {@link #ensureLyricFits} (fit pre-check) and {@link #commitInner} (the actual write)
-     * cannot drift apart if the {@link CommitKind}/{@link Lyric.Extend} mapping ever changes.
+     * The three booleans a {@code (kind, extend)} pair implies, for the two places that must
+     * reason about a commit <em>before</em> it happens: {@link #ensureLyricFits} (which probes
+     * whether the line still lays out) and {@link #commitInner}'s no-op check (which compares the
+     * pending commit against the stored lyric). Derived in one place so those two cannot drift
+     * apart if the {@link CommitKind}/{@link Lyric.Extend} mapping ever changes.
+     *
+     * <p>The write itself does not use this — it passes {@code kind} and {@code extend} straight
+     * to {@link Line#writeLyricForVerse(int, int, String, Lyric.Extend, boolean, boolean)}, which
+     * applies the same mapping to decide the stored syllabic and compound flag.
+     *
+     * <p><b>Assumed by {@code wantsContinues}:</b> a non-{@link CommitKind#WORD_FINAL} commit
+     * always carries non-blank text and a non-carrier extend. The write applies the stricter
+     * test — it only continues into the next syllable when there is text to continue from — so
+     * the two agree only while that holds. It holds because the hyphen and compound keys are the
+     * only sources of a continuing kind, and both reject an empty editor before committing. A
+     * new continuing commit path must uphold it, or this no-op check would read a real change as
+     * no change and skip the write.
      */
     private record CommitIntent(boolean wantsCarrier, boolean wantsContinues, boolean wantsCompound) {
         static CommitIntent of(CommitKind kind, Lyric.Extend extend) {
             return new CommitIntent(
-                extend == Lyric.Extend.STOP || extend == Lyric.Extend.CONTINUE,
+                Lyric.isCarrier(extend),
                 kind != CommitKind.WORD_FINAL,
                 kind == CommitKind.WORD_CONTINUING_COMPOUND);
         }
@@ -604,7 +621,7 @@ public final class LyricEditor extends MyJTextField {
             }
 
             focused = false;
-            var commitSpec = navigationCommitSpec();
+            var commitSpec = neutralCommitSpec();
 
             if (!ensureLyricFits(commitSpec.kind(), commitSpec.extend())) {
                 // Keep the editor open and focused so the user can shorten the too-long lyric.
@@ -810,7 +827,7 @@ public final class LyricEditor extends MyJTextField {
 
         bindKey(KeyEvent.VK_ENTER, ACTION_KEY_ENTER, () -> {
             logState("key ENTER");
-            var commitSpec = navigationCommitSpec();
+            var commitSpec = neutralCommitSpec();
 
             if (!ensureLyricFits(commitSpec.kind(), commitSpec.extend())) {
                 // Keep the editor open (it retains focus) so the user can shorten the lyric.
@@ -1224,15 +1241,12 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Writes the editor's current text into the active element's lyric for {@link #CURRENT_VERSE},
-     * then sets the syllable boundary on this element (and propagates to the next
-     * lyric-bearing element where needed) via {@link Line#setSyllableBoundary}.
-     *
-     * <p>The text/extend write goes through the {@link StaffElement#setLyricForVerse}
-     * primitive with a placeholder syllabic; the follow-up {@code setSyllableBoundary}
-     * call corrects the syllabic from chain context. When the resulting syllabic matches
-     * the placeholder, the boundary helper skips its own emission, so a plain word-final
-     * commit still produces exactly one {@code ElementModification}.
+     * Writes the editor's current text into the active element's lyric for {@link #CURRENT_VERSE}
+     * via {@link Line#writeLyricForVerse(int, int, String, Lyric.Extend, boolean, boolean)}, which
+     * derives the syllabic from chain context and propagates to the next lyric-bearing element
+     * where needed. Every commit therefore produces exactly one {@code ElementModification} for
+     * this element, plus at most one more for the following syllable when it has to be
+     * re-lettered.
      *
      * <p>Same-text/equivalent-state commits and empty-on-empty commits emit zero
      * mutations — assumes an open modification bracket so zero-mutation early-returns
@@ -1272,8 +1286,7 @@ public final class LyricEditor extends MyJTextField {
         var existingText = existingLyric != null ? existingLyric.text() : "";
         var intent = CommitIntent.of(kind, extend);
         var existingSyllabic = existingLyric != null ? existingLyric.syllabic() : null;
-        var existingContinues = existingSyllabic == Lyric.Syllabic.BEGIN
-            || existingSyllabic == Lyric.Syllabic.MIDDLE;
+        var existingContinues = Lyric.syllabicContinues(existingSyllabic);
         var existingCompound = existingLyric != null && existingLyric.compound();
 
         if (text.equals(existingText)
@@ -1302,14 +1315,8 @@ public final class LyricEditor extends MyJTextField {
             clearForwardCarriers(index);
         }
 
-        var placeholderSyllabic = intent.wantsCarrier() ? null : Lyric.Syllabic.SINGLE;
-
-        line.modifyElement(index, ElementField.LYRIC, () ->
-            element.setLyricForVerse(CURRENT_VERSE, placeholderSyllabic, false, text, extend));
-
-        if (!text.isEmpty() && !intent.wantsCarrier()) {
-            line.setSyllableBoundary(index, CURRENT_VERSE, kind == CommitKind.WORD_FINAL, kind == CommitKind.WORD_CONTINUING_COMPOUND);
-        }
+        line.writeLyricForVerse(index, CURRENT_VERSE, text, extend,
+            kind == CommitKind.WORD_FINAL, kind == CommitKind.WORD_CONTINUING_COMPOUND);
 
         // A syllable on a paired grace note implies a melisma across its host, so the
         // extender follows the text: established by this commit, torn down when the text
@@ -1337,7 +1344,7 @@ public final class LyricEditor extends MyJTextField {
      * runs the dismiss-adjustment pass, then advances to the next eligible element.
      */
     public void advance() {
-        var commitSpec = navigationCommitSpec();
+        var commitSpec = neutralCommitSpec();
         advance(commitSpec.kind(), commitSpec.extend());
     }
 
@@ -1346,7 +1353,7 @@ public final class LyricEditor extends MyJTextField {
      * runs the dismiss-adjustment pass, then retreats to the previous eligible element.
      */
     public void retreat() {
-        var commitSpec = navigationCommitSpec();
+        var commitSpec = neutralCommitSpec();
         advanceWithIndex(commitSpec.kind(), commitSpec.extend(), findPreviousEligibleIndex());
     }
 
@@ -1381,23 +1388,52 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Tab/Shift-Tab without a text edit should not rewrite the current lyric's syllabic
-     * or extend state. Reuse the stored shape when the text is unchanged; otherwise fall
-     * back to the default word-final/no-melisma commit.
+     * The shape a <em>neutral</em> commit should write.
+     *
+     * <p>Every way of leaving the editor falls into one of two groups:
+     *
+     * <ul>
+     *   <li><b>Shape-declaring</b> — the hyphen, compound ({@code =}/{@code +}), space and
+     *       underscore keys. Each states how the syllable joins its neighbors, so each passes
+     *       its own {@link CommitKind} and {@link Lyric.Extend} explicitly.
+     *   <li><b>Neutral</b> — Tab, Shift-Tab, Enter, focus loss, a click elsewhere. These say
+     *       only "keep what I typed and move on"; they carry no opinion about joining, so they
+     *       come here and must leave the stored syllabic, compound and extend state alone —
+     *       whether or not the text was edited. Editing a syllable and pressing Tab must not
+     *       break its hyphen to the next syllable.
+     * </ul>
+     *
+     * <p>The stored shape is therefore reused for any element that already has a lyric. Three
+     * cases have no shape left to keep and fall back to a plain word-final, no-melisma commit:
+     * an element with no lyric yet, one whose text the user emptied, and a melisma carrier the
+     * user typed over.
      */
-    private CommitSpec navigationCommitSpec() {
+    private CommitSpec neutralCommitSpec() {
         var lyric = element.getLyricForVerse(CURRENT_VERSE);
 
-        if (lyric == null || !commitText().equals(lyric.text())) {
-            trace("navigationCommitSpec: text changed, committing as a plain word-final syllable");
-            return new CommitSpec(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
+        if (lyric == null) {
+            trace("neutralCommitSpec: no stored shape to keep, committing as a plain word-final syllable");
+            return plainWordFinal();
         }
 
+        var text = commitText();
         var extend = lyric.extend();
 
-        if (extend == Lyric.Extend.CONTINUE || extend == Lyric.Extend.STOP) {
-            trace("navigationCommitSpec: text unchanged, keeping the {} carrier", extend);
-            return new CommitSpec(CommitKind.WORD_FINAL, extend);
+        if (lyric.isCarrier()) {
+            // A carrier holds no text of its own, so it survives only while the element is
+            // still empty; text typed over it makes the element a syllable in its own right.
+            if (text.isEmpty()) {
+                trace("neutralCommitSpec: keeping the {} carrier", extend);
+                return new CommitSpec(CommitKind.WORD_FINAL, extend);
+            }
+
+            trace("neutralCommitSpec: text typed over a {} carrier, committing a plain syllable", extend);
+            return plainWordFinal();
+        }
+
+        if (text.isEmpty()) {
+            trace("neutralCommitSpec: the syllable's text was emptied, no shape left to keep");
+            return plainWordFinal();
         }
 
         var kind = switch (lyric.syllabic()) {
@@ -1409,8 +1445,13 @@ public final class LyricEditor extends MyJTextField {
                 "Text-bearing lyric at editor element is missing syllabic");
         };
 
-        trace("navigationCommitSpec: text unchanged, keeping {}/{}", kind, extend);
+        trace("neutralCommitSpec: keeping {}/{}", kind, extend);
         return new CommitSpec(kind, extend);
+    }
+
+    /** The commit a neutral exit falls back to when there is no stored shape worth keeping. */
+    private static CommitSpec plainWordFinal() {
+        return new CommitSpec(CommitKind.WORD_FINAL, Lyric.Extend.NONE);
     }
 
     private void openIndexOrDismiss(int nextIndex) {
@@ -1804,7 +1845,7 @@ public final class LyricEditor extends MyJTextField {
 
         focused = false;
         logState("commitAndDismiss");
-        var commitSpec = navigationCommitSpec();
+        var commitSpec = neutralCommitSpec();
 
         if (!ensureLyricFits(commitSpec.kind(), commitSpec.extend())) {
             // Keep the editor open and focused; re-arm the outside-click listener (the caller
