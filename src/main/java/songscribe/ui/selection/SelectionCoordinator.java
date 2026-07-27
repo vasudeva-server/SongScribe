@@ -27,7 +27,6 @@ import java.awt.event.AWTEventListener;
 import java.awt.event.MouseEvent;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -41,12 +40,12 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.mutation.ElementField;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
+import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.Ending;
 import songscribe.layout.InsertionSpacingCalculator;
@@ -735,11 +734,12 @@ public final class SelectionCoordinator {
         }
 
         // The accidentals this modification must make explicit so no pitch the user did not touch
-        // changes — removing an explicit accidental is exactly as context-changing as adding one.
-        var materializations = AccidentalReconciliation.reconcileModification(
+        // changes — removing an explicit accidental is exactly as context-changing as adding one —
+        // plus the ones it makes redundant and so takes away again.
+        var accidentalChanges = AccidentalReconciliation.reconcileModification(
             line, intendedChanges(changes));
 
-        if (changesExtent(action) && !fitsAfterModification(line, changes, materializations)) {
+        if (changesExtent(action) && !fitsAfterModification(line, changes, accidentalChanges)) {
             OptionDialogs.showErrorMessage(
                 parent,
                 Strings.ALERT_TITLE_INSERT_ERROR,
@@ -780,12 +780,12 @@ public final class SelectionCoordinator {
             }
 
             // Recorded in the same bracket so the toggle and its reconciliation are one undo step.
-            for (var materialization : materializations) {
-                var note = materialization.note();
+            for (var accidentalChange : accidentalChanges) {
+                var note = accidentalChange.note();
                 line.modifyElement(
                     line.getElementIndex(note),
-                    EnumSet.of(ElementField.ACCIDENTAL),
-                    () -> note.setAccidental(materialization.accidental())
+                    AccidentalMaterializer.changedFields(note, accidentalChange.accidental()),
+                    () -> note.setAccidental(accidentalChange.accidental())
                 );
             }
 
@@ -887,7 +887,7 @@ public final class SelectionCoordinator {
     private boolean fitsAfterModification(
         Line line,
         List<PendingChange> changes,
-        List<AccidentalReconciliation.Materialization> materializations) {
+        List<AccidentalReconciliation.AccidentalChange> accidentalChanges) {
 
         var effectiveCount = line.effectiveElementCount();
 
@@ -911,15 +911,15 @@ public final class SelectionCoordinator {
             }
         }
 
-        // Accidental width is a layout input, so the gate has to measure the materialized
+        // Accidental width is a layout input, so the gate has to measure the reconciled
         // accidentals — on clones, because the live notes must stay untouched until the gate
         // has accepted.
-        for (var materialization : materializations) {
-            var index = line.getElementIndex(materialization.note());
+        for (var accidentalChange : accidentalChanges) {
+            var index = line.getElementIndex(accidentalChange.note());
 
             if (index < effectiveCount) {
-                var note = materialization.note().clone();
-                note.setAccidental(materialization.accidental());
+                var note = accidentalChange.note().clone();
+                note.setAccidental(accidentalChange.accidental());
                 projected.set(index, note);
             }
         }

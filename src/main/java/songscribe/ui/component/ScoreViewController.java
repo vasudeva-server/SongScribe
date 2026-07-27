@@ -68,7 +68,6 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
-import songscribe.layout.Ending;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
@@ -682,7 +681,7 @@ public final class ScoreViewController {
         // note lacking its own accidental needs fixing). So removing k accidental-carrying notes
         // frees k noteheads plus k accidental glyphs and adds back at most k accidental glyphs —
         // the line can never get wider.
-        var materializations = reconcileAccidentals
+        var accidentalChanges = reconcileAccidentals
             ? AccidentalReconciliation.reconcile(new AccidentalReconciliation.InsertionRegion(
                 line,
                 reconciledBegin,
@@ -690,7 +689,7 @@ public final class ScoreViewController {
                 List.of(),
                 List.of(),
                 List.of()))
-            : List.<AccidentalReconciliation.Materialization>of();
+            : List.<AccidentalReconciliation.AccidentalChange>of();
 
         // When the element immediately before the selection is a paired grace note,
         // deleteNote must remove it along with the first selected note — a non-contiguous
@@ -699,7 +698,7 @@ public final class ScoreViewController {
             withModification(line, label, () -> {
                 // Recorded before the removal so undo, which replays in reverse, restores the
                 // accidentals once the elements are back at the indices they were recorded at.
-                commitDeletionAccidentals(line, materializations);
+                commitDeletionAccidentals(line, accidentalChanges);
                 deleteSelection(begin, end, line);
             });
         } else {
@@ -726,7 +725,7 @@ public final class ScoreViewController {
 
             withModification(line, label, () -> {
                 // Recorded before the removal, for the reason given in the other branch.
-                commitDeletionAccidentals(line, materializations);
+                commitDeletionAccidentals(line, accidentalChanges);
 
                 // Mirror deleteNote: adjust syllable relations and melisma extends
                 // on neighbors before removing. Both helpers require the target
@@ -746,14 +745,14 @@ public final class ScoreViewController {
     }
 
     /**
-     * Records {@code materializations} inside the caller's already-open modification bracket.
+     * Records {@code accidentalChanges} inside the caller's already-open modification bracket.
      * Deletion has no fit gate, so the gate always accepts; the shared materializer is still used
      * so the "nothing is mutated on refusal" contract has exactly one implementation.
      */
     private static void commitDeletionAccidentals(
-        Line line, List<AccidentalReconciliation.Materialization> materializations) {
+        Line line, List<AccidentalReconciliation.AccidentalChange> accidentalChanges) {
 
-        AccidentalMaterializer.materializeIfAccepted(line, materializations, List.of(), () -> true);
+        AccidentalMaterializer.applyIfAccepted(line, accidentalChanges, List.of(), () -> true);
     }
 
     /**
@@ -850,7 +849,7 @@ public final class ScoreViewController {
         // for the same single reason spacing uses it: the paired grace note immediately
         // before the range does not survive deleteElementRange, so an explicit accidental
         // on it is removed content and changes the context arriving at the boundary.
-        var materializations = AccidentalReconciliation.reconcile(
+        var accidentalChanges = AccidentalReconciliation.reconcile(
             new AccidentalReconciliation.InsertionRegion(
                 line, spacingInsertIndex, spacingDeleteRange, instantiated.elements(),
                 instantiated.priorAccidentals(), instantiated.spans()));
@@ -865,8 +864,8 @@ public final class ScoreViewController {
         var spacingResult = new InsertionSpacingCalculator.FragmentInsertionResult[1];
         var refusal = new FragmentInsertOutcome[1];
 
-        var committed = AccidentalMaterializer.materializeIfAccepted(
-            line, materializations, instantiated.elements(), () -> {
+        var committed = AccidentalMaterializer.applyIfAccepted(
+            line, accidentalChanges, instantiated.elements(), () -> {
                 var fit = InsertionSpacingCalculator.calculateFragmentInsertion(
                     line, instantiated.elements(), spacingInsertIndex, spacingDeleteRange, null,
                     score.getLyricRenderMetrics());

@@ -242,7 +242,7 @@ class NoteDragHandler {
 
             // The pitch mutations were already applied during handleDrag, so
             // commitPitchShift records each PITCH/ACCIDENTAL ElementModification with the
-            // press-time beforeClone, then the materializations, then the grace-note cleanup —
+            // press-time beforeClone, then the accidental changes, then the grace-note cleanup —
             // one bracket, one undo step.
             PitchShifter.commitPitchShift(
                 dragLine,
@@ -259,9 +259,10 @@ class NoteDragHandler {
     }
 
     /**
-     * The accidentals this drag must make explicit so no pitch the user did not touch changes:
-     * each staff position the drag group vacates may have been lending its explicit accidental to
-     * a later note sitting at that position.
+     * The accidentals this drag must reconcile so no pitch the user did not touch changes: each
+     * staff position the drag group vacates may have been lending its explicit accidental to a
+     * later note sitting at that position, and a note that was given one by an earlier edit may no
+     * longer need it.
      * <p>
      * The lifecycle differs from every other reconciliation call site. Everywhere else the
      * reconciliation runs once against a line that has not been mutated yet; a drag mutates the
@@ -274,9 +275,9 @@ class NoteDragHandler {
      *
      * @param line       The dragged line, in its post-drag state
      * @param finalDelta The staff positions the group moved by, in total
-     * @return The materializations to apply, keyed to live elements of {@code line}
+     * @return The accidental changes to apply, keyed to live elements of {@code line}
      */
-    private List<AccidentalReconciliation.Materialization> reconcileVacatedPositions(Line line, int finalDelta) {
+    private List<AccidentalReconciliation.AccidentalChange> reconcileVacatedPositions(Line line, int finalDelta) {
         var changes = PitchShifter.intendedChanges(dragGroup, finalDelta);
         var afterClones = new ArrayList<StaffElement>(dragGroup.size());
 
@@ -286,12 +287,12 @@ class NoteDragHandler {
             note.copyStateFrom(entry.beforeClone());
         }
 
-        var materializations = AccidentalReconciliation.reconcileModification(line, changes);
+        var accidentalChanges = AccidentalReconciliation.reconcileModification(line, changes);
 
         for (var i = 0; i < dragGroup.size(); i++) {
             line.getElement(dragGroup.get(i).index()).copyStateFrom(afterClones.get(i));
         }
 
-        return materializations;
+        return accidentalChanges;
     }
 }

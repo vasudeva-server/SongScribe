@@ -1727,7 +1727,8 @@ public final class PreviewElementManager {
      * says — {@link AccidentalReconciliation} reads an empty list as "no source context, never
      * materialize these elements themselves". What does need reconciling is the other direction:
      * an element arriving with an explicit accidental changes the context reaching the following
-     * notes at its staff position.
+     * notes at its staff position — and so does a barline or repeat, which carries no accidental of
+     * its own but cancels every accidental before it.
      *
      * @param lc             The LineComponent whose line is being inserted into
      * @param line           The line to insert into
@@ -1740,19 +1741,19 @@ public final class PreviewElementManager {
     private static InsertionSpacingCalculator.@Nullable InsertionResult materializeAndCalculateInsertion(
         LineComponent lc, Line line, StaffElement previewElement, int index, BooleanSupplier confirmed) {
 
-        // An element carrying no explicit accidental changes no following note's context, so
-        // there is nothing to reconcile.
-        var materializations = (previewElement.getAccidental() == null)
-            ? List.<AccidentalReconciliation.Materialization>of()
-            : AccidentalReconciliation.reconcile(new AccidentalReconciliation.InsertionRegion(
-                line, index, null, List.of(previewElement), List.of(), List.of()));
+        // Reconcile unconditionally: an element with no explicit accidental of its own can still
+        // change the context reaching the notes after it (a barline or repeat cancels every prior
+        // accidental), so "no accidental" never meant "nothing to reconcile". This pass is cheap —
+        // one line's elements, once per insertion — so it is not worth guessing when to skip it.
+        var accidentalChanges = AccidentalReconciliation.reconcile(new AccidentalReconciliation.InsertionRegion(
+            line, index, null, List.of(previewElement), List.of(), List.of()));
 
         // The gate runs inside the materializer, with the accidentals applied so the projection
         // measures the right widths, so its result has to escape the lambda through a holder.
         var insertion = new InsertionSpacingCalculator.InsertionResult[1];
 
-        var accepted = AccidentalMaterializer.materializeIfAccepted(
-            line, materializations, List.of(previewElement), () -> {
+        var accepted = AccidentalMaterializer.applyIfAccepted(
+            line, accidentalChanges, List.of(previewElement), () -> {
                 var result = calculateInsertionOrShowError(lc, line, previewElement, index, lc.getLayoutResult());
 
                 if ((result == null) || !confirmed.getAsBoolean()) {

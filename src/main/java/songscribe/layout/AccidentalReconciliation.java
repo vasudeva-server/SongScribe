@@ -34,8 +34,9 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 
 /**
- * Decides which notes must be given an explicit accidental so that an edit does not silently
- * change any pitch the user did not ask to change.
+ * Decides which notes must be given an explicit accidental — or have one taken away — so that an
+ * edit does not silently change any pitch the user did not ask to change, and does not strand
+ * notation it made redundant.
  *
  * <h2>The invariant</h2>
  * Every note keeps the pitch it had, unless the user changed that note. Two populations are
@@ -61,6 +62,36 @@ import songscribe.dom.Tie;
  * {@link StaffElement#findEffectiveAccidental}, so resolving <em>before</em> against the source
  * context and <em>after</em> against the destination compares the two keys implicitly.
  *
+ * <h2>The mirror rule — removal</h2>
+ * A note's explicit accidental is cleared when this edit <b>both</b> moved the context arriving at
+ * that note <b>and</b> left the accidental sounding identical to the new context:
+ * <pre>
+ * clear when adjustment(contextBefore) != adjustment(contextAfter)   // this edit moved the context
+ *       and  adjustment(own)           == adjustment(contextAfter);  // own is now redundant
+ * </pre>
+ * Without it the reconciliation is add-only and strands the accidentals it added. In D♭ major, on a
+ * bare {@code F G F}: toggling a flat onto index 0 materializes a natural on index 2, and toggling
+ * the flat back off leaves that natural behind — the pitch is right, the notation is not.
+ *
+ * <p>The second condition is what makes removal safe to apply unattended. An accidental that was
+ * <em>already</em> redundant when it was written can never be removed: "already redundant" means
+ * {@code adjustment(own) == adjustment(contextBefore)}, which together with the second condition
+ * forces {@code adjustment(contextBefore) == adjustment(contextAfter)} and so contradicts the
+ * first. A deliberate restatement, or a courtesy accidental placed where the note already sounded
+ * that way, therefore survives every edit that does not move its context — and restatements are
+ * the norm in this repertoire.
+ *
+ * <p>That is also the rule's limit. A restatement of the accidental <em>being removed</em> is
+ * invisible to this arithmetic, and on its own line it may be doing real work, since the backward
+ * scan resets at the line boundary. Removing those needs the notator's judgement and is a separate
+ * feature (#681) — deliberately not attempted here.
+ *
+ * <p>Parenthesized accidentals get no exemption: parentheses record that the notator chose to
+ * write something they did not have to, which says nothing about whether a later edit obviated it.
+ * Removal applies to <b>surviving</b> notes only — a pasted or inserted note keeps the notation it
+ * arrived with, matching the "a fragment carries semantic content" rule that governs the
+ * clipboard. Sound is preserved either way; this is only about what is drawn.
+ *
  * <h2>The two bounds</h2>
  * <ol>
  *   <li>Only a staff position carrying an explicit accidental in the removed or the inserted
@@ -79,7 +110,7 @@ import songscribe.dom.Tie;
  *
  * <h2>Pure and pre-mutation</h2>
  * This unit reads the live, unmutated line and <b>mutates nothing</b>. Callers apply the returned
- * {@link Materialization}s. That is mandatory rather than stylistic: accidentals must be
+ * {@link AccidentalChange}s. That is mandatory rather than stylistic: accidentals must be
  * materialized <em>before</em> the projected column chain is built, because
  * {@code ElementColumnBuilder} derives element extents including accidental width and
  * {@link LayoutEngine} treats accidental widths as a layout input. With that ordering, both the
@@ -94,12 +125,20 @@ public final class AccidentalReconciliation {
     }
 
     /**
-     * A note that must be given an explicit accidental so its pitch survives a mutation.
+     * A note whose explicit accidental must change so that a mutation neither moves its pitch nor
+     * strands notation the mutation made redundant.
      *
-     * @param note       The note to give the accidental to
-     * @param accidental The accidental to set on it
+     * @param note       The note to change
+     * @param accidental The accidental to set on it, or null to clear the one it carries
      */
-    public record Materialization(StaffElement note, StaffElement.Accidental accidental) {
+    public record AccidentalChange(StaffElement note, StaffElement.@Nullable Accidental accidental) {
+        // Written out rather than compact: NullAway does not carry the type-use @Nullable
+        // annotation from the record header onto the synthesized canonical constructor, so callers
+        // passing a null accidental — a removal — would otherwise be rejected.
+        public AccidentalChange(StaffElement note, StaffElement.@Nullable Accidental accidental) {
+            this.note = note;
+            this.accidental = accidental;
+        }
     }
 
     /**
@@ -179,17 +218,17 @@ public final class AccidentalReconciliation {
     }
 
     /**
-     * Returns the notes that must be given an explicit accidental for an insert, a delete or a
-     * paste-replace to preserve every pitch the user did not change.
+     * Returns the accidentals that must change for an insert, a delete or a paste-replace to
+     * preserve every pitch the user did not change and to strand no notation it made redundant.
      *
      * <p>Reads the live line and mutates nothing; the caller applies the result before building
      * any projected layout.
      *
      * @param region The mutation, described before any of it happens
-     * @return The materializations to apply, in projected element order (empty when the mutation
-     *         changes no pitch)
+     * @return The changes to apply, in projected element order (empty when the mutation changes no
+     *         pitch)
      */
-    public static List<Materialization> reconcile(InsertionRegion region) {
+    public static List<AccidentalChange> reconcile(InsertionRegion region) {
         var line = region.line();
         var inserted = region.inserted();
         var priorAccidentals = region.insertedPriorAccidentals();
@@ -200,49 +239,38 @@ public final class AccidentalReconciliation {
         var sequence = new ArrayList<ProjectedElement>();
 
         for (var i = 0; i < insertIndex; i++) {
-            sequence.add(survivor(line, i));
+            sequence.add(ProjectedElement.survivor(line, i));
         }
 
         for (var i = 0; i < inserted.size(); i++) {
             var element = inserted.get(i);
-            var own = element.getAccidental();
-            StaffElement.@Nullable Accidental before;
+            var priorAccidental = hasSourceContext ? priorAccidentals.get(i) : null;
 
-            if (own != null) {
-                before = own;
-            } else if (hasSourceContext) {
-                before = priorAccidentals.get(i);
-            } else {
-                before = null;
-            }
-
-            // With no source context the element has no pitch it "had", so it is never a
-            // candidate — only the notes that follow it are.
-            sequence.add(new ProjectedElement(element, element.getStaffPosition(), before, own, !hasSourceContext));
+            sequence.add(ProjectedElement.inserted(element, priorAccidental, hasSourceContext));
         }
 
         for (var i = successorIndex; i < line.effectiveElementCount(); i++) {
-            sequence.add(survivor(line, i));
+            sequence.add(ProjectedElement.survivor(line, i));
         }
 
-        return materialize(line, sequence, region.insertedSpans(), insertIndex);
+        return reconcileSequence(line, sequence, region.insertedSpans(), insertIndex);
     }
 
     /**
-     * Returns the notes that must be given an explicit accidental for an in-place modification —
-     * a pitch shift, an accidental change, and the like — to preserve every pitch the user did
-     * not change. The notes named in {@code changes} are the ones the user did change, so they
-     * are never in the result.
+     * Returns the accidentals that must change for an in-place modification — a pitch shift, an
+     * accidental toggle, and the like — to preserve every pitch the user did not change and to
+     * strand no notation it made redundant. The notes named in {@code changes} are the ones the
+     * user did change, so they are never in the result.
      *
      * <p>Reads the live line and mutates nothing; the caller applies the result before building
      * any projected layout.
      *
      * @param line    The line being modified, in its pre-modification state
      * @param changes Each changed note's intended post-change state
-     * @return The materializations to apply, in element order (empty when the modification
-     *         changes no other note's pitch)
+     * @return The changes to apply, in element order (empty when the modification changes no other
+     *         note's pitch and strands no accidental)
      */
-    public static List<Materialization> reconcileModification(Line line, List<IntendedChange> changes) {
+    public static List<AccidentalChange> reconcileModification(Line line, List<IntendedChange> changes) {
         if (changes.isEmpty()) {
             return List.of();
         }
@@ -262,43 +290,28 @@ public final class AccidentalReconciliation {
             var change = changeByIndex.get(i);
 
             if (change == null) {
-                sequence.add(survivor(line, i));
+                sequence.add(ProjectedElement.survivor(line, i));
                 continue;
             }
 
-            // A changed note's "before" is its own intended accidental, so it can never
-            // materialize against itself.
-            var element = line.getElement(i);
-            sequence.add(new ProjectedElement(
-                element, change.staffPosition(), change.accidental(), change.accidental(), true));
+            sequence.add(ProjectedElement.changed(line.getElement(i), change));
         }
 
-        return materialize(line, sequence, List.of(), lowestChangedIndex);
+        return reconcileSequence(line, sequence, List.of(), lowestChangedIndex);
     }
 
     /**
-     * Returns the projected position for the element at {@code index} of the unmutated
-     * {@code line}: the pitch it has today, resolved on the live line, and its own explicit
-     * accidental if it has one.
-     */
-    private static ProjectedElement survivor(Line line, int index) {
-        var element = line.getElement(index);
-        var own = element.getAccidental();
-        var before = (own != null) ? own : element.findEffectiveAccidental(line, index);
-
-        return new ProjectedElement(element, element.getStaffPosition(), before, own, false);
-    }
-
-    /**
-     * Walks {@code sequence} left to right from {@code startPosition}, emitting a
-     * {@link Materialization} for every protected note whose sounding accidental would otherwise
-     * change. Nothing before the mutation point can change, which is why the walk starts there.
+     * Walks {@code sequence} left to right from {@code startPosition}, emitting an
+     * {@link AccidentalChange} for every protected note whose sounding accidental would otherwise
+     * change, and for every surviving note whose own accidental this edit made redundant. Nothing
+     * before the mutation point can change, which is why the walk starts there.
      *
-     * <p>A materialized accidental is recorded as explicit for the rest of the pass, so later
-     * notes at the same staff position resolve from it and emit nothing — that is bound 2 of the
-     * class javadoc, satisfied structurally rather than by an early exit.
+     * <p>Each emitted change is written back onto the projected position before the walk moves on,
+     * so the rest of the pass resolves against it: a materialized accidental becomes explicit, and
+     * a removed one stops being seen at all. That is bound 2 of the class javadoc, satisfied
+     * structurally rather than by an early exit.
      */
-    private static List<Materialization> materialize(
+    private static List<AccidentalChange> reconcileSequence(
         Line line,
         List<ProjectedElement> sequence,
         List<RangeElement> insertedSpans,
@@ -311,20 +324,32 @@ public final class AccidentalReconciliation {
             positionsByElement.put(sequence.get(position).element, position);
         }
 
-        var materializations = new ArrayList<Materialization>();
+        var accidentalChanges = new ArrayList<AccidentalChange>();
 
         for (var position = startPosition; position < sequence.size(); position++) {
             var projected = sequence.get(position);
 
-            if (projected.userChanged || (projected.explicit != null)) {
+            if (projected.userChanged) {
                 continue;
             }
 
+            // Ahead of both branches, so a barline or a repeat is never a candidate for either.
             if (!projected.element.getType().isPitchedNote()) {
                 continue;
             }
 
             var after = resolveOverProjection(line, sequence, position, ties, positionsByElement);
+
+            if (projected.explicit != null) {
+                if (removesRedundantAccidental(projected, after)) {
+                    // Clearing it here is what lets the rest of the pass resolve past it — the
+                    // same mechanism the materialization below relies on.
+                    projected.explicit = null;
+                    accidentalChanges.add(new AccidentalChange(projected.element, null));
+                }
+
+                continue;
+            }
 
             if (adjustmentOf(projected.before) == adjustmentOf(after)) {
                 continue;
@@ -332,10 +357,37 @@ public final class AccidentalReconciliation {
 
             var accidental = (projected.before != null) ? projected.before : StaffElement.Accidental.NATURAL;
             projected.explicit = accidental;
-            materializations.add(new Materialization(projected.element, accidental));
+            accidentalChanges.add(new AccidentalChange(projected.element, accidental));
         }
 
-        return materializations;
+        return accidentalChanges;
+    }
+
+    /**
+     * Whether the note at {@code projected} — which carries an explicit accidental of its own —
+     * should have it cleared, given the context {@code after} that now arrives at it. Both
+     * conditions of the mirror rule must hold:
+     * <ol>
+     *   <li>this edit <em>moved</em> the context arriving at the note, and</li>
+     *   <li>the note's own accidental now sounds the same as that context, so drawing it says
+     *       nothing.</li>
+     * </ol>
+     * Together they make an accidental that was <em>already</em> redundant when it was written
+     * unremovable, because "already redundant" means {@code adjustment(own) ==
+     * adjustment(contextBefore)}, which with condition 2 forces {@code adjustment(contextBefore) ==
+     * adjustment(after)} and so contradicts condition 1. That is what keeps a deliberate
+     * restatement alive through every edit that does not move its context — see the class javadoc
+     * for why that property, and not a heuristic, is what makes removal safe unattended.
+     *
+     * <p>Only a surviving note is a candidate: an inserted or pasted note keeps the notation it
+     * arrived with.
+     */
+    private static boolean removesRedundantAccidental(
+        ProjectedElement projected, StaffElement.@Nullable Accidental after) {
+
+        return projected.survivor
+            && (adjustmentOf(projected.contextBefore) != adjustmentOf(after))
+            && (adjustmentOf(projected.explicit) == adjustmentOf(after));
     }
 
     /**
@@ -346,8 +398,10 @@ public final class AccidentalReconciliation {
      * chain), match an earlier position with the same staff position and a non-null explicit
      * accidental, and otherwise fall back to the destination line's key signature.
      *
-     * <p>The note's own explicit accidental is not consulted, matching the resolver's contract —
-     * callers check it first, and {@link #materialize} skips any note that has one.
+     * <p>The note's own explicit accidental is not consulted, matching the resolver's contract:
+     * callers check it first. That is exactly what the removal branch of
+     * {@link #reconcileSequence} needs — the context arriving at the note, with the note's own
+     * accidental left out of it.
      */
     private static StaffElement.@Nullable Accidental resolveOverProjection(
         Line line,
@@ -472,31 +526,106 @@ public final class AccidentalReconciliation {
 
     /**
      * One position in the projected element sequence: the element that will sit there, the staff
-     * position and explicit accidental it will have, and the accidental it sounded <em>before</em>
-     * the mutation. {@code explicit} is the only mutable part — it is updated when a
-     * materialization is emitted, so the rest of the pass resolves against it.
+     * position and explicit accidental it will have, and what it sounded like <em>before</em> the
+     * mutation. {@code explicit} is the only mutable part — it is updated whenever a change is
+     * emitted, so the rest of the pass resolves against it.
+     *
+     * <p>Built through {@link #survivor}, {@link #inserted} and {@link #changed} rather than
+     * directly: which population a position belongs to decides both what its "before" means and
+     * whether it may be materialized or de-materialized at all, and three named factories say that
+     * where a row of positional booleans would not.
      */
     private static final class ProjectedElement {
         private final StaffElement element;
         private final int staffPosition;
+
+        /**
+         * What this note sounded like before the mutation: its own accidental when it has one,
+         * else the context it inherited. The materialize branch preserves this.
+         */
         private final StaffElement.@Nullable Accidental before;
+
+        /**
+         * The context that arrived at this note before the mutation, <em>ignoring</em> its own
+         * accidental. Meaningful only for a survivor, which is the only population the removal
+         * branch considers — nothing else has a pre-mutation context on this line to compare with.
+         */
+        private final StaffElement.@Nullable Accidental contextBefore;
+
         private StaffElement.@Nullable Accidental explicit;
 
         /** True for a note the user is changing or creating — never protected, never emitted. */
         private final boolean userChanged;
 
+        /** True for a note that is on the line already and stays there through the mutation. */
+        private final boolean survivor;
+
         private ProjectedElement(
             StaffElement element,
             int staffPosition,
             StaffElement.@Nullable Accidental before,
+            StaffElement.@Nullable Accidental contextBefore,
             StaffElement.@Nullable Accidental explicit,
-            boolean userChanged) {
+            boolean userChanged,
+            boolean survivor) {
 
             this.element = element;
             this.staffPosition = staffPosition;
             this.before = before;
+            this.contextBefore = contextBefore;
             this.explicit = explicit;
             this.userChanged = userChanged;
+            this.survivor = survivor;
+        }
+
+        /**
+         * The projected position for the element at {@code index} of the unmutated {@code line}:
+         * the pitch it has today, resolved on the live line, and its own explicit accidental if it
+         * has one.
+         *
+         * <p>The context is resolved whether or not the note carries an accidental of its own,
+         * because the removal branch compares against the context specifically — a note with an
+         * accidental is exactly the case that branch exists for.
+         */
+        private static ProjectedElement survivor(Line line, int index) {
+            var element = line.getElement(index);
+            var own = element.getAccidental();
+            var contextBefore = element.findEffectiveAccidental(line, index);
+            var before = (own != null) ? own : contextBefore;
+
+            return new ProjectedElement(
+                element, element.getStaffPosition(), before, contextBefore, own, false, true);
+        }
+
+        /**
+         * The projected position for an element this mutation brings in.
+         *
+         * @param priorAccidental  What the element sounded like in its source context, or null
+         *                         when it sounded unaltered there or has no source context at all
+         * @param hasSourceContext Whether the element comes with a source context. Without one it
+         *                         has no pitch it "had" — a note the user is creating — so it is
+         *                         never a candidate itself; only the notes that follow it are.
+         */
+        private static ProjectedElement inserted(
+            StaffElement element,
+            StaffElement.@Nullable Accidental priorAccidental,
+            boolean hasSourceContext) {
+
+            var own = element.getAccidental();
+            var before = (own != null) ? own : priorAccidental;
+
+            return new ProjectedElement(
+                element, element.getStaffPosition(), before, null, own, !hasSourceContext, false);
+        }
+
+        /**
+         * The projected position for a note the user is changing in place. Its "before" is its own
+         * intended accidental, so it can never be reconciled against itself.
+         */
+        private static ProjectedElement changed(StaffElement element, IntendedChange change) {
+            return new ProjectedElement(
+                element, change.staffPosition(), change.accidental(), null, change.accidental(),
+                true, false);
         }
     }
 }

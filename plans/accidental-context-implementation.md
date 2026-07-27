@@ -3,8 +3,9 @@
 Derived from `plans/accidental-context.md`. Tracked by #675 (resolver scope) and #676 (reconciliation).
 
 Phases 1–9 landed in `bcc46191` on `676-paste-into-line`. Phase 9a was added after manual
-verification found that the reconciliation rule is add-only; it closes that gap and is in #676's
-scope. The restatement prompt that verification also surfaced is **not** in scope here — it is a
+verification found that the reconciliation rule is add-only, and Phase 9b after implementing 9a
+found that inserting a barline or a repeat skips reconciliation altogether; both close gaps in
+#676's scope. The restatement prompt that verification also surfaced is **not** in scope here — it is a
 follow-up feature with its own issue and plan
 (#681, `plans/681-accidental-restatement-propagation.md`), because it changes notes the user did not touch,
 which is the deliberate inverse of this plan's invariant.
@@ -25,7 +26,7 @@ against the old resolver would encode the defect in a second place.
 |-------|------|--------|-------|
 | 1 | Paste-mode lockout | 1 | No issue — a defect in what just landed on this branch. Independent of both issues, so it can land first, last, or alongside. |
 | 2 | **#675** — accidental scope | 2, 3 | Phase 2 rewrites the resolver; Phase 3 tests it. Ships standalone: it is driven by export fidelity, migrates for free, and needs nothing from #676. |
-| 3 | **#676** — reconcile across edits | 4–9, 9a | Phases 4 and 5 are independent of each other; 6 → 7 → 8 → 9 are serial. Phase 9a is the removal direction of the same rule, added after verification found the rule was add-only. Phase 8's fit gate is separable from the accidental work — it is a defect for dots and duration swaps regardless — and can be dropped out if it grows. |
+| 3 | **#676** — reconcile across edits | 4–9, 9a, 9b | Phases 4 and 5 are independent of each other; 6 → 7 → 8 → 9 are serial. Phase 9a is the removal direction of the same rule, added after verification found the rule was add-only. Phase 9b closes the one call site that still guards its reconciliation behind a condition, which makes barline and repeat insertion silently change pitch. Phase 8's fit gate is separable from the accidental work — it is a defect for dots and duration swaps regardless — and can be dropped out if it grows. |
 | 4 | Verification | 10 | Yours, manual. Gates the two below. |
 | 5 | Tests and docs | 11, 12 | Phase 11 tests #676; Phase 12 documents both. |
 
@@ -51,8 +52,9 @@ edits still change pitches silently.
 | 7 | [Call Sites 1 and 2 — Single Insert and Delete](#-phase-7-call-sites-1-and-2--single-insert-and-delete) | ✅ Complete | — |
 | 8 | [Modification Fit Gate + Call Site 4](#-phase-8-modification-fit-gate--call-site-4) | ✅ Complete | — |
 | 9 | [Call Site 5 — Pitch Shift](#-phase-9-call-site-5--pitch-shift) | ✅ Complete | — |
-| 9a | [De-materialization](#-phase-9a-de-materialization) | ⏳ Pending | — |
-| 10 | [Manual UI Verification](#-phase-10-manual-ui-verification) | ⏳ In progress | — |
+| 9a | [De-materialization](#-phase-9a-de-materialization) | ✅ Complete | — |
+| 9b | [Barrier Insertion Reconciles](#-phase-9b-barrier-insertion-reconciles) | ✅ Complete | — |
+| 10 | [Manual UI Verification](#-phase-10-manual-ui-verification) | ⏸️ Blocked by 9b | — |
 | 11 | [Reconciliation and Fit-Gate Tests](#-phase-11-reconciliation-and-fit-gate-tests) | ⏸️ Blocked by 10 | — |
 | 12 | [Documentation](#-phase-12-documentation) | ⏸️ Blocked by 11 | — |
 
@@ -1028,9 +1030,9 @@ one materialization, and the moved note gave up its own accidental glyph. Record
 
 ---
 
-## ⏳ Phase 9a: De-materialization
+## ✅ Phase 9a: De-materialization
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** 9  <br>
 **Recommended model/effort:** Opus 4.8, medium effort — the rule and its justification are settled
 below, but it lands in the one method every call site resolves through, and the parentheses
@@ -1152,11 +1154,127 @@ to restore.
 
 ---
 
+## ✅ Phase 9b: Barrier Insertion Reconciles
+
+**Status:** Complete  <br>
+**BlockedBy:** 9a  <br>
+**Recommended model/effort:** Sonnet 4.6, low effort — a skip condition to delete and a comment to
+replace; the defect, the fix and the reason the obvious narrower fix was rejected are all settled
+below.
+
+### Context
+
+Found while implementing Phase 9a. **Inserting a barline or a repeat never reconciles**, so a note
+after the insertion point silently changes pitch. That is the defect this whole plan exists to
+close, still open in the one call site that decides for itself whether reconciliation is needed
+instead of always running it.
+
+`PreviewElementManager.materializeAndCalculateInsertion`
+(`src/main/java/songscribe/ui/component/score/PreviewElementManager.java:1740`) skips the
+reconciliation entirely when the inserted element carries no explicit accidental:
+
+```java
+// PreviewElementManager.java:1743-1748
+// An element carrying no explicit accidental changes no following note's context, so
+// there is nothing to reconcile.
+var accidentalChanges = (previewElement.getAccidental() == null)
+    ? List.<AccidentalReconciliation.AccidentalChange>of()
+    : AccidentalReconciliation.reconcile(...);
+```
+
+The comment is false for a barrier. A barline or a repeat cancels every prior accidental — that is
+the whole point of Phase 2's barrier rule — so inserting one changes the context arriving at every
+following note at every staff position, while carrying no accidental itself.
+
+The repro, in a key with no signature:
+
+| step | index 0 | index 1 | index 2 | |
+|---|---|---|---|---|
+| start | F♯ | G | F | index 2 inherits the sharp and sounds sharp |
+| insert a barline before index 2 | F♯ | G | ¦ F | index 2 now resolves to the key — **sounds natural** |
+
+This is Fixture B from Phase 11 with a barline instead of a paste, and it is the only unreconciled
+mutation left on the branch.
+
+**Every barline insertion hits this, not just some.** Barlines and repeats reach this method the
+same way notes do — as the preview element. `EditModeManager.makePreviewElement()`
+(`src/main/java/songscribe/ui/edit/EditModeManager.java:202-217`) takes its element type from
+`Actions.NON_DURATION_ACTION_GROUP` when no duration action is selected, and that group holds the
+single and double barline actions and the three repeat actions
+(`src/main/java/songscribe/ui/action/Actions.java:282-292`). `EditModeManager.decorateElement`
+(line 243) returns early for anything that is not a note or a rest, so a barline or repeat preview
+element can never carry an accidental. Its accidental is always null, so the skip always fires.
+
+**The other three call sites are already correct** — do not touch them.
+`ScoreViewController.deleteElementRange` and `tryInsertFragment` both reconcile unconditionally, so
+deleting a barline and pasting a fragment containing one are already covered. `SelectionCoordinator`
+and `PitchShifter` change elements in place and can never add or remove a barline.
+
+**`AccidentalReconciliation` needs no change.** It already handles an inserted barline correctly:
+the barline goes into the projected sequence like any other inserted element and is skipped as a
+candidate for an accidental of its own, and the backward scan in `resolveOverProjection` tests each
+element's type, so it stops at an inserted barline exactly as it stops at one already on the line.
+The only thing wrong is that the caller never asks.
+
+### The fix, and why not the narrower one
+
+**Delete the condition. Reconcile on every insertion.**
+
+The obvious alternative is to keep the condition and make it smarter — skip only when the element
+carries no accidental *and* is not a barline or a repeat:
+
+```java
+var skip = (previewElement.getAccidental() == null)
+    && !previewElement.getType().isBarLine()
+    && !previewElement.getType().isRepeat();
+```
+
+That is rejected. It would put a list of "which element types cancel accidentals" into a UI class.
+That list already exists in two places, both in the engine: `StaffElement.findEffectiveAccidental`
+(the real backward scan) and `AccidentalReconciliation.resolveOverProjection` (the same scan over a
+projected sequence). A third copy has to be updated by hand whenever the list grows — and it is
+going to grow, because #53 adds mid-line key changes, which cancel accidentals exactly the way a
+barline does. Whoever implements #53 will find the two copies in the engine, because that is where
+they will be working. They will not think to look in `PreviewElementManager`, and this defect comes
+straight back.
+
+Reconciling unconditionally costs almost nothing. It is one left-to-right pass over the elements of
+a single line, run once when the user inserts an element — not on every repaint, not on every mouse
+move. And when the inserted element really does change nothing, the pass returns an empty list and
+nothing is mutated, so deleting the condition changes no behaviour anywhere except the case it
+fixes.
+
+### Tasks
+
+1. In `PreviewElementManager.materializeAndCalculateInsertion`
+   (`src/main/java/songscribe/ui/component/score/PreviewElementManager.java:1740`), remove the
+   `previewElement.getAccidental() == null` skip and call `AccidentalReconciliation.reconcile`
+   unconditionally with the `InsertionRegion` it already builds.
+2. Replace the comment above it. It should say why there is no longer a condition: a barline or a
+   repeat carries no accidental of its own yet cancels every accidental before it, so "this element
+   has no accidental" never meant "this element changes nothing for the notes after it". Add that
+   the pass is cheap — one line's elements, once per insertion — so it is not worth another attempt
+   at guessing when it can be skipped.
+3. Update the method's javadoc (lines 1720-1739), which currently says only that reconciliation
+   handles "an element arriving with an explicit accidental" — it must name the barrier case too.
+4. Confirm both entry points are covered: `insertElement` (line ~1843) and `addPreviewElement`
+   (line ~1795) share this helper, so both are fixed by the same edit. Nothing follows an append,
+   so the append case reconciles to an empty list — that is correct, not a second gap.
+5. Confirm the fit gate still measures correctly. `AccidentalMaterializer.applyIfAccepted` applies
+   the accidentals before running `calculateInsertionOrShowError`, so a barline insertion that
+   forces an accidental onto a following note is measured with that accidental's width and is
+   refused with `Strings.ERROR_LINE_FULL_ELEMENT` when it no longer fits. Do not add a string and
+   do not add a second gate.
+6. Run `./scripts/compile.sh` and confirm SUCCESS, then `./scripts/test.sh unit` and confirm green.
+
+---
+
 ## ⏳ Phase 10: Manual UI Verification
 
-**Status:** In progress — step 6 surfaced the add-only defect that Phase 9a fixes. Re-run from the
-top once 9a lands, so every scenario is checked against the same code.  <br>
-**BlockedBy:** 1, 9a  <br>
+**Status:** Paused — step 6 surfaced the add-only defect that Phase 9a fixes, and implementing 9a
+surfaced the barrier-insertion gap that Phase 9b fixes. Re-run from the top once 9b lands, so every
+scenario is checked against the same code.  <br>
+**BlockedBy:** 1, 9b  <br>
 **Recommended model/effort:** n/a — the user drives the application; no model does this work.
 
 ### Context
@@ -1204,6 +1322,11 @@ debug features.
    position that had been inheriting the older accidental. Delete: deleting a note that carried an
    accidental leaves the following note at that staff position sounding unchanged, with an
    accidental now drawn on it.
+5a. Have the user verify barrier insertion (Phase 9b). On **Fixture B**, insert a barline between
+   index 1 and index 2: the final F must still sound **sharp**, now with a ♯ drawn on it, because
+   the barline cancels the accidental it had been inheriting. Repeat with a repeat sign in place of
+   the barline. Then delete that barline again and confirm the ♯ is taken back off — the removal
+   direction of Phase 9a, reached through a barrier rather than a toggle.
 6. Have the user verify the accidental toggle and the modification fit gate. On **Fixture B**,
    toggle the sharp off index 0: the final F must still sound sharp, now with a ♯ drawn on it.
    Separately, adding accidentals or dots to a selection on a nearly-full line is now **refused**
@@ -1299,6 +1422,14 @@ from that staff position. Without reconciliation all three silently turn index 3
    assert the refusal contract holds for a null-valued change: with a gate that refuses, every
    note's accidental **and** its `isAccidentalInParentheses` flag are exactly what they were
    beforehand.
+5b. Cover barrier insertion (Phase 9b). Fixture B with a `SINGLE_BARLINE` inserted at index 3 as
+   the whole `inserted` list and an empty `insertedPriorAccidentals`: index 3 gets a SHARP
+   materialization, because the barline cancels the accidental it had been inheriting. Repeat for
+   `REPEAT_LEFT` and assert a `BREATH_MARK` produces nothing, which pins the barrier set rather
+   than "any non-duration element". These are engine-level cases and would have passed before
+   Phase 9b — the defect was the caller's skip, so also assert at the call-site level that a
+   barrier insertion reconciles at all, if that can be reached without an e2e test; if it cannot,
+   say so in a comment rather than leaving the impression it is covered.
 6. Add `calculateModification` cases to `InsertionSpacingCalculatorTest`: a line with slack accepts
    an accidental added to a selection; a nearly-full line refuses it; the element count is
    preserved and a size mismatch throws `IllegalArgumentException`. Also add a test for
@@ -1366,6 +1497,14 @@ The following remain deliberately out of scope and must be recorded as such, not
    `setAccidental(null)` drops it. Record the limit explicitly — a restatement of the accidental
    being removed cannot be found by arithmetic — and point at the follow-up issue rather than
    leaving it as an unrecognized hole, which is exactly how this defect arose in the first place.
+1b. In the same section, spell out what can change the accidental a note inherits. Two things can:
+   an explicit accidental added or removed, **and** a barline or repeat added or removed, because
+   those cancel every accidental before them. Assuming only the first is what caused Phase 9b's
+   defect, so say both plainly. Then record two rules that keep it from recurring: no call site
+   decides for itself whether reconciliation is needed — it always runs; and the list of element
+   types that cancel accidentals stays in the two engine methods that scan backwards
+   (`StaffElement.findEffectiveAccidental` and `AccidentalReconciliation.resolveOverProjection`)
+   and is never copied anywhere else.
 2. In the same document, record the `Fragment` reshape: the parallel `priorAccidentals` list, the
    capture trap (resolve against the live original — a clone's `getElementIndex` returns −1), and
    the offset-zeroing rule with its "semantic content, not layout corrections" rationale.

@@ -35,6 +35,7 @@ import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.ui.OptionDialogs;
 import songscribe.engraving.Staff;
@@ -108,7 +109,7 @@ public final class PitchShifter {
         // moved notes' accidentals only ever narrows them. A materialization on a following note
         // can widen the line, but each vacated staff position yields at most one materialization
         // and the moved note gave up its own accidental glyph in exchange.
-        var materializations = AccidentalReconciliation.reconcileModification(
+        var accidentalChanges = AccidentalReconciliation.reconcileModification(
             line, intendedChanges(group, clampedDelta));
 
         // Exactly what a mouse drag does on each move: shift the group, play the anchor.
@@ -118,7 +119,7 @@ public final class PitchShifter {
         // here to let the played note ring for its standard duration.
         scheduleAnchorNoteOff(line, anchorIndex);
 
-        var removedIndices = commitPitchShift(line, group, materializations);
+        var removedIndices = commitPitchShift(line, group, accidentalChanges);
 
         if (removedIndices.isEmpty()) {
             return null;
@@ -300,10 +301,10 @@ public final class PitchShifter {
     /**
      * Commits a pitch shift for every note in {@code group} as a single
      * SongDidChangeNotification: one PITCH/ACCIDENTAL {@link ElementModification} per note
-     * (carrying its pre-mutation {@code beforeClone}), then {@code materializations},
+     * (carrying its pre-mutation {@code beforeClone}), then {@code accidentalChanges},
      * then grace-note cleanup — all coalesced into one modification bracket, so the shift and
-     * the accidentals it forces on other notes are one undo step. The staff positions
-     * must already have been mutated before this is called.
+     * the accidentals it forces on or takes away from other notes are one undo step. The staff
+     * positions must already have been mutated before this is called.
      * <p>
      * A connected glissando that becomes unison is left intact: the renderer hides
      * it while the two notes share a pitch and shows it again when they diverge, so
@@ -316,7 +317,7 @@ public final class PitchShifter {
     static List<Integer> commitPitchShift(
             Line line,
             List<PitchShiftEntry> group,
-            List<AccidentalReconciliation.Materialization> materializations) {
+            List<AccidentalReconciliation.AccidentalChange> accidentalChanges) {
 
         var removedIndices = new ArrayList<Integer>();
 
@@ -333,12 +334,12 @@ public final class PitchShifter {
             // Recorded in the same bracket so the shift and its reconciliation are one undo step.
             // Applied before the grace-note cleanup, while every index is still the one the
             // reconciliation saw.
-            for (var materialization : materializations) {
-                var note = materialization.note();
+            for (var accidentalChange : accidentalChanges) {
+                var note = accidentalChange.note();
                 line.modifyElement(
                         line.getElementIndex(note),
-                        EnumSet.of(ElementField.ACCIDENTAL),
-                        () -> note.setAccidental(materialization.accidental())
+                        AccidentalMaterializer.changedFields(note, accidentalChange.accidental()),
+                        () -> note.setAccidental(accidentalChange.accidental())
                 );
             }
 
