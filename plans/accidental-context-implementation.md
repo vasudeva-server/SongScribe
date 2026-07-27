@@ -2,6 +2,13 @@
 
 Derived from `plans/accidental-context.md`. Tracked by #675 (resolver scope) and #676 (reconciliation).
 
+Phases 1–9 landed in `bcc46191` on `676-paste-into-line`. Phase 9a was added after manual
+verification found that the reconciliation rule is add-only; it closes that gap and is in #676's
+scope. The restatement prompt that verification also surfaced is **not** in scope here — it is a
+follow-up feature with its own issue and plan
+(#681, `plans/681-accidental-restatement-propagation.md`), because it changes notes the user did not touch,
+which is the deliberate inverse of this plan's invariant.
+
 **All phases land on the current `paste-into-line` branch.** No phase creates a branch, switches
 branches, or commits. The three-branch topology in the source plan is dropped.
 
@@ -18,9 +25,12 @@ against the old resolver would encode the defect in a second place.
 |-------|------|--------|-------|
 | 1 | Paste-mode lockout | 1 | No issue — a defect in what just landed on this branch. Independent of both issues, so it can land first, last, or alongside. |
 | 2 | **#675** — accidental scope | 2, 3 | Phase 2 rewrites the resolver; Phase 3 tests it. Ships standalone: it is driven by export fidelity, migrates for free, and needs nothing from #676. |
-| 3 | **#676** — reconcile across edits | 4–9 | Phases 4 and 5 are independent of each other; 6 → 7 → 8 → 9 are serial. Phase 8's fit gate is separable from the accidental work — it is a defect for dots and duration swaps regardless — and can be dropped out if it grows. |
+| 3 | **#676** — reconcile across edits | 4–9, 9a | Phases 4 and 5 are independent of each other; 6 → 7 → 8 → 9 are serial. Phase 9a is the removal direction of the same rule, added after verification found the rule was add-only. Phase 8's fit gate is separable from the accidental work — it is a defect for dots and duration swaps regardless — and can be dropped out if it grows. |
 | 4 | Verification | 10 | Yours, manual. Gates the two below. |
 | 5 | Tests and docs | 11, 12 | Phase 11 tests #676; Phase 12 documents both. |
+
+Restatement propagation — the follow-up feature — is deliberately absent from this table. It does
+not block the branch and ships on its own issue after #676 closes.
 
 If you stop after step 2, #675 is complete and releasable on its own. Stopping part-way through
 step 3 is not releasable: Phases 6–9 each close one call site, and until all four are closed some
@@ -41,7 +51,8 @@ edits still change pitches silently.
 | 7 | [Call Sites 1 and 2 — Single Insert and Delete](#-phase-7-call-sites-1-and-2--single-insert-and-delete) | ✅ Complete | — |
 | 8 | [Modification Fit Gate + Call Site 4](#-phase-8-modification-fit-gate--call-site-4) | ✅ Complete | — |
 | 9 | [Call Site 5 — Pitch Shift](#-phase-9-call-site-5--pitch-shift) | ✅ Complete | — |
-| 10 | [Manual UI Verification](#-phase-10-manual-ui-verification) | ⏳ Pending | — |
+| 9a | [De-materialization](#-phase-9a-de-materialization) | ⏳ Pending | — |
+| 10 | [Manual UI Verification](#-phase-10-manual-ui-verification) | ⏳ In progress | — |
 | 11 | [Reconciliation and Fit-Gate Tests](#-phase-11-reconciliation-and-fit-gate-tests) | ⏸️ Blocked by 10 | — |
 | 12 | [Documentation](#-phase-12-documentation) | ⏸️ Blocked by 11 | — |
 
@@ -1017,10 +1028,135 @@ one materialization, and the moved note gave up its own accidental glyph. Record
 
 ---
 
-## ⏳ Phase 10: Manual UI Verification
+## ⏳ Phase 9a: De-materialization
 
 **Status:** Pending  <br>
-**BlockedBy:** 1, 9  <br>
+**BlockedBy:** 9  <br>
+**Recommended model/effort:** Opus 4.8, medium effort — the rule and its justification are settled
+below, but it lands in the one method every call site resolves through, and the parentheses
+interaction with the refusal contract is easy to miss.
+
+### Context
+
+Found during Phase 10 verification. **The reconciliation rule is add-only.**
+`AccidentalReconciliation.materialize()` skips every note that already carries an explicit
+accidental:
+
+```java
+// AccidentalReconciliation.java:319
+if (projected.userChanged || (projected.explicit != null)) {
+    continue;
+}
+```
+
+and `Materialization` (line 102) declares `accidental` non-nullable, filled only from a non-null
+value at line 333. So the engine can give a note an accidental but has no way to take one back.
+
+The repro, in the key of D♭ (five flats — F is unaltered):
+
+| step | index 0 | index 2 | |
+|---|---|---|---|
+| start | F | F | both natural from the key |
+| toggle ♭ on index 0 | F♭ | F♮ | index 2 would inherit the ♭, so a ♮ is materialized — correct |
+| toggle ♭ off index 0 | F | F♮ | index 2 carries an explicit ♮, so line 319 skips it — **stranded** |
+
+The pitch is right; the notation is not.
+
+### The rule
+
+Clear a note's explicit accidental when this edit **both** moved the context arriving at that note
+**and** left the accidental sounding identical to the new context:
+
+```
+clear when:
+    adj(contextBefore) != adj(contextAfter)    // this edit moved the context
+    AND adj(own)        == adj(contextAfter)   // own is now redundant
+```
+
+The mirror of the materialize rule, in the same left-to-right pass, comparing sounding adjustments
+via `StaffElement.getPitchAdjustment` and never enum identity.
+
+**What the second condition buys.** An accidental that was *already* redundant when placed can
+never be removed: "already redundant" means `adj(own) == adj(contextBefore)`, which with the second
+condition forces `adj(contextBefore) == adj(contextAfter)`, contradicting the first. So a deliberate
+restatement, or a courtesy accidental placed where the note already sounded that way, survives every
+edit that does not move its context. Restatements are the norm in this repertoire, so that is the
+property that makes the rule safe to apply unattended.
+
+It is also a real limit. A restatement of the accidental *being removed* is invisible to context
+arithmetic — on its own line it may be doing real work, since line-reset means its context is the
+key. Removing those needs the notator's judgement, which is the follow-up feature in
+#681 (`plans/681-accidental-restatement-propagation.md`). Do not attempt it here.
+
+**Parenthesized accidentals are treated identically** — no exemption. Parentheses record that the
+notator chose to write something they did not have to, which says nothing about whether a later edit
+obviated it.
+
+**Removal applies to surviving notes only.** A pasted or inserted note keeps the notation it arrived
+with, matching the "a fragment carries semantic content" rule from Phase 5. Sound is preserved
+either way; this is only about what is drawn.
+
+**Consequence for the refusal contract — do not skip this.** Phase 6 justified the plain-setter
+apply/restore sequence partly on "a materialization is always non-null, and restoring a null prior
+means the flag was already false". That reasoning **breaks** once a change can be null.
+`StaffElement.setAccidental` (line 483) silently clears `isAccidentalInParentheses` when the
+accidental goes null, and `AccidentalMaterializer.restore()` (line 180) puts the accidental back but
+not the flag — so on a refused fit gate the parentheses would be lost while everything else was
+restored, and the same loss would reach undo through the before-clone `modifyElement` captures after
+`restore()`. `SavedAccidental` must carry and restore the flag. Only paste and insert are affected;
+`SelectionCoordinator` measures via clones and applies after its gate has passed, so it has nothing
+to restore.
+
+### Tasks
+
+1. Rename the record `Materialization` → `AccidentalChange`, with
+   `StaffElement.@Nullable Accidental accidental` where null means "clear this note's explicit
+   accidental". Use `jet_brains_rename` so all call sites update atomically. Rename
+   `AccidentalMaterializer.materializeIfAccepted` → `applyIfAccepted`. Keep both class names;
+   update their javadoc to say they add *and* remove.
+2. Give `ProjectedElement` two fields: `contextBefore` (the pre-mutation effective accidental
+   ignoring the note's own) and `survivor`. Its constructor already takes five positional
+   arguments — replace it with static factories `survivor(...)`, `inserted(...)` and `changed(...)`
+   rather than growing it to seven with two booleans.
+3. In `survivor(Line, int)` (line 284) compute `contextBefore` from `findEffectiveAccidental`
+   unconditionally, not only when the note has no accidental of its own. `before` stays
+   `own != null ? own : contextBefore`.
+4. Add the removal branch to `materialize()` (line 301), keeping the `isPitchedNote` guard ahead of
+   it so barlines and repeats are never candidates:
+
+   ```java
+   if (projected.explicit != null) {
+       if (!projected.survivor) { continue; }
+       if (adjustmentOf(projected.contextBefore) == adjustmentOf(after)) { continue; }
+       if (adjustmentOf(projected.explicit) != adjustmentOf(after)) { continue; }
+
+       projected.explicit = null;                       // later notes now resolve past it
+       changes.add(new AccidentalChange(projected.element, null));
+       continue;
+   }
+   ```
+
+   Setting `explicit` to null before continuing is what lets the rest of the pass see the removal —
+   the same mechanism the materialize side already relies on. Javadoc the two conditions and the
+   algebraic property they produce.
+5. Add `priorInParentheses` to `AccidentalMaterializer.SavedAccidental` (line 91) and restore it in
+   `restore()` (line 180) **after** the accidental, because `setAccidentalInParentheses` (line 493)
+   guards on the accidental being non-null.
+6. Confirm each call site tolerates a null accidental. The
+   `line.modifyElement(index, EnumSet.of(ElementField.ACCIDENTAL), ...)` applications in
+   `SelectionCoordinator` (~782-789), `PitchShifter`, `ScoreViewController.deleteElementRange` and
+   `tryInsertFragment` should need no change; check whether an `ElementField` for the parentheses
+   flag exists and should join the set.
+7. Run `./scripts/compile.sh` and confirm SUCCESS, then `./scripts/test.sh unit` and confirm green.
+   Then check the repro above by hand before moving on — it is one toggle each way.
+
+---
+
+## ⏳ Phase 10: Manual UI Verification
+
+**Status:** In progress — step 6 surfaced the add-only defect that Phase 9a fixes. Re-run from the
+top once 9a lands, so every scenario is checked against the same code.  <br>
+**BlockedBy:** 1, 9a  <br>
 **Recommended model/effort:** n/a — the user drives the application; no model does this work.
 
 ### Context
@@ -1072,6 +1208,13 @@ debug features.
    toggle the sharp off index 0: the final F must still sound sharp, now with a ♯ drawn on it.
    Separately, adding accidentals or dots to a selection on a nearly-full line is now **refused**
    with the "line full" error instead of leaving the line unrendered.
+6a. Have the user verify de-materialization (Phase 9a). In the key of D♭, on a bare `F G F`: toggle
+   a flat onto index 0 — index 2 gains a ♮ and still sounds natural. Toggle the flat back off —
+   index 2 **loses** the ♮, and both F sound natural. One Cmd+Z per toggle restores the previous
+   state exactly. Repeat with the ♮ parenthesized before the second toggle: it is removed too.
+   Then confirm the limit is respected: on `F♭ G F♭`, toggling the flat off index 0 leaves index 2's
+   ♭ alone — it is a restatement, still sounds F♭, and removing it is the follow-up feature's job,
+   not this one's.
 7. Have the user verify pitch shift. On **Fixture B**, drag index 0 away from its staff position:
    its own ♯ clears as soon as the position changes, and the final F must still sound sharp with a
    ♯ now drawn on it. One Cmd+Z restores everything — both the dragged note's accidental and the
@@ -1147,6 +1290,15 @@ from that staff position. Without reconciliation all three silently turn index 3
    following note at that staff position; an accidental toggled **on** does the same; the touched
    note itself is never in the result; and a staff position vacated by a pitch shift materializes
    on the note that had inherited from it.
+5a. Cover de-materialization (Phase 9a). The D♭ repro as a unit case: toggle on, then off, and
+   assert the second note's accidental returns to null. Both conditions are required — assert no
+   removal when the context did not move, and none when the accidental is not redundant after.
+   Assert the algebraic property directly: an accidental that was already redundant before the edit
+   is never removed, which is what protects a restatement. A pasted note carrying an explicit
+   accidental is never de-materialized. A parenthesized accidental is removed like any other. Also
+   assert the refusal contract holds for a null-valued change: with a gate that refuses, every
+   note's accidental **and** its `isAccidentalInParentheses` flag are exactly what they were
+   beforehand.
 6. Add `calculateModification` cases to `InsertionSpacingCalculatorTest`: a line with slack accepts
    an accidental added to a selection; a nearly-full line refuses it; the element count is
    preserved and a size mismatch throws `IllegalArgumentException`. Also add a test for
@@ -1207,6 +1359,13 @@ The following remain deliberately out of scope and must be recorded as such, not
    (`songscribe.layout.AccidentalReconciliation`): the invariant, the materialization rule
    including `null` → `NATURAL` and adjustment-not-identity comparison, the two bounds, and the
    mandatory ordering (materialize before the projected column chain is built).
+1a. In the same section, document the removal direction from Phase 9a: the two conditions, the
+   algebraic property they produce (an already-redundant accidental is never removed, which is what
+   protects a restatement), that parenthesized accidentals are not exempt, that removal applies to
+   surviving notes only, and that `SavedAccidental` carries the parentheses flag because
+   `setAccidental(null)` drops it. Record the limit explicitly — a restatement of the accidental
+   being removed cannot be found by arithmetic — and point at the follow-up issue rather than
+   leaving it as an unrecognized hole, which is exactly how this defect arose in the first place.
 2. In the same document, record the `Fragment` reshape: the parallel `priorAccidentals` list, the
    capture trap (resolve against the live original — a clone's `getElementIndex` returns −1), and
    the offset-zeroing rule with its "semantic content, not layout corrections" rationale.

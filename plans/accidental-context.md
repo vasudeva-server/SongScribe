@@ -190,4 +190,35 @@ Revisit if any of these become true:
   
 ## Status
 
-No open questions. Ready for `/make-plan`.
+This is the design document. Execution lives in
+[`accidental-context-implementation.md`](accidental-context-implementation.md); read that for
+phase status and task detail.
+
+| | |
+| --- | --- |
+| **#675** — resolver scope | **Done.** Barline/repeat barrier, tie escape, isolated traversal seam, `keyInEffectAt` as a no-op. Landed in `bcc46191` on `676-paste-into-line`. |
+| **#676** — reconcile across edits | **Code complete, unverified.** The shared unit, the `Fragment` reshape, all five call sites and the modification fit gate landed in `bcc46191`. Manual verification, tests and documentation are outstanding. |
+| Paste-mode lockout | **Done.** No issue of its own — a defect in what had just landed on this branch. |
+
+One correction to the design above, found during manual verification. **The rule as written is
+add-only.** It materializes an accidental where an edit would otherwise change a pitch, but it has
+no inverse, so an accidental that a later edit renders meaningless is stranded on the page. Toggle a
+flat on and off again and the natural it caused stays behind. The rule gains a second, mirrored
+direction:
+
+```
+if adjustment(context_before) != adjustment(context_after)
+   and adjustment(own) == adjustment(context_after):
+    note.accidental = null
+```
+
+Both conditions are required. The first restricts removal to accidentals *this* edit obviated; the
+second removes only what is genuinely redundant. Together they imply an accidental that was already
+redundant when placed can never be removed — a deliberate restatement, or a courtesy accidental, is
+untouched by any edit that does not move its context.
+
+That last property is a real limit, not an oversight. A restatement of an accidental being removed
+is invisible to context arithmetic — on its own line it may be doing real work — so removing it
+needs the notator's judgement rather than a rule. That is a separate, follow-up feature, planned in
+[`681-accidental-restatement-propagation.md`](681-accidental-restatement-propagation.md), and it deliberately
+inverts the invariant above: it changes notes the user did not touch, with consent.
