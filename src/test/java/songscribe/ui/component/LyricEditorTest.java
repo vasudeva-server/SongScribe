@@ -21,6 +21,7 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
@@ -42,6 +43,7 @@ import java.awt.event.KeyEvent;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
+import javax.swing.text.AbstractDocument;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -1348,5 +1350,140 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         assertThat(editor.getText()).as("no long a may be inserted").isEmpty();
         assertThat(typed.isConsumed()).as("the layout's own character must survive").isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // Alt-N → n with tilde
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testAltNInsertsNTildeAndDropsTheOptionCharacter() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        var typed = fireAltN(editor, false);
+
+        assertThat(editor.getText()).isEqualTo(LyricEditor.N_TILDE);
+        assertThat(typed.isConsumed())
+            .as("the Option-N character must not reach the document on top of the n with tilde")
+            .isTrue();
+    }
+
+    @Test
+    void testAltShiftNInsertsCapitalNTilde() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        fireAltN(editor, true);
+
+        assertThat(editor.getText()).isEqualTo(LyricEditor.N_TILDE_CAPITAL);
+    }
+
+    // Selection replacement, the length limit, and caret-position insertion all happen in code
+    // the two shortcuts share, so the Alt-A tests above already cover them for Alt-N too. Only
+    // what is specific to Alt-N — that the N key reaches the n-with-tilde constants, and that
+    // the shared modifier guard is asked about the N key — is tested here.
+
+    @Test
+    void testAltAAndAltNDoNotInterfereWithEachOther() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        fireAltA(editor, false);
+        // Outside the EDT, Swing's caret does not auto-advance past an insertion, so the
+        // caret is moved explicitly rather than relying on that EDT-only behavior.
+        editor.setCaretPosition(editor.getText().length());
+        fireAltN(editor, false);
+
+        assertThat(editor.getText()).isEqualTo(LyricEditor.LONG_A + LyricEditor.N_TILDE);
+    }
+
+    /**
+     * The Alt-A tests above already prove the shared guard rejects each of Ctrl, Meta, and
+     * AltGraph, and that guard cannot behave differently per letter. One combination is enough
+     * here to prove the remaining letter-specific thing: that the n-with-tilde check asks the
+     * guard about the N key rather than a copy-pasted A.
+     */
+    @Test
+    void testControlAltNIsNotTheNTildeShortcut() {
+        assertAltNCombinationIsIgnored(InputEvent.CTRL_DOWN_MASK);
+    }
+
+    /**
+     * Alt is what turns the N key into a shortcut, so the plain key must be left alone. Without
+     * this, dropping the Alt check would make every typed {@code n} come out as an n with tilde
+     * and no other test would notice.
+     */
+    @Test
+    void testPlainNIsNotTheNTildeShortcut() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        var typed = firePlainN(editor);
+
+        assertThat(editor.getText()).as("no n with tilde may be inserted").isEmpty();
+        assertThat(typed.isConsumed()).as("the plain n must be left for Swing to insert").isFalse();
+    }
+
+    /**
+     * Fires Alt-N with {@code extraModifier} also held and asserts the editor ignored it
+     * completely: no n with tilde inserted, and the character the layout would produce left
+     * for Swing rather than dropped.
+     */
+    private void assertAltNCombinationIsIgnored(int extraModifier) {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        var typed = fireAltNWithExtraModifier(editor, extraModifier);
+
+        assertThat(editor.getText()).as("no n with tilde may be inserted").isEmpty();
+        assertThat(typed.isConsumed()).as("the layout's own character must survive").isFalse();
+    }
+
+    /**
+     * A composing dead key like Option-N clears the selection it is about to compose over by
+     * routing a {@code null} replacement text through the installed
+     * {@link javax.swing.text.DocumentFilter}, per {@link javax.swing.text.JTextComponent}'s
+     * documented contract that a null text means "nothing to insert" — not "reject the whole
+     * edit." The removal must still happen, or the old selection lingers and the composed
+     * character lands appended after it instead of in its place. Reproduced here by driving
+     * the document directly, since unit tests cannot simulate a real input method event.
+     */
+    @Test
+    void testNullReplacementTextFromInputMethodStillRemovesTheSelection() {
+        var element = crotchet();
+        var existingLyric = "ho";
+        setMainLyric(element, existingLyric);
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.attachListeners();
+
+        var document = (AbstractDocument) editor.getDocument();
+
+        assertThatCode(() -> document.replace(0, document.getLength(), null, null))
+            .doesNotThrowAnyException();
+        assertThat(editor.getText()).isEmpty();
     }
 }

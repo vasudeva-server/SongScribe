@@ -69,6 +69,17 @@ abstract class LyricEditorTestSupport extends UnitTest {
     private static final char OPTION_A = 'å';
     private static final char OPTION_A_CAPITAL = 'Å';
 
+    /**
+     * Stands in for the key typed event a US macOS layout eventually delivers for Option-N,
+     * a dead key that defers its own character rather than typing it immediately. The editor
+     * does not model that deferral; it only needs the event to exist so the drop can be
+     * exercised.
+     */
+    private static final char OPTION_N = '~';
+
+    /** What every layout types for the N key on its own, with no modifier held. */
+    private static final char PLAIN_N = 'n';
+
     /** What the same layout types for Option-C, an Option combination the editor leaves alone. */
     private static final char OPTION_C = 'ç';
 
@@ -238,20 +249,20 @@ abstract class LyricEditorTestSupport extends UnitTest {
     }
 
     /**
-     * Simulates an Option combination the way macOS delivers it: a key pressed for
-     * {@code keyCode} with Option down, followed by a key typed carrying the character the
-     * layout produces for it. Returns that key typed event so the caller can assert whether
-     * the editor dropped it or left it for Swing to insert.
+     * Simulates a keystroke the way the platform delivers it: a key pressed for {@code keyCode}
+     * with {@code modifiers} held, followed by a key typed carrying {@code typedChar}, the
+     * character the layout produces for that combination. Returns that key typed event so the
+     * caller can assert whether the editor dropped it or left it for Swing to insert.
      */
-    private static KeyEvent fireOptionCombination(
+    private static KeyEvent fireKeyCombination(
         LyricEditor editor,
         int keyCode,
         int modifiers,
-        char optionChar
+        char typedChar
     ) {
-        var pressed = new KeyEvent(editor, KeyEvent.KEY_PRESSED, 0L, modifiers, keyCode, optionChar);
+        var pressed = new KeyEvent(editor, KeyEvent.KEY_PRESSED, 0L, modifiers, keyCode, typedChar);
         var typed =
-            new KeyEvent(editor, KeyEvent.KEY_TYPED, 0L, modifiers, KeyEvent.VK_UNDEFINED, optionChar);
+            new KeyEvent(editor, KeyEvent.KEY_TYPED, 0L, modifiers, KeyEvent.VK_UNDEFINED, typedChar);
 
         for (var listener : editor.getKeyListeners()) {
             listener.keyPressed(pressed);
@@ -268,13 +279,29 @@ abstract class LyricEditorTestSupport extends UnitTest {
     protected KeyEvent fireAltA(LyricEditor editor, boolean shift) {
         var modifiers = InputEvent.ALT_DOWN_MASK | (shift ? InputEvent.SHIFT_DOWN_MASK : 0);
 
-        return fireOptionCombination(
+        return fireKeyCombination(
             editor, KeyEvent.VK_A, modifiers, shift ? OPTION_A_CAPITAL : OPTION_A);
+    }
+
+    /** Simulates Alt-N, or Alt-Shift-N when {@code shift} — the n-with-tilde mapping. */
+    protected KeyEvent fireAltN(LyricEditor editor, boolean shift) {
+        var modifiers = InputEvent.ALT_DOWN_MASK | (shift ? InputEvent.SHIFT_DOWN_MASK : 0);
+
+        return fireKeyCombination(editor, KeyEvent.VK_N, modifiers, OPTION_N);
+    }
+
+    /**
+     * Simulates the N key pressed on its own, with no modifier held — the everyday keystroke
+     * the n-with-tilde mapping must never claim. Returns the key typed event so the caller can
+     * assert it was left alone.
+     */
+    protected KeyEvent firePlainN(LyricEditor editor) {
+        return fireKeyCombination(editor, KeyEvent.VK_N, 0, PLAIN_N);
     }
 
     /** Simulates Option-C, an Option combination the editor does not map. */
     protected KeyEvent fireOptionC(LyricEditor editor) {
-        return fireOptionCombination(editor, KeyEvent.VK_C, InputEvent.ALT_DOWN_MASK, OPTION_C);
+        return fireKeyCombination(editor, KeyEvent.VK_C, InputEvent.ALT_DOWN_MASK, OPTION_C);
     }
 
     /**
@@ -283,9 +310,22 @@ abstract class LyricEditorTestSupport extends UnitTest {
      * Returns the key typed event so the caller can assert it was left alone.
      */
     protected KeyEvent fireAltAWithExtraModifier(LyricEditor editor, int extraModifier) {
-        return fireOptionCombination(
+        return fireKeyCombination(
             editor,
             KeyEvent.VK_A,
+            InputEvent.ALT_DOWN_MASK | extraModifier,
+            EXCLUDED_COMBINATION_CHAR);
+    }
+
+    /**
+     * Simulates Alt-N with {@code extraModifier} also held — one of the combinations the
+     * editor must not claim, so it never shadows a system shortcut or an AltGr character.
+     * Returns the key typed event so the caller can assert it was left alone.
+     */
+    protected KeyEvent fireAltNWithExtraModifier(LyricEditor editor, int extraModifier) {
+        return fireKeyCombination(
+            editor,
+            KeyEvent.VK_N,
             InputEvent.ALT_DOWN_MASK | extraModifier,
             EXCLUDED_COMBINATION_CHAR);
     }

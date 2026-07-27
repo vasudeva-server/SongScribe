@@ -28,6 +28,8 @@ import javax.swing.text.Document;
 import java.text.ParseException;
 import java.util.regex.Pattern;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.util.UIUtils;
 
 public final class InputUtils {
@@ -125,16 +127,17 @@ public final class InputUtils {
         public void insertString(
             FilterBypass fb,
             int offset,
-            String string,
+            @Nullable String string,
             AttributeSet attr
         ) throws BadLocationException {
-            //noinspection ConstantValue -- overridden method may be called with null string
-            if (string != null) {
-                if (isProspectiveTextValid(fb.getDocument(), offset, 0, string)) {
-                    super.insertString(fb, offset, string, attr);
-                } else {
-                    UIUtils.beep();
-                }
+            if (string == null) {
+                return;
+            }
+
+            if (isProspectiveTextValid(fb.getDocument(), offset, 0, string)) {
+                super.insertString(fb, offset, string, attr);
+            } else {
+                UIUtils.beep();
             }
         }
 
@@ -143,16 +146,22 @@ public final class InputUtils {
             FilterBypass fb,
             int offset,
             int length,
-            String text,
+            @Nullable String text,
             AttributeSet attrs
         ) throws BadLocationException {
-            //noinspection ConstantValue -- overridden method may be called with null string
-            if (text != null) {
-                if (isProspectiveTextValid(fb.getDocument(), offset, length, text)) {
-                    super.replace(fb, offset, length, text, attrs);
-                } else {
-                    UIUtils.beep();
-                }
+            // A null text is not a rejected edit: JTextComponent#replaceInputMethodText passes
+            // it to mean "no text to insert," e.g. while clearing the selection a dead key is
+            // about to compose over. The removal must still go through, so this skips the
+            // validity check, which only judges text to insert.
+            if (text == null) {
+                super.replace(fb, offset, length, null, attrs);
+                return;
+            }
+
+            if (isProspectiveTextValid(fb.getDocument(), offset, length, text)) {
+                super.replace(fb, offset, length, text, attrs);
+            } else {
+                UIUtils.beep();
             }
         }
 
@@ -188,16 +197,17 @@ public final class InputUtils {
         public void insertString(
             FilterBypass fb,
             int offset,
-            String string,
+            @Nullable String string,
             AttributeSet attr
         ) throws BadLocationException {
-            //noinspection ConstantValue -- overridden method may be called with null string
-            if (string != null) {
-                if (isProspectiveTextValid(fb.getDocument(), 0, string)) {
-                    super.insertString(fb, offset, string, attr);
-                } else {
-                    UIUtils.beep();
-                }
+            if (string == null) {
+                return;
+            }
+
+            if (isProspectiveTextValid(fb.getDocument(), 0, string)) {
+                super.insertString(fb, offset, string, attr);
+            } else {
+                UIUtils.beep();
             }
         }
 
@@ -206,16 +216,22 @@ public final class InputUtils {
             FilterBypass fb,
             int offset,
             int length,
-            String text,
+            @Nullable String text,
             AttributeSet attrs
         ) throws BadLocationException {
-            //noinspection ConstantValue -- overridden method may be called with null string
-            if (text != null) {
-                if (isProspectiveTextValid(fb.getDocument(), length, text)) {
-                    super.replace(fb, offset, length, text, attrs);
-                } else {
-                    UIUtils.beep();
-                }
+            // A null text is not a rejected edit: JTextComponent#replaceInputMethodText passes
+            // it to mean "no text to insert," e.g. while clearing the selection a dead key is
+            // about to compose over. The removal must still go through, so this skips the
+            // validity check, which only judges text to insert.
+            if (text == null) {
+                super.replace(fb, offset, length, null, attrs);
+                return;
+            }
+
+            if (isProspectiveTextValid(fb.getDocument(), length, text)) {
+                super.replace(fb, offset, length, text, attrs);
+            } else {
+                UIUtils.beep();
             }
         }
 
