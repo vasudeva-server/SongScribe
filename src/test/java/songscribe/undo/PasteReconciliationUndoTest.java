@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
@@ -127,7 +128,11 @@ class PasteReconciliationUndoTest extends UnitTest {
     ) {
         var pastedNote = ElementType.QUAVER.newInstance();
         var clipboardManager = new ClipboardManager();
-        clipboardManager.setFragment(new Fragment(List.of(pastedNote), spansOver.apply(pastedNote)));
+        clipboardManager.setFragment(
+            new Fragment(
+                List.of(pastedNote), Collections.singletonList(null), spansOver.apply(pastedNote)
+            )
+        );
 
         var scoreView = mock(ScoreView.class);
         when(scoreView.getSong()).thenReturn(song);

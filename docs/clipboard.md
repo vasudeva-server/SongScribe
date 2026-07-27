@@ -343,6 +343,9 @@ modal "click to place" state.
 
         ALL exits funnel through ONE exit():
             active=false → post notification → remove overlay → remove ComponentListener
+
+        While ACTIVE, presses on a line are inert — no line select, no lyric select, no
+        pitch drag — so the click that follows is always a placement or a cancel.
 ```
 
 ### State and the single `exit()` funnel

@@ -22,6 +22,8 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import java.util.List;
+
 import net.engio.mbassy.listener.Handler;
 
 import org.jspecify.annotations.Nullable;
@@ -64,6 +66,8 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.layout.AccidentalMaterializer;
+import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.Ending;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.ui.EndingConfirms;
@@ -653,11 +657,51 @@ public final class ScoreViewController {
      * name their step pass {@code null}.
      */
     private void deleteElementRange(Line line, int begin, int end, @Nullable String label) {
+        deleteElementRange(line, begin, end, label, true);
+    }
+
+    /**
+     * As {@link #deleteElementRange(Line, int, int, String)}, but with the accidental
+     * reconciliation suppressible. Only {@link #tryInsertFragment} passes false: a paste-replace
+     * is one mutation, already reconciled as a whole, so its deletion must not reconcile a second
+     * time. The flag lives on an overload rather than on the four-argument signature so that the
+     * callers who delete for their own sake do not have to state a value they do not care about.
+     */
+    private void deleteElementRange(
+        Line line, int begin, int end, @Nullable String label, boolean reconcileAccidentals) {
+
+        // The paired grace note immediately before the range does not survive this deletion
+        // either (deleteNote removes it with its host), so an explicit accidental on it is
+        // removed content and changes the context arriving at the boundary — the same reason,
+        // and the same compensation, that tryInsertFragment applies for spacing.
+        var reconciledBegin = line.isHostOfPairedGraceNote(begin) ? begin - 1 : begin;
+
+        // Deletion is not fit-gated and must not become so, and it cannot need to be: a
+        // materialization can only arise from a staff position carrying an explicit accidental in
+        // the removed content, and each such position yields at most one (only the first following
+        // note lacking its own accidental needs fixing). So removing k accidental-carrying notes
+        // frees k noteheads plus k accidental glyphs and adds back at most k accidental glyphs —
+        // the line can never get wider.
+        var materializations = reconcileAccidentals
+            ? AccidentalReconciliation.reconcile(new AccidentalReconciliation.InsertionRegion(
+                line,
+                reconciledBegin,
+                new InsertionSpacingCalculator.DeletedRange(reconciledBegin, line.effectiveDeleteEnd(end)),
+                List.of(),
+                List.of(),
+                List.of()))
+            : List.<AccidentalReconciliation.Materialization>of();
+
         // When the element immediately before the selection is a paired grace note,
         // deleteNote must remove it along with the first selected note — a non-contiguous
         // operation that cannot be expressed as a single range. Fall back to the per-element loop.
         if (line.isHostOfPairedGraceNote(begin)) {
-            withModification(line, label, () -> deleteSelection(begin, end, line));
+            withModification(line, label, () -> {
+                // Recorded before the removal so undo, which replays in reverse, restores the
+                // accidentals once the elements are back at the indices they were recorded at.
+                commitDeletionAccidentals(line, materializations);
+                deleteSelection(begin, end, line);
+            });
         } else {
             var rangeEnd = line.effectiveDeleteEnd(end);
 
@@ -681,6 +725,9 @@ public final class ScoreViewController {
             }
 
             withModification(line, label, () -> {
+                // Recorded before the removal, for the reason given in the other branch.
+                commitDeletionAccidentals(line, materializations);
+
                 // Mirror deleteNote: adjust syllable relations and melisma extends
                 // on neighbors before removing. Both helpers require the target
                 // elements to still be present in the list.
@@ -696,6 +743,17 @@ public final class ScoreViewController {
                 line.removeRange(begin, rangeEnd);
             });
         }
+    }
+
+    /**
+     * Records {@code materializations} inside the caller's already-open modification bracket.
+     * Deletion has no fit gate, so the gate always accepts; the shared materializer is still used
+     * so the "nothing is mutated on refusal" contract has exactly one implementation.
+     */
+    private static void commitDeletionAccidentals(
+        Line line, List<AccidentalReconciliation.Materialization> materializations) {
+
+        AccidentalMaterializer.materializeIfAccepted(line, materializations, List.of(), () -> true);
     }
 
     /**
@@ -766,50 +824,94 @@ public final class ScoreViewController {
         // range (its host cannot outlive it), so the spacing calculation must count
         // that element as deleted too. Otherwise the clones are positioned against a
         // predecessor that does not survive, leaving a gap where the grace note was.
-        var spacingDeleteRange = deleteRange;
-        var spacingInsertIndex = insertIndex;
-
-        if (deleteRange != null && line.isHostOfPairedGraceNote(deleteRange.begin())) {
-            spacingDeleteRange =
-                new InsertionSpacingCalculator.DeletedRange(deleteRange.begin() - 1, deleteRange.end());
-            spacingInsertIndex = spacingDeleteRange.begin();
-        }
-
-        var result = InsertionSpacingCalculator.calculateFragmentInsertion(
-            line, fragment.elements(), spacingInsertIndex, spacingDeleteRange, null,
-            score.getLyricRenderMetrics());
-
-        if (!result.fitsWithinLine(line.getSong().getLineWidthSs())) {
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.ALERT_TITLE_INSERT_ERROR,
-                Strings.ERROR_LINE_FULL_PASTE
-            );
-            return FragmentInsertOutcome.LINE_FULL;
-        }
+        var widenedDeleteRange =
+            (deleteRange != null && line.isHostOfPairedGraceNote(deleteRange.begin()))
+                ? new InsertionSpacingCalculator.DeletedRange(deleteRange.begin() - 1, deleteRange.end())
+                : null;
+        var spacingDeleteRange = (widenedDeleteRange != null) ? widenedDeleteRange : deleteRange;
+        var spacingInsertIndex = (widenedDeleteRange != null) ? widenedDeleteRange.begin() : insertIndex;
 
         // Fresh clones every paste — the stored fragment is never itself inserted.
         // Instantiated before any mutation because the confirms and the reconciliation
         // below decide which of *these* spans survive, and they must read pre-mutation
         // indices off the line. The clones carry no line back-reference until addElement
-        // below, so building them early touches nothing.
+        // below, so building them early touches nothing — which is also why the fit gate
+        // can measure these clones rather than the stored fragment's elements.
         var instantiated = fragment.instantiate();
 
-        // A pasted barline or repeat landing inside an ending discards it, exactly as
-        // inserting one by hand does — confirm on the same terms, before anything is
-        // mutated. Skipped when the paste-replace's own deletion already invalidates an
-        // ending: handlePaste has confirmed that, and the ending is going either way.
-        var deletionAlreadyConfirmed = deleteRange != null
-            && line.hasEndingInvalidatedByDeletion(line.getElements(deleteRange.begin(), deleteRange.end()));
+        // The accidentals this paste must make explicit so no pitch the user did not touch
+        // changes. Reconciled against the pre-mutation line and applied *before* the fit
+        // gate below: ElementColumnBuilder derives element extents including accidental
+        // width and LayoutEngine treats accidental widths as a layout input, so the
+        // projected column chain must already see the materialized accidentals or the gate
+        // measures the wrong widths.
+        //
+        // The spacing pair is passed rather than the caller's raw insertIndex/deleteRange
+        // for the same single reason spacing uses it: the paired grace note immediately
+        // before the range does not survive deleteElementRange, so an explicit accidental
+        // on it is removed content and changes the context arriving at the boundary.
+        var materializations = AccidentalReconciliation.reconcile(
+            new AccidentalReconciliation.InsertionRegion(
+                line, spacingInsertIndex, spacingDeleteRange, instantiated.elements(),
+                instantiated.priorAccidentals(), instantiated.spans()));
 
-        if (!deletionAlreadyConfirmed) {
-            var insertedTypes = fragment.elements().stream().map(StaffElement::getType).toList();
+        // Both refusals — LINE_FULL and CANCELLED — leave the line exactly as it was (C1), so
+        // both live inside the materializer's gate: it applies the accidentals with the plain
+        // setter, runs this gate with them in place so the projection measures the right widths,
+        // and then either puts them back untouched or re-records them through modifyElement.
+        //
+        // The gate's two products are needed after it returns, hence the holders: a lambda cannot
+        // assign to a local.
+        var spacingResult = new InsertionSpacingCalculator.FragmentInsertionResult[1];
+        var refusal = new FragmentInsertOutcome[1];
 
-            if (line.hasEndingInvalidatedByInsertion(insertIndex, insertedTypes)
-                    && !EndingConfirms.confirmInvalidation(score)) {
-                return FragmentInsertOutcome.CANCELLED;
-            }
+        var committed = AccidentalMaterializer.materializeIfAccepted(
+            line, materializations, instantiated.elements(), () -> {
+                var fit = InsertionSpacingCalculator.calculateFragmentInsertion(
+                    line, instantiated.elements(), spacingInsertIndex, spacingDeleteRange, null,
+                    score.getLyricRenderMetrics());
+
+                if (!fit.fitsWithinLine(line.getSong().getLineWidthSs())) {
+                    OptionDialogs.showErrorMessage(
+                        null,
+                        Strings.ALERT_TITLE_INSERT_ERROR,
+                        Strings.ERROR_LINE_FULL_PASTE
+                    );
+                    refusal[0] = FragmentInsertOutcome.LINE_FULL;
+                    return false;
+                }
+
+                // A pasted barline or repeat landing inside an ending discards it, exactly as
+                // inserting one by hand does — confirm on the same terms, before anything is
+                // mutated. Skipped when the paste-replace's own deletion already invalidates an
+                // ending: handlePaste has confirmed that, and the ending is going either way.
+                var deletionAlreadyConfirmed = deleteRange != null
+                    && line.hasEndingInvalidatedByDeletion(
+                        line.getElements(deleteRange.begin(), deleteRange.end()));
+
+                if (!deletionAlreadyConfirmed) {
+                    var insertedTypes = fragment.elements().stream().map(StaffElement::getType).toList();
+
+                    if (line.hasEndingInvalidatedByInsertion(insertIndex, insertedTypes)
+                            && !EndingConfirms.confirmInvalidation(score)) {
+                        refusal[0] = FragmentInsertOutcome.CANCELLED;
+                        return false;
+                    }
+                }
+
+                spacingResult[0] = fit;
+                return true;
+            });
+
+        if (!committed) {
+            return refusal[0];
         }
+
+        // The accidentals are now recorded mutations, deliberately ahead of the deletion below:
+        // UndoController replays a step's mutations in reverse, so undo reaches them last, after
+        // the deletion has been undone and the surviving notes are back at the pre-delete indices
+        // AccidentalMaterializer recorded them at.
+        var result = spacingResult[0];
 
         var reconciliation = PasteSpanReconciliation.reconcile(
             line, insertIndex, deleteRange, instantiated.spans());
@@ -833,7 +935,9 @@ public final class ScoreViewController {
         var insertAt = insertIndex;
 
         if (deleteRange != null) {
-            deleteElementRange(line, deleteRange.begin(), deleteRange.end(), null);
+            // This paste has already been reconciled as a whole — the deletion and the insertion
+            // are one mutation — so the range delete must not reconcile again.
+            deleteElementRange(line, deleteRange.begin(), deleteRange.end(), null, false);
 
             // The deletion may have removed elements before the range too (a paired
             // grace note cascade), so re-derive the insertion index from what survived.
@@ -974,6 +1078,11 @@ public final class ScoreViewController {
      * surviving element at {@code firstDeletedIndex} is a breath mark, it is
      * cascade-deleted via a recursive call so all gap-fill, glissando, and
      * syllable/extend logic is reused.
+     *
+     * <p>Reconciles no accidentals: the caller owns that. This is the per-element worker
+     * {@link #deleteSelection} loops over for a range {@link #deleteElementRange} has already
+     * reconciled as a whole, and its own breath-mark cascade below removes an unpitched element
+     * that can never carry an accidental.
      *
      * @return the number of elements removed (1 or 2), not counting any
      *         cascade-deleted trailing breath mark

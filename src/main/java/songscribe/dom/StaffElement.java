@@ -660,10 +660,6 @@ public class StaffElement extends LineElement implements Cloneable {
         );
     }
 
-    public int getPreviewElementPitch(Line line) {
-        return calculatePitch(getPreviewElementAccidental(line));
-    }
-
     private int calculatePitch(@Nullable Accidental accidental) {
         var adjustment = (accidental != null) ? MIDI_PITCH_ADJUSTMENT[accidental.ordinal()] : 0;
 
@@ -672,14 +668,6 @@ public class StaffElement extends LineElement implements Cloneable {
                 (12 * (((staffPosition <= 0) ? -staffPosition : (-staffPosition - 6)) / 7)) +
                 adjustment
         );
-    }
-
-    private @Nullable Accidental getPreviewElementAccidental(Line line) {
-        if (accidental == null) {
-            return getAccidental(line);
-        }
-
-        return accidental;
     }
 
     private @Nullable Accidental getAccidental(Line line) {
@@ -751,21 +739,130 @@ public class StaffElement extends LineElement implements Cloneable {
 
     /**
      * Resolves the effective accidental for this note at the given insertion index within
-     * the given line: the nearest earlier accidental at the same staff position, falling
-     * back to the line's key signature.
+     * the given line. This note's <em>own</em> explicit accidental is not consulted here —
+     * callers ({@link #getPitch()}, {@code StatusBar.setNoteContent}) check it first and only
+     * call this when it is null.
+     *
+     * <p>The backward scan has three outcomes:
+     *
+     * <ol>
+     *   <li>It reaches a <em>barrier</em> — an element whose {@link ElementType#isBarLine()} or
+     *       {@link ElementType#isRepeat()} is true — and stops there, falling back to the key
+     *       signature. Convention: any structural marker cancels prior accidentals. A breath
+     *       mark is deliberately not a barrier: it cancels nothing.</li>
+     *   <li>It finds an earlier element at the same staff position carrying an explicit
+     *       accidental, and returns it. Matching is by staff position, so the scan is
+     *       octave-specific, as staff notation requires.</li>
+     *   <li>It runs out of preceding elements and falls back to the key signature.</li>
+     * </ol>
+     *
+     * <p>A barrier is <em>escaped</em> when this note ends a tie whose anchor sits before the
+     * barrier: convention carries an accidental through a tie that crosses a barline. The
+     * resolution then resumes at the anchor, and repeats, so a chain {@code A~B~C} carries an
+     * accidental across two intervening barriers.
      */
     public @Nullable Accidental findEffectiveAccidental(Line targetLine, int index) {
-        for (var i = index - 1; i >= 0; i--) {
-            var note = targetLine.getElement(i);
+        // The note whose incoming tie we may escape a barrier through. It advances to the
+        // anchor on each escape, so a chain of ties is followed one link at a time.
+        var tieEndElement = this;
+        var cursor = index;
 
-            if (
-                (note.getStaffPosition() == staffPosition) &&
-                    (note.getAccidental() != null)
+        barrierEscape:
+        while (true) {
+            for (
+                var scanIndex = precedingIndex(targetLine, cursor);
+                scanIndex >= 0;
+                scanIndex = precedingIndex(targetLine, scanIndex)
             ) {
-                return note.getAccidental();
+                var element = targetLine.getElement(scanIndex);
+                var elementType = element.getType();
+
+                if (elementType.isBarLine() || elementType.isRepeat()) {
+                    var anchor = tieAnchorBefore(targetLine, tieEndElement, scanIndex);
+
+                    if (anchor == null) {
+                        return keyInEffectAt(targetLine, index);
+                    }
+
+                    // Resume at the anchor itself: it may be the note carrying the accidental.
+                    // anchorIndex < scanIndex < cursor, so cursor strictly decreases on every
+                    // escape and the loop is bounded by the element count.
+                    tieEndElement = anchor;
+                    cursor = targetLine.getElementIndex(anchor) + 1;
+                    continue barrierEscape;
+                }
+
+                if (
+                    (element.getStaffPosition() == staffPosition) &&
+                        (element.getAccidental() != null)
+                ) {
+                    return element.getAccidental();
+                }
+            }
+
+            return keyInEffectAt(targetLine, index);
+        }
+    }
+
+    /**
+     * Returns the position the backward accidental scan visits before {@code index}, or −1 when
+     * the scan is exhausted.
+     *
+     * <p>This is the single seam controlling how far back {@link #findEffectiveAccidental} looks.
+     * Today it yields this line's positions from {@code index - 1} down to 0, because accidentals
+     * reset at the end of a line by house convention — the repertoire is largely meterless, and
+     * metered music here closes a row with a barline, so the row boundary and the measure
+     * boundary coincide. If that convention is ever revisited so the scan continues into the
+     * previous line, this method is the only thing that changes: the barrier test, the tie
+     * escape, the staff-position match and the key fallback all stay as they are.
+     */
+    private int precedingIndex(Line targetLine, int index) {
+        return index - 1;
+    }
+
+    /**
+     * Returns the anchor of a tie that ends at {@code tieEndElement} and starts before
+     * {@code scanIndex}, or null when there is none — that is, the note the accidental
+     * resolution resumes at when a tie carries it across a barrier.
+     *
+     * <p>The end element is matched by reference identity: {@link StaffElement} overrides neither
+     * {@code equals} nor {@code hashCode}, so a detached clone would otherwise match nothing
+     * meaningful.
+     */
+    private @Nullable StaffElement tieAnchorBefore(Line targetLine, StaffElement tieEndElement, int scanIndex) {
+        for (var tie : targetLine.findTies()) {
+            if (tie.getEndElement() != tieEndElement) {
+                continue;
+            }
+
+            var anchor = tie.getAnchorElement();
+
+            if (anchor == null) {
+                continue;
+            }
+
+            var anchorIndex = targetLine.getElementIndex(anchor);
+
+            if ((anchorIndex >= 0) && (anchorIndex < scanIndex)) {
+                return anchor;
             }
         }
 
+        return null;
+    }
+
+    /**
+     * Returns the accidental the key signature puts in effect for this note's pitch class at
+     * {@code index} within {@code targetLine}.
+     *
+     * <p>This is the seam for #53 (mid-line key changes). Today a line carries exactly one key
+     * signature, so {@code index} is unused and this simply delegates to
+     * {@link #getAccidental(Line)}. When a line can carry several, only this method changes
+     * instead of the resolver — #53 will also add key changes to
+     * {@link #findEffectiveAccidental}'s barrier list, since a key change cancels prior
+     * accidentals just as a barline does.
+     */
+    private @Nullable Accidental keyInEffectAt(Line targetLine, int index) {
         return getAccidental(targetLine);
     }
 

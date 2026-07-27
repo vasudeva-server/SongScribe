@@ -29,6 +29,8 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
+import songscribe.dom.StaffElement;
+import songscribe.layout.AccidentalReconciliation;
 import songscribe.ui.Mode;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.ScaleContext;
@@ -153,6 +155,10 @@ class NoteDragHandler {
         // Build the drag group from the captured selection range (which may be multi-note).
         // The press gate above admits any note (isNote), and buildPitchShiftGroup includes
         // every note in the range, so the group is never empty for an admitted hit.
+        //
+        // Each entry's beforeClone is also the accidental reconciliation's input: it is the only
+        // record of the pre-drag line once handleDrag starts mutating it. See
+        // reconcileVacatedPositions.
         dragGroup.clear();
         dragGroup.addAll(PitchShifter.buildPitchShiftGroup(line, dragBegin, dragEnd));
 
@@ -235,9 +241,13 @@ class NoteDragHandler {
             PitchShifter.scheduleAnchorNoteOff(dragLine, dragElementIndex);
 
             // The pitch mutations were already applied during handleDrag, so
-            // commitPitchShift records each PITCH ElementModification with the
-            // press-time beforeClone plus the grace-note cleanup.
-            PitchShifter.commitPitchShift(dragLine, dragGroup);
+            // commitPitchShift records each PITCH/ACCIDENTAL ElementModification with the
+            // press-time beforeClone, then the materializations, then the grace-note cleanup —
+            // one bracket, one undo step.
+            PitchShifter.commitPitchShift(
+                dragLine,
+                dragGroup,
+                reconcileVacatedPositions(dragLine, lastPlayedStaffPositionSp - originalDragStaffPositionSp));
         }
 
         dragActive = false;
@@ -246,5 +256,42 @@ class NoteDragHandler {
         dragGroup.clear();
 
         PreviewElementManager.restorePreviewElement(lc);
+    }
+
+    /**
+     * The accidentals this drag must make explicit so no pitch the user did not touch changes:
+     * each staff position the drag group vacates may have been lending its explicit accidental to
+     * a later note sitting at that position.
+     * <p>
+     * The lifecycle differs from every other reconciliation call site. Everywhere else the
+     * reconciliation runs once against a line that has not been mutated yet; a drag mutates the
+     * line live on every mouse step, so by the time the move is finalized the "before" state is
+     * gone from the line. It is not gone from {@code dragGroup}, though — each entry's
+     * {@code beforeClone} was captured at press, before the first move. So the group is rolled
+     * back onto the line, the reconciliation reads the pre-drag line it needs, and the final
+     * state is put back. Running this per mouse step instead would be both wrong (the second step
+     * would read the first step's result as its "before") and pointless work.
+     *
+     * @param line       The dragged line, in its post-drag state
+     * @param finalDelta The staff positions the group moved by, in total
+     * @return The materializations to apply, keyed to live elements of {@code line}
+     */
+    private List<AccidentalReconciliation.Materialization> reconcileVacatedPositions(Line line, int finalDelta) {
+        var changes = PitchShifter.intendedChanges(dragGroup, finalDelta);
+        var afterClones = new ArrayList<StaffElement>(dragGroup.size());
+
+        for (var entry : dragGroup) {
+            var note = line.getElement(entry.index());
+            afterClones.add(note.clone());
+            note.copyStateFrom(entry.beforeClone());
+        }
+
+        var materializations = AccidentalReconciliation.reconcileModification(line, changes);
+
+        for (var i = 0; i < dragGroup.size(); i++) {
+            line.getElement(dragGroup.get(i).index()).copyStateFrom(afterClones.get(i));
+        }
+
+        return materializations;
     }
 }

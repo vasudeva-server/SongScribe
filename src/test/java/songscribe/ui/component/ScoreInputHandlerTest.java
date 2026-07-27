@@ -717,7 +717,7 @@ class ScoreInputHandlerTest extends UnitTest {
             assertThat(note.getStaffPosition()).isEqualTo(originalPositionSp - 1);
 
             var modification = capturedPitchModification();
-            assertThat(modification.fields()).containsExactly(ElementField.PITCH);
+            assertThat(modification.fields()).containsExactly(ElementField.PITCH, ElementField.ACCIDENTAL);
             assertThat(modification.beforeElement().getStaffPosition()).isEqualTo(originalPositionSp);
         }
 
@@ -738,7 +738,7 @@ class ScoreInputHandlerTest extends UnitTest {
             assertThat(note.getStaffPosition()).isEqualTo(originalPositionSp + 1);
 
             var modification = capturedPitchModification();
-            assertThat(modification.fields()).containsExactly(ElementField.PITCH);
+            assertThat(modification.fields()).containsExactly(ElementField.PITCH, ElementField.ACCIDENTAL);
             assertThat(modification.beforeElement().getStaffPosition()).isEqualTo(originalPositionSp);
         }
 

@@ -738,6 +738,14 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
+        // While paste mode is active, a drag must not rubber-band a new selection. The press
+        // that would start one is already suppressed (see mousePressed), so a drag here would
+        // band from a stale press point, and any selection it made would be replaced by the
+        // paste that follows anyway.
+        if (getPasteModeManager().isInProgress()) {
+            return;
+        }
+
         if (noteDragHandler.isDragActive()) {
             noteDragHandler.handleDrag(e);
             return;
@@ -852,6 +860,15 @@ public class LineComponent extends ScoreComponent
         }
 
         if (getGraceModeManager().mousePressed(this, e)) {
+            return;
+        }
+
+        // While paste mode is active, a press must not change the selection — it must be
+        // left for the click that follows to resolve as a placement or a cancel. Without
+        // this guard, a press on the staff lines in the header flips EDIT to SELECT and
+        // selects the whole line, leaving paste mode stuck active with nothing pasted.
+        // Replacing a line means selecting it before Cmd+V (see #612's Replace).
+        if (getPasteModeManager().isInProgress()) {
             return;
         }
 

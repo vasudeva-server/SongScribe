@@ -157,6 +157,12 @@ public final class PitchSpelling {
      * ({@link StaffElement#findLastAccidental()}), so the emitted {@code <pitch>}
      * sounds correct even with no visible accidental. Mirrors the logic of
      * {@link StaffElement#getPitch()} so {@code <alter>} agrees with playback.
+     *
+     * <p>The inherited alteration cancels at a barline or a repeat, and carries through a tie
+     * that crosses one, exactly as the drawn accidental does. That matters for export fidelity:
+     * an {@code <accidental>} element is emitted only for a note carrying an explicit
+     * accidental, so if the derived {@code <alter>} outlived the barline the note would arrive
+     * in a standard consumer (MuseScore, Finale) as a sharp that SongScribe does not draw.
      */
     public static int soundingAlterFor(StaffElement note) {
         var accidental = note.getAccidental();

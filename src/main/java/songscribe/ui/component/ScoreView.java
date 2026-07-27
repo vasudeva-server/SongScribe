@@ -258,6 +258,7 @@ public final class ScoreView
         viewState = new ScoreViewState();
 
         selectionCoordinator = new SelectionCoordinator();
+        selectionCoordinator.setScoreView(this);
         clipboardManager = new ClipboardManager();
         EditModeManager.init(clipboardManager, selectionCoordinator, this, this);
 
@@ -1421,6 +1422,15 @@ public final class ScoreView
 
     public boolean canDeleteLine() {
         return selectionCoordinator.canDeleteLine();
+    }
+
+    /**
+     * Returns the song-wide lyric metrics, or null when StaffPanel has not populated them yet.
+     * Unlike {@link #getLyricRenderMetrics()} this never exits: it is for callers that may run
+     * before the first layout and can space a projection as if the line had no lyrics.
+     */
+    public @Nullable LyricRenderMetrics findLyricRenderMetrics() {
+        return lyricRenderMetrics;
     }
 
     public LyricRenderMetrics getLyricRenderMetrics() {

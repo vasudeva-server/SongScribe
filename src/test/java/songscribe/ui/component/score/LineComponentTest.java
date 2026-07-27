@@ -624,6 +624,76 @@ class LineComponentTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // mouseDragged routing — paste mode suppresses rubber-band selection
+    // -------------------------------------------------------------------------
+
+    /**
+     * A rubber-band drag announces itself to the selection coordinator via
+     * {@code dragDidStart} before it does anything else, so that call is what these tests
+     * observe. Paste mode already suppresses the press that would start a band; without the
+     * matching guard in {@code mouseDragged}, the drag would still band from a stale press
+     * point.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MouseDraggedRouting {
+
+        /** Bounds large enough to contain the helper event's point. */
+        private static final Dimension DRAG_COMPONENT_SIZE = new Dimension(100, 50);
+
+        private SelectionCoordinator coordinator;
+
+        @BeforeEach
+        void setUp() {
+            coordinator = mock(SelectionCoordinator.class);
+
+            var mockScoreView = mock(ScoreView.class);
+            when(mockScoreView.getSelectionCoordinator()).thenReturn(coordinator);
+            when(mockScoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
+            // SELECT mode is what makes selection handling active for the drag.
+            when(mockScoreView.getMode()).thenReturn(Mode.SELECT);
+            lc.setScoreView(mockScoreView);
+
+            // A non-null line is the other half of the selection-active gate.
+            var song = new Song();
+            lc.song = song;
+            lc.setLine(song.getLine(0), 0);
+
+            // The drag clamps to the component bounds, which a zero-sized component
+            // inverts into an empty range.
+            lc.setSize(DRAG_COMPONENT_SIZE);
+        }
+
+        /** Runs {@code mouseDragged} with paste mode reporting the given in-progress state. */
+        private void dragWithPasteInProgress(boolean inProgress) {
+            var graceMock = mock(GraceModeManager.class);
+            var pasteMock = mock(PasteModeManager.class);
+            when(pasteMock.isInProgress()).thenReturn(inProgress);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+
+                lc.mouseDragged(mouseEvent(MouseEvent.MOUSE_DRAGGED, MouseEvent.BUTTON1));
+            }
+        }
+
+        @Test
+        void testDragDuringPasteModeDoesNotStartASelection() {
+            dragWithPasteInProgress(true);
+
+            verify(coordinator, never()).dragDidStart(any());
+        }
+
+        @Test
+        void testDragOutsidePasteModeStartsASelection() {
+            dragWithPasteInProgress(false);
+
+            verify(coordinator).dragDidStart(lc);
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // gracePreviewLineFrame — LINE_LEVEL vs. shifted frame (row 14)
     // -------------------------------------------------------------------------
 

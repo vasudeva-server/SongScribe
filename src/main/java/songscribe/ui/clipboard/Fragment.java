@@ -21,9 +21,12 @@
 package songscribe.ui.clipboard;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
@@ -39,29 +42,49 @@ import songscribe.dom.StaffElement;
  * and every paste:
  *
  * <pre>
- *   copy:   Line ──capture(line,begin,end)──> Fragment{elements[], spans[]}  ──> ClipboardManager.fragment
+ *   copy:   Line ──capture(line,begin,end)──> Fragment{elements[], priorAccidentals[], spans[]}  ──> ClipboardManager.fragment
  *                     ├─ effectiveDeleteEnd() extends past trailing breath mark
  *                     ├─ drop orphan paired grace note at the tail
  *                     ├─ clone elements → IdentityHashMap&lt;orig,clone&gt;
+ *                     ├─ resolve each element's effective accidental against the ORIGINAL
  *                     ├─ FINAL_DOUBLE_BARLINE → DOUBLE_BARLINE
  *                     └─ span kept iff BOTH endpoints ∈ map keys
  *                           └─ span.copy(map[anchor], map[end])
  *
- *   paste:  ClipboardManager.fragment ──instantiate()──> Fragment{fresh clones, fresh spans}
+ *   paste:  ClipboardManager.fragment ──instantiate()──> Fragment{fresh clones, priorAccidentals[] unchanged, fresh spans}
+ *                                                             ├─ each clone's xOffset zeroed — a fragment
+ *                                                             │  carries semantic content, not layout corrections
  *                                                             │
  *           (the stored Fragment is NEVER inserted, so paste N times ⇒ N independent results)
  * </pre>
  *
  * <p>Because the stored {@code Fragment} is never itself inserted, repeated pastes
  * are independent by construction.
+ *
+ * @param elements         The captured elements, cloned from the source line
+ * @param priorAccidentals The effective accidental each element had on its source line,
+ *                          parallel to {@code elements}; {@code null} where the element is
+ *                          unpitched or already carries an explicit accidental of its own
+ * @param spans            The {@link RangeElement} spans fully contained within {@code elements}
  */
-public record Fragment(List<StaffElement> elements, List<RangeElement> spans) {
+public record Fragment(
+    List<StaffElement> elements, List<StaffElement.@Nullable Accidental> priorAccidentals,
+    List<RangeElement> spans) {
 
     // Defensive copies — the class contract is immutability, and both factories
-    // build their lists incrementally before handing them over.
+    // build their lists incrementally before handing them over. priorAccidentals
+    // can hold nulls (an unpitched or unaccidented element), and List.copyOf
+    // rejects those, so it gets an ArrayList-backed copy instead.
     public Fragment {
         elements = List.copyOf(elements);
+        priorAccidentals = Collections.unmodifiableList(new ArrayList<>(priorAccidentals));
         spans = List.copyOf(spans);
+
+        if (priorAccidentals.size() != elements.size()) {
+            throw new IllegalArgumentException(
+                "priorAccidentals must be parallel to elements: expected "
+                    + elements.size() + " but got " + priorAccidentals.size());
+        }
     }
 
     /**
@@ -96,6 +119,7 @@ public record Fragment(List<StaffElement> elements, List<RangeElement> spans) {
 
         var originalToClone = new IdentityHashMap<StaffElement, StaffElement>();
         var elements = new ArrayList<StaffElement>();
+        var priorAccidentals = new ArrayList<StaffElement.@Nullable Accidental>();
 
         for (var i = begin; i <= effectiveEnd; i++) {
             var original = line.getElement(i);
@@ -107,9 +131,23 @@ public record Fragment(List<StaffElement> elements, List<RangeElement> spans) {
 
             originalToClone.put(original, clone);
             elements.add(clone);
+
+            // Resolve against `original`, never against `clone`: a clone's `line` field
+            // still points at the source line, but `line.getElementIndex(clone)` returns
+            // −1 because StaffElement overrides neither equals() nor hashCode(), so
+            // `clone.findLastAccidental()` would silently skip the whole scan and return
+            // the key signature alone — a wrong answer with no error.
+            if (original.getAccidental() != null) {
+                priorAccidentals.add(original.getAccidental());
+            } else if (original.getType().isPitchedNote()) {
+                priorAccidentals.add(original.findEffectiveAccidental(line, i));
+            } else {
+                priorAccidentals.add(null);
+            }
         }
 
-        return new Fragment(elements, cloneSpans(line.getRangeElements(), originalToClone));
+        return new Fragment(
+            elements, priorAccidentals, cloneSpans(line.getRangeElements(), originalToClone));
     }
 
     /**
@@ -154,10 +192,17 @@ public record Fragment(List<StaffElement> elements, List<RangeElement> spans) {
 
         for (var element : elements) {
             var clone = element.clone();
+
+            // A fragment carries semantic content, not layout corrections: xOffset is a
+            // nudge from the computed position under one specific spring solve, with
+            // specific neighbours, under a specific header width. Pasted elsewhere it is
+            // meaningless at best and at worst recreates the collision it was made to fix.
+            clone.setXOffsetPx(0);
+
             originalToClone.put(element, clone);
             clonedElements.add(clone);
         }
 
-        return new Fragment(clonedElements, cloneSpans(spans, originalToClone));
+        return new Fragment(clonedElements, priorAccidentals, cloneSpans(spans, originalToClone));
     }
 }

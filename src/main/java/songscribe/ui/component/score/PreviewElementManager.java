@@ -24,6 +24,7 @@ import module java.desktop;
 
 import java.awt.event.MouseEvent;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 import org.jspecify.annotations.Nullable;
 
@@ -53,6 +54,8 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.undo.OpNames;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.layout.AccidentalMaterializer;
+import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
 import songscribe.layout.InsertionSpacingCalculator;
@@ -1715,6 +1718,55 @@ public final class PreviewElementManager {
     }
 
     /**
+     * Reconciles the accidentals this insertion changes, applies them, and returns the insertion
+     * result — or null when the insertion is refused, in which case nothing has been mutated.
+     * <p>
+     * The inserted element itself is never materialized: it is a note the user is creating, so it
+     * has no pitch it "had" and the invariant (every note keeps the pitch it had, unless the user
+     * changed that note) does not reach it. That is what the empty prior-accidental list below
+     * says — {@link AccidentalReconciliation} reads an empty list as "no source context, never
+     * materialize these elements themselves". What does need reconciling is the other direction:
+     * an element arriving with an explicit accidental changes the context reaching the following
+     * notes at its staff position.
+     *
+     * @param lc             The LineComponent whose line is being inserted into
+     * @param line           The line to insert into
+     * @param previewElement The element being inserted
+     * @param index          The insertion index
+     * @param confirmed      Any further confirmation the caller requires, run only once the
+     *                       element is known to fit; false means the insertion is refused
+     * @return The insertion result, or null when refused
+     */
+    private static InsertionSpacingCalculator.@Nullable InsertionResult materializeAndCalculateInsertion(
+        LineComponent lc, Line line, StaffElement previewElement, int index, BooleanSupplier confirmed) {
+
+        // An element carrying no explicit accidental changes no following note's context, so
+        // there is nothing to reconcile.
+        var materializations = (previewElement.getAccidental() == null)
+            ? List.<AccidentalReconciliation.Materialization>of()
+            : AccidentalReconciliation.reconcile(new AccidentalReconciliation.InsertionRegion(
+                line, index, null, List.of(previewElement), List.of(), List.of()));
+
+        // The gate runs inside the materializer, with the accidentals applied so the projection
+        // measures the right widths, so its result has to escape the lambda through a holder.
+        var insertion = new InsertionSpacingCalculator.InsertionResult[1];
+
+        var accepted = AccidentalMaterializer.materializeIfAccepted(
+            line, materializations, List.of(previewElement), () -> {
+                var result = calculateInsertionOrShowError(lc, line, previewElement, index, lc.getLayoutResult());
+
+                if ((result == null) || !confirmed.getAsBoolean()) {
+                    return false;
+                }
+
+                insertion[0] = result;
+                return true;
+            });
+
+        return accepted ? insertion[0] : null;
+    }
+
+    /**
      * Adds a preview element to the end of the line.
      *
      * @param lc   The LineComponent
@@ -1738,7 +1790,9 @@ public final class PreviewElementManager {
             return;
         }
 
-        var insertion = calculateInsertionOrShowError(lc, line, previewElement, elementCount, lc.getLayoutResult());
+        // Appending needs no further confirmation: nothing follows the new element, so it can
+        // invalidate no ending.
+        var insertion = materializeAndCalculateInsertion(lc, line, previewElement, elementCount, () -> true);
 
         if (insertion == null) {
             return;
@@ -1784,19 +1838,17 @@ public final class PreviewElementManager {
             line.removeTuplet(tuplet);
         }
 
-        var insertion = calculateInsertionOrShowError(lc, line, previewElement, xIndex, lc.getLayoutResult());
+        // The ending confirm runs inside the insertion gate: declining it must leave the line
+        // exactly as it was, on the same terms as a refusal for want of room.
+        var insertion = materializeAndCalculateInsertion(lc, line, previewElement, xIndex,
+            () -> !line.hasEndingInvalidatedByInsertion(xIndex, previewElement.getType())
+                || EndingConfirms.confirmInvalidation(lc));
 
         if (insertion == null) {
             return;
         }
 
         previewElement.setXOffsetPx(ScaleContext.ssToRoundedPx(insertion.insertedElementXSs()));
-
-        if (line.hasEndingInvalidatedByInsertion(xIndex, previewElement.getType())) {
-            if (!EndingConfirms.confirmInvalidation(lc)) {
-                return;
-            }
-        }
 
         line.adjustSyllablesForNeighborChange(xIndex - 1, null);
         line.adjustExtendsForInsertion(xIndex);

@@ -415,7 +415,7 @@ class NoteDragHandlerTest extends UnitTest {
 
             // beforeElement is the clone captured at press time — original pitch.
             assertThat(modification.beforeElement().getStaffPosition()).isEqualTo(ORIGINAL_POSITION_SP);
-            assertThat(modification.fields()).containsExactly(ElementField.PITCH);
+            assertThat(modification.fields()).containsExactly(ElementField.PITCH, ElementField.ACCIDENTAL);
 
             // The live element now has the dragged pitch.
             assertThat(realLine.getElement(0).getStaffPosition()).isEqualTo(DRAGGED_POSITION_SP);

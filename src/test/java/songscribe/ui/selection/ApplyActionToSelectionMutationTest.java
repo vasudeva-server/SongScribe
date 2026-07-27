@@ -93,6 +93,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     private Song createSongMock() {
         var songMock = mock(Song.class);
         when(songMock.isModifying()).thenReturn(true);
+        when(songMock.getLineWidthSs()).thenReturn(UNCONSTRAINED_LINE_WIDTH_SS);
         doAnswer(inv -> {
             Runnable runnable = inv.getArgument(0);
             runnable.run();

@@ -70,6 +70,9 @@ import songscribe.util.UIUtils;
  *
  *         ALL exits funnel through ONE exit():
  *             active=false → post notification → remove paste-mode pill → remove ComponentListener
+ *
+ *         While ACTIVE, presses on a line are inert — no line select, no lyric select, no
+ *         pitch drag — so the click that follows is always a placement or a cancel.
  * </pre>
  * All exits route through the single {@link #exit()} funnel, mirroring
  * {@code GraceModeManager.finish(boolean)}. Open-coding teardown per exit path

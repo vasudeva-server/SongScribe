@@ -35,6 +35,7 @@ import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.layout.AccidentalReconciliation;
 import songscribe.ui.OptionDialogs;
 import songscribe.engraving.Staff;
 import songscribe.ui.playback.PlayThread;
@@ -98,6 +99,18 @@ public final class PitchShifter {
         // drag: the group's anchor, the only note played as feedback.
         var anchorIndex = group.getFirst().index();
 
+        // The accidentals this shift must make explicit so no pitch the user did not touch
+        // changes: each note the group vacates may have been lending its explicit accidental to a
+        // later note at the same staff position. Must run here, while the line is still
+        // unmutated — the reconciliation reads the live line as its "before".
+        //
+        // No fit gate: a pitch shift changes no element's horizontal extent, and clearing the
+        // moved notes' accidentals only ever narrows them. A materialization on a following note
+        // can widen the line, but each vacated staff position yields at most one materialization
+        // and the moved note gave up its own accidental glyph in exchange.
+        var materializations = AccidentalReconciliation.reconcileModification(
+            line, intendedChanges(group, clampedDelta));
+
         // Exactly what a mouse drag does on each move: shift the group, play the anchor.
         moveGroupAndPlayAnchor(line, group, anchorIndex, clampedDelta);
 
@@ -105,7 +118,7 @@ public final class PitchShifter {
         // here to let the played note ring for its standard duration.
         scheduleAnchorNoteOff(line, anchorIndex);
 
-        var removedIndices = commitPitchShift(line, group);
+        var removedIndices = commitPitchShift(line, group, materializations);
 
         if (removedIndices.isEmpty()) {
             return null;
@@ -151,6 +164,14 @@ public final class PitchShifter {
      * mouse step) and arrow keys (called once per keypress). Only the anchor sounds,
      * exactly as a drag plays only the grabbed note. {@code clampedDelta} must
      * already be clamped via {@link #clampDelta}.
+     * <p>
+     * Every moved note's explicit accidental is <b>cleared</b>. That is intended, matching
+     * MuseScore: an accidental is written for the staff position it was written on, and a note
+     * that leaves that position has no claim to it. Undo restores it — {@link #commitPitchShift}
+     * records an {@link ElementModification} carrying the pre-move clone, and undo restores that
+     * snapshot whole via {@link StaffElement#copyStateFrom}, which copies the accidental. The
+     * {@code EnumSet<ElementField>} on the record only tells subscribers which fields changed; it
+     * does not restrict what undo restores.
      */
     static void moveGroupAndPlayAnchor(Line line, List<PitchShiftEntry> group, int anchorIndex, int clampedDelta) {
         var playSelected = Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE);
@@ -164,6 +185,9 @@ public final class PitchShifter {
             var note = line.getElement(entry.index());
             note.setStaffPosition(entry.originalStaffPositionSp() + clampedDelta);
 
+            // See the javadoc: the accidental belonged to the staff position, not to the note.
+            note.setAccidental(null);
+
             if (note.isStemDirectionAuto()) {
                 note.setDirection(StaffElement.defaultDirection(note));
             }
@@ -173,6 +197,26 @@ public final class PitchShifter {
         if (playSelected) {
             PlayThread.sendNoteOn(line.getElement(anchorIndex).getPitch());
         }
+    }
+
+    /**
+     * The post-shift state of every note in {@code group}, as
+     * {@link AccidentalReconciliation} describes it. These are the notes the user moved
+     * deliberately, so they are never materialized themselves — only the notes that inherited
+     * the accidental they are taking away are. The accidental is always null because
+     * {@link #moveGroupAndPlayAnchor} clears it.
+     */
+    static List<AccidentalReconciliation.IntendedChange> intendedChanges(
+            List<PitchShiftEntry> group, int clampedDelta) {
+
+        var changes = new ArrayList<AccidentalReconciliation.IntendedChange>(group.size());
+
+        for (var entry : group) {
+            changes.add(new AccidentalReconciliation.IntendedChange(
+                    entry.index(), null, entry.originalStaffPositionSp() + clampedDelta));
+        }
+
+        return changes;
     }
 
     /**
@@ -255,9 +299,10 @@ public final class PitchShifter {
 
     /**
      * Commits a pitch shift for every note in {@code group} as a single
-     * SongDidChangeNotification: one PITCH {@link ElementModification} per note
-     * (carrying its pre-mutation {@code beforeClone}), followed by grace-note
-     * cleanup — all coalesced into one modification bracket. The staff positions
+     * SongDidChangeNotification: one PITCH/ACCIDENTAL {@link ElementModification} per note
+     * (carrying its pre-mutation {@code beforeClone}), then {@code materializations},
+     * then grace-note cleanup — all coalesced into one modification bracket, so the shift and
+     * the accidentals it forces on other notes are one undo step. The staff positions
      * must already have been mutated before this is called.
      * <p>
      * A connected glissando that becomes unison is left intact: the renderer hides
@@ -268,15 +313,32 @@ public final class PitchShifter {
      * by a grace-note/host collapse, so a caller tracking a selection range can adjust
      * it for the resulting index shift. Empty if nothing was removed.
      */
-    static List<Integer> commitPitchShift(Line line, List<PitchShiftEntry> group) {
+    static List<Integer> commitPitchShift(
+            Line line,
+            List<PitchShiftEntry> group,
+            List<AccidentalReconciliation.Materialization> materializations) {
+
         var removedIndices = new ArrayList<Integer>();
 
         line.withModification(Strings.get(Strings.ACTION_EDIT_OP_MOVE_NOTE), () -> {
             for (var entry : group) {
                 line.applyChange(
-                        new ElementModification(line, entry.index(), EnumSet.of(ElementField.PITCH),
+                        new ElementModification(line, entry.index(),
+                                EnumSet.of(ElementField.PITCH, ElementField.ACCIDENTAL),
                                 entry.beforeClone(), line.getElement(entry.index()).clone()),
                         () -> {}
+                );
+            }
+
+            // Recorded in the same bracket so the shift and its reconciliation are one undo step.
+            // Applied before the grace-note cleanup, while every index is still the one the
+            // reconciliation saw.
+            for (var materialization : materializations) {
+                var note = materialization.note();
+                line.modifyElement(
+                        line.getElementIndex(note),
+                        EnumSet.of(ElementField.ACCIDENTAL),
+                        () -> note.setAccidental(materialization.accidental())
                 );
             }
 

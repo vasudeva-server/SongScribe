@@ -19,6 +19,7 @@
 */
 package songscribe.layout;
 
+import songscribe.UnitTest;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
@@ -76,6 +77,9 @@ public record EndingLineFixture(
         var ending = new Ending(anchor, end);
 
         song.withoutMutationTracking(() -> {
+            // A fresh Song has no line width until the app supplies one, and a zero width
+            // reads to every fit gate as a line with no room at all.
+            song.setLineWidthSs(UnitTest.UNCONSTRAINED_LINE_WIDTH_SS);
             line.addElement(anchor);
             line.addElement(note1);
             line.addElement(note2);
@@ -110,6 +114,9 @@ public record EndingLineFixture(
         var ending = new Ending(anchor, end);
 
         song.withoutMutationTracking(() -> {
+            // A fresh Song has no line width until the app supplies one, and a zero width
+            // reads to every fit gate as a line with no room at all.
+            song.setLineWidthSs(UnitTest.UNCONSTRAINED_LINE_WIDTH_SS);
             line.addElement(anchor);
             line.addElement(note1);
             line.addElement(note2);

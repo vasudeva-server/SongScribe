@@ -32,6 +32,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
@@ -915,7 +917,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var pastedNote = ElementType.CROTCHET.newInstance();
             var clipboardManager = new ClipboardManager();
-            clipboardManager.setFragment(new Fragment(List.of(pastedNote), List.of()));
+            clipboardManager.setFragment(new Fragment(List.of(pastedNote), Collections.singletonList(null), List.of()));
 
             var scoreMock = mock(ScoreView.class);
             when(scoreMock.getSong()).thenReturn(song);
@@ -972,7 +974,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(
-                new Fragment(List.of(ElementType.QUAVER.newInstance()), List.of())
+                new Fragment(List.of(ElementType.QUAVER.newInstance()), Collections.singletonList(null), List.of())
             );
 
             var scoreMock = mock(ScoreView.class);
@@ -2185,7 +2187,7 @@ class ScoreViewControllerTest extends UnitTest {
             });
 
             var clipboardManager = new ClipboardManager();
-            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), List.of()));
+            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), Collections.singletonList(null), List.of()));
             var controller = buildController(song, clipboardManager);
 
             song.withModification(() -> controller.tryInsertFragment(line, 1, null));
@@ -2234,7 +2236,7 @@ class ScoreViewControllerTest extends UnitTest {
             });
 
             var clipboardManager = new ClipboardManager();
-            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), List.of()));
+            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), Collections.singletonList(null), List.of()));
             var controller = buildController(song, clipboardManager);
 
             song.withModification(() -> controller.tryInsertFragment(line, 1, null));
@@ -2268,6 +2270,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(anchorSource, endSource),
+                Arrays.asList(null, null),
                 List.of(new Tie(anchorSource, endSource))
             ));
             var controller = buildController(song, clipboardManager);
@@ -2306,6 +2309,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(anchorSource, endSource),
+                Arrays.asList(null, null),
                 List.of(new Tie(anchorSource, endSource))
             ));
             var controller = buildController(song, clipboardManager);
@@ -2354,7 +2358,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var pasted = ElementType.CROTCHET.newInstance();
             var clipboardManager = new ClipboardManager();
-            clipboardManager.setFragment(new Fragment(List.of(pasted), List.of()));
+            clipboardManager.setFragment(new Fragment(List.of(pasted), Collections.singletonList(null), List.of()));
             var controller = buildController(song, clipboardManager);
 
             // Replacing [host] alone: the cascade takes the grace note at index 0 too.
@@ -2375,7 +2379,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var referencePasted = ElementType.CROTCHET.newInstance();
             var referenceClipboard = new ClipboardManager();
-            referenceClipboard.setFragment(new Fragment(List.of(referencePasted), List.of()));
+            referenceClipboard.setFragment(new Fragment(List.of(referencePasted), Collections.singletonList(null), List.of()));
             var referenceController = buildController(referenceSong, referenceClipboard);
 
             referenceSong.withModification(
@@ -2405,6 +2409,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(pastedFirst, pastedSecond),
+                Arrays.asList(null, null),
                 List.of(new Ending(pastedFirst, pastedSecond))
             ));
             var controller = buildController(song, clipboardManager);
@@ -2447,6 +2452,7 @@ class ScoreViewControllerTest extends UnitTest {
                     ElementType.CROTCHET.newInstance(),
                     pastedEnd
                 ),
+                Arrays.asList(null, null, null, null, null),
                 List.of(new Ending(pastedAnchor, pastedEnd))
             ));
             var controller = buildController(song, clipboardManager);
@@ -2477,6 +2483,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance()),
+                Arrays.asList(null, null),
                 List.of()
             ));
             var controller = buildController(song, clipboardManager);
@@ -2510,6 +2517,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(ElementType.SINGLE_BARLINE.newInstance()),
+                Collections.singletonList(null),
                 List.of()
             ));
             var controller = buildController(song, clipboardManager);
@@ -2539,6 +2547,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(ElementType.CROTCHET.newInstance(), ElementType.REPEAT_RIGHT.newInstance()),
+                Arrays.asList(null, null),
                 List.of()
             ));
             var controller = buildController(song, clipboardManager);
@@ -2569,6 +2578,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(ElementType.CROTCHET.newInstance(), ElementType.REPEAT_RIGHT.newInstance()),
+                Arrays.asList(null, null),
                 List.of()
             ));
             var controller = buildController(song, clipboardManager);
@@ -2600,6 +2610,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(ElementType.SINGLE_BARLINE.newInstance()),
+                Collections.singletonList(null),
                 List.of()
             ));
             var controller = buildController(song, clipboardManager);
@@ -2638,6 +2649,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(ElementType.CROTCHET.newInstance()),
+                Collections.singletonList(null),
                 List.of()
             ));
             var controller = buildController(song, clipboardManager);
@@ -2663,6 +2675,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(ElementType.SINGLE_BARLINE.newInstance()),
+                Collections.singletonList(null),
                 List.of()
             ));
             var controller = buildController(song, clipboardManager);
@@ -2716,6 +2729,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(pastedFirst, pastedSecond),
+                Arrays.asList(null, null),
                 List.of(new Beam(pastedFirst, pastedSecond))
             ));
             var controller = buildController(song, clipboardManager);
@@ -2759,7 +2773,7 @@ class ScoreViewControllerTest extends UnitTest {
             var pastedBeam = new Beam(pastedFirst, pastedSecond);
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
-                List.of(pastedFirst, pastedSecond), List.of(pastedBeam)));
+                List.of(pastedFirst, pastedSecond), Arrays.asList(null, null), List.of(pastedBeam)));
             var controller = buildController(song, clipboardManager);
 
             var deleteRange = new InsertionSpacingCalculator.DeletedRange(1, 4);
@@ -2797,6 +2811,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(pastedFirst, pastedSecond),
+                Arrays.asList(null, null),
                 List.of(new Beam(pastedFirst, pastedSecond))
             ));
             var controller = buildController(song, clipboardManager);
@@ -2829,6 +2844,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(pastedFirst, pastedSecond),
+                Arrays.asList(null, null),
                 List.of(new Crescendo(pastedFirst, pastedSecond))
             ));
             var controller = buildController(song, clipboardManager);
@@ -2964,6 +2980,7 @@ class ScoreViewControllerTest extends UnitTest {
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 pastedElements,
+                Collections.nCopies(pastedElements.size(), null),
                 List.of(new Tie(pastedAnchor, pastedEnd))
             ));
             var controller = buildController(song, clipboardManager);
@@ -3068,7 +3085,7 @@ class ScoreViewControllerTest extends UnitTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 0); // select noteA
 
             var clipboardManager = new ClipboardManager();
-            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), List.of()));
+            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), Collections.singletonList(null), List.of()));
 
             var controller = buildController(song, coordinator, mock(ScoreView.class), clipboardManager);
 
@@ -3093,7 +3110,7 @@ class ScoreViewControllerTest extends UnitTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 0);
 
             var clipboardManager = new ClipboardManager();
-            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), List.of()));
+            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), Collections.singletonList(null), List.of()));
 
             var controller = buildController(song, coordinator, mock(ScoreView.class), clipboardManager);
 
@@ -3136,7 +3153,7 @@ class ScoreViewControllerTest extends UnitTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 0);
 
             var clipboardManager = new ClipboardManager();
-            clipboardManager.setFragment(new Fragment(List.of(), List.of()));
+            clipboardManager.setFragment(new Fragment(List.of(), List.of(), List.of()));
             var controller = buildController(song, coordinator, mock(ScoreView.class), clipboardManager);
 
             controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE));

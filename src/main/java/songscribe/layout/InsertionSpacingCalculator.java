@@ -180,6 +180,52 @@ public final class InsertionSpacingCalculator {
         }
     }
 
+    /**
+     * Result of a modification spacing calculation: the projected spring chain of the line as it
+     * will read once an in-place modification is applied, and the fit gate over it.
+     * <p>
+     * The replace-a-column analogue of {@link InsertionResult} and
+     * {@link FragmentInsertionResult}. A modification changes no element count, so nothing has to
+     * be positioned — every index keeps the element it had — and the result carries only what the
+     * gate needs.
+     *
+     * @param projectedSprings               The lyric-stretched spring chain of the line as
+     *                                       {@link LayoutEngine} will build it after the
+     *                                       modification — every column with the changed ones
+     *                                       swapped out, including the terminal barline — what
+     *                                       {@link #fitsWithinLine} solves
+     * @param projectedFirstXSs              X the projected chain is anchored at
+     *                                       ({@link HorizontalSpacingCalculator#calculateAnchorXSs})
+     * @param projectedTrailingReservationSs The span the solve keeps clear past the projected chain's
+     *                                       last column origin — its right extent, plus a full line
+     *                                       rest when that column is not the auto-maintained terminal
+     *                                       ({@link HorizontalSpacingCalculator#trailingReservationSs})
+     */
+    public record ModificationResult(
+        List<Spring> projectedSprings,
+        double projectedFirstXSs,
+        double projectedTrailingReservationSs
+    ) {
+        public ModificationResult {
+            projectedSprings = List.copyOf(projectedSprings);
+        }
+
+        /**
+         * Returns whether the modified line fits within the given right margin — compress-to-fit,
+         * the identical gate the insertion paths use: the line is free to give up slack to absorb
+         * the widened columns, and only a chain that overflows with every gap frozen at its strut
+         * is rejected.
+         *
+         * @param staffRightMarginSs The maximum allowed line width in staff spaces
+         * @return {@code true} unless the projected spring chain solves INFEASIBLE
+         */
+        public boolean fitsWithinLine(double staffRightMarginSs) {
+            return !HorizontalSpacingCalculator.solveChain(
+                projectedSprings, projectedFirstXSs, projectedTrailingReservationSs, staffRightMarginSs)
+                .isInfeasible();
+        }
+    }
+
     private InsertionSpacingCalculator() {
         // Prevent instantiation - utility class with static methods only
     }
@@ -539,6 +585,67 @@ public final class InsertionSpacingCalculator {
             fitSprings,
             fitFirstXSs,
             HorizontalSpacingCalculator.trailingReservationSs(fitColumns.getLast(), line));
+    }
+
+    /**
+     * Calculates whether the line still fits once an in-place modification — an accidental, a dot,
+     * a duration swap — is applied. Pure measurement: the line and the projected elements are
+     * never mutated.
+     * <p>
+     * The replace-a-column analogue of {@link #calculateInsertion} and
+     * {@link #calculateFragmentInsertion}: the same projection with columns <em>replaced</em>
+     * rather than spliced. Because a modification never changes the element count, indices are
+     * preserved 1:1 and there is nothing to position — {@code projectedElements} is simply the
+     * line as it will read, detached stand-ins at the changed positions and the live elements
+     * everywhere else. Each column takes its extents from the projected element and its lyric and
+     * beam context from the same index on the real line, then the auto-maintained terminal barline
+     * is appended, exactly as the insertion projections do.
+     * <p>
+     * Without this gate an infeasible modification is not refused at mutation time: it surfaces
+     * later as {@code LINE_TOO_FULL_ERROR} and a <b>null</b> {@code LayoutResult}, so the line does
+     * not render at all.
+     *
+     * @param line               The line being modified, in its pre-modification state
+     * @param projectedElements  The line's effective elements as they will read after the
+     *                           modification, in element order; must have exactly
+     *                           {@code line.effectiveElementCount()} entries, and at least one
+     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
+     *                           line as if it had no lyrics
+     * @return A {@link ModificationResult} carrying the projected spring chain its fit gate solves
+     */
+    public static ModificationResult calculateModification(
+        Line line,
+        List<StaffElement> projectedElements,
+        @Nullable LyricRenderMetrics lyricRenderMetrics) {
+
+        var effectiveCount = line.effectiveElementCount();
+
+        if (projectedElements.size() != effectiveCount) {
+            throw new IllegalArgumentException(
+                "projectedElements has " + projectedElements.size()
+                    + " entries for " + effectiveCount + " effective elements");
+        }
+
+        if (projectedElements.isEmpty()) {
+            throw new IllegalArgumentException("projectedElements must not be empty");
+        }
+
+        var columnBuilder = lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null;
+        var columns = new ArrayList<ElementColumn>(line.elementCount());
+
+        for (var i = 0; i < effectiveCount; i++) {
+            columns.add(buildSurroundingColumn(projectedElements.get(i), line, i, columnBuilder));
+        }
+
+        appendTerminalIfPresent(columns, line, columnBuilder);
+
+        var springs = LyricLift.applyLyricLift(
+            HorizontalSpacingCalculator.buildSprings(columns, line), columns);
+
+        return new ModificationResult(
+            springs,
+            HorizontalSpacingCalculator.calculateAnchorXSs(columns.getFirst(), line),
+            HorizontalSpacingCalculator.trailingReservationSs(columns.getLast(), line));
     }
 
     /**

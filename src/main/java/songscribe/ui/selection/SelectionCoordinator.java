@@ -27,6 +27,7 @@ import java.awt.event.AWTEventListener;
 import java.awt.event.MouseEvent;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -37,18 +38,27 @@ import org.jspecify.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 
+import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.mutation.ElementField;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
+import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.Ending;
+import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LineEndingSupport;
 import songscribe.ui.EndingConfirms;
+import songscribe.ui.OptionDialogs;
+import songscribe.ui.action.AccidentalAction;
+import songscribe.ui.action.AccidentalInParensAction;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.DotAction;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.dom.Beam;
 
@@ -80,6 +90,13 @@ public final class SelectionCoordinator {
 
     /** Whether the user is in select mode (shift held down or select mode active). */
     private boolean inSelectMode = false;
+
+    /**
+     * The view that owns this coordinator, or null when a test constructs one directly. Read only
+     * for the song-wide lyric metrics the modification fit gate measures syllable widths with.
+     */
+    @Nullable
+    private ScoreView scoreView = null;
 
     // Lazy-initialized list of all reflectable actions discovered from Actions.
     @Nullable
@@ -130,6 +147,14 @@ public final class SelectionCoordinator {
 
     public SelectionCoordinator() {
         MessageCenter.subscribe(this);
+    }
+
+    /**
+     * Records the view that owns this coordinator. Called by {@link ScoreView} right after it
+     * constructs the coordinator; a coordinator built directly by a test simply has none.
+     */
+    public void setScoreView(ScoreView scoreView) {
+        this.scoreView = scoreView;
     }
 
     // -------------------------------------------------------------------------
@@ -660,9 +685,36 @@ public final class SelectionCoordinator {
     }
 
     /**
+     * One element the action will change, decided before anything is mutated.
+     *
+     * @param index        The element's index on the line, unchanged by the modification
+     * @param standIn      The element as it will read afterwards: the replacement for an
+     *                     {@link UIAction.ElementReplaceable}, a modified clone for an
+     *                     {@link UIAction.ElementModifiable}. Detached from the line, so the fit
+     *                     gate can measure it without anything having been mutated
+     * @param compensation The ending change the user confirmed for this index, applied in the
+     *                     apply pass because it mutates the line, or
+     *                     {@link Ending.EndingEffect.None#INSTANCE} when there is none
+     */
+    private record PendingChange(int index, StaffElement standIn, Ending.EndingEffect compensation) {}
+
+    /**
      * Applies the given action to all applicable elements in the selection.
-     * Wraps the entire pass in a single modification bracket so all emitted
+     * Wraps the entire apply pass in a single modification bracket so all emitted
      * mutations coalesce into one {@code SongDidChangeNotification}.
+     * <p>
+     * Runs in three passes, because the ending confirms decide which elements actually change and
+     * the fit gate cannot be built until that is known — gating the loop as it runs would
+     * over-refuse, killing the whole action before its dialogs are even shown:
+     * <ol>
+     *   <li><b>Decide</b> — compute each applicable element's post-change stand-in and, for a
+     *       replacement, resolve and confirm its ending effect. Mutates nothing and opens no
+     *       bracket, which also keeps a dialog from being open while a modification bracket is.</li>
+     *   <li><b>Reconcile and gate</b> — over the indices that proceed; still mutates nothing, so a
+     *       refusal leaves the score untouched and creates no undo step.</li>
+     *   <li><b>Apply</b> — inside the modification bracket.</li>
+     * </ol>
+     *
      * @param action   the reflectable action to apply
      * @param selected true to apply the attribute, false to remove it
      * @param parent   the component to use as the dialog parent for any ending-confirm dialogs
@@ -676,57 +728,65 @@ public final class SelectionCoordinator {
 
         var line = selection.line();
         var song = line.getSong();
+        var changes = decideChanges(action, selected, parent, selection);
+
+        if (changes.isEmpty()) {
+            return;
+        }
+
+        // The accidentals this modification must make explicit so no pitch the user did not touch
+        // changes — removing an explicit accidental is exactly as context-changing as adding one.
+        var materializations = AccidentalReconciliation.reconcileModification(
+            line, intendedChanges(changes));
+
+        if (changesExtent(action) && !fitsAfterModification(line, changes, materializations)) {
+            OptionDialogs.showErrorMessage(
+                parent,
+                Strings.ALERT_TITLE_INSERT_ERROR,
+                Strings.ERROR_LINE_FULL_ELEMENT,
+                changes.getFirst().standIn().getType().categoryName()
+            );
+            return;
+        }
+
+        // Only a replacement can invalidate a beam or a tuplet; an in-place modification leaves
+        // element types alone.
+        var needsSpanCleanup = action instanceof UIAction.ElementReplaceable;
 
         song.withModification(() -> {
-            var needsSpanCleanup = false;
+            for (var change : changes) {
+                var index = change.index();
+                var compensation = change.compensation();
 
-            for (var i = selection.begin(); i <= selection.end(); i++) {
-                var element = line.getElement(i);
-
-                if (!action.appliesTo(element)) {
-                    continue;
+                // The compensating ending changes mutate the line, so they belong here rather
+                // than beside the confirm that authorized them.
+                if (compensation instanceof Ending.EndingEffect.CompensateEnd compensateEnd) {
+                    EndingConfirms.applyCompensatingEndChange(line, compensateEnd);
+                } else if (compensation instanceof Ending.EndingEffect.CompensateSplit compensateSplit) {
+                    EndingConfirms.applyCompensatingSplitChange(line, compensateSplit);
                 }
 
-                if (action instanceof UIAction.ElementReplaceable replaceable) {
-                    if (!selected) {
-                        continue;
-                    }
-
-                    var replacement = replaceable.createReplacement(element, true);
-                    var effect = LineEndingSupport.findEndingReplacementEffect(line, i, replacement);
-
-                    switch (effect) {
-                        case Ending.EndingEffect.Invalidate _ -> {
-                            if (!EndingConfirms.confirmInvalidation(parent)) {
-                                continue;
-                            }
-                            // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
-                        }
-                        case Ending.EndingEffect.CompensateEnd ce -> {
-                            if (!EndingConfirms.confirmCompensateEnd(parent, ce)) {
-                                continue;
-                            }
-                            EndingConfirms.applyCompensatingEndChange(line, ce);
-                        }
-                        case Ending.EndingEffect.CompensateSplit cs -> {
-                            if (!EndingConfirms.confirmCompensateSplit(parent, cs, replacement.getType())) {
-                                continue;
-                            }
-                            EndingConfirms.applyCompensatingSplitChange(line, cs);
-                        }
-                        case Ending.EndingEffect.None _ -> {}
-                    }
-
-                    line.setElement(i, replacement);
-                    needsSpanCleanup = true;
+                if (action instanceof UIAction.ElementReplaceable) {
+                    // An Invalidate effect needs no compensation here: setElement removes the
+                    // ending itself via isInvalidatedByReplacement.
+                    line.setElement(index, change.standIn());
                 } else if (action instanceof UIAction.ElementModifiable modifiable) {
-                    var index = i;
                     line.modifyElement(
                         index,
                         modifiable.modifiedFields(),
                         () -> modifiable.applyToElement(line.getElement(index), selected)
                     );
                 }
+            }
+
+            // Recorded in the same bracket so the toggle and its reconciliation are one undo step.
+            for (var materialization : materializations) {
+                var note = materialization.note();
+                line.modifyElement(
+                    line.getElementIndex(note),
+                    EnumSet.of(ElementField.ACCIDENTAL),
+                    () -> note.setAccidental(materialization.accidental())
+                );
             }
 
             if (needsSpanCleanup) {
@@ -737,6 +797,149 @@ public final class SelectionCoordinator {
             applicabilityCacheSelection = null;
             applicabilityCache.clear();
         });
+    }
+
+    /**
+     * Pass 1 — decides what the action does to each element of the selection, mutating nothing.
+     * An index the user declines an ending confirm for is simply left out of the result, so the
+     * gate and the apply pass see only the elements that really change.
+     */
+    private static List<PendingChange> decideChanges(
+        UIAction.Reflectable action, boolean selected, @Nullable Component parent, ElementSelection selection) {
+
+        var line = selection.line();
+        var changes = new ArrayList<PendingChange>();
+
+        for (var i = selection.begin(); i <= selection.end(); i++) {
+            var element = line.getElement(i);
+
+            if (!action.appliesTo(element)) {
+                continue;
+            }
+
+            if (action instanceof UIAction.ElementReplaceable replaceable) {
+                if (!selected) {
+                    continue;
+                }
+
+                var replacement = replaceable.createReplacement(element, true);
+                var effect = LineEndingSupport.findEndingReplacementEffect(line, i, replacement);
+                Ending.EndingEffect compensation = Ending.EndingEffect.None.INSTANCE;
+
+                switch (effect) {
+                    case Ending.EndingEffect.Invalidate _ -> {
+                        if (!EndingConfirms.confirmInvalidation(parent)) {
+                            continue;
+                        }
+                        // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
+                    }
+                    case Ending.EndingEffect.CompensateEnd compensateEnd -> {
+                        if (!EndingConfirms.confirmCompensateEnd(parent, compensateEnd)) {
+                            continue;
+                        }
+                        compensation = compensateEnd;
+                    }
+                    case Ending.EndingEffect.CompensateSplit compensateSplit -> {
+                        if (!EndingConfirms.confirmCompensateSplit(parent, compensateSplit, replacement.getType())) {
+                            continue;
+                        }
+                        compensation = compensateSplit;
+                    }
+                    case Ending.EndingEffect.None _ -> {}
+                }
+
+                changes.add(new PendingChange(i, replacement, compensation));
+            } else if (action instanceof UIAction.ElementModifiable modifiable) {
+                // Safe on a detached clone: applyToElement takes the element as a parameter and
+                // touches nothing else.
+                var standIn = element.clone();
+                modifiable.applyToElement(standIn, selected);
+                changes.add(new PendingChange(i, standIn, Ending.EndingEffect.None.INSTANCE));
+            }
+        }
+
+        return changes;
+    }
+
+    /**
+     * The post-change state of every element this modification touches, as
+     * {@link AccidentalReconciliation} describes it. These are the notes the user changed
+     * deliberately, so they are never materialized themselves — only the notes that inherit
+     * their context are.
+     */
+    private static List<AccidentalReconciliation.IntendedChange> intendedChanges(List<PendingChange> changes) {
+        var intended = new ArrayList<AccidentalReconciliation.IntendedChange>(changes.size());
+
+        for (var change : changes) {
+            var standIn = change.standIn();
+            intended.add(new AccidentalReconciliation.IntendedChange(
+                change.index(), standIn.getAccidental(), standIn.getStaffPosition()));
+        }
+
+        return intended;
+    }
+
+    /**
+     * Pass 2 — whether the line still fits once the changes and the accidentals they force are
+     * in place. Mutates nothing: the projection is built from stand-ins and clones, so a refusal
+     * leaves every live element as it was.
+     */
+    private boolean fitsAfterModification(
+        Line line,
+        List<PendingChange> changes,
+        List<AccidentalReconciliation.Materialization> materializations) {
+
+        var effectiveCount = line.effectiveElementCount();
+
+        // Nothing but the auto-maintained terminal barline, which layout pins flush-right: there
+        // is no chain to solve and nothing the change can push past the margin.
+        if (effectiveCount == 0) {
+            return true;
+        }
+
+        var projected = new ArrayList<StaffElement>(effectiveCount);
+
+        for (var i = 0; i < effectiveCount; i++) {
+            projected.add(line.getElement(i));
+        }
+
+        for (var change : changes) {
+            // The auto-maintained terminal barline is not in the projection: layout pins it
+            // flush-right, and its column is built from the live element.
+            if (change.index() < effectiveCount) {
+                projected.set(change.index(), change.standIn());
+            }
+        }
+
+        // Accidental width is a layout input, so the gate has to measure the materialized
+        // accidentals — on clones, because the live notes must stay untouched until the gate
+        // has accepted.
+        for (var materialization : materializations) {
+            var index = line.getElementIndex(materialization.note());
+
+            if (index < effectiveCount) {
+                var note = materialization.note().clone();
+                note.setAccidental(materialization.accidental());
+                projected.set(index, note);
+            }
+        }
+
+        var lyricRenderMetrics = (scoreView != null) ? scoreView.findLyricRenderMetrics() : null;
+
+        return InsertionSpacingCalculator.calculateModification(line, projected, lyricRenderMetrics)
+            .fitsWithinLine(line.getSong().getLineWidthSs());
+    }
+
+    /**
+     * Whether the action changes the horizontal extent of the columns it touches, and so must be
+     * fit-gated. Fermata and dynamics are not gated: they stack vertically, independently of the
+     * note column, and cannot make a line wider.
+     */
+    private static boolean changesExtent(UIAction.Reflectable action) {
+        return action instanceof AccidentalAction
+            || action instanceof AccidentalInParensAction
+            || action instanceof DotAction
+            || action instanceof UIAction.ElementReplaceable;
     }
 
     // Validates beam and tuplet spans after batch element replacement.

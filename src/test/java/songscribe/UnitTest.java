@@ -194,6 +194,13 @@ public abstract class UnitTest {
     }
 
     /**
+     * A line width no fixture built here can overflow, so the fit gates never refuse an edit a
+     * test did not set out to have refused. A test that exercises a gate stubs its own width.
+     * An unstubbed mock would report 0, which every gate reads as a line with no room at all.
+     */
+    public static final double UNCONSTRAINED_LINE_WIDTH_SS = 10_000.0;
+
+    /**
      * Creates a minimal Song mock with mutation tracking suspended and both
      * {@code withModification} overloads (plain and labeled) delegating directly to
      * the runnable. Shared by {@link #detachedLine()} and
@@ -204,6 +211,7 @@ public abstract class UnitTest {
         var songMock = mock(Song.class);
         when(songMock.isMutationTrackingSuspended()).thenReturn(true);
         when(songMock.getDefaultRestLengthSs()).thenReturn(Song.DEFAULT_REST_LENGTH_SS);
+        when(songMock.getLineWidthSs()).thenReturn(UNCONSTRAINED_LINE_WIDTH_SS);
         doAnswer(inv -> { ((Runnable) inv.getArgument(0)).run(); return null; })
             .when(songMock).withModification(any(Runnable.class));
         doAnswer(inv -> { ((Runnable) inv.getArgument(1)).run(); return null; })

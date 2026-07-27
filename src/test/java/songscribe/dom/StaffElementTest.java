@@ -24,6 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 
 import songscribe.UnitTest;
 import songscribe.midi.MidiSequenceBuilder;
@@ -520,6 +522,276 @@ class StaffElementTest extends UnitTest {
         });
 
         assertThat(note.findLastAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+    }
+
+    // ------------------------------------------------------------------
+    // findEffectiveAccidental — barline/repeat barriers and the tie escape
+    // ------------------------------------------------------------------
+
+    // Staff position -4 → pitchIndex 4 (F), reused throughout this block so every
+    // fixture resolves the same pitch class.
+    private static final int STAFF_POSITION_F5 = -4;
+
+    // A key signature covering only F (pitchIndex 4), matching the SHARPS-row fixture
+    // already used by testFindLastAccidentalFallsBackToKeySignature above.
+    private static final int KEY_ACCIDENTAL_COUNT_F_ONLY = 1;
+
+    // A key signature covering all seven letters, so F is affected regardless of
+    // FLATS/SHARPS ordering — used where the fallback value must differ from SHARP.
+    private static final int KEY_ACCIDENTAL_COUNT_ALL = 7;
+
+    // (a) An explicit accidental before a barline/repeat barrier is not inherited by
+    //     a later note at the same staff position — the scan stops at the barrier and
+    //     falls back to the key signature (none set here, so the result is null, which
+    //     could not happen if the predecessor's SHARP had been found).
+    @ParameterizedTest
+    @EnumSource(
+        value = ElementType.class,
+        names = {
+            "SINGLE_BARLINE", "DOUBLE_BARLINE", "FINAL_DOUBLE_BARLINE",
+            "REPEAT_LEFT", "REPEAT_RIGHT", "REPEAT_LEFT_RIGHT"
+        }
+    )
+    void testAccidentalNotInheritedAcrossBarrierType(ElementType barrierType) {
+        var song = new Song();
+        var line = song.getLine(0);
+        var predecessor = new StaffElement(ElementType.CROTCHET);
+        predecessor.setStaffPosition(STAFF_POSITION_F5);
+        predecessor.setAccidental(StaffElement.Accidental.SHARP);
+        var barrier = new StaffElement(barrierType);
+        var successor = new StaffElement(ElementType.CROTCHET);
+        successor.setStaffPosition(STAFF_POSITION_F5);
+        song.withoutMutationTracking(() -> {
+            line.addElement(predecessor);
+            line.addElement(barrier);
+            line.addElement(successor);
+        });
+
+        assertThat(successor.findLastAccidental()).isNull();
+    }
+
+    // (b) A breath mark between the two notes is deliberately not a barrier — the
+    //     accidental is still inherited across it.
+    @Test
+    void testBreathMarkDoesNotBlockAccidentalInheritance() {
+        var song = new Song();
+        var line = song.getLine(0);
+        var predecessor = new StaffElement(ElementType.CROTCHET);
+        predecessor.setStaffPosition(STAFF_POSITION_F5);
+        predecessor.setAccidental(StaffElement.Accidental.SHARP);
+        var breathMark = new StaffElement(ElementType.BREATH_MARK);
+        var successor = new StaffElement(ElementType.CROTCHET);
+        successor.setStaffPosition(STAFF_POSITION_F5);
+        song.withoutMutationTracking(() -> {
+            line.addElement(predecessor);
+            line.addElement(breathMark);
+            line.addElement(successor);
+        });
+
+        assertThat(successor.findLastAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+    }
+
+    // (c) A tie whose anchor sits before a barrier escapes it: the end note resolves
+    //     to the anchor's explicit accidental instead of stopping at the barrier.
+    @Test
+    void testTiedNoteAcrossBarlineInheritsAccidentalFromTieAnchor() {
+        var song = new Song();
+        var line = song.getLine(0);
+        var anchor = new StaffElement(ElementType.CROTCHET);
+        anchor.setStaffPosition(STAFF_POSITION_F5);
+        anchor.setAccidental(StaffElement.Accidental.SHARP);
+        var barline = new StaffElement(ElementType.SINGLE_BARLINE);
+        var end = new StaffElement(ElementType.CROTCHET);
+        end.setStaffPosition(STAFF_POSITION_F5);
+        song.withoutMutationTracking(() -> {
+            line.addElement(anchor);
+            line.addElement(barline);
+            line.addElement(end);
+            line.addTie(new Tie(anchor, end));
+        });
+
+        assertThat(end.findLastAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+    }
+
+    // (c, negative) Without the tie, the same layout falls back to the key signature
+    // instead of inheriting across the barline. FLATS covering all seven letters gives
+    // FLAT, which is distinguishable from the anchor's SHARP.
+    @Test
+    void testNoteAfterBarlineWithoutTieFallsBackToKeySignature() {
+        var song = new Song();
+        var line = song.getLine(0);
+        var anchor = new StaffElement(ElementType.CROTCHET);
+        anchor.setStaffPosition(STAFF_POSITION_F5);
+        anchor.setAccidental(StaffElement.Accidental.SHARP);
+        var barline = new StaffElement(ElementType.SINGLE_BARLINE);
+        var end = new StaffElement(ElementType.CROTCHET);
+        end.setStaffPosition(STAFF_POSITION_F5);
+        song.withoutMutationTracking(() -> {
+            line.setKeyType(KeyType.FLATS);
+            line.setKeyAccidentalCount(KEY_ACCIDENTAL_COUNT_ALL);
+            line.addElement(anchor);
+            line.addElement(barline);
+            line.addElement(end);
+        });
+
+        assertThat(end.findLastAccidental()).isEqualTo(StaffElement.Accidental.FLAT);
+    }
+
+    // (d) A chain of ties (A~B~C) carries the accidental across two barriers, one link
+    //     at a time.
+    @Test
+    void testTiedNoteChainAcrossTwoBarlinesInheritsAccidental() {
+        var song = new Song();
+        var line = song.getLine(0);
+        var noteA = new StaffElement(ElementType.CROTCHET);
+        noteA.setStaffPosition(STAFF_POSITION_F5);
+        noteA.setAccidental(StaffElement.Accidental.SHARP);
+        var firstBarline = new StaffElement(ElementType.SINGLE_BARLINE);
+        var noteB = new StaffElement(ElementType.CROTCHET);
+        noteB.setStaffPosition(STAFF_POSITION_F5);
+        var secondBarline = new StaffElement(ElementType.SINGLE_BARLINE);
+        var noteC = new StaffElement(ElementType.CROTCHET);
+        noteC.setStaffPosition(STAFF_POSITION_F5);
+        var tieAB = new Tie(noteA, noteB);
+        song.withoutMutationTracking(() -> {
+            line.addElement(noteA);
+            line.addElement(firstBarline);
+            line.addElement(noteB);
+            line.addElement(secondBarline);
+            line.addElement(noteC);
+            line.addTie(tieAB);
+            line.addTie(new Tie(noteB, noteC));
+        });
+
+        assertThat(noteC.findLastAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+    }
+
+    // (d, negative) Removing the A~B link breaks the chain, so C can no longer escape
+    // either barrier and falls back to the key signature.
+    @Test
+    void testRemovingTieBreaksChainFallsBackToKeySignature() {
+        var song = new Song();
+        var line = song.getLine(0);
+        var noteA = new StaffElement(ElementType.CROTCHET);
+        noteA.setStaffPosition(STAFF_POSITION_F5);
+        noteA.setAccidental(StaffElement.Accidental.SHARP);
+        var firstBarline = new StaffElement(ElementType.SINGLE_BARLINE);
+        var noteB = new StaffElement(ElementType.CROTCHET);
+        noteB.setStaffPosition(STAFF_POSITION_F5);
+        var secondBarline = new StaffElement(ElementType.SINGLE_BARLINE);
+        var noteC = new StaffElement(ElementType.CROTCHET);
+        noteC.setStaffPosition(STAFF_POSITION_F5);
+        var tieAB = new Tie(noteA, noteB);
+        song.withoutMutationTracking(() -> {
+            line.setKeyType(KeyType.FLATS);
+            line.setKeyAccidentalCount(KEY_ACCIDENTAL_COUNT_ALL);
+            line.addElement(noteA);
+            line.addElement(firstBarline);
+            line.addElement(noteB);
+            line.addElement(secondBarline);
+            line.addElement(noteC);
+            line.addTie(tieAB);
+            line.addTie(new Tie(noteB, noteC));
+            line.removeTie(tieAB);
+        });
+
+        assertThat(noteC.findLastAccidental()).isEqualTo(StaffElement.Accidental.FLAT);
+    }
+
+    // (e) A tie whose anchor sits after the barrier (between the barrier and the end
+    //     note) does not escape it — tieAnchorBefore requires the anchor to precede the
+    //     barrier itself.
+    @Test
+    void testTieAnchorAfterBarrierDoesNotEscape() {
+        var song = new Song();
+        var line = song.getLine(0);
+        var predecessor = new StaffElement(ElementType.CROTCHET);
+        predecessor.setStaffPosition(STAFF_POSITION_F5);
+        predecessor.setAccidental(StaffElement.Accidental.SHARP);
+        var barline = new StaffElement(ElementType.SINGLE_BARLINE);
+        var anchor = new StaffElement(ElementType.CROTCHET);
+        anchor.setStaffPosition(STAFF_POSITION_F5);
+        var end = new StaffElement(ElementType.CROTCHET);
+        end.setStaffPosition(STAFF_POSITION_F5);
+        song.withoutMutationTracking(() -> {
+            line.addElement(predecessor);
+            line.addElement(barline);
+            line.addElement(anchor);
+            line.addElement(end);
+            line.addTie(new Tie(anchor, end));
+        });
+
+        assertThat(end.findLastAccidental()).isNull();
+    }
+
+    // (e) A note that merely starts a tie (is the anchor, not the end) gets no escape
+    //     when its own accidental is resolved — the escape only applies to the tie's
+    //     end element.
+    @Test
+    void testTieAnchorItselfGetsNoEscapeFromItsOwnTie() {
+        var song = new Song();
+        var line = song.getLine(0);
+        var predecessor = new StaffElement(ElementType.CROTCHET);
+        predecessor.setStaffPosition(STAFF_POSITION_F5);
+        predecessor.setAccidental(StaffElement.Accidental.SHARP);
+        var barline = new StaffElement(ElementType.SINGLE_BARLINE);
+        var anchor = new StaffElement(ElementType.CROTCHET);
+        anchor.setStaffPosition(STAFF_POSITION_F5);
+        var end = new StaffElement(ElementType.CROTCHET);
+        end.setStaffPosition(STAFF_POSITION_F5);
+        song.withoutMutationTracking(() -> {
+            line.addElement(predecessor);
+            line.addElement(barline);
+            line.addElement(anchor);
+            line.addElement(end);
+            line.addTie(new Tie(anchor, end));
+        });
+
+        assertThat(anchor.findLastAccidental()).isNull();
+    }
+
+    // (f) With no explicit accidental and no barrier, an unrelated element at a
+    //     different staff position in between does not disturb the key-signature
+    //     fallback.
+    @Test
+    void testKeySignatureFallbackUnaffectedByOrdinaryElementsWithoutBarrier() {
+        var song = new Song();
+        var line = song.getLine(0);
+        var unrelated = new StaffElement(ElementType.CROTCHET);
+        unrelated.setStaffPosition(STAFF_POSITION_F5 + 1);
+        var note = new StaffElement(ElementType.CROTCHET);
+        note.setStaffPosition(STAFF_POSITION_F5);
+        song.withoutMutationTracking(() -> {
+            line.setKeyType(KeyType.SHARPS);
+            line.setKeyAccidentalCount(KEY_ACCIDENTAL_COUNT_F_ONLY);
+            line.addElement(unrelated);
+            line.addElement(note);
+        });
+
+        assertThat(note.findLastAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+    }
+
+    // (g) A note's own explicit accidental is still returned by getPitch() regardless
+    //     of any barrier — the caller checks it first and never calls
+    //     findEffectiveAccidental() when it is non-null.
+    @Test
+    void testGetPitchReturnsOwnExplicitAccidentalRegardlessOfPrecedingBarrier() {
+        var song = new Song();
+        var line = song.getLine(0);
+        var predecessor = new StaffElement(ElementType.CROTCHET);
+        predecessor.setStaffPosition(STAFF_POSITION_F5);
+        predecessor.setAccidental(StaffElement.Accidental.FLAT);
+        var barline = new StaffElement(ElementType.SINGLE_BARLINE);
+        var note = new StaffElement(ElementType.CROTCHET);
+        note.setStaffPosition(STAFF_POSITION_F5);
+        note.setAccidental(StaffElement.Accidental.SHARP);
+        song.withoutMutationTracking(() -> {
+            line.addElement(predecessor);
+            line.addElement(barline);
+            line.addElement(note);
+        });
+
+        assertThat(note.getPitch()).isEqualTo(MIDI_F5 + 1);
     }
 
     // ------------------------------------------------------------------
