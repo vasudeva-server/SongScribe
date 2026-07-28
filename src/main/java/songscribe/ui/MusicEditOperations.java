@@ -129,14 +129,10 @@ public final class MusicEditOperations {
 
         var line = state.getLine();
 
-        // The tie spans the selection's pitched-note endpoints; barlines and repeats
-        // between them are left outside it (refs #527).
-        var beginIndex = state.getTieSelectionBegin();
-        var endIndex = state.getTieSelectionEnd();
-
-        if (beginIndex < 0 || beginIndex == endIndex) {
-            return;
-        }
+        // A tie spans the selection itself: its endpoints are the two notes, and any
+        // separator between them stays outside the tie (refs #527).
+        var beginIndex = state.getSelectionBegin();
+        var endIndex = state.getSelectionEnd();
 
         line.withModification(() -> {
             var exactTie = line.findExactTie(beginIndex, endIndex);

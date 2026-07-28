@@ -1016,15 +1016,15 @@ class LineSelectionStateTest extends UnitTest {
     }
 
     @Test
-    void testCanToggleTieWithSizeGreaterThanTwoSetsCanTieFalse() {
-        // Size 3: three elements selected.
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        var state = new LineSelectionState(line);
-        state.setSelectionFromClick(0);
-        state.extendSelectionTo(2);
+    void testCanToggleTieWithTwoSeparatorsSetsCanTieFalse() {
+        // [CROTCHET(0), SINGLE_BARLINE(1), SINGLE_BARLINE(2), CROTCHET(3)] — a tie may
+        // span at most one separator, so two in a row must be rejected (refs #527).
+        var state = selectAllOf(
+            ElementType.CROTCHET,
+            ElementType.SINGLE_BARLINE,
+            ElementType.SINGLE_BARLINE,
+            ElementType.CROTCHET
+        );
 
         var result = state.canToggleTie();
 
@@ -1098,12 +1098,120 @@ class LineSelectionStateTest extends UnitTest {
     }
 
     @Test
+    void testCanToggleTieAcrossBreathMarkSetsCanTieTrue() {
+        // [CROTCHET(0), BREATH_MARK(1), CROTCHET(2)] — a breath mark is the third kind of
+        // separator a tie may span, alongside barlines and repeats (refs #527).
+        var state = selectAllOf(
+            ElementType.CROTCHET, ElementType.BREATH_MARK, ElementType.CROTCHET
+        );
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isTrue();
+        assertThat(state.getCanTie()).isEqualTo(true);
+        assertThat(state.getExistingTie()).isNull();
+    }
+
+    @Test
+    void testCanToggleTieAcrossDoubleBarlineSetsCanTieTrue() {
+        // [CROTCHET(0), DOUBLE_BARLINE(1), CROTCHET(2)] — an ordinary double barline is a
+        // section break, not the end of the piece, so a tie may span it (refs #527).
+        var state = selectAllOf(
+            ElementType.CROTCHET, ElementType.DOUBLE_BARLINE, ElementType.CROTCHET
+        );
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isTrue();
+        assertThat(state.getCanTie()).isEqualTo(true);
+        assertThat(state.getExistingTie()).isNull();
+    }
+
+    @Test
+    void testCanToggleTieAcrossFinalBarlineSetsCanTieFalse() {
+        // [CROTCHET(0), FINAL_DOUBLE_BARLINE(1), CROTCHET(2)] — a final barline ends the
+        // piece, so no note may sound across it (refs #527).
+        var state = selectAllOf(
+            ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE, ElementType.CROTCHET
+        );
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isFalse();
+        assertThat(state.getCanTie()).isEqualTo(false);
+    }
+
+    @Test
     void testCanToggleTieWithNoteBetweenTwoNotesSetsCanTieFalse() {
         // [CROTCHET(0), CROTCHET(1), CROTCHET(2)] — a real note between the two
         // endpoints is not transparent to a tie, unlike a barline or repeat.
         var state = selectAllOf(
             ElementType.CROTCHET, ElementType.CROTCHET, ElementType.CROTCHET
         );
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isFalse();
+        assertThat(state.getCanTie()).isEqualTo(false);
+    }
+
+    @Test
+    void testCanToggleTieWithRestBetweenTwoNotesSetsCanTieFalse() {
+        // [CROTCHET(0), CROTCHET_REST(1), CROTCHET(2)] — a rest takes time, so the notes
+        // on either side are not adjacent and cannot be tied (refs #527).
+        var state = selectAllOf(
+            ElementType.CROTCHET, ElementType.CROTCHET_REST, ElementType.CROTCHET
+        );
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isFalse();
+        assertThat(state.getCanTie()).isEqualTo(false);
+    }
+
+    @Test
+    void testCanToggleTieWithGraceNoteBetweenTwoNotesSetsCanTieFalse() {
+        // [CROTCHET(0), GRACE_QUAVER(1), CROTCHET(2)] — a grace note is transparent to a
+        // beam or tuplet, but not to a tie: only a separator may sit between tied notes.
+        var state = selectAllOf(
+            ElementType.CROTCHET, ElementType.GRACE_QUAVER, ElementType.CROTCHET
+        );
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isFalse();
+        assertThat(state.getCanTie()).isEqualTo(false);
+    }
+
+    @Test
+    void testCanToggleTieWithLeadingRestSetsCanTieFalse() {
+        // [CROTCHET_REST(0), CROTCHET(1), CROTCHET(2)] — the selection's endpoints are the
+        // tied notes themselves. Padding at the edge is not skipped, so a leading rest
+        // makes this an invalid tie selection rather than a tie of notes 1 and 2.
+        var state = selectAllOf(
+            ElementType.CROTCHET_REST, ElementType.CROTCHET, ElementType.CROTCHET
+        );
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isFalse();
+        assertThat(state.getCanTie()).isEqualTo(false);
+    }
+
+    @Test
+    void testCanToggleTieAcrossBarlineWithPitchMismatchSetsCanTieFalse() {
+        // A separator does not excuse the pitch rule: tied notes must share a pitch.
+        var line = detachedLine();
+        var note0 = ElementType.CROTCHET.newInstance();
+        note0.setStaffPosition(0);
+        var note2 = ElementType.CROTCHET.newInstance();
+        note2.setStaffPosition(1);
+        line.addElement(note0);
+        line.addElement(ElementType.SINGLE_BARLINE.newInstance());
+        line.addElement(note2);
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(2);
 
         var result = state.canToggleTie();
 

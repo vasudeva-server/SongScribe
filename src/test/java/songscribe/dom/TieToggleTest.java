@@ -109,6 +109,26 @@ class TieToggleTest extends UnitTest {
     }
 
     @Test
+    void testCanToggleTieWithRealSelection() {
+        // The pre-tied pair is two adjacent same-pitch notes, so the command is offered
+        // (here to remove the tie). Asserting through MusicEditOperations rather than the
+        // selection state covers the delegation the menu actually calls.
+        selectRange(TIED_1, TIED_2);
+
+        assertThat(operations.canToggleTie())
+            .as("tie command offered for a tied pair").isTrue();
+    }
+
+    @Test
+    void testCannotToggleTieWithSingleElementSelected() {
+        // A tie needs two notes, so one selected element must not offer the command.
+        selectRange(EIGHTH_1, EIGHTH_1);
+
+        assertThat(operations.canToggleTie())
+            .as("tie command withheld for a single element").isFalse();
+    }
+
+    @Test
     void testTiePersistsThroughSaveLoad() throws Exception {
         var tie = line.findTieAt(TIED_1);
         assertThat(tie).as("pre-tied pair exists").isNotNull();

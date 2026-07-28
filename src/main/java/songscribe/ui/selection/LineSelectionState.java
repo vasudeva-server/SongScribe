@@ -24,6 +24,7 @@ import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
@@ -39,6 +40,12 @@ import songscribe.layout.LineEndingSupport;
  * are selected on that line, and whether the line itself is selected for deletion.
  */
 public final class LineSelectionState {
+
+    /** Two adjacent notes, with nothing between them. */
+    private static final int TIE_SELECTION_SIZE_WITHOUT_SEPARATOR = 2;
+
+    /** Two notes with a single non-duration element between them (refs #527). */
+    private static final int TIE_SELECTION_SIZE_WITH_SEPARATOR = 3;
 
     private final Line line;
     private Runnable selectionChangeCallback = () -> {};
@@ -467,81 +474,59 @@ public final class LineSelectionState {
     }
 
     /**
-     * Returns the index of the first pitched note in the selection, or -1 if the
-     * selection is empty or contains no pitched note.
+     * Returns whether {@code type} may sit between two tied notes.
      *
-     * <p>Barlines and repeats are transparent to a tie: they take no duration, so a tied
-     * pair may sit on either side of one (refs #527).
+     * <p>Non-duration elements take no time, so the notes on either side stay adjacent in
+     * the music even though an element separates them on the staff. A final double barline
+     * is the exception: it ends the piece, so nothing may sound across it (refs #527).
      */
-    public int getTieSelectionBegin() {
-        if (!hasElementSelection()) {
-            return -1;
-        }
-
-        for (var i = selectionBegin; i <= selectionEnd; i++) {
-            if (line.getElement(i).getType().isPitchedNote()) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    /**
-     * Returns the index of the last pitched note in the selection, or -1 if the
-     * selection is empty or contains no pitched note.
-     *
-     * @see #getTieSelectionBegin()
-     */
-    public int getTieSelectionEnd() {
-        if (!hasElementSelection()) {
-            return -1;
-        }
-
-        for (var i = selectionEnd; i >= selectionBegin; i--) {
-            if (line.getElement(i).getType().isPitchedNote()) {
-                return i;
-            }
-        }
-
-        return -1;
+    private static boolean isTieSeparator(ElementType type) {
+        return type.isNonDuration() && type != ElementType.FINAL_DOUBLE_BARLINE;
     }
 
     /**
      * Returns whether the current selection can toggle a tie.
      * Also sets the {@code canTie} and {@code existingTie} fields.
+     *
+     * <p>A tie joins two notes of the same pitch, which may be adjacent or separated by a
+     * single non-duration element such as a barline or repeat (refs #527).
      */
     public boolean canToggleTie() {
-        var beginIndex = getTieSelectionBegin();
-        var endIndex = getTieSelectionEnd();
+        var selectionSize = getSelectionSize();
 
-        if (beginIndex < 0 || beginIndex == endIndex) {
+        if (selectionSize != TIE_SELECTION_SIZE_WITHOUT_SEPARATOR
+            && selectionSize != TIE_SELECTION_SIZE_WITH_SEPARATOR) {
             canTie = false;
             return false;
         }
 
-        // Only non-duration elements (barlines, repeats, breath marks) may sit between the
-        // two notes — anything else means this isn't a plain two-note tie span (refs #527).
-        for (var i = beginIndex + 1; i < endIndex; i++) {
-            if (!line.getElement(i).getType().isNonDuration()) {
-                canTie = false;
-                return false;
-            }
+        var beginNote = line.getElement(selectionBegin);
+        var endNote = line.getElement(selectionEnd);
+
+        if (!beginNote.getType().isPitchedNote() || !endNote.getType().isPitchedNote()) {
+            canTie = false;
+            return false;
         }
 
-        var beginNote = line.getElement(beginIndex);
-        var endNote = line.getElement(endIndex);
+        if (selectionSize == TIE_SELECTION_SIZE_WITH_SEPARATOR
+            && !isTieSeparator(line.getElement(selectionBegin + 1).getType())) {
+            canTie = false;
+            return false;
+        }
 
         if (beginNote.getPitch() != endNote.getPitch()) {
             canTie = false;
             return false;
         }
 
-        var exactTie = line.findExactTie(beginIndex, endIndex);
+        var exactTie = line.findExactTie(selectionBegin, selectionEnd);
         var shouldConnect = exactTie == null;
 
-        // Conflict: tying would connect what a beam already connects.
-        if (shouldConnect && !shouldConnectBeamSelection(beginIndex, endIndex)) {
+        // Conflict: tying would connect what a beam already connects. The raw selection bounds
+        // are correct here, unlike beaming/tupleting: the only interior a tie allows holds a
+        // single separator, which can never be a grace note, and the isPitchedNote() check
+        // above already rejects a grace note at either endpoint (refs #592).
+        if (shouldConnect && !shouldConnectBeamSelection(selectionBegin, selectionEnd)) {
             canTie = false;
             return false;
         }

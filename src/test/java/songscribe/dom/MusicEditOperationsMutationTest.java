@@ -292,9 +292,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     @Test
     void testToggleTieAcrossBarlineEmitsTieAdditionSpanningTheNotes() {
-        // [CROTCHET(0), SINGLE_BARLINE(1), CROTCHET(2)] — selecting the barline along
-        // with its neighboring notes must still tie the notes, skipping the barline
-        // (refs #527).
+        // [CROTCHET(0), SINGLE_BARLINE(1), CROTCHET(2)] — selecting the barline along with
+        // its neighboring notes ties the notes, with the barline inside the span (refs #527).
         var env = setupEnv(crotchet(), singleBarline(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleTie();
@@ -307,6 +306,25 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(addition.tie().getAnchorElementIndex()).isEqualTo(0);
         assertThat(addition.tie().getEndElementIndex()).isEqualTo(2);
         assertThat(addition.line()).isSameAs(env.line());
+    }
+
+    @Test
+    void testToggleTieAcrossBarlineRemoveEmitsTieRemoval() {
+        // Untying is as common as tying: the removal branch must find the existing tie
+        // when a barline sits inside its span, not only when the notes are adjacent.
+        var env = setupEnv(crotchet(), singleBarline(), crotchet());
+        var beginNote = env.line().getElement(0);
+        var endNote = env.line().getElement(2);
+        env.line().getSong().withoutMutationTracking(
+            () -> env.line().addRangeElement(new Tie(beginNote, endNote)));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleTie();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.getFirst()).isInstanceOf(TieRemoval.class);
+        assertThat(((TieRemoval) mutations.getFirst()).line()).isSameAs(env.line());
     }
 
     // -----------------------------------------------------------------------
