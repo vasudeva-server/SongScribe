@@ -1068,6 +1068,50 @@ class LineSelectionStateTest extends UnitTest {
     }
 
     @Test
+    void testCanToggleTieAcrossBarlineSetsCanTieTrue() {
+        // [CROTCHET(0), SINGLE_BARLINE(1), CROTCHET(2)] — a barline between two
+        // same-pitch notes must not block the tie (refs #527).
+        var state = selectAllOf(
+            ElementType.CROTCHET, ElementType.SINGLE_BARLINE, ElementType.CROTCHET
+        );
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isTrue();
+        assertThat(state.getCanTie()).isEqualTo(true);
+        assertThat(state.getExistingTie()).isNull();
+    }
+
+    @Test
+    void testCanToggleTieAcrossRepeatSetsCanTieTrue() {
+        // [CROTCHET(0), REPEAT_RIGHT(1), CROTCHET(2)] — a repeat between two
+        // same-pitch notes must not block the tie (refs #527).
+        var state = selectAllOf(
+            ElementType.CROTCHET, ElementType.REPEAT_RIGHT, ElementType.CROTCHET
+        );
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isTrue();
+        assertThat(state.getCanTie()).isEqualTo(true);
+        assertThat(state.getExistingTie()).isNull();
+    }
+
+    @Test
+    void testCanToggleTieWithNoteBetweenTwoNotesSetsCanTieFalse() {
+        // [CROTCHET(0), CROTCHET(1), CROTCHET(2)] — a real note between the two
+        // endpoints is not transparent to a tie, unlike a barline or repeat.
+        var state = selectAllOf(
+            ElementType.CROTCHET, ElementType.CROTCHET, ElementType.CROTCHET
+        );
+
+        var result = state.canToggleTie();
+
+        assertThat(result).isFalse();
+        assertThat(state.getCanTie()).isEqualTo(false);
+    }
+
+    @Test
     void testCanToggleTieWithElementsInDifferentTiesAllowsChainedTie() {
         // tie1 spans notes 0-1, tie2 spans notes 2-3.
         // Selecting notes 1 and 2 chains a new tie between the two existing ties.

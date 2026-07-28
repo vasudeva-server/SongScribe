@@ -290,6 +290,25 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(((TieRemoval) mutations.getFirst()).line()).isSameAs(env.line());
     }
 
+    @Test
+    void testToggleTieAcrossBarlineEmitsTieAdditionSpanningTheNotes() {
+        // [CROTCHET(0), SINGLE_BARLINE(1), CROTCHET(2)] — selecting the barline along
+        // with its neighboring notes must still tie the notes, skipping the barline
+        // (refs #527).
+        var env = setupEnv(crotchet(), singleBarline(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        env.operations().toggleTie();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.getFirst()).isInstanceOf(TieAddition.class);
+        var addition = (TieAddition) mutations.getFirst();
+        assertThat(addition.tie().getAnchorElementIndex()).isEqualTo(0);
+        assertThat(addition.tie().getEndElementIndex()).isEqualTo(2);
+        assertThat(addition.line()).isSameAs(env.line());
+    }
+
     // -----------------------------------------------------------------------
     // Tuplet
     // -----------------------------------------------------------------------

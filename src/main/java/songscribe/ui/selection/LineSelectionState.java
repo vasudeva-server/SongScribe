@@ -467,36 +467,81 @@ public final class LineSelectionState {
     }
 
     /**
+     * Returns the index of the first pitched note in the selection, or -1 if the
+     * selection is empty or contains no pitched note.
+     *
+     * <p>Barlines and repeats are transparent to a tie: they take no duration, so a tied
+     * pair may sit on either side of one (refs #527).
+     */
+    public int getTieSelectionBegin() {
+        if (!hasElementSelection()) {
+            return -1;
+        }
+
+        for (var i = selectionBegin; i <= selectionEnd; i++) {
+            if (line.getElement(i).getType().isPitchedNote()) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * Returns the index of the last pitched note in the selection, or -1 if the
+     * selection is empty or contains no pitched note.
+     *
+     * @see #getTieSelectionBegin()
+     */
+    public int getTieSelectionEnd() {
+        if (!hasElementSelection()) {
+            return -1;
+        }
+
+        for (var i = selectionEnd; i >= selectionBegin; i--) {
+            if (line.getElement(i).getType().isPitchedNote()) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
      * Returns whether the current selection can toggle a tie.
      * Also sets the {@code canTie} and {@code existingTie} fields.
      */
     public boolean canToggleTie() {
-        if (getSelectionSize() != 2) {
+        var beginIndex = getTieSelectionBegin();
+        var endIndex = getTieSelectionEnd();
+
+        if (beginIndex < 0 || beginIndex == endIndex) {
             canTie = false;
             return false;
         }
 
-        var beginNote = line.getElement(selectionBegin);
-        var endNote = line.getElement(selectionEnd);
-
-        if (!beginNote.getType().isPitchedNote() || !endNote.getType().isPitchedNote()) {
-            canTie = false;
-            return false;
+        // Only non-duration elements (barlines, repeats, breath marks) may sit between the
+        // two notes — anything else means this isn't a plain two-note tie span (refs #527).
+        for (var i = beginIndex + 1; i < endIndex; i++) {
+            if (!line.getElement(i).getType().isNonDuration()) {
+                canTie = false;
+                return false;
+            }
         }
+
+        var beginNote = line.getElement(beginIndex);
+        var endNote = line.getElement(endIndex);
 
         if (beginNote.getPitch() != endNote.getPitch()) {
             canTie = false;
             return false;
         }
 
-        var exactTie = line.findExactTie(selectionBegin, selectionEnd);
+        var exactTie = line.findExactTie(beginIndex, endIndex);
         var shouldConnect = exactTie == null;
 
-        // Conflict: tying would connect what a beam already connects. The raw selection bounds
-        // are correct here, unlike beaming/tupleting: a tie needs exactly two elements, so there
-        // is no interior for a grace note to sit in, and the isPitchedNote() check above already
-        // rejects a grace note at either endpoint (refs #592).
-        if (shouldConnect && !shouldConnectBeamSelection(selectionBegin, selectionEnd)) {
+        // Conflict: tying would connect what a beam already connects.
+        if (shouldConnect && !shouldConnectBeamSelection(beginIndex, endIndex)) {
             canTie = false;
             return false;
         }

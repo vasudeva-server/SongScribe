@@ -129,12 +129,21 @@ public final class MusicEditOperations {
 
         var line = state.getLine();
 
+        // The tie spans the selection's pitched-note endpoints; barlines and repeats
+        // between them are left outside it (refs #527).
+        var beginIndex = state.getTieSelectionBegin();
+        var endIndex = state.getTieSelectionEnd();
+
+        if (beginIndex < 0 || beginIndex == endIndex) {
+            return;
+        }
+
         line.withModification(() -> {
-            var exactTie = line.findExactTie(state.getSelectionBegin(), state.getSelectionEnd());
+            var exactTie = line.findExactTie(beginIndex, endIndex);
 
             if (exactTie == null) {
-                var anchorElement = line.getElement(state.getSelectionBegin());
-                var endElement = line.getElement(state.getSelectionEnd());
+                var anchorElement = line.getElement(beginIndex);
+                var endElement = line.getElement(endIndex);
                 line.addTie(new Tie(anchorElement, endElement));
             } else {
                 line.removeTie(exactTie);
