@@ -380,7 +380,7 @@ class SongLoadingTest extends UnitTest {
             .isEqualTo("See “note 1” — here");
 
         // Per-note lyric: typographic + short-A (Lyric compact constructor, processText with true).
-        var lyric = loaded.getLine(0).getElement(0).getMainLyric();
+        var lyric = loaded.getLine(0).getElement(0).getLyricForVerse(Lyric.FIRST_VERSE);
         assertThat(lyric).isNotNull();
 
         if (lyric == null) {

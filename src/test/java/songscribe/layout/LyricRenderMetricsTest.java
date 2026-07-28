@@ -26,7 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.mockStatic;
 
 import java.awt.Font;
-import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
@@ -41,8 +40,6 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
-import songscribe.engraving.SMuFLConstants;
 
 class LyricRenderMetricsTest extends UnitTest {
 
@@ -50,6 +47,10 @@ class LyricRenderMetricsTest extends UnitTest {
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final LyricRenderMetrics LYRIC_METRICS =
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
+    // Arbitrary column position and line width: this test measures a box's width, which neither
+    // affects.
+    private static final double COLUMN_X_SS = 5.0;
+    private static final double LINE_WIDTH_SS = 100.0;
 
     private Song song;
     private Line line;
@@ -70,19 +71,25 @@ class LyricRenderMetricsTest extends UnitTest {
         messageCenterMock.close();
     }
 
-    // T5: lyricBoxWidthSs(text) returns the same value as LyricBoxLayout produces for the same text
+    // T5: lyricBoxWidthSs(text) returns the same value as LyricBoxLayout produces for the same text.
+    // The column is built the way layout builds it rather than hand-assembled, because the box width
+    // is the width ElementColumnBuilder measured for the active verse, reused rather than re-measured.
     @Test
     void testLyricBoxWidthSsMatchesLayoutBoxWidth() {
         var text = "do";
         var element = ElementType.CROTCHET.newInstance();
-        element.lyrics.add(new Lyric(2, text, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        element.lyrics.add(new Lyric(Lyric.FIRST_VERSE, text, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
         song.withoutMutationTracking(() -> line.addElement(element));
-        var column = columnAt(element, 5.0);
-        var result = LyricLayoutBuilder.build(List.of(column), LYRIC_METRICS, false, 100.0);
+
+        var column = new ElementColumnBuilder(LYRIC_METRICS).buildColumn(element, line);
+        column.setXSs(COLUMN_X_SS);
+
+        var result = LyricLayoutBuilder.build(
+            List.of(column), song.getActiveVerse(), LYRIC_METRICS, false, LINE_WIDTH_SS);
         var boxes = result.boxes().get(element);
 
         if (boxes == null) {
-            throw new AssertionError("Expected verse-2 boxes for element, but none were produced");
+            throw new AssertionError("Expected a lyric box for the element, but none were produced");
         }
 
         assertThat(boxes).hasSize(1);
@@ -239,17 +246,5 @@ class LyricRenderMetricsTest extends UnitTest {
             () -> assertThat(metrics.spaceWidthSs())
                 .isCloseTo(ScaleContext.textWidthSs(LYRICS_FONT, " ").value(), within(TOLERANCE))
         );
-    }
-
-    // ==========================================================================
-    // Helpers
-    // ==========================================================================
-
-    private static ElementColumn columnAt(StaffElement element, double xSs) {
-        var column = new ElementColumn(
-            element, Collections.emptyList(), 0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS,
-            0.0, 0.0, null, 0.0, false);
-        column.setXSs(xSs);
-        return column;
     }
 }

@@ -65,6 +65,10 @@ class LyricConnectorRendererTest extends UnitTest {
     private static final int EDITED_VERSE = 1;
     private static final int UNEDITED_VERSE = 2;
     private static final double NO_COLUMN_XSS = -1.0;
+    // A second, unedited-verse chain occupying its own X span left of the edited one, so the two
+    // are told apart by X: both draw on the same baseline now that only one verse is on the page.
+    private static final double OTHER_CHAIN_START_XSS = 2.0;
+    private static final double OTHER_CHAIN_NEXT_ELEMENT_XSS = 4.0;
     private static final double CHAIN_START_XSS = 8.0;
     private static final double CHAIN_NEXT_ELEMENT_XSS = 12.0;
     private static final double EDITOR_COLUMN_XSS = 20.0;
@@ -99,23 +103,9 @@ class LyricConnectorRendererTest extends UnitTest {
     private static final double LYRICS_ANCHOR_YSS =
         Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + CONTENT_BELOW_STAFF_SS;
 
-    private static final double VERSE_1_BASELINE_SS = LYRICS_ANCHOR_YSS + STAFF_TO_LYRICS_GAP_SS;
-    private static final double NARROW_VERSE_1_BASELINE_SS =
+    private static final double LYRIC_BASELINE_SS = LYRICS_ANCHOR_YSS + STAFF_TO_LYRICS_GAP_SS;
+    private static final double NARROW_LYRIC_BASELINE_SS =
         LYRICS_ANCHOR_YSS + NARROW_STAFF_TO_LYRICS_GAP_SS;
-
-    /**
-     * The pitch between consecutive verse baselines. Measured from the lyrics font rather
-     * than injected, since a verse row now hugs the font's ink height.
-     * <p>
-     * Deliberately a method, not a constant: {@link LyricRenderMetrics#fontHeightSs} converts
-     * through the global {@link songscribe.dom.ScaleContext} scale, which other test classes
-     * mutate. Reading it at call time keeps this in step with the renderer, which reads the
-     * same scale when it runs; a static initializer would freeze whatever scale happened to be
-     * in force when this class was loaded.
-     */
-    private static double verseRowHeightSs() {
-        return LyricRenderMetrics.fontHeightSs(LYRICS_FONT);
-    }
 
     private static LineInvariants.Builder builderWith(
         List<LyricConnectorLayout> connectors,
@@ -194,7 +184,7 @@ class LyricConnectorRendererTest extends UnitTest {
 
         assertThat(xCap.getValue().doubleValue()).isCloseTo(center - HYPHEN_WIDTH_SS / 2.0, within(TOLERANCE));
 
-        assertThat(yCap.getValue().doubleValue()).isCloseTo(VERSE_1_BASELINE_SS, within(TOLERANCE));
+        assertThat(yCap.getValue().doubleValue()).isCloseTo(LYRIC_BASELINE_SS, within(TOLERANCE));
     }
 
     @Test
@@ -212,7 +202,7 @@ class LyricConnectorRendererTest extends UnitTest {
         var center = (8.0 + 12.0) / 2.0;
 
         assertThat(xCap.getValue().doubleValue()).isCloseTo(center - HYPHEN_WIDTH_SS / 2.0, within(TOLERANCE));
-        assertThat(yCap.getValue().doubleValue()).isCloseTo(VERSE_1_BASELINE_SS, within(TOLERANCE));
+        assertThat(yCap.getValue().doubleValue()).isCloseTo(LYRIC_BASELINE_SS, within(TOLERANCE));
     }
 
     @Test
@@ -231,8 +221,8 @@ class LyricConnectorRendererTest extends UnitTest {
         assertThat(drawn.x1).isCloseTo(5.0, within(TOLERANCE));
         assertThat(drawn.x2).isCloseTo(20.0, within(TOLERANCE));
 
-        assertThat(drawn.y1).isCloseTo(NARROW_VERSE_1_BASELINE_SS, within(TOLERANCE));
-        assertThat(drawn.y2).isCloseTo(NARROW_VERSE_1_BASELINE_SS, within(TOLERANCE));
+        assertThat(drawn.y1).isCloseTo(NARROW_LYRIC_BASELINE_SS, within(TOLERANCE));
+        assertThat(drawn.y2).isCloseTo(NARROW_LYRIC_BASELINE_SS, within(TOLERANCE));
     }
 
     @Test
@@ -251,28 +241,28 @@ class LyricConnectorRendererTest extends UnitTest {
         assertThat(drawn.x1).isCloseTo(5.0, within(TOLERANCE));
         assertThat(drawn.x2).isCloseTo(15.0, within(TOLERANCE));
 
-        assertThat(drawn.y1).isCloseTo(NARROW_VERSE_1_BASELINE_SS, within(TOLERANCE));
-        assertThat(drawn.y2).isCloseTo(NARROW_VERSE_1_BASELINE_SS, within(TOLERANCE));
+        assertThat(drawn.y1).isCloseTo(NARROW_LYRIC_BASELINE_SS, within(TOLERANCE));
+        assertThat(drawn.y2).isCloseTo(NARROW_LYRIC_BASELINE_SS, within(TOLERANCE));
     }
 
+    // Whichever verse is active draws on the one lyric baseline — a second-language connector is
+    // not a second row, so it lands exactly where a first-verse connector would.
     @Test
-    void testDistinctVersesRenderAtDistinctY() {
-        var verse1 = new LyricConnectorLayout(0.0, 10.0, 1, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
-        var verse2 = new LyricConnectorLayout(0.0, 10.0, 2, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
-        var invariants = builderWith(List.of(verse1, verse2), STAFF_TO_LYRICS_GAP_SS).build();
+    void testConnectorFromANonFirstVerseRendersOnTheSameBaseline() {
+        var connector = new LyricConnectorLayout(
+            0.0, 10.0, UNEDITED_VERSE, Kind.EXTENDER, NO_SOURCE_ELEMENT_INDEX);
+        var invariants = builderWith(List.of(connector), STAFF_TO_LYRICS_GAP_SS).build();
         var g2 = mock(Graphics2D.class);
 
         LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
 
         var lineCap = ArgumentCaptor.forClass(Shape.class);
-        verify(g2, times(2)).draw(lineCap.capture());
+        verify(g2, times(1)).draw(lineCap.capture());
 
-        var first = (Line2D.Double) lineCap.getAllValues().get(0);
-        var second = (Line2D.Double) lineCap.getAllValues().get(1);
+        var drawn = (Line2D.Double) lineCap.getValue();
 
-        // Consecutive verses sit exactly one measured row apart.
-        assertThat(first.y1).isCloseTo(VERSE_1_BASELINE_SS, within(TOLERANCE));
-        assertThat(second.y1).isCloseTo(VERSE_1_BASELINE_SS + verseRowHeightSs(), within(TOLERANCE));
+        assertThat(drawn.y1).isCloseTo(LYRIC_BASELINE_SS, within(TOLERANCE));
+        assertThat(drawn.y2).isCloseTo(LYRIC_BASELINE_SS, within(TOLERANCE));
     }
 
     @Test
@@ -363,7 +353,7 @@ class LyricConnectorRendererTest extends UnitTest {
 
         // All hyphens are at the same verse baseline (verse 1)
         yCap.getAllValues().forEach(y ->
-            assertThat(y.doubleValue()).isCloseTo(VERSE_1_BASELINE_SS, within(TOLERANCE)));
+            assertThat(y.doubleValue()).isCloseTo(LYRIC_BASELINE_SS, within(TOLERANCE)));
     }
 
     // ======================================================================
@@ -482,8 +472,10 @@ class LyricConnectorRendererTest extends UnitTest {
         var editedElement = note();
         var editedVerseChain = new LyricConnectorLayout(
             CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, EDITED_VERSE, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+        // Placed left of the editor, so nothing but the verse mismatch can hold its preview back.
         var otherVerseChain = new LyricConnectorLayout(
-            CHAIN_START_XSS, CHAIN_NEXT_ELEMENT_XSS, UNEDITED_VERSE, Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
+            OTHER_CHAIN_START_XSS, OTHER_CHAIN_NEXT_ELEMENT_XSS, UNEDITED_VERSE,
+            Kind.DANGLING_HYPHEN, NO_SOURCE_ELEMENT_INDEX);
         var invariants = builderWith(
             List.of(editedVerseChain, otherVerseChain),
             STAFF_TO_LYRICS_GAP_SS,
@@ -493,31 +485,27 @@ class LyricConnectorRendererTest extends UnitTest {
 
         LyricConnectorRenderer.getInstance().render(g2, invariants, ElementFrame.LINE_LEVEL);
 
-        // Both chains have identical geometry and differ only by verse, so they are told apart by
-        // the baseline they are drawn on. Only the edited verse's chain may grow toward the editor.
+        // Both chains draw on the one lyric baseline, so they are told apart by the disjoint X spans
+        // they occupy. Only the edited verse's chain may grow toward the editor.
         var xCap = ArgumentCaptor.forClass(Float.class);
-        var yCap = ArgumentCaptor.forClass(Float.class);
         var previewedCount = hyphenCountBetween(CHAIN_START_XSS, EDITOR_COLUMN_XSS);
 
-        verify(g2, times(previewedCount + 1)).drawGlyphVector(any(GlyphVector.class), xCap.capture(), yCap.capture());
+        verify(g2, times(previewedCount + 1)).drawGlyphVector(any(GlyphVector.class), xCap.capture(), anyFloat());
 
-        var otherVerseBaselineSs = VERSE_1_BASELINE_SS + verseRowHeightSs();
-        var xs = xCap.getAllValues();
-        var ys = yCap.getAllValues();
         var editedVerseXs = new ArrayList<Double>();
         var otherVerseXs = new ArrayList<Double>();
 
-        for (var i = 0; i < xs.size(); i++) {
-            if (Math.abs(ys.get(i) - otherVerseBaselineSs) < TOLERANCE) {
-                otherVerseXs.add(xs.get(i).doubleValue());
+        for (var x : xCap.getAllValues()) {
+            if (x < CHAIN_START_XSS) {
+                otherVerseXs.add(x.doubleValue());
             } else {
-                editedVerseXs.add(xs.get(i).doubleValue());
+                editedVerseXs.add(x.doubleValue());
             }
         }
 
         assertHyphenXsCloseTo(editedVerseXs, expectedHyphenRunXs(CHAIN_START_XSS, EDITOR_COLUMN_XSS));
 
-        var unpreviewedCenterXSs = (CHAIN_START_XSS + CHAIN_NEXT_ELEMENT_XSS) / 2.0;
+        var unpreviewedCenterXSs = (OTHER_CHAIN_START_XSS + OTHER_CHAIN_NEXT_ELEMENT_XSS) / 2.0;
 
         assertThat(otherVerseXs).hasSize(1);
         assertThat(otherVerseXs.getFirst())

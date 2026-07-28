@@ -46,7 +46,7 @@ public final class LineSpacing {
 
     /**
      * The visual gap from the bottom of a line's below-staff content to the top of its
-     * first verse row.
+     * lyric row.
      */
     public static final double LYRICS_ROW_MARGIN_SS = 0.75;  // 6px
 
@@ -71,13 +71,6 @@ public final class LineSpacing {
      * that belongs to the layout manager.
      */
     public static final double MIN_LINE_HEIGHT_SS = MIN_ABOVE_MIDLINE_SS + MIN_BELOW_MIDLINE_SS;
-
-    /**
-     * The minimum number of verse rows a line reserves in its lyrics band, even before that
-     * verse exists. A line reserves space for its first verse before that verse exists, so
-     * entering the first lyric on a line does not re-space the song.
-     */
-    public static final int MIN_RESERVED_VERSE_ROWS = 1;
 
     /**
      * The usable inter-line gap for a requested gap, floored at

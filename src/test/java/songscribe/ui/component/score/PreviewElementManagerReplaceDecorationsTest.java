@@ -198,7 +198,7 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
             .as("dynamic attachment is not preview-settable, so it survives replacement")
             .isNotNull();
 
-        assertThat(replacement.getMainLyric())
+        assertThat(replacement.getLyricForVerse(Lyric.FIRST_VERSE))
             .as("lyric survives replacement with its text intact")
             .isNotNull()
             .extracting(Lyric::text)

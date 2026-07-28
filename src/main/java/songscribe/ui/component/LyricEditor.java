@@ -167,9 +167,6 @@ public final class LyricEditor extends MyJTextField {
     static final String N_TILDE = "ñ";
     static final String N_TILDE_CAPITAL = "Ñ";
 
-    // Placeholder for the user's active verse until multi-verse support lands.
-    private static final int CURRENT_VERSE = 1;
-
     /**
      * Visible padding from the box edge to the JTextField text allocation. For selected
      * text, Swing highlights from the allocation origin to the caret advance, so the
@@ -247,6 +244,14 @@ public final class LyricEditor extends MyJTextField {
     private final Line line;
     private final StaffElement element;
     private final @Nullable LineComponent lineComponent;
+
+    /**
+     * The verse this session edits: the song's active verse, captured when the editor opened.
+     * Held rather than re-read because an editor session must write every syllable, hyphen and
+     * melisma it touches into the one verse it started in — the active verse changing underneath
+     * an open editor would split a single edit across two languages.
+     */
+    private final int activeVerse;
 
     private boolean focused;
 
@@ -327,8 +332,9 @@ public final class LyricEditor extends MyJTextField {
         this.score = score;
         this.line = line;
         this.element = element;
+        activeVerse = line.getSong().getActiveVerse();
 
-        var openingLyric = element.getLyricForVerse(CURRENT_VERSE);
+        var openingLyric = element.getLyricForVerse(activeVerse);
         var openingExtend = openingLyric != null ? openingLyric.extend() : null;
         openedAsExtender = openingExtend == Lyric.Extend.CONTINUE
             || openingExtend == Lyric.Extend.STOP;
@@ -345,8 +351,7 @@ public final class LyricEditor extends MyJTextField {
 
         installKeyBindings();
 
-        var existingLyric = element.getMainLyric();
-        var existingText = existingLyric != null ? existingLyric.text() : null;
+        var existingText = openingLyric != null ? openingLyric.text() : null;
 
         if (existingText != null && !existingText.isBlank()) {
             // selectAll() leaves the caret at the end of the text (mark at 0, dot at length),
@@ -569,7 +574,7 @@ public final class LyricEditor extends MyJTextField {
 
     /** Returns the verse this editor session is editing. */
     public int getActiveVerse() {
-        return CURRENT_VERSE;
+        return activeVerse;
     }
 
     @Override
@@ -948,7 +953,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Writes the editor's current text into the active element's lyric for {@link #CURRENT_VERSE}
+     * Writes the editor's current text into the active element's lyric for {@link #activeVerse}
      * as a word-final syllable with {@code extend = NONE}. Same-text commits and
      * empty-on-empty commits emit zero mutations — the modification bracket is skipped.
      */
@@ -991,7 +996,7 @@ public final class LyricEditor extends MyJTextField {
         var marginSs = line.getSong().getLineWidthSs();
 
         var index = line.getElementIndex(element);
-        var candidate = new Lyric(CURRENT_VERSE, commitText(), extend, probeSyllabic, intent.wantsCompound());
+        var candidate = new Lyric(activeVerse, commitText(), extend, probeSyllabic, intent.wantsCompound());
 
         // Probe the candidate first: it accepts almost every real edit, and returning here spares the
         // already-overflowing check below its own full rebuild-and-solve of the line.
@@ -1041,7 +1046,7 @@ public final class LyricEditor extends MyJTextField {
      * 0->1 transition — a nested bracket never re-captures.
      */
     private String commitOpName() {
-        var existingLyric = element.getLyricForVerse(CURRENT_VERSE);
+        var existingLyric = element.getLyricForVerse(activeVerse);
         var beforeText = existingLyric != null ? existingLyric.text() : "";
         return OpNames.lyricLabel(beforeText, commitText());
     }
@@ -1097,7 +1102,7 @@ public final class LyricEditor extends MyJTextField {
             }
 
             description.append(i).append('=');
-            var lyric = elements.get(i).getLyricForVerse(CURRENT_VERSE);
+            var lyric = elements.get(i).getLyricForVerse(activeVerse);
 
             if (lyric == null) {
                 description.append('-');
@@ -1175,24 +1180,24 @@ public final class LyricEditor extends MyJTextField {
      * {@link #applyDismissAdjustment()}'s job to repair.
      */
     private boolean isInsideHyphenChain() {
-        if (element.getLyricForVerse(CURRENT_VERSE) != null) {
+        if (element.getLyricForVerse(activeVerse) != null) {
             return false;
         }
 
         var currentIndex = line.getElementIndex(element);
-        var backIndex = line.previousLyricBearingIndex(currentIndex, CURRENT_VERSE);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
 
         if (backIndex < 0) {
             return false;
         }
 
-        var backLyric = line.getElement(backIndex).getLyricForVerse(CURRENT_VERSE);
+        var backLyric = line.getElement(backIndex).getLyricForVerse(activeVerse);
 
         if (backLyric == null || !Lyric.syllabicContinues(backLyric.syllabic())) {
             return false;
         }
 
-        return line.hasFollowingTextBearingLyric(currentIndex, CURRENT_VERSE);
+        return line.hasFollowingTextBearingLyric(currentIndex, activeVerse);
     }
 
     /**
@@ -1203,14 +1208,14 @@ public final class LyricEditor extends MyJTextField {
      * <p>Must be called inside an open modification bracket.
      */
     private void breakHyphenChain() {
-        var backIndex = line.previousLyricBearingIndex(line.getElementIndex(element), CURRENT_VERSE);
+        var backIndex = line.previousLyricBearingIndex(line.getElementIndex(element), activeVerse);
 
         if (backIndex < 0) {
             trace("breakHyphenChain: no predecessor to end the word at");
             return;
         }
 
-        var backLyric = line.getElement(backIndex).getLyricForVerse(CURRENT_VERSE);
+        var backLyric = line.getElement(backIndex).getLyricForVerse(activeVerse);
 
         // The chain may have been broken from elsewhere while the editor was open.
         if (backLyric == null || !Lyric.syllabicContinues(backLyric.syllabic())) {
@@ -1220,7 +1225,7 @@ public final class LyricEditor extends MyJTextField {
         }
 
         trace("breakHyphenChain: ending the word at {}", backIndex);
-        line.setSyllableBoundary(backIndex, CURRENT_VERSE, true, false);
+        line.setSyllableBoundary(backIndex, activeVerse, true, false);
     }
 
     /**
@@ -1236,12 +1241,12 @@ public final class LyricEditor extends MyJTextField {
         trace("breakMelismaChain: giving up the carrier at {}", currentIndex);
 
         line.modifyElement(currentIndex, ElementField.LYRIC, () ->
-            element.setLyricForVerse(CURRENT_VERSE, null, false, null, Lyric.Extend.NONE));
+            element.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.NONE));
         breakChainAtCurrentElement(currentIndex);
     }
 
     /**
-     * Writes the editor's current text into the active element's lyric for {@link #CURRENT_VERSE}
+     * Writes the editor's current text into the active element's lyric for {@link #activeVerse}
      * via {@link Line#writeLyricForVerse(int, int, String, Lyric.Extend, boolean, boolean)}, which
      * derives the syllabic from chain context and propagates to the next lyric-bearing element
      * where needed. Every commit therefore produces exactly one {@code ElementModification} for
@@ -1257,7 +1262,7 @@ public final class LyricEditor extends MyJTextField {
      */
     private void commitInner(CommitKind kind, Lyric.Extend extend) {
         var text = commitText();
-        var existingLyric = element.getLyricForVerse(CURRENT_VERSE);
+        var existingLyric = element.getLyricForVerse(activeVerse);
 
         if (LogUtils.isTracingLyrics(LOG)) {
             logState("commit " + kind + '/' + extend);
@@ -1315,7 +1320,7 @@ public final class LyricEditor extends MyJTextField {
             clearForwardCarriers(index);
         }
 
-        line.writeLyricForVerse(index, CURRENT_VERSE, text, extend,
+        line.writeLyricForVerse(index, activeVerse, text, extend,
             kind == CommitKind.WORD_FINAL, kind == CommitKind.WORD_CONTINUING_COMPOUND);
 
         // A syllable on a paired grace note implies a melisma across its host, so the
@@ -1409,7 +1414,7 @@ public final class LyricEditor extends MyJTextField {
      * user typed over.
      */
     private CommitSpec neutralCommitSpec() {
-        var lyric = element.getLyricForVerse(CURRENT_VERSE);
+        var lyric = element.getLyricForVerse(activeVerse);
 
         if (lyric == null) {
             trace("neutralCommitSpec: no stored shape to keep, committing as a plain word-final syllable");
@@ -1506,11 +1511,11 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private int findNextEligibleIndex() {
-        return findNextEligibleIndex(line, line.getElementIndex(element), CURRENT_VERSE);
+        return findNextEligibleIndex(line, line.getElementIndex(element), activeVerse);
     }
 
     private int findPreviousEligibleIndex() {
-        return findPreviousEligibleIndex(line, line.getElementIndex(element), CURRENT_VERSE);
+        return findPreviousEligibleIndex(line, line.getElementIndex(element), activeVerse);
     }
 
     private void handleHyphen() {
@@ -1547,15 +1552,15 @@ public final class LyricEditor extends MyJTextField {
 
         // Lone '-' on empty editor, not a carrier.
 
-        if (element.getLyricForVerse(CURRENT_VERSE) != null) {
+        if (element.getLyricForVerse(activeVerse) != null) {
             reject("lone hyphen on an element that already has a lyric");
             return;
         }
 
         var currentIndex = line.getElementIndex(element);
-        var backIndex = line.previousLyricBearingIndex(currentIndex, CURRENT_VERSE);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
         var backLyric = backIndex >= 0
-            ? line.getElement(backIndex).getLyricForVerse(CURRENT_VERSE)
+            ? line.getElement(backIndex).getLyricForVerse(activeVerse)
             : null;
 
         if (backLyric == null) {
@@ -1648,7 +1653,7 @@ public final class LyricEditor extends MyJTextField {
             return;
         }
 
-        var nextLyric = line.getElement(nextIndex).getLyricForVerse(CURRENT_VERSE);
+        var nextLyric = line.getElement(nextIndex).getLyricForVerse(activeVerse);
 
         if (nextLyric != null && !nextLyric.text().isEmpty()) {
             reject(() -> "underscore blocked: element " + nextIndex + " already has a syllable");
@@ -1670,7 +1675,7 @@ public final class LyricEditor extends MyJTextField {
      */
     private void replaceLyricWithMelisma() {
         var currentIndex = line.getElementIndex(element);
-        var backIndex = line.previousLyricBearingIndex(currentIndex, CURRENT_VERSE);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
 
         if (backIndex < 0) {
             reject("no preceding lyric for this element to carry a melisma from");
@@ -1710,21 +1715,21 @@ public final class LyricEditor extends MyJTextField {
             for (var i = currentIndex + 1; i < nextIndex; i++) {
                 var midElement = line.getElement(i);
 
-                if (midElement.getLyricForVerse(CURRENT_VERSE) == null) {
+                if (midElement.getLyricForVerse(activeVerse) == null) {
                     continue;
                 }
 
                 var midIndex = i;
                 line.modifyElement(midIndex, ElementField.LYRIC, () ->
-                    midElement.setLyricForVerse(CURRENT_VERSE, null, false, null, Lyric.Extend.CONTINUE));
+                    midElement.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.CONTINUE));
             }
 
             line.modifyElement(nextIndex, ElementField.LYRIC, () ->
-                nextElement.setLyricForVerse(CURRENT_VERSE, null, false, null, Lyric.Extend.STOP));
+                nextElement.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.STOP));
 
             // commitInner's boundary fix stops at the carrier; the first syllable past the chain
             // still has to lose any word continuation that ran through it.
-            line.adjustSuccessorAfterMelismaCarrier(nextIndex, CURRENT_VERSE);
+            line.adjustSuccessorAfterMelismaCarrier(nextIndex, activeVerse);
         });
 
         // This element now holds a melisma-starting syllable, whatever role it opened with, so
@@ -1735,7 +1740,7 @@ public final class LyricEditor extends MyJTextField {
             logState("startMelismaOnNextElement done, carrier at " + nextIndex);
         }
 
-        openIndexOrDismiss(findNextEligibleIndex(line, nextIndex, CURRENT_VERSE));
+        openIndexOrDismiss(findNextEligibleIndex(line, nextIndex, activeVerse));
     }
 
     /**
@@ -1747,7 +1752,7 @@ public final class LyricEditor extends MyJTextField {
      */
     private void extendChainBackward() {
         var currentIndex = line.getElementIndex(element);
-        var backIndex = line.previousLyricBearingIndex(currentIndex, CURRENT_VERSE);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
 
         if (backIndex < 0) {
             reject("no preceding lyric to extend a chain from");
@@ -1766,11 +1771,11 @@ public final class LyricEditor extends MyJTextField {
      */
     private void extendChainBackward(int currentIndex, int backIndex) {
         var backElement = line.getElement(backIndex);
-        var backLyric = backElement.getLyricForVerse(CURRENT_VERSE);
+        var backLyric = backElement.getLyricForVerse(activeVerse);
 
         // Invariant: previousLyricBearingIndex only returns indices with non-null lyrics.
         if (backLyric == null) {
-            throw RuntimeError.exit("Predecessor at " + backIndex + " lost verse " + CURRENT_VERSE + " lyric between scan and rewrite");
+            throw RuntimeError.exit("Predecessor at " + backIndex + " lost verse " + activeVerse + " lyric between scan and rewrite");
         }
 
         trace("extendChainBackward: chain root {} ({}), carrier at {}",
@@ -1782,7 +1787,7 @@ public final class LyricEditor extends MyJTextField {
             if (backExtend == Lyric.Extend.STOP) {
                 // STOP carrier: flip back to CONTINUE so the new chain extends through it.
                 line.modifyElement(backIndex, ElementField.LYRIC, () ->
-                    backElement.setLyricForVerse(CURRENT_VERSE, null, false, null, Lyric.Extend.CONTINUE));
+                    backElement.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.CONTINUE));
             } else if (backExtend != Lyric.Extend.CONTINUE) {
                 // Text-bearing (NONE or START): rewrite extend to START, preserving the text.
                 // The syllable it hyphenated to is now a carrier, so the word ends here — and a
@@ -1791,7 +1796,7 @@ public final class LyricEditor extends MyJTextField {
                 // syllabic.
                 var backSyllabic = wordFinalSyllabic(backLyric.syllabic());
                 line.modifyElement(backIndex, ElementField.LYRIC, () ->
-                    backElement.setLyricForVerse(CURRENT_VERSE,
+                    backElement.setLyricForVerse(activeVerse,
                         backSyllabic, false,
                         backLyric.text(), Lyric.Extend.START));
             }
@@ -1800,14 +1805,14 @@ public final class LyricEditor extends MyJTextField {
             for (var i = backIndex + 1; i < currentIndex; i++) {
                 var midElement = line.getElement(i);
                 line.modifyElement(i, ElementField.LYRIC, () ->
-                    midElement.setLyricForVerse(CURRENT_VERSE, null, false, null, Lyric.Extend.CONTINUE));
+                    midElement.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.CONTINUE));
             }
 
             line.modifyElement(currentIndex, ElementField.LYRIC, () ->
-                element.setLyricForVerse(CURRENT_VERSE, null, false, null, Lyric.Extend.STOP));
+                element.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.STOP));
 
             // Any syllable this element hyphenated to now follows a melisma, so it starts a word.
-            line.adjustSuccessorAfterMelismaCarrier(currentIndex, CURRENT_VERSE);
+            line.adjustSuccessorAfterMelismaCarrier(currentIndex, activeVerse);
         });
 
         // This element is now the chain's carrier, whatever role it opened with, so the
@@ -1894,7 +1899,7 @@ public final class LyricEditor extends MyJTextField {
         // Common case: repair any dangling chain marker left on a predecessor. The repair reads
         // this element as having given up its syllable, so it must not run when the commit just
         // wrote one here — it would undo that syllable's own chain markers.
-        var lyric = element.getLyricForVerse(CURRENT_VERSE);
+        var lyric = element.getLyricForVerse(activeVerse);
 
         if (lyric != null && lyric.syllabic() != null) {
             trace("dismissAdjustment: {} kept a syllable of its own, nothing to repair",
@@ -1903,17 +1908,17 @@ public final class LyricEditor extends MyJTextField {
         }
 
         trace("dismissAdjustment: repairing neighbors of {}", currentIndex);
-        line.adjustNeighborsForLyricDeletion(currentIndex, CURRENT_VERSE);
+        line.adjustNeighborsForLyricDeletion(currentIndex, activeVerse);
     }
 
     private void terminatePrecedingContinueChain(int currentIndex) {
-        var backIndex = line.previousLyricBearingIndex(currentIndex, CURRENT_VERSE);
+        var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
 
         if (backIndex < 0) {
             return;
         }
 
-        var backLyric = line.getElement(backIndex).getLyricForVerse(CURRENT_VERSE);
+        var backLyric = line.getElement(backIndex).getLyricForVerse(activeVerse);
 
         if (backLyric == null) {
             return;
@@ -1941,7 +1946,7 @@ public final class LyricEditor extends MyJTextField {
 
         for (var i = currentIndex + 1; i < effectiveCount; i++) {
             var forwardElement = line.getElement(i);
-            var forwardLyric = forwardElement.getLyricForVerse(CURRENT_VERSE);
+            var forwardLyric = forwardElement.getLyricForVerse(activeVerse);
 
             if (forwardLyric == null) {
                 continue;
@@ -1958,7 +1963,7 @@ public final class LyricEditor extends MyJTextField {
             var forwardIndex = i;
             trace("clearForwardCarriers: clearing the {} carrier on {}", extend, forwardIndex);
             line.modifyElement(forwardIndex, ElementField.LYRIC, () ->
-                forwardElement.setLyricForVerse(CURRENT_VERSE, null, false, null, Lyric.Extend.NONE));
+                forwardElement.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.NONE));
 
             if (extend == Lyric.Extend.STOP) {
                 return;
@@ -1982,7 +1987,7 @@ public final class LyricEditor extends MyJTextField {
     private void rewriteLyricExtend(int index, Lyric existing, Lyric.Extend newExtend) {
         var indexElement = line.getElement(index);
         line.modifyElement(index, ElementField.LYRIC, () ->
-            indexElement.setLyricForVerse(CURRENT_VERSE,
+            indexElement.setLyricForVerse(activeVerse,
                 existing.syllabic(), existing.compound(), existing.text(), newExtend));
     }
 

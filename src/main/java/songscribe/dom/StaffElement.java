@@ -546,11 +546,6 @@ public class StaffElement extends LineElement implements Cloneable {
             : Direction.DOWN;
     }
 
-    /** Returns the verse-1 lyric for this element, or null if none is set. */
-    public @Nullable Lyric getMainLyric() {
-        return getLyricForVerse(1);
-    }
-
     /** Returns the lyric for the given verse number, or null if none is set. */
     public @Nullable Lyric getLyricForVerse(int verse) {
         for (var lyric : lyrics) {

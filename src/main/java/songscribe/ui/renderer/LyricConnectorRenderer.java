@@ -39,8 +39,8 @@ import songscribe.util.GraphicsState;
  * Renders line-level lyric connectors (syllable hyphens and melisma extenders).
  * <p>
  * Iterates the {@link LyricConnectorLayout} entries on the current
- * {@link LayoutResult}, reading each connector's verse baseline
- * Y from that line's own {@link LayoutResult}. Stateless.
+ * {@link LayoutResult}, drawing them on that line's own lyric
+ * baseline Y. Stateless.
  * <p>
  * Following Gould/Ross engraving rules: hyphens mark syllable division only;
  * extenders mark duration only.
@@ -99,13 +99,13 @@ public final class LyricConnectorRenderer {
         var hyphenGv = getHyphenGlyphVector(lyricRenderMetrics.scaledLyricsFont());
         var chainPreviewEndXSs = hyphenChainPreviewEndXSs(invariants);
         var editedVerse = invariants.getActivelyEditedVerse();
+        var ySs = layoutResult.lyricBaselineYSsInLine(lyricRenderMetrics);
 
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
             g2.setFont(lyricRenderMetrics.scaledLyricsFont());
             g2.setStroke(EXTENDER_STROKE);
 
             for (var connector : connectors) {
-                var ySs = layoutResult.verseYSsInLine(connector.verseIndex(), lyricRenderMetrics);
                 g2.setColor(invariants.getLyricConnectorColor(connector.sourceElementIndex(), connector.verseIndex()));
 
                 switch (connector.kind()) {

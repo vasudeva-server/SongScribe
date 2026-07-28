@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 
 class ElementColumnTest extends UnitTest {
@@ -75,7 +76,7 @@ class ElementColumnTest extends UnitTest {
      * carries no beam membership and keeps its flag.
      */
     private static ElementColumn builtColumn(StaffElement element) {
-        return new ElementColumnBuilder(LYRIC_METRICS).buildDetachedColumn(element);
+        return new ElementColumnBuilder(LYRIC_METRICS).buildDetachedColumn(element, Lyric.FIRST_VERSE);
     }
 
     private static ElementColumn builtColumn(

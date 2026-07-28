@@ -221,19 +221,24 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     /**
      * A grace column whose element starts the pair's own melisma, as {@code Line.syncGraceHostMelisma}
      * writes it. Pair it with {@link #melismaHostColumn()} — the spacing path reads both lyrics
-     * before it reserves anything for the extender.
+     * before it reserves anything for the extender. The lyric goes on the column too, since that is
+     * where the spacing path reads it from: the element holds every verse and cannot say which one
+     * is being laid out.
      */
     private static ElementColumn melismaGraceColumn(double syllableWidthSs) {
         var graceColumn = graceSyllableColumn(syllableWidthSs);
-        graceColumn.getElement().lyrics.add(
-            new Lyric(MAIN_VERSE, SYLLABLE_TEXT, Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
+        var graceLyric = new Lyric(MAIN_VERSE, SYLLABLE_TEXT, Lyric.Extend.START, Lyric.Syllabic.SINGLE, false);
+        graceColumn.getElement().lyrics.add(graceLyric);
+        graceColumn.setLyric(graceLyric);
         return graceColumn;
     }
 
     /** A plain column carrying the text-less STOP that ends its grace's melisma. */
     private static ElementColumn melismaHostColumn() {
         var hostColumn = plainColumn();
-        hostColumn.getElement().lyrics.add(new Lyric(MAIN_VERSE, "", Lyric.Extend.STOP, null, false));
+        var hostLyric = new Lyric(MAIN_VERSE, "", Lyric.Extend.STOP, null, false);
+        hostColumn.getElement().lyrics.add(hostLyric);
+        hostColumn.setLyric(hostLyric);
         return hostColumn;
     }
 
@@ -258,7 +263,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         element.setStaffPosition(staffPositionSp);
         element.setDirection(direction);
         return new ElementColumnBuilder(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0))
-            .buildDetachedColumn(element);
+            .buildDetachedColumn(element, Lyric.FIRST_VERSE);
     }
 
     /** A built grace column with an outgoing glissando, so its reservation floor is armed. */

@@ -21,11 +21,9 @@
 package songscribe.layout;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeSet;
 
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -86,14 +84,22 @@ public final class LyricLayoutBuilder {
     public record Result(
         Map<StaffElement, List<LyricBoxLayout>> boxes,
         List<LyricConnectorLayout> connectors,
-        int verseCount,
         boolean hasTrailingContinuation
     ) {}
 
     /**
      * Builds lyric boxes and connectors for a single line.
+     * <p>
+     * Only {@code activeVerse} is laid out. A song's other verses are the same lyrics in other
+     * languages, held in the document but never shown alongside the one the user picked, so they
+     * produce no boxes, no connectors and no second row to make space for.
+     * <p>
+     * {@code activeVerse} must be the verse {@code columns} were built for: the syllable widths
+     * cached on them are reused here rather than re-measured, so a mismatch would place this
+     * verse's text on another verse's measurements.
      *
      * @param columns                per-element columns in line order (X positions already finalized)
+     * @param activeVerse            the verse to lay out, from {@link songscribe.dom.Song#getActiveVerse()}
      * @param lyricRenderMetrics     metrics used to measure syllable text widths
      * @param hasLeadingContinuation true if the previous line ended with an active extender
      *                               that should continue from x = 0 on this line
@@ -101,51 +107,16 @@ public final class LyricLayoutBuilder {
      */
     public static Result build(
         List<ElementColumn> columns,
+        int activeVerse,
         LyricRenderMetrics lyricRenderMetrics,
         boolean hasLeadingContinuation,
         double lineWidthSs) {
 
-        var verseSet = collectVerses(columns);
-        var boxes = new LinkedHashMap<StaffElement, List<LyricBoxLayout>>();
-        var connectors = new ArrayList<LyricConnectorLayout>();
-        var verseCount = 0;
-        var hasTrailingContinuation = false;
+        var verseResult = buildVerse(
+            activeVerse, columns, lyricRenderMetrics, hasLeadingContinuation, lineWidthSs);
 
-        for (var verse : verseSet) {
-            // Only verse 1 is currently populated; cross-line continuation flows through verse 1.
-            // Multi-verse continuation threading is a follow-up when multi-verse data lands.
-            var leading = (verse == 1) && hasLeadingContinuation;
-            var verseResult = buildVerse(verse, columns, lyricRenderMetrics, leading, lineWidthSs);
-
-            for (var entry : verseResult.boxesByElement.entrySet()) {
-                boxes.computeIfAbsent(entry.getKey(), e -> new ArrayList<>()).addAll(entry.getValue());
-            }
-
-            connectors.addAll(verseResult.connectors);
-
-            if (verse > verseCount) {
-                verseCount = verse;
-            }
-
-            if (verse == 1 && verseResult.hasTrailingContinuation) {
-                hasTrailingContinuation = true;
-            }
-        }
-
-        return new Result(boxes, connectors, verseCount, hasTrailingContinuation);
-    }
-
-    private static TreeSet<Integer> collectVerses(List<ElementColumn> columns) {
-        var verses = new TreeSet<Integer>();
-        verses.add(1);
-
-        for (var column : columns) {
-            for (var lyric : column.getElement().getLyrics()) {
-                verses.add(lyric.verse());
-            }
-        }
-
-        return verses;
+        return new Result(
+            verseResult.boxesByElement, verseResult.connectors, verseResult.hasTrailingContinuation);
     }
 
     private static VerseResult buildVerse(
@@ -155,7 +126,7 @@ public final class LyricLayoutBuilder {
         boolean hasLeadingContinuation,
         double lineWidthSs) {
 
-        var boxesByElement = new HashMap<StaffElement, List<LyricBoxLayout>>(columns.size());
+        var boxesByElement = new LinkedHashMap<StaffElement, List<LyricBoxLayout>>(columns.size());
         var connectors = new ArrayList<LyricConnectorLayout>(columns.size());
         var state = new ExtenderState(hasLeadingContinuation);
 
@@ -214,11 +185,10 @@ public final class LyricLayoutBuilder {
             }
 
             var text = lyric.text();
-            // For verse 1, ElementColumnBuilder has already measured this syllable's width;
-            // reuse the cached value to avoid a redundant TextLayout allocation per layout pass.
-            var widthSs = (verse == 1)
-                ? column.getSyllableWidthSs()
-                : lyricRenderMetrics.lyricBoxWidthSs(text);
+            // ElementColumnBuilder measured this syllable's width for the same verse the column was
+            // built for, which is the one being laid out; reuse the cached value to avoid a
+            // redundant TextLayout allocation per layout pass.
+            var widthSs = column.getSyllableWidthSs();
             // A grace's host is the column immediately after it, resolved once here so the union the
             // syllable is placed on and the melisma that shares that placement are read off the same
             // column. Null for anything but a grace, and for a grace ending the line.

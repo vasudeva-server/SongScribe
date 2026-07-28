@@ -127,6 +127,20 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         });
     }
 
+    /**
+     * Lays out the song's active verse, the way {@code LayoutEngine} calls the builder. Tests that
+     * exercise another verse select it with {@code song.setActiveVerse} first.
+     */
+    private LyricLayoutBuilder.Result buildLyrics(
+        List<ElementColumn> columns,
+        LyricRenderMetrics lyricRenderMetrics,
+        boolean hasLeadingContinuation,
+        double lineWidthSs) {
+
+        return LyricLayoutBuilder.build(
+            columns, song.getActiveVerse(), lyricRenderMetrics, hasLeadingContinuation, lineWidthSs);
+    }
+
     private static StaffElement graceQuaver() {
         var grace = ElementType.GRACE_QUAVER.newInstance();
         grace.setGlissando();
@@ -235,7 +249,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         graceCol.setXSs(GRACE_X_SS);
         var hostCol = normalColumn(host, HOST_X_SS);
         var result =
-            LyricLayoutBuilder.build(List.of(graceCol, hostCol), NARROW_LYRIC_METRICS, false, LINE_WIDTH_SS);
+            buildLyrics(List.of(graceCol, hostCol), NARROW_LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes())
             .as("host of paired grace must contribute no lyric box")
@@ -270,7 +284,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         var graceCol = graceColumn(grace, GRACE_X_SS, widthSs);
         var hostCol = normalColumn(host, HOST_X_SS);
         var result =
-            LyricLayoutBuilder.build(List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+            buildLyrics(List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var noteheadCenterXSs = GRACE_X_SS + ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS / 2.0;
         var graceBox = boxesOf(result, grace).getFirst();
@@ -298,7 +312,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
             normalColumn(host, HOST_X_SS),
             normalColumn(next, NEXT_X_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var hyphens = connectorsOfKind(result, LyricConnectorLayout.Kind.HYPHEN);
         assertThat(hyphens).hasSize(1);
@@ -319,7 +333,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         setCarrier(host, Lyric.Extend.STOP);
         addToLine(grace, host);
 
-        var result = LyricLayoutBuilder.build(
+        var result = buildLyrics(
             List.of(graceColumn(grace, GRACE_X_SS, LYRIC_METRICS.lyricBoxWidthSs("la")),
                 normalColumn(host, HOST_X_SS)),
             LYRIC_METRICS, false, LINE_WIDTH_SS);
@@ -369,7 +383,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
             normalColumn(host, HOST_X_SS),
             normalColumn(next, NEXT_X_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var extenders = connectorsOfKind(result, LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
@@ -395,7 +409,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
             normalColumn(host, HOST_X_SS),
             normalColumn(next, CROWDED_NEXT_X_SS, LYRIC_METRICS.lyricBoxWidthSs("ter")));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var extenders = connectorsOfKind(result, LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
@@ -432,7 +446,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
             .as("the syllable must span the union to exercise the suppression path")
             .isGreaterThanOrEqualTo(unionWidthSs);
 
-        var result = LyricLayoutBuilder.build(
+        var result = buildLyrics(
             List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(connectorsOfKind(result, LyricConnectorLayout.Kind.EXTENDER))
@@ -468,7 +482,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         assertThat(widthSs).isLessThan(unionWidthSs);
         assertThat(contentWidthSs).isGreaterThan(unionWidthSs);
 
-        var result = LyricLayoutBuilder.build(
+        var result = buildLyrics(
             List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var expectedBoxXSs = GRACE_X_SS - (contentWidthSs - unionWidthSs) / 2;
@@ -513,7 +527,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         assertThat(spacedUnionWidthSs).isGreaterThan(idealUnionWidthSs);
         assertThat(contentWidthSs).isGreaterThan(spacedUnionWidthSs);
 
-        var result = LyricLayoutBuilder.build(
+        var result = buildLyrics(
             List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var graceBox = boxesOf(result, grace).getFirst();
@@ -562,7 +576,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
             .as("the starting syllable must span its own union to arm the suppression")
             .isGreaterThanOrEqualTo(hostCol.getNoteheadRightEdgeXSs() - GRACE_X_SS);
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var extenders = connectorsOfKind(result, LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders)
@@ -597,7 +611,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
             .as("the syllable must span the hostless union to exercise the centering path")
             .isGreaterThanOrEqualTo(hostlessUnionWidthSs);
 
-        var result = LyricLayoutBuilder.build(List.of(graceCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(List.of(graceCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var graceBox = boxesOf(result, grace).getFirst();
         assertThat(graceBox.xSs())
@@ -629,7 +643,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         var unionWidthSs = hostCol.getNoteheadRightEdgeXSs() - GRACE_X_SS;
         var graceCol = graceColumn(grace, GRACE_X_SS, unionWidthSs);
 
-        var result = LyricLayoutBuilder.build(
+        var result = buildLyrics(
             List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(connectorsOfKind(result, LyricConnectorLayout.Kind.EXTENDER))

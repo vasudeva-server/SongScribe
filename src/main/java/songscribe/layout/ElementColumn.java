@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.Staff;
 
@@ -64,6 +65,10 @@ public final class ElementColumn {
     // Width of the syllable's first grapheme cluster — what a grace note centers on its notehead.
     // Measured by ElementColumnBuilder; falls back to the whole syllable width.
     private double syllableFirstGraphemeWidthSs;
+    // The element's lyric for the verse this column was built for — the song's active verse, the
+    // one whose text `syllable` holds and whose width `syllableWidthSs` measures. Set by
+    // ElementColumnBuilder; null when the element carries no lyric in that verse.
+    private @Nullable Lyric lyric;
     // Minimum required gap between this column's right edge and the next column's syllable
     // left edge. Always set by ElementColumnBuilder: lyric space width for non-hyphenated or
     // lyric-less columns, hyphen cell width for hyphenated ones.
@@ -490,6 +495,20 @@ public final class ElementColumn {
 
     void setSyllableFirstGraphemeWidthSs(double syllableFirstGraphemeWidthSs) {
         this.syllableFirstGraphemeWidthSs = syllableFirstGraphemeWidthSs;
+    }
+
+    /**
+     * Returns the element's lyric for the verse this column was built for, or null if it carries
+     * none there. Reading the lyric off the column rather than off the element is what keeps the
+     * spacing pass on the same verse the syllable width was measured for — the element itself
+     * holds every verse and cannot say which one is being laid out.
+     */
+    public @Nullable Lyric getLyric() {
+        return lyric;
+    }
+
+    void setLyric(@Nullable Lyric lyric) {
+        this.lyric = lyric;
     }
 
     /**

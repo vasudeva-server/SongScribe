@@ -41,7 +41,8 @@ import songscribe.util.StringUtils;
  *       syllabic} is {@code null}.</li>
  * </ol>
  *
- * @param verse    1-based verse number (only verse 1 is populated until multi-verse support is added)
+ * @param verse    1-based verse number; a song's verses are the languages its lyrics are written
+ *                 in, and {@link Song#getActiveVerse()} selects the one being shown
  * @param text     syllable text (may be empty when {@code extend} is {@link Extend#STOP} or
  *                 {@link Extend#CONTINUE} — those carriers mark melisma boundaries on notes
  *                 that have no text of their own)
@@ -54,6 +55,12 @@ import songscribe.util.StringUtils;
  */
 public record Lyric(int verse, String text, Extend extend,
         @Nullable Syllabic syllabic, boolean compound) {
+
+    /**
+     * The lowest verse index a lyric can carry. Verse numbering is 1-based — verse 0 does not
+     * exist — so this is also the verse a song shows until another one is selected.
+     */
+    public static final int FIRST_VERSE = 1;
 
     /**
      * Compound-word boundary marker: a non-breaking hyphen (U+2011) appended to a

@@ -129,7 +129,7 @@ class LegacyLyricsImporterTest extends UnitTest {
         assertLyric(lineB, 1, Lyric.Syllabic.BEGIN, false, "is", false);
 
         // Line A's last Lyric is BEGIN, completing the cross-line compound.
-        assertThat(lineA.getElement(0).getMainLyric())
+        assertThat(lineA.getElement(0).getLyricForVerse(Lyric.FIRST_VERSE))
             .isNotNull()
             .extracting(lyric -> lyric != null ? lyric.syllabic() : null)
             .isEqualTo(Lyric.Syllabic.BEGIN);

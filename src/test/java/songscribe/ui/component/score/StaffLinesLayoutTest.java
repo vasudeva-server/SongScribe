@@ -110,12 +110,11 @@ class StaffLinesLayoutTest extends UnitTest {
     }
 
     /**
-     * The lyrics band every test line reserves. No test line carries a verse, so each still
-     * reserves {@link LineSpacing#MIN_RESERVED_VERSE_ROWS} rows of measured font ink.
+     * The lyrics band every test line reserves. No test line carries a lyric, so each still
+     * reserves the one row of measured font ink every line gets.
      */
     private static double lyricsBandHeightSs() {
-        return LineSpacing.LYRICS_ROW_MARGIN_SS
-            + LineSpacing.MIN_RESERVED_VERSE_ROWS * LYRIC_RENDER_METRICS.lyricBoxHeightSs();
+        return LineSpacing.LYRICS_ROW_MARGIN_SS + LYRIC_RENDER_METRICS.lyricBoxHeightSs();
     }
 
     private static double aboveMidlineSs(LineExtents extents) {

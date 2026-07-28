@@ -136,7 +136,7 @@ public class ElementColumnBuilder {
         // note sitting inside a beam span is not a member: the beam passes over it and it
         // keeps its own short stem and flag (refs #592).
         var beam = element.getType().isGraceNote() ? null : line.findBeamAt(elementIndex);
-        return buildColumnForBeam(element, beam);
+        return buildColumnForBeam(element, beam, line.getSong().getActiveVerse());
     }
 
     /**
@@ -144,23 +144,28 @@ public class ElementColumnBuilder {
      * pasted. Carries the element's real syllable data (so a paste preview is spaced by the same
      * lyric rules as the committed layout) but no beam membership, since beam grouping is
      * determined by position on a line the element does not yet occupy.
+     * <p>
+     * The verse is passed in for the same reason: an element off a line cannot be asked which song
+     * it belongs to, so it cannot find the active verse on its own.
      *
-     * @param element The element to process (not necessarily on any line)
+     * @param element     The element to process (not necessarily on any line)
+     * @param activeVerse The verse being laid out, from {@link songscribe.dom.Song#getActiveVerse()}
      * @return The constructed ElementColumn, unbeamed
      */
-    public ElementColumn buildDetachedColumn(StaffElement element) {
-        return buildColumnForBeam(element, null);
+    public ElementColumn buildDetachedColumn(StaffElement element, int activeVerse) {
+        return buildColumnForBeam(element, null, activeVerse);
     }
 
     /**
      * Builds an ElementColumn for {@code element}, beamed iff {@code beam} is non-null.
      * A detached element (a fragment clone not yet on a line) has no beam membership.
      *
-     * @param element The element to process
-     * @param beam    The beam {@code element} belongs to, or null if it is unbeamed
+     * @param element     The element to process
+     * @param beam        The beam {@code element} belongs to, or null if it is unbeamed
+     * @param activeVerse The verse being laid out — the only one this column knows about
      * @return The constructed ElementColumn
      */
-    private ElementColumn buildColumnForBeam(StaffElement element, @Nullable Beam beam) {
+    private ElementColumn buildColumnForBeam(StaffElement element, @Nullable Beam beam, int activeVerse) {
         var beamed = beam != null;
 
         // Calculate horizontal extents
@@ -173,7 +178,8 @@ public class ElementColumnBuilder {
         var stemBottomSs = calculateStemBottomSs(element);
 
         // Get syllable and measure width
-        var syllable = getSyllable(element);
+        var lyric = element.getLyricForVerse(activeVerse);
+        var syllable = lyric != null ? lyric.text() : null;
         var syllableWidthSs = measureSyllableWidthSs(syllable);
 
         // Get grace notes (currently not implemented in data model)
@@ -192,6 +198,8 @@ public class ElementColumnBuilder {
             beamed
         );
 
+        column.setLyric(lyric);
+
         if (syllable != null) {
             column.setSyllableFirstGraphemeWidthSs(lyricRenderMetrics.firstGraphemeWidthSs(syllable));
         }
@@ -203,8 +211,7 @@ public class ElementColumnBuilder {
             column.setNoteheadWidthSs(getNoteheadRightExtent(element.getType()));
         }
 
-        var mainLyric = element.getMainLyric();
-        var syllabic = mainLyric != null ? mainLyric.syllabic() : null;
+        var syllabic = lyric != null ? lyric.syllabic() : null;
         var isHyphenated = Lyric.syllabicContinues(syllabic);
         // Every column reserves a gap to the next syllable, so a syllable that follows a
         // lyric-less element still clears it by NON_HYPHENATED_GAP_SPACE_WIDTH_MULTIPLIER times
@@ -432,16 +439,11 @@ public class ElementColumnBuilder {
     // ==========================================================================
 
     /**
-     * Gets the syllable text for an element.
+     * Measures a syllable's advance width.
      *
-     * @param element The element
-     * @return Syllable text, or null if none
+     * @param syllable The syllable text, or null if the element carries none in the active verse
+     * @return Syllable width in staff spaces, or 0 if there is no syllable
      */
-    private @Nullable String getSyllable(StaffElement element) {
-        var lyric = element.getMainLyric();
-        return lyric != null ? lyric.text() : null;
-    }
-
     private double measureSyllableWidthSs(@Nullable String syllable) {
         if (syllable == null || syllable.isEmpty()) {
             return 0;

@@ -147,6 +147,9 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         var song = mock(Song.class);
         when(song.isMutationTrackingSuspended()).thenReturn(true);
         when(song.getDefaultRestLengthSs()).thenReturn(Song.DEFAULT_REST_LENGTH_SS);
+        // An unstubbed mock reports verse 0, which no lyric ever carries, so every syllable in
+        // these fixtures would measure as absent.
+        when(song.getActiveVerse()).thenReturn(Lyric.FIRST_VERSE);
         return song;
     }
 

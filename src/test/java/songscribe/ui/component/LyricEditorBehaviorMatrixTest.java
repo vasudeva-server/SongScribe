@@ -182,7 +182,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             assertThat(notification.getMutations()).hasSize(1);
             assertThat(((ElementModification) notification.getMutations().getFirst()).fields())
                 .containsExactly(ElementField.LYRIC);
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
                 .containsExactly("ha", Lyric.Syllabic.BEGIN, true, Lyric.Extend.START);
 
@@ -214,11 +214,11 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic, Lyric::extend)
                 .containsExactly("ro", Lyric.Syllabic.MIDDLE, Lyric.Extend.NONE);
-            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
-            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
+            assertThat(first.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(last.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
         }
 
         // A plain one-note word that also sustains a melisma over the note after it. Editing the
@@ -244,7 +244,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             assertThat(notification.getMutations()).hasSize(1);
 
             // SINGLE, not BEGIN: a word-final commit must not grow a hyphen toward the carrier.
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
                 .containsExactly("Da", Lyric.Syllabic.SINGLE, false, Lyric.Extend.START);
 
@@ -278,7 +278,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             assertThat(element.getLyricForVerse(1)).isNull();
 
             // The hyphen has nothing left to start from, so "ri" becomes a word of its own.
-            assertThat(nextNote.getMainLyric())
+            assertThat(nextNote.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic, Lyric::extend)
                 .containsExactly("ri", Lyric.Syllabic.SINGLE, Lyric.Extend.NONE);
         }
@@ -299,7 +299,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireTab(editor);
 
             verifyNoSongDidChange();
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.BEGIN, false, Lyric.Extend.NONE);
 
@@ -338,12 +338,12 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
                 .containsExactly("ra", Lyric.Syllabic.BEGIN, false, Lyric.Extend.NONE);
 
             // The hyphen forward survives: committing the edit word-final would demote this to END.
-            assertThat(nextNote.getMainLyric())
+            assertThat(nextNote.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic)
                 .containsExactly("mi", Lyric.Syllabic.END);
 
@@ -373,7 +373,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireEnter(editor);
 
             verifyNoSongDidChange();
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.BEGIN, true, Lyric.Extend.START);
         }
@@ -397,7 +397,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             assertThat(notification.getMutations()).hasSize(1);
 
             // Editing the text does not make Enter drop the hyphen, compound join or melisma.
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
                 .containsExactly("ha", Lyric.Syllabic.BEGIN, true, Lyric.Extend.START);
 
@@ -428,7 +428,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireEscape(editor);
 
             verifyNoSongDidChange();
-            assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ho");
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::text).isEqualTo("ho");
         }
 
         @Test
@@ -475,7 +475,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::extend)
                 .containsExactly("ha", Lyric.Extend.NONE);
 
@@ -499,7 +499,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSize(1);
-            assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ha");
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::text).isEqualTo("ha");
             verify(score, never()).addOverlay(any());
         }
 
@@ -547,7 +547,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSizeGreaterThanOrEqualTo(1);
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::extend)
                 .containsExactly("Su", Lyric.Extend.NONE);
             assertThat(forwardCarrier.getLyricForVerse(1)).isNull();
@@ -761,7 +761,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSizeGreaterThanOrEqualTo(1);
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.BEGIN, false, Lyric.Extend.NONE);
 
@@ -793,11 +793,11 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireHyphen(editor);
 
             captureSingleDidChange();
-            assertThat(e0.getMainLyric())
+            assertThat(e0.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic, Lyric::extend)
                 .containsExactly("a", Lyric.Syllabic.BEGIN, Lyric.Extend.NONE);
             assertThat(e1.getLyricForVerse(1)).isNull();
-            assertThat(e2.getMainLyric())
+            assertThat(e2.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic)
                 .containsExactly("b", Lyric.Syllabic.END);
 
@@ -1012,7 +1012,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSizeGreaterThanOrEqualTo(1);
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::compound, Lyric::extend)
                 .containsExactly(true, Lyric.Extend.NONE);
 
@@ -1067,7 +1067,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSizeGreaterThanOrEqualTo(1);
-            assertThat(e1.getMainLyric())
+            assertThat(e1.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::compound, Lyric::extend)
                 .containsExactly(true, Lyric.Extend.NONE);
             assertThat(e2.getLyricForVerse(1)).isNull();
@@ -1122,7 +1122,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var notification = captureSingleDidChange();
             assertThat(notification.getMutations()).hasSizeGreaterThanOrEqualTo(1);
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::compound, Lyric::extend)
                 .containsExactly(true, Lyric.Extend.NONE);
 
@@ -1185,7 +1185,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireUnderscore(editor);
 
             captureSingleDidChange();
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
             assertThat(nextNote.getLyricForVerse(1))
@@ -1270,10 +1270,10 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireUnderscore(editor);
 
             captureSingleDidChange();
-            assertThat(e0.getMainLyric())
+            assertThat(e0.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::extend)
                 .containsExactly("Do", Lyric.Extend.NONE);
-            assertThat(e1.getMainLyric())
+            assertThat(e1.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
             assertThat(e2.getLyricForVerse(1))
@@ -1324,7 +1324,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireUnderscore(editor);
 
             captureSingleDidChange();
-            assertThat(predecessor.getMainLyric())
+            assertThat(predecessor.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
@@ -1353,7 +1353,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireUnderscore(editor);
 
             captureSingleDidChange();
-            assertThat(predecessor.getMainLyric())
+            assertThat(predecessor.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
@@ -1383,7 +1383,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireUnderscore(editor);
 
             captureSingleDidChange();
-            assertThat(predecessor.getMainLyric())
+            assertThat(predecessor.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.SINGLE, false, "Su", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
@@ -1482,7 +1482,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireUnderscore(editor);
 
             captureSingleDidChange();
-            assertThat(predecessor.getMainLyric())
+            assertThat(predecessor.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.SINGLE, false, "Su", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
@@ -1513,7 +1513,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireUnderscore(editor);
 
             captureSingleDidChange();
-            assertThat(predecessor.getMainLyric())
+            assertThat(predecessor.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.END, false, "per", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
@@ -1548,7 +1548,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireUnderscore(editor);
 
             captureSingleDidChange();
-            assertThat(predecessor.getMainLyric())
+            assertThat(predecessor.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
             assertThat(skipped.getLyricForVerse(1))
@@ -1580,13 +1580,13 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             editor.attachListeners();
             fireUnderscore(editor);
 
-            assertThat(predecessor.getMainLyric())
+            assertThat(predecessor.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.SINGLE, false, "Su", Lyric.Extend.START);
             assertThat(element.getLyricForVerse(1))
                 .extracting(Lyric::syllabic, Lyric::text, Lyric::extend)
                 .containsExactly(null, "", Lyric.Extend.STOP);
-            assertThat(successor.getMainLyric())
+            assertThat(successor.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.SINGLE, false, "per", Lyric.Extend.NONE);
         }
@@ -1616,7 +1616,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             assertThat(element.getLyricForVerse(1))
                 .extracting(Lyric::extend)
                 .isEqualTo(Lyric.Extend.STOP);
-            assertThat(successor.getMainLyric())
+            assertThat(successor.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.BEGIN, false, "per", Lyric.Extend.NONE);
         }
@@ -1671,10 +1671,10 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             assertThat(notification.getMutations()).hasSize(1);
 
             // Losing focus after an edit keeps the hyphen to the next syllable.
-            assertThat(element.getMainLyric())
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic, Lyric::extend)
                 .containsExactly("ha", Lyric.Syllabic.BEGIN, Lyric.Extend.NONE);
-            assertThat(nextNote.getMainLyric())
+            assertThat(nextNote.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic)
                 .containsExactly("ri", Lyric.Syllabic.END);
             assertThat(editor.getParent()).isNull();
@@ -1697,7 +1697,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireFocusLost(editor);
 
             verifyNoSongDidChange();
-            assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ho");
+            assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::text).isEqualTo("ho");
         }
 
         @SuppressWarnings("ReturnOfNull")
@@ -1734,7 +1734,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
                 capturedListener[0].eventDispatched(selfClickEvent);
 
                 verifyNoSongDidChange();
-                assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ho");
+                assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::text).isEqualTo("ho");
                 assertThat(editor.getParent()).isNotNull();
             }
         }
@@ -1777,7 +1777,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
                 var notification = captureSingleDidChange();
                 assertThat(notification.getMutations()).hasSize(1);
-                assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ha");
+                assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::text).isEqualTo("ha");
                 assertThat(editor.getParent()).isNull();
             }
         }
@@ -1873,8 +1873,8 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             verifyNoSongDidChange();
             assertThat(gap.getLyricForVerse(1)).isNull();
-            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
-            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
+            assertThat(first.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(last.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
         }
 
         // P6: placeholder deleted, then committed → the word ends at the predecessor
@@ -1892,8 +1892,8 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             captureSingleDidChange();
             assertThat(gap.getLyricForVerse(1)).isNull();
-            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
-            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(first.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(last.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
         // P7: Space wipes out the placeholder, which breaks the chain, then advances
@@ -1910,8 +1910,8 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             captureSingleDidChange();
             assertThat(gap.getLyricForVerse(1)).isNull();
-            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
-            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(first.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(last.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.SINGLE);
 
             var captor = ArgumentCaptor.forClass(LyricEditor.class);
             verify(score, atLeastOnce()).addOverlay(captor.capture());
@@ -1932,11 +1932,11 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireHyphen(editor);
 
             captureSingleDidChange();
-            assertThat(gap.getMainLyric())
+            assertThat(gap.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic)
                 .containsExactly("la", Lyric.Syllabic.MIDDLE);
-            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
-            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
+            assertThat(first.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(last.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
         }
 
         // P9: Escape after clearing the placeholder cancels — the chain is left alone
@@ -1954,8 +1954,8 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             verifyNoSongDidChange();
             assertThat(gap.getLyricForVerse(1)).isNull();
-            assertThat(first.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
-            assertThat(last.getMainLyric()).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
+            assertThat(first.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(last.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::syllabic).isEqualTo(Lyric.Syllabic.END);
         }
 
         /** Builds "Do" (START) — CONTINUE — STOP and returns the middle carrier. */
@@ -2010,9 +2010,9 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireTab(editor);
 
             verifyNoSongDidChange();
-            assertThat(first.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.START);
-            assertThat(carrier.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.CONTINUE);
-            assertThat(last.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.STOP);
+            assertThat(first.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.START);
+            assertThat(carrier.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.CONTINUE);
+            assertThat(last.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.STOP);
         }
 
         // M3b: real text typed over the placeholder, then Tab. The note stops being a text-less
@@ -2032,12 +2032,12 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             captureSingleDidChange();
 
             // A text-bearing lyric must never keep a carrier's null syllabic or its extender.
-            assertThat(carrier.getMainLyric())
+            assertThat(carrier.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::syllabic, Lyric::extend)
                 .containsExactly("la", Lyric.Syllabic.SINGLE, Lyric.Extend.NONE);
 
             // The melisma that ran through this note no longer has anything to sustain it.
-            assertThat(first.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.NONE);
+            assertThat(first.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.NONE);
             assertThat(last.getLyricForVerse(1)).isNull();
         }
 
@@ -2056,7 +2056,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireEnter(editor);
 
             captureSingleDidChange();
-            assertThat(first.getMainLyric())
+            assertThat(first.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::text, Lyric::extend)
                 .containsExactly("Do", Lyric.Extend.NONE);
             assertThat(carrier.getLyricForVerse(1)).isNull();
@@ -2077,9 +2077,9 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             fireEscape(editor);
 
             verifyNoSongDidChange();
-            assertThat(first.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.START);
-            assertThat(carrier.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.CONTINUE);
-            assertThat(last.getMainLyric()).extracting(Lyric::extend).isEqualTo(Lyric.Extend.STOP);
+            assertThat(first.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.START);
+            assertThat(carrier.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.CONTINUE);
+            assertThat(last.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::extend).isEqualTo(Lyric.Extend.STOP);
         }
 
         // M6: _ pressed while the extender placeholder is showing ends the melisma here, turning
@@ -2096,10 +2096,10 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             editor.attachListeners();
             fireUnderscore(editor);
 
-            assertThat(first.getMainLyric())
+            assertThat(first.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::text, Lyric::extend)
                 .containsExactly(Lyric.Syllabic.SINGLE, "Do", Lyric.Extend.START);
-            assertThat(carrier.getMainLyric())
+            assertThat(carrier.getLyricForVerse(Lyric.FIRST_VERSE))
                 .extracting(Lyric::syllabic, Lyric::text, Lyric::extend)
                 .containsExactly(null, "", Lyric.Extend.STOP);
         }

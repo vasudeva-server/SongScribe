@@ -57,23 +57,13 @@ class LyricTextRendererTest extends UnitTest {
     private static final double CONTENT_BELOW_STAFF_SS = 1.0;
     private static final double STAFF_TO_LYRICS_GAP_SS = 1.0;
 
-    /** Verse-1 baseline: painted staff bottom + below-staff content + the staff-to-lyrics gap. */
-    private static final double VERSE_1_BASELINE_SS =
+    /** The lyric baseline: painted staff bottom + below-staff content + the staff-to-lyrics gap. */
+    private static final double LYRIC_BASELINE_SS =
         Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS + CONTENT_BELOW_STAFF_SS + STAFF_TO_LYRICS_GAP_SS;
 
-    /**
-     * The pitch between consecutive verse baselines. Measured from the lyrics font rather
-     * than injected, since a verse row now hugs the font's ink height.
-     * <p>
-     * Deliberately a method, not a constant: {@link LyricRenderMetrics#fontHeightSs} converts
-     * through the global {@link songscribe.dom.ScaleContext} scale, which other test classes
-     * mutate. Reading it at call time keeps this in step with the renderer, which reads the
-     * same scale when it runs; a static initializer would freeze whatever scale happened to be
-     * in force when this class was loaded.
-     */
-    private static double verseRowHeightSs() {
-        return LyricRenderMetrics.fontHeightSs(LYRICS_FONT);
-    }
+    // The second language a song's lyrics can be written in. Its syllables draw on the same
+    // baseline as the first one's, because only one verse is ever on the page.
+    private static final int SECOND_VERSE = 2;
 
     private static int toPx(double ss) {
         return (int) Math.round(ss * PX_PER_SS);
@@ -113,19 +103,16 @@ class LyricTextRendererTest extends UnitTest {
         assertThat(textCap.getValue()).isEqualTo("do");
         assertThat(xCap.getValue()).isEqualTo(toPx(3.25));
 
-        assertThat(yCap.getValue()).isEqualTo(toPx(VERSE_1_BASELINE_SS));
+        assertThat(yCap.getValue()).isEqualTo(toPx(LYRIC_BASELINE_SS));
     }
 
+    // Whichever verse is active draws on the one lyric baseline — a second-language syllable is
+    // not a second row, so it lands exactly where a first-verse syllable would.
     @Test
-    void testDrawsMultipleVersesAtDistinctBaselines() {
+    void testDrawsANonFirstVerseOnTheSameBaseline() {
         var element = ElementType.CROTCHET.newInstance();
-        var verse1 = new LyricBoxLayout(2.0, 1.5, 1, "v1");
-        var verse2 = new LyricBoxLayout(2.0, 1.5, 2, "v2");
-        var layoutResult = layoutBuilder()
-            .addLyricBox(element, verse1)
-            .addLyricBox(element, verse2)
-            .setVerseCount(2)
-            .build();
+        var box = new LyricBoxLayout(2.0, 1.5, SECOND_VERSE, "un");
+        var layoutResult = layoutBuilder().addLyricBox(element, box).build();
 
         var invariants = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResult)
@@ -138,14 +125,10 @@ class LyricTextRendererTest extends UnitTest {
 
         var textCap = ArgumentCaptor.forClass(String.class);
         var yCap = ArgumentCaptor.forClass(Integer.class);
-        verify(g2, times(2)).drawString(textCap.capture(), anyInt(), yCap.capture());
+        verify(g2, times(1)).drawString(textCap.capture(), anyInt(), yCap.capture());
 
-        assertThat(textCap.getAllValues()).containsExactly("v1", "v2");
-
-        // Consecutive verses sit exactly one measured row apart.
-        assertThat(yCap.getAllValues().get(0)).isEqualTo(toPx(VERSE_1_BASELINE_SS));
-        assertThat(yCap.getAllValues().get(1))
-            .isEqualTo(toPx(VERSE_1_BASELINE_SS + verseRowHeightSs()));
+        assertThat(textCap.getValue()).isEqualTo("un");
+        assertThat(yCap.getValue()).isEqualTo(toPx(LYRIC_BASELINE_SS));
     }
 
     @Test
@@ -242,7 +225,7 @@ class LyricTextRendererTest extends UnitTest {
         LyricTextRenderer.getInstance().render(invariants, ElementFrame.LINE_LEVEL, element, g2);
 
         verify(g2).setColor(ScoreView.getSelectionColor());
-        verify(g2).drawString("v1", toPx(2.0), toPx(VERSE_1_BASELINE_SS));
+        verify(g2).drawString("v1", toPx(2.0), toPx(LYRIC_BASELINE_SS));
     }
 
     @Test

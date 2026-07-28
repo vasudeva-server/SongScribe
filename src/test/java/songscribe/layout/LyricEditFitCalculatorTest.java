@@ -172,7 +172,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
             line, FIRST, candidate(WIDE_LYRIC, Lyric.Syllabic.BEGIN, true, Lyric.Extend.START),
             METRICS, NARROW_LINE_SS);
 
-        var restored = line.getElement(FIRST).getMainLyric();
+        var restored = line.getElement(FIRST).getLyricForVerse(Lyric.FIRST_VERSE);
 
         // A manual null check, not assertThat(restored).isNotNull(): NullAway does not treat the
         // AssertJ matcher as a guard, so the field dereferences below would fail to compile.
@@ -194,7 +194,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
             line, SECOND, candidate(SHORT_LYRIC, Lyric.Syllabic.SINGLE, false, Lyric.Extend.NONE),
             METRICS, WIDE_LINE_SS);
 
-        assertThat(line.getElement(SECOND).getMainLyric()).isNull();
+        assertThat(line.getElement(SECOND).getLyricForVerse(Lyric.FIRST_VERSE)).isNull();
     }
 
     @Test
@@ -210,7 +210,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
             line, FIRST, illegalCandidate, METRICS, WIDE_LINE_SS))
             .isInstanceOf(IllegalArgumentException.class);
 
-        var restored = line.getElement(FIRST).getMainLyric();
+        var restored = line.getElement(FIRST).getLyricForVerse(Lyric.FIRST_VERSE);
 
         // Manual null check rather than assertThat(restored).isNotNull(): NullAway does not narrow
         // on the AssertJ matcher, so the dereference below would not compile.

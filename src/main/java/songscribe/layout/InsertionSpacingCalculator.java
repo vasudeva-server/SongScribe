@@ -520,7 +520,7 @@ public final class InsertionSpacingCalculator {
 
         for (var element : fragment) {
             columns.add(columnBuilder != null
-                ? columnBuilder.buildDetachedColumn(element)
+                ? columnBuilder.buildDetachedColumn(element, line.getSong().getActiveVerse())
                 : createLightweightColumn(element));
         }
 

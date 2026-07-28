@@ -79,6 +79,9 @@ class LyricEditorTest extends LyricEditorTestSupport {
     /** A lyric wide enough to overflow {@link #NARROW_LINE_WIDTH_SS} once it must clear its neighbour. */
     private static final int WIDE_LYRIC_CHARS = 300;
 
+    /** The second language a song's lyrics can be written in. */
+    private static final int SECOND_VERSE = 2;
+
     private Song song;
     private ScoreView score;
 
@@ -164,7 +167,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         assertThat(notification.getMutations()).hasSize(1);
         var modification = (ElementModification) notification.getMutations().getFirst();
         assertThat(modification.fields()).containsExactly(ElementField.LYRIC);
-        assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ho");
+        assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::text).isEqualTo("ho");
     }
 
     @Test
@@ -184,7 +187,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         assertThat(notification.getMutations()).hasSize(1);
         var modification = (ElementModification) notification.getMutations().getFirst();
         assertThat(modification.fields()).containsExactly(ElementField.LYRIC);
-        assertThat(element.getMainLyric()).isNull();
+        assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).isNull();
     }
 
     @Test
@@ -200,7 +203,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         editor.commit();
 
         verifyNoSongDidChange();
-        assertThat(element.getMainLyric()).isNull();
+        assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).isNull();
     }
 
     @Test
@@ -218,7 +221,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         editor.commit();
 
         verifyNoSongDidChange();
-        assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo("ho");
+        assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::text).isEqualTo("ho");
     }
 
     @Test
@@ -244,7 +247,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         // The overflowing edit is refused: no mutation is emitted and the lyric is not written.
         verifyNoSongDidChange();
-        assertThat(element.getMainLyric()).isNull();
+        assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).isNull();
     }
 
     @Test
@@ -306,7 +309,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         // The edit was written and a mutation emitted — the overflowing pre-state did not block it.
         captureSingleDidChange();
-        assertThat(element.getMainLyric()).extracting(Lyric::text).isEqualTo(overflowLyric + "x");
+        assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::text).isEqualTo(overflowLyric + "x");
     }
 
     // -----------------------------------------------------------------------
@@ -378,6 +381,43 @@ class LyricEditorTest extends LyricEditorTestSupport {
         assertThat(newEditor.getCaret().getDot()).isEqualTo("do".length());
     }
 
+    // The editor works in the song's active verse, not in verse 1: with a second language selected
+    // it opens on that language's (here absent) syllable and commits into it, leaving the first
+    // language untouched.
+    @Test
+    void testEditorReadsAndWritesTheActiveVerse() {
+        var current = crotchet();
+        current.setLyricForVerse(
+            Lyric.FIRST_VERSE, Lyric.Syllabic.SINGLE, false, "heart", Lyric.Extend.NONE);
+        var nextNote = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> {
+            line.addElement(current);
+            line.addElement(nextNote);
+        });
+        song.setActiveVerse(SECOND_VERSE);
+
+        var editor = new LyricEditor(score, line, current);
+
+        assertThat(editor.getActiveVerse()).isEqualTo(SECOND_VERSE);
+        assertThat(editor.getText())
+            .describedAs("the editor must open on the active verse's syllable, which is absent here")
+            .isEmpty();
+
+        editor.setText("coeur");
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+        editor.advance();
+
+        assertThat(current.getLyricForVerse(SECOND_VERSE))
+            .extracting(Lyric::text, Lyric::syllabic)
+            .containsExactly("coeur", Lyric.Syllabic.SINGLE);
+        assertThat(current.getLyricForVerse(Lyric.FIRST_VERSE))
+            .describedAs("editing one language must not disturb another")
+            .extracting(Lyric::text)
+            .isEqualTo("heart");
+    }
+
     @Test
     void testAdvanceWithUnchangedTextPreservesExistingBoundaryAndExtend() {
         var current = crotchet();
@@ -392,7 +432,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         messageCenterMock = mockStatic(MessageCenter.class);
         editor.advance();
 
-        assertThat(current.getMainLyric())
+        assertThat(current.getLyricForVerse(Lyric.FIRST_VERSE))
             .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
             .containsExactly("ho", Lyric.Syllabic.BEGIN, true, Lyric.Extend.START);
 
@@ -415,10 +455,10 @@ class LyricEditorTest extends LyricEditorTestSupport {
         messageCenterMock = mockStatic(MessageCenter.class);
         editor.advance();
 
-        assertThat(current.getMainLyric())
+        assertThat(current.getLyricForVerse(Lyric.FIRST_VERSE))
             .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
             .containsExactly("ha", Lyric.Syllabic.BEGIN, false, Lyric.Extend.NONE);
-        assertThat(nextNote.getMainLyric())
+        assertThat(nextNote.getLyricForVerse(Lyric.FIRST_VERSE))
             .extracting(Lyric::text, Lyric::syllabic)
             .containsExactly("ri", Lyric.Syllabic.END);
 
@@ -445,13 +485,13 @@ class LyricEditorTest extends LyricEditorTestSupport {
         messageCenterMock = mockStatic(MessageCenter.class);
         editor.retreat();
 
-        assertThat(current.getMainLyric())
+        assertThat(current.getLyricForVerse(Lyric.FIRST_VERSE))
             .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
             .containsExactly("ha", Lyric.Syllabic.MIDDLE, false, Lyric.Extend.NONE);
-        assertThat(previous.getMainLyric())
+        assertThat(previous.getLyricForVerse(Lyric.FIRST_VERSE))
             .extracting(Lyric::text, Lyric::syllabic)
             .containsExactly("do", Lyric.Syllabic.BEGIN);
-        assertThat(nextNote.getMainLyric())
+        assertThat(nextNote.getLyricForVerse(Lyric.FIRST_VERSE))
             .extracting(Lyric::text, Lyric::syllabic)
             .containsExactly("ri", Lyric.Syllabic.END);
 
@@ -475,7 +515,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         messageCenterMock = mockStatic(MessageCenter.class);
         editor.retreat();
 
-        assertThat(current.getMainLyric())
+        assertThat(current.getLyricForVerse(Lyric.FIRST_VERSE))
             .extracting(Lyric::text, Lyric::syllabic, Lyric::compound, Lyric::extend)
             .containsExactly("ri", Lyric.Syllabic.END, false, Lyric.Extend.NONE);
 
@@ -930,7 +970,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         fireUnderscore(editor);
 
         captureSingleDidChange();
-        assertThat(predecessor.getMainLyric())
+        assertThat(predecessor.getLyricForVerse(Lyric.FIRST_VERSE))
             .extracting(Lyric::text, Lyric::extend)
             .containsExactly("do", Lyric.Extend.START);
         assertThat(element.getLyricForVerse(1))
@@ -960,7 +1000,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         }
 
         assertThat(editor.getText()).isEqualTo("ho");
-        assertThat(element.getMainLyric())
+        assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE))
             .extracting(Lyric::text, Lyric::extend)
             .containsExactly("ho", Lyric.Extend.NONE);
     }
@@ -1017,7 +1057,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         fireUnderscore(editor);
 
         captureSingleDidChange();
-        assertThat(predecessor.getMainLyric())
+        assertThat(predecessor.getLyricForVerse(Lyric.FIRST_VERSE))
             .extracting(Lyric::syllabic, Lyric::compound, Lyric::text, Lyric::extend)
             .containsExactly(Lyric.Syllabic.SINGLE, false, "do", Lyric.Extend.START);
         assertThat(element.getLyricForVerse(1))

@@ -50,6 +50,9 @@ class LyricLayoutBuilderTest extends UnitTest {
 
     private static final double TOLERANCE = 0.0001;
     private static final double COLUMN_SPACING_SS = 4.0;
+    // The second language a song's lyrics can be written in — the verse that must stay unlaid-out
+    // while the first one is active, and laid out alone once it is selected.
+    private static final int SECOND_VERSE = 2;
     private static final double LINE_WIDTH_SS = 100.0;
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
     private static final LyricRenderMetrics LYRIC_METRICS =
@@ -95,6 +98,20 @@ class LyricLayoutBuilderTest extends UnitTest {
         });
     }
 
+    /**
+     * Lays out the song's active verse, the way {@code LayoutEngine} calls the builder. Tests that
+     * exercise another verse select it with {@code song.setActiveVerse} first.
+     */
+    private LyricLayoutBuilder.Result buildLyrics(
+        List<ElementColumn> columns,
+        LyricRenderMetrics lyricRenderMetrics,
+        boolean hasLeadingContinuation,
+        double lineWidthSs) {
+
+        return LyricLayoutBuilder.build(
+            columns, song.getActiveVerse(), lyricRenderMetrics, hasLeadingContinuation, lineWidthSs);
+    }
+
     private static StaffElement note() {
         return ElementType.CROTCHET.newInstance();
     }
@@ -109,8 +126,8 @@ class LyricLayoutBuilderTest extends UnitTest {
     }
 
     /**
-     * Places {@code element} in a column at the given X with notehead-width right extent and
-     * a pre-measured {@code syllableWidthSs} (used by the verse-1 code path in the builder).
+     * Places {@code element} in a column at the given X with notehead-width right extent and a
+     * pre-measured {@code syllableWidthSs} — the width the builder reuses rather than re-measuring.
      */
     private static ElementColumn columnAt(StaffElement element, double xSs, double syllableWidthSs) {
         var column = new ElementColumn(
@@ -162,11 +179,10 @@ class LyricLayoutBuilderTest extends UnitTest {
 
     @Test
     void testEmptyLineProducesEmptyResult() {
-        var result = LyricLayoutBuilder.build(List.of(), LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(List.of(), LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes()).isEmpty();
         assertThat(result.connectors()).isEmpty();
-        assertThat(result.verseCount()).isEqualTo(1);
         assertThat(result.hasTrailingContinuation()).isFalse();
     }
 
@@ -178,11 +194,10 @@ class LyricLayoutBuilderTest extends UnitTest {
         addToLine(n1, n2, n3);
 
         var columns = List.of(columnAt(n1, 5), columnAt(n2, 10), columnAt(n3, 15));
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes()).isEmpty();
         assertThat(result.connectors()).isEmpty();
-        assertThat(result.verseCount()).isEqualTo(1);
     }
 
     // do-re-mi across three notes → three boxes, two HYPHEN spans with correct coordinates
@@ -205,7 +220,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n2, col1XSs),
             columnAt(n3, col2XSs));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes()).hasSize(3);
         assertThat(boxesOf(result.boxes(), n1)).hasSize(1);
@@ -217,7 +232,6 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(hyphens).hasSize(2);
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER)).isEmpty();
         assertThat(result.hasTrailingContinuation()).isFalse();
-        assertThat(result.verseCount()).isEqualTo(1);
 
         // With syllableWidthSs=0, boxXSs == noteCenter (columnXSs + rightExtent/2) for each column.
         // A hyphen opens at syllableEnd (= boxXSs + 0) and closes at the next box's xSs.
@@ -256,23 +270,23 @@ class LyricLayoutBuilderTest extends UnitTest {
     @Test
     void testNormalNoteLyricBoxIsCenteredOnNoteCenter() {
         var n1 = note();
-        // Use verse 2 so the builder calls lyricRenderMetrics.lyricBoxWidthSs(text) rather
-        // than the pre-measured syllableWidthSs (which would be 0 in the test column).
         var syllableText = "heart";
-        n1.lyrics.add(new Lyric(2, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        n1.lyrics.add(new Lyric(Lyric.FIRST_VERSE, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
         addToLine(n1);
 
         var noteXSs = 10.0;
-        var col = columnAt(n1, noteXSs);
-        var result = LyricLayoutBuilder.build(List.of(col), LYRIC_METRICS, false, LINE_WIDTH_SS);
+        // The builder reuses the column's pre-measured width, so the column has to carry the real
+        // measurement ElementColumnBuilder would have written there.
+        var syllableWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
+        var col = columnAt(n1, noteXSs, syllableWidthSs);
+        var result = buildLyrics(List.of(col), LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var boxes = boxesOf(result.boxes(), n1);
-        assertThat(boxes).as("expected exactly one box for n1 (verse 2)").hasSize(1);
+        assertThat(boxes).as("expected exactly one box for n1").hasSize(1);
 
         var box = boxes.getFirst();
 
-        // Independent oracle: box left = note center (excluding augmentation) − half syllable width
-        var syllableWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
+        // Independent expected result: box left = note center (excluding augmentation) − half syllable width
         var noteCenterXSs = noteXSs + col.getRightExtentExcludingAugmentationSs() / 2.0;
         var expectedBoxLeftXSs = noteCenterXSs - syllableWidthSs / 2.0;
 
@@ -288,11 +302,11 @@ class LyricLayoutBuilderTest extends UnitTest {
     void testDottedNoteLyricBoxIgnoresDots() {
         var n1 = note();
         var syllableText = "heart";
-        // Use verse 2 so the builder measures width on the fly via lyricBoxWidthSs.
-        n1.lyrics.add(new Lyric(2, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        n1.lyrics.add(new Lyric(Lyric.FIRST_VERSE, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
         addToLine(n1);
 
         var noteXSs = 10.0;
+        var syllableWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
         var rightExtentExcludingAugmentationSs = SMuFLConstants.NOTE_HEAD_WIDTH_SS;
         var rightExtentWithDotsSs = rightExtentExcludingAugmentationSs + FAKE_DOT_EXTENT_SS;
 
@@ -303,15 +317,14 @@ class LyricLayoutBuilderTest extends UnitTest {
             0.0,
             rightExtentWithDotsSs,
             rightExtentExcludingAugmentationSs,
-            0.0, 0.0, null, 0.0, false);
+            0.0, 0.0, syllableText, syllableWidthSs, false);
         col.setXSs(noteXSs);
 
-        var result = LyricLayoutBuilder.build(List.of(col), LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(List.of(col), LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var boxes = boxesOf(result.boxes(), n1);
         assertThat(boxes).as("expected exactly one box for dotted note").hasSize(1);
 
-        var syllableWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
         var noteCenterXSs = noteXSs + rightExtentExcludingAugmentationSs / 2.0;
         var expectedBoxLeftXSs = noteCenterXSs - syllableWidthSs / 2.0;
 
@@ -328,11 +341,11 @@ class LyricLayoutBuilderTest extends UnitTest {
     void testFlaggedNoteLyricBoxIgnoresFlag() {
         var n1 = note();
         var syllableText = "heart";
-        // Use verse 2 so the builder measures width on the fly via lyricBoxWidthSs.
-        n1.lyrics.add(new Lyric(2, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        n1.lyrics.add(new Lyric(Lyric.FIRST_VERSE, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
         addToLine(n1);
 
         var noteXSs = 10.0;
+        var syllableWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
         var noteheadWidthSs = SMuFLConstants.NOTE_HEAD_WIDTH_SS;
         var flagInflatedRightExtentSs = noteheadWidthSs + FAKE_FLAG_EXTENT_SS;
 
@@ -344,16 +357,15 @@ class LyricLayoutBuilderTest extends UnitTest {
             0.0,
             flagInflatedRightExtentSs,
             flagInflatedRightExtentSs,
-            0.0, 0.0, null, 0.0, false);
+            0.0, 0.0, syllableText, syllableWidthSs, false);
         col.setNoteheadWidthSs(noteheadWidthSs);
         col.setXSs(noteXSs);
 
-        var result = LyricLayoutBuilder.build(List.of(col), LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(List.of(col), LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var boxes = boxesOf(result.boxes(), n1);
         assertThat(boxes).as("expected exactly one box for flagged note").hasSize(1);
 
-        var syllableWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
         var noteCenterXSs = noteXSs + noteheadWidthSs / 2.0;
         var expectedBoxLeftXSs = noteCenterXSs - syllableWidthSs / 2.0;
 
@@ -379,7 +391,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n3, 5 + 2 * COLUMN_SPACING_SS),
             columnAt(n4, 5 + 3 * COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes()).hasSize(2);
         assertThat(boxesOf(result.boxes(), n1).getFirst().text()).isEqualTo("heart");
@@ -417,7 +429,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n3, 5 + 3 * COLUMN_SPACING_SS),
             columnAt(n4, 5 + 4 * COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
@@ -446,7 +458,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n3, 5 + 3 * COLUMN_SPACING_SS),
             columnAt(n4, 5 + 4 * COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         // No box emitted for the rest (it is only a continuation marker).
         assertThat(result.boxes()).containsOnlyKeys(n1, n4);
@@ -476,7 +488,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n3, 5 + 3 * COLUMN_SPACING_SS),
             columnAt(n4, 5 + 4 * COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         // No box emitted for the rest (it is only a CONTINUE marker).
         assertThat(result.boxes()).containsOnlyKeys(n1, n4);
@@ -508,7 +520,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         // syllabics are SINGLE, which yields SINGLE regardless of neighbors.
         addToLine(n1, n2, n3);
 
-        var resultA = LyricLayoutBuilder.build(columnsA, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var resultA = buildLyrics(columnsA, LYRIC_METRICS, false, LINE_WIDTH_SS);
         assertThat(resultA.hasTrailingContinuation()).isTrue();
         var trailingExtenders = connectorsOfKind(resultA.connectors(), LyricConnectorLayout.Kind.DANGLING_EXTENDER);
         assertThat(trailingExtenders).hasSize(1);
@@ -516,7 +528,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             .as("trailing stub ends at last note's right edge")
             .isCloseTo(columnsA.getFirst().getRightEdgeXSs(), within(TOLERANCE));
 
-        var resultB = LyricLayoutBuilder.build(columnsB, LYRIC_METRICS_WITH_SPACE, true, LINE_WIDTH_SS);
+        var resultB = buildLyrics(columnsB, LYRIC_METRICS_WITH_SPACE, true, LINE_WIDTH_SS);
 
         var leadingExtenders = connectorsOfKind(resultB.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(leadingExtenders).hasSize(1);
@@ -546,7 +558,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n2, 5 + COLUMN_SPACING_SS),
             columnAt(n3, 5 + 2 * COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.hasTrailingContinuation()).isTrue();
 
@@ -577,7 +589,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n3, 5 + 2 * COLUMN_SPACING_SS),
             columnAt(n4, 5 + 3 * COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.hasTrailingContinuation()).isTrue();
 
@@ -586,45 +598,6 @@ class LyricLayoutBuilderTest extends UnitTest {
         assertThat(danglingExtenders.getFirst().endXSs())
             .as("dangling extender ends at last CONTINUE note's right edge (n3), not n4 (no extend marker)")
             .isCloseTo(columns.get(2).getRightEdgeXSs(), within(TOLERANCE));
-    }
-
-    // verse-1 (getSyllableWidthSs) vs verse-≥2 (lyricBoxWidthSs) must agree for the same text.
-    // The builder takes two distinct code paths to compute box width depending on verse index:
-    //   verse 1  → column.getSyllableWidthSs()  (pre-measured by ElementColumnBuilder)
-    //   verse ≥2 → lyricRenderMetrics.lyricBoxWidthSs(text)  (measured on the fly)
-    // Populate the verse-1 column with the real measured width so both paths use the same
-    // measurement source; then assert the resulting box widths are equal within TOLERANCE.
-    @Test
-    void testVerse1AndVerse2ProduceEqualWidthForSameText() {
-        var syllableText = "heart";
-        var measuredWidthSs = LYRIC_METRICS.lyricBoxWidthSs(syllableText);
-
-        var n1 = note();
-        // Verse 1 lyric: builder reads syllableWidthSs from the column.
-        n1.lyrics.add(new Lyric(1, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
-        // Verse 2 lyric: builder calls lyricRenderMetrics.lyricBoxWidthSs(text) on the fly.
-        n1.lyrics.add(new Lyric(2, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
-        addToLine(n1);
-
-        // Populate syllableWidthSs with the measured width so the verse-1 path uses real data.
-        var col = columnAt(n1, 5.0, measuredWidthSs);
-        var result = LyricLayoutBuilder.build(List.of(col), LYRIC_METRICS, false, LINE_WIDTH_SS);
-
-        var boxes = boxesOf(result.boxes(), n1);
-        assertThat(boxes).as("expected two boxes (one per verse) for n1").hasSize(2);
-
-        var verse1Box = boxes.stream()
-            .filter(b -> b.verseIndex() == 1)
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("no verse-1 box found"));
-        var verse2Box = boxes.stream()
-            .filter(b -> b.verseIndex() == 2)
-            .findFirst()
-            .orElseThrow(() -> new AssertionError("no verse-2 box found"));
-
-        assertThat(verse1Box.widthSs())
-            .as("verse-1 box width (from cached getSyllableWidthSs) must equal verse-2 box width (from lyricBoxWidthSs)")
-            .isCloseTo(verse2Box.widthSs(), within(TOLERANCE));
     }
 
     // Compound-word boundary: heart(BEGIN+compound) garden(END) → HYPHEN span (visually identical to SYLLABLE)
@@ -638,7 +611,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var hyphens = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.HYPHEN);
         assertThat(hyphens).hasSize(1);
@@ -656,7 +629,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes()).containsOnlyKeys(n1);
 
@@ -686,7 +659,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + NARROW_COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
@@ -731,7 +704,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         col1.setXSs(col1XSs);
 
         var columns = List.of(col0, col1);
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
@@ -766,7 +739,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n2, 9),
             columnAt(n3, 10));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
 
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
@@ -798,7 +771,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n2, 9),
             columnAt(n3, 9 + FAR_FOLLOWING_SYLLABLE_GAP_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
 
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
@@ -825,7 +798,7 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS_WITH_SPACE, false, LINE_WIDTH_SS);
 
         var hyphens = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.HYPHEN);
         assertThat(hyphens).hasSize(1);
@@ -854,7 +827,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n2, 5 + COLUMN_SPACING_SS),
             columnAt(n3, 5 + 2 * COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes()).containsOnlyKeys(n1, n3);
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER)).hasSize(1);
@@ -877,7 +850,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n2, 5 + COLUMN_SPACING_SS),
             columnAt(n3, 5 + 2 * COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.HYPHEN)).hasSize(1);
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER)).isEmpty();
@@ -909,7 +882,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columns.add(columnAt(elements.get(i), 5 + i * COLUMN_SPACING_SS));
         }
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(result.boxes()).containsOnlyKeys(n1, n5, n8);
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER)).isEmpty();
@@ -931,7 +904,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         var col1XSs = 5.0 + COLUMN_SPACING_SS;
         var columns = List.of(columnAt(n1, col0XSs), columnAt(r, col1XSs));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         // Only n1 gets a box; the rest carries only a STOP marker.
         assertThat(result.boxes()).containsOnlyKeys(n1);
@@ -962,7 +935,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         // n1 is the only column; emitDanglingHyphen finds no eligible successor.
         var columns = List.of(columnAt(n1, 5.0));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.DANGLING_HYPHEN))
             .as("no eligible follower → no DANGLING_HYPHEN emitted")
@@ -992,7 +965,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(r, col1XSs),
             columnAt(n2, col2XSs));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var danglingHyphens = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.DANGLING_HYPHEN);
         assertThat(danglingHyphens)
@@ -1023,7 +996,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(n2, 5.0 + COLUMN_SPACING_SS),
             columnAt(n3, 5.0 + 2 * COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var result = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var extenders = connectorsOfKind(result.connectors(), LyricConnectorLayout.Kind.EXTENDER);
         assertThat(extenders).hasSize(1);
@@ -1047,7 +1020,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(nStart, 5.0),
             columnAt(nBare, 5.0 + COLUMN_SPACING_SS));
 
-        var resultD = LyricLayoutBuilder.build(colsDangling, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var resultD = buildLyrics(colsDangling, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var danglingExtenders = connectorsOfKind(resultD.connectors(), LyricConnectorLayout.Kind.DANGLING_EXTENDER);
         assertThat(danglingExtenders).hasSize(1);
@@ -1071,7 +1044,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             columnAt(nBegin, 5.0),
             columnAt(nEligible, 5.0 + COLUMN_SPACING_SS));
 
-        var resultH = LyricLayoutBuilder.build(colsHyphen, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var resultH = buildLyrics(colsHyphen, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         var danglingHyphens = connectorsOfKind(resultH.connectors(), LyricConnectorLayout.Kind.DANGLING_HYPHEN);
         assertThat(danglingHyphens).hasSize(1);
@@ -1080,25 +1053,40 @@ class LyricLayoutBuilderTest extends UnitTest {
             .isEqualTo(0);
     }
 
-    // Multi-verse: verse 1 and verse 2 each emit their own boxes and spans keyed by verseIndex
+    // Multi-verse: the two verses are the same lyrics in two languages, so only the active one is
+    // laid out — one box per note, carrying that verse's text, and connectors keyed to that verse.
     @Test
-    void testMultiVerseProducesSeparateBoxesPerVerse() {
+    void testOnlyTheActiveVerseIsLaidOut() {
         var n1 = note();
         var n2 = note();
-        n1.lyrics.add(new Lyric(1, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
-        n1.lyrics.add(new Lyric(2, "un", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
-        n2.lyrics.add(new Lyric(1, "re", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
-        n2.lyrics.add(new Lyric(2, "deux", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+        n1.lyrics.add(new Lyric(Lyric.FIRST_VERSE, "do", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+        n1.lyrics.add(new Lyric(SECOND_VERSE, "un", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+        n2.lyrics.add(new Lyric(Lyric.FIRST_VERSE, "re", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+        n2.lyrics.add(new Lyric(SECOND_VERSE, "deux", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
         addToLine(n1, n2);
 
         var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));
 
-        var result = LyricLayoutBuilder.build(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var firstVerseResult = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
-        assertThat(result.verseCount()).isEqualTo(2);
-        assertThat(result.boxes().get(n1)).hasSize(2);
-        assertThat(result.boxes().get(n2)).hasSize(2);
-        var verses = result.connectors().stream().map(LyricConnectorLayout::verseIndex).distinct().toList();
-        assertThat(verses).containsExactlyInAnyOrder(1, 2);
+        assertThat(boxesOf(firstVerseResult.boxes(), n1)).hasSize(1);
+        assertThat(boxesOf(firstVerseResult.boxes(), n1).getFirst().text()).isEqualTo("do");
+        assertThat(boxesOf(firstVerseResult.boxes(), n2)).hasSize(1);
+        assertThat(boxesOf(firstVerseResult.boxes(), n2).getFirst().text()).isEqualTo("re");
+        assertThat(versesOf(firstVerseResult.connectors())).containsExactly(Lyric.FIRST_VERSE);
+
+        song.setActiveVerse(SECOND_VERSE);
+
+        var secondVerseResult = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        assertThat(boxesOf(secondVerseResult.boxes(), n1)).hasSize(1);
+        assertThat(boxesOf(secondVerseResult.boxes(), n1).getFirst().text()).isEqualTo("un");
+        assertThat(boxesOf(secondVerseResult.boxes(), n2)).hasSize(1);
+        assertThat(boxesOf(secondVerseResult.boxes(), n2).getFirst().text()).isEqualTo("deux");
+        assertThat(versesOf(secondVerseResult.connectors())).containsExactly(SECOND_VERSE);
+    }
+
+    private static List<Integer> versesOf(List<LyricConnectorLayout> connectors) {
+        return connectors.stream().map(LyricConnectorLayout::verseIndex).distinct().toList();
     }
 }

@@ -306,7 +306,7 @@ public class LayoutEngine {
             columns, line, builder, staffRightMarginSs, fonts, attribution);
 
         // Step 7b: Compute lyric box and connector geometry.
-        buildLyricLayout(columns, builder, hasLeadingLyricContinuation);
+        buildLyricLayout(columns, line, builder, hasLeadingLyricContinuation);
 
         // Step 8: Build final LayoutResult
         return buildLayoutResult(columns, line, builder);
@@ -314,11 +314,18 @@ public class LayoutEngine {
 
     private void buildLyricLayout(
         List<ElementColumn> columns,
+        Line line,
         LayoutResult.Builder builder,
         boolean hasLeadingLyricContinuation) {
 
+        // The same verse the columns were built for, which is what makes their cached syllable
+        // widths reusable here.
         var lyricResult = LyricLayoutBuilder.build(
-            columns, lyricRenderMetrics, hasLeadingLyricContinuation, staffRightMarginSs);
+            columns,
+            line.getSong().getActiveVerse(),
+            lyricRenderMetrics,
+            hasLeadingLyricContinuation,
+            staffRightMarginSs);
 
         for (var entry : lyricResult.boxes().entrySet()) {
             for (var box : entry.getValue()) {
@@ -330,7 +337,6 @@ public class LayoutEngine {
             builder.addLyricConnector(connector);
         }
 
-        builder.setVerseCount(lyricResult.verseCount());
         builder.setHasTrailingLyricContinuation(lyricResult.hasTrailingContinuation());
     }
 

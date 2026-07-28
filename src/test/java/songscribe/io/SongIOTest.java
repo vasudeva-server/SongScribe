@@ -733,7 +733,7 @@ class SongIOTest extends UnitTest {
             var song = parseXml(legacyLyricsXml("heart--garden", "2.5"));
 
             //noinspection DataFlowIssue -- false positive for Lyric::compound
-            assertThat(song.getLine(0).getElement(0).getMainLyric())
+            assertThat(song.getLine(0).getElement(0).getLyricForVerse(Lyric.FIRST_VERSE))
                 .isNotNull()
                 .extracting(Lyric::compound)
                 .isEqualTo(true);

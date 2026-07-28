@@ -34,6 +34,7 @@ import songscribe.font.DocumentFonts;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.Staff;
 
@@ -54,6 +55,8 @@ class LineHeightTest extends UnitTest {
 
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;
     private static final double TOLERANCE = 0.001;
+    // The second language a song's lyrics can be written in.
+    private static final int SECOND_VERSE = 2;
 
     private static final Font LYRICS_FONT = new Font("Dialog", Font.PLAIN, 12);
 
@@ -70,11 +73,10 @@ class LineHeightTest extends UnitTest {
 
     /**
      * The lyrics band every line reserves, derived from the font rather than a constant —
-     * a verse row is the measured ink height of the lyric extent reference.
+     * the one lyric row is the measured ink height of the lyric extent reference.
      */
     private static final double LYRICS_BAND_HEIGHT_SS =
-        LineSpacing.LYRICS_ROW_MARGIN_SS
-        + LineSpacing.MIN_RESERVED_VERSE_ROWS * LyricRenderMetrics.fontHeightSs(LYRICS_FONT);
+        LineSpacing.LYRICS_ROW_MARGIN_SS + LyricRenderMetrics.fontHeightSs(LYRICS_FONT);
 
     private static LayoutEngine engine() {
         return new LayoutEngine(LYRIC_METRICS, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
@@ -221,5 +223,48 @@ class LineHeightTest extends UnitTest {
         assertThat(result.lineHeightSs(LYRIC_METRICS))
             .describedAs("line height reflects the extended below-staff content")
             .isCloseTo(expectedLineHeightSs(0.0, expectedBelowStaffSs), within(TOLERANCE));
+    }
+
+    // Verses are languages, not stacked rows: a song holding its lyrics in two languages lays out
+    // one of them and is no taller than a song holding one, and which one it lays out follows the
+    // song's active verse.
+    @Test
+    void testASecondVerseNeitherStacksNorGrowsTheLine() {
+        var song = new Song();
+        var line = song.getLine(0);
+        var note = crotchet(0);
+        note.lyrics.add(
+            new Lyric(Lyric.FIRST_VERSE, "heart", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        addNote(song, line, note);
+
+        var oneVerse = require(engine().layout(line, true), "LayoutResult");
+        var oneVerseHeightSs = oneVerse.lineHeightSs(LYRIC_METRICS);
+
+        assertThat(oneVerse.getLyricBoxes(note)).hasSize(1);
+        assertThat(oneVerse.getLyricBoxes(note).getFirst().text()).isEqualTo("heart");
+
+        note.lyrics.add(
+            new Lyric(SECOND_VERSE, "coeur", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+
+        var twoVerses = require(engine().layout(line, true), "LayoutResult");
+
+        assertThat(twoVerses.getLyricBoxes(note))
+            .describedAs("the second language must not add a second box")
+            .hasSize(1);
+        assertThat(twoVerses.getLyricBoxes(note).getFirst().text()).isEqualTo("heart");
+        assertThat(twoVerses.lineHeightSs(LYRIC_METRICS))
+            .describedAs("a second language must not make the line taller")
+            .isCloseTo(oneVerseHeightSs, within(TOLERANCE));
+
+        song.setActiveVerse(SECOND_VERSE);
+
+        var secondVerse = require(engine().layout(line, true), "LayoutResult");
+
+        assertThat(secondVerse.getLyricBoxes(note)).hasSize(1);
+        assertThat(secondVerse.getLyricBoxes(note).getFirst().text())
+            .describedAs("selecting the second verse lays out its text in place of the first's")
+            .isEqualTo("coeur");
+        assertThat(secondVerse.lineHeightSs(LYRIC_METRICS))
+            .isCloseTo(oneVerseHeightSs, within(TOLERANCE));
     }
 }

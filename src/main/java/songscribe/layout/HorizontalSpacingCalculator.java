@@ -933,9 +933,8 @@ public class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the offset from {@code grace}'s origin to its syllable box, for the verse the spacing
-     * path knows about — the main verse, which is the one {@link ElementColumn#getSyllableWidthSs()}
-     * was measured for.
+     * Returns the offset from {@code grace}'s origin to its syllable box, for the verse the columns
+     * were built for — the one {@link ElementColumn#getSyllableWidthSs()} was measured for.
      */
     private static double graceLyricLeftOffsetSs(ElementColumn grace, ElementColumn host) {
         return graceLyricLeftOffsetSs(
@@ -974,10 +973,13 @@ public class HorizontalSpacingCalculator {
         return syllableEndSs + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS;
     }
 
-    /** {@link #pairCarriesGraceHostMelisma} for the main verse, the one the spacing path lays out. */
+    /**
+     * {@link #pairCarriesGraceHostMelisma} for the verse the columns were built for. Read off the
+     * columns rather than their elements so the melisma this reserves space for belongs to the same
+     * verse the syllable widths were measured for.
+     */
     private static boolean hasGraceHostMelisma(ElementColumn grace, ElementColumn host) {
-        return pairCarriesGraceHostMelisma(
-            grace.getElement().getMainLyric(), host.getElement().getMainLyric());
+        return pairCarriesGraceHostMelisma(grace.getLyric(), host.getLyric());
     }
 
     /**

@@ -25,7 +25,7 @@ package songscribe.layout;
  * <p>
  * Coordinates are in staff spaces, relative to the line's left edge. The box's X is the
  * left edge of the rendered syllable (after centering against the owning note column); the
- * renderer reads the Y from {@link LayoutResult#verseYSsInLine(int, LyricRenderMetrics)}.
+ * renderer reads the Y from {@link LayoutResult#lyricBaselineYSsInLine(LyricRenderMetrics)}.
  *
  * @param xSs        left edge of the syllable text in staff spaces
  * @param widthSs    rendered width of the syllable text in staff spaces

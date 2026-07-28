@@ -202,11 +202,11 @@ class StaffElementCopyConstructorTest extends UnitTest {
     void testGetMainLyricReturnsFirstLyric() {
         var element = new StaffElement(ElementType.CROTCHET);
 
-        assertThat(element.getMainLyric()).isNull();
+        assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).isNull();
 
         var lyric = new Lyric(1, "heart", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
         element.lyrics.add(lyric);
 
-        assertThat(element.getMainLyric()).isEqualTo(lyric);
+        assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).isEqualTo(lyric);
     }
 }

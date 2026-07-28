@@ -43,7 +43,7 @@ import songscribe.util.GraphicUtils;
  * @param spaceWidthSs     width of one space character in staff-space units; used as the
  *                         gap between non-hyphenated syllables
  * @param staffToLyricsGapSs distance in staff-space units from a line's below-staff content
- *                         to the baseline of its first verse row. Equals
+ *                         to the baseline of its lyric row. Equals
  *                         {@link LineSpacing#LYRICS_ROW_MARGIN_SS} plus
  *                         {@link #fontAboveBaselineSs}, so a baseline placed at this distance
  *                         puts the text <em>ink top</em> one visual gap below the content.
@@ -167,7 +167,7 @@ public record LyricRenderMetrics(
      * Returns the height of the in-place lyric editor's text box in staff spaces — the lyrics
      * font's ascent + descent.
      * <p>
-     * Deliberately not {@link #lyricBoxHeightSs}. A reserved verse row hugs the ink of
+     * Deliberately not {@link #lyricBoxHeightSs}. The reserved lyric row hugs the ink of
      * {@link #LYRIC_EXTENT_REFERENCE}, but a live text field has to fit whatever the user
      * types, and {@link JTextField} lays its own painting out from the font-wide ascent and
      * descent — its baseline lands at {@code insets.top + ascent}, with the descender below.
@@ -217,7 +217,7 @@ public record LyricRenderMetrics(
     /**
      * Returns the full ink height of a lyrics row in {@code font}, in staff spaces — the
      * distance from the top of {@link #LYRIC_EXTENT_REFERENCE}'s ink to its bottom. This is
-     * the height one verse row reserves.
+     * the height a line's lyric row reserves.
      */
     public static double fontHeightSs(Font font) {
         return ScaleContext.pxToSs(lyricExtentPx(font).getHeight());

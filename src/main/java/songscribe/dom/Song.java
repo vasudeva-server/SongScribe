@@ -188,6 +188,12 @@ public final class Song {
     // The lines of the score
     private final ArrayList<Line> lines = new ArrayList<>();
 
+    // The verse the song is currently showing. A song's verses are the languages its lyrics are
+    // written in, not stanzas to stack, so exactly one of them is laid out, painted and edited at
+    // any moment. Deliberately not persisted: which language a reader last looked at is a property
+    // of the session, not of the document, so every file opens on its first verse.
+    private int activeVerse = Lyric.FIRST_VERSE;
+
     /**
      * Indicates whether this song has been dynamically laid out.
      * <p>
@@ -540,8 +546,8 @@ public final class Song {
     }
 
     /**
-     * Returns a syllabified-style text assembled from all per-note {@link Lyric} records.
-     * Returns an empty string when no per-note lyrics are set.
+     * Returns a syllabified-style text assembled from the {@link #getActiveVerse() active verse}'s
+     * per-note {@link Lyric} records. Returns an empty string when that verse has no lyrics.
      */
     public String getLyricsText() {
         var sb = new StringBuilder(1000);
@@ -550,7 +556,7 @@ public final class Song {
             var line = lines.get(i);
 
             for (var j = 0; j < line.effectiveElementCount(); j++) {
-                var lyric = line.getElement(j).getMainLyric();
+                var lyric = line.getElement(j).getLyricForVerse(activeVerse);
 
                 if (lyric == null) {
                     continue;
@@ -649,6 +655,30 @@ public final class Song {
 
     public boolean isModified() {
         return modified;
+    }
+
+    /**
+     * Returns the 1-based verse this song is showing — the one verse that layout, painting and the
+     * lyric editor all work on. Every other verse the song carries is a translation held in the
+     * document but not displayed.
+     */
+    public int getActiveVerse() {
+        return activeVerse;
+    }
+
+    /**
+     * Selects the verse this song shows. Changing it changes what every line lays out, so the
+     * caller is responsible for invalidating layout afterwards.
+     *
+     * @param activeVerse the 1-based verse to show
+     * @throws IllegalArgumentException if {@code activeVerse} is below {@link Lyric#FIRST_VERSE}
+     */
+    public void setActiveVerse(int activeVerse) {
+        if (activeVerse < Lyric.FIRST_VERSE) {
+            throw new IllegalArgumentException("verse indices are 1-based, got " + activeVerse);
+        }
+
+        this.activeVerse = activeVerse;
     }
 
     public Line getLine(int index) {

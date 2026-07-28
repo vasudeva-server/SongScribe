@@ -87,7 +87,6 @@ public final class LayoutResult {
     private final double contentBelowStaffSs;
     private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
     private final List<LyricConnectorLayout> lyricConnectors;
-    private final int verseCount;
     private final boolean hasTrailingLyricContinuation;
 
     /**
@@ -119,7 +118,6 @@ public final class LayoutResult {
         double contentBelowStaffSs,
         Map<StaffElement, List<LyricBoxLayout>> lyricBoxes,
         List<LyricConnectorLayout> lyricConnectors,
-        int verseCount,
         boolean hasTrailingLyricContinuation) {
         this.elementColumns = Map.copyOf(elementColumns);
         this.elementBounds = Map.copyOf(elementBounds);
@@ -147,7 +145,6 @@ public final class LayoutResult {
 
         this.lyricBoxes = Collections.unmodifiableMap(copiedBoxes);
         this.lyricConnectors = List.copyOf(lyricConnectors);
-        this.verseCount = verseCount;
         this.hasTrailingLyricContinuation = hasTrailingLyricContinuation;
     }
 
@@ -578,24 +575,22 @@ public final class LayoutResult {
     }
 
     /**
-     * Returns the total vertical space this line's verses occupy, in staff spaces,
-     * measured from this line's below-staff content down to the bottom of its last
-     * verse row. Always reserves at least {@link LineSpacing#MIN_RESERVED_VERSE_ROWS} rows,
-     * even when the line has no lyrics yet, so entering the first lyric on a line does not
-     * re-space the song.
+     * Returns the total vertical space this line's lyrics occupy, in staff spaces, measured from
+     * this line's below-staff content down to the bottom of the lyric row. The band is one row deep
+     * whatever the line holds: only the song's active verse is ever laid out, and the row is
+     * reserved even before that verse has any lyrics on this line, so entering the first lyric does
+     * not re-space the song and a song carrying a second language is no taller than one that does
+     * not.
      * <p>
      * Deliberately built from {@link LineSpacing#LYRICS_ROW_MARGIN_SS} rather than from
      * {@link LyricRenderMetrics#staffToLyricsGapSs}: that gap is a <em>baseline</em> offset, so
-     * it already contains the first row's above-baseline ink. Adding whole rows on top of it
-     * counted that ink twice and left dead space at the bottom of every line. The band is
-     * simply the visual margin plus one row of ink per reserved verse — which also lands the
-     * last row's ink bottom exactly on the band's bottom edge, since
-     * {@code lastBaseline + belowBaseline} collapses to this same expression.
+     * it already contains the row's above-baseline ink. Adding the row on top of it counted that
+     * ink twice and left dead space at the bottom of every line. The band is simply the visual
+     * margin plus one row of ink — which also lands the row's ink bottom exactly on the band's
+     * bottom edge, since {@code baseline + belowBaseline} collapses to this same expression.
      */
     public double lyricsBandHeightSs(LyricRenderMetrics lyricRenderMetrics) {
-        var reservedVerseRows = Math.max(LineSpacing.MIN_RESERVED_VERSE_ROWS, verseCount);
-
-        return LineSpacing.LYRICS_ROW_MARGIN_SS + reservedVerseRows * lyricRenderMetrics.lyricBoxHeightSs();
+        return LineSpacing.LYRICS_ROW_MARGIN_SS + lyricRenderMetrics.lyricBoxHeightSs();
     }
 
     /**
@@ -667,17 +662,17 @@ public final class LayoutResult {
     }
 
     /**
-     * Returns the baseline Y of a verse row within this line's local coordinate frame,
-     * in staff spaces. Driven by this line's own below-staff content, so verses hug each
-     * line individually rather than a song-wide maximum.
-     *
-     * @param verse the 1-based verse index
+     * Returns the baseline Y of this line's lyric row within its local coordinate frame, in staff
+     * spaces. Driven by this line's own below-staff content, so lyrics hug each line individually
+     * rather than a song-wide maximum.
+     * <p>
+     * There is one such row per line, not one per verse: the song shows a single verse at a time,
+     * so whichever verse is active sits on this baseline.
      */
-    public double verseYSsInLine(int verse, LyricRenderMetrics lyricRenderMetrics) {
+    public double lyricBaselineYSsInLine(LyricRenderMetrics lyricRenderMetrics) {
         return staffBottomYSsInLine()
             + contentBelowStaffSs
-            + lyricRenderMetrics.staffToLyricsGapSs()
-            + (verse - 1) * lyricRenderMetrics.lyricBoxHeightSs();
+            + lyricRenderMetrics.staffToLyricsGapSs();
     }
 
     // ==========================================================================
@@ -685,10 +680,11 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the lyric boxes for an element, one per verse, in verse order.
+     * Returns the lyric boxes for an element — at most one, for the verse this layout pass was
+     * built for.
      *
      * @param element the element to look up
-     * @return immutable list of lyric boxes; empty if the element has no lyrics
+     * @return immutable list of lyric boxes; empty if the element has no lyric in that verse
      */
     public List<LyricBoxLayout> getLyricBoxes(StaffElement element) {
         var boxes = lyricBoxes.get(element);
@@ -697,14 +693,12 @@ public final class LayoutResult {
 
     public @Nullable LyricHit hitTestLyric(LyricRenderMetrics lyricRenderMetrics, Line line, Point2D pointPx) {
         var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
-        var baseYSs = lyricAreaBaseYSs();
+        var rowTopYSs = lyricAreaBaseYSs();
         var pointXSs = ScaleContext.pxToSs(pointPx.getX());
         var pointYSs = ScaleContext.pxToSs(pointPx.getY());
 
         for (var element : line.getElements()) {
             for (var box : getLyricBoxes(element)) {
-                var rowTopYSs = baseYSs + (box.verseIndex() - 1) * rowHeightSs;
-
                 // Matches the ending and note-head hit tests, which also test containment
                 // with Rectangle2D: left and top edges inclusive, right and bottom exclusive.
                 var hitRect = new Rectangle2D.Double(box.xSs(), rowTopYSs, box.widthSs(), rowHeightSs);
@@ -719,27 +713,22 @@ public final class LayoutResult {
     }
 
     /**
-     * Returns true if {@code pointYPx} (in pixels) falls within the vertical extent
-     * of the lyric area on this line, regardless of X position.
-     * Returns false if the line has no lyrics.
+     * Returns true if {@code pointYPx} (in pixels) falls within the vertical extent of the lyric
+     * row on this line, regardless of X position. The row is reserved whether or not the line
+     * carries any lyric yet, so this answers for the space, not for its contents.
      */
     public boolean isYInLyricBounds(LyricRenderMetrics lyricRenderMetrics, double pointYPx) {
-        if (verseCount == 0) {
-            return false;
-        }
-
-        var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
         var baseYSs = lyricAreaBaseYSs();
         var pointYSs = ScaleContext.pxToSs(pointYPx);
 
-        return pointYSs >= baseYSs && pointYSs <= baseYSs + verseCount * rowHeightSs;
+        return pointYSs >= baseYSs && pointYSs <= baseYSs + lyricRenderMetrics.lyricBoxHeightSs();
     }
 
     // Package-private for direct unit testing of the formula.
     //
-    // Built on staffBottomYSsInLine() so the hit-test bands ride the same painted frame as the
-    // baselines LyricTextRenderer draws at. Anchoring this on contentAboveStaffSs instead put
-    // the clickable rows above the visible text on any line short enough to hit the floor.
+    // Built on staffBottomYSsInLine() so the hit-test row rides the same painted frame as the
+    // baseline LyricTextRenderer draws at. Anchoring this on contentAboveStaffSs instead put
+    // the clickable row above the visible text on any line short enough to hit the floor.
     double lyricAreaBaseYSs() {
         return staffBottomYSsInLine() + contentBelowStaffSs + LineSpacing.LYRICS_ROW_MARGIN_SS;
     }
@@ -747,19 +736,22 @@ public final class LayoutResult {
     /**
      * Returns the center-X and baseline-Y anchor for the lyric editor on {@code element}.
      * <p>
-     * Uses the verse-1 lyric box when one exists (box-anchored branch); otherwise falls back to
+     * Uses the element's lyric box when one exists (box-anchored branch); otherwise falls back to
      * the element column's horizontal center (column-anchored branch). Throws
      * {@link IllegalStateException} when neither a box nor a column is available — that indicates
      * a broken layout state, not a recoverable condition.
+     * <p>
+     * The Y is the line's single lyric baseline: the editor edits the active verse, and the active
+     * verse is what sits on that baseline.
      *
      * @param element            the element to anchor on
-     * @param lyricRenderMetrics song-wide lyric render metrics providing the verse-1 baseline Y
+     * @param lyricRenderMetrics song-wide lyric render metrics providing the lyric baseline Y
      * @return the lyric anchor for positioning the editor
      * @throws IllegalStateException if neither a lyric box nor an element column exists for the element
      */
     public LyricAnchor getLyricAnchor(StaffElement element, LyricRenderMetrics lyricRenderMetrics) {
         var boxes = getLyricBoxes(element);
-        var baselineYSs = verseYSsInLine(1, lyricRenderMetrics);
+        var baselineYSs = lyricBaselineYSsInLine(lyricRenderMetrics);
 
         if (!boxes.isEmpty()) {
             var box = boxes.getFirst();
@@ -785,13 +777,6 @@ public final class LayoutResult {
      */
     public List<LyricConnectorLayout> getLyricConnectors() {
         return lyricConnectors;
-    }
-
-    /**
-     * Returns the highest verse index present on this line, or 0 if no lyrics.
-     */
-    public int verseCount() {
-        return verseCount;
     }
 
     /**
@@ -1120,7 +1105,6 @@ public final class LayoutResult {
         private double contentBelowStaffSs = 0;
         private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
         private final List<LyricConnectorLayout> lyricConnectors;
-        private int verseCount = 0;
         private boolean hasTrailingLyricContinuation = false;
 
         public Builder() {
@@ -1204,8 +1188,8 @@ public final class LayoutResult {
         }
 
         /**
-         * Adds a lyric box for an element. Multiple boxes per element are allowed (one per verse);
-         * insertion order is preserved.
+         * Adds a lyric box for an element. One verse is laid out at a time, so an element gets at
+         * most one box; insertion order is preserved.
          *
          * @param element the element the box is anchored to
          * @param box     the lyric box layout
@@ -1224,17 +1208,6 @@ public final class LayoutResult {
          */
         public Builder addLyricConnector(LyricConnectorLayout connector) {
             lyricConnectors.add(connector);
-            return this;
-        }
-
-        /**
-         * Sets the highest verse index present on this line.
-         *
-         * @param verseCount the verse count (0 if no lyrics)
-         * @return this builder for chaining
-         */
-        public Builder setVerseCount(int verseCount) {
-            this.verseCount = verseCount;
             return this;
         }
 
@@ -1371,7 +1344,6 @@ public final class LayoutResult {
                 contentBelowStaffSs,
                 lyricBoxes,
                 lyricConnectors,
-                verseCount,
                 hasTrailingLyricContinuation
             );
         }
@@ -1544,7 +1516,7 @@ public final class LayoutResult {
      * All values are in staff-space units.
      *
      * @param centerXSs    horizontal center of the lyric box (or element column) in staff spaces
-     * @param baselineYSs  verse-1 text baseline Y in staff spaces
+     * @param baselineYSs  the line's lyric text baseline Y in staff spaces
      */
     public record LyricAnchor(double centerXSs, double baselineYSs) {}
     public record LyricHit(StaffElement element, int verse) {}

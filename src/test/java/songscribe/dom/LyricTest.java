@@ -185,8 +185,8 @@ class LyricTest extends UnitTest {
 
         LegacyLyricsImporter.importLegacyLyrics(List.of(line), "heart--garden");
 
-        var heartLyric = line.getElement(0).getMainLyric();
-        var gardenLyric = line.getElement(1).getMainLyric();
+        var heartLyric = line.getElement(0).getLyricForVerse(Lyric.FIRST_VERSE);
+        var gardenLyric = line.getElement(1).getLyricForVerse(Lyric.FIRST_VERSE);
 
         assertThat(heartLyric).isNotNull();
         assertThat(gardenLyric).isNotNull();

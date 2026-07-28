@@ -45,6 +45,7 @@ import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
@@ -245,6 +246,9 @@ public abstract class UnitTest {
         when(songMock.isMutationTrackingSuspended()).thenReturn(true);
         when(songMock.getDefaultRestLengthSs()).thenReturn(Song.DEFAULT_REST_LENGTH_SS);
         when(songMock.getLineWidthSs()).thenReturn(UNCONSTRAINED_LINE_WIDTH_SS);
+        // An unstubbed mock reports verse 0, which no lyric ever carries, so every lyric on
+        // every fixture element would read as absent to layout and to the editor.
+        when(songMock.getActiveVerse()).thenReturn(Lyric.FIRST_VERSE);
         doAnswer(inv -> { ((Runnable) inv.getArgument(0)).run(); return null; })
             .when(songMock).withModification(any(Runnable.class));
         doAnswer(inv -> { ((Runnable) inv.getArgument(1)).run(); return null; })
