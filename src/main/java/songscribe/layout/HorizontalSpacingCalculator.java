@@ -28,8 +28,11 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import songscribe.dom.KeySignature;
+import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.util.LogUtils;
 
@@ -58,7 +61,7 @@ import songscribe.util.LogUtils;
  *   <li><b>Solve</b> — {@link SpringSpacer#solve} fits the chain to the staff width, compressing
  *       each gap in proportion to its compliance and freezing it once it reaches its strut. The
  *       caller ({@link LayoutEngine}) anchors the first column at
- *       {@link #calculateFirstNoteXSs} and lays the solved gaps out from there.</li>
+ *       {@link #calculateAnchorXSs} and lays the solved gaps out from there.</li>
  * </ol>
  * <p>
  * Usage:
@@ -110,36 +113,80 @@ public class HorizontalSpacingCalculator {
      */
     public static final double BEAM_GROUP_INTERNAL_REST_FACTOR = 0.8;
     /**
-     * Distance from right extent of clef/key signature to first note column.
-     * Per Gould/Ross: provides visual separation between staff beginning and music.
+     * Calculates the X position of the first note in a line, in staff-space units.
+     *
+     * @param line The line, for its key signature
+     * @return X position in staff-space units where the first note should be placed
      */
-    public static final double FIRST_NOTE_OFFSET_SS = 3.5;  // 28px
-    /**
-     * Width of each accidental in the key signature.
-     */
-    public static final double KEY_ACCIDENTAL_WIDTH_SS = 1.0;  // 8px
+    public static double calculateFirstElementXSs(Line line) {
+        return calculateFirstElementXSs(line.getKeyType(), line.getKeyAccidentalCount());
+    }
 
     /**
      * Calculates the X position of the first note in a line, in staff-space units.
      * <p>
-     * Formula: clefWidth + keySignatureWidth + FIRST_NOTE_OFFSET
+     * LilyPond measures this from a different edge depending on what the note follows.
+     * A key signature pushes the note {@link StaffHeaderMetrics#KEY_SIGNATURE_FIRST_NOTE_GAP_SS}
+     * past its right edge; a bare clef instead sets a floor of
+     * {@link StaffHeaderMetrics#CLEF_FIRST_NOTE_SPAN_SS} on the span from the clef's <em>left</em>
+     * edge, which the clef alone does not fill.
      *
+     * @param keyType            Type of accidentals in the key signature, may be null
      * @param keyAccidentalCount Number of accidentals in the key signature
      * @return X position in staff-space units where the first note should be placed
      */
-    public static double calculateFirstElementXSs(int keyAccidentalCount) {
-        return calculateHeaderRightEdgeSs(keyAccidentalCount) + FIRST_NOTE_OFFSET_SS;
+    public static double calculateFirstElementXSs(@Nullable KeyType keyType, int keyAccidentalCount) {
+        if (KeySignature.widthSs(keyType, keyAccidentalCount) == 0) {
+            return LayoutEngine.CLEF_X_POSITION_SS
+                + Math.max(SMuFLConstants.G_CLEF_WIDTH_SS, StaffHeaderMetrics.CLEF_FIRST_NOTE_SPAN_SS);
+        }
+
+        return calculateHeaderRightEdgeSs(keyType, keyAccidentalCount)
+            + StaffHeaderMetrics.KEY_SIGNATURE_FIRST_NOTE_GAP_SS;
+    }
+
+    /**
+     * Returns the X position of the key signature's left edge, in staff-space units —
+     * one clef width past the clef, plus {@link StaffHeaderMetrics#CLEF_GAP_SS}. This is the
+     * only place that gap is applied; the {@code Clef} object does not carry it.
+     */
+    public static double calculateKeySignatureXSs() {
+        return LayoutEngine.CLEF_X_POSITION_SS
+            + SMuFLConstants.G_CLEF_WIDTH_SS
+            + StaffHeaderMetrics.CLEF_GAP_SS;
     }
 
     /**
      * Returns the X position of the right edge of the staff header
      * (clef + optional key signature), in staff-space units.
      *
+     * @param line The line, for its key signature; a null line has no key signature
+     * @return X position in staff-space units of the header's right edge
+     */
+    public static double calculateHeaderRightEdgeSs(@Nullable Line line) {
+        if (line == null) {
+            return calculateHeaderRightEdgeSs(null, 0);
+        }
+
+        return calculateHeaderRightEdgeSs(line.getKeyType(), line.getKeyAccidentalCount());
+    }
+
+    /**
+     * Returns the X position of the right edge of the staff header
+     * (clef + optional key signature), in staff-space units.
+     *
+     * @param keyType            Type of accidentals in the key signature, may be null
      * @param keyAccidentalCount Number of accidentals in the key signature
      * @return X position in staff-space units of the header's right edge
      */
-    public static double calculateHeaderRightEdgeSs(int keyAccidentalCount) {
-        return SMuFLConstants.G_CLEF_WIDTH_SS + keyAccidentalCount * KEY_ACCIDENTAL_WIDTH_SS;
+    public static double calculateHeaderRightEdgeSs(@Nullable KeyType keyType, int keyAccidentalCount) {
+        var keySignatureWidthSs = KeySignature.widthSs(keyType, keyAccidentalCount);
+
+        if (keySignatureWidthSs == 0) {
+            return LayoutEngine.CLEF_X_POSITION_SS + SMuFLConstants.G_CLEF_WIDTH_SS;
+        }
+
+        return calculateKeySignatureXSs() + keySignatureWidthSs;
     }
 
     /**
@@ -147,27 +194,12 @@ public class HorizontalSpacingCalculator {
      * (clef + optional key signature). A point exactly on the header's right edge counts
      * as inside, so this agrees with the staff-line hit region.
      *
-     * @param xSs                X position in staff-space units
-     * @param keyAccidentalCount Number of accidentals in the key signature
+     * @param xSs  X position in staff-space units
+     * @param line The line, for its key signature; a null line has no key signature
      * @return whether the X is within the header
      */
-    public static boolean isWithinHeaderXSs(double xSs, int keyAccidentalCount) {
-        return xSs <= calculateHeaderRightEdgeSs(keyAccidentalCount);
-    }
-
-    // ==========================================================================
-    // First Note Positioning
-    // ==========================================================================
-
-    /**
-     * Calculates the X position of the first note in a line — the anchor the solved spring chain
-     * grows from.
-     *
-     * @param line The line (for key signature info)
-     * @return X position in ss
-     */
-    public static double calculateFirstNoteXSs(Line line) {
-        return calculateFirstElementXSs(line.getKeyAccidentalCount());
+    public static boolean isWithinHeaderXSs(double xSs, @Nullable Line line) {
+        return xSs <= calculateHeaderRightEdgeSs(line);
     }
 
     // ==========================================================================
@@ -395,19 +427,25 @@ public class HorizontalSpacingCalculator {
     }
 
     /**
-     * Returns the X the solved spring chain grows from: the first column's left edge pinned
-     * {@link #FIRST_NOTE_OFFSET_SS} past the header. When the first column bears a wide syllable
-     * that would overhang left of the note glyph and crowd the clef/key signature, the origin is
-     * pushed right so the syllable's left edge keeps the same separation from the header the note
-     * glyph gets. Lyrics center on the notehead center, so the syllable's left edge sits at
-     * {@code origin + rightExtentExclAug/2 − syllableWidth/2} (refs #330).
+     * Returns the X the solved spring chain grows from: the notehead's left edge pinned at
+     * {@link #calculateFirstElementXSs(Line)}.
+     * <p>
+     * An accidental does not move the notehead. LilyPond measures this distance to the note
+     * column's reference point, which is the notehead's left edge, and lets the accidental hang
+     * left of it into the gap; the accidental reaches the spacing only through
+     * {@code Paper_column::minimum_distance}, a collision floor that cannot bind at the gaps
+     * {@link StaffHeaderMetrics} leaves here (refs #684, reverses #121).
+     * <p>
+     * A wide first syllable does still push the origin right, so the lyric does not crowd the
+     * clef or key signature. Lyrics center on the notehead center, so the syllable's left edge
+     * sits at {@code origin + rightExtentExclAug/2 − syllableWidth/2} (refs #330).
      */
     public static double calculateAnchorXSs(ElementColumn firstColumn, Line line) {
-        var firstXSs = calculateFirstNoteXSs(line) - firstColumn.getLeftExtentSs();
+        var firstElementXSs = calculateFirstElementXSs(line);
+        var firstXSs = firstElementXSs;
 
         if (firstColumn.hasSyllable()) {
-            var syllableAnchorXSs = calculateHeaderRightEdgeSs(line.getKeyAccidentalCount())
-                + FIRST_NOTE_OFFSET_SS
+            var syllableAnchorXSs = firstElementXSs
                 - firstColumn.getRightExtentExcludingAugmentationSs() / 2
                 + firstColumn.getSyllableWidthSs() / 2;
             firstXSs = Math.max(firstXSs, syllableAnchorXSs);

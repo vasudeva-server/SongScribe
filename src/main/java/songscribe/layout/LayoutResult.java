@@ -953,7 +953,7 @@ public final class LayoutResult {
 
         // Empty line - use first element position (clef + key signature + offset)
         if (elementCount == 0) {
-            return HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            return HorizontalSpacingCalculator.calculateFirstElementXSs(line);
         }
 
         // Check if mouse is over any element head - if so, snap to that element's position.
@@ -993,7 +993,7 @@ public final class LayoutResult {
             var firstColumn = elementColumns.get(firstElement);
 
             if (firstColumn == null) {
-                return HorizontalSpacingCalculator.FIRST_NOTE_OFFSET_SS;
+                return HorizontalSpacingCalculator.calculateFirstElementXSs(line);
             }
 
             return firstColumn.getXSs() - PREVIEW_BEFORE_FIRST_OFFSET_SS;
@@ -1005,7 +1005,7 @@ public final class LayoutResult {
             var lastColumn = elementColumns.get(lastElement);
 
             if (lastColumn == null) {
-                return HorizontalSpacingCalculator.FIRST_NOTE_OFFSET_SS;
+                return HorizontalSpacingCalculator.calculateFirstElementXSs(line);
             }
 
             // Build a temporary column for the preview element to calculate proper spacing
@@ -1073,7 +1073,7 @@ public final class LayoutResult {
         var currColumn = elementColumns.get(currElement);
 
         if (prevColumn == null || currColumn == null) {
-            return HorizontalSpacingCalculator.FIRST_NOTE_OFFSET_SS;
+            return HorizontalSpacingCalculator.calculateFirstElementXSs(line);
         }
 
         return (prevColumn.getXSs() + currColumn.getXSs()) / 2.0;

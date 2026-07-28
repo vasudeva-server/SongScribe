@@ -20,7 +20,9 @@
 
 package songscribe.dom;
 
+import org.jspecify.annotations.Nullable;
 
+import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
@@ -59,9 +61,6 @@ public class KeySignature extends LineElement {
     public KeySignature(KeyType keyType, int accidentalCount) {
         this.keyType = keyType;
         this.accidentalCount = Math.clamp(accidentalCount, 0, MAX_ACCIDENTAL_COUNT);
-
-        // Default margin from key signature to first note
-        setMarginRightSs(1.0);
     }
 
     /**
@@ -103,11 +102,23 @@ public class KeySignature extends LineElement {
 
     @Override
     public double getContentWidthSs() {
-        if (!hasAccidentals()) {
+        return widthSs(keyType, accidentalCount);
+    }
+
+    /**
+     * Returns the width of a key signature with the given type and accidental count,
+     * in staff-space units. Zero when there is nothing to draw — a null or
+     * {@link KeyType#NONE} type, or a count that is not positive.
+     *
+     * @param keyType         Type of accidentals, may be null
+     * @param accidentalCount Number of accidentals
+     */
+    public static double widthSs(@Nullable KeyType keyType, int accidentalCount) {
+        if (keyType == null || keyType == KeyType.NONE || accidentalCount <= 0) {
             return 0;
         }
 
-        return accidentalCount * SMuFLMetadata.requireBBox(accidentalGlyph()).width();
+        return accidentalCount * StaffHeaderMetrics.accidentalInkBboxSs(accidentalGlyph(keyType));
     }
 
     @Override
@@ -125,7 +136,7 @@ public class KeySignature extends LineElement {
             return 0;
         }
 
-        return SMuFLMetadata.requireBBox(accidentalGlyph()).height();
+        return SMuFLMetadata.requireBBox(accidentalGlyph(keyType)).height();
     }
 
     @Override
@@ -133,7 +144,10 @@ public class KeySignature extends LineElement {
         return ScaleContext.ssToPx(getContentHeightSs());
     }
 
-    private SMuFLGlyph accidentalGlyph() {
+    /**
+     * Returns the accidental glyph a key signature of the given type is drawn with.
+     */
+    private static SMuFLGlyph accidentalGlyph(KeyType keyType) {
         return keyType == KeyType.FLATS ? SMuFLGlyph.ACCIDENTAL_FLAT : SMuFLGlyph.ACCIDENTAL_SHARP;
     }
 }

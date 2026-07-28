@@ -71,7 +71,7 @@ class InsertionMarkerOverlayTest extends UnitTest {
      * matches the marker's computation regardless of which empty line or index is under test.
      */
     private static double expectedCenterXSs(Line domLine) {
-        var baseXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(domLine.getKeyAccidentalCount());
+        var baseXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(domLine);
         return baseXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
     }
 

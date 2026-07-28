@@ -932,21 +932,24 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     }
 
     /**
-     * The anchor places the first column's leftmost glyph — not its origin — at the first-note
-     * offset, so an accidental pushes the origin right instead of crowding the key signature
-     * (refs #121).
+     * The anchor places the first column's origin — the notehead's left edge — at the first-note
+     * offset, and an accidental does not move it. LilyPond measures to the note column's reference
+     * point and lets the accidental hang left of it into the gap the header leaves
+     * (refs #684, reverses #121).
      */
     @Test
-    void testAnchorPlacesFirstColumnLeftEdgeAtFirstNoteOffset() {
+    void testAnchorPlacesTheFirstNoteheadAtTheFirstNoteOffsetDespiteAnAccidental() {
         var line = detachedLine();
         var accidentalColumn = column(
             ElementType.CROTCHET, WIDE_GLYPH_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS, null, 0.0, false);
 
-        var anchorXSs = HorizontalSpacingCalculator.calculateAnchorXSs(accidentalColumn, line);
+        assertThat(accidentalColumn.getLeftExtentSs())
+            .as("the fixture must actually carry a glyph left of the notehead")
+            .isNegative();
 
-        assertThat(anchorXSs + accidentalColumn.getLeftExtentSs())
-            .as("the column's left edge, accidental included, sits at the first-note offset")
-            .isCloseTo(HorizontalSpacingCalculator.calculateFirstNoteXSs(line), within(TOLERANCE));
+        assertThat(HorizontalSpacingCalculator.calculateAnchorXSs(accidentalColumn, line))
+            .as("the notehead's left edge sits at the first-note offset, accidental or not")
+            .isCloseTo(HorizontalSpacingCalculator.calculateFirstElementXSs(line), within(TOLERANCE));
     }
 
     /**

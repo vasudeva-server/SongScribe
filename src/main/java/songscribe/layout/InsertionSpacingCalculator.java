@@ -329,7 +329,7 @@ public final class InsertionSpacingCalculator {
         double insertedElementXSs;
 
         if (splicedIndex == 0) {
-            insertedElementXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            insertedElementXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
         } else {
             var prevElement = columns.get(splicedIndex - 1).getElement();
             insertedElementXSs = elementXSs(prevElement, layout) + springs.get(splicedIndex - 1).naturalLengthSs();
@@ -537,7 +537,7 @@ public final class InsertionSpacingCalculator {
         double cloneXSs;
 
         if (fragmentStart == 0) {
-            cloneXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            cloneXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
         } else {
             var predecessor = columns.get(fragmentStart - 1).getElement();
             cloneXSs = elementXSs(predecessor, layout) + springs.get(fragmentStart - 1).naturalLengthSs();

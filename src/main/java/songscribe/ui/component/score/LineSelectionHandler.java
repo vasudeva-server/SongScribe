@@ -525,9 +525,7 @@ class LineSelectionHandler {
      * staff lines.
      */
     private boolean isWithinHeaderXSs(double xSs) {
-        var line = lc.getLine();
-        var keyAccidentalCount = line != null ? line.getKeyAccidentalCount() : 0;
-        return HorizontalSpacingCalculator.isWithinHeaderXSs(xSs, keyAccidentalCount);
+        return HorizontalSpacingCalculator.isWithinHeaderXSs(xSs, lc.getLine());
     }
 
     private void buildElementHitRect(StaffElement element, Rectangle2D.Double out) {

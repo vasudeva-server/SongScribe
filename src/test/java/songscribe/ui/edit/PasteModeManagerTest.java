@@ -35,6 +35,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
@@ -73,6 +74,7 @@ class PasteModeManagerTest extends UnitTest {
 
     // A line with no key-signature accidentals and an arbitrary width wide enough to hold
     // several insertion points, shared by every target-tracking fixture below.
+    private static final KeyType KEY_TYPE = KeyType.NONE;
     private static final int KEY_ACCIDENTAL_COUNT = 0;
     private static final double LINE_WIDTH_SS = 200.0;
 
@@ -610,7 +612,7 @@ class PasteModeManagerTest extends UnitTest {
 
     /** The left edge, in staff spaces, of the insertable content span used by {@link #lineStub()}. */
     private static double contentLeftSs() {
-        return HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(KEY_ACCIDENTAL_COUNT);
+        return HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(KEY_TYPE, KEY_ACCIDENTAL_COUNT);
     }
 
     /** A view-pixel x that lands inside the content span (header right edge .. line width). */

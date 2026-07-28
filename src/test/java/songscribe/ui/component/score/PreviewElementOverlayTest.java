@@ -241,7 +241,7 @@ class PreviewElementOverlayTest extends UnitTest {
                 throw new AssertionError("test setup did not attach a line");
             }
 
-            var calculatedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(domLine.getKeyAccidentalCount());
+            var calculatedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(domLine);
 
             assertThat(graceBounds.getMinX() - nonGraceBounds.getMinX())
                 .as("switching to grace mode shifts the ink by exactly (lockedX - calculatedX)")

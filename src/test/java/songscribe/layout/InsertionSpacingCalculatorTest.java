@@ -342,7 +342,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         void testInsertAtIndexZeroReturnsFirstElementX() {
             // Row 39: inserted element at index 0 must land at calculateFirstElementXSs.
             var line = lineWithCrotchets(1);
-            var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
 
             var result = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 0, null, null);
 
@@ -356,7 +356,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // the exact (un-rounded) first-element X, and existingFirstXSs is the px-rounded
             // X stored when lineWithCrotchets placed the crotchet.
             var line = lineWithCrotchets(1);
-            var insertedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            var insertedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
             var existingElement = line.getElement(0);
             var existingXSs = ScaleContext.pxToSs(existingElement.getXOffsetPx());
             // Build a lightweight column for the inserted crotchet at the exact first-element X.
@@ -378,7 +378,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // Row 35: when the line is empty, calculateAppendPositionSs must equal
             // calculateFirstElementXSs for the line's key-accidental count.
             var line = lineWithCrotchets(0);
-            var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
             var actualXSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, crotchet(), null, null);
             assertThat(actualXSs).isEqualTo(expectedXSs);
         }
@@ -516,7 +516,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         private static Line lineWithWidelySpacedCrotchets(double secondElementXSs) {
             var line = detachedLine();
             var first = crotchet();
-            var firstXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            var firstXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
             first.setXOffsetPx(ScaleContext.ssToRoundedPx(firstXSs));
             line.addElement(first);
 
@@ -531,8 +531,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         void testMidInsertionShiftIsZeroWhenExistingGapIsAlreadyWide() {
             // Row 40 (negative clamp case): if prevElement and nextElement are far apart,
             // the raw required shift is negative; max(0, required) must clamp it to 0.
-            var firstXSs = HorizontalSpacingCalculator
-                .calculateFirstElementXSs(0);  // no key accidentals
+            var firstXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(detachedLine());
             // Place the second crotchet very far right — far beyond where any inserted element
             // + its neighbour spacing would land.
             var largeGapSs = 50.0;
@@ -995,7 +994,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(line, fragment, 0, null, null, null);
 
-            var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
             assertThat(result.cloneXPositionsSs().get(0)).isEqualTo(expectedXSs);
         }
 
@@ -1187,7 +1186,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         void testPureInsertionShiftNeverNegativeEvenWhenGapIsAlreadyWide() {
             // Companion to the paste-replace negative-shift test above: with deleteRange == null,
             // Math.max(0, shiftSs) must clamp even a negative raw required shift to zero.
-            var firstXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(0);  // no key accidentals
+            var firstXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(detachedLine());
             var largeGapSs = 50.0;
             var secondElementXSs = firstXSs + largeGapSs;
             var line = widelySpacedTwoCrotchetLine(secondElementXSs);
@@ -1284,7 +1283,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         private static Line widelySpacedTwoCrotchetLine(double secondElementXSs) {
             var line = detachedLine();
             var first = crotchet();
-            var firstXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+            var firstXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
             first.setXOffsetPx(ScaleContext.ssToRoundedPx(firstXSs));
             line.addElement(first);
 

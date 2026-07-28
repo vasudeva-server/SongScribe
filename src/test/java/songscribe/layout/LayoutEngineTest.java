@@ -36,7 +36,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Attribution;
 import songscribe.dom.Beam;
-import songscribe.dom.Clef;
 import songscribe.dom.Line;
 import songscribe.dom.Tie;
 import songscribe.font.DocumentFonts;
@@ -320,11 +319,8 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var keySig = require(result.getKeySignature(), "KeySignature");
 
-        var expectedXSs = LayoutEngine.CLEF_X_POSITION_SS
-            + SMuFLConstants.G_CLEF_WIDTH_SS
-            + new Clef().getMarginRightSs();
-
-        assertThat(keySig.getXSs()).isCloseTo(expectedXSs, within(TOLERANCE));
+        assertThat(keySig.getXSs())
+            .isCloseTo(HorizontalSpacingCalculator.calculateKeySignatureXSs(), within(TOLERANCE));
         assertThat(keySig.getKeyType()).isEqualTo(KeyType.SHARPS);
         assertThat(keySig.getAccidentalCount()).isEqualTo(3);
     }
@@ -367,7 +363,7 @@ class LayoutEngineTest extends UnitTest {
 
         var result = require(engine().layout(line, false), "LayoutResult");
         // The barline is the only column; it gets the first-element position from the spacing calculator.
-        var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+        var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
 
         assertThat(result.getElementXSs(finalBarline)).isCloseTo(expectedXSs, within(TOLERANCE));
     }

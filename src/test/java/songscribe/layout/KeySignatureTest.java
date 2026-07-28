@@ -104,6 +104,18 @@ class KeySignatureTest extends UnitTest {
             assertThat(keySig.getContentWidthSs()).isZero();
             assertThat(keySig.getContentHeightSs()).isZero();
         }
+
+        @Test
+        void testWidthOfANegativeAccidentalCountIsZero() {
+            // The static width is read straight off a Line's raw accidental count, which no
+            // clamp protects. A negative width would place the first note left of the clef.
+            assertThat(KeySignature.widthSs(KeyType.SHARPS, BELOW_MIN_ACCIDENTAL_COUNT)).isZero();
+        }
+
+        @Test
+        void testWidthOfANullKeyTypeIsZero() {
+            assertThat(KeySignature.widthSs(null, KeySignature.MAX_ACCIDENTAL_COUNT)).isZero();
+        }
     }
 
     // -----------------------------------------------------------------------

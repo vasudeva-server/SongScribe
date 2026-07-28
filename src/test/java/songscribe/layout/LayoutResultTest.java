@@ -557,7 +557,7 @@ class LayoutResultTest extends UnitTest {
         var preview = ElementType.CROTCHET.newInstance();
         var result = LayoutResult.builder().build();
 
-        var expected = HorizontalSpacingCalculator.calculateFirstElementXSs(line.getKeyAccidentalCount());
+        var expected = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
 
         assertThat(result.calculateInsertionXSs(0, MOUSE_BEFORE_FIRST_SS, preview, line, false))
             .isCloseTo(expected, within(TOLERANCE));

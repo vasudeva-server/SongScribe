@@ -223,12 +223,12 @@ class LyricEditFitCalculatorTest extends UnitTest {
 
     /**
      * The {@code spring-spacing-infeasible-lyric} fixture is a golden case whose last (lyric-less)
-     * note sits exactly at the edge of the staff margin once the preceding lyric-heavy syllables
-     * ("Boundlessness", "really", "long", "lyrics") have claimed their spacing. Giving that last
-     * note a one-character lyric must still fit; giving it more than one character must not.
+     * note sits close to the edge of the staff margin once the preceding lyric-heavy syllables
+     * ("Boundlessness", "really", "long", "lyrics") have claimed their spacing. Two characters on
+     * that last note still fit; three do not.
      */
     @Test
-    void testLastNoteRejectsMultiCharacterLyricOnTightLine() throws Exception {
+    void testLastNoteRejectsAThreeCharacterLyricOnTightLine() throws Exception {
         var result = MusicXmlReader.read(musicXmlFixtureFile("spring-spacing-infeasible-lyric"));
         var song = result.song();
         var lyricsFont = result.fonts().getLyricsFont();
@@ -238,15 +238,15 @@ class LyricEditFitCalculatorTest extends UnitTest {
         var staffRightMarginSs = song.getLineWidthSs();
 
         assertThat(LyricEditFitCalculator.lyricEditFits(
-            line, lastNoteIndex, candidate("a", Lyric.Syllabic.SINGLE, false, Lyric.Extend.NONE),
+            line, lastNoteIndex, candidate("ab", Lyric.Syllabic.SINGLE, false, Lyric.Extend.NONE),
             lyricRenderMetrics, staffRightMarginSs))
-            .as("a single-character lyric on the last note must still fit")
+            .as("a two-character lyric on the last note must still fit")
             .isTrue();
 
         assertThat(LyricEditFitCalculator.lyricEditFits(
-            line, lastNoteIndex, candidate("ab", Lyric.Syllabic.SINGLE, false, Lyric.Extend.NONE),
+            line, lastNoteIndex, candidate("abc", Lyric.Syllabic.SINGLE, false, Lyric.Extend.NONE),
             lyricRenderMetrics, staffRightMarginSs))
-            .as("a two-character lyric on the last note must be refused")
+            .as("a three-character lyric on the last note must be refused")
             .isFalse();
     }
 

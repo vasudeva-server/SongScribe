@@ -381,7 +381,7 @@ public final class PasteModeManager {
 
         // Nothing can be inserted into the staff header or past the staff's right edge,
         // so outside that span there is no insertion point to show.
-        if (HorizontalSpacingCalculator.isWithinHeaderXSs(mouseXSs, line.getKeyAccidentalCount())
+        if (HorizontalSpacingCalculator.isWithinHeaderXSs(mouseXSs, line)
             || mouseXSs > line.getSong().getLineWidthSs()) {
             clearTarget();
             return;

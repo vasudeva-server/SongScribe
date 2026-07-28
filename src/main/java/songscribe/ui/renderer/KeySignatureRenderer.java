@@ -25,12 +25,16 @@ import static songscribe.util.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.dom.KeySignature;
+import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.engraving.Staff;
 import songscribe.util.GraphicsState;
 
@@ -64,14 +68,19 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
         SHARP_STAFF_POSITIONS
     };
 
-    // Horizontal spacing between accidentals, in staff-space units
-    private static final double ACCIDENTAL_SPACING_SS = 1.125;  // 9px / 8 px/ss
+    // Right margin for key change from line end, in staff-space units.
+    // Package-private so KeySignatureRendererTest can assert against it rather than copy it.
+    static final double KEY_CHANGE_RIGHT_MARGIN_SS = 0.625;  // 5px / 8 px/ss
 
-    // Spacing used in key change rendering (slightly tighter), in staff-space units
-    private static final double KEY_CHANGE_SPACING_SS = 1.0;  // 8px / 8 px/ss
-
-    // Right margin for key change from line end, in staff-space units
-    private static final double KEY_CHANGE_RIGHT_MARGIN_SS = 0.625;  // 5px / 8 px/ss
+    /**
+     * One accidental of a key signature, ready to be laid out.
+     *
+     * @param glyph           the glyph to draw
+     * @param staffPositionSp staff position relative to the middle line
+     * @param leadingGapSs    extra space in front of this accidental, separating it from
+     *                        the group to its left
+     */
+    private record DrawnAccidental(SMuFLGlyph glyph, int staffPositionSp, double leadingGapSs) {}
 
     // Singleton instance
     private static final KeySignatureRenderer INSTANCE = new KeySignatureRenderer();
@@ -131,15 +140,17 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
                 staffPositions = SHARP_STAFF_POSITIONS;
             }
 
-            // Draw each accidental
+            // Draw each accidental. Sharps and flats need no kerning, so each simply
+            // advances by its own glyph width.
             var glyphStr = glyph.asString();
+            var advanceSs = StaffHeaderMetrics.accidentalInkBboxSs(glyph);
 
             for (var i = 0; i < accidentalCount; i++) {
-                var staffPosition = staffPositions[i % 7];
+                var staffPosition = staffPositions[i % KeySignature.MAX_ACCIDENTAL_COUNT];
                 var y = middleLineYSs + Staff.spToSs(staffPosition);
 
                 g2.drawString(glyphStr, (float) xPosSs, (float) y);
-                xPosSs += ACCIDENTAL_SPACING_SS;
+                xPosSs += advanceSs;
             }
         }
     }
@@ -227,54 +238,123 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
         double lineWidth,
         LineInvariants invariants
     ) {
+        var accidentals = collectAccidentals(keyTypes, accidentalCounts, startingOffsets, isNaturals);
+
+        if (accidentals.isEmpty()) {
+            return;
+        }
+
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
             g2.setColor(RenderingUtils.ELEMENT_COLOR);
 
             var middleLineYSs = invariants.getMiddleLineYSs();
 
-            // Calculate starting X position (right-aligned with margin)
-            var xPosSs = lineWidth - KEY_CHANGE_RIGHT_MARGIN_SS;
+            // Right-align the whole run against the line end, less the margin.
+            var xPosSs = lineWidth - KEY_CHANGE_RIGHT_MARGIN_SS - totalWidthSs(accidentals);
 
-            // Calculate total width needed
-            for (var count : accidentalCounts) {
-                xPosSs -= count * KEY_CHANGE_SPACING_SS;
-            }
+            for (var i = 0; i < accidentals.size(); i++) {
+                var accidental = accidentals.get(i);
+                var y = middleLineYSs + Staff.spToSs(accidental.staffPositionSp());
 
-            // Render each key signature group
-            for (var kt = 0; kt < keyTypes.length; kt++) {
-                var keyType = keyTypes[kt];
-
-                if (keyType == null) {
-                    break;
-                }
-
-                var keyTypeOrdinal = keyType.ordinal();
-
-                if (keyTypeOrdinal == 0) {
-                    // NONE - skip
-                    continue;
-                }
-
-                var staffPositions = KEY_STAFF_POSITIONS[keyTypeOrdinal];
-                var glyph = isNaturals[kt] ? NATURAL_GLYPH : getGlyphForKeyType(keyType);
-                var glyphStr = glyph.asString();
-
-                for (var i = 0; i < accidentalCounts[kt]; i++) {
-                    var staffPosition = staffPositions[(i + startingOffsets[kt]) % 7];
-                    var y = middleLineYSs + Staff.spToSs(staffPosition);
-
-                    g2.drawString(glyphStr, (float) xPosSs, (float) y);
-                    xPosSs += KEY_CHANGE_SPACING_SS;
-                }
+                xPosSs += accidental.leadingGapSs();
+                g2.drawString(accidental.glyph().asString(), (float) xPosSs, (float) y);
+                xPosSs += advanceSs(accidentals, i);
             }
         }
     }
 
     /**
+     * Flattens the key signature groups into the accidentals to draw, left to right,
+     * separating consecutive groups by the gap LilyPond gives their order — see
+     * {@link StaffHeaderMetrics#CANCELLATION_TO_KEY_GAP_SS} and
+     * {@link StaffHeaderMetrics#KEY_TO_CANCELLATION_GAP_SS}.
+     */
+    private static List<DrawnAccidental> collectAccidentals(
+        @Nullable KeyType [] keyTypes,
+        int [] accidentalCounts,
+        int [] startingOffsets,
+        boolean [] isNaturals
+    ) {
+        var accidentals = new ArrayList<DrawnAccidental>();
+
+        for (var groupIndex = 0; groupIndex < keyTypes.length; groupIndex++) {
+            var keyType = keyTypes[groupIndex];
+
+            if (keyType == null) {
+                break;
+            }
+
+            if (keyType == KeyType.NONE) {
+                continue;
+            }
+
+            var staffPositions = KEY_STAFF_POSITIONS[keyType.ordinal()];
+            var isNatural = isNaturals[groupIndex];
+            var glyph = isNatural ? NATURAL_GLYPH : getGlyphForKeyType(keyType);
+            // Only the first accidental of a group that follows another group is pushed
+            // away; within a group the glyphs nest with no gap. LilyPond's tables give the
+            // two possible orders different gaps, so which one applies depends on whether
+            // this group is the cancellation or the key signature.
+            var groupGapSs = 0.0;
+
+            if (!accidentals.isEmpty()) {
+                groupGapSs = isNatural
+                    ? StaffHeaderMetrics.KEY_TO_CANCELLATION_GAP_SS
+                    : StaffHeaderMetrics.CANCELLATION_TO_KEY_GAP_SS;
+            }
+
+            for (var i = 0; i < accidentalCounts[groupIndex]; i++) {
+                var staffPosition =
+                    staffPositions[(i + startingOffsets[groupIndex]) % KeySignature.MAX_ACCIDENTAL_COUNT];
+                accidentals.add(new DrawnAccidental(glyph, staffPosition, i == 0 ? groupGapSs : 0));
+            }
+        }
+
+        return accidentals;
+    }
+
+    /**
+     * Returns how far the pen advances after drawing the accidental at {@code index},
+     * including the kerning a natural needs to clear the accidental to its right.
+     * <p>
+     * Kerning stays within a group: LilyPond computes it per key signature object, and
+     * the gap that separates two groups already holds them apart.
+     */
+    private static double advanceSs(List<DrawnAccidental> accidentals, int index) {
+        var accidental = accidentals.get(index);
+        var advanceSs = StaffHeaderMetrics.accidentalInkBboxSs(accidental.glyph());
+        var isLast = index == accidentals.size() - 1;
+
+        if (isLast || accidental.glyph() != NATURAL_GLYPH) {
+            return advanceSs;
+        }
+
+        var next = accidentals.get(index + 1);
+
+        if (next.leadingGapSs() != 0) {
+            return advanceSs;
+        }
+
+        return advanceSs
+            + StaffHeaderMetrics.naturalKerningSs(accidental.staffPositionSp(), next.staffPositionSp());
+    }
+
+    /** Returns the total width of the laid-out accidentals, in staff-space units. */
+    private static double totalWidthSs(List<DrawnAccidental> accidentals) {
+        var widthSs = 0.0;
+
+        for (var i = 0; i < accidentals.size(); i++) {
+            widthSs += accidentals.get(i).leadingGapSs() + advanceSs(accidentals, i);
+        }
+
+        return widthSs;
+    }
+
+    /**
      * Returns the glyph for the given key type.
      */
-    SMuFLGlyph getGlyphForKeyType(KeyType keyType) {
+    static SMuFLGlyph getGlyphForKeyType(KeyType keyType) {
         return switch (keyType) {
             case FLATS -> FLAT_GLYPH;
             case SHARPS -> SHARP_GLYPH;

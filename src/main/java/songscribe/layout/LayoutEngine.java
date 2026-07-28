@@ -1106,9 +1106,9 @@ public class LayoutEngine {
     /**
      * Creates the clef and key signature header elements and stores them in the builder.
      * <p>
-     * The clef is placed at {@link #CLEF_X_POSITION_SS}. The key signature
-     * is placed immediately to the right of the clef, accounting for the clef's advance width
-     * and right margin.
+     * The clef is placed at {@link #CLEF_X_POSITION_SS}. The key signature follows at
+     * {@link HorizontalSpacingCalculator#calculateKeySignatureXSs()}, one clef width plus
+     * LilyPond's clef-to-key-signature gap further right.
      */
     private static void createHeaderElements(Line line, LayoutResult.Builder builder) {
         var clef = new Clef();
@@ -1117,10 +1117,7 @@ public class LayoutEngine {
         var rawKeyType = line.getKeyType();
         var keyType = rawKeyType != null ? rawKeyType : KeyType.NONE;
         var keySig = new KeySignature(keyType, line.getKeyAccidentalCount());
-        var keySigXSs = CLEF_X_POSITION_SS
-            + SMuFLConstants.G_CLEF_WIDTH_SS
-            + clef.getMarginRightSs();
-        keySig.setPosition(keySigXSs, 0);
+        keySig.setPosition(HorizontalSpacingCalculator.calculateKeySignatureXSs(), 0);
         builder.setKeySignature(keySig);
     }
 

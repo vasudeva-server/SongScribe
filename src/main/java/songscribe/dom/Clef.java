@@ -27,7 +27,8 @@ import songscribe.smufl.SMuFLMetadata;
  * Represents the treble clef at the start of a staff line.
  * <p>
  * The Clef is positioned absolutely at the line start and does not contribute
- * to Staff's bounds. It has its own margin for spacing from KeySignature.
+ * to Staff's bounds. The gap from here to the key signature belongs to the layout,
+ * not to this object — see {@code StaffHeaderMetrics.CLEF_GAP_SS}.
  * <p>
  * Note: This application only uses treble clef.
  */
@@ -43,14 +44,6 @@ public class Clef extends LineElement {
         var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.G_CLEF);
         CONTENT_WIDTH_SS = bbox.width();
         CONTENT_HEIGHT_SS = bbox.height();
-    }
-
-    /**
-     * Creates a clef with dimensions derived from SMuFL metadata.
-     */
-    public Clef() {
-        // Default margin from clef to key signature
-        setMarginRightSs(0.5);
     }
 
     @Override
