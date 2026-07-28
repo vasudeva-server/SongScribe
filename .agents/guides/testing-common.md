@@ -158,7 +158,8 @@ mutable fixture across its tests — see [Fixture Ordering](#fixture-ordering).
 **`UnitTest`** (`src/test/java/songscribe/UnitTest.java`) — extend for all unit
 tests. Suppresses modal dialogs and provides shared helpers:
 
-- `loadFixture(name)` — parse `src/test/resources/fixtures/{name}.mssw` into a `Song`
+- `loadFixture(name)` — load `src/test/resources/fixtures/{name}` into a `Song`, preferring
+  a `.musicxml` fixture over a `.mssw` fixture of the same name (see [Fixtures](#fixtures))
 - `roundTrip(song)` — serialize a `Song` and reparse it, for save/load fidelity tests
 - `minimalSongMock()` / `detachedLine()` — a `Song` mock (mutation tracking
   suspended) and a `Line` backed by one, for model tests that don't need the UI
@@ -178,6 +179,29 @@ must not re-declare it. See [E2E Test Guide](./testing-e2e.md).
 - `@Nested` classes: name for the condition they group, without a `test*`
   prefix (e.g., `WhenSelectionEmpty`). Use a `@Nested` class only when there are
   multiple related tests to group — never wrap a single test method.
+
+## Fixtures
+
+Fixture files live in `src/test/resources/fixtures/`. Always write a new fixture in
+`.musicxml` format — the current storage format. The only exception is a test whose
+subject is the legacy `.mssw` reader or the format migration itself; only that kind of
+test should add or use a `.mssw` fixture (see [AGENTS.md](../../AGENTS.md)).
+`UnitTest.loadFixture` / `E2ETest.loadFixture` prefer a `.musicxml` fixture over a
+`.mssw` fixture of the same name, so the pre-existing `.mssw` fixtures that predate the
+format switch keep loading unchanged.
+
+### Don't build state by inserting into an empty score in E2E tests
+
+In an E2E test, do not use real clicks to insert the first note into an empty song. The
+song's initial tempo anchors on the first element, so inserting it raises the automatic
+tempo prompt (`TempoChangeDialog`) — a modal dialog that swallows every click after it,
+leaving the test stuck rather than failing cleanly.
+
+Prefer one of the existing disk-based fixtures (`loadFixture(name)`) for a non-empty
+starting state. If none fits, create a new `.musicxml` fixture whose first note already
+carries a tempo, so nothing prompts. Only the behavior actually under test should go
+through the real click pipeline. See `AccidentalContextTest.loadFlattenedThenInheritingLine`
+for a worked example.
 
 ## Fixture Ordering
 

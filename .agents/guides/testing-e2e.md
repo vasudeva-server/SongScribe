@@ -108,6 +108,10 @@ assertThat(song().getLine(0).elementCount()).isEqualTo(1);
 
 Even when setting up initial state (not the feature under test), use real clicks to insert notes. This ensures the full event handling pipeline runs, keeping layout, selection state, and rendering caches consistent.
 
+**Exception: don't insert the first note of an empty song this way.** See
+[Fixtures](./testing-common.md#fixtures) in the common testing guide — it raises a modal
+tempo prompt that swallows subsequent clicks. Load a disk-based fixture instead.
+
 ```java
 // Good — uses the same pipeline as the user
 private void buildTwoQuarterNotes() {
