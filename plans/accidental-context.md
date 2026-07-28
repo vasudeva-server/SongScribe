@@ -197,7 +197,7 @@ phase status and task detail.
 | | |
 | --- | --- |
 | **#675** — resolver scope | **Done.** Barline/repeat barrier, tie escape, isolated traversal seam, `keyInEffectAt` as a no-op. Landed in `bcc46191` on `676-paste-into-line`. |
-| **#676** — reconcile across edits | **Code complete, unverified.** The shared unit, the `Fragment` reshape, all five call sites and the modification fit gate landed in `bcc46191`. Manual verification, tests and documentation are outstanding. |
+| **#676** — reconcile across edits | **Done.** The shared unit, the `Fragment` reshape, all five call sites, the modification fit gate, manual verification, `AccidentalReconciliationTest`/`AccidentalMaterializerTest`/`AccidentalContextTest` and the additions to `InsertionSpacingCalculatorTest` and `FragmentTest`, and the `docs/clipboard.md` documentation are all in — Phases 1–12 of [`accidental-context-implementation.md`](accidental-context-implementation.md) are complete. |
 | Paste-mode lockout | **Done.** No issue of its own — a defect in what had just landed on this branch. |
 
 One correction to the design above, found during manual verification. **The rule as written is

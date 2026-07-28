@@ -36,6 +36,7 @@ import java.util.List;
 import java.util.function.ToDoubleFunction;
 
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -49,6 +50,14 @@ import songscribe.dom.StaffElement;
 import songscribe.font.DocumentFonts;
 
 class InsertionSpacingCalculatorTest extends UnitTest {
+
+    // Column extents include accidental width, and NoteGeometry exits the process rather than
+    // guessing when its width tables are unpopulated. Only the accidental cases below reach that
+    // code, but the tables are process-wide, so they are filled once for the whole class.
+    @BeforeAll
+    static void initializeNoteGeometry() {
+        NoteGeometry.initializeAccidentalWidths();
+    }
 
     /** A line width wide enough that any insertion or fall comfortably fits. */
     private static final double WIDE_LINE_SS = 500;
@@ -1385,6 +1394,116 @@ class InsertionSpacingCalculatorTest extends UnitTest {
                         line, fragment, insertIndex, deleteRange, null, null))
                     .withMessage(expectedMessage);
             }
+        }
+    }
+
+    /**
+     * The in-place modification gate: an edit that changes no element count but widens columns —
+     * an accidental materialized onto a selection, a dot added — still has to fit the line.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class CalculateModification {
+
+        private static final int MODIFICATION_LINE_ELEMENT_COUNT = 5;
+
+        /** The element the projection sharpens — a middle column, so its left extent grows a gap. */
+        private static final int SHARPENED_INDEX = 2;
+
+        /**
+         * The narrowest margin the projected chain can still be solved within: every gap frozen on
+         * its strut, mirroring {@code SpringSpacer.compress}.
+         */
+        private static double compressedFloorSs(InsertionSpacingCalculator.ModificationResult result) {
+            return result.projectedFirstXSs()
+                + result.projectedSprings().stream().mapToDouble(Spring::strutSs).sum()
+                + result.projectedTrailingReservationSs();
+        }
+
+        /**
+         * The line's own elements, with the one at {@code index} swapped for a clone carrying
+         * {@code accidental} — the shape {@code AccidentalMaterializer} produces for the gate.
+         */
+        private static List<StaffElement> projectionWithAccidentalAt(
+            Line line, int index, StaffElement.@Nullable Accidental accidental) {
+
+            var projected = new ArrayList<StaffElement>();
+
+            for (var i = 0; i < line.effectiveElementCount(); i++) {
+                var element = line.getElement(i);
+
+                if (i == index) {
+                    var sharpened = element.clone();
+                    sharpened.setAccidental(accidental);
+                    projected.add(sharpened);
+                    continue;
+                }
+
+                projected.add(element);
+            }
+
+            return projected;
+        }
+
+        private static InsertionSpacingCalculator.ModificationResult modificationWithAccidental(
+            Line line, StaffElement.@Nullable Accidental accidental) {
+
+            return InsertionSpacingCalculator.calculateModification(
+                line, projectionWithAccidentalAt(line, SHARPENED_INDEX, accidental), null);
+        }
+
+        @Test
+        void testAProjectionOfTheWrongSizeThrowsIllegalArgumentException() {
+            var line = lineWithCrotchets(MODIFICATION_LINE_ELEMENT_COUNT);
+            var tooShort = projectionWithAccidentalAt(line, SHARPENED_INDEX, null)
+                .subList(0, MODIFICATION_LINE_ELEMENT_COUNT - 1);
+
+            assertThatIllegalArgumentException()
+                .isThrownBy(() -> InsertionSpacingCalculator.calculateModification(line, tooShort, null))
+                .withMessageContaining("for " + MODIFICATION_LINE_ELEMENT_COUNT + " effective elements");
+        }
+
+        @Test
+        void testAnEmptyProjectionOnAnEmptyLineThrowsIllegalArgumentException() {
+            assertThatIllegalArgumentException()
+                .isThrownBy(() -> InsertionSpacingCalculator.calculateModification(
+                    detachedLine(), List.of(), null))
+                .withMessageContaining("must not be empty");
+        }
+
+        @Test
+        void testALineWithSlackAcceptsAnAccidentalAddedToTheSelection() {
+            var line = lineWithCrotchets(MODIFICATION_LINE_ELEMENT_COUNT);
+            var sharpened = modificationWithAccidental(line, StaffElement.Accidental.SHARP);
+            var marginSs = compressedFloorSs(sharpened) + BOUNDARY_SLACK_SS;
+
+            assertThat(sharpened.fitsWithinLine(marginSs))
+                .as("a chain with slack past its compressed floor is accepted")
+                .isTrue();
+        }
+
+        @Test
+        void testANearlyFullLineRefusesAnAccidentalAddedToTheSelection() {
+            var line = lineWithCrotchets(MODIFICATION_LINE_ELEMENT_COUNT);
+            var plain = modificationWithAccidental(line, null);
+            var sharpened = modificationWithAccidental(line, StaffElement.Accidental.SHARP);
+            // Both sides are judged one slack past the unmodified floor rather than on it: the
+            // floor is re-summed here in a different association than the solver uses, so an exact
+            // boundary would turn on a rounding bit.
+            var marginSs = compressedFloorSs(plain) + BOUNDARY_SLACK_SS;
+
+            // Precondition: the accidental widens the chain by more than that slack. Without this
+            // the refusal below would prove nothing.
+            assertThat(compressedFloorSs(sharpened))
+                .as("the accidental widens the compressed floor past the slack")
+                .isGreaterThan(marginSs);
+
+            assertThat(plain.fitsWithinLine(marginSs))
+                .as("the unmodified line still fits at that margin")
+                .isTrue();
+            assertThat(sharpened.fitsWithinLine(marginSs))
+                .as("the same line with the accidental no longer fits")
+                .isFalse();
         }
     }
 }

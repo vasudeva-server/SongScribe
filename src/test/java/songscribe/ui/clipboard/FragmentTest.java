@@ -21,7 +21,9 @@
 package songscribe.ui.clipboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 
+import java.util.List;
 import java.util.function.BiFunction;
 
 import org.junit.jupiter.api.Nested;
@@ -33,6 +35,7 @@ import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.RangeElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
@@ -506,6 +509,126 @@ class FragmentTest extends UnitTest {
             pastedAttachment.setUserYOffsetSs(pastedAttachment.getUserYOffsetSs() + 10.0);
 
             assertThat(tempoAttachment.getUserYOffsetSs()).isEqualTo(5.0);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Prior accidentals — what each captured note sounded like on its source line
+    // -----------------------------------------------------------------------
+
+    /**
+     * A fragment records, per element, the accidental that was in effect for it on the source
+     * line, so a paste can preserve the pitch each note had there rather than the pitch the
+     * destination's context would give it.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class PriorAccidentals {
+
+        // Staff position 0 is B4 and positions grow downwards, so each step down is one letter back.
+        private static final int G_STAFF_POSITION = 2;
+        private static final int F_STAFF_POSITION = 3;
+
+        private static final int STALE_X_OFFSET_PX = 37;
+
+        /** F♯ G F — the last F carries no accidental of its own and inherits the sharp. */
+        private static Line sharpenedThenInheritingF() {
+            var line = detachedLine();
+            var sharpF = crotchet();
+            sharpF.setStaffPosition(F_STAFF_POSITION);
+            sharpF.setAccidental(StaffElement.Accidental.SHARP);
+            var g = crotchet();
+            g.setStaffPosition(G_STAFF_POSITION);
+            var inheritingF = crotchet();
+            inheritingF.setStaffPosition(F_STAFF_POSITION);
+            line.addElement(sharpF);
+            line.addElement(g);
+            line.addElement(inheritingF);
+            return line;
+        }
+
+        @Test
+        void testCaptureResolvesAnInheritedAccidentalAgainstTheLiveOriginal() {
+            // The last F sounds sharp on this line even though it carries nothing, and the
+            // fragment has to say so. Resolving against the clone instead would silently skip the
+            // backward scan and answer with the key signature alone.
+            var line = sharpenedThenInheritingF();
+
+            var fragment = Fragment.capture(line, 2, 2);
+
+            assertThat(fragment.priorAccidentals()).containsExactly(StaffElement.Accidental.SHARP);
+        }
+
+        @Test
+        void testCaptureRecordsOwnAccidentalsInheritedOnesAndNullForAnUnalteredNote() {
+            var line = sharpenedThenInheritingF();
+
+            var fragment = Fragment.capture(line, 0, 2);
+
+            assertThat(fragment.priorAccidentals()).containsExactly(
+                StaffElement.Accidental.SHARP, null, StaffElement.Accidental.SHARP);
+        }
+
+        @Test
+        void testPriorAccidentalsStayAlignedWhenCaptureTrimsAnOrphanPairedGraceNote() {
+            // [F♭, grace(paired)] — the tail trim drops the grace note, and the parallel list has
+            // to shrink with it or every later entry describes the wrong element.
+            var line = detachedLine();
+            var flatF = crotchet();
+            flatF.setStaffPosition(F_STAFF_POSITION);
+            flatF.setAccidental(StaffElement.Accidental.FLAT);
+            line.addElement(flatF);
+            line.addElement(pairedGraceNote());
+
+            var fragment = Fragment.capture(line, 0, 1);
+
+            assertThat(fragment.elements()).hasSize(1);
+            assertThat(fragment.priorAccidentals()).containsExactly(StaffElement.Accidental.FLAT);
+        }
+
+        @Test
+        void testPriorAccidentalsStayAlignedWhenCaptureExtendsPastATrailingBreathMark() {
+            // [F♯, breath] — capturing just the F extends to include the breath mark, which is not
+            // a pitched note and so contributes a null entry.
+            var line = detachedLine();
+            var sharpF = crotchet();
+            sharpF.setStaffPosition(F_STAFF_POSITION);
+            sharpF.setAccidental(StaffElement.Accidental.SHARP);
+            line.addElement(sharpF);
+            line.addElement(ElementType.BREATH_MARK.newInstance());
+
+            var fragment = Fragment.capture(line, 0, 0);
+
+            assertThat(fragment.elements()).hasSize(2);
+            assertThat(fragment.priorAccidentals()).containsExactly(StaffElement.Accidental.SHARP, null);
+        }
+
+        @Test
+        void testInstantiateCarriesThePriorAccidentalsThroughAndZeroesEveryCloneXOffset() {
+            // An xOffset is a layout correction made under one specific spring solve; pasted
+            // elsewhere it recreates the collision it was made to fix.
+            var line = sharpenedThenInheritingF();
+
+            for (var i = 0; i < line.elementCount(); i++) {
+                line.getElement(i).setXOffsetPx(STALE_X_OFFSET_PX);
+            }
+
+            var instantiated = Fragment.capture(line, 0, 2).instantiate();
+
+            assertThat(instantiated.priorAccidentals()).containsExactly(
+                StaffElement.Accidental.SHARP, null, StaffElement.Accidental.SHARP);
+            assertThat(instantiated.elements()).allSatisfy(
+                element -> assertThat(element.getXOffsetPx()).isEqualTo(0));
+        }
+
+        @Test
+        void testConstructorRejectsAPriorAccidentalListThatIsNotParallelToTheElements() {
+            var elements = List.of(crotchet(), crotchet());
+            var priorAccidentals = List.of(StaffElement.Accidental.SHARP);
+
+            assertThatIllegalArgumentException()
+                .isThrownBy(() -> new Fragment(elements, priorAccidentals, List.of()))
+                .withMessageContaining("must be parallel to elements");
         }
     }
 }

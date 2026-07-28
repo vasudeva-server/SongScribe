@@ -415,7 +415,170 @@ underneath, which is exactly what placement-by-click requires.
 
 ---
 
-## 6. Deliberately out of scope
+## 6. Accidental context reconciliation (#676)
+
+Every insert, delete, paste, and in-place modification (an accidental toggle, a
+pitch shift, a duration swap) that changes which explicit accidentals sit on a
+line — or where — must reconcile the accidental context those changes disturb.
+Without it, an edit can silently change the sounding pitch of a note the user
+never touched, or leave a now-meaningless accidental stranded on the page.
+
+### The invariant
+
+Every note keeps the pitch it had, unless the user changed that note. Two
+populations are protected: **pasted or inserted** notes keep the pitch they had
+in their source context, and **surviving** notes keep the pitch they had before
+the mutation. A note the user themselves changed is never protected — it is
+supposed to change.
+
+### Materialization
+
+`songscribe.layout.AccidentalReconciliation.reconcile` (for an insert, delete, or
+paste-replace) and `.reconcileModification` (for an in-place change) walk the
+line's projected element sequence and compare, for each protected note, its
+sounding accidental **before** the edit against what it would sound **after**.
+Comparison is always by sounding adjustment
+(`StaffElement.getPitchAdjustment`, with `null` treated as no adjustment, i.e.
+`NATURAL`), never by enum identity — `null` and `NATURAL` sound alike, as do
+`FLAT` and `NATURAL_FLAT`. When the two differ, the note is given an explicit
+accidental: its own prior accidental if it had one, otherwise `NATURAL`. That
+`null → NATURAL` direction is what a cross-key paste needs — a note that
+inherited no accidental in its source context must still read as an explicit
+natural if the destination context would otherwise sharpen or flatten it.
+
+The key signature never appears in the algorithm directly. It's the last branch
+of `StaffElement.findEffectiveAccidental`, so resolving the note's context
+before the edit against the source line and after against the destination line
+compares the two keys implicitly.
+
+A note that ends a tie is never a candidate for materialization or removal: a
+tie asserts that two notes are one sounding pitch, so the tied note has no pitch
+of its own to protect — when the anchor moves, the tied note is supposed to move
+with it.
+
+### Removal — the mirror rule
+
+An explicit accidental is cleared from a **surviving** note when the edit both:
+
+1. moved the context arriving at that note (its before/after sounding context
+   differ), and
+2. left the note's own accidental sounding identical to the new context, so
+   drawing it says nothing.
+
+Both conditions are required. Together they make an accidental that was
+*already* redundant when it was written unremovable: "already redundant" means
+the note's own sound equalled its context before the edit, which combined with
+condition 2 forces the context to be unchanged by the edit — contradicting
+condition 1. That's what lets a deliberate restatement, or a courtesy
+accidental placed where the note already sounded that way, survive every edit
+that doesn't move its context.
+
+Parenthesized accidentals get no exemption — parentheses record that the
+notator chose to write something they didn't have to, which says nothing about
+whether a later edit obviated it. `AccidentalMaterializer`'s private
+`SavedAccidental` record therefore carries the note's parentheses flag
+separately from its accidental: `StaffElement.setAccidental` clears the flag
+whenever the accidental goes `null`, so a refused edit that restores the prior
+accidental would otherwise restore it without its parentheses.
+
+Removal applies to **surviving** notes only — a pasted or inserted note keeps
+the notation it arrived with, matching the "a fragment carries semantic
+content" rule below.
+
+**The limit.** A restatement of the accidental *being removed* is invisible to
+this arithmetic — on its own line it may be doing real work, since the backward
+scan resets at the line boundary. Removing those needs the notator's judgement,
+not arithmetic, and is deliberately left to a separate, follow-up feature
+(#681) rather than left as an unrecognized hole.
+
+### What can move a note's inherited context
+
+Two kinds of edit can change the accidental a note inherits: an explicit
+accidental added or removed, and a barline or repeat added or removed, because
+either cancels every accidental before it. Both matter equally — assuming only
+the first is what produced the paste/barrier-insertion defect this reconciliation
+closes.
+
+Two rules keep that from recurring:
+
+- No call site decides for itself whether reconciliation is needed. It always
+  runs, for every edit that can move accidental context.
+- The list of element types that cancel accidentals (barlines, repeats) stays
+  in exactly two places — `StaffElement.findEffectiveAccidental` and
+  `AccidentalReconciliation.resolveOverProjection`, which mirrors it for the
+  projected (not-yet-committed) sequence — and is never copied anywhere else.
+
+### The two bounds, and why the pass is a single left-to-right walk
+
+1. Only a staff position carrying an explicit accidental in the removed or
+   inserted content can change the context arriving at a boundary.
+2. For each such position, only the *first* following note lacking its own
+   accidental needs fixing; later notes at that position resolve from it.
+
+Both bounds are satisfied structurally by a single left-to-right pass over the
+projected sequence, not by an early exit: each emitted change is written back
+onto the projected position before the walk continues, so later positions
+resolve against the already-reconciled state.
+
+### Ordering — materialize before layout is projected
+
+`AccidentalReconciliation` reads the live line and mutates nothing; it returns
+a list of `AccidentalChange`s for the caller to apply.
+`songscribe.layout.AccidentalMaterializer.applyIfAccepted` is where they're
+applied — gated on the edit's own fit check being accepted, and guaranteed to
+leave the line untouched on refusal. The accidentals **must** be materialized
+before the projected column chain used for that fit check is built:
+`ElementColumnBuilder` derives element extents including accidental width, and
+`LayoutEngine` treats accidental width as a layout input. With that ordering,
+both the fit gate and the committed layout are correct with no per-position
+shift machinery.
+
+### The `Fragment` reshape
+
+`Fragment` (§1) carries a `priorAccidentals` list parallel to `elements()`:
+each entry is the effective accidental that element had on its **source**
+line, or `null` when the element is unpitched or already carries an explicit
+accidental of its own. `Fragment.capture` resolves each element's context
+against the **original**, never the clone — a clone's `line` field still
+points at the source line, but `line.getElementIndex(clone)` returns −1
+because `StaffElement` overrides neither `equals` nor `hashCode`, so resolving
+against the clone would silently skip the whole backward scan and return the
+key signature alone. `instantiate()` carries `priorAccidentals` through
+unchanged onto the fresh clones it produces for each paste.
+
+`instantiate()` also zeroes each clone's `xOffsetPx`: a fragment carries
+semantic content, not layout corrections — `xOffset` is a nudge computed under
+one specific spring solve, with specific neighbours, under a specific header
+width, and pasted elsewhere it's meaningless at best and at worst recreates the
+collision it was made to fix.
+
+### The modification fit gate
+
+An in-place modification — an accidental toggle, a pitch shift, a duration
+swap — can widen a note's column (a new accidental needs room) without
+changing the element count. `InsertionSpacingCalculator.calculateModification`
+is the replace-a-column analogue of the insertion fit checks in §4: the same
+projected-column-and-spring machinery, but columns are *replaced* in place
+rather than spliced in, so indices need no repositioning.
+`SelectionCoordinator.fitsAfterModification` calls it from pass 2 of the
+selection-modification flow, projecting both the user's own changes and the
+`AccidentalChange`s they force, all on clones — the live elements stay
+untouched until the gate accepts.
+
+Not every action is gated: `SelectionCoordinator.changesExtent` gates only
+actions that can change a column's horizontal extent — an accidental toggle
+(`AccidentalAction`, `AccidentalInParensAction`), a dot (`DotAction`), and
+element replacement (`UIAction.ElementReplaceable`). Fermata and dynamics are
+deliberately not gated: they stack vertically, independent of the note column,
+and cannot make a line wider.
+
+Without this gate, an infeasible modification isn't refused at mutation time —
+it surfaces later as `LayoutEngine`'s `LINE_TOO_FULL_ERROR` with a `null`
+`LayoutResult`, so the line doesn't render at all.
+
+---
+
+## 7. Deliberately out of scope
 
 Carried over from `specs/65-clipboard.md`:
 
@@ -428,6 +591,33 @@ Carried over from `specs/65-clipboard.md`:
   restore the selection that was active beforehand.
 - **System clipboard interoperability.** The clipboard is in-process only; there
   is no interop with the OS pasteboard or other applications.
+- **#612 (cut/copy/paste entire line).** A separate downstream plan. It needs
+  the `Fragment` reshape from §6, and its line fragment carries offsets — the
+  opposite of the element fragment's "semantic content, not layout corrections"
+  rule.
+- **#53 (mid-line key changes).** Separate. The resolver
+  (`StaffElement.findEffectiveAccidental`) now accepts it via `keyInEffectAt`;
+  nothing in this architecture implements it. It also breaks the
+  one-key-per-line assumption in `HorizontalSpacingCalculator.isWithinHeaderXSs`.
+- **#11 (ABC import).** Separate. Listed only as a future call site of
+  `AccidentalReconciliation`, needed for two cases: ABC's default applies an
+  accidental to the pitch class in *all* octaves within the bar, while
+  SongScribe matches same-octave only; and ABC does not reset at a line break,
+  while SongScribe does. Both apply to default-directive files, so #11 is a
+  materialization call site by default.
+- **Line-reset revisited.** Kept as house convention. The private backward-scan
+  traversal seam in `StaffElement` (added for #675, the resolver's scope) is
+  where it would change if this is ever revisited.
+- **The `xOffset` dual meaning.** The field is documented and exported as a
+  nudge but serves as an absolute-position store for the insert/delete/paste
+  arithmetic and `HorizontalAdjustment`. Both cannot hold once a real nudge
+  exists, and pasted notes plausibly export a spurious `relative-x` today. A
+  prerequisite for a future manual-offset feature, not for this work — its own
+  issue.
+- **Storing pitch on `StaffElement`.** Rejected actively, not deferred. Revisit
+  only if transposition becomes a feature, a pitch-based source becomes a
+  primary import path, or the call-site set for accidental reconciliation stops
+  being finite.
 
 And two notes about `ClipboardManager`'s lifetime, not from the spec but decided
 during implementation:

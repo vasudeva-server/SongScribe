@@ -32,12 +32,14 @@ import javax.xml.parsers.SAXParserFactory;
 
 import com.formdev.flatlaf.FlatLaf;
 import com.formdev.flatlaf.FlatLightLaf;
+import org.jspecify.annotations.Nullable;
 import org.xml.sax.InputSource;
 
 import songscribe.font.DocumentFonts;
 import songscribe.io.SongIO;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongLoader;
+import songscribe.io.musicxml.MusicXmlReader;
 import songscribe.message.MessageCenterTestHelper;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
@@ -140,14 +142,31 @@ public abstract class UnitTest {
     }
 
     /**
-     * Resolves a fixture file on the classpath.
-     * Fixture files live in {@code src/test/resources/fixtures/{name}.mssw}.
+     * Resolves a legacy {@code .mssw} fixture on the classpath. Fixture files live in
+     * {@code src/test/resources/fixtures/}.
+     *
+     * <p>Tests that exercise the legacy reader itself call this directly. Everything else goes
+     * through {@link #loadFixtureResult}, which prefers a MusicXML fixture of the same name.
      */
     protected static File fixtureFile(String fixtureName) throws URISyntaxException {
         var url = UnitTest.class.getClassLoader().getResource("fixtures/" + fixtureName + ".mssw");
 
         if (url == null) {
             throw new IllegalArgumentException("Fixture not found: " + fixtureName);
+        }
+
+        return new File(url.toURI());
+    }
+
+    /**
+     * Resolves a {@code .musicxml} fixture on the classpath, or null when the fixture exists only
+     * in the legacy format.
+     */
+    private static @Nullable File musicXmlFixtureFile(String fixtureName) throws URISyntaxException {
+        var url = UnitTest.class.getClassLoader().getResource("fixtures/" + fixtureName + ".musicxml");
+
+        if (url == null) {
+            return null;
         }
 
         return new File(url.toURI());
@@ -161,10 +180,23 @@ public abstract class UnitTest {
     }
 
     /**
-     * Like {@link #loadFixture} but also returns the document fonts parsed from the
-     * fixture's {@code <view>} block (or prefs defaults for v1.0 files).
+     * Like {@link #loadFixture} but also returns the document fonts parsed from the fixture.
+     *
+     * <p>A MusicXML fixture wins over a legacy one of the same name, so a new fixture is written in
+     * the current storage format and read back through the current reader. The legacy fixtures that
+     * predate the format switch keep loading unchanged.
      */
     public static SongLoadResult.Success loadFixtureResult(String fixtureName) throws URISyntaxException {
+        var musicXmlFile = musicXmlFixtureFile(fixtureName);
+
+        if (musicXmlFile != null) {
+            try {
+                return MusicXmlReader.read(musicXmlFile);
+            } catch (IOException | SAXException e) {
+                throw new IllegalStateException("Fixture '" + fixtureName + "' failed to load", e);
+            }
+        }
+
         var result = SongLoader.load(fixtureFile(fixtureName));
 
         if (result instanceof SongLoadResult.Success success) {

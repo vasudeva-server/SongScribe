@@ -54,9 +54,9 @@ edits still change pitches silently.
 | 9 | [Call Site 5 — Pitch Shift](#-phase-9-call-site-5--pitch-shift) | ✅ Complete | — |
 | 9a | [De-materialization](#-phase-9a-de-materialization) | ✅ Complete | — |
 | 9b | [Barrier Insertion Reconciles](#-phase-9b-barrier-insertion-reconciles) | ✅ Complete | — |
-| 10 | [Manual UI Verification](#-phase-10-manual-ui-verification) | ⏸️ Blocked by 9b | — |
-| 11 | [Reconciliation and Fit-Gate Tests](#-phase-11-reconciliation-and-fit-gate-tests) | ⏸️ Blocked by 10 | — |
-| 12 | [Documentation](#-phase-12-documentation) | ⏸️ Blocked by 11 | — |
+| 10 | [Manual UI Verification](#-phase-10-manual-ui-verification) | ✅ Complete | — |
+| 11 | [Reconciliation and Fit-Gate Tests](#-phase-11-reconciliation-and-fit-gate-tests) | ✅ Complete | — |
+| 12 | [Documentation](#-phase-12-documentation) | ✅ Complete | — |
 
 ---
 
@@ -1269,11 +1269,9 @@ fixes.
 
 ---
 
-## ⏳ Phase 10: Manual UI Verification
+## ✅ Phase 10: Manual UI Verification
 
-**Status:** Paused — step 6 surfaced the add-only defect that Phase 9a fixes, and implementing 9a
-surfaced the barrier-insertion gap that Phase 9b fixes. Re-run from the top once 9b lands, so every
-scenario is checked against the same code.  <br>
+**Status:** Complete — re-run from the top against 9b, all scenarios confirmed by the user.  <br>
 **BlockedBy:** 1, 9b  <br>
 **Recommended model/effort:** n/a — the user drives the application; no model does this work.
 
@@ -1347,9 +1345,10 @@ debug features.
 
 ---
 
-## ⏸️ Phase 11: Reconciliation and Fit-Gate Tests
+## ✅ Phase 11: Reconciliation and Fit-Gate Tests
 
-**Status:** Pending  <br>
+**Status:** Complete — full unit suite green (6176 passed), plus one e2e test for the
+barrier-insertion call site.  <br>
 **BlockedBy:** 10  <br>
 **Recommended model/effort:** Sonnet 4.6, medium effort — mechanical test authoring against
 behaviour the user has already confirmed; existing test classes supply the fixture idiom.
@@ -1428,8 +1427,12 @@ from that staff position. Without reconciliation all three silently turn index 3
    `REPEAT_LEFT` and assert a `BREATH_MARK` produces nothing, which pins the barrier set rather
    than "any non-duration element". These are engine-level cases and would have passed before
    Phase 9b — the defect was the caller's skip, so also assert at the call-site level that a
-   barrier insertion reconciles at all, if that can be reached without an e2e test; if it cannot,
-   say so in a comment rather than leaving the impression it is covered.
+   barrier insertion reconciles at all. That call site is
+   `PreviewElementManager.materializeAndCalculateInsertion`, which is private and needs a live
+   `LineComponent` and layout result, so it is covered by the one e2e test this phase adds:
+   `src/test/java/songscribe/e2e/AccidentalContextTest.java`, over the new
+   `src/test/resources/fixtures/accidental-context.mssw` (Fixture B with a flat, since only the
+   flat-side accidentals have toolbar buttons).
 6. Add `calculateModification` cases to `InsertionSpacingCalculatorTest`: a line with slack accepts
    an accidental added to a selection; a nearly-full line refuses it; the element count is
    preserved and a size mismatch throws `IllegalArgumentException`. Also add a test for
@@ -1447,9 +1450,9 @@ from that staff position. Without reconciliation all three silently turn index 3
 
 ---
 
-## ⏸️ Phase 12: Documentation
+## ✅ Phase 12: Documentation
 
-**Status:** Pending  <br>
+**Status:** Complete  <br>
 **BlockedBy:** 11  <br>
 **Recommended model/effort:** Sonnet 4.6, low effort — prose updates to existing docs against
 finished, verified code.

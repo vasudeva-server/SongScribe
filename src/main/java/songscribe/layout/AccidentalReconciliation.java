@@ -92,6 +92,20 @@ import songscribe.dom.Tie;
  * arrived with, matching the "a fragment carries semantic content" rule that governs the
  * clipboard. Sound is preserved either way; this is only about what is drawn.
  *
+ * <h2>The tie exclusion</h2>
+ * A note that ends a tie is never a candidate for either branch. A tie asserts that two notes are
+ * one sounding pitch, so the tied note has no pitch of its own for the invariant to protect: when
+ * the anchor moves, the tied note is <em>supposed</em> to move with it, and the accidental that
+ * says so is the anchor's. Without the exclusion, toggling a flat onto the first of two tied
+ * bare A's materializes a natural on the second — an edit the user did not ask for, notating a
+ * pitch the tie forbids.
+ *
+ * <p>The exclusion also settles what the backward scan has to do about ties: nothing.
+ * {@link StaffElement#findEffectiveAccidental} escapes a barrier through a tie whose anchor lies
+ * before it, but that can only ever apply to a note ending such a tie — exactly the notes this
+ * exclusion drops before the scan runs. {@link #resolveOverProjection} therefore stops dead at the
+ * first barrier, with no escape to mirror.
+ *
  * <h2>The two bounds</h2>
  * <ol>
  *   <li>Only a staff position carrying an explicit accidental in the removed or the inserted
@@ -162,8 +176,8 @@ public final class AccidentalReconciliation {
      *                                 nulls — null already means "sounded unaltered there", which
      *                                 is a different claim.
      * @param insertedSpans            The fragment's own range elements (its ties), which are not
-     *                                 yet on the destination line; the projected tie escape needs
-     *                                 them
+     *                                 yet on the destination line; the tie exclusion needs them,
+     *                                 so that a note arriving already tied is left alone
      */
     public record InsertionRegion(
         Line line,
@@ -338,7 +352,13 @@ public final class AccidentalReconciliation {
                 continue;
             }
 
-            var after = resolveOverProjection(line, sequence, position, ties, positionsByElement);
+            // Also ahead of both branches: a tied note has no pitch of its own to protect, so it is
+            // a candidate for neither materialization nor removal.
+            if (endsTie(ties, positionsByElement, projected.element, position)) {
+                continue;
+            }
+
+            var after = resolveOverProjection(line, sequence, position);
 
             if (projected.explicit != null) {
                 if (removesRedundantAccidental(projected, after)) {
@@ -392,11 +412,15 @@ public final class AccidentalReconciliation {
 
     /**
      * Resolves the accidental in effect for the note at {@code position} <em>after</em> the
-     * mutation, by scanning back over the projected sequence with exactly the rules
+     * mutation, by scanning back over the projected sequence with the rules
      * {@link StaffElement#findEffectiveAccidental} uses on a real line: stop at any barline or
-     * repeat, escape that barrier through a tie whose anchor lies before it (repeatedly, for a
-     * chain), match an earlier position with the same staff position and a non-null explicit
+     * repeat, match an earlier position with the same staff position and a non-null explicit
      * accidental, and otherwise fall back to the destination line's key signature.
+     *
+     * <p>The resolver's tie escape — carrying an accidental across a barrier through a tie — has
+     * no counterpart here, and cannot need one: it could only ever fire for a note ending a tie
+     * anchored earlier in the sequence, and {@link #reconcileSequence} drops every such note
+     * before the scan runs. See the tie exclusion in the class javadoc.
      *
      * <p>The note's own explicit accidental is not consulted, matching the resolver's contract:
      * callers check it first. That is exactly what the removal branch of
@@ -404,66 +428,43 @@ public final class AccidentalReconciliation {
      * accidental left out of it.
      */
     private static StaffElement.@Nullable Accidental resolveOverProjection(
-        Line line,
-        List<ProjectedElement> sequence,
-        int position,
-        List<Tie> ties,
-        IdentityHashMap<StaffElement, Integer> positionsByElement) {
+        Line line, List<ProjectedElement> sequence, int position) {
 
         var target = sequence.get(position);
-        // The note whose incoming tie we may escape a barrier through. It advances to the anchor
-        // on each escape, so a chain of ties is followed one link at a time.
-        var tieEndElement = target.element;
-        var cursor = position;
 
-        barrierEscape:
-        while (true) {
-            for (var scanPosition = cursor - 1; scanPosition >= 0; scanPosition--) {
-                var candidate = sequence.get(scanPosition);
-                var elementType = candidate.element.getType();
+        for (var scanPosition = position - 1; scanPosition >= 0; scanPosition--) {
+            var candidate = sequence.get(scanPosition);
+            var elementType = candidate.element.getType();
 
-                if (elementType.isBarLine() || elementType.isRepeat()) {
-                    var anchorPosition = tieAnchorPositionBefore(
-                        ties, positionsByElement, tieEndElement, scanPosition);
-
-                    if (anchorPosition < 0) {
-                        return keyInEffect(line, target.staffPosition);
-                    }
-
-                    // Resume at the anchor itself: it may be the note carrying the accidental.
-                    // anchorPosition < scanPosition < cursor, so cursor strictly decreases on
-                    // every escape and the loop is bounded by the sequence length.
-                    tieEndElement = sequence.get(anchorPosition).element;
-                    cursor = anchorPosition + 1;
-                    continue barrierEscape;
-                }
-
-                if ((candidate.staffPosition == target.staffPosition) && (candidate.explicit != null)) {
-                    return candidate.explicit;
-                }
+            if (elementType.isBarLine() || elementType.isRepeat()) {
+                return keyInEffect(line, target.staffPosition);
             }
 
-            return keyInEffect(line, target.staffPosition);
+            if ((candidate.staffPosition == target.staffPosition) && (candidate.explicit != null)) {
+                return candidate.explicit;
+            }
         }
+
+        return keyInEffect(line, target.staffPosition);
     }
 
     /**
-     * Returns the projected position of the anchor of a tie that ends at {@code tieEndElement}
-     * and starts before {@code scanPosition}, or −1 when there is none. An anchor that is not in
-     * the projected sequence — deleted by this very mutation — yields no escape.
+     * Whether the note at {@code position} ends a tie whose anchor lies earlier in the projected
+     * sequence — the case the tie exclusion of the class javadoc covers. An anchor that is not in
+     * the projected sequence, because this very mutation deletes it, leaves no tie to honor.
      *
      * <p>The end element is matched by reference identity: {@link StaffElement} overrides neither
      * {@code equals} nor {@code hashCode}, so a detached clone would otherwise match nothing
      * meaningful.
      */
-    private static int tieAnchorPositionBefore(
+    private static boolean endsTie(
         List<Tie> ties,
         IdentityHashMap<StaffElement, Integer> positionsByElement,
-        StaffElement tieEndElement,
-        int scanPosition) {
+        StaffElement element,
+        int position) {
 
         for (var tie : ties) {
-            if (tie.getEndElement() != tieEndElement) {
+            if (tie.getEndElement() != element) {
                 continue;
             }
 
@@ -475,16 +476,16 @@ public final class AccidentalReconciliation {
 
             var anchorPosition = positionsByElement.get(anchor);
 
-            if ((anchorPosition != null) && (anchorPosition < scanPosition)) {
-                return anchorPosition;
+            if ((anchorPosition != null) && (anchorPosition < position)) {
+                return true;
             }
         }
 
-        return -1;
+        return false;
     }
 
     /**
-     * Returns every tie the projected tie escape may follow: the destination line's own ties plus
+     * Returns every tie the exclusion has to consider: the destination line's own ties plus
      * the inserted fragment's, which are not on the line yet. Non-tie spans (slurs and the like)
      * carry no accidental and are ignored.
      */
