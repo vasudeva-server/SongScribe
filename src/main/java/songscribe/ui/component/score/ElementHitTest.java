@@ -23,9 +23,13 @@ package songscribe.ui.component.score;
 import module java.desktop;
 
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.StaffElement;
 import songscribe.dom.ScaleContext;
 import songscribe.engraving.Staff;
+import songscribe.ui.hit.HitResult;
+import songscribe.ui.hit.HitTestContext;
 
 /**
  * Static hit-testing utilities for note heads in a {@link LineComponent}.
@@ -71,6 +75,22 @@ public final class ElementHitTest {
         }
 
         return -1;
+    }
+
+    /**
+     * Hit-test cascade adapter: runs {@link #hitTestElement(LineComponent, Point)} using
+     * {@code context}'s hit-test point and translates the result to a {@link HitResult}.
+     *
+     * @return {@link HitResult.ElementHead} for a hit, or {@code null} if nothing was hit
+     */
+    static @Nullable HitResult hit(LineComponent lc, HitTestContext context) {
+        var elementIndex = hitTestElement(lc, context.pointPx());
+
+        if (elementIndex == -1) {
+            return null;
+        }
+
+        return new HitResult.ElementHead(elementIndex);
     }
 
     /**

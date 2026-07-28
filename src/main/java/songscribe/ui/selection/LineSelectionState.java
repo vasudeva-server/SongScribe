@@ -25,6 +25,7 @@ import java.util.stream.IntStream;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
+import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
@@ -163,10 +164,12 @@ public final class LineSelectionState {
     }
 
     /**
-     * Returns whether the given ending is selected.
+     * Returns whether the given line element is the currently selected decoration.
+     * Widened from an {@code Ending}-only check so future decoration types
+     * (e.g. hairpins) can be added as one more {@code ||} clause here.
      */
-    public boolean isEndingSelected(Ending ending) {
-        return selectedEnding == ending;
+    public boolean isDecorationSelected(LineElement element) {
+        return element == selectedEnding;
     }
 
     /**

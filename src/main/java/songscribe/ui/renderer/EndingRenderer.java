@@ -93,7 +93,7 @@ public final class EndingRenderer {
             var yTopSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
 
             // The color depends only on the ending, so resolve it once rather than per bracket.
-            var color = determineEndingColor(ending, invariants);
+            var color = RenderingUtils.decorationSelectionColor(ending, invariants);
 
             for (var bracket : ending.getBracketRanges()) {
                 drawEnding(g2, ending, bracket, yTopSs, color);
@@ -109,6 +109,9 @@ public final class EndingRenderer {
      * Containment follows {@link Rectangle2D#contains}, so the left and top edges are
      * inclusive and the right and bottom edges are exclusive. When endings overlap, the
      * first match in document order wins.
+     * <p>
+     * This answers only the geometric question. Turning a hit into a selection result is the
+     * selection layer's job, which is why this returns the ending itself.
      *
      * @param clickXSs      Click X in staff spaces (line-local, same space as DecorationLayout.xSs)
      * @param clickYSs      Click Y in staff spaces (component space, relative to the component top)
@@ -147,30 +150,6 @@ public final class EndingRenderer {
         }
 
         return null;
-    }
-
-    /**
-     * Returns the selection color if {@code ending} is selected, otherwise the
-     * standard element color.
-     * <p>
-     * Package-private so it can be unit-tested directly, as with
-     * {@link SlideRenderer#determineSlideColor}.
-     */
-    Color determineEndingColor(Ending ending, LineInvariants invariants) {
-        // The selection provider is wired independently of edit mode, so it can report a
-        // selection while the score is not editable. Selection highlighting is an edit-mode
-        // affordance only, matching BeamGroupRenderer.getBeamHighlightColor.
-        if (!invariants.isEditMode()) {
-            return RenderingUtils.ELEMENT_COLOR;
-        }
-
-        var selectionProvider = invariants.getSelectionProvider();
-
-        if (selectionProvider != null && selectionProvider.isEndingSelected(ending, invariants.getLineIndex())) {
-            return invariants.getSelectionColor();
-        }
-
-        return RenderingUtils.ELEMENT_COLOR;
     }
 
     /**

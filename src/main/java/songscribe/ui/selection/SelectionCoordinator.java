@@ -42,6 +42,7 @@ import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Line;
+import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
 import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
@@ -289,7 +290,7 @@ public final class SelectionCoordinator {
             return false;
         }
 
-        var state = lineStates.get(lineIndex);
+        var state = getActiveSelection();
         return (state != null) && state.hasElementSelection() && state.isElementSelected(elementIndex);
     }
 
@@ -301,7 +302,7 @@ public final class SelectionCoordinator {
             return false;
         }
 
-        var state = lineStates.get(lineIndex);
+        var state = getActiveSelection();
         return (state != null) && state.isLineSelected();
     }
 
@@ -314,20 +315,20 @@ public final class SelectionCoordinator {
             return false;
         }
 
-        var state = lineStates.get(lineIndex);
+        var state = getActiveSelection();
         return (state != null) && state.isSlideSelected(elementIndex);
     }
 
     /**
-     * Returns whether the given ending on the given line is selected.
+     * Returns whether the given line element on the given line is selected.
      */
-    public boolean isEndingSelected(Ending ending, int lineIndex) {
+    public boolean isDecorationSelected(LineElement element, int lineIndex) {
         if (activeLineIndex != lineIndex) {
             return false;
         }
 
-        var state = lineStates.get(lineIndex);
-        return (state != null) && state.isEndingSelected(ending);
+        var state = getActiveSelection();
+        return (state != null) && state.isDecorationSelected(element);
     }
 
     public boolean isLyricSelected(StaffElement element, int verse, int lineIndex) {

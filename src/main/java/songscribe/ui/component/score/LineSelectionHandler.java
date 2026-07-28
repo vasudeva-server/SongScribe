@@ -23,19 +23,24 @@ package songscribe.ui.component.score;
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
+// Disambiguates from java.awt.List (java.desktop module)
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.dom.StaffElement;
+import songscribe.layout.Ending;
 import songscribe.dom.ViewPx;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
-import songscribe.layout.Ending;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.dom.ScaleContext;
+import songscribe.ui.hit.HitResult;
+import songscribe.ui.hit.HitTestContext;
+import songscribe.ui.hit.HitTester;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.renderer.EndingRenderer;
@@ -53,6 +58,14 @@ class LineSelectionHandler {
     private static final double STAFF_HIT_RADIUS_SS = 2.0;
 
     private final LineComponent lc;
+
+    /**
+     * The hit-test cascade, in priority order: the first tester to report a hit wins.
+     * Adding a newly selectable element means adding a tester here, not another branch
+     * in {@link #hitTest(Point)}.
+     */
+    private final List<HitTester> hitTesters;
+
     private boolean dragging = false;
     private boolean pressHandled = false;
     private HitResult pressHitResult = new HitResult.Nothing();
@@ -61,6 +74,12 @@ class LineSelectionHandler {
 
     LineSelectionHandler(LineComponent lc) {
         this.lc = lc;
+        hitTesters = List.of(
+            context -> ElementHitTest.hit(lc, context),
+            this::hitTestSlide,
+            this::hitTestEnding,
+            this::hitTestStaffLine
+        );
     }
 
     // ======================================================================
@@ -80,64 +99,127 @@ class LineSelectionHandler {
     // ======================================================================
 
     /**
-     * Hit-tests the given point against all selectable elements in this line.
-     * <p>
-     * The cascade tests note heads first, then slides, then endings, then staff-line
-     * proximity.
-     * If nothing is hit, {@link HitResult.Nothing} is returned.
+     * Hit-tests the given point against all selectable elements in this line, running
+     * {@link #hitTesters} in order and returning the first hit, or
+     * {@link HitResult.Nothing} if nothing is hit.
      * <p>
      * The point must already be in document pixels. This differs from the
      * {@code is…} helpers below, which take view pixels and convert internally.
      */
     HitResult hitTest(Point point) {
-        var elementIndex = ElementHitTest.hitTestElement(lc, point);
+        var context = buildContext(point);
 
-        if (elementIndex != -1) {
-            return new HitResult.ElementHead(elementIndex);
+        if (context == null) {
+            return new HitResult.Nothing();
         }
 
-        var clickXSs = ScaleContext.pxToSs(point.x);
-        var clickYSs = ScaleContext.pxToSs(point.y);
+        for (var tester : hitTesters) {
+            var result = tester.hitTest(context);
 
-        var slideIndex = hitTestSlideAtPoint(clickXSs, clickYSs);
-
-        if (slideIndex != -1) {
-            var selState = lc.getLineSelectionState();
-
-            if (selState == null) {
-                return new HitResult.Nothing();
+            if (result != null) {
+                return result;
             }
-
-            var line = selState.getLine();
-
-            if (line.getElement(slideIndex).getType().isGraceNote()) {
-                return new HitResult.GraceGlissando();
-            }
-
-            return new HitResult.Slide(slideIndex);
-        }
-
-        var ending = hitTestEndingAtPoint(clickXSs, clickYSs);
-
-        if (ending != null) {
-            return new HitResult.Ending(ending);
-        }
-
-        if (Math.abs(clickYSs - lc.getMiddleLineYSs()) <= STAFF_HIT_RADIUS_SS && isWithinHeaderXSs(clickXSs)) {
-            return new HitResult.StaffLine();
         }
 
         return new HitResult.Nothing();
     }
 
     /**
-     * Returns whether the given point, in view pixels, falls in the staff-line hit
-     * region — on the staff lines within the header (clef and optional key signature)
-     * area. Whether a click there actually selects the line depends on the caller's
-     * mode and playback checks; this reports only the hit region.
+     * Gathers the inputs every {@link HitTester} needs, or {@code null} if this component
+     * has no line to hit-test.
+     * <p>
+     * {@link LineComponent#setLine} is the only place either {@code line} or
+     * {@code lineSelectionState} is assigned, and it always assigns both, so in practice
+     * they are present or absent together. Should that invariant ever break — a line
+     * without a selection state, or the reverse — note-head and staff-line hit-testing,
+     * which need no selection state at all, would silently stop reporting hits instead of
+     * failing loudly. Whoever breaks the invariant has to revisit this guard.
      */
-    boolean isStaffLineHit(Point viewPoint) {
-        return hitTest(lc.getViewScale().toDocumentPoint(viewPoint)) instanceof HitResult.StaffLine;
+    private @Nullable HitTestContext buildContext(Point point) {
+        var line = lc.getLine();
+
+        if (line == null || lc.getLineSelectionState() == null) {
+            return null;
+        }
+
+        return new HitTestContext(
+            point,
+            line,
+            lc.getLayoutResult(),
+            lc.getMiddleLineYSs()
+        );
+    }
+
+    /**
+     * Asks {@link SlideRenderer} whether any slide's drawn geometry contains the point, then
+     * applies the rule the renderer deliberately does not: a slide owned by a grace note is
+     * not selectable, so it is reported as {@link HitResult.GraceGlissando} instead.
+     */
+    private @Nullable HitResult hitTestSlide(HitTestContext context) {
+        var line = context.line();
+        var elementIndex = SlideRenderer.getInstance().hitTestSlide(context.xSs(), context.ySs(), line);
+
+        if (elementIndex == -1) {
+            return null;
+        }
+
+        if (line.getElement(elementIndex).getType().isGraceNote()) {
+            return new HitResult.GraceGlissando();
+        }
+
+        return new HitResult.Slide(elementIndex);
+    }
+
+    /**
+     * Asks {@link EndingRenderer} which ending's drawn box contains the point, and wraps the
+     * answer as a hit result.
+     */
+    private @Nullable HitResult hitTestEnding(HitTestContext context) {
+        var ending = EndingRenderer.getInstance().hitTestEnding(
+            context.xSs(), context.ySs(), context.line(), context.layoutResult(), context.middleLineYSs());
+
+        if (ending == null) {
+            return null;
+        }
+
+        return new HitResult.Ending(ending);
+    }
+
+    /**
+     * Hit-tests the staff lines: a point within {@link #STAFF_HIT_RADIUS_SS} of the middle
+     * staff line and horizontally inside the staff header selects the whole line.
+     */
+    private @Nullable HitResult hitTestStaffLine(HitTestContext context) {
+        if (Math.abs(context.ySs() - context.middleLineYSs()) <= STAFF_HIT_RADIUS_SS
+            && isWithinHeaderXSs(context.xSs())) {
+            return new HitResult.StaffLine();
+        }
+
+        return null;
+    }
+
+    /**
+     * Hit-tests a point given in view pixels, converting it to document pixels first.
+     * <p>
+     * A single press needs more than one answer about the same point — whether it landed on
+     * the staff lines, and whether it landed on an ending. Callers should run this once and
+     * examine the result rather than calling several {@code is…} helpers, each of which
+     * walks every element in the line all over again.
+     */
+    HitResult hitTestViewPoint(Point viewPoint) {
+        return hitTest(lc.getViewScale().toDocumentPoint(viewPoint));
+    }
+
+    /**
+     * Returns whether the given point, in view pixels, hits an ending.
+     * <p>
+     * Runs the same cascade as the press path, so the EDIT-mode insertion preview is
+     * suppressed at exactly the points where a press selects an ending instead of
+     * inserting — including the case where an element head over the bracket wins the
+     * cascade and insertion still applies.
+     */
+    boolean isEndingHit(Point viewPoint) {
+        return hitTestViewPoint(viewPoint) instanceof HitResult.Ending;
     }
 
     /**
@@ -197,14 +279,7 @@ class LineSelectionHandler {
                 }
             }
 
-            case HitResult.Ending(var ending) -> {
-                if (lineSelectionState != null) {
-                    prepareSelection();
-                    lineSelectionState.selectEnding(ending);
-                    lc.getScoreView().selectionChanged();
-                    pressHandled = true;
-                }
-            }
+            case HitResult.Ending(var ending) -> pressHandled = selectEnding(ending);
 
             case HitResult.GraceGlissando() -> {
                 OptionDialogs.showWarningMessage(
@@ -230,6 +305,31 @@ class LineSelectionHandler {
         if (pressHandled) {
             lc.repaint();
         }
+    }
+
+    /**
+     * Selects an ending hit by a press in EDIT mode, returning whether one was hit.
+     * <p>
+     * EDIT mode otherwise routes presses to element insertion, and reaching the selection
+     * handler at all requires SELECT mode (see {@link #isSelectionActive}), so before this
+     * existed an ending could not be selected until something else had switched modes.
+     * Selecting it in place, without leaving EDIT mode, follows the idiom already
+     * established for clicking a lyric.
+     * <p>
+     * Takes the already-computed cascade result for this press, so an element head over the
+     * bracket still wins and falls through to normal EDIT-mode handling.
+     */
+    boolean handleEditModeEndingPress(HitResult result) {
+        if (MidiController.isPlaying()) {
+            return false;
+        }
+
+        if (!(result instanceof HitResult.Ending(var ending)) || !selectEnding(ending)) {
+            return false;
+        }
+
+        lc.repaint();
+        return true;
     }
 
     void handleDrag(MouseEvent e) {
@@ -343,6 +443,23 @@ class LineSelectionHandler {
     }
 
     /**
+     * Makes {@code ending} the sole selection, returning false when this line has no
+     * selection state to record it in.
+     */
+    private boolean selectEnding(Ending ending) {
+        var lineSelectionState = lc.getLineSelectionState();
+
+        if (lineSelectionState == null) {
+            return false;
+        }
+
+        prepareSelection();
+        lineSelectionState.selectEnding(ending);
+        lc.getScoreView().selectionChanged();
+        return true;
+    }
+
+    /**
      * Selects the element at the given index in this line, clearing any prior selection.
      * Used by both the press handler and {@link NoteDragHandler}.
      */
@@ -411,29 +528,6 @@ class LineSelectionHandler {
         var line = lc.getLine();
         var keyAccidentalCount = line != null ? line.getKeyAccidentalCount() : 0;
         return HorizontalSpacingCalculator.isWithinHeaderXSs(xSs, keyAccidentalCount);
-    }
-
-    private int hitTestSlideAtPoint(double clickXSs, double clickYSs) {
-        var selState = lc.getLineSelectionState();
-
-        if (selState == null) {
-            return -1;
-        }
-
-        return SlideRenderer.getInstance().hitTestSlide(
-            clickXSs, clickYSs, selState.getLine()
-        );
-    }
-
-    private @Nullable Ending hitTestEndingAtPoint(double clickXSs, double clickYSs) {
-        var selState = lc.getLineSelectionState();
-
-        if (selState == null) {
-            return null;
-        }
-
-        return EndingRenderer.getInstance().hitTestEnding(
-            clickXSs, clickYSs, selState.getLine(), lc.getLayoutResult(), lc.getMiddleLineYSs());
     }
 
     private void buildElementHitRect(StaffElement element, Rectangle2D.Double out) {

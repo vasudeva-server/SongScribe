@@ -18,15 +18,12 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.ui.component.score;
+package songscribe.ui.hit;
 
 /**
- * Result of a hit test against selectable elements in a {@link LineComponent}.
- * <p>
- * The cascade tests note heads first, then slides, then staff-line proximity.
- * If nothing is hit, {@link Nothing} is returned.
+ * Result of a hit test against the selectable elements of a single staff line.
  */
-sealed interface HitResult {
+public sealed interface HitResult {
     record ElementHead(int index) implements HitResult {}
 
     record Slide(int elementIndex) implements HitResult {}

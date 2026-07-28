@@ -43,6 +43,8 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.ui.hit.HitResult;
+import songscribe.ui.hit.HitTestContext;
 
 /**
  * Unit tests for {@link ElementHitTest}.
@@ -159,6 +161,58 @@ class ElementHitTestTest extends UnitTest {
             var result = ElementHitTest.hitTestElement(lc, new Point(0, 0));
 
             assertThat(result).isEqualTo(-1);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // hit
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class Hit {
+
+        @BeforeEach
+        void useIdentityScale() {
+            scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble()))
+                .thenAnswer(inv -> inv.getArgument(0));
+        }
+
+        @Test
+        void testHitReturnsElementHead() {
+            var song = new Song();
+            var line = song.getLine(0);
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(0);
+            song.withoutMutationTracking(() -> line.addElement(note));
+
+            var lc = lcFor(line);
+
+            var type = ElementType.CROTCHET;
+            var centerXSs = type.getElementWidthSs() / 2;
+            var centerYSs = MIDDLE_LINE_Y_SS + type.getNoteheadTopOffsetSs() + type.getFullElementHeightSs() / 2;
+            var pointPx = new Point((int) centerXSs, (int) centerYSs);
+            var context = new HitTestContext(pointPx, line, null, MIDDLE_LINE_Y_SS);
+
+            var result = ElementHitTest.hit(lc, context);
+
+            assertThat(result).isEqualTo(new HitResult.ElementHead(0));
+        }
+
+        @Test
+        void testMissReturnsNull() {
+            var song = new Song();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+
+            var lc = lcFor(line);
+
+            var pointPx = new Point(1000, (int) MIDDLE_LINE_Y_SS);
+            var context = new HitTestContext(pointPx, line, null, MIDDLE_LINE_Y_SS);
+
+            var result = ElementHitTest.hit(lc, context);
+
+            assertThat(result).isNull();
         }
     }
 

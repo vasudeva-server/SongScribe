@@ -704,12 +704,12 @@ public final class LayoutResult {
         for (var element : line.getElements()) {
             for (var box : getLyricBoxes(element)) {
                 var rowTopYSs = baseYSs + (box.verseIndex() - 1) * rowHeightSs;
-                var rowBottomYSs = rowTopYSs + rowHeightSs;
 
-                if (pointXSs >= box.xSs()
-                    && pointXSs <= box.xSs() + box.widthSs()
-                    && pointYSs >= rowTopYSs
-                    && pointYSs <= rowBottomYSs) {
+                // Matches the ending and note-head hit tests, which also test containment
+                // with Rectangle2D: left and top edges inclusive, right and bottom exclusive.
+                var hitRect = new Rectangle2D.Double(box.xSs(), rowTopYSs, box.widthSs(), rowHeightSs);
+
+                if (hitRect.contains(pointXSs, pointYSs)) {
                     return new LyricHit(element, box.verseIndex());
                 }
             }

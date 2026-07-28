@@ -358,6 +358,9 @@ public final class SlideRenderer {
      * Hit-tests all slides in a line against a click point in staff-space coordinates.
      * Uses cached geometry from the most recent render pass: a fall is tested against its
      * axis-aligned glyph rect, a connecting glissando against its rotated drawn line.
+     * <p>
+     * This answers only the geometric question. Whether a hit slide is selectable — grace
+     * slides are not — is the selection layer's call, so this reports the owner either way.
      *
      * @param clickXSs click X in staff spaces
      * @param clickYSs click Y in staff spaces

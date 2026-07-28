@@ -202,7 +202,7 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // isEndingSelected / hasEndingSelection
+    // isDecorationSelected / hasEndingSelection
     // -------------------------------------------------------------------------
 
     /**
@@ -214,7 +214,7 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
     }
 
     /**
-     * Cross-line guard: isEndingSelected returns false when the queried lineIndex
+     * Cross-line guard: isDecorationSelected returns false when the queried lineIndex
      * does not match the active line — even though the active line has an ending selected.
      */
     @Test
@@ -224,13 +224,13 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
 
         ReflectionTestHelper.selectEnding(coordinator, ending);
 
-        assertThat(coordinator.isEndingSelected(ending, LINE_1))
-            .as("isEndingSelected(ending, line 1) when line 0 is active and has that ending selected")
+        assertThat(coordinator.isDecorationSelected(ending, LINE_1))
+            .as("isDecorationSelected(ending, line 1) when line 0 is active and has that ending selected")
             .isFalse();
     }
 
     /**
-     * Delegation: isEndingSelected delegates to the state for the active line and
+     * Delegation: isDecorationSelected delegates to the state for the active line and
      * returns true when that state has the ending selected.
      */
     @Test
@@ -240,8 +240,8 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
 
         ReflectionTestHelper.selectEnding(coordinator, ending);
 
-        assertThat(coordinator.isEndingSelected(ending, LINE_0))
-            .as("isEndingSelected(ending, line 0) when that ending is selected")
+        assertThat(coordinator.isDecorationSelected(ending, LINE_0))
+            .as("isDecorationSelected(ending, line 0) when that ending is selected")
             .isTrue();
     }
 
@@ -254,8 +254,8 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
 
         ReflectionTestHelper.selectEnding(coordinator, newEnding());
 
-        assertThat(coordinator.isEndingSelected(newEnding(), LINE_0))
-            .as("isEndingSelected(other ending, line 0) when a different ending is selected")
+        assertThat(coordinator.isDecorationSelected(newEnding(), LINE_0))
+            .as("isDecorationSelected(other ending, line 0) when a different ending is selected")
             .isFalse();
     }
 

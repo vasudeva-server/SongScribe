@@ -33,6 +33,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
@@ -153,6 +154,13 @@ class FallRendererTest extends UnitTest {
             .isNull();
     }
 
+    /**
+     * Builds a hit-test context for a slide hit test, which reads only the point and the line.
+     */
+    private static int hitTestSlide(double xSs, double ySs, Line line) {
+        return RENDERER.hitTestSlide(xSs, ySs, line);
+    }
+
     @Test
     void testClickInsideFallRectSelectsOwnerNote() {
         var note = fallNote();
@@ -166,7 +174,7 @@ class FallRendererTest extends UnitTest {
         var clickXSs = HIT_RECT_X_SS + HIT_RECT_WIDTH_SS / 2.0;
         var clickYSs = HIT_RECT_Y_SS + HIT_RECT_HEIGHT_SS / 2.0;
 
-        assertThat(RENDERER.hitTestSlide(clickXSs, clickYSs, line)).isEqualTo(0);
+        assertThat(hitTestSlide(clickXSs, clickYSs, line)).isEqualTo(0);
     }
 
     @Test
@@ -180,7 +188,7 @@ class FallRendererTest extends UnitTest {
             HIT_RECT_X_SS, HIT_RECT_Y_SS, HIT_RECT_WIDTH_SS, HIT_RECT_HEIGHT_SS);
 
         // Origin is well clear of the rect.
-        assertThat(RENDERER.hitTestSlide(0.0, 0.0, line)).isEqualTo(-1);
+        assertThat(hitTestSlide(0.0, 0.0, line)).isEqualTo(-1);
     }
 
     @Test
@@ -190,6 +198,6 @@ class FallRendererTest extends UnitTest {
         line.addElement(note);
 
         // No render pass occurred, so cachedHitBounds is null and nothing can be hit.
-        assertThat(RENDERER.hitTestSlide(HIT_RECT_X_SS, HIT_RECT_Y_SS, line)).isEqualTo(-1);
+        assertThat(hitTestSlide(HIT_RECT_X_SS, HIT_RECT_Y_SS, line)).isEqualTo(-1);
     }
 }

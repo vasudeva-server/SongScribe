@@ -24,7 +24,6 @@ import module java.desktop;
 
 import com.formdev.flatlaf.util.SystemInfo;
 
-import java.awt.event.MouseEvent;
 import java.io.File;
 import java.util.LinkedHashMap;
 import songscribe.error.RuntimeError;
@@ -54,6 +53,7 @@ import songscribe.dom.DocPx;
 import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.dom.Line;
+import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.ui.MusicEditOperations;
@@ -80,10 +80,8 @@ import songscribe.ui.component.score.OverlayHost;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.ScorePanel;
-import songscribe.ui.component.score.StaffPanel;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.ScoreActions;
-import songscribe.layout.Ending;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
@@ -631,8 +629,8 @@ public final class ScoreView
     }
 
     @Override
-    public boolean isEndingSelected(Ending ending, int lineIndex) {
-        return selectionCoordinator.isEndingSelected(ending, lineIndex);
+    public boolean isDecorationSelected(LineElement element, int lineIndex) {
+        return selectionCoordinator.isDecorationSelected(element, lineIndex);
     }
 
     @Override

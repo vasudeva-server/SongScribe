@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
@@ -46,12 +45,10 @@ import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.Ending;
 import songscribe.layout.LayoutResult;
-import songscribe.ui.component.ScoreView;
-import songscribe.ui.component.score.LineComponent;
 
 /**
  * Tests for {@link EndingRenderer#renderEndings} (the skip path when no DecorationLayout is
- * present, and the Y-coordinate translation when one is) and {@link EndingRenderer#hitTestEnding}
+ * present, and the Y-coordinate translation when one is) and {@link EndingRenderer#hitTest}
  * (bracket/margin/label bounding-box containment).
  */
 class EndingRendererTest extends UnitTest {
@@ -167,7 +164,7 @@ class EndingRendererTest extends UnitTest {
     }
 
     // ======================================================================
-    // hitTestEnding
+    // hitTest
     // ======================================================================
 
     private static final double DECORATION_X_SS = 2.0;
@@ -186,6 +183,18 @@ class EndingRendererTest extends UnitTest {
 
     private static final double HIT_BOX_RIGHT_X_SS = DECORATION_X_SS + DECORATION_WIDTH_SS;
 
+    /**
+     * Hit-tests the given staff-space point against the line, on the shared middle-line Y.
+     */
+    private static @Nullable Ending hitTestEnding(
+        double xSs,
+        double ySs,
+        Line line,
+        @Nullable LayoutResult layoutResult
+    ) {
+        return RENDERER.hitTestEnding(xSs, ySs, line, layoutResult, MIDDLE_LINE_Y_SS);
+    }
+
     private LayoutResult layoutResultWithDecoration(Ending ending, double ySs) {
         return LayoutResult.builder()
             .putDecorationLayout(ending, new LayoutResult.DecorationLayout(
@@ -199,8 +208,7 @@ class EndingRendererTest extends UnitTest {
         var ending = pair.ending();
         var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
 
-        var result = RENDERER.hitTestEnding(
-            DECORATION_X_SS + 1, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(DECORATION_X_SS + 1, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult);
 
         assertThat(result).isSameAs(ending);
     }
@@ -213,8 +221,7 @@ class EndingRendererTest extends UnitTest {
         // Point below the bracket's content height but within the margin band.
         var yInMarginSs = HIT_BOX_TOP_Y_SS + DECORATION_HEIGHT_SS + (DECORATION_MARGIN_SS / 2);
 
-        var result = RENDERER.hitTestEnding(
-            DECORATION_X_SS + 1, yInMarginSs, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(DECORATION_X_SS + 1, yInMarginSs, pair.line(), layoutResult);
 
         assertThat(result).isSameAs(ending);
     }
@@ -225,8 +232,7 @@ class EndingRendererTest extends UnitTest {
         var ending = pair.ending();
         var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
 
-        var result = RENDERER.hitTestEnding(
-            DECORATION_X_SS + 1, HIT_BOX_BOTTOM_Y_SS + 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(DECORATION_X_SS + 1, HIT_BOX_BOTTOM_Y_SS + 1, pair.line(), layoutResult);
 
         assertThat(result).isNull();
     }
@@ -237,8 +243,7 @@ class EndingRendererTest extends UnitTest {
         var ending = pair.ending();
         var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
 
-        var result = RENDERER.hitTestEnding(
-            DECORATION_X_SS + 1, HIT_BOX_TOP_Y_SS - 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(DECORATION_X_SS + 1, HIT_BOX_TOP_Y_SS - 1, pair.line(), layoutResult);
 
         assertThat(result).isNull();
     }
@@ -249,8 +254,7 @@ class EndingRendererTest extends UnitTest {
         var ending = pair.ending();
         var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
 
-        var result = RENDERER.hitTestEnding(
-            DECORATION_X_SS - 1, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(DECORATION_X_SS - 1, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult);
 
         assertThat(result).isNull();
     }
@@ -261,8 +265,7 @@ class EndingRendererTest extends UnitTest {
         var ending = pair.ending();
         var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
 
-        var result = RENDERER.hitTestEnding(
-            HIT_BOX_RIGHT_X_SS + 1, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(HIT_BOX_RIGHT_X_SS + 1, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult);
 
         assertThat(result).isNull();
     }
@@ -274,8 +277,7 @@ class EndingRendererTest extends UnitTest {
         var ending = pair.ending();
         var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
 
-        var result = RENDERER.hitTestEnding(
-            DECORATION_X_SS, HIT_BOX_TOP_Y_SS, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(DECORATION_X_SS, HIT_BOX_TOP_Y_SS, pair.line(), layoutResult);
 
         assertThat(result).isSameAs(ending);
     }
@@ -287,8 +289,7 @@ class EndingRendererTest extends UnitTest {
         var ending = pair.ending();
         var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
 
-        var result = RENDERER.hitTestEnding(
-            HIT_BOX_RIGHT_X_SS, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(HIT_BOX_RIGHT_X_SS, HIT_BOX_TOP_Y_SS + 1, pair.line(), layoutResult);
 
         assertThat(result).isNull();
     }
@@ -299,8 +300,7 @@ class EndingRendererTest extends UnitTest {
         var ending = pair.ending();
         var layoutResult = layoutResultWithDecoration(ending, DECORATION_Y_SS);
 
-        var result = RENDERER.hitTestEnding(
-            DECORATION_X_SS + 1, HIT_BOX_BOTTOM_Y_SS, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(DECORATION_X_SS + 1, HIT_BOX_BOTTOM_Y_SS, pair.line(), layoutResult);
 
         assertThat(result).isNull();
     }
@@ -329,8 +329,7 @@ class EndingRendererTest extends UnitTest {
             .putDecorationLayout(secondEnding, decoration)
             .build();
 
-        var result = RENDERER.hitTestEnding(
-            DECORATION_X_SS + 1, HIT_BOX_TOP_Y_SS + 1, line, layoutResult, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(DECORATION_X_SS + 1, HIT_BOX_TOP_Y_SS + 1, line, layoutResult);
 
         assertThat(result).isSameAs(firstEnding);
     }
@@ -339,8 +338,7 @@ class EndingRendererTest extends UnitTest {
     void testHitTestEnding_nullLayoutResult_returnsNull() {
         var pair = makeLineWithEnding();
 
-        var result = RENDERER.hitTestEnding(
-            DECORATION_X_SS, MIDDLE_LINE_Y_SS, pair.line(), null, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(DECORATION_X_SS, MIDDLE_LINE_Y_SS, pair.line(), null);
 
         assertThat(result).isNull();
     }
@@ -350,73 +348,9 @@ class EndingRendererTest extends UnitTest {
         var pair = makeLineWithEnding();
         var layoutResult = LayoutResult.builder().build();
 
-        var result = RENDERER.hitTestEnding(
-            DECORATION_X_SS, MIDDLE_LINE_Y_SS, pair.line(), layoutResult, MIDDLE_LINE_Y_SS);
+        var result = hitTestEnding(DECORATION_X_SS, MIDDLE_LINE_Y_SS, pair.line(), layoutResult);
 
         assertThat(result).isNull();
     }
 
-    // ======================================================================
-    // determineEndingColor
-    // ======================================================================
-
-    private LineInvariants invariantsFor(
-        Line line,
-        boolean editMode,
-        LineComponent.@Nullable SelectionProvider selectionProvider
-    ) {
-        return RenderContextTestHelper.newContext(new Song())
-            .setCurrentLine(line)
-            .setEditMode(editMode)
-            .setSelectionProvider(selectionProvider)
-            .build();
-    }
-
-    @Test
-    void testDetermineEndingColor_selectedInEditMode_returnsSelectionColor() {
-        var pair = makeLineWithEnding();
-        var ending = pair.ending();
-        var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isEndingSelected(ending, 0)).thenReturn(true);
-
-        var color = RENDERER.determineEndingColor(ending, invariantsFor(pair.line(), true, selectionProvider));
-
-        assertThat(color).isEqualTo(ScoreView.getSelectionColor());
-    }
-
-    @Test
-    void testDetermineEndingColor_notSelected_returnsElementColor() {
-        var pair = makeLineWithEnding();
-        var ending = pair.ending();
-        var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isEndingSelected(ending, 0)).thenReturn(false);
-
-        var color = RENDERER.determineEndingColor(ending, invariantsFor(pair.line(), true, selectionProvider));
-
-        assertThat(color).isEqualTo(Color.BLACK);
-    }
-
-    // Selection highlighting is an edit-mode affordance: the selection provider is wired
-    // independently of edit mode, so a selected ending must still render unhighlighted
-    // when the score is not editable.
-    @Test
-    void testDetermineEndingColor_selectedOutsideEditMode_returnsElementColor() {
-        var pair = makeLineWithEnding();
-        var ending = pair.ending();
-        var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isEndingSelected(ending, 0)).thenReturn(true);
-
-        var color = RENDERER.determineEndingColor(ending, invariantsFor(pair.line(), false, selectionProvider));
-
-        assertThat(color).isEqualTo(Color.BLACK);
-    }
-
-    @Test
-    void testDetermineEndingColor_noSelectionProvider_returnsElementColor() {
-        var pair = makeLineWithEnding();
-
-        var color = RENDERER.determineEndingColor(pair.ending(), invariantsFor(pair.line(), true, null));
-
-        assertThat(color).isEqualTo(Color.BLACK);
-    }
 }

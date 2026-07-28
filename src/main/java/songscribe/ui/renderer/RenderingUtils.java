@@ -29,6 +29,7 @@ import java.util.function.DoubleConsumer;
 
 
 import songscribe.dom.ElementType;
+import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
@@ -136,6 +137,29 @@ public final class RenderingUtils {
         }
 
         return invariants.getElementColor(index);
+    }
+
+    /**
+     * Returns the selection color if {@code element} is selected, otherwise the
+     * standard element color.
+     * <p>
+     * The selection provider is wired independently of edit mode, so it can report a
+     * selection while the score is not editable. Selection highlighting is an edit-mode
+     * affordance only, matching {@code BeamGroupRenderer.getBeamHighlightColor}.
+     */
+    static Color decorationSelectionColor(LineElement element, LineInvariants invariants) {
+        if (!invariants.isEditMode()) {
+            return ELEMENT_COLOR;
+        }
+
+        var selectionProvider = invariants.getSelectionProvider();
+
+        if (selectionProvider != null
+            && selectionProvider.isDecorationSelected(element, invariants.getLineIndex())) {
+            return invariants.getSelectionColor();
+        }
+
+        return ELEMENT_COLOR;
     }
 
     /**

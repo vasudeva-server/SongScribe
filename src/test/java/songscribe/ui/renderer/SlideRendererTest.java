@@ -144,6 +144,13 @@ class SlideRendererTest extends UnitTest {
      * Injects synthetic cached geometry onto a glissando, bypassing the render pass.
      * Angle is in degrees for readability; the method converts to radians internally.
      */
+    /**
+     * Builds a hit-test context for a slide hit test, which reads only the point and the line.
+     */
+    private static int hitTestSlide(double xSs, double ySs, Line line) {
+        return RENDERER.hitTestSlide(xSs, ySs, line);
+    }
+
     private static void setCachedGeometry(
         StaffElement.Glissando glissando,
         double startXSs, double startYSs,
@@ -165,7 +172,7 @@ class SlideRendererTest extends UnitTest {
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 0.0, 0.0, 45.0, 10.0);
 
         var mid = 5.0 * Math.cos(Math.toRadians(45.0));
-        assertThat(RENDERER.hitTestSlide(mid, mid, line)).isEqualTo(0);
+        assertThat(hitTestSlide(mid, mid, line)).isEqualTo(0);
     }
 
     @Test
@@ -173,7 +180,7 @@ class SlideRendererTest extends UnitTest {
         // Note has a Glissando object but hasCachedGeometry is false (default) — must be skipped
         var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
 
-        assertThat(RENDERER.hitTestSlide(10.0, 3.0, line)).isEqualTo(-1);
+        assertThat(hitTestSlide(10.0, 3.0, line)).isEqualTo(-1);
     }
 
     @Test
@@ -182,7 +189,7 @@ class SlideRendererTest extends UnitTest {
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // localX = 15.1 - 5.0 = 10.1 > cachedLength (10.0)
-        assertThat(RENDERER.hitTestSlide(15.1, 3.0, line)).isEqualTo(-1);
+        assertThat(hitTestSlide(15.1, 3.0, line)).isEqualTo(-1);
     }
 
     @Test
@@ -191,7 +198,7 @@ class SlideRendererTest extends UnitTest {
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // localX = 4.9 - 5.0 = -0.1 < 0
-        assertThat(RENDERER.hitTestSlide(4.9, 3.0, line)).isEqualTo(-1);
+        assertThat(hitTestSlide(4.9, 3.0, line)).isEqualTo(-1);
     }
 
     @Test
@@ -200,7 +207,7 @@ class SlideRendererTest extends UnitTest {
         var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
-        assertThat(RENDERER.hitTestSlide(10.0, 4.0, line)).isEqualTo(-1);
+        assertThat(hitTestSlide(10.0, 4.0, line)).isEqualTo(-1);
     }
 
     @Test
@@ -210,7 +217,7 @@ class SlideRendererTest extends UnitTest {
         setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
         // Click at the midpoint: localX=5, localY=0 — well within hit bounds
-        assertThat(RENDERER.hitTestSlide(10.0, 3.0, line)).isEqualTo(0);
+        assertThat(hitTestSlide(10.0, 3.0, line)).isEqualTo(0);
     }
 
     @Test
@@ -231,7 +238,23 @@ class SlideRendererTest extends UnitTest {
 
         setCachedGeometry(Objects.requireNonNull(note1.getGlissando()), 5.0, 3.0, 0.0, 10.0);
 
-        assertThat(RENDERER.hitTestSlide(10.0, 3.0, line)).isEqualTo(1);
+        assertThat(hitTestSlide(10.0, 3.0, line)).isEqualTo(1);
+    }
+
+    // A grace note's glissando is not selectable, so a hit on it reports GraceGlissando.
+    @Test
+    void testHitTestGlissando_onGraceNote_returnsGraceGlissando() {
+        var grace = ElementType.GRACE_QUAVER.newInstance();
+        grace.setUpper(true);
+        grace.setGlissando();
+
+        var line = detachedLine();
+        line.addElement(grace);
+        line.addElement(ElementType.CROTCHET.newInstance());
+
+        setCachedGeometry(Objects.requireNonNull(grace.getGlissando()), 5.0, 3.0, 0.0, 10.0);
+
+        assertThat(hitTestSlide(10.0, 3.0, line)).isEqualTo(0);
     }
 
     /**

@@ -196,7 +196,7 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.getSelectionEnd()).isEqualTo(-1);
         assertThat(state.getSelectionAnchor()).isEqualTo(-1);
         assertThat(state.isLineSelected()).isFalse();
-        assertThat(state.isEndingSelected(ending)).isTrue();
+        assertThat(state.isDecorationSelected(ending)).isTrue();
         assertThat(callbackCount[0]).isEqualTo(1);
     }
 
@@ -213,7 +213,7 @@ class LineSelectionStateTest extends UnitTest {
         state.selectEnding(ending);
 
         assertThat(state.hasSlideSelection()).isFalse();
-        assertThat(state.isEndingSelected(ending)).isTrue();
+        assertThat(state.isDecorationSelected(ending)).isTrue();
     }
 
     @Test
@@ -318,7 +318,7 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.hasEndingSelection()).isFalse();
     }
 
-    // -- isEndingSelected --
+    // -- isDecorationSelected --
 
     @Test
     void testIsEndingSelectedReturnsTrueOnlyForMatchingEnding() {
@@ -332,8 +332,32 @@ class LineSelectionStateTest extends UnitTest {
         var state = new LineSelectionState(line);
         state.selectEnding(firstEnding);
 
-        assertThat(state.isEndingSelected(firstEnding)).isTrue();
-        assertThat(state.isEndingSelected(secondEnding)).isFalse();
+        assertThat(state.isDecorationSelected(firstEnding)).isTrue();
+        assertThat(state.isDecorationSelected(secondEnding)).isFalse();
+    }
+
+    /**
+     * The parameter is any line element, not just an ending, so a note can be passed in.
+     * Even with the decoration slot occupied by an ending, a note must never be reported as
+     * the selected decoration — notes are selected separately, by index. Pinning this down
+     * now means the next decoration type added to this check cannot quietly start answering
+     * for notes too.
+     */
+    @Test
+    void testIsDecorationSelectedReturnsFalseForANoteWhileAnEndingIsSelected() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var ending = makeEnding(line);
+        var state = new LineSelectionState(line);
+        state.selectEnding(ending);
+
+        assertThat(state.isDecorationSelected(ending))
+            .as("the ending occupies the decoration slot")
+            .isTrue();
+        assertThat(state.isDecorationSelected(line.getElement(0)))
+            .as("a note is not a selected decoration")
+            .isFalse();
     }
 
     // -- getSelectedEnding --

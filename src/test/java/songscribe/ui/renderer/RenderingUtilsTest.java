@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import java.awt.Color;
 import java.util.ArrayList;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -40,6 +41,7 @@ import songscribe.layout.NoteGeometry;
 import songscribe.engraving.Staff;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 class RenderingUtilsTest extends UnitTest {
 
@@ -210,5 +212,61 @@ class RenderingUtilsTest extends UnitTest {
         var expected = SMuFLConstants.NOTEHEAD_BLACK_STEM_DOWN_NW.x() + NoteGeometry.STEM_WIDTH_SS / 2.0;
         assertThat(RenderingUtils.stemCenterXOffsetSs(ElementType.CROTCHET, StaffElement.Direction.DOWN))
             .isCloseTo(expected, within(1e-9));
+    }
+
+    // ======================================================================
+    // decorationSelectionColor
+    // ======================================================================
+
+    private LineInvariants invariantsFor(boolean editMode, LineComponent.@Nullable SelectionProvider selectionProvider) {
+        return RenderContextTestHelper.newContext(new Song())
+            .setEditMode(editMode)
+            .setSelectionProvider(selectionProvider)
+            .build();
+    }
+
+    @Test
+    void testDecorationSelectionColorSelectedInEditModeReturnsSelectionColor() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isDecorationSelected(element, 0)).thenReturn(true);
+
+        var color = RenderingUtils.decorationSelectionColor(element, invariantsFor(true, selectionProvider));
+
+        assertThat(color).isEqualTo(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testDecorationSelectionColorNotSelectedReturnsElementColor() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isDecorationSelected(element, 0)).thenReturn(false);
+
+        var color = RenderingUtils.decorationSelectionColor(element, invariantsFor(true, selectionProvider));
+
+        assertThat(color).isEqualTo(Color.BLACK);
+    }
+
+    // Selection highlighting is an edit-mode affordance: the selection provider is wired
+    // independently of edit mode, so a selected element must still render unhighlighted
+    // when the score is not editable.
+    @Test
+    void testDecorationSelectionColorSelectedOutsideEditModeReturnsElementColor() {
+        var element = new StaffElement(ElementType.CROTCHET);
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isDecorationSelected(element, 0)).thenReturn(true);
+
+        var color = RenderingUtils.decorationSelectionColor(element, invariantsFor(false, selectionProvider));
+
+        assertThat(color).isEqualTo(Color.BLACK);
+    }
+
+    @Test
+    void testDecorationSelectionColorNoSelectionProviderReturnsElementColor() {
+        var element = new StaffElement(ElementType.CROTCHET);
+
+        var color = RenderingUtils.decorationSelectionColor(element, invariantsFor(true, null));
+
+        assertThat(color).isEqualTo(Color.BLACK);
     }
 }

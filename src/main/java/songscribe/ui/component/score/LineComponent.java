@@ -37,8 +37,8 @@ import songscribe.ui.component.LyricTargetResolver;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.PasteModeManager;
+import songscribe.ui.hit.HitResult;
 import songscribe.ui.component.ScoreView;
-import songscribe.layout.Ending;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LineSpacing;
@@ -100,13 +100,13 @@ public class LineComponent extends ScoreComponent
         boolean isSlideSelected(int elementIndex, int lineIndex);
 
         /**
-         * Returns whether the given ending is selected.
+         * Returns whether the given line element is selected.
          *
-         * @param ending    The ending
+         * @param element   The line element
          * @param lineIndex The line index
-         * @return true if the ending is selected
+         * @return true if the element is selected
          */
-        boolean isEndingSelected(Ending ending, int lineIndex);
+        boolean isDecorationSelected(LineElement element, int lineIndex);
 
         boolean isLyricSelected(StaffElement element, int verse, int lineIndex);
     }
@@ -717,11 +717,14 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // No preview anywhere in the clef/key signature column or over the lyrics, since
-        // a click there does not insert an element. The header test is two comparisons,
-        // so it runs before the lyric test, which loops over every element in the line.
+        // No preview anywhere in the clef/key signature column, over the lyrics, or over an
+        // ending, since a click there selects rather than inserting an element. The header
+        // test is two comparisons, so it runs before the other two, which loop over every
+        // element in the line.
         if (getScoreView().getMode() == Mode.EDIT
-            && (selectionHandler.isWithinHeaderX(e.getPoint()) || hitTestLyric(e.getPoint()) != null)) {
+            && (selectionHandler.isWithinHeaderX(e.getPoint())
+                || hitTestLyric(e.getPoint()) != null
+                || selectionHandler.isEndingHit(e.getPoint()))) {
             clearPreviewElement();
             return;
         }
@@ -856,10 +859,21 @@ public class LineComponent extends ScoreComponent
         // clef/key signature area both switch to SELECT mode, then fall through to normal
         // handling so the rest of this method acts as if we had been in SELECT mode all
         // along.
-        if (scoreView != null
-            && scoreView.getMode() == Mode.EDIT
-            && (e.isAltDown() || selectionHandler.isStaffLineHit(e.getPoint()))) {
-            Actions.SELECT_MODE_ACTION.perform(this);
+        //
+        // The cascade walks every element in the line, so it runs at most once per press:
+        // pressHit is shared with the ending test further down. Alt+click never needs it.
+        HitResult pressHit = null;
+
+        if (scoreView != null && scoreView.getMode() == Mode.EDIT) {
+            if (e.isAltDown()) {
+                Actions.SELECT_MODE_ACTION.perform(this);
+            } else {
+                pressHit = selectionHandler.hitTestViewPoint(e.getPoint());
+
+                if (pressHit instanceof HitResult.StaffLine) {
+                    Actions.SELECT_MODE_ACTION.perform(this);
+                }
+            }
         }
 
         var lyricHit = hitTestLyric(e.getPoint());
@@ -868,6 +882,18 @@ public class LineComponent extends ScoreComponent
             getScoreView().getSelectionCoordinator().selectLyric(lyricHit.element(), lyricHit.verse());
             getScoreView().selectionChanged();
             repaint();
+            return;
+        }
+
+        // An ending is selectable in EDIT mode too, in place and without switching modes,
+        // the same way a lyric is. A non-null pressHit means we were in EDIT mode without
+        // alt held; the mode is re-checked because a staff-line hit above may have just
+        // switched us to SELECT, where the selection handler below handles endings along
+        // with everything else.
+        if (pressHit != null
+            && scoreView != null
+            && scoreView.getMode() == Mode.EDIT
+            && selectionHandler.handleEditModeEndingPress(pressHit)) {
             return;
         }
 
