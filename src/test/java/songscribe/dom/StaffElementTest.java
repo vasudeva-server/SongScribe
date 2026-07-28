@@ -771,11 +771,17 @@ class StaffElementTest extends UnitTest {
         assertThat(note.findLastAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
     }
 
-    // (g) A note's own explicit accidental is still returned by getPitch() regardless
-    //     of any barrier — the caller checks it first and never calls
-    //     findEffectiveAccidental() when it is non-null.
+    // (g) A note's own explicit accidental wins over the scan: getPitch() checks it first and
+    //     never calls findEffectiveAccidental() when it is non-null.
+    //
+    //     Asserting only on getPitch() would not reach the scan at all, making the barline and
+    //     the flatted note in this fixture inert and the test a duplicate of
+    //     testGetPitchStaffPositionMinus4SharpIsFSharp5 above. So the scan is asserted on
+    //     directly, and it is set up to disagree: blocked by the barrier it yields no accidental
+    //     at all, while the note itself is sharp. getPitch() following the scan instead of the
+    //     note's own accidental would therefore fail here, which is the point.
     @Test
-    void testGetPitchReturnsOwnExplicitAccidentalRegardlessOfPrecedingBarrier() {
+    void testGetPitchPrefersOwnExplicitAccidentalOverTheBarrierBlockedScan() {
         var song = new Song();
         var line = song.getLine(0);
         var predecessor = new StaffElement(ElementType.CROTCHET);
@@ -791,7 +797,12 @@ class StaffElementTest extends UnitTest {
             line.addElement(note);
         });
 
-        assertThat(note.getPitch()).isEqualTo(MIDI_F5 + 1);
+        assertThat(note.findLastAccidental())
+            .as("the barrier blocks the predecessor's flat, so the scan offers nothing")
+            .isNull();
+        assertThat(note.getPitch())
+            .as("getPitch uses the note's own sharp, not the scan")
+            .isEqualTo(MIDI_F5 + 1);
     }
 
     // ------------------------------------------------------------------

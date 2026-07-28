@@ -2166,6 +2166,58 @@ class ScoreViewControllerTest extends UnitTest {
             );
         }
 
+        // Pins the wiring from a captured fragment's source context through to the pasted note.
+        // Every other paste test here hands the fragment null placeholders for its source
+        // accidentals, so none exercises the case the reconciliation exists for. This one builds
+        // the fragment with the real capture path instead.
+        //
+        // The copied note carries no accidental of its own but sounds sharp where it was copied
+        // from, inheriting the sharp written on the note before it. Pasted somewhere nothing
+        // alters that pitch, it has to arrive carrying an explicit sharp, or it sounds a semitone
+        // lower than the note the user copied.
+        @Test
+        void testPastingANoteThatSoundedSharpInItsSourceContextMaterializesTheSharp() {
+            final int sharedPositionSp = 4;
+            final int unrelatedPositionSp = 2;
+
+            var sourceSong = wideSong();
+            var sourceLine = sourceSong.getLine(0);
+            var sharpenedNote = ElementType.CROTCHET.newInstance();
+            sharpenedNote.setStaffPosition(sharedPositionSp);
+            sharpenedNote.setAccidental(StaffElement.Accidental.SHARP);
+            var copiedNote = ElementType.CROTCHET.newInstance();
+            copiedNote.setStaffPosition(sharedPositionSp);
+            sourceSong.withoutMutationTracking(() -> {
+                sourceLine.addElement(sharpenedNote);
+                sourceLine.addElement(copiedNote);
+            });
+
+            var copiedPitch = copiedNote.getPitch();
+            var fragment = Fragment.capture(sourceLine, 1, 1);
+
+            // A destination whose only note sits elsewhere on the staff, so nothing there lends
+            // the pasted note an accidental and the key signature leaves its pitch alone.
+            var destinationSong = wideSong();
+            var destinationLine = destinationSong.getLine(0);
+            var unrelatedNote = ElementType.CROTCHET.newInstance();
+            unrelatedNote.setStaffPosition(unrelatedPositionSp);
+            destinationSong.withoutMutationTracking(() -> destinationLine.addElement(unrelatedNote));
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(fragment);
+            var controller = buildController(destinationSong, clipboardManager);
+
+            destinationSong.withModification(() -> controller.tryInsertFragment(destinationLine, 1, null));
+
+            var pastedNote = destinationLine.getElement(1);
+            assertThat(pastedNote.getAccidental())
+                .as("the pasted note sounded sharp where it was copied from and must still")
+                .isEqualTo(StaffElement.Accidental.SHARP);
+            assertThat(pastedNote.getPitch())
+                .as("a paste must not change the pitch of what was copied")
+                .isEqualTo(copiedPitch);
+        }
+
         @Test
         void testPasteIntoHyphenatedWordLeavesValidSyllabicChainsAtBothSeams() {
             // [begin(BEGIN), middle(MIDDLE), end(END)] — a 3-syllable word. Pasting

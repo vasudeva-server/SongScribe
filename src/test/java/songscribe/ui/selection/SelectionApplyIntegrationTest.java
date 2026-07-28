@@ -31,6 +31,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ import songscribe.dom.ArticulationType;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
+import songscribe.layout.NoteGeometry;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.AccidentalInParensAction;
 import songscribe.ui.action.DotAction;
@@ -69,6 +71,14 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
     private FermataAction FERMATA_ACTION;
     private DurationArticulationAction STACCATO_ACTION;
     private AccidentalInParensAction ACCIDENTAL_IN_PARENS_ACTION;
+
+    // Applying a width-changing action now measures the projected line, which reads accidental
+    // widths out of a static table that has to be built first. Without this the class passes only
+    // when some earlier test class happens to have built it, and fails whenever it runs alone.
+    @BeforeAll
+    static void initializeNoteGeometry() {
+        NoteGeometry.initializeAccidentalWidths();
+    }
 
     @BeforeEach
     void setUp() {
@@ -143,6 +153,39 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
             assertThat(line.getElement(1).getAccidental()).isNull();
             assertThat(line.getElement(2).getAccidental()).isNull();
+        }
+
+        // Pins the wiring between the toolbar accidental action and the accidental reconciliation.
+        // Every other accidental test here selects all the notes at the affected staff position,
+        // so none leaves a note behind that was inheriting the accidental being changed.
+        //
+        // Both notes sit at the same staff position; only the first carries a flat, so the second
+        // sounds flat by inheriting it. Sharpening the first alone moves the context arriving at
+        // the second, which must be given an explicit flat or it would silently change pitch.
+        @Test
+        void testSharpeningOneNoteWritesTheDisplacedFlatOntoItsUnselectedSibling() {
+            var changedNote = ElementType.CROTCHET.newInstance();
+            changedNote.setAccidental(StaffElement.Accidental.FLAT);
+            var inheritingNote = ElementType.CROTCHET.newInstance();
+
+            var coordinator = createCoordinator(
+                List.of(changedNote, inheritingNote),
+                List.of(SHARP_ACTION)
+            );
+            var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
+            var inheritedPitchBefore = line.getElement(1).getPitch();
+
+            // Only the first note is selected — the second must be reconciled on its behalf.
+            ReflectionTestHelper.selectRange(coordinator, 0, 0);
+            coordinator.applyActionToSelection(SHARP_ACTION, true, null);
+
+            assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+            assertThat(line.getElement(1).getAccidental())
+                .as("the unselected note was inheriting the flat and must now carry one of its own")
+                .isEqualTo(StaffElement.Accidental.FLAT);
+            assertThat(line.getElement(1).getPitch())
+                .as("a note the user did not select must not change pitch")
+                .isEqualTo(inheritedPitchBefore);
         }
 
         @Test

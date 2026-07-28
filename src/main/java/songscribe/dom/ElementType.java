@@ -402,6 +402,26 @@ public enum ElementType {
         return isBarLine() || isRepeat() || isBreathMark();
     }
 
+    /**
+     * Whether this element cancels every accidental written before it, so that a later note at the
+     * same staff position inherits nothing from across it and falls back to the key signature.
+     * Convention: any structural marker cancels. A breath mark deliberately does not — it cancels
+     * nothing.
+     *
+     * <p>Both places that resolve which accidental is sounding ask this: the resolver that reads
+     * the live line ({@link StaffElement#findEffectiveAccidental}) and the one that reads a
+     * projection of how the line will look after an edit ({@code AccidentalReconciliation}). They
+     * have to agree, or an edit's preview and its result would disagree about a note's pitch.
+     *
+     * <p>The same {@code isBarLine() || isRepeat()} test appears elsewhere in the codebase for
+     * unrelated reasons — closing a MusicXML measure, bounding an ending, choosing a glyph — so
+     * this is deliberately narrow rather than a general "is a structural marker". #53 (mid-line
+     * key changes) adds key changes here, and only here.
+     */
+    public boolean cancelsAccidentals() {
+        return isBarLine() || isRepeat();
+    }
+
     public boolean isGraceNote() {
         return this == GRACE_QUAVER;
     }

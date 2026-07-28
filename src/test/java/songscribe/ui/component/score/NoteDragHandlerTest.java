@@ -380,6 +380,10 @@ class NoteDragHandlerTest extends UnitTest {
 
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(ORIGINAL_POSITION_SP);
+            // An accidental is written for the staff position it sits on, so a dragged note gives
+            // it up. Without one here nothing observes that clearing: the ACCIDENTAL tag on the
+            // recorded mutation comes from a fixed set and is reported either way.
+            note.setAccidental(StaffElement.Accidental.SHARP);
             realSong.withoutMutationTracking(() -> realLine.addElement(note));
 
             when(lc.getLine()).thenReturn(realLine);
@@ -413,12 +417,17 @@ class NoteDragHandlerTest extends UnitTest {
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("No ElementModification in captured notifications"));
 
-            // beforeElement is the clone captured at press time — original pitch.
+            // beforeElement is the clone captured at press time — original pitch and accidental,
+            // which is what undo restores.
             assertThat(modification.beforeElement().getStaffPosition()).isEqualTo(ORIGINAL_POSITION_SP);
+            assertThat(modification.beforeElement().getAccidental())
+                .isEqualTo(StaffElement.Accidental.SHARP);
             assertThat(modification.fields()).containsExactly(ElementField.PITCH, ElementField.ACCIDENTAL);
 
-            // The live element now has the dragged pitch.
+            // The live element now has the dragged pitch, and gave up the accidental it carried
+            // at the position it left.
             assertThat(realLine.getElement(0).getStaffPosition()).isEqualTo(DRAGGED_POSITION_SP);
+            assertThat(realLine.getElement(0).getAccidental()).isNull();
         }
     }
 

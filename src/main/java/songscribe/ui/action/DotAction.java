@@ -31,7 +31,9 @@ import songscribe.message.mutation.ElementField;
 import songscribe.dom.StaffElement;
 import songscribe.ui.component.MainFrame;
 
-public final class DotAction extends PreviewElementAction implements UIAction.ElementModifiable {
+// Widens: each dot is drawn to the right of the notehead, inside the note's column.
+public final class DotAction extends PreviewElementAction
+    implements UIAction.ElementModifiable, UIAction.WidensColumn {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.DOT_COUNT);
 

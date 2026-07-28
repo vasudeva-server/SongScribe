@@ -148,7 +148,7 @@ public final class PitchSpelling {
      * (natural / no alteration).
      */
     public static int alterFor(@Nullable Accidental accidental) {
-        return (accidental == null) ? 0 : StaffElement.getPitchAdjustment(accidental);
+        return StaffElement.getPitchAdjustment(accidental);
     }
 
     /**

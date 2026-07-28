@@ -707,6 +707,11 @@ class ScoreInputHandlerTest extends UnitTest {
             var line = song.getLine(0);
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(originalPositionSp);
+            // An accidental is written for the staff position it sits on, so a note that leaves
+            // that position gives it up. The fixture needs one for that clearing to be observable
+            // at all — the ACCIDENTAL tag below comes from a fixed set and would be reported
+            // whether or not anything actually changed.
+            note.setAccidental(StaffElement.Accidental.SHARP);
             song.withoutMutationTracking(() -> line.addElement(note));
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -715,10 +720,14 @@ class ScoreInputHandlerTest extends UnitTest {
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_UP);
 
             assertThat(note.getStaffPosition()).isEqualTo(originalPositionSp - 1);
+            assertThat(note.getAccidental()).isNull();
 
             var modification = capturedPitchModification();
             assertThat(modification.fields()).containsExactly(ElementField.PITCH, ElementField.ACCIDENTAL);
             assertThat(modification.beforeElement().getStaffPosition()).isEqualTo(originalPositionSp);
+            assertThat(modification.beforeElement().getAccidental())
+                .as("undo restores the accidental from the pre-move snapshot")
+                .isEqualTo(StaffElement.Accidental.SHARP);
         }
 
         @Test
@@ -728,6 +737,8 @@ class ScoreInputHandlerTest extends UnitTest {
             var line = song.getLine(0);
             var note = ElementType.CROTCHET.newInstance();
             note.setStaffPosition(originalPositionSp);
+            // See the Up test: without an accidental on the fixture, nothing observes the clear.
+            note.setAccidental(StaffElement.Accidental.FLAT);
             song.withoutMutationTracking(() -> line.addElement(note));
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -736,10 +747,50 @@ class ScoreInputHandlerTest extends UnitTest {
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_DOWN);
 
             assertThat(note.getStaffPosition()).isEqualTo(originalPositionSp + 1);
+            assertThat(note.getAccidental()).isNull();
 
             var modification = capturedPitchModification();
             assertThat(modification.fields()).containsExactly(ElementField.PITCH, ElementField.ACCIDENTAL);
             assertThat(modification.beforeElement().getStaffPosition()).isEqualTo(originalPositionSp);
+            assertThat(modification.beforeElement().getAccidental())
+                .as("undo restores the accidental from the pre-move snapshot")
+                .isEqualTo(StaffElement.Accidental.FLAT);
+        }
+
+        // Pins the wiring between the arrow-key shift and the accidental reconciliation, which the
+        // shift's own assertions above cannot reach. Two notes share a staff position; only the
+        // first carries a sharp, so the second sounds sharp by inheriting it. Moving the first
+        // away takes that sharp with it, and the second must be given one of its own or it would
+        // silently change pitch — a note the user never touched.
+        @Test
+        void testShiftingANoteAwayWritesItsAccidentalOntoTheNoteThatInheritedIt() {
+            final int sharedPositionSp = 4;
+            var song = new Song();
+            var line = song.getLine(0);
+            var movedNote = ElementType.CROTCHET.newInstance();
+            movedNote.setStaffPosition(sharedPositionSp);
+            movedNote.setAccidental(StaffElement.Accidental.SHARP);
+            var inheritingNote = ElementType.CROTCHET.newInstance();
+            inheritingNote.setStaffPosition(sharedPositionSp);
+            song.withoutMutationTracking(() -> {
+                line.addElement(movedNote);
+                line.addElement(inheritingNote);
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectNote(coordinator, 0);
+
+            var inheritedPitchBefore = inheritingNote.getPitch();
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_UP);
+
+            assertThat(movedNote.getStaffPosition()).isEqualTo(sharedPositionSp - 1);
+            assertThat(inheritingNote.getAccidental())
+                .as("the note that was inheriting the sharp must now carry one of its own")
+                .isEqualTo(StaffElement.Accidental.SHARP);
+            assertThat(inheritingNote.getPitch())
+                .as("a note the user did not touch must not change pitch")
+                .isEqualTo(inheritedPitchBefore);
         }
 
         @Test

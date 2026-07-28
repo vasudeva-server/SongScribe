@@ -205,10 +205,30 @@ public class UIAction extends AbstractAction {
     }
 
     /**
+     * A reflectable action whose change can make the column it touches wider — an accidental
+     * glyph appearing to the left of the notehead, a dot to its right, a different notehead
+     * altogether. Applying one to a selection must be refused when the line no longer fits, so
+     * {@code SelectionCoordinator} measures the projected line before committing.
+     *
+     * <p>Actions that stack <em>vertically</em> above or below the note — a fermata, a dynamic
+     * marking, an articulation — do not implement this: they cannot widen anything, and gating
+     * them would refuse edits that always fit.
+     *
+     * <p>Declared here rather than tested for by listing concrete action classes at the call
+     * site, so a new width-changing action states that fact where it is defined instead of
+     * silently skipping the check.
+     */
+    public interface WidensColumn extends Reflectable {
+    }
+
+    /**
      * A reflectable action that replaces an element with a new instance
      * (e.g. changing duration requires a new StaffElement object).
+     *
+     * <p>Always widens: a replacement can be any element type, so its extent is unrelated to the
+     * one it displaces.
      */
-    public interface ElementReplaceable extends Reflectable {
+    public interface ElementReplaceable extends WidensColumn {
         /**
          * Create a replacement element with this action's attribute applied.
          * @param element  the source element to base the replacement on

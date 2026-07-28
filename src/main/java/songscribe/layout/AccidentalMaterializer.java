@@ -158,14 +158,43 @@ public final class AccidentalMaterializer {
         restore(saved);
 
         for (var savedAccidental : saved) {
-            var note = savedAccidental.note();
-            line.modifyElement(
-                savedAccidental.index(),
-                changedFields(note, savedAccidental.accidental()),
-                () -> note.setAccidental(savedAccidental.accidental()));
+            record(line, savedAccidental.index(), savedAccidental.note(), savedAccidental.accidental());
         }
 
         return true;
+    }
+
+    /**
+     * Records {@code accidentalChanges} as undoable mutations on {@code line}, for an edit that has
+     * nothing to gate: an in-place modification changes no element's index and no element count, so
+     * there is no projection to measure and nothing to roll back.
+     *
+     * <p>Must be called inside a modification bracket, so the changes coalesce into the same undo
+     * step as the edit that forced them. Unlike {@link #applyIfAccepted}, each note's index is read
+     * at commit time, which is correct precisely because no removal is in play.
+     *
+     * @param line              The line being edited
+     * @param accidentalChanges The accidentals to add or clear, from
+     *                          {@link AccidentalReconciliation}
+     */
+    public static void commit(
+        Line line, List<AccidentalReconciliation.AccidentalChange> accidentalChanges) {
+
+        for (var accidentalChange : accidentalChanges) {
+            var note = accidentalChange.note();
+            record(line, line.getElementIndex(note), note, accidentalChange.accidental());
+        }
+    }
+
+    /**
+     * Writes one accidental onto {@code note} through {@link Line#modifyElement}, which captures a
+     * before/after pair so undo can reverse it. Every path that commits an accidental goes through
+     * here, so which fields the mutation names is decided in exactly one place.
+     */
+    private static void record(
+        Line line, int index, StaffElement note, StaffElement.@Nullable Accidental accidental) {
+
+        line.modifyElement(index, changedFields(note, accidental), () -> note.setAccidental(accidental));
     }
 
     /**

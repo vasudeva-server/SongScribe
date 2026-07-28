@@ -287,12 +287,15 @@ class NoteDragHandler {
             note.copyStateFrom(entry.beforeClone());
         }
 
-        var accidentalChanges = AccidentalReconciliation.reconcileModification(line, changes);
-
-        for (var i = 0; i < dragGroup.size(); i++) {
-            line.getElement(dragGroup.get(i).index()).copyStateFrom(afterClones.get(i));
+        // The roll-forward is in a finally because the line is live between the two loops: leaving
+        // it rolled back would silently strand the user's notes at their pre-drag pitches, with no
+        // error and nothing to suggest the drag had not taken.
+        try {
+            return AccidentalReconciliation.reconcileModification(line, changes);
+        } finally {
+            for (var i = 0; i < dragGroup.size(); i++) {
+                line.getElement(dragGroup.get(i).index()).copyStateFrom(afterClones.get(i));
+            }
         }
-
-        return accidentalChanges;
     }
 }

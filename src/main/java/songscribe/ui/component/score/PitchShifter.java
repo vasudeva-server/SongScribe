@@ -334,14 +334,7 @@ public final class PitchShifter {
             // Recorded in the same bracket so the shift and its reconciliation are one undo step.
             // Applied before the grace-note cleanup, while every index is still the one the
             // reconciliation saw.
-            for (var accidentalChange : accidentalChanges) {
-                var note = accidentalChange.note();
-                line.modifyElement(
-                        line.getElementIndex(note),
-                        AccidentalMaterializer.changedFields(note, accidentalChange.accidental()),
-                        () -> note.setAccidental(accidentalChange.accidental())
-                );
-            }
+            AccidentalMaterializer.commit(line, accidentalChanges);
 
             // Grace note validity checks — iterate in reverse index order to avoid index shifting from removals
             var sortedEntries = group.stream()

@@ -861,8 +861,13 @@ public final class ScoreViewController {
         //
         // The gate's two products are needed after it returns, hence the holders: a lambda cannot
         // assign to a local.
+        //
+        // The refusal holder starts at CANCELLED rather than null so that this method cannot
+        // return null from a non-nullable signature if a refusal path is ever added below without
+        // naming its outcome. CANCELLED is the safe default: it is the outcome that reports
+        // "nothing happened, and the user has already been told why or chose it".
         var spacingResult = new InsertionSpacingCalculator.FragmentInsertionResult[1];
-        var refusal = new FragmentInsertOutcome[1];
+        var refusal = new FragmentInsertOutcome[]{FragmentInsertOutcome.CANCELLED};
 
         var committed = AccidentalMaterializer.applyIfAccepted(
             line, accidentalChanges, instantiated.elements(), () -> {

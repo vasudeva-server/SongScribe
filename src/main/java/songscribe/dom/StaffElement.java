@@ -661,7 +661,7 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     private int calculatePitch(@Nullable Accidental accidental) {
-        var adjustment = (accidental != null) ? MIDI_PITCH_ADJUSTMENT[accidental.ordinal()] : 0;
+        var adjustment = getPitchAdjustment(accidental);
 
         return (
             MIDI_PITCHES[getPitchIndex()] +
@@ -670,14 +670,24 @@ public class StaffElement extends LineElement implements Cloneable {
         );
     }
 
-    private @Nullable Accidental getAccidental(Line line) {
-        if (line.keyExists(getPitchIndex())) {
-            return (line.getKeyType() == KeyType.FLATS)
-                ? Accidental.FLAT
-                : Accidental.SHARP;
+    /**
+     * Returns the accidental the key signature of {@code line} puts in effect for the pitch class
+     * of {@code staffPosition}, or null when the key leaves that pitch unaltered.
+     *
+     * <p>Static and staff-position-taking so that the projected-layout resolver in
+     * {@code AccidentalReconciliation}, which walks positions rather than live notes, shares this
+     * one definition of the key fallback instead of restating it. The two must agree: the resolver
+     * decides what the line <em>will</em> read as, and {@link #findEffectiveAccidental} decides
+     * what it reads as now.
+     */
+    public static @Nullable Accidental keyAccidentalFor(Line line, int staffPosition) {
+        if (!line.keyExists(getPitchIndex(staffPosition))) {
+            return null;
         }
 
-        return null;
+        return (line.getKeyType() == KeyType.FLATS)
+            ? Accidental.FLAT
+            : Accidental.SHARP;
     }
 
     /*
@@ -702,8 +712,12 @@ public class StaffElement extends LineElement implements Cloneable {
     // The sounding alteration, in semitones, that this Accidental applies to the
     // natural pitch. This is the same source the playback pitch (getPitch) uses,
     // so a MusicXML <alter> derived from it sounds identical to playback.
-    public static int getPitchAdjustment(Accidental accidental) {
-        return MIDI_PITCH_ADJUSTMENT[accidental.ordinal()];
+    //
+    // A null accidental means no accidental at all, which sounds unaltered and so yields 0.
+    // Every caller that compares accidentals by how they sound rather than by which enum
+    // constant they are goes through here, so that rule is stated once.
+    public static int getPitchAdjustment(@Nullable Accidental accidental) {
+        return (accidental == null) ? 0 : MIDI_PITCH_ADJUSTMENT[accidental.ordinal()];
     }
 
     public int getDefaultDurationWithDots() {
@@ -746,10 +760,10 @@ public class StaffElement extends LineElement implements Cloneable {
      * <p>The backward scan has three outcomes:
      *
      * <ol>
-     *   <li>It reaches a <em>barrier</em> — an element whose {@link ElementType#isBarLine()} or
-     *       {@link ElementType#isRepeat()} is true — and stops there, falling back to the key
-     *       signature. Convention: any structural marker cancels prior accidentals. A breath
-     *       mark is deliberately not a barrier: it cancels nothing.</li>
+     *   <li>It reaches a <em>barrier</em> — an element whose
+     *       {@link ElementType#cancelsAccidentals()} is true — and stops there, falling back to
+     *       the key signature. That method is shared with the projected-layout resolver in
+     *       {@code AccidentalReconciliation}, so both agree on what cancels.</li>
      *   <li>It finds an earlier element at the same staff position carrying an explicit
      *       accidental, and returns it. Matching is by staff position, so the scan is
      *       octave-specific, as staff notation requires.</li>
@@ -777,7 +791,7 @@ public class StaffElement extends LineElement implements Cloneable {
                 var element = targetLine.getElement(scanIndex);
                 var elementType = element.getType();
 
-                if (elementType.isBarLine() || elementType.isRepeat()) {
+                if (elementType.cancelsAccidentals()) {
                     var anchor = tieAnchorBefore(targetLine, tieEndElement, scanIndex);
 
                     if (anchor == null) {
@@ -828,10 +842,15 @@ public class StaffElement extends LineElement implements Cloneable {
      * <p>The end element is matched by reference identity: {@link StaffElement} overrides neither
      * {@code equals} nor {@code hashCode}, so a detached clone would otherwise match nothing
      * meaningful.
+     *
+     * <p>Filters {@link Line#getRangeElements} in place rather than calling
+     * {@link Line#findTies}, which builds and copies a fresh list of every tie on the line. This
+     * runs on paths that repeat: {@link #getPitch} routes here, and the glissando renderer calls
+     * it on every repaint while the preview tracker calls it on every mouse move.
      */
     private @Nullable StaffElement tieAnchorBefore(Line targetLine, StaffElement tieEndElement, int scanIndex) {
-        for (var tie : targetLine.findTies()) {
-            if (tie.getEndElement() != tieEndElement) {
+        for (var rangeElement : targetLine.getRangeElements()) {
+            if (!(rangeElement instanceof Tie tie) || (tie.getEndElement() != tieEndElement)) {
                 continue;
             }
 
@@ -857,13 +876,13 @@ public class StaffElement extends LineElement implements Cloneable {
      *
      * <p>This is the seam for #53 (mid-line key changes). Today a line carries exactly one key
      * signature, so {@code index} is unused and this simply delegates to
-     * {@link #getAccidental(Line)}. When a line can carry several, only this method changes
+     * {@link #keyAccidentalFor}. When a line can carry several, only this method changes
      * instead of the resolver — #53 will also add key changes to
      * {@link #findEffectiveAccidental}'s barrier list, since a key change cancels prior
      * accidentals just as a barline does.
      */
     private @Nullable Accidental keyInEffectAt(Line targetLine, int index) {
-        return getAccidental(targetLine);
+        return keyAccidentalFor(targetLine, staffPosition);
     }
 
     @Override

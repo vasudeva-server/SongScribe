@@ -27,7 +27,6 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.RangeElement;
 import songscribe.dom.StaffElement;
@@ -252,8 +251,10 @@ public final class AccidentalReconciliation {
         var successorIndex = (deleteRange == null) ? insertIndex : (deleteRange.end() + 1);
         var sequence = new ArrayList<ProjectedElement>();
 
+        // Everything before the insertion point is behind the walk's start position, so it needs
+        // only what the backward scan reads off it.
         for (var i = 0; i < insertIndex; i++) {
-            sequence.add(ProjectedElement.survivor(line, i));
+            sequence.add(ProjectedElement.survivorBeforeMutation(line, i));
         }
 
         for (var i = 0; i < inserted.size(); i++) {
@@ -304,7 +305,11 @@ public final class AccidentalReconciliation {
             var change = changeByIndex.get(i);
 
             if (change == null) {
-                sequence.add(ProjectedElement.survivor(line, i));
+                // Below the lowest changed index the walk never visits the position, so it needs
+                // only what the backward scan reads off it.
+                sequence.add((i < lowestChangedIndex)
+                    ? ProjectedElement.survivorBeforeMutation(line, i)
+                    : ProjectedElement.survivor(line, i));
                 continue;
             }
 
@@ -436,8 +441,8 @@ public final class AccidentalReconciliation {
             var candidate = sequence.get(scanPosition);
             var elementType = candidate.element.getType();
 
-            if (elementType.isBarLine() || elementType.isRepeat()) {
-                return keyInEffect(line, target.staffPosition);
+            if (elementType.cancelsAccidentals()) {
+                return StaffElement.keyAccidentalFor(line, target.staffPosition);
             }
 
             if ((candidate.staffPosition == target.staffPosition) && (candidate.explicit != null)) {
@@ -445,7 +450,7 @@ public final class AccidentalReconciliation {
             }
         }
 
-        return keyInEffect(line, target.staffPosition);
+        return StaffElement.keyAccidentalFor(line, target.staffPosition);
     }
 
     /**
@@ -502,27 +507,12 @@ public final class AccidentalReconciliation {
     }
 
     /**
-     * Returns the accidental the given line's key signature puts in effect for the pitch class of
-     * {@code staffPosition}, or null when the key leaves it unaltered. This mirrors the key
-     * fallback that is the last branch of {@link StaffElement#findEffectiveAccidental}.
-     */
-    private static StaffElement.@Nullable Accidental keyInEffect(Line line, int staffPosition) {
-        if (!line.keyExists(StaffElement.getPitchIndex(staffPosition))) {
-            return null;
-        }
-
-        return (line.getKeyType() == KeyType.FLATS)
-            ? StaffElement.Accidental.FLAT
-            : StaffElement.Accidental.SHARP;
-    }
-
-    /**
      * Returns the sounding adjustment in semitones of an accidental, treating null — no
      * accidental at all — as no adjustment. Accidentals are only ever compared through this:
      * {@code null} and {@code NATURAL} sound alike, as do {@code FLAT} and {@code NATURAL_FLAT}.
      */
     private static int adjustmentOf(StaffElement.@Nullable Accidental accidental) {
-        return (accidental == null) ? 0 : StaffElement.getPitchAdjustment(accidental);
+        return StaffElement.getPitchAdjustment(accidental);
     }
 
     /**
@@ -596,6 +586,27 @@ public final class AccidentalReconciliation {
 
             return new ProjectedElement(
                 element, element.getStaffPosition(), before, contextBefore, own, false, true);
+        }
+
+        /**
+         * The projected position for a surviving element that sits <em>before</em> the mutation
+         * point, which is where {@link #reconcileSequence} starts its walk.
+         *
+         * <p>Such a position is never a candidate, so its {@code before} and {@code contextBefore}
+         * are never read: the backward scan behind it reads only the element's type, its staff
+         * position, and its explicit accidental. Resolving what it sounded like anyway would run
+         * one backward scan per element on the untouched part of the line and discard every
+         * result, so both are left null here.
+         *
+         * <p><b>This factory is only correct below the walk's start position.</b> A position built
+         * with it that the walk actually visits would read as if it had sounded unaltered, which
+         * is a claim, not an absence — use {@link #survivor} for anything at or after the start.
+         */
+        private static ProjectedElement survivorBeforeMutation(Line line, int index) {
+            var element = line.getElement(index);
+
+            return new ProjectedElement(
+                element, element.getStaffPosition(), null, null, element.getAccidental(), false, true);
         }
 
         /**

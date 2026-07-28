@@ -27,7 +27,8 @@ import songscribe.message.mutation.ElementField;
 import songscribe.dom.StaffElement;
 import songscribe.ui.component.MainFrame;
 
-public final class AccidentalInParensAction extends NoteOnlyAction {
+// Widens: the parentheses are drawn around the accidental, inside the note's column.
+public final class AccidentalInParensAction extends NoteOnlyAction implements UIAction.WidensColumn {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS =
         EnumSet.of(ElementField.ACCIDENTAL_IN_PARENS);

@@ -21,7 +21,6 @@
 package songscribe.ui.selection;
 
 import java.awt.AWTEvent;
-import java.awt.Component;
 import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.MouseEvent;
@@ -52,10 +51,7 @@ import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LineEndingSupport;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.action.AccidentalAction;
-import songscribe.ui.action.AccidentalInParensAction;
 import songscribe.ui.action.Actions;
-import songscribe.ui.action.DotAction;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
@@ -89,13 +85,6 @@ public final class SelectionCoordinator {
 
     /** Whether the user is in select mode (shift held down or select mode active). */
     private boolean inSelectMode = false;
-
-    /**
-     * The view that owns this coordinator, or null when a test constructs one directly. Read only
-     * for the song-wide lyric metrics the modification fit gate measures syllable widths with.
-     */
-    @Nullable
-    private ScoreView scoreView = null;
 
     // Lazy-initialized list of all reflectable actions discovered from Actions.
     @Nullable
@@ -146,14 +135,6 @@ public final class SelectionCoordinator {
 
     public SelectionCoordinator() {
         MessageCenter.subscribe(this);
-    }
-
-    /**
-     * Records the view that owns this coordinator. Called by {@link ScoreView} right after it
-     * constructs the coordinator; a coordinator built directly by a test simply has none.
-     */
-    public void setScoreView(ScoreView scoreView) {
-        this.scoreView = scoreView;
     }
 
     // -------------------------------------------------------------------------
@@ -716,9 +697,12 @@ public final class SelectionCoordinator {
      *
      * @param action   the reflectable action to apply
      * @param selected true to apply the attribute, false to remove it
-     * @param parent   the component to use as the dialog parent for any ending-confirm dialogs
+     * @param score    the view to parent any ending-confirm dialogs on, and the source of the
+     *                 song-wide lyric metrics the fit gate measures syllable widths with; null in
+     *                 tests, which space the projection as if the line had no lyrics
      */
-    public void applyActionToSelection(UIAction.Reflectable action, boolean selected, @Nullable Component parent) {
+    public void applyActionToSelection(
+        UIAction.Reflectable action, boolean selected, @Nullable ScoreView score) {
         var selection = getSelection();
 
         if (selection == null) {
@@ -727,7 +711,7 @@ public final class SelectionCoordinator {
 
         var line = selection.line();
         var song = line.getSong();
-        var changes = decideChanges(action, selected, parent, selection);
+        var changes = decideChanges(action, selected, score, selection);
 
         if (changes.isEmpty()) {
             return;
@@ -739,9 +723,10 @@ public final class SelectionCoordinator {
         var accidentalChanges = AccidentalReconciliation.reconcileModification(
             line, intendedChanges(changes));
 
-        if (changesExtent(action) && !fitsAfterModification(line, changes, accidentalChanges)) {
+        if (action instanceof UIAction.WidensColumn
+            && !fitsAfterModification(line, changes, accidentalChanges, score)) {
             OptionDialogs.showErrorMessage(
-                parent,
+                score,
                 Strings.ALERT_TITLE_INSERT_ERROR,
                 Strings.ERROR_LINE_FULL_ELEMENT,
                 changes.getFirst().standIn().getType().categoryName()
@@ -780,14 +765,7 @@ public final class SelectionCoordinator {
             }
 
             // Recorded in the same bracket so the toggle and its reconciliation are one undo step.
-            for (var accidentalChange : accidentalChanges) {
-                var note = accidentalChange.note();
-                line.modifyElement(
-                    line.getElementIndex(note),
-                    AccidentalMaterializer.changedFields(note, accidentalChange.accidental()),
-                    () -> note.setAccidental(accidentalChange.accidental())
-                );
-            }
+            AccidentalMaterializer.commit(line, accidentalChanges);
 
             if (needsSpanCleanup) {
                 validateSpans(line, selection.begin(), selection.end());
@@ -805,7 +783,7 @@ public final class SelectionCoordinator {
      * gate and the apply pass see only the elements that really change.
      */
     private static List<PendingChange> decideChanges(
-        UIAction.Reflectable action, boolean selected, @Nullable Component parent, ElementSelection selection) {
+        UIAction.Reflectable action, boolean selected, @Nullable ScoreView score, ElementSelection selection) {
 
         var line = selection.line();
         var changes = new ArrayList<PendingChange>();
@@ -828,19 +806,19 @@ public final class SelectionCoordinator {
 
                 switch (effect) {
                     case Ending.EndingEffect.Invalidate _ -> {
-                        if (!EndingConfirms.confirmInvalidation(parent)) {
+                        if (!EndingConfirms.confirmInvalidation(score)) {
                             continue;
                         }
                         // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
                     }
                     case Ending.EndingEffect.CompensateEnd compensateEnd -> {
-                        if (!EndingConfirms.confirmCompensateEnd(parent, compensateEnd)) {
+                        if (!EndingConfirms.confirmCompensateEnd(score, compensateEnd)) {
                             continue;
                         }
                         compensation = compensateEnd;
                     }
                     case Ending.EndingEffect.CompensateSplit compensateSplit -> {
-                        if (!EndingConfirms.confirmCompensateSplit(parent, compensateSplit, replacement.getType())) {
+                        if (!EndingConfirms.confirmCompensateSplit(score, compensateSplit, replacement.getType())) {
                             continue;
                         }
                         compensation = compensateSplit;
@@ -884,10 +862,11 @@ public final class SelectionCoordinator {
      * in place. Mutates nothing: the projection is built from stand-ins and clones, so a refusal
      * leaves every live element as it was.
      */
-    private boolean fitsAfterModification(
+    private static boolean fitsAfterModification(
         Line line,
         List<PendingChange> changes,
-        List<AccidentalReconciliation.AccidentalChange> accidentalChanges) {
+        List<AccidentalReconciliation.AccidentalChange> accidentalChanges,
+        @Nullable ScoreView score) {
 
         var effectiveCount = line.effectiveElementCount();
 
@@ -924,22 +903,10 @@ public final class SelectionCoordinator {
             }
         }
 
-        var lyricRenderMetrics = (scoreView != null) ? scoreView.findLyricRenderMetrics() : null;
+        var lyricRenderMetrics = (score != null) ? score.findLyricRenderMetrics() : null;
 
         return InsertionSpacingCalculator.calculateModification(line, projected, lyricRenderMetrics)
             .fitsWithinLine(line.getSong().getLineWidthSs());
-    }
-
-    /**
-     * Whether the action changes the horizontal extent of the columns it touches, and so must be
-     * fit-gated. Fermata and dynamics are not gated: they stack vertically, independently of the
-     * note column, and cannot make a line wider.
-     */
-    private static boolean changesExtent(UIAction.Reflectable action) {
-        return action instanceof AccidentalAction
-            || action instanceof AccidentalInParensAction
-            || action instanceof DotAction
-            || action instanceof UIAction.ElementReplaceable;
     }
 
     // Validates beam and tuplet spans after batch element replacement.

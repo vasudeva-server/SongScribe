@@ -34,7 +34,8 @@ import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.playback.PlayThread;
 
-public final class AccidentalAction extends NoteOnlyAction {
+// Widens: the accidental glyph is drawn to the left of the notehead, inside the note's column.
+public final class AccidentalAction extends NoteOnlyAction implements UIAction.WidensColumn {
 
     private static final EnumSet<ElementField> MODIFIED_FIELDS = EnumSet.of(ElementField.ACCIDENTAL);
 

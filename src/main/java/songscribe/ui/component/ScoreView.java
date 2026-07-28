@@ -258,7 +258,6 @@ public final class ScoreView
         viewState = new ScoreViewState();
 
         selectionCoordinator = new SelectionCoordinator();
-        selectionCoordinator.setScoreView(this);
         clipboardManager = new ClipboardManager();
         EditModeManager.init(clipboardManager, selectionCoordinator, this, this);
 
