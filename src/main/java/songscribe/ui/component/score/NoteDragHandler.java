@@ -32,6 +32,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.ui.Mode;
+import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.ScaleContext;
 import songscribe.engraving.Staff;
@@ -237,17 +238,30 @@ class NoteDragHandler {
 
         if (dragMoved) {
             // The last drag noteOn is still sounding — let it ring for the standard
-            // duration, then stop it. Shared with arrow-key shifting.
+            // duration, then stop it. Shared with arrow-key shifting. Ahead of the revert below
+            // because it reads the anchor's current pitch, which is the one that is sounding.
             PitchShifter.scheduleAnchorNoteOff(dragLine, dragElementIndex);
 
-            // The pitch mutations were already applied during handleDrag, so
-            // commitPitchShift records each PITCH/ACCIDENTAL ElementModification with the
-            // press-time beforeClone, then the accidental changes, then the grace-note cleanup —
-            // one bracket, one undo step.
-            PitchShifter.commitPitchShift(
-                dragLine,
-                dragGroup,
-                reconcileVacatedPositions(dragLine, lastPlayedStaffPositionSp - originalDragStaffPositionSp));
+            // Asked before any modification bracket opens, like every other removal path. Unlike
+            // them, this one has already mutated the line: the drag moved the notes live, so
+            // Cancel has to put them back rather than merely decline to go forward.
+            var decision = PitchShifter.confirmRestatements(lc, dragLine, dragGroup);
+
+            if (decision.isCancelled()) {
+                revertDrag(dragLine);
+            } else {
+                // The pitch mutations were already applied during handleDrag, so
+                // commitPitchShift records each PITCH/ACCIDENTAL ElementModification with the
+                // press-time beforeClone, then the accidental changes, then the grace-note
+                // cleanup — one bracket, one undo step.
+                PitchShifter.commitPitchShift(
+                    dragLine,
+                    dragGroup,
+                    reconcileVacatedPositions(
+                        dragLine, lastPlayedStaffPositionSp - originalDragStaffPositionSp,
+                        decision),
+                    decision);
+            }
         }
 
         dragActive = false;
@@ -256,6 +270,23 @@ class NoteDragHandler {
         dragGroup.clear();
 
         PreviewElementManager.restorePreviewElement(lc);
+    }
+
+    /**
+     * Puts every dragged note back the way it was at press time, for the one answer that abandons
+     * the drag. Nothing was recorded — {@link PitchShifter#commitPitchShift} is what opens the
+     * bracket, and it has not run — so this is a plain restore from each entry's press-time clone,
+     * leaving no undo step behind and no modified flag set.
+     *
+     * <p>This is the only path on which a release does not commit.
+     */
+    private void revertDrag(Line line) {
+        for (var entry : dragGroup) {
+            line.getElement(entry.index()).copyStateFrom(entry.beforeClone());
+        }
+
+        lc.invalidateLayout();
+        lc.repaint();
     }
 
     /**
@@ -275,9 +306,12 @@ class NoteDragHandler {
      *
      * @param line       The dragged line, in its post-drag state
      * @param finalDelta The staff positions the group moved by, in total
+     * @param decision   The restatements the user accepted for this drag, folded into the same
+     *                   reconciliation so they clear on this line and suppress its materialization
      * @return The accidental changes to apply, keyed to live elements of {@code line}
      */
-    private List<AccidentalReconciliation.AccidentalChange> reconcileVacatedPositions(Line line, int finalDelta) {
+    private List<AccidentalReconciliation.AccidentalChange> reconcileVacatedPositions(
+        Line line, int finalDelta, AccidentalRestatements.Decision decision) {
         var changes = PitchShifter.intendedChanges(dragGroup, finalDelta);
         var afterClones = new ArrayList<StaffElement>(dragGroup.size());
 
@@ -291,7 +325,7 @@ class NoteDragHandler {
         // it rolled back would silently strand the user's notes at their pre-drag pitches, with no
         // error and nothing to suggest the drag had not taken.
         try {
-            return AccidentalReconciliation.reconcileModification(line, changes);
+            return AccidentalReconciliation.reconcileModification(line, changes, decision.removal());
         } finally {
             for (var i = 0; i < dragGroup.size(); i++) {
                 line.getElement(dragGroup.get(i).index()).copyStateFrom(afterClones.get(i));

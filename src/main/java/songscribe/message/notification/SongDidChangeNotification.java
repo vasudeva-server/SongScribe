@@ -125,6 +125,23 @@ public class SongDidChangeNotification extends Message {
     }
 
     /**
+     * Returns whether any line-scoped mutation in this notification targets {@code line}.
+     *
+     * <p>This is the question {@link #getLine()} cannot answer for an edit that spans lines: there
+     * being no <em>single</em> target line, it reports none at all, which reads as "no line was
+     * touched" to a subscriber that only cares about one of them.
+     */
+    public boolean touchesLine(Line line) {
+        for (var mutation : mutations) {
+            if (mutation instanceof LineScopedMutation lineMutation && lineMutation.getLine() == line) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Returns {@code true} if the mutation list contains at least one instance
      * of the given mutation subclass.
      */

@@ -22,11 +22,14 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +39,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.RangeElement;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 
@@ -722,6 +726,172 @@ class AccidentalReconciliationTest extends UnitTest {
             assertThat(accidentalChanges).containsExactly(
                 new AccidentalReconciliation.AccidentalChange(
                     pastedUntiedA, StaffElement.Accidental.FLAT));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Restatement scan and propagation suppression (#681)
+    // -----------------------------------------------------------------------
+
+    /**
+     * The worked example of the #681 plan, in D♭ major — five flats, so F is unaltered by the key
+     * and every flat on an F is explicit:
+     *
+     * <pre>
+     * line 1:  F♭  G   F♭
+     * line 2:  F♭  A   F   F♮
+     * </pre>
+     *
+     * Toggling the flat off {@code 1:0} finds {@code 1:2} and {@code 2:0} as restatements. The
+     * point of the fixture is {@code 2:0}: it is not redundant on its own line, because accidental
+     * context resets at the line boundary, which is exactly why no arithmetic can identify it.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class Restatements {
+
+        /** D♭ major: B E A D G are flattened, so an F needs an explicit flat to sound flat. */
+        private static final int FIVE_FLATS = 5;
+
+        private Line firstLine = detachedLine();
+        private Line secondLine = detachedLine();
+        private Song song = minimalSongMock();
+
+        @BeforeEach
+        void buildWorkedExample() {
+            song = minimalSongMock();
+            firstLine = flatKeyLine(
+                note(F_STAFF_POSITION, StaffElement.Accidental.FLAT),
+                note(G_STAFF_POSITION),
+                note(F_STAFF_POSITION, StaffElement.Accidental.FLAT));
+            secondLine = flatKeyLine(
+                note(F_STAFF_POSITION, StaffElement.Accidental.FLAT),
+                note(A_STAFF_POSITION),
+                note(F_STAFF_POSITION),
+                note(F_STAFF_POSITION, StaffElement.Accidental.NATURAL));
+
+            registerLines(song, firstLine, secondLine);
+        }
+
+        private static Line flatKeyLine(StaffElement... elements) {
+            var line = lineOf(elements);
+            line.setKeyType(KeyType.FLATS);
+            line.setKeyAccidentalCount(FIVE_FLATS);
+            return line;
+        }
+
+        /** Teaches the song mock the line list the scan walks. */
+        private static void registerLines(Song song, Line... lines) {
+            when(song.lineCount()).thenReturn(lines.length);
+
+            for (var index = 0; index < lines.length; index++) {
+                when(song.getLine(index)).thenReturn(lines[index]);
+                when(song.indexOfLine(lines[index])).thenReturn(index);
+            }
+        }
+
+        private List<AccidentalReconciliation.Restatement> scanFromFirstFlat() {
+            return AccidentalReconciliation.findRestatements(
+                song, firstLine, FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT,
+                Set.of(firstLine.getElement(FIRST_NOTE)));
+        }
+
+        /** The removal the user accepted: both restatements, with the F position suppressed. */
+        private AccidentalReconciliation.RestatementRemoval acceptedRemoval() {
+            return new AccidentalReconciliation.RestatementRemoval(
+                Set.of(firstLine.getElement(THIRD_NOTE), secondLine.getElement(FIRST_NOTE)),
+                Set.of(F_STAFF_POSITION));
+        }
+
+        @Test
+        void testScanCollectsMatchingAccidentalsAcrossLines() {
+            assertThat(scanFromFirstFlat()).containsExactly(
+                new AccidentalReconciliation.Restatement(firstLine, firstLine.getElement(THIRD_NOTE)),
+                new AccidentalReconciliation.Restatement(secondLine, secondLine.getElement(FIRST_NOTE)));
+        }
+
+        @Test
+        void testScanStopsAtAnExplicitCancellation() {
+            // A natural on the F at 1:2 cancels the flat, so nothing past it restates anything —
+            // not even the flat still sitting at 2:0.
+            firstLine.getElement(THIRD_NOTE).setAccidental(StaffElement.Accidental.NATURAL);
+
+            assertThat(scanFromFirstFlat()).isEmpty();
+        }
+
+        @Test
+        void testScanIgnoresAnotherStaffPositionAndAnotherAdjustment() {
+            firstLine.getElement(THIRD_NOTE).setStaffPosition(G_STAFF_POSITION);
+            secondLine.getElement(FIRST_NOTE).setAccidental(null);
+
+            assertThat(scanFromFirstFlat()).isEmpty();
+        }
+
+        @Test
+        void testScanSkipsTheNotesTheEditItselfRemoves() {
+            // A range delete taking both flats on line 1 must not offer the second one back: it is
+            // going away regardless, and it must not stand in for a cancellation either.
+            var excluded = Set.of(firstLine.getElement(FIRST_NOTE), firstLine.getElement(THIRD_NOTE));
+
+            assertThat(AccidentalReconciliation.findRestatements(
+                song, firstLine, FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT, excluded))
+                .containsExactly(new AccidentalReconciliation.Restatement(
+                    secondLine, secondLine.getElement(FIRST_NOTE)));
+        }
+
+        @Test
+        void testYesClearsTheRestatementOnTheEditedLineAndSuppressesMaterialization() {
+            // Without suppression the bare F that the removed flat was covering would be
+            // materialized to a flat, handing the accidental straight back.
+            var accidentalChanges = AccidentalReconciliation.reconcileModification(
+                firstLine,
+                toggle(FIRST_NOTE, null, F_STAFF_POSITION),
+                acceptedRemoval());
+
+            assertThat(accidentalChanges).containsExactly(change(firstLine, THIRD_NOTE, null));
+        }
+
+        @Test
+        void testYesClearsTheRestatementOnALaterLineAndStillRemovesTheStrandedNatural() {
+            // 2:0's flat goes because the user said so; 2:3's natural goes because the ordinary
+            // mirror rule finds it redundant once the flat is gone. Removal runs at a suppressed
+            // position — only materialization is suspended, which is what spares the bare 2:2.
+            var accidentalChanges = AccidentalReconciliation.reconcileModification(
+                secondLine, List.of(), acceptedRemoval());
+
+            assertThat(accidentalChanges).containsExactly(
+                change(secondLine, FIRST_NOTE, null),
+                change(secondLine, FOURTH_NOTE, null));
+        }
+
+        @Test
+        void testSuppressionEndsAtTheNextExplicitAccidentalAtThatStaffPosition() {
+            // Past an explicit accidental at the suppressed position the consented pitch change is
+            // over and the ordinary invariant applies again. Give line 2 a fifth note — a bare F
+            // after the natural at 2:3 — and have the same edit change that natural to a flat.
+            // 2:2 is still spared, because it is inside the consented region; 2:4 is not, because
+            // 2:3's accidental ended it, so it has to be pinned to the natural it used to sound.
+            secondLine.addElement(note(F_STAFF_POSITION));
+
+            var accidentalChanges = AccidentalReconciliation.reconcileModification(
+                secondLine,
+                toggle(FOURTH_NOTE, StaffElement.Accidental.FLAT, F_STAFF_POSITION),
+                acceptedRemoval());
+
+            assertThat(accidentalChanges).containsExactly(
+                change(secondLine, FIRST_NOTE, null),
+                change(secondLine, FIFTH_NOTE, StaffElement.Accidental.NATURAL));
+        }
+
+        @Test
+        void testNoLeavesEveryRestatementAlone() {
+            // The same toggle with no removal accepted: the mirror rule alone reaches nothing on
+            // line 1, because 1:2's flat was already redundant when it was written.
+            assertThat(AccidentalReconciliation.reconcileModification(
+                firstLine, toggle(FIRST_NOTE, null, F_STAFF_POSITION))).isEmpty();
+
+            // ...and line 2 is not reconciled at all, since the edit does not touch it.
+            assertThat(AccidentalReconciliation.reconcileModification(secondLine, List.of())).isEmpty();
         }
     }
 

@@ -24,6 +24,7 @@ import module java.desktop;
 
 import java.awt.event.MouseEvent;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 import org.jspecify.annotations.Nullable;
@@ -53,6 +54,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.undo.OpNames;
+import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
@@ -1407,6 +1409,19 @@ public final class PreviewElementManager {
             return;
         }
 
+        // Replacing a note takes its explicit accidental away, so this path asks the same question
+        // every other removal path does — here, before the bracket opens, since a dialog must never
+        // be open inside one. An append or an insert removes nothing and is never asked.
+        var replacesExisting =
+            (currentXIndex != line.elementCount()) && !forceInsert && xPosSsMatchesElement;
+        var decision = replacesExisting
+            ? confirmReplacementRestatements(lc, line, currentXIndex, previewElement)
+            : AccidentalRestatements.Decision.PROCEED;
+
+        if (decision.isCancelled()) {
+            return;
+        }
+
         // Determine action based on position. Wrap in a modification bracket so the
         // line.add/setElement calls inside actually accumulate mutations and fire a
         // SongDidChangeNotification, which the ScoreViewController uses to
@@ -1415,7 +1430,7 @@ public final class PreviewElementManager {
             if (currentXIndex == line.elementCount()) {
                 addPreviewElement(lc, line);
             } else if (!forceInsert && xPosSsMatchesElement) {
-                modifyExistingElement(lc, currentXIndex, line);
+                modifyExistingElement(lc, currentXIndex, line, decision);
             } else {
                 insertElement(lc, currentXIndex, line);
             }
@@ -1950,6 +1965,49 @@ public final class PreviewElementManager {
     }
 
     /**
+     * Asks whether replacing the element at {@code elementIndex} should also take away the later
+     * notes that restate the accidental it removes.
+     *
+     * <p>The replacement keeps the accidental only when it lands at the same staff position
+     * sounding the same — the preview's accidental at the mouse's staff position, which is what
+     * {@link #modifyExistingElement} writes. Anything else takes the old one away: a different
+     * pitch, a different accidental, or no accidental at all. Compared by sounding adjustment,
+     * like everywhere else: rewriting a flat as a natural-flat removes nothing anyone can hear.
+     *
+     * <p>Must be called before the modification bracket opens, and its answer honored — Cancel
+     * means the click does nothing at all.
+     */
+    private static AccidentalRestatements.Decision confirmReplacementRestatements(
+        LineComponent lc, Line line, int elementIndex, StaffElement previewElement) {
+
+        var existing = line.getElement(elementIndex);
+        var accidental = existing.getAccidental();
+
+        if ((accidental == null) || !existing.getType().isPitchedNote()) {
+            return AccidentalRestatements.Decision.PROCEED;
+        }
+
+        var staffPosition = existing.getStaffPosition();
+
+        // A replacement that is not a pitched note carries no accidental at all, whatever the
+        // preview holds — applyStaffPosition snaps it to its default position too.
+        var keepsAccidental = previewElement.getType().isPitchedNote()
+            && (currentStaffPosition == staffPosition)
+            && (StaffElement.getPitchAdjustment(previewElement.getAccidental())
+                == StaffElement.getPitchAdjustment(accidental));
+
+        if (keepsAccidental) {
+            return AccidentalRestatements.Decision.PROCEED;
+        }
+
+        return AccidentalRestatements.confirm(
+            lc,
+            List.of(new AccidentalRestatements.RemovedAccidental(
+                line, elementIndex, staffPosition, accidental)),
+            Set.of(existing));
+    }
+
+    /**
      * Replaces an existing element with the current preview element's type and pitch.
      * Note-entry decorations the user sets on the preview element via the toolbar/menu
      * (accidental, dot count, articulations) are taken from the preview. Other
@@ -1960,8 +2018,12 @@ public final class PreviewElementManager {
      * @param lc           The LineComponent
      * @param elementIndex The index of the element to replace
      * @param line         The line containing the element
+     * @param decision     The restatements the user accepted for this replacement, from
+     *                     {@link #confirmReplacementRestatements}
      */
-    private static void modifyExistingElement(LineComponent lc, int elementIndex, Line line) {
+    private static void modifyExistingElement(
+        LineComponent lc, int elementIndex, Line line, AccidentalRestatements.Decision decision) {
+
         var previewElement = validateAndGetPreviewElement(lc, line, elementIndex);
 
         if (previewElement == null) {
@@ -2043,6 +2105,12 @@ public final class PreviewElementManager {
             }
             case Ending.EndingEffect.None _ -> {}
         }
+
+        // Every bail-out is behind us, so the replacement is going to happen: record the accepted
+        // restatements in the same bracket, making them and the replacement one undo step. Ahead of
+        // setElement so the scan still reads the pre-replacement line, and because undo replays a
+        // step in reverse — the accidentals come back last, once the old element is back.
+        AccidentalRestatements.commitAllLines(decision);
 
         // Replace the element entirely (line.setElement marks the song modified)
         line.setElement(elementIndex, replacement);

@@ -79,6 +79,7 @@ import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.clipboard.Fragment;
 import songscribe.ui.clipboard.PasteSpanReconciliation;
+import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.edit.ScoreActions;
@@ -507,6 +508,15 @@ public final class ScoreViewController {
             return;
         }
 
+        // Asked before the bracket opens, and before the clipboard is written: cancelling must
+        // leave both the clipboard and the score untouched, exactly as declining the ending
+        // confirm above does.
+        var decision = confirmDeletionRestatements(line, begin, end);
+
+        if (decision.isCancelled()) {
+            return;
+        }
+
         handleCopy();
 
         // Clear the selection before removing elements so that action handlers
@@ -515,10 +525,10 @@ public final class ScoreViewController {
         // longer exist on the shrunk line.
         selectionCoordinator.clearSelection();
 
-        // One bracket for the deletion — the confirm above already ran, so
+        // One bracket for the deletion — the confirms above already ran, so
         // deleteElementRange performs no further confirmation. The Cut action's op-name
         // (Tier A) names this outermost step, so the inner range delete passes no label.
-        score.getSong().withModification(() -> deleteElementRange(line, begin, end, null));
+        score.getSong().withModification(() -> deleteElementRange(line, begin, end, null, decision));
 
         // Discard saved action states — the song has changed, so restoring
         // pre-selection states would be stale. Individual action handlers will
@@ -577,6 +587,12 @@ public final class ScoreViewController {
                 }
             }
 
+            var decision = confirmDeletionRestatements(line, begin, end);
+
+            if (decision.isCancelled()) {
+                return;
+            }
+
             // Name the undo step from the categories of the user-selected elements
             // (computed before removal, while they are still present on the line).
             var selectedTypes = line.getElements(begin, end).stream()
@@ -590,7 +606,7 @@ public final class ScoreViewController {
             // longer exist on the shrunk line.
             selectionCoordinator.clearSelection();
 
-            deleteElementRange(line, begin, end, deleteLabel);
+            deleteElementRange(line, begin, end, deleteLabel, decision);
         } else if (state != null && state.hasSlideSelection()) {
             var line = state.getLine();
             var elementIndex = state.getSelectedSlideElementIndex();
@@ -645,6 +661,25 @@ public final class ScoreViewController {
     }
 
     /**
+     * Asks whether a deletion of {@code [begin, end]} should also take away the later notes that
+     * restate the accidentals it removes. Callers must run this <b>before</b> opening a
+     * modification bracket, and must abandon the deletion entirely when the answer is Cancel.
+     *
+     * <p>The range is widened exactly as {@link #deleteElementRange} widens it — a paired grace
+     * note before the range does not survive its host, and a trailing breath mark goes with the
+     * range — so the accidentals offered are the ones the deletion really removes.
+     */
+    private AccidentalRestatements.Decision confirmDeletionRestatements(Line line, int begin, int end) {
+        var reconciledBegin = line.isHostOfPairedGraceNote(begin) ? begin - 1 : begin;
+        var rangeEnd = line.effectiveDeleteEnd(end);
+
+        return AccidentalRestatements.confirm(
+            score,
+            AccidentalRestatements.inDeletedRange(line, reconciledBegin, rangeEnd),
+            AccidentalRestatements.elementsIn(line, reconciledBegin, rangeEnd));
+    }
+
+    /**
      * Deletes the element range {@code begin} through {@code end} on {@code line},
      * naming the resulting undo step {@code label}. Confirmation-free: callers are
      * responsible for any ending-invalidation confirm and for clearing the selection
@@ -655,19 +690,27 @@ public final class ScoreViewController {
      * the op-name is captured only at the outermost bracket — so callers that already
      * name their step pass {@code null}.
      */
-    private void deleteElementRange(Line line, int begin, int end, @Nullable String label) {
-        deleteElementRange(line, begin, end, label, true);
+    private void deleteElementRange(
+        Line line, int begin, int end, @Nullable String label, AccidentalRestatements.Decision decision) {
+
+        deleteElementRange(line, begin, end, label, decision, true);
     }
 
     /**
-     * As {@link #deleteElementRange(Line, int, int, String)}, but with the accidental
-     * reconciliation suppressible. Only {@link #tryInsertFragment} passes false: a paste-replace
-     * is one mutation, already reconciled as a whole, so its deletion must not reconcile a second
-     * time. The flag lives on an overload rather than on the four-argument signature so that the
-     * callers who delete for their own sake do not have to state a value they do not care about.
+     * As {@link #deleteElementRange(Line, int, int, String, AccidentalRestatements.Decision)}, but
+     * with the accidental reconciliation suppressible. Only {@link #tryInsertFragment} passes
+     * false: a paste-replace is one mutation, already reconciled as a whole, so its deletion must
+     * not reconcile a second time. The flag lives on an overload rather than on the five-argument
+     * signature so that the callers who delete for their own sake do not have to state a value they
+     * do not care about.
      */
     private void deleteElementRange(
-        Line line, int begin, int end, @Nullable String label, boolean reconcileAccidentals) {
+        Line line,
+        int begin,
+        int end,
+        @Nullable String label,
+        AccidentalRestatements.Decision decision,
+        boolean reconcileAccidentals) {
 
         // The paired grace note immediately before the range does not survive this deletion
         // either (deleteNote removes it with its host), so an explicit accidental on it is
@@ -682,13 +725,15 @@ public final class ScoreViewController {
         // frees k noteheads plus k accidental glyphs and adds back at most k accidental glyphs —
         // the line can never get wider.
         var accidentalChanges = reconcileAccidentals
-            ? AccidentalReconciliation.reconcile(new AccidentalReconciliation.InsertionRegion(
-                line,
-                reconciledBegin,
-                new InsertionSpacingCalculator.DeletedRange(reconciledBegin, line.effectiveDeleteEnd(end)),
-                List.of(),
-                List.of(),
-                List.of()))
+            ? AccidentalReconciliation.reconcile(
+                new AccidentalReconciliation.InsertionRegion(
+                    line,
+                    reconciledBegin,
+                    new InsertionSpacingCalculator.DeletedRange(reconciledBegin, line.effectiveDeleteEnd(end)),
+                    List.of(),
+                    List.of(),
+                    List.of()),
+                decision.removal())
             : List.<AccidentalReconciliation.AccidentalChange>of();
 
         // When the element immediately before the selection is a paired grace note,
@@ -699,6 +744,7 @@ public final class ScoreViewController {
                 // Recorded before the removal so undo, which replays in reverse, restores the
                 // accidentals once the elements are back at the indices they were recorded at.
                 commitDeletionAccidentals(line, accidentalChanges);
+                AccidentalRestatements.commitOtherLines(decision, line);
                 deleteSelection(begin, end, line);
             });
         } else {
@@ -726,6 +772,7 @@ public final class ScoreViewController {
             withModification(line, label, () -> {
                 // Recorded before the removal, for the reason given in the other branch.
                 commitDeletionAccidentals(line, accidentalChanges);
+                AccidentalRestatements.commitOtherLines(decision, line);
 
                 // Mirror deleteNote: adjust syllable relations and melisma extends
                 // on neighbors before removing. Both helpers require the target
@@ -849,10 +896,28 @@ public final class ScoreViewController {
         // for the same single reason spacing uses it: the paired grace note immediately
         // before the range does not survive deleteElementRange, so an explicit accidental
         // on it is removed content and changes the context arriving at the boundary.
+        // A paste-replace removes the explicit accidentals of the range it overwrites, so it asks
+        // the same question a plain deletion does — before the fit gate, and before anything is
+        // mutated, so Cancel reuses the LINE_FULL contract exactly. A pure insertion removes
+        // nothing and so is never asked.
+        var decision = (spacingDeleteRange == null)
+            ? AccidentalRestatements.Decision.PROCEED
+            : AccidentalRestatements.confirm(
+                score,
+                AccidentalRestatements.inDeletedRange(
+                    line, spacingDeleteRange.begin(), spacingDeleteRange.end()),
+                AccidentalRestatements.elementsIn(
+                    line, spacingDeleteRange.begin(), spacingDeleteRange.end()));
+
+        if (decision.isCancelled()) {
+            return FragmentInsertOutcome.CANCELLED;
+        }
+
         var accidentalChanges = AccidentalReconciliation.reconcile(
             new AccidentalReconciliation.InsertionRegion(
                 line, spacingInsertIndex, spacingDeleteRange, instantiated.elements(),
-                instantiated.priorAccidentals(), instantiated.spans()));
+                instantiated.priorAccidentals(), instantiated.spans()),
+            decision.removal());
 
         // Both refusals — LINE_FULL and CANCELLED — leave the line exactly as it was (C1), so
         // both live inside the materializer's gate: it applies the accidentals with the plain
@@ -911,6 +976,10 @@ public final class ScoreViewController {
             return refusal[0];
         }
 
+        // Accepted restatements on later lines join the caller's bracket, so the paste and every
+        // removal it authorized are one undo step.
+        AccidentalRestatements.commitOtherLines(decision, line);
+
         // The accidentals are now recorded mutations, deliberately ahead of the deletion below:
         // UndoController replays a step's mutations in reverse, so undo reaches them last, after
         // the deletion has been undone and the surviving notes are back at the pre-delete indices
@@ -941,7 +1010,9 @@ public final class ScoreViewController {
         if (deleteRange != null) {
             // This paste has already been reconciled as a whole — the deletion and the insertion
             // are one mutation — so the range delete must not reconcile again.
-            deleteElementRange(line, deleteRange.begin(), deleteRange.end(), null, false);
+            deleteElementRange(
+                line, deleteRange.begin(), deleteRange.end(), null,
+                AccidentalRestatements.Decision.PROCEED, false);
 
             // The deletion may have removed elements before the range too (a paired
             // grace note cascade), so re-derive the insertion index from what survived.

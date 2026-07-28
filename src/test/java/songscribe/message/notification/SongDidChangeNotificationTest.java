@@ -130,6 +130,48 @@ class SongDidChangeNotificationTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
+    class TouchesLine {
+
+        @Test
+        void testAnEditSpanningLinesTouchesEachOfThem() {
+            var lineA = detachedLine();
+            var lineB = detachedLine();
+            var notification = makeNotification(
+                new ElementDeletion(lineA, 0, ElementType.CROTCHET.newInstance()),
+                new ElementInsertion(lineB, 0, ElementType.CROTCHET.newInstance())
+            );
+
+            // The case getLine() cannot report: it has no single line to name and so names none.
+            assertThat(notification.getLine()).isNull();
+            assertThat(notification.touchesLine(lineA)).isTrue();
+            assertThat(notification.touchesLine(lineB)).isTrue();
+        }
+
+        @Test
+        void testAnUntouchedLineIsNotTouched() {
+            var line = detachedLine();
+            var other = detachedLine();
+            var notification = makeNotification(
+                new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance())
+            );
+
+            assertThat(notification.touchesLine(other)).isFalse();
+        }
+
+        @Test
+        void testSongScopedMutationsTouchNoLine() {
+            var line = detachedLine();
+            var notification = makeNotification(
+                attributionChange(),
+                new LayoutChange(LayoutField.LINE_WIDTH_SS, 1.0, 2.0)
+            );
+
+            assertThat(notification.touchesLine(line)).isFalse();
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
     class HasMutationOf {
 
         @Test

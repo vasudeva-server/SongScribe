@@ -28,8 +28,10 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
@@ -55,6 +57,7 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
+import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.dom.Beam;
 
 /**
@@ -717,11 +720,21 @@ public final class SelectionCoordinator {
             return;
         }
 
+        // Still the decide phase: the prompt must run before any modification bracket opens, for
+        // the same reason the ending confirms above do.
+        var decision = AccidentalRestatements.confirm(
+            score, removedAccidentals(line, changes), changedElements(line, changes));
+
+        if (decision.isCancelled()) {
+            return;
+        }
+
         // The accidentals this modification must make explicit so no pitch the user did not touch
         // changes — removing an explicit accidental is exactly as context-changing as adding one —
-        // plus the ones it makes redundant and so takes away again.
+        // plus the ones it makes redundant and so takes away again, plus any restatement the user
+        // accepted above.
         var accidentalChanges = AccidentalReconciliation.reconcileModification(
-            line, intendedChanges(changes));
+            line, intendedChanges(changes), decision.removal());
 
         if (action instanceof UIAction.WidensColumn
             && !fitsAfterModification(line, changes, accidentalChanges, score)) {
@@ -766,6 +779,9 @@ public final class SelectionCoordinator {
 
             // Recorded in the same bracket so the toggle and its reconciliation are one undo step.
             AccidentalMaterializer.commit(line, accidentalChanges);
+
+            // Accepted restatements on later lines join the same step.
+            AccidentalRestatements.commitOtherLines(decision, line);
 
             if (needsSpanCleanup) {
                 validateSpans(line, selection.begin(), selection.end());
@@ -855,6 +871,53 @@ public final class SelectionCoordinator {
         }
 
         return intended;
+    }
+
+    /**
+     * The explicit accidentals this action takes away — a toggle-off, or a change to a different
+     * one, or a replacement that carries none. Compared by sounding adjustment, like everything
+     * else about accidentals: rewriting a flat as a natural-flat removes nothing anyone can hear.
+     *
+     * <p>The staff position is the live note's, which is the position the accidental being removed
+     * was written at. An in-place modification never moves it, but taking it from the stand-in
+     * would state the wrong thing if one ever did.
+     */
+    private static List<AccidentalRestatements.RemovedAccidental> removedAccidentals(
+        Line line, List<PendingChange> changes) {
+
+        var removed = new ArrayList<AccidentalRestatements.RemovedAccidental>();
+
+        for (var change : changes) {
+            var element = line.getElement(change.index());
+            var accidental = element.getAccidental();
+
+            if (accidental == null) {
+                continue;
+            }
+
+            var replacement = change.standIn().getAccidental();
+
+            if (StaffElement.getPitchAdjustment(replacement) != StaffElement.getPitchAdjustment(accidental)) {
+                removed.add(new AccidentalRestatements.RemovedAccidental(
+                    line, change.index(), element.getStaffPosition(), accidental));
+            }
+        }
+
+        return removed;
+    }
+
+    /**
+     * The live elements this action changes, as the restatement scan's exclusion set: whatever they
+     * carry today, they are not going to be carrying it afterwards.
+     */
+    private static Set<StaffElement> changedElements(Line line, List<PendingChange> changes) {
+        var elements = new LinkedHashSet<StaffElement>();
+
+        for (var change : changes) {
+            elements.add(line.getElement(change.index()));
+        }
+
+        return elements;
     }
 
     /**
@@ -1202,9 +1265,11 @@ public final class SelectionCoordinator {
         }
 
         // Only the mutations targeting the selected line can change the checked
-        // state of the reflectable actions; getLine() is null for song-scoped or
-        // multi-line changes, which never match the selection's line.
-        if (message.getLine() != selection.line()) {
+        // state of the reflectable actions. Asked per mutation rather than through
+        // getLine(), which reports no line at all for an edit spanning several — as an
+        // accepted restatement removal does — and would leave the toolbar stuck in its
+        // pre-undo state when such an edit is undone.
+        if (!message.touchesLine(selection.line())) {
             return;
         }
 

@@ -30,15 +30,22 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
+import javax.swing.JOptionPane;
+
+import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.Strings;
 import songscribe.dom.ElementType;
+import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.SlideZone;
+import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.TempoChangeDialog;
@@ -409,6 +416,152 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
             assertThat(line.getElement(0).getType())
                 .as("the grace note is not replaced")
                 .isEqualTo(ElementType.GRACE_QUAVER);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Replacing a note removes its accidental, so the restatement prompt runs (#681)
+    // -----------------------------------------------------------------------
+
+    /**
+     * Replacing a note takes its explicit accidental away, so this path asks the same restatement
+     * question every other removal path does. The fixture is the #681 worked example, in D♭ major
+     * — five flats, so F is unaltered by the key and every flat on an F is explicit:
+     *
+     * <pre>
+     * line 1:  F♭  G   F♭
+     * line 2:  F♭  A   F   F♮
+     * </pre>
+     *
+     * Replacing {@code 1:0} with a plain G finds {@code 1:2} and {@code 2:0}.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ReplacementRestatements {
+
+        // Staff position 0 is B4 and positions grow downwards, so each step down is one letter back.
+        private static final int A_STAFF_POSITION = 1;
+        private static final int G_STAFF_POSITION = 2;
+        private static final int F_STAFF_POSITION = 3;
+
+        /** D♭ major: B E A D G are flattened, so an F needs an explicit flat to sound flat. */
+        private static final int FIVE_FLATS = 5;
+
+        private static final int THIRD_NOTE = 2;
+        private static final int FOURTH_NOTE = 3;
+
+        private Line secondLine = new Line(new Song());
+
+        @BeforeEach
+        void buildWorkedExample() {
+            song.setLineWidthSs(WIDE_LINE_SS);
+
+            song.withoutMutationTracking(() -> {
+                flatKey(line);
+                line.addElement(note(F_STAFF_POSITION, StaffElement.Accidental.FLAT));
+                line.addElement(note(G_STAFF_POSITION, null));
+                line.addElement(note(F_STAFF_POSITION, StaffElement.Accidental.FLAT));
+
+                secondLine = new Line(song);
+                flatKey(secondLine);
+                secondLine.addElement(note(F_STAFF_POSITION, StaffElement.Accidental.FLAT));
+                secondLine.addElement(note(A_STAFF_POSITION, null));
+                secondLine.addElement(note(F_STAFF_POSITION, null));
+                secondLine.addElement(note(F_STAFF_POSITION, StaffElement.Accidental.NATURAL));
+                song.addLine(secondLine);
+            });
+        }
+
+        private void flatKey(Line target) {
+            target.setKeyType(KeyType.FLATS);
+            target.setKeyAccidentalCount(FIVE_FLATS);
+        }
+
+        private StaffElement note(int staffPosition, StaffElement.@Nullable Accidental accidental) {
+            var element = ElementType.CROTCHET.newInstance();
+            element.setStaffPosition(staffPosition);
+            element.setAccidental(accidental);
+            return element;
+        }
+
+        /** Clicks a plain G onto {@code 1:0}, replacing the F♭ that is there. */
+        private void replaceTheFirstFlatWithAPlainG(int answer) {
+            setPreviewElement(note(G_STAFF_POSITION, null));
+            PreviewElementManager.setCurrentStaffPosition(G_STAFF_POSITION);
+            PreviewElementManager.setCurrentXIndex(0);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+
+            try (var optionDialogs = mockStatic(OptionDialogs.class)) {
+                optionDialogs.when(() -> OptionDialogs.showConfirmDialog(
+                    any(), any(), any(), anyInt(), anyInt(), anyInt())).thenReturn(answer);
+
+                PreviewElementManager.handleClick(lc);
+            }
+        }
+
+        @Test
+        void testYesClearsEveryRestatementAcrossLinesAndLetsThePitchChangePropagate() {
+            replaceTheFirstFlatWithAPlainG(JOptionPane.YES_OPTION);
+
+            assertThat(line.getElement(0).getStaffPosition())
+                .as("the replacement landed where the click was")
+                .isEqualTo(G_STAFF_POSITION);
+            assertThat(line.getElement(THIRD_NOTE).getAccidental())
+                .as("the restatement on the edited line is cleared")
+                .isNull();
+            assertThat(secondLine.getElement(0).getAccidental())
+                .as("the restatement on the next line is cleared")
+                .isNull();
+
+            // Suppression at the F position is what lets 2:2 change pitch instead of being handed
+            // the flat straight back, and 2:3's natural, no longer cancelling anything, goes the
+            // ordinary way: the mirror rule takes it.
+            assertThat(secondLine.getElement(THIRD_NOTE).getAccidental()).isNull();
+            assertThat(secondLine.getElement(FOURTH_NOTE).getAccidental()).isNull();
+        }
+
+        @Test
+        void testNoReplacesTheNoteAndLeavesEveryRestatementAlone() {
+            replaceTheFirstFlatWithAPlainG(JOptionPane.NO_OPTION);
+
+            assertThat(line.getElement(0).getStaffPosition()).isEqualTo(G_STAFF_POSITION);
+            assertThat(line.getElement(THIRD_NOTE).getAccidental())
+                .isEqualTo(StaffElement.Accidental.FLAT);
+            assertThat(secondLine.getElement(0).getAccidental())
+                .isEqualTo(StaffElement.Accidental.FLAT);
+        }
+
+        @Test
+        void testCancelAbandonsTheReplacementItself() {
+            replaceTheFirstFlatWithAPlainG(JOptionPane.CANCEL_OPTION);
+
+            assertThat(line.getElement(0).getStaffPosition())
+                .as("the click did nothing at all")
+                .isEqualTo(F_STAFF_POSITION);
+            assertThat(line.getElement(0).getAccidental())
+                .isEqualTo(StaffElement.Accidental.FLAT);
+            assertThat(line.getElement(THIRD_NOTE).getAccidental())
+                .isEqualTo(StaffElement.Accidental.FLAT);
+            assertThat(secondLine.getElement(0).getAccidental())
+                .isEqualTo(StaffElement.Accidental.FLAT);
+        }
+
+        @Test
+        void testNothingIsAskedWhenTheReplacementKeepsTheAccidental() {
+            // Same staff position, same flat: the accidental survives the replacement, so there is
+            // nothing to consent to.
+            setPreviewElement(note(F_STAFF_POSITION, StaffElement.Accidental.FLAT));
+            PreviewElementManager.setCurrentStaffPosition(F_STAFF_POSITION);
+            PreviewElementManager.setCurrentXIndex(0);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+
+            try (var optionDialogs = mockStatic(OptionDialogs.class)) {
+                PreviewElementManager.handleClick(lc);
+                optionDialogs.verifyNoInteractions();
+            }
+
+            assertThat(line.getElement(THIRD_NOTE).getAccidental())
+                .isEqualTo(StaffElement.Accidental.FLAT);
         }
     }
 

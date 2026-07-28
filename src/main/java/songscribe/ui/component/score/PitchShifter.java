@@ -20,6 +20,7 @@
 
 package songscribe.ui.component.score;
 
+import java.awt.Component;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -38,6 +39,7 @@ import songscribe.dom.StaffElement;
 import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.engraving.Staff;
 import songscribe.ui.playback.PlayThread;
 
@@ -100,6 +102,14 @@ public final class PitchShifter {
         // drag: the group's anchor, the only note played as feedback.
         var anchorIndex = group.getFirst().index();
 
+        // Asked before anything is mutated, so Cancel is simply "nothing happened" — the same
+        // contract the two early returns above already have.
+        var decision = confirmRestatements(null, line, group);
+
+        if (decision.isCancelled()) {
+            return null;
+        }
+
         // The accidentals this shift must make explicit so no pitch the user did not touch
         // changes: each note the group vacates may have been lending its explicit accidental to a
         // later note at the same staff position. Must run here, while the line is still
@@ -110,7 +120,7 @@ public final class PitchShifter {
         // can widen the line, but each vacated staff position yields at most one materialization
         // and the moved note gave up its own accidental glyph in exchange.
         var accidentalChanges = AccidentalReconciliation.reconcileModification(
-            line, intendedChanges(group, clampedDelta));
+            line, intendedChanges(group, clampedDelta), decision.removal());
 
         // Exactly what a mouse drag does on each move: shift the group, play the anchor.
         moveGroupAndPlayAnchor(line, group, anchorIndex, clampedDelta);
@@ -119,7 +129,7 @@ public final class PitchShifter {
         // here to let the played note ring for its standard duration.
         scheduleAnchorNoteOff(line, anchorIndex);
 
-        var removedIndices = commitPitchShift(line, group, accidentalChanges);
+        var removedIndices = commitPitchShift(line, group, accidentalChanges, decision);
 
         if (removedIndices.isEmpty()) {
             return null;
@@ -198,6 +208,41 @@ public final class PitchShifter {
         if (playSelected) {
             PlayThread.sendNoteOn(line.getElement(anchorIndex).getPitch());
         }
+    }
+
+    /**
+     * Asks whether this shift should also take away the later notes that restate the accidentals
+     * it removes — every explicit accidental in {@code group}, since a note that leaves a staff
+     * position gives up the accidental written for it.
+     *
+     * <p>Read off each entry's {@code beforeClone} rather than the live element, because a drag has
+     * already moved and cleared the live notes by the time it asks. Must be called before any
+     * modification bracket opens, and its answer honored — Cancel means the shift does not happen.
+     *
+     * @param parent The component to parent the dialog on, or null when there is no owning window
+     * @param line   The line the group sits on, in its pre-shift state for an arrow press and its
+     *               post-drag state for a drag; only the group's indices are read off it
+     * @param group  The notes being shifted
+     */
+    static AccidentalRestatements.Decision confirmRestatements(
+            @Nullable Component parent, Line line, List<PitchShiftEntry> group) {
+
+        var removed = new ArrayList<AccidentalRestatements.RemovedAccidental>();
+
+        // Identity semantics come for free: StaffElement overrides neither equals nor hashCode.
+        var moved = new LinkedHashSet<StaffElement>();
+
+        for (var entry : group) {
+            var accidental = entry.beforeClone().getAccidental();
+            moved.add(line.getElement(entry.index()));
+
+            if (accidental != null) {
+                removed.add(new AccidentalRestatements.RemovedAccidental(
+                        line, entry.index(), entry.originalStaffPositionSp(), accidental));
+            }
+        }
+
+        return AccidentalRestatements.confirm(parent, removed, moved);
     }
 
     /**
@@ -317,7 +362,8 @@ public final class PitchShifter {
     static List<Integer> commitPitchShift(
             Line line,
             List<PitchShiftEntry> group,
-            List<AccidentalReconciliation.AccidentalChange> accidentalChanges) {
+            List<AccidentalReconciliation.AccidentalChange> accidentalChanges,
+            AccidentalRestatements.Decision decision) {
 
         var removedIndices = new ArrayList<Integer>();
 
@@ -335,6 +381,9 @@ public final class PitchShifter {
             // Applied before the grace-note cleanup, while every index is still the one the
             // reconciliation saw.
             AccidentalMaterializer.commit(line, accidentalChanges);
+
+            // Accepted restatements on later lines join the same step.
+            AccidentalRestatements.commitOtherLines(decision, line);
 
             // Grace note validity checks — iterate in reverse index order to avoid index shifting from removals
             var sortedEntries = group.stream()

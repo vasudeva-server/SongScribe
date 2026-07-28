@@ -22,13 +22,16 @@ package songscribe.layout;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.RangeElement;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 
@@ -82,8 +85,30 @@ import songscribe.dom.Tie;
  *
  * <p>That is also the rule's limit. A restatement of the accidental <em>being removed</em> is
  * invisible to this arithmetic, and on its own line it may be doing real work, since the backward
- * scan resets at the line boundary. Removing those needs the notator's judgement and is a separate
- * feature (#681) — deliberately not attempted here.
+ * scan resets at the line boundary. Removing those needs the notator's judgement, which is why
+ * {@link #findRestatements} only <em>offers</em> them and why nothing here removes one unasked.
+ *
+ * <h2>Restatement removal — the consented inversion</h2>
+ * {@link #findRestatements} scans forward through the song for later notes at a removed
+ * accidental's staff position asserting the same sounding adjustment. When the user accepts them,
+ * the caller passes them back as a {@link RestatementRemoval}, and this unit does two things it
+ * does nowhere else:
+ * <ol>
+ *   <li>emits a clearing {@link AccidentalChange} for each accepted note, so the removals travel
+ *       the same apply-and-gate path as everything else rather than needing their own; and</li>
+ *   <li><b>suspends materialization</b> at the removal's staff position, from the removal forward
+ *       until the next explicit accidental at that position.</li>
+ * </ol>
+ * The suspension deliberately inverts the invariant at the top of this class: a bare note that
+ * inherited the removed accidental is <em>supposed</em> to change pitch here, and materializing to
+ * protect it would defeat the whole feature. The dialog is the consent that licenses that, which is
+ * why suppression can only ever arrive from a caller and is empty for every other edit. Removal
+ * still runs at a suppressed position — only materialization is suspended.
+ *
+ * <p>Suppressing by staff position rather than by note is safe rather than merely convenient: a
+ * bare note at that position before any explicit accidental there necessarily resolved through the
+ * removed accidental or through the key, and in the key case before and after already agree, so
+ * nothing was going to be materialized.
  *
  * <p>Parenthesized accidentals get no exemption: parentheses record that the notator chose to
  * write something they did not have to, which says nothing about whether a later edit obviated it.
@@ -231,6 +256,109 @@ public final class AccidentalReconciliation {
     }
 
     /**
+     * A later note asserting the same sounding adjustment as an accidental an edit is about to
+     * remove. Carries its line because the scan crosses line boundaries and the caller reconciles
+     * one line at a time.
+     *
+     * @param line The line the note sits on
+     * @param note The note itself, which still carries its explicit accidental
+     */
+    public record Restatement(Line line, StaffElement note) {}
+
+    /**
+     * The restatements the user accepted for one edit, and the staff positions whose
+     * materialization that acceptance suspends. See the class javadoc for why suppression is by
+     * staff position and why it can only ever come from a caller.
+     *
+     * @param notes                    Every accepted restatement note, across every line the edit
+     *                                 touches. A reconciliation of one line simply ignores the
+     *                                 notes that are not on it, so the same set is passed to each
+     * @param suppressedStaffPositions The staff positions of the accidentals this edit removes.
+     *                                 Materialization is suspended at each, from the edit point
+     *                                 forward until the next explicit accidental there
+     */
+    public record RestatementRemoval(Set<StaffElement> notes, Set<Integer> suppressedStaffPositions) {
+
+        /** The edit removed nothing the user had to consent to — every edit outside this feature. */
+        public static final RestatementRemoval NONE = new RestatementRemoval(Set.of(), Set.of());
+
+        public RestatementRemoval {
+            // Identity semantics come for free: StaffElement overrides neither equals nor hashCode.
+            notes = Set.copyOf(notes);
+            suppressedStaffPositions = Set.copyOf(suppressedStaffPositions);
+        }
+    }
+
+    /**
+     * Returns the later notes that restate an accidental this edit is about to remove: notes at
+     * {@code staffPosition} carrying an explicit accidental of the same sounding adjustment as
+     * {@code removed}, from just after {@code fromIndex} on {@code line} through the end of the
+     * song.
+     *
+     * <p>The scan <b>stops at an explicit cancellation</b> — the first explicit accidental at that
+     * staff position with a different adjustment. Past that point a matching accidental reads as a
+     * fresh decision, not a restatement of the one being removed.
+     *
+     * <p>It does not stop at a barline or a line boundary, and that is the point: a restatement on
+     * a later line is exactly the case no context arithmetic can identify, because line reset makes
+     * it non-redundant on its own line. Only the notator can say whether it was still meant.
+     *
+     * <p>Pure and pre-mutation, like everything else in this class.
+     *
+     * @param song          The song to scan
+     * @param line          The line the removed accidental sits on
+     * @param fromIndex     The removed accidental's index on {@code line}; the scan starts after it
+     * @param staffPosition The staff position the removed accidental was written at
+     * @param removed       The accidental being removed
+     * @param excluded      Notes this edit itself deletes or changes, which are neither collected
+     *                      nor allowed to stop the scan — they are not going to be there afterwards
+     * @return The restatements to offer, in song order (empty when there are none)
+     */
+    public static List<Restatement> findRestatements(
+        Song song,
+        Line line,
+        int fromIndex,
+        int staffPosition,
+        StaffElement.Accidental removed,
+        Set<StaffElement> excluded) {
+
+        var startLineIndex = song.indexOfLine(line);
+
+        if (startLineIndex < 0) {
+            return List.of();
+        }
+
+        var removedAdjustment = adjustmentOf(removed);
+        var restatements = new ArrayList<Restatement>();
+
+        for (var lineIndex = startLineIndex; lineIndex < song.lineCount(); lineIndex++) {
+            var scanLine = song.getLine(lineIndex);
+            var start = (lineIndex == startLineIndex) ? (fromIndex + 1) : 0;
+
+            for (var i = start; i < scanLine.effectiveElementCount(); i++) {
+                var element = scanLine.getElement(i);
+                var own = element.getAccidental();
+
+                if ((own == null)
+                    || (element.getStaffPosition() != staffPosition)
+                    || !element.getType().isPitchedNote()
+                    || excluded.contains(element)) {
+
+                    continue;
+                }
+
+                if (adjustmentOf(own) != removedAdjustment) {
+                    return restatements;
+                }
+
+                restatements.add(new Restatement(scanLine, element));
+            }
+        }
+
+        return restatements;
+    }
+
+    /**
      * Returns the accidentals that must change for an insert, a delete or a paste-replace to
      * preserve every pitch the user did not change and to strand no notation it made redundant.
      *
@@ -242,6 +370,19 @@ public final class AccidentalReconciliation {
      *         pitch)
      */
     public static List<AccidentalChange> reconcile(InsertionRegion region) {
+        return reconcile(region, RestatementRemoval.NONE);
+    }
+
+    /**
+     * As {@link #reconcile(InsertionRegion)}, with the restatements the user accepted for this same
+     * edit folded in: each accepted note on {@code region}'s line is cleared by the returned
+     * changes, and materialization is suspended at the removal's staff positions.
+     *
+     * @param region  The mutation, described before any of it happens
+     * @param removal The accepted restatements and the staff positions their acceptance suppresses
+     * @return The changes to apply, in projected element order
+     */
+    public static List<AccidentalChange> reconcile(InsertionRegion region, RestatementRemoval removal) {
         var line = region.line();
         var inserted = region.inserted();
         var priorAccidentals = region.insertedPriorAccidentals();
@@ -265,10 +406,14 @@ public final class AccidentalReconciliation {
         }
 
         for (var i = successorIndex; i < line.effectiveElementCount(); i++) {
-            sequence.add(ProjectedElement.survivor(line, i));
+            // An accepted restatement is always later in the song than the accidental it restates,
+            // so it can only ever land in this trailing run — never in the untouched head above.
+            sequence.add(removal.notes().contains(line.getElement(i))
+                ? ProjectedElement.removedByConsent(line, i)
+                : ProjectedElement.survivor(line, i));
         }
 
-        return reconcileSequence(line, sequence, region.insertedSpans(), insertIndex);
+        return reconcileSequence(line, sequence, region.insertedSpans(), insertIndex, removal);
     }
 
     /**
@@ -286,7 +431,35 @@ public final class AccidentalReconciliation {
      *         note's pitch and strands no accidental)
      */
     public static List<AccidentalChange> reconcileModification(Line line, List<IntendedChange> changes) {
-        if (changes.isEmpty()) {
+        return reconcileModification(line, changes, RestatementRemoval.NONE);
+    }
+
+    /**
+     * As {@link #reconcileModification(Line, List)}, with the restatements the user accepted for
+     * this same edit folded in: each accepted note on {@code line} is cleared by the returned
+     * changes, and materialization is suspended at the removal's staff positions.
+     *
+     * <p>This is also the entry point for a line the edit does not otherwise touch — one that only
+     * holds accepted restatements. Such a call passes an empty {@code changes}, which is why the
+     * emptiness short-circuit has to consider the removal too.
+     *
+     * @param line    The line being modified, in its pre-modification state
+     * @param changes Each changed note's intended post-change state
+     * @param removal The accepted restatements and the staff positions their acceptance suppresses
+     * @return The changes to apply, in element order
+     */
+    public static List<AccidentalChange> reconcileModification(
+        Line line, List<IntendedChange> changes, RestatementRemoval removal) {
+
+        var removedOnLine = new ArrayList<Integer>();
+
+        for (var i = 0; i < line.elementCount(); i++) {
+            if (removal.notes().contains(line.getElement(i))) {
+                removedOnLine.add(i);
+            }
+        }
+
+        if (changes.isEmpty() && removedOnLine.isEmpty()) {
             return List.of();
         }
 
@@ -299,10 +472,19 @@ public final class AccidentalReconciliation {
             lowestChangedIndex = Math.min(lowestChangedIndex, change.index());
         }
 
+        for (var index : removedOnLine) {
+            lowestChangedIndex = Math.min(lowestChangedIndex, index);
+        }
+
         var sequence = new ArrayList<ProjectedElement>();
 
         for (var i = 0; i < line.elementCount(); i++) {
             var change = changeByIndex.get(i);
+
+            if (removal.notes().contains(line.getElement(i))) {
+                sequence.add(ProjectedElement.removedByConsent(line, i));
+                continue;
+            }
 
             if (change == null) {
                 // Below the lowest changed index the walk never visits the position, so it needs
@@ -316,7 +498,7 @@ public final class AccidentalReconciliation {
             sequence.add(ProjectedElement.changed(line.getElement(i), change));
         }
 
-        return reconcileSequence(line, sequence, List.of(), lowestChangedIndex);
+        return reconcileSequence(line, sequence, List.of(), lowestChangedIndex, removal);
     }
 
     /**
@@ -329,13 +511,19 @@ public final class AccidentalReconciliation {
      * so the rest of the pass resolves against it: a materialized accidental becomes explicit, and
      * a removed one stops being seen at all. That is bound 2 of the class javadoc, satisfied
      * structurally rather than by an early exit.
+     *
+     * <p>{@code removal}'s suppressed staff positions are consumed as the walk runs: a position
+     * leaves the set at the first explicit accidental the walk meets there, because that accidental
+     * re-establishes the context and ends the region the user consented to change.
      */
     private static List<AccidentalChange> reconcileSequence(
         Line line,
         List<ProjectedElement> sequence,
         List<RangeElement> insertedSpans,
-        int startPosition) {
+        int startPosition,
+        RestatementRemoval removal) {
 
+        var suppressedStaffPositions = new HashSet<>(removal.suppressedStaffPositions());
         var ties = collectTies(line, insertedSpans);
         var positionsByElement = new IdentityHashMap<StaffElement, Integer>();
 
@@ -348,17 +536,34 @@ public final class AccidentalReconciliation {
         for (var position = startPosition; position < sequence.size(); position++) {
             var projected = sequence.get(position);
 
-            if (projected.userChanged) {
-                continue;
-            }
-
-            // Ahead of both branches, so a barline or a repeat is never a candidate for either.
+            // Ahead of everything below, so a barline or a repeat is never a candidate for any of
+            // it.
             if (!projected.element.getType().isPitchedNote()) {
                 continue;
             }
 
-            // Also ahead of both branches: a tied note has no pitch of its own to protect, so it is
-            // a candidate for neither materialization nor removal.
+            // An explicit accidental re-establishes the context at its staff position, which is
+            // exactly where the consented pitch change stops propagating. Ahead of the skips below
+            // because that is true of the accidental whoever wrote it — including one the user is
+            // writing with this very edit, and including one on a tied note.
+            if (projected.explicit != null) {
+                suppressedStaffPositions.remove(projected.staffPosition);
+            }
+
+            // An accepted restatement is not reconciled — the user already decided it goes. It is
+            // emitted here rather than applied by the caller so that every accidental this edit
+            // writes travels one path, and so a refused fit gate rolls this back with the rest.
+            if (projected.consentRemoved) {
+                accidentalChanges.add(new AccidentalChange(projected.element, null));
+                continue;
+            }
+
+            if (projected.userChanged) {
+                continue;
+            }
+
+            // A tied note has no pitch of its own to protect, so it is a candidate for neither
+            // materialization nor removal.
             if (endsTie(ties, positionsByElement, projected.element, position)) {
                 continue;
             }
@@ -377,6 +582,12 @@ public final class AccidentalReconciliation {
             }
 
             if (adjustmentOf(projected.before) == adjustmentOf(after)) {
+                continue;
+            }
+
+            // The user consented to this position's pitch changing. Materializing here would hand
+            // the removed accidental straight back and defeat the removal — see the class javadoc.
+            if (suppressedStaffPositions.contains(projected.staffPosition)) {
                 continue;
             }
 
@@ -551,6 +762,12 @@ public final class AccidentalReconciliation {
         /** True for a note that is on the line already and stays there through the mutation. */
         private final boolean survivor;
 
+        /**
+         * True for a restatement the user accepted for removal. Implies {@link #userChanged} — the
+         * user did decide it — and additionally makes the walk emit its clearing change.
+         */
+        private final boolean consentRemoved;
+
         private ProjectedElement(
             StaffElement element,
             int staffPosition,
@@ -558,7 +775,8 @@ public final class AccidentalReconciliation {
             StaffElement.@Nullable Accidental contextBefore,
             StaffElement.@Nullable Accidental explicit,
             boolean userChanged,
-            boolean survivor) {
+            boolean survivor,
+            boolean consentRemoved) {
 
             this.element = element;
             this.staffPosition = staffPosition;
@@ -567,6 +785,7 @@ public final class AccidentalReconciliation {
             this.explicit = explicit;
             this.userChanged = userChanged;
             this.survivor = survivor;
+            this.consentRemoved = consentRemoved;
         }
 
         /**
@@ -585,7 +804,7 @@ public final class AccidentalReconciliation {
             var before = (own != null) ? own : contextBefore;
 
             return new ProjectedElement(
-                element, element.getStaffPosition(), before, contextBefore, own, false, true);
+                element, element.getStaffPosition(), before, contextBefore, own, false, true, false);
         }
 
         /**
@@ -606,7 +825,23 @@ public final class AccidentalReconciliation {
             var element = line.getElement(index);
 
             return new ProjectedElement(
-                element, element.getStaffPosition(), null, null, element.getAccidental(), false, true);
+                element, element.getStaffPosition(), null, null, element.getAccidental(), false, true,
+                false);
+        }
+
+        /**
+         * The projected position for a surviving note whose explicit accidental the user accepted
+         * for removal — a restatement of an accidental this same edit takes away.
+         *
+         * <p>It reads as already cleared, so the rest of the pass resolves past it exactly as it
+         * does past an accidental the mirror rule removes, and it is never a candidate itself: the
+         * user decided it, so there is nothing left to reconcile about it.
+         */
+        private static ProjectedElement removedByConsent(Line line, int index) {
+            var element = line.getElement(index);
+
+            return new ProjectedElement(
+                element, element.getStaffPosition(), null, null, null, true, true, true);
         }
 
         /**
@@ -627,7 +862,7 @@ public final class AccidentalReconciliation {
             var before = (own != null) ? own : priorAccidental;
 
             return new ProjectedElement(
-                element, element.getStaffPosition(), before, null, own, !hasSourceContext, false);
+                element, element.getStaffPosition(), before, null, own, !hasSourceContext, false, false);
         }
 
         /**
@@ -637,7 +872,7 @@ public final class AccidentalReconciliation {
         private static ProjectedElement changed(StaffElement element, IntendedChange change) {
             return new ProjectedElement(
                 element, change.staffPosition(), change.accidental(), null, change.accidental(),
-                true, false);
+                true, false, false);
         }
     }
 }
