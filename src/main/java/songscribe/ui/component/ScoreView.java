@@ -70,7 +70,6 @@ import songscribe.ui.Mode;
 import songscribe.ui.ViewScale;
 import songscribe.ui.ZoomController;
 import songscribe.ui.platform.mac.PinchZoomGesture;
-import songscribe.ui.action.Actions;
 import songscribe.ui.adjustment.HorizontalAdjustment;
 import songscribe.ui.adjustment.VerticalAdjustment;
 import songscribe.ui.clipboard.ClipboardManager;
@@ -155,10 +154,6 @@ public final class ScoreView
     public static Color getSelectionColor() {
         return FlatLafProps.getColor(FlatLafKey.SCORE_SELECTION_COLOR);
     }
-
-    // Edit popup
-    @Nullable
-    private JPopupMenu popup = null;
 
     private final Dimension sheetSize = new Dimension();
 
@@ -315,7 +310,6 @@ public final class ScoreView
             }
         }
 
-        initEditPopup();
         selectionChanged();
         initKeys();
 
@@ -348,14 +342,6 @@ public final class ScoreView
         }
     }
 
-    private void initEditPopup() {
-        popup = new JPopupMenu();
-        popup.add(Actions.CUT_ACTION);
-        popup.add(Actions.COPY_ACTION);
-        popup.add(Actions.PASTE_ACTION);
-        popup.addSeparator();
-        popup.add(Actions.DELETE_ACTION);
-    }
 
     private void initScorePanel() {
         scorePanel = new ScorePanel(this);
@@ -429,17 +415,8 @@ public final class ScoreView
         this.scrollPane = scrollPane;
     }
 
-    void setPopup(JPopupMenu popup) {
-        this.popup = popup;
-    }
-
     public boolean isDragDisabled() {
         return dragDisabled;
-    }
-
-    @Override
-    public @Nullable JPopupMenu getEditPopup() {
-        return popup;
     }
 
     /**

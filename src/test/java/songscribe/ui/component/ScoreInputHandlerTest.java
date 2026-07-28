@@ -30,6 +30,7 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.awt.Component;
@@ -41,7 +42,6 @@ import java.awt.event.MouseEvent;
 import java.util.List;
 
 import javax.swing.JPanel;
-import javax.swing.JPopupMenu;
 import javax.swing.KeyStroke;
 
 import org.junit.jupiter.api.AfterEach;
@@ -246,87 +246,30 @@ class ScoreInputHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------
-    // Rows 61-62: mousePressed / mouseReleased show the edit popup only
-    // when the event is a popup trigger
+    // Rows 61-62: mousePressed / mouseReleased are no-ops; the score no
+    // longer shows a popup menu on a popup-trigger event
     // -------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class PopupTrigger {
+    @Test
+    void testMousePressedIsNoOpForPopupTriggerEvent() {
+        var callback = mock(InputHandlerCallback.class);
+        var handler = new ScoreInputHandler(callback);
+        var event = mouseEvent(MouseEvent.MOUSE_PRESSED, true);
 
-        @Test
-        void testMousePressedShowsPopupWhenPopupTriggerIsTrue() {
-            var callback = mock(InputHandlerCallback.class);
-            var popup = mock(JPopupMenu.class);
-            when(callback.getEditPopup()).thenReturn(popup);
-            var handler = new ScoreInputHandler(callback);
-            var source = mock(Component.class);
-            var event = mousePopupEvent(source, MouseEvent.MOUSE_PRESSED);
+        handler.mousePressed(event);
 
-            handler.mousePressed(event);
+        verifyNoInteractions(callback);
+    }
 
-            verify(popup).show(source, POPUP_X, POPUP_Y);
-        }
+    @Test
+    void testMouseReleasedIsNoOpForPopupTriggerEvent() {
+        var callback = mock(InputHandlerCallback.class);
+        var handler = new ScoreInputHandler(callback);
+        var event = mouseEvent(MouseEvent.MOUSE_RELEASED, true);
 
-        @Test
-        void testMouseReleasedShowsPopupWhenPopupTriggerIsTrue() {
-            var callback = mock(InputHandlerCallback.class);
-            var popup = mock(JPopupMenu.class);
-            when(callback.getEditPopup()).thenReturn(popup);
-            var handler = new ScoreInputHandler(callback);
-            var source = mock(Component.class);
-            var event = mousePopupEvent(source, MouseEvent.MOUSE_RELEASED);
+        handler.mouseReleased(event);
 
-            handler.mouseReleased(event);
-
-            verify(popup).show(source, POPUP_X, POPUP_Y);
-        }
-
-        @Test
-        void testMousePressedWithPopupTriggerAndNullPopupIsNoOp() {
-            var callback = mock(InputHandlerCallback.class);
-            // getEditPopup() defaults to null; the null guard must prevent an NPE
-            var handler = new ScoreInputHandler(callback);
-            var source = mock(Component.class);
-
-            handler.mousePressed(mousePopupEvent(source, MouseEvent.MOUSE_PRESSED));
-
-            verify(callback).getEditPopup();
-        }
-
-        @Test
-        void testMouseReleasedWithPopupTriggerAndNullPopupIsNoOp() {
-            var callback = mock(InputHandlerCallback.class);
-            // getEditPopup() defaults to null; the null guard must prevent an NPE
-            var handler = new ScoreInputHandler(callback);
-            var source = mock(Component.class);
-
-            handler.mouseReleased(mousePopupEvent(source, MouseEvent.MOUSE_RELEASED));
-
-            verify(callback).getEditPopup();
-        }
-
-        @Test
-        void testMousePressedIsNoOpWhenPopupTriggerIsFalse() {
-            var callback = mock(InputHandlerCallback.class);
-            var handler = new ScoreInputHandler(callback);
-            var event = mouseEvent(MouseEvent.MOUSE_PRESSED, false);
-
-            handler.mousePressed(event);
-
-            verify(callback, never()).getEditPopup();
-        }
-
-        @Test
-        void testMouseReleasedIsNoOpWhenPopupTriggerIsFalse() {
-            var callback = mock(InputHandlerCallback.class);
-            var handler = new ScoreInputHandler(callback);
-            var event = mouseEvent(MouseEvent.MOUSE_RELEASED, false);
-
-            handler.mouseReleased(event);
-
-            verify(callback, never()).getEditPopup();
-        }
+        verifyNoInteractions(callback);
     }
 
     // -------------------------------------------------------------------
@@ -1073,9 +1016,6 @@ class ScoreInputHandlerTest extends UnitTest {
     // Helpers
     // -------------------------------------------------------------------
 
-    private static final int POPUP_X = 30;
-    private static final int POPUP_Y = 40;
-
     private MouseEvent mouseEvent(int id, boolean popupTrigger) {
         return new MouseEvent(
             mock(Component.class), id, 0L, 0, 0, 0, 0, 0, 1, popupTrigger, MouseEvent.BUTTON1
@@ -1085,12 +1025,6 @@ class ScoreInputHandlerTest extends UnitTest {
     private MouseEvent mouseClickEvent(int button) {
         return new MouseEvent(
             mock(Component.class), MouseEvent.MOUSE_CLICKED, 0L, 0, 0, 0, 0, 0, 1, false, button
-        );
-    }
-
-    private MouseEvent mousePopupEvent(Component source, int id) {
-        return new MouseEvent(
-            source, id, 0L, 0, POPUP_X, POPUP_Y, POPUP_X, POPUP_Y, 1, true, MouseEvent.BUTTON3
         );
     }
 

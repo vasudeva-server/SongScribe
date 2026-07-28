@@ -80,24 +80,10 @@ public final class ScoreInputHandler extends KeyAdapter
 
     @Override
     public void mousePressed(MouseEvent e) {
-        if (e.isPopupTrigger()) {
-            var popup = callback.getEditPopup();
-
-            if (popup != null) {
-                popup.show((Component) e.getSource(), e.getX(), e.getY());
-            }
-        }
     }
 
     @Override
     public void mouseReleased(MouseEvent e) {
-        if (e.isPopupTrigger()) {
-            var popup = callback.getEditPopup();
-
-            if (popup != null) {
-                popup.show((Component) e.getSource(), e.getX(), e.getY());
-            }
-        }
     }
 
     @Override
