@@ -66,7 +66,12 @@ This skill supports three modes based on `$ARGUMENTS`:
 If `$ARGUMENTS` is empty or not provided, review changed files from git:
 
 - Run `/opt/homebrew/bin/git diff` (or `/opt/homebrew/bin/git diff HEAD` if there are staged changes) to get the diff.
-- If there are no git changes, review the most recently modified files that the user mentioned or edited earlier in this conversation.
+- **If there are no uncommitted changes**, fall back to the branch's own commits — everything this branch has added since it forked from `develop`:
+  - Determine the base ref: use `develop` if `/opt/homebrew/bin/git rev-parse --verify --quiet develop` succeeds, otherwise `origin/develop`.
+  - List the branch's commits with `/opt/homebrew/bin/git log --oneline <base>..HEAD`. The two-dot form lists only commits reachable from `HEAD` but not from the base, so commits that came from `develop` are excluded automatically — this stays correct even if the branch was rebased onto `develop` during development.
+  - Get the cumulative diff with `/opt/homebrew/bin/git diff <base>...HEAD` (three dots — diff against the merge base, not against the tip of `develop`).
+  - Get the list of changed file paths with `/opt/homebrew/bin/git diff --name-only <base>...HEAD`. Exclude deleted files.
+  - If `HEAD` is `develop` itself, or the commit list is empty, review the most recently modified files that the user mentioned or edited earlier in this conversation.
 - The diff output is the **review target** passed to agents in Phase 2.
 
 ### Mode C: Commit Review

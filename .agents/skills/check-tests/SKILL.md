@@ -83,8 +83,25 @@ first, then resolve the remaining token as the scope.
 
 **Mode A — Git diff (default).** If no scope token is given, review the changed
 tests from git: run `/opt/homebrew/bin/git diff` (or `git diff HEAD` if changes
-are staged). Collect changed `*Test.java` files. If there are no changes, review
-the test files the user mentioned or edited earlier in the conversation.
+are staged). Collect changed `*Test.java` files.
+
+If there are **no uncommitted changes**, fall back to the branch's own commits —
+everything this branch has added since it forked from `develop`:
+
+- Determine the base ref: use `develop` if
+  `/opt/homebrew/bin/git rev-parse --verify --quiet develop` succeeds, otherwise
+  `origin/develop`.
+- List the branch's commits with
+  `/opt/homebrew/bin/git log --oneline <base>..HEAD`. The two-dot form lists only
+  commits reachable from `HEAD` but not from the base, so commits that came from
+  `develop` are excluded automatically — this stays correct even if the branch
+  was rebased onto `develop` during development.
+- Collect the changed `*Test.java` files with
+  `/opt/homebrew/bin/git diff --name-only <base>...HEAD` (three dots — diff
+  against the merge base, not against the tip of `develop`), and read their diff
+  with `/opt/homebrew/bin/git diff <base>...HEAD`. Exclude deleted files.
+- If `HEAD` is `develop` itself, or the commit list is empty, review the test
+  files the user mentioned or edited earlier in the conversation.
 
 **Mode B — Package or file.**
 
