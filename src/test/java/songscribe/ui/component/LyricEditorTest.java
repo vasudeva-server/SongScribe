@@ -620,6 +620,22 @@ class LyricEditorTest extends LyricEditorTestSupport {
         assertThat(editor.getText()).hasSize(LyricEditor.MAX_LENGTH_CHARS);
     }
 
+    /**
+     * Cut/Copy/Delete are correctly greyed out while the lyric editor holds focus only
+     * because opening the editor leaves no score selection behind. Nothing else locks
+     * that down, so assert it here.
+     */
+    @Test
+    void testDeselectAndOpenOnClearsScoreSelection() {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        LyricEditor.deselectAndOpenOn(score, line, 0);
+
+        verify(score).deselect();
+    }
+
     @Test
     void testFocusLostWithoutFocusIsNoOp() {
         var element = crotchet();

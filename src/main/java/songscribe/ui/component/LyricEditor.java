@@ -81,7 +81,7 @@ import songscribe.util.UIUtils;
  *  │   │                                             │         │
  *  │   │  user keystroke                             │         │
  *  │   │   - char insert/delete → recompute width    │         │
- *  │   │   - len > 32 → beep, reject                 │         │
+ *  │   │   - len > {@value #MAX_LENGTH_CHARS} →reject│         │
  *  │   │   - newline → strip                         │         │
  *  │   │                                             │         │
  *  │   │  Tab/Space  → commit + advance              │         │

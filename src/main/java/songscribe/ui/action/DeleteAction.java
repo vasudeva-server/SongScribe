@@ -51,20 +51,14 @@ public final class DeleteAction extends PasteboardAction {
     }
 
     @Override
-    public boolean updateEnabledState() {
-        if (!super.updateEnabledState()) {
-            return false;
-        }
-
+    protected boolean updateScoreEnabledState() {
         var scoreView = requireScoreView();
         var selection = scoreView.getSelectionCoordinator();
-        var isEnabled =
-            selection.hasLyricSelection() ||
-                selection.hasActiveSelection() ||
-                selection.hasSlideSelection() ||
-                selection.hasEndingSelection() ||
-                scoreView.canDeleteLine();
-        setEnabled(isEnabled);
-        return isEnabled;
+
+        return selection.hasLyricSelection() ||
+            selection.hasActiveSelection() ||
+            selection.hasSlideSelection() ||
+            selection.hasEndingSelection() ||
+            scoreView.canDeleteLine();
     }
 }

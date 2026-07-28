@@ -77,20 +77,26 @@ public class PasteboardAction extends UIAction {
      * {@code REQUIRES_SELECTION}-style flag.
      */
     @Override
-    public boolean updateEnabledState() {
+    public final boolean updateEnabledState() {
         if (!super.updateEnabledState()) {
             return false;
         }
 
-        var scoreView = requireScoreView();
-        var isEnabled = switch (op) {
-            case PASTE -> scoreView.getPasteboardSize() > 0;
-            case COPY, CUT -> scoreView.getSelectionSize() > 0;
-            // DELETE is handled by DeleteAction.updateEnabledState() above.
-            case DELETE -> true;
-        };
+        var isEnabled = updateScoreEnabledState();
         setEnabled(isEnabled);
         return isEnabled;
+    }
+
+    /** Computes the enabled state from the score, once the generic flag checks pass. */
+    protected boolean updateScoreEnabledState() {
+        var scoreView = requireScoreView();
+
+        return switch (op) {
+            case PASTE -> scoreView.getPasteboardSize() > 0;
+            case COPY, CUT -> scoreView.getSelectionSize() > 0;
+            // DELETE is handled by DeleteAction.updateScoreEnabledState() above.
+            case DELETE -> true;
+        };
     }
 
     @Override
