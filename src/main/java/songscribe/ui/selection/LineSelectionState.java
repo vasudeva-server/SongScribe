@@ -25,6 +25,7 @@ import java.util.stream.IntStream;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
@@ -57,6 +58,8 @@ public final class LineSelectionState {
     private int selectedSlideElementIndex = -1;
     @Nullable
     private Ending selectedEnding = null;
+    @Nullable
+    private Hairpin selectedHairpin = null;
 
     @Nullable
     private Boolean canTie = null;
@@ -86,15 +89,17 @@ public final class LineSelectionState {
     }
 
     /**
-     * Clears the slide and ending selections.
+     * Clears the slide, ending, and hairpin selections.
      * <p>
-     * Slides and endings are decorations selected on their own, mutually exclusive with
-     * each other and with any element or line selection. Every method that establishes a
-     * different selection clears both, so they are cleared together here.
+     * Slides, endings, and hairpins are decorations selected on their own, mutually
+     * exclusive with each other and with any element or line selection. Every method
+     * that establishes a different selection clears all three, so they are cleared
+     * together here.
      */
     private void clearDecorationSelections() {
         selectedSlideElementIndex = -1;
         selectedEnding = null;
+        selectedHairpin = null;
     }
 
     public void setLineSelected(boolean lineSelected) {
@@ -171,19 +176,46 @@ public final class LineSelectionState {
     }
 
     /**
-     * Returns whether the given line element is the currently selected decoration.
-     * Widened from an {@code Ending}-only check so future decoration types
-     * (e.g. hairpins) can be added as one more {@code ||} clause here.
+     * Returns whether a hairpin is selected on this line.
      */
-    public boolean isDecorationSelected(LineElement element) {
-        return element == selectedEnding;
+    public boolean hasHairpinSelection() {
+        return selectedHairpin != null;
     }
 
     /**
-     * Clears the slide or ending selection if it no longer refers to a live decoration
-     * on this line — e.g. after an undo/redo that shifted element indices or removed
-     * the selected ending outright. No-op if the current selection is still valid, or
-     * if there is no slide/ending selection.
+     * Returns the selected hairpin, or null if none.
+     */
+    @Nullable
+    public Hairpin getSelectedHairpin() {
+        return selectedHairpin;
+    }
+
+    /**
+     * Selects the given hairpin, clearing any element, line, slide, or ending selection.
+     */
+    public void selectHairpin(Hairpin hairpin) {
+        clearDecorationSelections();
+        selectedHairpin = hairpin;
+        selectionBegin = -1;
+        selectionEnd = -1;
+        selectionAnchor = -1;
+        lineSelected = false;
+        selectionChangeCallback.run();
+    }
+
+    /**
+     * Returns whether the given line element is the currently selected decoration —
+     * the selected slide, ending, or hairpin.
+     */
+    public boolean isDecorationSelected(LineElement element) {
+        return element == selectedEnding || element == selectedHairpin;
+    }
+
+    /**
+     * Clears the slide, ending, or hairpin selection if it no longer refers to a live
+     * decoration on this line — e.g. after an undo/redo that shifted element indices or
+     * removed the selected decoration outright. No-op if the current selection is still
+     * valid, or if there is no slide/ending/hairpin selection.
      *
      * @return whether the selection was cleared
      */
@@ -196,6 +228,11 @@ public final class LineSelectionState {
             }
         } else if (selectedEnding != null) {
             if (!LineEndingSupport.findEndings(line).contains(selectedEnding)) {
+                clearSelection();
+                return true;
+            }
+        } else if (selectedHairpin != null) {
+            if (!line.getRangeElements().contains(selectedHairpin)) {
                 clearSelection();
                 return true;
             }

@@ -31,14 +31,13 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.command.AddDynamicsCommand;
+import songscribe.message.command.AddHairpinCommand;
 import songscribe.message.command.AutoStemDirectionCommand;
 import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.FirstSecondEndingCommand;
 import songscribe.message.command.FlipStemDirectionCommand;
 import songscribe.message.command.InsertLineCommand;
 import songscribe.message.command.PasteboardOpCommand;
-import songscribe.message.command.RemoveDynamicsCommand;
 import songscribe.message.command.SelectLineCommand;
 import songscribe.message.command.ToggleBeamCommand;
 import songscribe.message.command.ToggleTieCommand;
@@ -62,6 +61,8 @@ import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.prefs.PrefsKey;
+import songscribe.dom.Crescendo;
+import songscribe.dom.Diminuendo;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Line;
@@ -72,6 +73,7 @@ import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
+import songscribe.ui.MusicEditOperations.HairpinResolution;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.InsertLineAction;
@@ -226,13 +228,8 @@ public final class ScoreViewController {
     }
 
     @Handler
-    public void handleAddDynamics(AddDynamicsCommand message) {
-        operations.addDynamicsToSelection(message.isCrescendo());
-    }
-
-    @Handler
-    public void handleRemoveDynamics(RemoveDynamicsCommand message) {
-        operations.removeDynamicsFromSelection();
+    public void handleAddHairpin(AddHairpinCommand message) {
+        operations.addHairpinToSelection(message.isCrescendo());
     }
 
     @Handler
@@ -273,12 +270,8 @@ public final class ScoreViewController {
         return operations.canToggleTuplet();
     }
 
-    public boolean canAddDynamicsToSelection() {
-        return operations.canAddDynamicsToSelection();
-    }
-
-    public boolean canRemoveDynamicsFromSelection() {
-        return operations.canRemoveDynamicsFromSelection();
+    public HairpinResolution resolveHairpinAction() {
+        return operations.resolveHairpinAction();
     }
 
     public EndingValidationResult canMakeFirstSecondEnding() {
@@ -638,6 +631,20 @@ public final class ScoreViewController {
             // so the @Nullable getSelectedEnding() result is not passed on unchecked.
             if (ending != null) {
                 line.withModification(OpNames.deleteEndingLabel(), () -> line.removeRangeElement(ending));
+            }
+        } else if (state != null && state.hasHairpinSelection()) {
+            var line = state.getLine();
+            var hairpin = state.getSelectedHairpin();
+
+            // hasHairpinSelection() guarantees a hairpin is present; guard anyway
+            // so the @Nullable getSelectedHairpin() result is not passed on unchecked.
+            if (hairpin != null) {
+                line.withModification(OpNames.deleteHairpinLabel(hairpin), () -> {
+                    switch (hairpin) {
+                        case Crescendo crescendo -> line.removeCrescendo(crescendo);
+                        case Diminuendo diminuendo -> line.removeDiminuendo(diminuendo);
+                    }
+                });
             }
         } else if (score.canDeleteLine()) {
             song.withModification(OpNames.deleteLineLabel(),

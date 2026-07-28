@@ -26,11 +26,8 @@ import module java.desktop;
 import songscribe.error.RuntimeError;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
-import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.LineThickness;
-import songscribe.engraving.SMuFLConstants;
-import songscribe.engraving.Staff;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.GraceModeManager;
@@ -48,7 +45,7 @@ import songscribe.ui.renderer.BeamGroupRenderer;
 import songscribe.ui.renderer.BeatChangeRenderer;
 import songscribe.ui.renderer.ClefRenderer;
 import songscribe.ui.renderer.DynamicMarkingRenderer;
-import songscribe.ui.renderer.DynamicsRenderer;
+import songscribe.ui.renderer.HairpinRenderer;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.EndingRenderer;
 import songscribe.ui.renderer.FermataRenderer;
@@ -488,7 +485,7 @@ class LineRenderer {
      */
     private void renderDynamics(Graphics2D g2, LineInvariants invariants) {
         invariants.requireCurrentLine();
-        DynamicsRenderer.getInstance().renderHairpinsFromLine(g2, invariants);
+        HairpinRenderer.getInstance().renderHairpinsFromLine(g2, invariants);
     }
 
     /**

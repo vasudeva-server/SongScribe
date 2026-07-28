@@ -22,4 +22,15 @@ package songscribe.message.command;
 
 import songscribe.message.Message;
 
-public class RemoveDynamicsCommand extends Message {}
+public class AddHairpinCommand extends Message {
+
+    private final boolean isCrescendo;
+
+    public AddHairpinCommand(boolean isCrescendo) {
+        this.isCrescendo = isCrescendo;
+    }
+
+    public boolean isCrescendo() {
+        return isCrescendo;
+    }
+}

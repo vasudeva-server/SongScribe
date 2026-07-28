@@ -33,6 +33,8 @@ import static org.mockito.Mockito.when;
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
+// Disambiguates from java.awt.List (java.desktop module)
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -43,7 +45,9 @@ import org.mockito.MockedStatic;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
+import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
@@ -54,6 +58,7 @@ import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.hit.HitResult;
 import songscribe.ui.renderer.EndingRenderer;
+import songscribe.ui.renderer.HairpinRenderer;
 import songscribe.ui.renderer.SlideRenderer;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.selection.LineSelectionState;
@@ -73,12 +78,14 @@ class LineSelectionHandlerTest extends UnitTest {
 
     private MockedStatic<ElementHitTest> elementHitTestMock;
     private MockedStatic<SlideRenderer> slideRendererMock;
+    private MockedStatic<HairpinRenderer> hairpinRendererMock;
     private MockedStatic<EndingRenderer> endingRendererMock;
     private MockedStatic<ScaleContext> scaleContextMock;
 
     private LineComponent lc;
     private ScoreView mockScoreView;
     private SlideRenderer mockSlideRenderer;
+    private HairpinRenderer mockHairpinRenderer;
     private EndingRenderer mockEndingRenderer;
     private LineSelectionHandler handler;
 
@@ -86,6 +93,7 @@ class LineSelectionHandlerTest extends UnitTest {
     void setUp() {
         elementHitTestMock = mockStatic(ElementHitTest.class);
         slideRendererMock = mockStatic(SlideRenderer.class);
+        hairpinRendererMock = mockStatic(HairpinRenderer.class);
         endingRendererMock = mockStatic(EndingRenderer.class);
         scaleContextMock = mockStatic(ScaleContext.class);
 
@@ -103,12 +111,15 @@ class LineSelectionHandlerTest extends UnitTest {
         // swapping in fresh ones.
         mockSlideRenderer = mock(SlideRenderer.class);
         slideRendererMock.when(SlideRenderer::getInstance).thenReturn(mockSlideRenderer);
+        mockHairpinRenderer = mock(HairpinRenderer.class);
+        hairpinRendererMock.when(HairpinRenderer::getInstance).thenReturn(mockHairpinRenderer);
         mockEndingRenderer = mock(EndingRenderer.class);
         endingRendererMock.when(EndingRenderer::getInstance).thenReturn(mockEndingRenderer);
 
         // Default every tester to a miss; each test opts into the hit it cares about.
         elementHitTestMock.when(() -> ElementHitTest.hit(any(), any())).thenReturn(null);
         stubSlideHit(-1);
+        stubHairpinHit(null);
         stubEndingHit(null);
 
         handler = new LineSelectionHandler(lc);
@@ -118,6 +129,7 @@ class LineSelectionHandlerTest extends UnitTest {
     void tearDown() {
         scaleContextMock.close();
         endingRendererMock.close();
+        hairpinRendererMock.close();
         slideRendererMock.close();
         elementHitTestMock.close();
     }
@@ -137,6 +149,14 @@ class LineSelectionHandlerTest extends UnitTest {
      */
     private void stubSlideHit(int elementIndex) {
         when(mockSlideRenderer.hitTestSlide(anyDouble(), anyDouble(), any())).thenReturn(elementIndex);
+    }
+
+    /**
+     * Stubs the hairpin tester to report {@code hairpin} as hit, or no hit when null.
+     */
+    private void stubHairpinHit(@Nullable Hairpin hairpin) {
+        when(mockHairpinRenderer.hitTestHairpin(anyDouble(), anyDouble(), any(), any(), anyDouble()))
+            .thenReturn(hairpin);
     }
 
     /**
@@ -164,6 +184,13 @@ class LineSelectionHandlerTest extends UnitTest {
      */
     private static Ending newEnding() {
         return new Ending(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
+    }
+
+    /**
+     * Builds a standalone {@link Hairpin}; hit results carry it by reference only.
+     */
+    private static Hairpin newHairpin() {
+        return new Crescendo(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
     }
 
     // -------------------------------------------------------------------------
@@ -228,6 +255,53 @@ class LineSelectionHandlerTest extends UnitTest {
             assertThat(result).isInstanceOf(HitResult.Slide.class);
         }
 
+        @Test
+        void testHairpinHitIsReturnedUnchanged() {
+            var hairpin = newHairpin();
+            stubHairpinHit(hairpin);
+
+            var result = handler.hitTest(new Point(0, 0));
+
+            assertThat(result).isEqualTo(new HitResult.Hairpin(hairpin));
+        }
+
+        // The hairpin tester sits between the slide and ending testers, so these two tests
+        // pin its position from both sides: a slide beats a hairpin…
+        @Test
+        void testPointAtBothSlideAndHairpinReturnsSlide() {
+            stubHairpinHit(newHairpin());
+            stubSlideHit(1);
+
+            var result = handler.hitTest(new Point(0, 0));
+
+            assertThat(result).isInstanceOf(HitResult.Slide.class);
+        }
+
+        // …and a hairpin beats an ending.
+        @Test
+        void testPointAtBothHairpinAndEndingReturnsHairpin() {
+            var hairpin = newHairpin();
+            stubHairpinHit(hairpin);
+            stubEndingHit(newEnding());
+
+            var result = handler.hitTest(new Point(0, 0));
+
+            assertThat(result).isInstanceOf(HitResult.Hairpin.class);
+            assertThat(((HitResult.Hairpin) result).hairpin()).isSameAs(hairpin);
+        }
+
+        // An element head wins the whole cascade, hairpins included.
+        @Test
+        void testPointAtBothElementHeadAndHairpinReturnsElementHead() {
+            elementHitTestMock.when(() -> ElementHitTest.hit(any(), any()))
+                .thenReturn(new HitResult.ElementHead(2));
+            stubHairpinHit(newHairpin());
+
+            var result = handler.hitTest(new Point(0, 0));
+
+            assertThat(result).isEqualTo(new HitResult.ElementHead(2));
+        }
+
         // The cascade checks endings before the staff line, so an ending over the staff
         // line wins even at a Y that would otherwise register as a staff-line hit.
         @Test
@@ -248,6 +322,7 @@ class LineSelectionHandlerTest extends UnitTest {
             elementHitTestMock.when(() -> ElementHitTest.hit(any(), any()))
                 .thenReturn(new HitResult.ElementHead(0));
             stubSlideHit(0);
+            stubHairpinHit(newHairpin());
             stubEndingHit(newEnding());
         }
 
@@ -256,6 +331,8 @@ class LineSelectionHandlerTest extends UnitTest {
 
             assertThat(result).isInstanceOf(HitResult.Nothing.class);
             verify(mockSlideRenderer, never()).hitTestSlide(anyDouble(), anyDouble(), any());
+            verify(mockHairpinRenderer, never())
+                .hitTestHairpin(anyDouble(), anyDouble(), any(), any(), anyDouble());
             verify(mockEndingRenderer, never())
                 .hitTestEnding(anyDouble(), anyDouble(), any(), any(), anyDouble());
         }
@@ -616,17 +693,17 @@ class LineSelectionHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // handleEditModeEndingPress
+    // handleEditModeDecorationPress
     // -------------------------------------------------------------------------
 
     /**
-     * The EDIT-mode entry point that lets an ending be selected without first switching to
+     * The EDIT-mode entry point that lets a decoration be selected without first switching to
      * SELECT mode. The mode check itself lives in {@code LineComponent.mousePressed}; this
-     * class only decides whether the press landed on an ending.
+     * class only decides whether the press landed on a decoration.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class HandleEditModeEndingPress {
+    class HandleEditModeDecorationPress {
 
         private LineSelectionState lineSelectionState;
 
@@ -645,7 +722,7 @@ class LineSelectionHandlerTest extends UnitTest {
          * under test, the same way {@code LineComponent.mousePressed} does.
          */
         private boolean pressAtOrigin() {
-            return handler.handleEditModeEndingPress(handler.hitTestViewPoint(new Point(0, 0)));
+            return handler.handleEditModeDecorationPress(handler.hitTestViewPoint(new Point(0, 0)));
         }
 
         @Test
@@ -710,57 +787,86 @@ class LineSelectionHandlerTest extends UnitTest {
                 .isFalse();
             verify(mockScoreView, never()).selectionChanged();
         }
-    }
-
-    // -------------------------------------------------------------------------
-    // isEndingHit — suppression of the EDIT-mode insertion preview
-    // -------------------------------------------------------------------------
-
-    /**
-     * {@code LineComponent.mouseMoved} uses this to hide the ghost preview of the element
-     * that would be inserted, at exactly the points where a press would select an ending
-     * instead of inserting.
-     */
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class IsEndingHit {
-
-        @BeforeEach
-        void configureCommonStubs() {
-            givenLine();
-            scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble()))
-                .thenAnswer(inv -> inv.getArgument(0));
-        }
 
         @Test
-        void testPointOnEndingIsHit() {
-            stubEndingHit(newEnding());
+        void testPressOnHairpinSelectsItAndReportsHandled() {
+            var hairpin = newHairpin();
+            stubHairpinHit(hairpin);
 
-            assertThat(handler.isEndingHit(new Point(0, 0)))
-                .as("preview is suppressed over an ending")
+            assertThat(pressAtOrigin())
+                .as("press on a hairpin is handled")
                 .isTrue();
+
+            assertThat(lineSelectionState.getSelectedHairpin())
+                .as("hairpin is selected")
+                .isSameAs(hairpin);
+            verify(mockScoreView).selectionChanged();
+            verify(lc).repaint();
         }
 
         /**
-         * An element head over the bracket wins the cascade, so insertion — and therefore
-         * the preview — still applies there.
+         * While the insertion preview is showing, the click position is a valid staff
+         * position and inserting there simply pushes the decoration aside — so the press
+         * belongs to insertion, not to selecting the hairpin underneath it.
          */
         @Test
-        void testElementHeadOverEndingIsNotHit() {
-            stubEndingHit(newEnding());
-            elementHitTestMock.when(() -> ElementHitTest.hit(any(), any()))
-                .thenReturn(new HitResult.ElementHead(0));
+        void testPressWithPreviewElementShowingIsNotHandled() {
+            var hairpin = newHairpin();
+            stubHairpinHit(hairpin);
+            when(lc.hasPreviewElement()).thenReturn(true);
 
-            assertThat(handler.isEndingHit(new Point(0, 0)))
-                .as("preview still shows where an element head covers the ending")
+            assertThat(pressAtOrigin())
+                .as("press is left to the insertion preview")
                 .isFalse();
+
+            assertThat(lineSelectionState.hasHairpinSelection())
+                .as("hairpin was not selected")
+                .isFalse();
+            verify(mockScoreView, never()).selectionChanged();
         }
 
         @Test
-        void testPointOnNothingIsNotHit() {
-            assertThat(handler.isEndingHit(new Point(0, 0)))
-                .as("preview shows where nothing is hit")
+        void testPressOnHairpinDuringPlaybackIsNotHandled() {
+            var hairpin = newHairpin();
+            stubHairpinHit(hairpin);
+
+            try (var midiMock = mockStatic(MidiController.class)) {
+                midiMock.when(MidiController::isPlaying).thenReturn(true);
+
+                assertThat(pressAtOrigin())
+                    .as("press on a hairpin is refused while MIDI playback is running")
+                    .isFalse();
+            }
+
+            assertThat(lineSelectionState.hasHairpinSelection())
+                .as("hairpin was not selected")
                 .isFalse();
+            verify(mockScoreView, never()).selectionChanged();
+        }
+
+        /**
+         * Only endings and hairpins are decorations. Feeding every other {@link HitResult}
+         * variant in directly — rather than driving them through the cascade — keeps this
+         * exhaustive: adding a variant to the sealed interface without deciding what this
+         * method should do with it will not slip through unnoticed.
+         */
+        @Test
+        void testEveryNonDecorationHitResultIsNotHandled() {
+            var nonDecorationResults = List.of(
+                new HitResult.ElementHead(0),
+                new HitResult.Slide(0),
+                new HitResult.GraceGlissando(),
+                new HitResult.StaffLine(),
+                new HitResult.Nothing()
+            );
+
+            for (var result : nonDecorationResults) {
+                assertThat(handler.handleEditModeDecorationPress(result))
+                    .as("%s is not a decoration press", result)
+                    .isFalse();
+            }
+
+            verify(mockScoreView, never()).selectionChanged();
         }
     }
 

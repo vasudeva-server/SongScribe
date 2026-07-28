@@ -45,6 +45,8 @@ import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.ui.MusicEditOperations;
+import songscribe.ui.selection.ReflectionTestHelper;
 
 /**
  * Verifies {@link UndoController#undoLabel()} derives the Edit-menu op-name from a
@@ -58,6 +60,13 @@ import songscribe.message.notification.SongDidChangeNotification;
  * {@code ElementDeletion}, yet the label must read "Delete Note", not "Tuplet").
  */
 class MutationLabelTest extends UnitTest {
+
+    /** Notes in the line the hairpin label tests edit. */
+    private static final int HAIRPIN_FIXTURE_NOTE_COUNT = 4;
+
+    /** Selection that reaches past the pre-existing crescendo on [0, 1]. */
+    private static final int EXTEND_SELECTION_BEGIN = 2;
+    private static final int EXTEND_SELECTION_END = 3;
 
     /** Resets the singleton, drives one real edit, and returns the resulting undo label. */
     private static String undoLabelAfter(Song song, Runnable edit) {
@@ -284,6 +293,49 @@ class MutationLabelTest extends UnitTest {
     // -----------------------------------------------------------------------
     // Precedence: dominant mutation beats companion ordering
     // -----------------------------------------------------------------------
+
+    // -----------------------------------------------------------------------
+    // Declared op-names: one action, two labels
+    // -----------------------------------------------------------------------
+
+    /**
+     * Drives a hairpin add/extend over the given selection and returns the resulting
+     * undo label.
+     *
+     * <p>The edit is run bare rather than through {@link #undoLabelAfter}: the op-name
+     * is captured only at the outermost bracket, and {@code addHairpinToSelection}
+     * opens that bracket itself with its own declared name.
+     */
+    private static String hairpinUndoLabel(Song song, int selectionBegin, int selectionEnd) {
+        var coordinator = ReflectionTestHelper.createCoordinatorForLine(song.getLine(0));
+        var operations = new MusicEditOperations(song, coordinator);
+        ReflectionTestHelper.selectRange(coordinator, selectionBegin, selectionEnd);
+
+        UndoController.resetForTest();
+        operations.addHairpinToSelection(true);
+        return UndoController.undoLabel();
+    }
+
+    @Test
+    void testAddingCrescendoLabelsAddCrescendo() {
+        var song = songWithNotes(HAIRPIN_FIXTURE_NOTE_COUNT);
+        assertThat(hairpinUndoLabel(song, 0, 1))
+            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_ADD_CRESCENDO));
+    }
+
+    @Test
+    void testExtendingCrescendoLabelsExtendCrescendoNotAddCrescendo() {
+        var song = songWithNotes(HAIRPIN_FIXTURE_NOTE_COUNT);
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() ->
+            line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1))));
+
+        // Selecting past the existing crescendo resolves to EXTEND_CRESCENDO, which must
+        // declare a different op-name than the add path — the mutation batch is the same
+        // shape either way, so a type-derived label could not tell them apart.
+        assertThat(hairpinUndoLabel(song, EXTEND_SELECTION_BEGIN, EXTEND_SELECTION_END))
+            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_EXTEND_CRESCENDO));
+    }
 
     @Test
     void testDeletingNoteInsideTupletLabelsDeleteNoteNotTuplet() {

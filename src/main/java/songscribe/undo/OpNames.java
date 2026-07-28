@@ -25,7 +25,9 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
+import songscribe.dom.Hairpin;
 import songscribe.dom.StaffElement;
 
 /**
@@ -165,6 +167,16 @@ public final class OpNames {
         return Strings.get(slide instanceof StaffElement.Fall
             ? Strings.ACTION_EDIT_OP_DELETE_FALL
             : Strings.ACTION_EDIT_OP_DELETE_GLISSANDO);
+    }
+
+    /**
+     * Names a hairpin deletion by subtype: {@code Delete Crescendo} for a {@link
+     * Crescendo}, otherwise {@code Delete Diminuendo}.
+     */
+    public static String deleteHairpinLabel(Hairpin hairpin) {
+        return Strings.get(hairpin instanceof Crescendo
+            ? Strings.ACTION_EDIT_OP_DELETE_CRESCENDO
+            : Strings.ACTION_EDIT_OP_DELETE_DIMINUENDO);
     }
 
     /**

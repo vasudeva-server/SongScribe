@@ -29,6 +29,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.Hairpin;
 import songscribe.dom.StaffElement;
 import songscribe.layout.Ending;
 import songscribe.dom.ViewPx;
@@ -44,6 +45,7 @@ import songscribe.ui.hit.HitTester;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.renderer.EndingRenderer;
+import songscribe.ui.renderer.HairpinRenderer;
 import songscribe.ui.renderer.SlideRenderer;
 
 /**
@@ -77,6 +79,7 @@ class LineSelectionHandler {
         hitTesters = List.of(
             context -> ElementHitTest.hit(lc, context),
             this::hitTestSlide,
+            this::hitTestHairpin,
             this::hitTestEnding,
             this::hitTestStaffLine
         );
@@ -171,6 +174,21 @@ class LineSelectionHandler {
     }
 
     /**
+     * Asks {@link HairpinRenderer} which hairpin's drawn box contains the point, and wraps
+     * the answer as a hit result.
+     */
+    private @Nullable HitResult hitTestHairpin(HitTestContext context) {
+        var hairpin = HairpinRenderer.getInstance().hitTestHairpin(
+            context.xSs(), context.ySs(), context.line(), context.layoutResult(), context.middleLineYSs());
+
+        if (hairpin == null) {
+            return null;
+        }
+
+        return new HitResult.Hairpin(hairpin);
+    }
+
+    /**
      * Asks {@link EndingRenderer} which ending's drawn box contains the point, and wraps the
      * answer as a hit result.
      */
@@ -208,18 +226,6 @@ class LineSelectionHandler {
      */
     HitResult hitTestViewPoint(Point viewPoint) {
         return hitTest(lc.getViewScale().toDocumentPoint(viewPoint));
-    }
-
-    /**
-     * Returns whether the given point, in view pixels, hits an ending.
-     * <p>
-     * Runs the same cascade as the press path, so the EDIT-mode insertion preview is
-     * suppressed at exactly the points where a press selects an ending instead of
-     * inserting — including the case where an element head over the bracket wins the
-     * cascade and insertion still applies.
-     */
-    boolean isEndingHit(Point viewPoint) {
-        return hitTestViewPoint(viewPoint) instanceof HitResult.Ending;
     }
 
     /**
@@ -279,6 +285,8 @@ class LineSelectionHandler {
                 }
             }
 
+            case HitResult.Hairpin(var hairpin) -> pressHandled = selectHairpin(hairpin);
+
             case HitResult.Ending(var ending) -> pressHandled = selectEnding(ending);
 
             case HitResult.GraceGlissando() -> {
@@ -308,28 +316,40 @@ class LineSelectionHandler {
     }
 
     /**
-     * Selects an ending hit by a press in EDIT mode, returning whether one was hit.
+     * Selects an ending or hairpin hit by a press in EDIT mode, returning whether one was
+     * selected.
      * <p>
      * EDIT mode otherwise routes presses to element insertion, and reaching the selection
      * handler at all requires SELECT mode (see {@link #isSelectionActive}), so before this
-     * existed an ending could not be selected until something else had switched modes.
+     * existed a decoration could not be selected until something else had switched modes.
      * Selecting it in place, without leaving EDIT mode, follows the idiom already
      * established for clicking a lyric.
      * <p>
      * Takes the already-computed cascade result for this press, so an element head over the
-     * bracket still wins and falls through to normal EDIT-mode handling.
+     * decoration still wins and falls through to normal EDIT-mode handling.
      */
-    boolean handleEditModeEndingPress(HitResult result) {
+    boolean handleEditModeDecorationPress(HitResult result) {
         if (MidiController.isPlaying()) {
             return false;
         }
 
-        if (!(result instanceof HitResult.Ending(var ending)) || !selectEnding(ending)) {
+        // The insertion preview wins wherever it is showing: the click position is a
+        // valid staff position, and inserting there simply pushes the decoration aside.
+        if (lc.hasPreviewElement()) {
             return false;
         }
 
-        lc.repaint();
-        return true;
+        var selected = switch (result) {
+            case HitResult.Ending(var ending) -> selectEnding(ending);
+            case HitResult.Hairpin(var hairpin) -> selectHairpin(hairpin);
+            default -> false;
+        };
+
+        if (selected) {
+            lc.repaint();
+        }
+
+        return selected;
     }
 
     void handleDrag(MouseEvent e) {
@@ -455,6 +475,23 @@ class LineSelectionHandler {
 
         prepareSelection();
         lineSelectionState.selectEnding(ending);
+        lc.getScoreView().selectionChanged();
+        return true;
+    }
+
+    /**
+     * Makes {@code hairpin} the sole selection, returning false when this line has no
+     * selection state to record it in.
+     */
+    private boolean selectHairpin(Hairpin hairpin) {
+        var lineSelectionState = lc.getLineSelectionState();
+
+        if (lineSelectionState == null) {
+            return false;
+        }
+
+        prepareSelection();
+        lineSelectionState.selectHairpin(hairpin);
         lc.getScoreView().selectionChanged();
         return true;
     }

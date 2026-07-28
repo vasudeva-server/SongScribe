@@ -25,7 +25,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.Tie;
@@ -41,6 +43,25 @@ class LineSelectionStateTest extends UnitTest {
      */
     private static Ending makeEnding(Line line) {
         return new Ending(line.getElement(0), line.getElement(1));
+    }
+
+    /**
+     * Builds a {@link Crescendo} spanning the line's first two elements. The line must
+     * already contain at least two elements.
+     */
+    private static Hairpin makeHairpin(Line line) {
+        return new Crescendo(line.getElement(0), line.getElement(1));
+    }
+
+    /**
+     * Builds a detached line holding two crotchets — enough for an ending or a hairpin
+     * to span.
+     */
+    private Line twoNoteLine() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        return line;
     }
 
     // -- clearSelection --
@@ -422,6 +443,181 @@ class LineSelectionStateTest extends UnitTest {
         state.setLineSelected(true);
 
         assertThat(state.hasEndingSelection()).isFalse();
+    }
+
+    // -- selectHairpin --
+    //
+    // A hairpin is mutually exclusive with every other kind of selection, and the
+    // exclusion has to hold in both directions. If only one direction were enforced,
+    // a note and a hairpin could end up selected simultaneously and Delete would
+    // remove both, so each pairing below is asserted from both sides.
+
+    @Test
+    void testSelectHairpinClearsElementAndLineSelectionAndFiresCallback() {
+        var line = twoNoteLine();
+        var hairpin = makeHairpin(line);
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+        state.setLineSelected(true);
+
+        var callbackCount = new int[]{0};
+        state.setSelectionChangeCallback(() -> callbackCount[0]++);
+
+        state.selectHairpin(hairpin);
+
+        assertThat(state.getSelectionBegin()).isEqualTo(-1);
+        assertThat(state.getSelectionEnd()).isEqualTo(-1);
+        assertThat(state.getSelectionAnchor()).isEqualTo(-1);
+        assertThat(state.hasElementSelection()).isFalse();
+        assertThat(state.isLineSelected()).isFalse();
+        assertThat(state.hasHairpinSelection()).isTrue();
+        assertThat(state.getSelectedHairpin()).isSameAs(hairpin);
+        assertThat(state.isDecorationSelected(hairpin)).isTrue();
+        assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    @Test
+    void testSetSelectionFromClickClearsHairpinSelection() {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+        state.selectHairpin(makeHairpin(line));
+        assertThat(state.hasHairpinSelection()).isTrue();
+
+        state.setSelectionFromClick(1);
+
+        assertThat(state.hasHairpinSelection()).isFalse();
+        assertThat(state.getSelectedHairpin()).isNull();
+        assertThat(state.isElementSelected(1)).isTrue();
+    }
+
+    @Test
+    void testSetLineSelectedTrueClearsHairpinSelection() {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+        state.selectHairpin(makeHairpin(line));
+        assertThat(state.hasHairpinSelection()).isTrue();
+
+        state.setLineSelected(true);
+
+        assertThat(state.hasHairpinSelection()).isFalse();
+        assertThat(state.isLineSelected()).isTrue();
+    }
+
+    @Test
+    void testSelectHairpinClearsSlideSelection() {
+        var line = twoNoteLine();
+        var hairpin = makeHairpin(line);
+        var state = new LineSelectionState(line);
+        state.selectSlide(0);
+        assertThat(state.hasSlideSelection()).isTrue();
+
+        state.selectHairpin(hairpin);
+
+        assertThat(state.hasSlideSelection()).isFalse();
+        assertThat(state.getSelectedHairpin()).isSameAs(hairpin);
+    }
+
+    @Test
+    void testSelectSlideClearsHairpinSelection() {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+        state.selectHairpin(makeHairpin(line));
+        assertThat(state.hasHairpinSelection()).isTrue();
+
+        state.selectSlide(0);
+
+        assertThat(state.hasHairpinSelection()).isFalse();
+        assertThat(state.isSlideSelected(0)).isTrue();
+    }
+
+    @Test
+    void testSelectHairpinClearsEndingSelection() {
+        var line = twoNoteLine();
+        var hairpin = makeHairpin(line);
+        var state = new LineSelectionState(line);
+        state.selectEnding(makeEnding(line));
+        assertThat(state.hasEndingSelection()).isTrue();
+
+        state.selectHairpin(hairpin);
+
+        assertThat(state.hasEndingSelection()).isFalse();
+        assertThat(state.getSelectedEnding()).isNull();
+        assertThat(state.getSelectedHairpin()).isSameAs(hairpin);
+    }
+
+    @Test
+    void testSelectEndingClearsHairpinSelection() {
+        var line = twoNoteLine();
+        var ending = makeEnding(line);
+        var state = new LineSelectionState(line);
+        state.selectHairpin(makeHairpin(line));
+        assertThat(state.hasHairpinSelection()).isTrue();
+
+        state.selectEnding(ending);
+
+        assertThat(state.hasHairpinSelection()).isFalse();
+        assertThat(state.getSelectedHairpin()).isNull();
+        assertThat(state.getSelectedEnding()).isSameAs(ending);
+    }
+
+    @Test
+    void testClearSelectionClearsHairpinSelection() {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+        state.selectHairpin(makeHairpin(line));
+
+        state.clearSelection();
+
+        assertThat(state.hasHairpinSelection()).isFalse();
+        assertThat(state.getSelectedHairpin()).isNull();
+    }
+
+    /**
+     * The parameter is any line element, so a note can be passed in. With a hairpin in
+     * the decoration slot, a note must still never be reported as the selected decoration.
+     */
+    @Test
+    void testIsDecorationSelectedDistinguishesHairpinsFromNotesAndOtherHairpins() {
+        var line = twoNoteLine();
+        var selectedHairpin = makeHairpin(line);
+        var otherHairpin = makeHairpin(line);
+        var state = new LineSelectionState(line);
+        state.selectHairpin(selectedHairpin);
+
+        assertThat(state.isDecorationSelected(selectedHairpin)).isTrue();
+        assertThat(state.isDecorationSelected(otherHairpin)).isFalse();
+        assertThat(state.isDecorationSelected(line.getElement(0))).isFalse();
+    }
+
+    // -- revalidateDecorationSelection with a hairpin --
+
+    @Test
+    void testRevalidateDecorationSelectionKeepsHairpinWhenStillOnLine() {
+        var line = twoNoteLine();
+        var hairpin = makeHairpin(line);
+        line.addRangeElement(hairpin);
+        var state = new LineSelectionState(line);
+        state.selectHairpin(hairpin);
+
+        assertThat(state.revalidateDecorationSelection()).isFalse();
+        assertThat(state.hasHairpinSelection()).isTrue();
+    }
+
+    @Test
+    void testRevalidateDecorationSelectionClearsHairpinWhenNoLongerOnLine() {
+        var line = twoNoteLine();
+        var hairpin = makeHairpin(line);
+        line.addRangeElement(hairpin);
+        var state = new LineSelectionState(line);
+        state.selectHairpin(hairpin);
+
+        // Simulates an undo/redo that removed the hairpin without clearing the selection.
+        line.removeRangeElement(hairpin);
+
+        assertThat(state.revalidateDecorationSelection()).isTrue();
+        assertThat(state.hasHairpinSelection()).isFalse();
+        assertThat(state.getSelectedHairpin()).isNull();
     }
 
     // -- canToggleBeaming / canToggleTuplet with grace notes (refs #592) --

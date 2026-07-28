@@ -210,35 +210,19 @@ class MusicEditOperationsNullStateTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // addDynamicsToSelection — null state guard
+    // addHairpinToSelection — null state guard
     // -----------------------------------------------------------------------
 
     @Test
     void testAddDynamicsToSelectionEmitsNoNotificationWhenStateNull() {
-        opsWithNullState().addDynamicsToSelection(true);
+        opsWithNullState().addHairpinToSelection(true);
         verifyNoChangeNotification();
     }
 
-    // -----------------------------------------------------------------------
-    // canRemoveDynamicsFromSelection — null state
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testCanRemoveDynamicsReturnsFalseWhenStateNull() {
-        assertThat(opsWithNullState().canRemoveDynamicsFromSelection())
-            .as("canRemoveDynamicsFromSelection() with null state must return false")
-            .isFalse();
-    }
-
-    // -----------------------------------------------------------------------
-    // removeDynamicsFromSelection — null state guard (row 29)
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testRemoveDynamicsEmitsNoNotificationWhenStateNull() {
-        opsWithNullState().removeDynamicsFromSelection();
-        verifyNoChangeNotification();
-    }
+    // canRemoveDynamicsFromSelection() and removeDynamicsFromSelection() were
+    // removed in Phase 8 (superseded by resolveHairpinAction() and the
+    // select-then-Delete removal path). Their replacement coverage is added in
+    // Phase 15.
 
     // -----------------------------------------------------------------------
     // canMakeFirstSecondEnding — null state (row 32, null branch)

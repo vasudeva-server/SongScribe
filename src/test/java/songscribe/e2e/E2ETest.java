@@ -524,6 +524,18 @@ public abstract class E2ETest {
     }
 
     /**
+     * Clicks at an absolute screen position without moving the pointer there first.
+     * <p>
+     * {@link #clickAt} moves the robot's pointer to the point, and in EDIT mode that
+     * motion re-establishes the insertion preview. Use this when the test has
+     * deliberately put the preview into a particular state and the click must not
+     * disturb it.
+     */
+    protected void clickWithoutMovingAt(Point screenPoint) {
+        dispatchSyntheticClick(screenPoint, 0);
+    }
+
+    /**
      * Shift-clicks at an absolute screen position.
      * <p>
      * Uses synthetic events because the robot does not reliably carry

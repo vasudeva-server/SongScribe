@@ -139,9 +139,8 @@ public final class Actions {
     public static EditLyricAction EDIT_LYRIC_ACTION;
     public static TrillAction TRILL_ACTION;
 
-    public static AddDynamicsAction ADD_CRESCENDO_ACTION;
-    public static AddDynamicsAction ADD_DIMINUENDO_ACTION;
-    public static RemoveDynamicsAction REMOVE_DYNAMICS_ACTION;
+    public static HairpinAction HAIRPIN_CRESCENDO_ACTION;
+    public static HairpinAction HAIRPIN_DIMINUENDO_ACTION;
 
     public static DynamicMarkingAction DYNAMIC_PP_ACTION;
     public static DynamicMarkingAction DYNAMIC_P_ACTION;
@@ -314,9 +313,8 @@ public final class Actions {
         EDIT_LYRIC_ACTION = EditLyricAction.createAction(mainFrame);
         TRILL_ACTION = TrillAction.createAction(mainFrame);
 
-        ADD_CRESCENDO_ACTION = AddDynamicsAction.createCrescendoAction(mainFrame);
-        ADD_DIMINUENDO_ACTION = AddDynamicsAction.createDiminuendoAction(mainFrame);
-        REMOVE_DYNAMICS_ACTION = RemoveDynamicsAction.createAction(mainFrame);
+        HAIRPIN_CRESCENDO_ACTION = HairpinAction.createCrescendoAction(mainFrame);
+        HAIRPIN_DIMINUENDO_ACTION = HairpinAction.createDiminuendoAction(mainFrame);
 
         DYNAMIC_PP_ACTION = DynamicMarkingAction.createPianissimoAction(mainFrame);
         DYNAMIC_P_ACTION = DynamicMarkingAction.createPianoAction(mainFrame);

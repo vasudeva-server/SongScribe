@@ -717,14 +717,12 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // No preview anywhere in the clef/key signature column, over the lyrics, or over an
-        // ending, since a click there selects rather than inserting an element. The header
-        // test is two comparisons, so it runs before the other two, which loop over every
-        // element in the line.
+        // No preview anywhere in the clef/key signature column or over the lyrics, since a
+        // click there selects rather than inserting an element. The header test is two
+        // comparisons, so it runs before the lyric test, which loops over every element in
+        // the line.
         if (getScoreView().getMode() == Mode.EDIT
-            && (selectionHandler.isWithinHeaderX(e.getPoint())
-                || hitTestLyric(e.getPoint()) != null
-                || selectionHandler.isEndingHit(e.getPoint()))) {
+            && (selectionHandler.isWithinHeaderX(e.getPoint()) || hitTestLyric(e.getPoint()) != null)) {
             clearPreviewElement();
             return;
         }
@@ -902,15 +900,15 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // An ending is selectable in EDIT mode too, in place and without switching modes,
-        // the same way a lyric is. A non-null pressHit means we were in EDIT mode without
-        // alt held; the mode is re-checked because a staff-line hit above may have just
-        // switched us to SELECT, where the selection handler below handles endings along
-        // with everything else.
+        // An ending or hairpin is selectable in EDIT mode too, in place and without switching
+        // modes, the same way a lyric is. A non-null pressHit means we were in EDIT mode
+        // without alt held; the mode is re-checked because a staff-line hit above may have
+        // just switched us to SELECT, where the selection handler below handles decorations
+        // along with everything else.
         if (pressHit != null
             && scoreView != null
             && scoreView.getMode() == Mode.EDIT
-            && selectionHandler.handleEditModeEndingPress(pressHit)) {
+            && selectionHandler.handleEditModeDecorationPress(pressHit)) {
             return;
         }
 

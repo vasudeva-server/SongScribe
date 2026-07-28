@@ -42,19 +42,16 @@ import org.mockito.MockedStatic;
 import songscribe.UnitTest;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.command.AddDynamicsCommand;
+import songscribe.message.command.AddHairpinCommand;
 import songscribe.message.command.AutoStemDirectionCommand;
 import songscribe.message.command.FirstSecondEndingCommand;
 import songscribe.message.command.FlipStemDirectionCommand;
-import songscribe.message.command.RemoveDynamicsCommand;
 import songscribe.message.command.ToggleBeamCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.CrescendoAddition;
-import songscribe.message.mutation.CrescendoRemoval;
 import songscribe.message.mutation.DiminuendoAddition;
-import songscribe.message.mutation.DiminuendoRemoval;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.RangeElementAddition;
@@ -63,8 +60,6 @@ import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Song;
-import songscribe.dom.Crescendo;
-import songscribe.dom.Diminuendo;
 
 import songscribe.dom.EndingValidationResult;
 import songscribe.dom.Line;
@@ -290,7 +285,7 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         var env = setupTest(crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
 
-        env.scoreMessageCoordinator().handleAddDynamics(new AddDynamicsCommand(crescendo));
+        env.scoreMessageCoordinator().handleAddHairpin(new AddHairpinCommand(crescendo));
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
@@ -300,28 +295,6 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         } else {
             assertThat(notification.getMutations().getFirst()).isInstanceOf(DiminuendoAddition.class);
         }
-    }
-
-    @Test
-    void testHandleRemoveDynamicsEmitsRemovals() {
-        // Row 53: one crescendo and one diminuendo — the handler must coalesce both
-        // removals into a single notification with exactly two mutations: one
-        // CrescendoRemoval and one DiminuendoRemoval.
-        var env = setupTest(crotchet(), crotchet(), crotchet(), crotchet());
-        var line = env.line();
-        song.withoutMutationTracking(() -> {
-            line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(1)));
-            line.addRangeElement(new Diminuendo(line.getElement(2), line.getElement(3)));
-        });
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 3);
-
-        env.scoreMessageCoordinator().handleRemoveDynamics(new RemoveDynamicsCommand());
-
-        var notification = captureSingleDidChange();
-        var mutations = notification.getMutations();
-        assertThat(mutations).hasSize(2);
-        assertThat(mutations.get(0)).isInstanceOf(CrescendoRemoval.class);
-        assertThat(mutations.get(1)).isInstanceOf(DiminuendoRemoval.class);
     }
 
     // -----------------------------------------------------------------------

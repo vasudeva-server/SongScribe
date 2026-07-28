@@ -34,6 +34,7 @@ import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Duration;
+import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
@@ -47,7 +48,9 @@ import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.FontChange;
+import songscribe.ui.MusicEditOperations;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.selection.ReflectionTestHelper;
 
 /**
  * Round-trip tests for {@link MutationReplayer}: for each mutation type, a real edit
@@ -153,6 +156,32 @@ class MutationReplayerRoundTripTest extends UnitTest {
             // Deleting a beam endpoint invalidates and removes the beam as a companion;
             // undo must restore both the note and the beam.
             assertRoundTrip(song, () -> line.removeElement(1));
+        }
+
+        @Test
+        void testDeletingHairpinEndpointRestoresTheOriginalSpanOnUndo() {
+            var song = songWithNotes(4);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() ->
+                line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(2))));
+
+            // Deleting an endpoint shortens the crescendo — a companion removal plus the
+            // addition of a copy; undo must restore both the note and the original span.
+            assertRoundTrip(song, () -> line.removeElement(0));
+        }
+
+        @Test
+        void testDeletingElementBetweenHairpinsRestoresBothOnUndo() {
+            var song = songWithNotes(5);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> {
+                line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1)));
+                line.addCrescendo(new Crescendo(line.getElement(3), line.getElement(4)));
+            });
+
+            // Deleting the only element between them merges the two crescendos into one;
+            // undo must restore the note and both original crescendos.
+            assertRoundTrip(song, () -> line.removeElement(2));
         }
 
         @Test
@@ -411,6 +440,96 @@ class MutationReplayerRoundTripTest extends UnitTest {
             var trill = new Trill(line.getElement(0), line.getElement(1));
             song.withoutMutationTracking(() -> line.addRangeElement(trill));
             assertRoundTrip(song, () -> line.removeRangeElement(trill));
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Hairpin add/extend as the user drives it
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HairpinExecution {
+
+        private static final int NOTE_COUNT = 4;
+
+        /** Selection reaching past the pre-existing crescendo on [0, 1]. */
+        private static final int SELECTION_BEGIN = 2;
+        private static final int SELECTION_END = 3;
+
+        private static final DynamicAttachment.DynamicType POINT_DYNAMIC =
+            DynamicAttachment.DynamicType.FORTE;
+
+        private record Fixture(Song song, Line line, MusicEditOperations operations) {}
+
+        /**
+         * A four-note song whose first two notes carry a crescendo and whose first note
+         * carries a point dynamic, with [2, 3] selected. {@code addHairpinToSelection}
+         * then extends the crescendo to [0, 3] and strips the dynamic from element 0 —
+         * a note outside the selection.
+         */
+        private Fixture extendFixture() {
+            var song = songWithNotes(NOTE_COUNT);
+            var line = song.getLine(0);
+
+            song.withoutMutationTracking(() -> {
+                line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1)));
+                var first = line.getElement(0);
+                first.addAttachment(new DynamicAttachment(first, POINT_DYNAMIC));
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, SELECTION_BEGIN, SELECTION_END);
+            return new Fixture(song, line, new MusicEditOperations(song, coordinator));
+        }
+
+        private static Crescendo soleCrescendoOf(Line line) {
+            return line.getRangeElements().stream()
+                .filter(Crescendo.class::isInstance)
+                .map(Crescendo.class::cast)
+                .reduce((first, second) -> {
+                    throw new AssertionError("expected exactly one crescendo on the line");
+                })
+                .orElseThrow(() -> new AssertionError("no crescendo on the line"));
+        }
+
+        @Test
+        void testDeletingAMergedHairpinRoundTrips() {
+            var fixture = extendFixture();
+            var song = fixture.song();
+            var line = fixture.line();
+            song.withoutMutationTracking(() -> fixture.operations().addHairpinToSelection(true));
+
+            // The hairpin being deleted is the one mergeOverlappingSpans reshaped, not the
+            // one the constructor produced; undo must restore that reshaped span.
+            assertRoundTrip(song, () -> line.removeCrescendo(soleCrescendoOf(line)));
+        }
+
+        @Test
+        void testAddWithPointDynamicStripUndoesAndRedoes() {
+            var fixture = extendFixture();
+            var song = fixture.song();
+            var line = fixture.line();
+            var batch = UndoTestSupport.captureBatch(
+                song, () -> fixture.operations().addHairpinToSelection(true));
+
+            // Point dynamics are not part of the native serialization, so the strip is
+            // asserted directly on the model rather than through assertRoundTrip.
+            assertThat(line.getElement(0).findAttachment(DynamicAttachment.class))
+                .as("the add must strip the point dynamic, else the round trip is vacuous")
+                .isNull();
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+
+            UndoTestSupport.replayUndo(scoreView, batch);
+            assertThat(line.getElement(0).findAttachment(DynamicAttachment.class))
+                .as("undo must restore the stripped point dynamic")
+                .isNotNull();
+
+            UndoTestSupport.replayRedo(scoreView, batch);
+            assertThat(line.getElement(0).findAttachment(DynamicAttachment.class))
+                .as("redo must strip the point dynamic again")
+                .isNull();
         }
     }
 

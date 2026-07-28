@@ -36,7 +36,7 @@ import songscribe.util.GraphicsState;
  * <p>
  * Each dynamic is drawn as a single SMuFL glyph from the Bravura font,
  * centered over the notehead. This renderer is separate from
- * {@link DynamicsRenderer}, which handles hairpin (crescendo/diminuendo) lines.
+ * {@link HairpinRenderer}, which handles hairpin (crescendo/diminuendo) lines.
  */
 public final class DynamicMarkingRenderer implements ElementRenderer<StaffElement> {
 

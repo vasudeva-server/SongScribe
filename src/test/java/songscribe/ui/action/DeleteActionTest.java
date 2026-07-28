@@ -111,6 +111,18 @@ class DeleteActionTest extends MainFrameMockTest {
     }
 
     @Test
+    void testDeleteEnabledForHairpinSelection() {
+        when(mockEnv().coordinator().hasHairpinSelection()).thenReturn(true);
+
+        var action = DeleteAction.createAction(mainFrame());
+        action.setEnabled(false);
+
+        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(action.isEnabled()).isTrue();
+    }
+
+    @Test
     void testDeleteEnabledWhenCanDeleteLine() {
         when(mockEnv().score().canDeleteLine()).thenReturn(true);
 

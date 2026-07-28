@@ -21,7 +21,9 @@ package songscribe.dom;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -1361,10 +1363,12 @@ public class Line {
         if (!song.isReplaying()) {
             removeOverlappingTuplets(index, index);
             var deletedList = List.of(deleted);
+            adjustHairpinsForDeletion(deletedList);
 
             // Companion removals precede the primary deletion so reverse-order undo
             // re-inserts the element before re-adding the spans anchored to it.
             var invalidated = rangeElements.stream()
+                .filter(r -> !(r instanceof Hairpin))
                 .filter(r -> r.isInvalidatedBy(deletedList)
                     || r.isInvalidatedByDeletion(deletedList, this))
                 .toList();
@@ -1398,10 +1402,12 @@ public class Line {
         // removals — re-deriving them would double-apply.
         if (!song.isReplaying()) {
             removeOverlappingTuplets(from, to);
+            adjustHairpinsForDeletion(deletedElements);
 
             // Companion removals precede the primary deletion so reverse-order undo
             // re-inserts the elements before re-adding the spans anchored to them.
             var invalidated = rangeElements.stream()
+                .filter(r -> !(r instanceof Hairpin))
                 .filter(r -> r.isInvalidatedBy(deletedElements)
                     || r.isInvalidatedByDeletion(deletedElements, this))
                 .toList();
@@ -1971,6 +1977,240 @@ public class Line {
     }
 
     /**
+     * A hairpin paired with the span it will occupy once a pending deletion is applied,
+     * as inclusive indices into the elements that survive that deletion.
+     */
+    private record HairpinSpan(Hairpin hairpin, int begin, int end) {
+    }
+
+    /**
+     * Reshapes this line's hairpins around the pending deletion of {@code deletedElements},
+     * which must still be present in the line.
+     * <p>
+     * A hairpin whose endpoint is deleted pulls in to the nearest surviving element rather
+     * than being dropped, and same-type hairpins the deletion leaves with nothing between
+     * them become one — the same one-gesture-one-hairpin rule {@link #addHairpin} applies
+     * when the user draws a hairpin flush against another. Only a hairpin left with fewer
+     * than two elements is removed, having no gesture left to show.
+     * <p>
+     * A reshaped hairpin is expressed as a tracked removal plus a tracked addition of a
+     * copy, since a range element has no modification mutation of its own. Hairpins are
+     * therefore excluded from the invalidation pass in {@link #removeElement} and
+     * {@link #removeRange}: this method is the whole of their response to a deletion.
+     */
+    private void adjustHairpinsForDeletion(List<StaffElement> deletedElements) {
+        // The post-deletion element order, computed while the doomed elements are still
+        // in place so each hairpin's surviving endpoints can be resolved against it.
+        var survivors = new ArrayList<StaffElement>();
+
+        for (var element : elements) {
+            if (!deletedElements.contains(element)) {
+                survivors.add(element);
+            }
+        }
+
+        var spansByType = new LinkedHashMap<Class<?>, List<HairpinSpan>>();
+
+        for (var hairpin : findRangeElements(Hairpin.class)) {
+            var anchorIndex = hairpin.getAnchorElementIndex();
+            var endIndex = hairpin.getEndElementIndex();
+
+            // A hairpin not anchored in this line is not this deletion's to reshape.
+            if (anchorIndex < 0 || endIndex < 0) {
+                continue;
+            }
+
+            var span = survivingSpanOf(hairpin, anchorIndex, endIndex, survivors);
+
+            if (span == null) {
+                removeInvalidatedRangeElement(hairpin);
+                continue;
+            }
+
+            spansByType.computeIfAbsent(hairpin.getClass(), type -> new ArrayList<>()).add(span);
+        }
+
+        for (var spans : spansByType.values()) {
+            mergeAdjacentSpans(spans, survivors);
+        }
+    }
+
+    /**
+     * Returns the span {@code hairpin} occupies among {@code survivors} once the pending
+     * deletion is applied, or null when what survives cannot carry a hairpin — a wedge
+     * needs a note to start on and another to end on.
+     *
+     * @param anchorIndex the hairpin's anchor index in the pre-deletion line
+     * @param endIndex    the hairpin's end index in the pre-deletion line
+     */
+    private @Nullable HairpinSpan survivingSpanOf(
+        Hairpin hairpin,
+        int anchorIndex,
+        int endIndex,
+        List<StaffElement> survivors
+    ) {
+        // Nothing outside the range can fall between two elements inside it, so what
+        // survives of the range is still described by its first and last position.
+        var first = -1;
+        var last = -1;
+
+        for (var i = anchorIndex; i <= endIndex; i++) {
+            var survivorIndex = survivors.indexOf(elements.get(i));
+
+            if (survivorIndex < 0) {
+                continue;
+            }
+
+            if (first < 0) {
+                first = survivorIndex;
+            }
+
+            last = survivorIndex;
+        }
+
+        if (first < 0) {
+            return null;
+        }
+
+        var begin = resolveBeginIndex(hairpin, first, last, survivors);
+        var end = resolveEndIndex(hairpin, first, last, survivors);
+
+        // One note, or none, leaves no gesture to draw.
+        if (begin < 0 || end < 0 || begin >= end) {
+            return null;
+        }
+
+        return new HairpinSpan(hairpin, begin, end);
+    }
+
+    /**
+     * Returns the post-deletion position of {@code hairpin}'s anchor, given that its
+     * elements survive from {@code first} through {@code last}, or -1 when none of them
+     * can begin a hairpin.
+     * <p>
+     * A surviving anchor stays where it is — a hairpin an older build left anchored on a
+     * rest is not this deletion's to correct. A deleted one moves in to the first element
+     * that can begin one: a pitched note, or a grace note whose host is one, matching what
+     * the app allows when the hairpin is drawn.
+     */
+    private static int resolveBeginIndex(
+        Hairpin hairpin,
+        int first,
+        int last,
+        List<StaffElement> survivors
+    ) {
+        if (survivors.get(first) == hairpin.getAnchorElement()) {
+            return first;
+        }
+
+        for (var i = first; i <= last; i++) {
+            var type = survivors.get(i).getType();
+
+            if (type.isPitchedNote()) {
+                return i;
+            }
+
+            // A grace note belongs to the note it precedes, so it can begin a hairpin
+            // when that note is pitched.
+            if (type.isGraceNote() && i < last && survivors.get(i + 1).getType().isPitchedNote()) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * Returns the post-deletion position of {@code hairpin}'s end, given that its elements
+     * survive from {@code first} through {@code last}, or -1 when none of them can end a
+     * hairpin. A surviving end stays where it is; a deleted one moves in to the last
+     * surviving pitched note, which is the only thing a hairpin may end on.
+     */
+    private static int resolveEndIndex(
+        Hairpin hairpin,
+        int first,
+        int last,
+        List<StaffElement> survivors
+    ) {
+        if (survivors.get(last) == hairpin.getEndElement()) {
+            return last;
+        }
+
+        for (var i = last; i >= first; i--) {
+            if (survivors.get(i).getType().isPitchedNote()) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * Replaces each run of same-type hairpin {@code spans} that the deletion leaves touching
+     * with a single hairpin covering the run. Runs of one whose endpoints both survive are
+     * left untouched, so a deletion that misses a hairpin emits no hairpin mutations.
+     *
+     * @param spans all post-deletion spans of one hairpin type, in any order
+     */
+    private void mergeAdjacentSpans(List<HairpinSpan> spans, List<StaffElement> survivors) {
+        spans.sort(Comparator.comparingInt(HairpinSpan::begin));
+
+        var run = new ArrayList<HairpinSpan>();
+        var runEnd = -1;
+
+        for (var span : spans) {
+            // One surviving element between two hairpins is still a break in the gesture.
+            if (!run.isEmpty() && span.begin() > runEnd + 1) {
+                applySpanRun(run, runEnd, survivors);
+                run.clear();
+                runEnd = -1;
+            }
+
+            run.add(span);
+            runEnd = Math.max(runEnd, span.end());
+        }
+
+        applySpanRun(run, runEnd, survivors);
+    }
+
+    /**
+     * Reshapes the hairpins in {@code run} into one hairpin spanning the run's surviving
+     * endpoints, carrying over the first one's user offsets.
+     *
+     * @param run    the hairpins to replace, ordered by their post-deletion start
+     * @param runEnd the run's last post-deletion index
+     */
+    private void applySpanRun(List<HairpinSpan> run, int runEnd, List<StaffElement> survivors) {
+        if (run.isEmpty()) {
+            return;
+        }
+
+        var first = run.getFirst().hairpin();
+        var anchorElement = survivors.get(run.getFirst().begin());
+        var endElement = survivors.get(runEnd);
+
+        if (run.size() == 1
+                && first.getAnchorElement() == anchorElement
+                && first.getEndElement() == endElement) {
+            return;
+        }
+
+        // Removals precede the addition so reverse-order undo drops the reshaped hairpin
+        // before restoring the originals, and run in reverse list order so undo restores
+        // them in the order they were in, leaving the document identical to before.
+        var doomed = new ArrayList<Hairpin>(run.stream().map(HairpinSpan::hairpin).toList());
+        doomed.sort(Comparator.comparingInt(rangeElements::indexOf).reversed());
+        doomed.forEach(this::removeInvalidatedRangeElement);
+
+        var reshaped = (Hairpin) first.copy(anchorElement, endElement);
+
+        switch (reshaped) {
+            case Crescendo crescendo -> addCrescendo(crescendo);
+            case Diminuendo diminuendo -> addDiminuendo(diminuendo);
+        }
+    }
+
+    /**
      * Returns true if the given note index falls within any hairpin (crescendo or diminuendo) range.
      */
     public boolean isInHairpinRange(int noteIndex) {
@@ -1982,6 +2222,24 @@ public class Line {
                 if (anchorIdx >= 0 && endIdx >= 0 && anchorIdx <= noteIndex && noteIndex <= endIdx) {
                     return true;
                 }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns true if any element in the inclusive range {@code [begin, end]} is a
+     * repeat or a barline other than {@link ElementType#SINGLE_BARLINE}.
+     * <p>
+     * No bounds check is performed; callers own their indices.
+     */
+    public boolean spansStructuralBoundary(int begin, int end) {
+        for (var i = begin; i <= end; i++) {
+            var type = getElement(i).getType();
+
+            if (type.isRepeat() || (type.isBarLine() && type != ElementType.SINGLE_BARLINE)) {
+                return true;
             }
         }
 

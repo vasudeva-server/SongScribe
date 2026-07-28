@@ -28,6 +28,8 @@ public sealed interface HitResult {
 
     record Slide(int elementIndex) implements HitResult {}
 
+    record Hairpin(songscribe.dom.Hairpin hairpin) implements HitResult {}
+
     record Ending(songscribe.layout.Ending ending) implements HitResult {}
 
     record GraceGlissando() implements HitResult {}

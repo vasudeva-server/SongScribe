@@ -120,7 +120,7 @@ class DynamicsMarkingTest extends E2ETest {
             deselectSelection();
             clickAt(noteScreenPosition(0, Note.CRESCENDO_START.index));
             shiftClickAt(noteScreenPosition(0, Note.CRESCENDO_END.index));
-            clickAction(Actions.ADD_CRESCENDO_ACTION);
+            clickAction(Actions.HAIRPIN_CRESCENDO_ACTION);
             performLayout(0);
 
             assertThat(GuiActionRunner.execute(() ->
@@ -137,7 +137,7 @@ class DynamicsMarkingTest extends E2ETest {
             deselectSelection();
             clickAt(noteScreenPosition(0, Note.DIMINUENDO_START.index));
             shiftClickAt(noteScreenPosition(0, Note.DIMINUENDO_END.index));
-            clickAction(Actions.ADD_DIMINUENDO_ACTION);
+            clickAction(Actions.HAIRPIN_DIMINUENDO_ACTION);
             performLayout(0);
 
             assertThat(GuiActionRunner.execute(() ->

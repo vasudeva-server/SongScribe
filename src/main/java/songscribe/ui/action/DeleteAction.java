@@ -59,6 +59,7 @@ public final class DeleteAction extends PasteboardAction {
             selection.hasActiveSelection() ||
             selection.hasSlideSelection() ||
             selection.hasEndingSelection() ||
+            selection.hasHairpinSelection() ||
             scoreView.canDeleteLine();
     }
 }

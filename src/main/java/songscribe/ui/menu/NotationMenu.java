@@ -19,8 +19,8 @@
  */
 package songscribe.ui.menu;
 
-import static songscribe.ui.action.Actions.ADD_CRESCENDO_ACTION;
-import static songscribe.ui.action.Actions.ADD_DIMINUENDO_ACTION;
+import static songscribe.ui.action.Actions.HAIRPIN_CRESCENDO_ACTION;
+import static songscribe.ui.action.Actions.HAIRPIN_DIMINUENDO_ACTION;
 import static songscribe.ui.action.Actions.AUTO_STEM_DIRECTION_ACTION;
 import static songscribe.ui.action.Actions.BREATH_MARK_ACTION;
 import static songscribe.ui.action.Actions.DYNAMIC_MARKING_ACTION_GROUP;
@@ -28,7 +28,6 @@ import static songscribe.ui.action.Actions.EDIT_LYRIC_ACTION;
 import static songscribe.ui.action.Actions.FERMATA_ACTION;
 import static songscribe.ui.action.Actions.FLIP_STEM_DIRECTION_ACTION;
 import static songscribe.ui.action.Actions.MAKE_ENDING_ACTION;
-import static songscribe.ui.action.Actions.REMOVE_DYNAMICS_ACTION;
 import static songscribe.ui.action.Actions.REMOVE_TUPLET_ACTION;
 import static songscribe.ui.action.Actions.REST_ACTION;
 import static songscribe.ui.action.Actions.STAFF_ANNOTATION_ACTIONS;
@@ -159,9 +158,8 @@ public class NotationMenu extends JMenu {
 
     private static JMenu createDynamicsMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_NOTATION_DYNAMICS));
-        menu.add(new JMenuItem(ADD_CRESCENDO_ACTION));
-        menu.add(new JMenuItem(ADD_DIMINUENDO_ACTION));
-        menu.add(new JMenuItem(REMOVE_DYNAMICS_ACTION));
+        menu.add(new JMenuItem(HAIRPIN_CRESCENDO_ACTION));
+        menu.add(new JMenuItem(HAIRPIN_DIMINUENDO_ACTION));
 
         menu.addSeparator();
 

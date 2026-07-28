@@ -21,10 +21,15 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.*;
+
+import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,13 +48,11 @@ import songscribe.message.MessageCenter;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
 import songscribe.message.mutation.CrescendoAddition;
-import songscribe.message.mutation.CrescendoRemoval;
 import songscribe.message.mutation.DiminuendoAddition;
-import songscribe.message.mutation.DiminuendoRemoval;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
+import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.RangeElementAddition;
-import songscribe.message.mutation.RangeElementRemoval;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
@@ -57,8 +60,10 @@ import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.action.TupletAction;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
+import songscribe.undo.MutationReplayer;
 
 class MusicEditOperationsMutationTest extends UnitTest {
 
@@ -70,6 +75,12 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     /** Notes in the [note, rest, note] fixture that are eligible for a stem change. */
     private static final int NOTE_COUNT_EXCLUDING_REST = 2;
+
+    /** Last element index of the three-note fixture in the single-note extend test. */
+    private static final int SINGLE_NOTE_EXTEND_END = 2;
+
+    /** Last element index of the [grace, note, note] fixture. */
+    private static final int GRACE_FIXTURE_LAST_INDEX = 2;
 
     private Song song;
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
@@ -469,7 +480,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     void testAddDynamicsEmitsOneAddition(boolean crescendo) {
         var env = setupEnv(crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
-        env.operations().addDynamicsToSelection(crescendo);
+        env.operations().addHairpinToSelection(crescendo);
 
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
@@ -482,149 +493,146 @@ class MusicEditOperationsMutationTest extends UnitTest {
         }
     }
 
-    @Test
-    void testCanAddDynamicsReturnsFalseWhenNoActiveLine() {
-        var env = setupEnv(crotchet(), crotchet());
-        env.coordinator().clearSelection();
-        assertThat(env.operations().canAddDynamicsToSelection())
-            .as("canAddDynamicsToSelection() with no active line must return false")
-            .isFalse();
-    }
+    // canAddDynamicsToSelection(), canRemoveDynamicsFromSelection() and
+    // removeDynamicsFromSelection() were removed in Phase 8, superseded by
+    // resolveHairpinAction() (covered in HairpinActionStateTest) and the
+    // select-then-Delete removal path.
 
-    @Test
-    void testCanAddDynamicsReturnsFalseWhenNoElementSelection() {
-        var env = setupEnv(crotchet(), crotchet());
-        // No selectRange call — coordinator has a registered line but no element selection.
-        assertThat(env.operations().canAddDynamicsToSelection())
-            .as("canAddDynamicsToSelection() with no element selection must return false")
-            .isFalse();
-    }
+    // -----------------------------------------------------------------------
+    // Hairpin execution — span, point-dynamic strip and undo
+    // -----------------------------------------------------------------------
 
-    @Test
-    void testCanAddDynamicsReturnsTrueWithNoExistingHairpins() {
-        var env = setupEnv(crotchet(), crotchet());
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
-        assertThat(env.operations().canAddDynamicsToSelection())
-            .as("canAddDynamicsToSelection() with no overlapping hairpins must return true")
-            .isTrue();
-    }
+    /** The point dynamic the strip tests place on an element. */
+    private static final DynamicAttachment.DynamicType POINT_DYNAMIC =
+        DynamicAttachment.DynamicType.FORTE;
 
-    @Test
-    void testCanAddDynamicsReturnsFalseWhenSelectionOverlapsExistingCrescendo() {
-        // Existing crescendo spans [0..1], new selection [1..2] overlaps at note 1.
-        var env = setupEnv(crotchet(), crotchet(), crotchet());
-        var line = env.line();
-        song.withoutMutationTracking(
-            () -> line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(1))));
-        ReflectionTestHelper.selectRange(env.coordinator(), 1, 2);
-        assertThat(env.operations().canAddDynamicsToSelection())
-            .as("canAddDynamicsToSelection() must return false when selection overlaps an existing crescendo")
-            .isFalse();
-    }
-
-    @Test
-    void testCanAddDynamicsReturnsFalseWhenSelectionOverlapsExistingDiminuendo() {
-        // Existing diminuendo spans [1..2], new selection [0..1] overlaps at note 1.
-        var env = setupEnv(crotchet(), crotchet(), crotchet());
-        var line = env.line();
-        song.withoutMutationTracking(
-            () -> line.addRangeElement(new Diminuendo(line.getElement(1), line.getElement(2))));
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
-        assertThat(env.operations().canAddDynamicsToSelection())
-            .as("canAddDynamicsToSelection() must return false when selection overlaps an existing diminuendo")
-            .isFalse();
-    }
-
-    @Test
-    void testRemoveDynamicsEmitsRemovalPerSpan() {
-        // One crescendo at [0..1] and one diminuendo at [2..3], selection covers all four notes.
+    /**
+     * Four crotchets whose first two already carry a crescendo, with a point dynamic
+     * on element 0. Selecting [2, 3] then extends that crescendo to [0, 3], so element
+     * 0 lies inside the merged range but two notes outside the selection.
+     */
+    private Env setupExtendEnv() {
         var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet());
         var line = env.line();
+
         song.withoutMutationTracking(() -> {
-            line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(1)));
-            line.addRangeElement(new Diminuendo(line.getElement(2), line.getElement(3)));
+            line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1)));
+            var first = line.getElement(0);
+            first.addAttachment(new DynamicAttachment(first, POINT_DYNAMIC));
         });
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 3);
-        env.operations().removeDynamicsFromSelection();
 
-        var notification = captureSingleDidChange();
-        var mutations = notification.getMutations();
-        var crescendoRemovals = mutations.stream()
-            .filter(m -> m instanceof CrescendoRemoval)
+        return env;
+    }
+
+    private static List<Crescendo> crescendosOf(Line line) {
+        return line.getRangeElements().stream()
+            .filter(Crescendo.class::isInstance)
+            .map(Crescendo.class::cast)
             .toList();
-        var diminuendoRemovals = mutations.stream()
-            .filter(m -> m instanceof DiminuendoRemoval)
-            .toList();
+    }
 
-        assertThat(crescendoRemovals).as("exactly one crescendo removal emitted").hasSize(1);
-        assertThat(diminuendoRemovals).as("exactly one diminuendo removal emitted").hasSize(1);
-        assertThat(mutations).as("total mutations equals one crescendo removal plus one diminuendo removal").hasSize(2);
+    /** Replays {@code mutations} in reverse order under replay mode, exactly as undo does. */
+    private void replayUndo(List<Mutation> mutations) {
+        var scoreView = mock(ScoreView.class);
+        when(scoreView.getSong()).thenReturn(song);
+
+        song.withModification(() -> song.withReplay(() -> {
+            for (var i = mutations.size() - 1; i >= 0; i--) {
+                MutationReplayer.applyUndo(scoreView, mutations.get(i));
+            }
+        }));
     }
 
     @Test
-    void testCanRemoveDynamicsReturnsFalseWhenNoElementSelection() {
-        // The coordinator has an active line but no element selection (selectionBegin == -1),
-        // so hasElementSelection() is false and canRemoveDynamicsFromSelection() must return false.
-        var env = setupEnv(crotchet(), crotchet());
-        // No selectRange call — coordinator has a registered line but no element selection.
-        assertThat(env.operations().canRemoveDynamicsFromSelection())
-            .as("canRemoveDynamicsFromSelection() with no element selection must return false")
-            .isFalse();
-    }
-
-    @Test
-    void testCanRemoveDynamicsReturnsFalseWithNoHairpins() {
-        // Selection contains only notes — no crescendo or diminuendo overlapping the range.
-        var env = setupEnv(crotchet(), crotchet());
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
-        assertThat(env.operations().canRemoveDynamicsFromSelection())
-            .as("canRemoveDynamicsFromSelection() with no overlapping hairpins must return false")
-            .isFalse();
-    }
-
-    @Test
-    void testCanRemoveDynamicsReturnsTrueWhenCrescendoOverlapsSelection() {
-        var env = setupEnv(crotchet(), crotchet(), crotchet());
-        var line = env.line();
-        song.withoutMutationTracking(
-            () -> line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(2))));
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        assertThat(env.operations().canRemoveDynamicsFromSelection())
-            .as("canRemoveDynamicsFromSelection() must return true when a crescendo overlaps selection")
-            .isTrue();
-    }
-
-    @Test
-    void testCanRemoveDynamicsReturnsTrueWhenDiminuendoOverlapsSelection() {
-        var env = setupEnv(crotchet(), crotchet(), crotchet());
-        var line = env.line();
-        song.withoutMutationTracking(
-            () -> line.addRangeElement(new Diminuendo(line.getElement(0), line.getElement(2))));
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        assertThat(env.operations().canRemoveDynamicsFromSelection())
-            .as("canRemoveDynamicsFromSelection() must return true when a diminuendo overlaps selection")
-            .isTrue();
-    }
-
-    @Test
-    void testRemoveDynamicsRemovesCrescendoWhoseAnchorIsBeforeSelectionBegin() {
-        // A crescendo starting before the selection but ending inside the selection
-        // must be included in getDynamicsFromSelection and removed.
-        // Layout: [c0, c1, c2, c3]; crescendo spans [0..2], selection covers [2..3].
-        // Overlap condition: anchor(0) <= selectionEnd(3) AND end(2) >= selectionBegin(2) → included.
-        var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet());
-        var line = env.line();
-        var crescendo = new Crescendo(line.getElement(0), line.getElement(2));
-        song.withoutMutationTracking(() -> line.addRangeElement(crescendo));
+    void testAddHairpinStripsPointDynamicsAcrossMergedRangeNotJustSelection() {
+        var env = setupExtendEnv();
         ReflectionTestHelper.selectRange(env.coordinator(), 2, 3);
-        env.operations().removeDynamicsFromSelection();
 
-        var notification = captureSingleDidChange();
-        var mutations = notification.getMutations();
-        assertThat(mutations).as("one crescendo removal emitted for partial overlap").hasSize(1);
-        assertThat(mutations.getFirst())
-            .as("removal is a CrescendoRemoval")
-            .isInstanceOf(CrescendoRemoval.class);
+        env.operations().addHairpinToSelection(true);
+
+        assertThat(env.line().getElement(0).findAttachment(DynamicAttachment.class))
+            .as("a point dynamic inside the merged hairpin range must be stripped "
+                + "even though it sits outside the selection")
+            .isNull();
+    }
+
+    @Test
+    void testOneUndoRestoresBothTheHairpinAndTheStrippedPointDynamic() {
+        var env = setupExtendEnv();
+        var line = env.line();
+        ReflectionTestHelper.selectRange(env.coordinator(), 2, 3);
+
+        env.operations().addHairpinToSelection(true);
+
+        // Captured before the replay, which posts a notification of its own.
+        var mutations = captureSingleDidChange().getMutations();
+        replayUndo(mutations);
+
+        var restored = line.getElement(0).findAttachment(DynamicAttachment.class);
+
+        if (restored == null) {
+            throw new AssertionError(
+                "one undo must restore the stripped point dynamic — a raw "
+                    + "StaffElement.removeAttachment records no mutation and loses it forever");
+        }
+
+        var remaining = crescendosOf(line);
+        assertThat(remaining).hasSize(1);
+
+        var original = remaining.getFirst();
+        assertAll(
+            () -> assertThat(restored.getType()).isEqualTo(POINT_DYNAMIC),
+            () -> assertThat(original.getAnchorElementIndex())
+                .as("undo must restore the pre-extend crescendo anchor")
+                .isEqualTo(0),
+            () -> assertThat(original.getEndElementIndex())
+                .as("undo must restore the pre-extend crescendo end")
+                .isEqualTo(1));
+    }
+
+    @Test
+    void testSingleNoteExtendNeverProducesAOneElementHairpin() {
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
+        var line = env.line();
+        song.withoutMutationTracking(() ->
+            line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1))));
+
+        // One note selected, adjacent to the existing crescendo → EXTEND_CRESCENDO.
+        ReflectionTestHelper.selectNote(env.coordinator(), 2);
+        env.operations().addHairpinToSelection(true);
+
+        var additions = captureSingleDidChange().getMutations().stream()
+            .filter(CrescendoAddition.class::isInstance)
+            .map(CrescendoAddition.class::cast)
+            .toList();
+        assertThat(additions).hasSize(1);
+
+        var added = additions.getFirst().crescendo();
+        var resulting = crescendosOf(line);
+        assertThat(resulting).hasSize(1);
+
+        var survivor = resulting.getFirst();
+        assertAll(
+            () -> assertThat(added.getAnchorElementIndex())
+                .as("the recorded addition must already carry the resolved span, "
+                    + "not a degenerate one-element hairpin left for the merge to widen")
+                .isNotEqualTo(added.getEndElementIndex()),
+            () -> assertThat(survivor.getAnchorElementIndex()).isEqualTo(0),
+            () -> assertThat(survivor.getEndElementIndex()).isEqualTo(SINGLE_NOTE_EXTEND_END));
+    }
+
+    @Test
+    void testHairpinAnchoredAtGraceNoteUsesTheGraceIndexNotTheHost() {
+        var env = setupEnv(graceQuaver(), crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, GRACE_FIXTURE_LAST_INDEX);
+
+        env.operations().addHairpinToSelection(true);
+
+        var result = crescendosOf(env.line());
+        assertThat(result).hasSize(1);
+        assertThat(result.getFirst().getAnchorElementIndex())
+            .as("the hairpin must anchor on the selected grace note, not on its host")
+            .isEqualTo(0);
     }
 
     // -----------------------------------------------------------------------

@@ -34,7 +34,7 @@ import songscribe.UnitTest;
  *
  * <p>These tests verify that two adjacent or overlapping hairpins of the same type
  * merge into a single wider hairpin. They complement the non-merging e2e smoke in
- * {@code DynamicsMarkingTest} which must not be touched.
+ * {@code DynamicsMarkingTest}.
  *
  * <p>All element setup uses {@link Song#withoutMutationTracking}. Hairpin additions
  * under test also use suspended tracking when only structural state (span, count) is

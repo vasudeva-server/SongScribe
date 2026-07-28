@@ -362,6 +362,14 @@ public final class SelectionCoordinator {
         return (state != null) && state.hasEndingSelection();
     }
 
+    /**
+     * Returns whether a hairpin is selected on the active line.
+     */
+    public boolean hasHairpinSelection() {
+        var state = getActiveSelection();
+        return (state != null) && state.hasHairpinSelection();
+    }
+
     private int findLineIndex(Line line) {
         for (var entry : lineStates.entrySet()) {
             if (entry.getValue().getLine() == line) {
@@ -1185,10 +1193,10 @@ public final class SelectionCoordinator {
         var selection = getSelection();
 
         if (selection == null) {
-            // Slide and ending selections both null out the element selection, but they are
-            // still selections — freeze the action states rather than restoring them as if
-            // the selection had been cleared.
-            if (hasSlideSelection() || hasEndingSelection()) {
+            // Slide, ending, and hairpin selections all null out the element selection, but
+            // they are still selections — freeze the action states rather than restoring
+            // them as if the selection had been cleared.
+            if (hasSlideSelection() || hasEndingSelection() || hasHairpinSelection()) {
                 saveActionStates();
             } else {
                 restoreActionStates();
@@ -1223,14 +1231,15 @@ public final class SelectionCoordinator {
         var state = getActiveSelection();
 
         if (state != null && message.getLine() == state.getLine()
-                && (state.hasSlideSelection() || state.hasEndingSelection())
+                && (state.hasSlideSelection() || state.hasEndingSelection() || state.hasHairpinSelection())
                 && state.revalidateDecorationSelection()) {
-            // A slide/ending selection carries no ElementSelection for getSelection() to
-            // compare below, so undo/redo of a mutation on this line — which can shift
-            // indices or remove the selected ending outright — would otherwise go
+            // A slide/ending/hairpin selection carries no ElementSelection for getSelection()
+            // to compare below, so undo/redo of a mutation on this line — which can shift
+            // indices or remove the selected decoration outright — would otherwise go
             // unnoticed and leave the selection pointing at the wrong (or a dead) decoration.
-            // The selection was just cleared: force a fresh reflection so any slide/ending
-            // toolbar action that was showing selected/enabled resets to its default state.
+            // The selection was just cleared: force a fresh reflection so any slide/ending/
+            // hairpin toolbar action that was showing selected/enabled resets to its default
+            // state.
             lastReflectedSelection = null;
             triggerReflection();
         }
