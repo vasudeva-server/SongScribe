@@ -870,6 +870,55 @@ class LineSelectionStateTest extends UnitTest {
     }
 
     @Test
+    void testSelectAllClearsLineSelection() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+
+        var state = new LineSelectionState(line);
+        state.setLineSelected(true);
+
+        state.selectAll();
+
+        assertThat(state.isLineSelected()).isFalse();
+        assertThat(state.getSelectionBegin()).isEqualTo(0);
+        assertThat(state.getSelectionEnd()).isEqualTo(1);
+    }
+
+    @Test
+    void testSelectAllOnLineWithExactlyOneElementSelectsThatElement() {
+        // The boundary between "nothing to select" and "something to select": one element
+        // collapses the range to a single index rather than tripping the empty-line guard.
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+
+        var state = new LineSelectionState(line);
+        state.setLineSelected(true);
+
+        state.selectAll();
+
+        assertThat(state.isLineSelected()).isFalse();
+        assertThat(state.getSelectionBegin()).isEqualTo(0);
+        assertThat(state.getSelectionEnd()).isEqualTo(0);
+    }
+
+    @Test
+    void testSelectAllOnEmptyLineLeavesLineSelectionIntact() {
+        var song = new Song();
+        var line = song.getLine(0);
+
+        // Default song seeds the first (and only) line with just the final barline,
+        // so there is no element selection to swap the line selection for.
+        var state = new LineSelectionState(line);
+        state.setLineSelected(true);
+
+        state.selectAll();
+
+        assertThat(state.isLineSelected()).isTrue();
+        assertThat(state.hasElementSelection()).isFalse();
+    }
+
+    @Test
     void testSelectAllOnNonLastLineIncludesAllElements() {
         var song = new Song();
         var firstLine = song.getLine(0);

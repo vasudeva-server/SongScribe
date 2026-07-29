@@ -172,7 +172,7 @@ public final class Actions {
     public static CopyAction COPY_ACTION;
     public static PasteAction PASTE_ACTION;
     public static DeleteAction DELETE_ACTION;
-    public static SelectLineAction SELECT_LINE_ACTION;
+    public static SelectAllElementsAction SELECT_ALL_ELEMENTS_ACTION;
     public static DeselectAction DESELECT_ACTION;
 
     //
@@ -363,7 +363,7 @@ public final class Actions {
         COPY_ACTION = CopyAction.createAction(mainFrame);
         PASTE_ACTION = PasteAction.createAction(mainFrame);
         DELETE_ACTION = DeleteAction.createAction(mainFrame);
-        SELECT_LINE_ACTION = SelectLineAction.createAction(mainFrame);
+        SELECT_ALL_ELEMENTS_ACTION = SelectAllElementsAction.createAction(mainFrame);
         DESELECT_ACTION = DeselectAction.createAction(mainFrame);
 
         //

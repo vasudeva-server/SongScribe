@@ -109,7 +109,8 @@ public class UIAction extends AbstractAction {
         OPENS_DIALOG(1 << 15),
         DISABLE_WHEN_MIDI_UNAVAILABLE(1 << 16),
         DISABLE_WHEN_LINE_SELECTED(1 << 17),
-        DISABLE_WHEN_GRACE_DURATION_SELECTED(1 << 18);
+        DISABLE_WHEN_GRACE_DURATION_SELECTED(1 << 18),
+        ENABLE_WHEN_LINE_SELECTED(1 << 19);
 
         private final int value;
 
@@ -538,7 +539,17 @@ public class UIAction extends AbstractAction {
         updateEnabledState();
     }
 
+    /**
+     * A whole-line selection spans no element range, so its selection size is 0 and every
+     * size requirement below rejects it. Actions carrying
+     * {@link Flag#ENABLE_WHEN_LINE_SELECTED} treat it as a selection anyway.
+     */
     protected boolean enableFromSelectionSize(ScoreView score) {
+        if (hasFlag(Flag.ENABLE_WHEN_LINE_SELECTED)
+                && score.getSelectionCoordinator().hasLineSelection()) {
+            return true;
+        }
+
         var size = score.getSelectionSize();
 
         if (hasFlag(Flag.REQUIRES_SELECTION)) {

@@ -26,7 +26,6 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.DeselectCommand;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.ScoreView;
 import songscribe.util.UIUtils;
 
 public final class DeselectAction extends UIAction {
@@ -44,20 +43,9 @@ public final class DeselectAction extends UIAction {
             UIUtils.MENU_SHORTCUT_MASK,
             Flag.REQUIRES_SELECTION,
             Flag.DISABLE_WHEN_PLAYING,
-            Flag.DISABLE_IN_GRACE_MODE
-        );
-    }
-
-    /**
-     * A selected line spans no element range, so its selection size is 0 and the
-     * {@link Flag#REQUIRES_SELECTION} size check rejects it. It is still a selection
-     * that this action must be able to dismiss.
-     */
-    @Override
-    protected boolean enableFromSelectionSize(ScoreView score) {
-        return (
-            super.enableFromSelectionSize(score) ||
-                score.getSelectionCoordinator().hasLineSelection()
+            Flag.DISABLE_IN_GRACE_MODE,
+            // A selected line is still a selection this action must be able to dismiss.
+            Flag.ENABLE_WHEN_LINE_SELECTED
         );
     }
 

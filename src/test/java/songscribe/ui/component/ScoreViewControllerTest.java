@@ -71,7 +71,7 @@ import songscribe.message.Message;
 import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.InsertLineCommand;
 import songscribe.message.command.PasteboardOpCommand;
-import songscribe.message.command.SelectLineCommand;
+import songscribe.message.command.SelectAllElementsCommand;
 import songscribe.message.MessageCenter;
 import songscribe.ui.action.PasteboardAction;
 import songscribe.message.mutation.BeamingAddition;
@@ -1699,16 +1699,16 @@ class ScoreViewControllerTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // handleSelectLine — rows 28, 29
+    // handleSelectAllElements — rows 28, 29
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class SelectLine {
+    class SelectAllElements {
 
         @Test
-        void testHandleSelectLineCallsSelectAllAndNotifiesScoreWhenActiveSelectionExists() {
-            // Row 28: when an active selection exists, handleSelectLine must call
+        void testHandleSelectAllElementsCallsSelectAllAndNotifiesScoreWhenActiveSelectionExists() {
+            // Row 28: when an active selection exists, handleSelectAllElements must call
             // state.selectAll() and then notify the score via selectionChanged() + repaint().
             var song = new Song();
             var line = song.getLine(0);
@@ -1731,7 +1731,7 @@ class ScoreViewControllerTest extends UnitTest {
                 mock(ClipboardManager.class)
             );
 
-            controller.handleSelectLine(new SelectLineCommand());
+            controller.handleSelectAllElements(new SelectAllElementsCommand());
 
             // After selectAll, both notes must be within the selection.
             // Pre-condition: getActiveSelection() is non-null because we selected a note above.
@@ -1746,7 +1746,41 @@ class ScoreViewControllerTest extends UnitTest {
         }
 
         @Test
-        void testHandleSelectLineIsNoOpWhenNoActiveSelection() {
+        void testHandleSelectAllElementsSwapsLineSelectionForAnElementSelection() {
+            var song = new Song();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> {
+                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(ElementType.CROTCHET.newInstance());
+            });
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            var state = coordinator.getActiveSelection();
+
+            assertThat(state).isNotNull();
+            if (state == null) return; // unreachable — NullAway flow narrowing
+
+            state.setLineSelected(true);
+
+            var scoreMock = mock(ScoreView.class);
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                coordinator,
+                mock(ClipboardManager.class)
+            );
+
+            controller.handleSelectAllElements(new SelectAllElementsCommand());
+
+            assertThat(state.isLineSelected()).isFalse();
+            assertThat(state.getSelectionBegin()).isEqualTo(0);
+            assertThat(state.getSelectionEnd()).isEqualTo(1);
+            verify(scoreMock).selectionChanged();
+            verify(scoreMock).repaint();
+        }
+
+        @Test
+        void testHandleSelectAllElementsIsNoOpWhenNoActiveSelection() {
             var scoreMock = mock(ScoreView.class);
             var coordinatorMock = mock(SelectionCoordinator.class);
             when(coordinatorMock.getActiveSelection()).thenReturn(null);
@@ -1758,7 +1792,7 @@ class ScoreViewControllerTest extends UnitTest {
                 mock(ClipboardManager.class)
             );
 
-            controller.handleSelectLine(new SelectLineCommand());
+            controller.handleSelectAllElements(new SelectAllElementsCommand());
 
             verify(scoreMock, never()).selectionChanged();
             verify(scoreMock, never()).repaint();

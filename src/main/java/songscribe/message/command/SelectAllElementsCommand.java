@@ -22,4 +22,4 @@ package songscribe.message.command;
 
 import songscribe.message.Message;
 
-public class SelectLineCommand extends Message {}
+public class SelectAllElementsCommand extends Message {}

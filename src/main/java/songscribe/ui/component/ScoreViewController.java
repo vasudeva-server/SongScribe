@@ -38,7 +38,7 @@ import songscribe.message.command.FirstSecondEndingCommand;
 import songscribe.message.command.FlipStemDirectionCommand;
 import songscribe.message.command.InsertLineCommand;
 import songscribe.message.command.PasteboardOpCommand;
-import songscribe.message.command.SelectLineCommand;
+import songscribe.message.command.SelectAllElementsCommand;
 import songscribe.message.command.ToggleBeamCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTupletCommand;
@@ -1140,8 +1140,13 @@ public final class ScoreViewController {
         }
     }
 
+    /**
+     * Selects every element on the active line. When the line itself is selected, this
+     * swaps that whole-line selection for a selection of its elements — an empty line has
+     * nothing to swap to, so its line selection stands.
+     */
     @Handler
-    public void handleSelectLine(SelectLineCommand message) {
+    public void handleSelectAllElements(SelectAllElementsCommand message) {
         var state = selectionCoordinator.getActiveSelection();
 
         if (state != null) {

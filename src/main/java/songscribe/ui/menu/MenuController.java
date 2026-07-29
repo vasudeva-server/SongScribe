@@ -280,7 +280,7 @@ public class MenuController {
         menu.add(Actions.COPY_ACTION);
         menu.add(Actions.PASTE_ACTION);
         menu.add(Actions.DELETE_ACTION);
-        menu.add(Actions.SELECT_LINE_ACTION);
+        menu.add(Actions.SELECT_ALL_ELEMENTS_ACTION);
         menu.add(Actions.DESELECT_ACTION);
 
         menu.addSeparator();

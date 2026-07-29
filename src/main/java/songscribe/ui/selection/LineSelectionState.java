@@ -289,6 +289,10 @@ public final class LineSelectionState {
     /**
      * Selects all elements on this line, excluding the song's
      * auto-maintained terminal.
+     * <p>
+     * A whole-line selection is dropped in the process: {@link #getSelection} answers
+     * from {@code lineSelected} first, so leaving it set would keep reporting a line
+     * selection and make the swap invisible.
      */
     public void selectAll() {
         var end = line.effectiveElementCount() - 1;
@@ -300,6 +304,7 @@ public final class LineSelectionState {
         selectionBegin = 0;
         selectionEnd = end;
         selectionAnchor = 0;
+        lineSelected = false;
         clearDecorationSelections();
         selectionChangeCallback.run();
     }
