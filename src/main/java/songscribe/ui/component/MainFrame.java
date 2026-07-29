@@ -372,6 +372,7 @@ public class MainFrame extends JFrame implements Printable {
 
         hideSplash();
         setVisible(true);
+        forceInitialPaint();
         UIUtils.preWarmDialogPeer(this);
         ActivationGate.install(this);
         LOG.info("Application UI ready");
@@ -379,6 +380,33 @@ public class MainFrame extends JFrame implements Printable {
 
         maybeShowWhatsNew();
         pendingStartupAction.run();
+    }
+
+    /**
+     * Works around a macOS bug in the full-window-content path: a window that uses
+     * {@code apple.awt.fullWindowContent} and is shown at close to the full height of
+     * the screen's available area never presents its first frame, so it comes up
+     * completely blank and stays that way until the user resizes it. The Swing layout
+     * and paint are both correct — only the native surface is missing — so
+     * {@code revalidate()}/{@code repaint()} do not help. Changing the window size once
+     * it is on screen does, so shrink it by a pixel and restore it.
+     * <p>
+     * The trigger is how close the window's bottom edge comes to the bottom of the
+     * available screen area — measured at roughly 25 px on a 1440 px-tall screen with
+     * the Dock showing. {@link #setFrameSize()} always sizes the window to the full
+     * available height, so it is always inside that band, and the workaround is
+     * unconditional on macOS rather than tied to any particular Dock state.
+     */
+    private void forceInitialPaint() {
+        if (!SystemInfo.isMacOS || !SystemInfo.isMacFullWindowContentSupported) {
+            return;
+        }
+
+        SwingUtilities.invokeLater(() -> {
+            var bounds = getBounds();
+            setSize(bounds.width, bounds.height - 1);
+            setSize(bounds.width, bounds.height);
+        });
     }
 
     /**
