@@ -897,8 +897,9 @@ public final class LayoutResult {
     /**
      * Calculates the X position for rendering a preview element at a given index.
      * <p>
-     * If the mouse is within the horizontal bounds of an element head, snaps to that element's position.
-     * Otherwise, positions between elements or after the last element as appropriate.
+     * If the mouse is within the horizontal bounds of an element head, snaps to that element,
+     * centering the preview's glyph on it. Otherwise, centers the preview in the room the
+     * neighbouring glyphs leave, or between the last element and the line's right boundary.
      *
      * @param insertionIndex      The insertion index (0 to elementCount inclusive)
      * @param mouseXSs            Mouse X coordinate in staff-space units (used to detect if over an
@@ -953,7 +954,14 @@ public final class LayoutResult {
                         return elementX + column.getRightExtentSs() - previewRightExtentSs;
                     }
 
-                    return elementX;
+                    // Center the preview's glyph on the hovered element's glyph rather than
+                    // aligning the two origins: a preview narrower than what it would replace —
+                    // a thin barline over a notehead — otherwise sits against that element's
+                    // left edge instead of on it (refs #689). Both widths are measured the same
+                    // way, so a preview of the hovered element's own type still lands exactly
+                    // on it.
+                    return centeredInRoomSs(
+                        elementX, elementX + element.getType().getElementWidthSs(), previewElement);
                 }
             }
         }
@@ -1019,26 +1027,16 @@ public final class LayoutResult {
             }
 
             if (naturalXSs + insertionColumn.getRightExtentSs() > boundarySs) {
-                // Center the preview's own notehead in the remaining room, not its full spacing
-                // footprint (flag, accidental, dots) or just its origin — an origin-only midpoint,
-                // or one measured to the full footprint, leaves the notehead itself sitting much
-                // closer to the boundary than to the last element.
-                var previewType = previewElement.getType();
-                var noteheadWidthSs = previewType.isNote()
-                    ? NoteGeometry.getGlyphRightEdgeSs(previewElement)
-                    : previewType.getElementWidthSs();
-                var lastElementRightEdgeSs = lastColumn.getRightEdgeXSs();
-                var remainingRoomSs = boundarySs - lastElementRightEdgeSs;
-
-                // When the room left is narrower than the bare notehead, the midpoint falls left of
-                // the last element and the preview would overlap it. Sit flush against it instead.
-                return lastElementRightEdgeSs + Math.max(0, (remainingRoomSs - noteheadWidthSs) / 2);
+                // The room starts at the last element's drawn right edge, measured the same way as
+                // the between-elements case below: past the glyph, but not past its flag or dots.
+                return centeredInRoomSs(
+                    lastColumn.getXSs() + lastElement.getType().getElementWidthSs(), boundarySs, previewElement);
             }
 
             return naturalXSs;
         }
 
-        // Between elements - use midpoint
+        // Between elements - center the preview in the room the two neighbouring glyphs leave
         var prevElement = line.getElement(insertionIndex - 1);
         var currElement = line.getElement(insertionIndex);
 
@@ -1049,7 +1047,30 @@ public final class LayoutResult {
             return HorizontalSpacingCalculator.calculateFirstElementXSs(line);
         }
 
-        return (prevColumn.getXSs() + currColumn.getXSs()) / 2.0;
+        // The room runs from the previous element's drawn right edge to the next element's origin,
+        // which is that element's drawn left edge. Extents are deliberately not consulted: a flag,
+        // dot or accidental does not shrink the room, but the glyphs themselves do — starting the
+        // room at the previous element's own origin would center the preview over that element's
+        // notehead rather than in the space beside it (refs #689).
+        var roomStartSs = prevColumn.getXSs() + prevElement.getType().getElementWidthSs();
+
+        return centeredInRoomSs(roomStartSs, currColumn.getXSs(), previewElement);
+    }
+
+    /**
+     * Returns the X at which {@code previewElement}'s glyph sits centered in the room between
+     * {@code roomStartSs} and {@code roomEndSs}.
+     * <p>
+     * Centering is symmetric in both directions: a preview wider than the room straddles it,
+     * overlapping each side equally, rather than being pinned to either edge.
+     * <p>
+     * The width centered is the element's own drawn width, not its column's spacing footprint —
+     * a flag, accidental or dot would otherwise leave the glyph the eye actually reads as the
+     * element sitting well off center.
+     */
+    private static double centeredInRoomSs(double roomStartSs, double roomEndSs, StaffElement previewElement) {
+        var previewWidthSs = previewElement.getType().getElementWidthSs();
+        return roomStartSs + (roomEndSs - roomStartSs - previewWidthSs) / 2;
     }
 
     // ==========================================================================

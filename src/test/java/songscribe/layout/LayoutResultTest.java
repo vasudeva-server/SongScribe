@@ -117,7 +117,7 @@ class LayoutResultTest extends UnitTest {
 
         // Centerd on the notehead (excluding the dot), not the full extent that includes it.
         assertThat(anchor.centerXSs())
-            .as("dotted note: anchor must be centerd on the notehead, not shifted right by the dot")
+            .as("dotted note: anchor must be centered on the notehead, not shifted right by the dot")
             .isCloseTo(ANCHOR_COLUMN_X_SS + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0, within(TOLERANCE));
     }
 
@@ -557,7 +557,8 @@ class LayoutResultTest extends UnitTest {
             .isCloseTo(expected, within(TOLERANCE));
     }
 
-    // Hovering over an element head snaps the preview to that head's X position.
+    // Hovering over an element head snaps the preview to that head's X position. A preview of the
+    // hovered element's own type is the same width, so centering leaves it exactly on the head.
     @Test
     void testCalculateInsertionXSsSnapsToElementHead() {
         var first = ElementType.CROTCHET.newInstance();
@@ -571,6 +572,33 @@ class LayoutResultTest extends UnitTest {
 
         assertThat(result.calculateInsertionXSs(1, MOUSE_OVER_SECOND_HEAD_SS, preview, line, false))
             .isCloseTo(SECOND_ELEMENT_X_SS, within(TOLERANCE));
+    }
+
+    // A barline preview over an existing note snaps to that note's column centered on its
+    // notehead, rather than aligned with the notehead's left edge (refs #689).
+    @Test
+    void testCalculateInsertionXSsCentersNarrowerPreviewOnElementHead() {
+        var first = ElementType.CROTCHET.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var previewType = ElementType.SINGLE_BARLINE;
+        var preview = previewType.newInstance();
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        var actual = result.calculateInsertionXSs(1, MOUSE_OVER_SECOND_HEAD_SS, preview, line, false);
+        var noteheadWidthSs = NoteGeometry.getGlyphRightEdgeSs(second);
+        var barlineWidthSs = previewType.getElementWidthSs();
+
+        assertThat(barlineWidthSs)
+            .as("the barline must be narrower than the notehead for this test to be meaningful")
+            .isLessThan(noteheadWidthSs);
+
+        assertThat(actual + barlineWidthSs / 2)
+            .as("the barline's center must land on the notehead's center")
+            .isCloseTo(SECOND_ELEMENT_X_SS + noteheadWidthSs / 2, within(TOLERANCE));
     }
 
     // Hovering over the auto-maintained terminal right-aligns the preview to the
@@ -683,7 +711,7 @@ class LayoutResultTest extends UnitTest {
 
         var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
         var noteheadWidthSs = NoteGeometry.getGlyphRightEdgeSs(preview);
-        var expected = centeredInRoom(lastColumn.getRightEdgeXSs(), marginSs, noteheadWidthSs);
+        var expected = centeredInRoom(drawnRightEdgeSs(first, FIRST_ELEMENT_X_SS), marginSs, noteheadWidthSs);
 
         assertThat(actual).isCloseTo(expected, within(TOLERANCE));
         assertThat(actual).isGreaterThan(lastColumn.getRightEdgeXSs());
@@ -715,16 +743,17 @@ class LayoutResultTest extends UnitTest {
 
         var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
         var noteheadWidthSs = NoteGeometry.getGlyphRightEdgeSs(preview);
-        var expected = centeredInRoom(lastColumn.getRightEdgeXSs(), terminalXSs, noteheadWidthSs);
+        var roomStartSs = drawnRightEdgeSs(first, FIRST_ELEMENT_X_SS);
+        var expected = centeredInRoom(roomStartSs, terminalXSs, noteheadWidthSs);
 
         assertThat(actual).isCloseTo(expected, within(TOLERANCE));
         assertThat(actual)
             .as("the terminal, not the far margin, must bound the preview")
-            .isLessThan(centeredInRoom(lastColumn.getRightEdgeXSs(), WIDE_LINE_WIDTH_SS, noteheadWidthSs));
+            .isLessThan(centeredInRoom(roomStartSs, WIDE_LINE_WIDTH_SS, noteheadWidthSs));
     }
 
     // The centering ignores the preview's flag, accidental, and augmentation dots — only the
-    // notehead itself is centerd in the remaining room, so a wide unbeamed quaver with an
+    // notehead itself is centered in the remaining room, so a wide unbeamed quaver with an
     // accidental and a dot lands further right than centering its full footprint would put it
     // (refs #608).
     @Test
@@ -757,19 +786,19 @@ class LayoutResultTest extends UnitTest {
         var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
 
         var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
-        var lastEdgeSs = lastColumn.getRightEdgeXSs();
+        var roomStartSs = drawnRightEdgeSs(first, FIRST_ELEMENT_X_SS);
 
-        assertThat(actual).isCloseTo(centeredInRoom(lastEdgeSs, terminalXSs, noteheadWidthSs), within(TOLERANCE));
+        assertThat(actual).isCloseTo(centeredInRoom(roomStartSs, terminalXSs, noteheadWidthSs), within(TOLERANCE));
 
         // The wider footprint would center the preview further left; regressing to footprint-based
         // centering would leave the notehead visibly hugging the last element.
         assertThat(actual)
             .as("centering must measure the notehead, not the full flag/accidental/dot footprint")
-            .isGreaterThan(centeredInRoom(lastEdgeSs, terminalXSs, footprintWidthSs));
+            .isGreaterThan(centeredInRoom(roomStartSs, terminalXSs, footprintWidthSs));
     }
 
     // A non-note preview (here a rest) has no notehead, so its full element width — not a SMuFL
-    // notehead bounding box — is what gets centerd in the remaining room (refs #608).
+    // notehead bounding box — is what gets centered in the remaining room (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastCentersNonNotePreviewByElementWidth() {
         var first = ElementType.CROTCHET.newInstance();
@@ -792,17 +821,20 @@ class LayoutResultTest extends UnitTest {
         var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
 
         var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
-        var expected = centeredInRoom(lastColumn.getRightEdgeXSs(), terminalXSs, previewType.getElementWidthSs());
+        var expected = centeredInRoom(
+            drawnRightEdgeSs(first, FIRST_ELEMENT_X_SS), terminalXSs, previewType.getElementWidthSs());
 
         assertThat(actual).isCloseTo(expected, within(TOLERANCE));
-        assertThat(actual).isGreaterThan(lastColumn.getRightEdgeXSs());
+        assertThat(actual)
+            .as("the preview must float past the end of the line, not sit on the last element")
+            .isGreaterThan(lastColumn.getRightEdgeXSs());
     }
 
     // When the room left before the boundary is narrower than the preview's own notehead, the
-    // midpoint would fall left of the last element and the preview would overlap it. It sits
-    // flush against the last element instead (refs #608).
+    // preview straddles that room, overhanging the last element and the boundary by the same
+    // amount, rather than being pinned to either side (refs #608).
     @Test
-    void testCalculateInsertionXSsAfterLastSitsFlushWhenRoomIsNarrowerThanNotehead() {
+    void testCalculateInsertionXSsAfterLastStraddlesRoomNarrowerThanNotehead() {
         var first = ElementType.CROTCHET.newInstance();
         var line = lineWithElements(first);
         var terminal = line.getElement(line.elementCount() - 1);
@@ -811,21 +843,27 @@ class LayoutResultTest extends UnitTest {
 
         var preview = ElementType.CROTCHET.newInstance();
         var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
-        var lastEdgeSs = lastColumn.getRightEdgeXSs();
+        var roomStartSs = drawnRightEdgeSs(first, FIRST_ELEMENT_X_SS);
 
-        var terminalXSs = lastEdgeSs + SUB_NOTEHEAD_ROOM_SS;
+        var terminalXSs = roomStartSs + SUB_NOTEHEAD_ROOM_SS;
+        var noteheadWidthSs = NoteGeometry.getGlyphRightEdgeSs(preview);
         assertThat(SUB_NOTEHEAD_ROOM_SS)
             .as("the room left must be narrower than the notehead for this test to be meaningful")
-            .isLessThan(NoteGeometry.getGlyphRightEdgeSs(preview));
+            .isLessThan(noteheadWidthSs);
 
         var result = resultWithTerminal(first, lastColumn, terminal, terminalXSs);
         var actual = result.calculateInsertionXSs(1, MOUSE_AFTER_LAST_SS, preview, line, false);
 
-        assertThat(actual).isCloseTo(lastEdgeSs, within(TOLERANCE));
+        assertThat(actual)
+            .as("the preview must start left of the last element's drawn right edge, by half the shortfall")
+            .isCloseTo(centeredInRoom(roomStartSs, terminalXSs, noteheadWidthSs), within(TOLERANCE));
+        assertThat(actual + noteheadWidthSs / 2)
+            .as("the notehead's center must land midway between the last element and the boundary")
+            .isCloseTo(midpointOf(roomStartSs, terminalXSs), within(TOLERANCE));
     }
 
     // The boundary check is an overflow check, not a fit check: a preview whose natural right edge
-    // lands exactly on the boundary still uses its natural spacing rather than being re-centerd
+    // lands exactly on the boundary still uses its natural spacing rather than being re-centered
     // (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastKeepsNaturalSpacingWhenPreviewExactlyMeetsBoundary() {
@@ -850,9 +888,11 @@ class LayoutResultTest extends UnitTest {
         assertThat(actual).isCloseTo(naturalXSs, within(TOLERANCE));
     }
 
-    // Between two element heads, the preview is placed at the midpoint of their X positions.
+    // Between two element heads, the preview's own glyph is centered in the room the two glyphs
+    // leave — not placed at the midpoint of their origins, which ignores both the preview's width
+    // and the previous element's, leaving the preview visibly left of center (refs #689).
     @Test
-    void testCalculateInsertionXSsBetweenElementsUsesMidpoint() {
+    void testCalculateInsertionXSsBetweenElementsCentersPreviewInTheRoom() {
         var first = ElementType.CROTCHET.newInstance();
         var second = ElementType.CROTCHET.newInstance();
         var line = lineWithElements(first, second);
@@ -863,13 +903,96 @@ class LayoutResultTest extends UnitTest {
             .build();
 
         assertThat(result.calculateInsertionXSs(1, MOUSE_IN_GAP_SS, preview, line, false))
-            .isCloseTo(EXPECTED_MIDPOINT_SS, within(TOLERANCE));
+            .as("the preview's own notehead must be centered in the room between the two elements")
+            .isCloseTo(centeredBetweenElements(first, NoteGeometry.getGlyphRightEdgeSs(preview)), within(TOLERANCE));
+    }
+
+    // A barline preview between two elements centers its thin glyph, so its own center — not its
+    // left edge — sits at the center of the room the two noteheads leave (refs #689).
+    @Test
+    void testCalculateInsertionXSsBetweenElementsCentersBarlinePreview() {
+        var first = ElementType.CROTCHET.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var previewType = ElementType.SINGLE_BARLINE;
+        var preview = previewType.newInstance();
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        var actual = result.calculateInsertionXSs(1, MOUSE_IN_GAP_SS, preview, line, false);
+        var barlineWidthSs = previewType.getElementWidthSs();
+
+        assertThat(actual).isCloseTo(centeredBetweenElements(first, barlineWidthSs), within(TOLERANCE));
+        assertThat(actual + barlineWidthSs / 2)
+            .as("the barline's center must land midway between the first element's right edge and the second")
+            .isCloseTo(
+                midpointOf(FIRST_ELEMENT_X_SS + first.getType().getElementWidthSs(), SECOND_ELEMENT_X_SS),
+                within(TOLERANCE));
+    }
+
+    // The room between two elements starts at the PREVIOUS element's drawn right edge, not the
+    // next one's width. With two neighbours of the same type those are the same number, so this
+    // test gives them different widths — a thin barline before a notehead — to pin down which one
+    // the room is measured from (refs #689).
+    @Test
+    void testCalculateInsertionXSsBetweenElementsMeasuresRoomFromThePreviousElement() {
+        var first = ElementType.SINGLE_BARLINE.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var preview = ElementType.CROTCHET.newInstance();
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(first.getType().getElementWidthSs())
+            .as("the two neighbours must differ in width for this test to tell them apart")
+            .isLessThan(second.getType().getElementWidthSs());
+
+        var actual = result.calculateInsertionXSs(1, MOUSE_IN_GAP_SS, preview, line, false);
+        var noteheadWidthSs = NoteGeometry.getGlyphRightEdgeSs(preview);
+
+        assertThat(actual)
+            .as("the room must start at the barline's right edge, not the following notehead's width")
+            .isCloseTo(centeredBetweenElements(first, noteheadWidthSs), within(TOLERANCE));
+        assertThat(actual)
+            .as("measuring the room from the wrong neighbour would push the preview right")
+            .isLessThan(centeredBetweenElements(second, noteheadWidthSs));
+    }
+
+    // Hovering a non-note element centers the preview on that element's own drawn width — a rest
+    // has no notehead, so the width the snap centers on comes from the element type itself.
+    @Test
+    void testCalculateInsertionXSsSnapsToNonNoteElementHead() {
+        var first = ElementType.CROTCHET_REST.newInstance();
+        var second = ElementType.CROTCHET.newInstance();
+        var line = lineWithElements(first, second);
+        var previewType = ElementType.SINGLE_BARLINE;
+        var preview = previewType.newInstance();
+        var result = LayoutResult.builder()
+            .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
+            .build();
+
+        assertThat(first.getType().isNote())
+            .as("the hovered element must be a non-note for this test to be meaningful")
+            .isFalse();
+
+        var actual = result.calculateInsertionXSs(0, MOUSE_OVER_FIRST_HEAD_SS, preview, line, false);
+        var restWidthSs = first.getType().getElementWidthSs();
+        var barlineWidthSs = previewType.getElementWidthSs();
+
+        assertThat(actual + barlineWidthSs / 2)
+            .as("the barline's center must land on the rest's center")
+            .isCloseTo(FIRST_ELEMENT_X_SS + restWidthSs / 2, within(TOLERANCE));
     }
 
     // betweenElementsOnly=true must skip the element-head snap entirely: the mouse sits directly
     // over the second element's head, where betweenElementsOnly=false snaps to that head, but the
     // paste-mode marker (betweenElementsOnly=true) must instead fall through to the
-    // between-elements midpoint — every one of the 7 pre-existing calculateInsertionXSs calls in
+    // between-elements position — every one of the 7 pre-existing calculateInsertionXSs calls in
     // this file passes false, so the true branch was otherwise never exercised.
     @Test
     void testCalculateInsertionXSsBetweenElementsOnlySkipsElementHeadSnap() {
@@ -887,8 +1010,8 @@ class LayoutResultTest extends UnitTest {
             .isCloseTo(SECOND_ELEMENT_X_SS, within(TOLERANCE));
 
         assertThat(result.calculateInsertionXSs(1, MOUSE_OVER_SECOND_HEAD_SS, preview, line, true))
-            .as("betweenElementsOnly=true ignores the head snap and returns the between-elements midpoint instead")
-            .isCloseTo(EXPECTED_MIDPOINT_SS, within(TOLERANCE));
+            .as("betweenElementsOnly=true ignores the head snap and centers between the elements instead")
+            .isCloseTo(centeredBetweenElements(first, NoteGeometry.getGlyphRightEdgeSs(preview)), within(TOLERANCE));
     }
 
     // ==========================================================================
@@ -1052,8 +1175,6 @@ class LayoutResultTest extends UnitTest {
     private static final double SUB_NOTEHEAD_ROOM_SS = 0.25;
     private static final double TERMINAL_X_SS = 20.0;
     private static final double TERMINAL_RIGHT_EXTENT_SS = 3.0;
-    // Midpoint of FIRST_ELEMENT_X_SS and SECOND_ELEMENT_X_SS.
-    private static final double EXPECTED_MIDPOINT_SS = 15.0;
 
     // Builds a fresh single-line song, prepending the given elements before the
     // line's auto-maintained FINAL_DOUBLE_BARLINE terminal so they occupy indices
@@ -1101,9 +1222,22 @@ class LayoutResultTest extends UnitTest {
         return (lowSs + highSs) / 2;
     }
 
-    // Where an element of the given width lands when centerd between a left edge and a boundary.
+    // Where an element of the given width lands when centered between a left edge and a boundary.
     private static double centeredInRoom(double leftEdgeSs, double boundarySs, double widthSs) {
         return leftEdgeSs + (boundarySs - leftEdgeSs - widthSs) / 2;
+    }
+
+    // Where the room beside an element begins: its drawn right edge. Mirrors the production rule
+    // that a flag, dot or accidental does not shrink the room, but the glyph itself does.
+    private static double drawnRightEdgeSs(StaffElement element, double xSs) {
+        return xSs + element.getType().getElementWidthSs();
+    }
+
+    // Where a preview of the given width lands between the two standard test columns: the room runs
+    // from the first element's drawn right edge to the second element's origin.
+    private static double centeredBetweenElements(StaffElement firstElement, double previewWidthSs) {
+        return centeredInRoom(
+            drawnRightEdgeSs(firstElement, FIRST_ELEMENT_X_SS), SECOND_ELEMENT_X_SS, previewWidthSs);
     }
 
     private static LayoutResult resultWithTerminal(
