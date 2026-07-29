@@ -792,9 +792,7 @@ public final class SelectionCoordinator {
                 validateSpans(line, selection.begin(), selection.end());
             }
 
-            contentCacheSelection = null;
-            applicabilityCacheSelection = null;
-            applicabilityCache.clear();
+            invalidateSelectionCaches();
         });
     }
 
@@ -1217,6 +1215,35 @@ public final class SelectionCoordinator {
     }
 
     /**
+     * Drops every cached answer about the current selection as soon as the song changes.
+     * <p>
+     * The caches are keyed by {@link ElementSelection} — a line plus an index range — and
+     * an index names a different element once a mutation has shifted, replaced, or removed
+     * what was there. Delete a selected barline and click the note that slides into its
+     * index and the key is the same one the barline was answered under, so the note would
+     * be reported as carrying no duration and applying to no action, leaving every
+     * note-only button disabled.
+     * <p>
+     * Runs ahead of {@link songscribe.ui.action.UIAction#songDidChange}, which re-derives
+     * each action's enabled state from these caches.
+     */
+    @Handler(priority = Message.HIGH_PRIORITY)
+    public void songDidChangeInvalidateCaches(SongDidChangeNotification message) {
+        invalidateSelectionCaches();
+    }
+
+    /**
+     * Discards the cached selection queries and the reflection guard, so the next query
+     * and the next reflection both recompute from the elements now on the line.
+     */
+    private void invalidateSelectionCaches() {
+        contentCacheSelection = null;
+        applicabilityCacheSelection = null;
+        applicabilityCache.clear();
+        lastReflectedSelection = null;
+    }
+
+    /**
      * Re-reflects action state when a mutation changes the content of the
      * selected line without changing the selection range.
      * <p>
@@ -1227,7 +1254,7 @@ public final class SelectionCoordinator {
      * clear the guard and force a fresh reflection.
      */
     @Handler
-    public void songDidChange(SongDidChangeNotification message) {
+    public void songDidChangeReflectSelection(SongDidChangeNotification message) {
         var state = getActiveSelection();
 
         if (state != null && message.getLine() == state.getLine()
