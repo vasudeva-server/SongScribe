@@ -100,7 +100,6 @@ public class UIAction extends AbstractAction {
         DISABLE_IN_REST_MODE(1 << 6),
         DISABLE_WHEN_PLAYING(1 << 7),
         DISABLE_WHEN_EDITING_TEXT(1 << 8),
-        DISABLE_IN_ADJUSTMENT_MODE(1 << 9),
         DISABLE_WHEN_BAR_SELECTED(1 << 10),
         ENABLE_WHEN_DURATION_SELECTED(1 << 11),
         DISABLE_WHEN_SONG_EMPTY(1 << 12),
@@ -495,7 +494,6 @@ public class UIAction extends AbstractAction {
         var activeSelection = hasActiveSelection();
         var enable =
             enableFromPasteMode() &&
-                enableInAdjustmentMode(scoreView) &&
                 enableInSelectMode(scoreView) &&
                 enableFromTextEditingState() &&
                 enableFromPlaybackState() &&
@@ -516,13 +514,6 @@ public class UIAction extends AbstractAction {
     @Handler(priority = Message.MEDIUM_PRIORITY)
     public void modeDidChange(ModeDidChangeNotification message) {
         updateEnabledState();
-    }
-
-    protected boolean enableInAdjustmentMode(ScoreView score) {
-        return (
-            !hasFlag(Flag.DISABLE_IN_ADJUSTMENT_MODE) ||
-                !score.getMode().isAdjustmentMode()
-        );
     }
 
     protected boolean enableInSelectMode(ScoreView score) {

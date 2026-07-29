@@ -66,10 +66,6 @@ public final class CycleModeAction extends UIAction {
     public void modeDidChange(ModeDidChangeNotification message) {
         super.modeDidChange(message);
 
-        if (message.isAdjustmentMode()) {
-            return;
-        }
-
         var action = message.getAction();
 
         for (var i = 0; i < MODES.length; i++) {

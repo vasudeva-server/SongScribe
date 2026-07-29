@@ -128,7 +128,6 @@ class LineRendererTest extends UnitTest {
         @Test
         void testNonSelectedLineUsesStaffLineColor() {
             var invariants = seededBuilder()
-                .setEditMode(true)
                 // no selectionProvider set → staffSelected = false
                 .build();
             var g2 = spyGraphics();
@@ -142,18 +141,17 @@ class LineRendererTest extends UnitTest {
         }
 
         /**
-         * When edit mode is true and the selection provider reports the line as selected,
+         * When the selection provider reports the line as selected,
          * {@code drawStaffLines} sets the color to {@link ScoreView#getSelectionColor()},
          * not the default staff-line color.
          */
         @Test
-        void testSelectedLineInEditModeUsesSelectionColor() {
+        void testSelectedLineUsesSelectionColor() {
             final int lineIndex = 0;
             var selectionProvider = mock(LineComponent.SelectionProvider.class);
             when(selectionProvider.isLineSelected(lineIndex)).thenReturn(true);
 
             var invariants = seededBuilder()
-                .setEditMode(true)
                 .setLineIndex(lineIndex)
                 .setSelectionProvider(selectionProvider)
                 .build();
@@ -165,30 +163,6 @@ class LineRendererTest extends UnitTest {
             // setColor(selectionColor) once inside the block; restore sets INITIAL_COLOR back
             verify(g2).setColor(ScoreView.getSelectionColor());
             verify(g2, never()).setColor(RenderingUtils.STAFF_LINE_COLOR);
-        }
-
-        /**
-         * When NOT in edit mode (even with a selection provider that reports selected),
-         * the selection color is not used — only {@link RenderingUtils#STAFF_LINE_COLOR}.
-         */
-        @Test
-        void testSelectedLineOutsideEditModeUsesStaffLineColor() {
-            final int lineIndex = 0;
-            var selectionProvider = mock(LineComponent.SelectionProvider.class);
-            when(selectionProvider.isLineSelected(lineIndex)).thenReturn(true);
-
-            var invariants = seededBuilder()
-                .setEditMode(false)   // editMode is false
-                .setLineIndex(lineIndex)
-                .setSelectionProvider(selectionProvider)
-                .build();
-            var g2 = spyGraphics();
-            g2.setColor(INITIAL_COLOR);
-
-            renderer.drawStaffLines(g2, invariants);
-
-            verify(g2).setColor(RenderingUtils.STAFF_LINE_COLOR);
-            verify(g2, never()).setColor(ScoreView.getSelectionColor());
         }
     }
 
@@ -327,7 +301,6 @@ class LineRendererTest extends UnitTest {
         @Test
         void testPlayingElementReturnsPlayingColorNotRed() {
             var invariants = seededBuilder()
-                .setEditMode(true)
                 .setPlayingNoteIndex(0)
                 .build();
 
@@ -353,7 +326,6 @@ class LineRendererTest extends UnitTest {
 
             var invariants = seededBuilder()
                 .setCurrentLine(line)
-                .setEditMode(true)
                 .build();
 
             when(lc.getLine()).thenReturn(line);
@@ -378,7 +350,6 @@ class LineRendererTest extends UnitTest {
 
             var invariants = seededBuilder()
                 .setCurrentLine(line)
-                .setEditMode(true)
                 .build();
 
             when(lc.getLine()).thenReturn(line);
@@ -403,7 +374,6 @@ class LineRendererTest extends UnitTest {
                     .thenReturn(new PreviewElementManager.SlidePreviewNotes(0, 0, -1));
 
                 var invariants = seededBuilder()
-                    .setEditMode(true)
                     .build();
 
                 var color = renderer.getElementColor(0, invariants);
@@ -434,7 +404,6 @@ class LineRendererTest extends UnitTest {
 
                 var invariants = seededBuilder()
                     .setCurrentLine(line)
-                    .setEditMode(true)
                     .build();
 
                 var color = renderer.getElementColor(0, invariants);

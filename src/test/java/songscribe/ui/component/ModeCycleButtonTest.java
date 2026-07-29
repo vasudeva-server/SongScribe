@@ -21,9 +21,7 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,8 +38,7 @@ import songscribe.util.UIUtils;
 /**
  * Unit tests for {@link ModeCycleButton} covering:
  * <ul>
- *   <li>Row 19 — {@code modeDidChange}: button NOT updated when {@code isAdjustmentMode()} is true</li>
- *   <li>Row 20 — {@code modeDidChange}: button IS updated when {@code isAdjustmentMode()} is false</li>
+ *   <li>Row 20 — {@code modeDidChange}: button is updated to reflect the new mode</li>
  *   <li>Row 21 — {@code playbackStateDidChange}: button disabled when playing, enabled otherwise</li>
  *   <li>Row 22 — {@code graceModeStateDidChange}: button disabled when grace mode active</li>
  * </ul>
@@ -56,31 +53,12 @@ class ModeCycleButtonTest extends MainFrameMockTest {
     }
 
     // -----------------------------------------------------------------------
-    // Row 19: modeDidChange skips updateButton when isAdjustmentMode() is true
+    // Row 20: modeDidChange calls updateButton
     // -----------------------------------------------------------------------
 
     @Test
-    void testModeDidChangeInAdjustmentModeSkipsUpdateButton() {
-        // ADJUST_MUSIC_MODE_ACTION has command "adjust-note-mode" → isAdjustmentMode() == true
-        var notification = new ModeDidChangeNotification(Actions.ADJUST_MUSIC_MODE_ACTION);
-        assertThat(notification.isAdjustmentMode()).isTrue();
-
-        try (var uiUtilsMock = mockStatic(UIUtils.class)) {
-            button.modeDidChange(notification);
-            // configureButtonFromAction must not be called when isAdjustmentMode() is true
-            uiUtilsMock.verify(() -> UIUtils.configureButtonFromAction(any(), any()), never());
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Row 20: modeDidChange calls updateButton when isAdjustmentMode() is false
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testModeDidChangeInNonAdjustmentModeCallsUpdateButton() {
-        // EDIT_MODE_ACTION has command "edit-mode" → isAdjustmentMode() == false
+    void testModeDidChangeCallsUpdateButton() {
         var notification = new ModeDidChangeNotification(Actions.EDIT_MODE_ACTION);
-        assertThat(notification.isAdjustmentMode()).isFalse();
 
         try (var uiUtilsMock = mockStatic(UIUtils.class)) {
             button.modeDidChange(notification);

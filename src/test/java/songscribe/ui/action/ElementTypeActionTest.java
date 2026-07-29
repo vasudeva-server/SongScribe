@@ -120,7 +120,6 @@ class ElementTypeActionTest extends MainFrameMockTest {
     void testDurationKindHasCorrectFlags() {
         assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_IN_REST_MODE)).isFalse();
         assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isTrue();
-        assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE)).isTrue();
         assertThat(durationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_EDITING_TEXT)).isTrue();
     }
 
@@ -157,7 +156,6 @@ class ElementTypeActionTest extends MainFrameMockTest {
     void testNonDurationKindHasCorrectFlags() {
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_IN_REST_MODE)).isTrue();
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING)).isTrue();
-        assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_IN_ADJUSTMENT_MODE)).isTrue();
         assertThat(nonDurationAction.hasFlag(UIAction.Flag.DISABLE_WHEN_EDITING_TEXT)).isTrue();
     }
 

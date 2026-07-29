@@ -62,9 +62,7 @@ public class ModeCycleButton extends ToolbarToggleButton {
 
     @Handler
     public void modeDidChange(ModeDidChangeNotification message) {
-        if (!message.isAdjustmentMode()) {
-            updateButton(message.getAction());
-        }
+        updateButton(message.getAction());
     }
 
     @Handler

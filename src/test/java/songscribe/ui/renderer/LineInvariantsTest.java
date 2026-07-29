@@ -74,7 +74,7 @@ class LineInvariantsTest extends UnitTest {
     // Edit mode, not playing, not selected → Color.BLACK
     @Test
     void testDefaultReturnsBlack() {
-        var invariants = seededBuilder().setEditMode(true).build();
+        var invariants = seededBuilder().build();
 
         assertThat(invariants.getElementColor(0)).isEqualTo(Color.BLACK);
     }
@@ -83,7 +83,6 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testElementInPlayingTieReturnsPlayingColor() {
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(tiedLine())
             .setPlayingNoteIndex(0)
             .build();
@@ -95,7 +94,7 @@ class LineInvariantsTest extends UnitTest {
     // A playing grace note marks its element as playing
     @Test
     void testGraceNoteCountsAsPlaying() {
-        var invariants = seededBuilder().setEditMode(true).setPlayingGraceNoteIndex(0).build();
+        var invariants = seededBuilder().setPlayingGraceNoteIndex(0).build();
 
         assertThat(invariants.isElementPlaying(0)).isTrue();
         assertThat(invariants.getElementColor(0)).isEqualTo(ScoreView.getPlayingNoteColor());
@@ -104,7 +103,7 @@ class LineInvariantsTest extends UnitTest {
     // Without a playing note, no element is in a playing tie
     @Test
     void testIsElementInPlayingTieFalseWithoutPlayingNote() {
-        var invariants = seededBuilder().setEditMode(true).setCurrentLine(tiedLine()).build();
+        var invariants = seededBuilder().setCurrentLine(tiedLine()).build();
 
         assertThat(invariants.isElementInPlayingTie(2)).isFalse();
     }
@@ -112,24 +111,16 @@ class LineInvariantsTest extends UnitTest {
     // An index that is neither the playing note nor grace note is not playing
     @Test
     void testIsElementPlayingFalseForUnrelatedIndex() {
-        var invariants = seededBuilder().setEditMode(true).setPlayingNoteIndex(0).build();
+        var invariants = seededBuilder().setPlayingNoteIndex(0).build();
 
         assertThat(invariants.isElementPlaying(0)).isTrue();
         assertThat(invariants.isElementPlaying(1)).isFalse();
     }
 
-    // Not in edit mode → Color.BLACK regardless of playing/selection state
-    @Test
-    void testNotEditModeReturnsBlack() {
-        var invariants = seededBuilder().setPlayingNoteIndex(0).build();
-
-        assertThat(invariants.getElementColor(0)).isEqualTo(Color.BLACK);
-    }
-
     // Edit mode + element is playing → playing color
     @Test
     void testPlayingElementReturnsPlayingColor() {
-        var invariants = seededBuilder().setEditMode(true).setPlayingNoteIndex(0).build();
+        var invariants = seededBuilder().setPlayingNoteIndex(0).build();
 
         assertThat(invariants.getElementColor(0)).isEqualTo(ScoreView.getPlayingNoteColor());
     }
@@ -141,7 +132,6 @@ class LineInvariantsTest extends UnitTest {
         when(selectionProvider.isElementSelected(0, 0)).thenReturn(true);
 
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setSelectionProvider(selectionProvider)
             .setSelectionColor(Color.RED)
             .build();
@@ -178,7 +168,6 @@ class LineInvariantsTest extends UnitTest {
                 .thenReturn(hoveredLocation);
 
             var invariants = seededBuilder()
-                .setEditMode(true)
                 .setLineIndex(0)
                 .build();
 
@@ -212,7 +201,7 @@ class LineInvariantsTest extends UnitTest {
     // getLyricConnectorColor() — sourceElementIndex < 0 → Color.BLACK regardless of edit mode
     @Test
     void testGetLyricConnectorColorNegativeSourceIndexReturnsBlack() {
-        var invariants = seededBuilder().setEditMode(true).build();
+        var invariants = seededBuilder().build();
 
         assertThat(invariants.getLyricConnectorColor(-1, 1)).isEqualTo(Color.BLACK);
     }
@@ -222,7 +211,6 @@ class LineInvariantsTest extends UnitTest {
     void testGetLyricConnectorColorNullLineReturnsElementColor() {
         // No line set; playing note → playing color should propagate
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setPlayingNoteIndex(0)
             .build();
 
@@ -238,7 +226,6 @@ class LineInvariantsTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
 
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(0)
             .build();
@@ -254,7 +241,6 @@ class LineInvariantsTest extends UnitTest {
         var element = (StaffElement) line.getElement(0);
 
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(0)
             .build();
@@ -272,7 +258,6 @@ class LineInvariantsTest extends UnitTest {
         // Index 1 is the STOP carrier; index 0 is the START anchor
         // Playing index 1 should keep index 0's lyric highlighted
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(1)
             .build();
@@ -292,7 +277,6 @@ class LineInvariantsTest extends UnitTest {
         // Every carrier index must keep the anchor's lyric highlighted.
         for (var playingIndex = 1; playingIndex <= 3; playingIndex++) {
             var invariants = seededBuilder()
-                .setEditMode(true)
                 .setCurrentLine(line)
                 .setPlayingNoteIndex(playingIndex)
                 .build();
@@ -305,7 +289,6 @@ class LineInvariantsTest extends UnitTest {
         // The span ends at the STOP carrier (index 3): playing the new word at index 4
         // must leave the anchor unhighlighted.
         var pastSpan = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(4)
             .build();
@@ -318,7 +301,6 @@ class LineInvariantsTest extends UnitTest {
         // carrier at index 1 while a later carrier plays must not highlight it.
         var carrier = (StaffElement) line.getElement(1);
         var playingLaterCarrier = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(3)
             .build();
@@ -336,7 +318,6 @@ class LineInvariantsTest extends UnitTest {
 
         // Index 1 has no lyric; playing note at 1 is inside the BEGIN anchor's span
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(1)
             .build();
@@ -359,7 +340,6 @@ class LineInvariantsTest extends UnitTest {
         // Now the BEGIN anchor's span ends at index 1 (the text-bearing END syllable is at 2,
         // so spanEnd = 2 - 1 = 1). Playing at index 2 is outside.
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(2)
             .build();
@@ -379,27 +359,12 @@ class LineInvariantsTest extends UnitTest {
         // element has no lyric at verse 1
 
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(1)
             .build();
 
         assertThat(invariants.getLyricColor(0, element, 1))
             .isEqualTo(Color.BLACK);
-    }
-
-    // Not in edit mode → getLyricColor returns Color.BLACK regardless of playing state
-    @Test
-    void testGetLyricColorNotEditModeReturnsBlack() {
-        var line = lyricLine();
-        var element = (StaffElement) line.getElement(0);
-
-        var invariants = seededBuilder()
-            .setCurrentLine(line)
-            .setPlayingNoteIndex(0)
-            .build();
-
-        assertThat(invariants.getLyricColor(0, element, 1)).isEqualTo(Color.BLACK);
     }
 
     // getLyricColor() — lyric is selected → selectionColor
@@ -412,7 +377,6 @@ class LineInvariantsTest extends UnitTest {
         when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(true);
 
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setSelectionProvider(selectionProvider)
             .setSelectionColor(Color.BLUE)
@@ -437,7 +401,6 @@ class LineInvariantsTest extends UnitTest {
         var element = (StaffElement) line.getElement(0);
 
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(1)
             .build();
@@ -449,7 +412,7 @@ class LineInvariantsTest extends UnitTest {
     // isElementPlaying() — negative index is never playing
     @Test
     void testIsElementPlayingFalseForNegativeIndex() {
-        var invariants = seededBuilder().setEditMode(true).setPlayingNoteIndex(0).build();
+        var invariants = seededBuilder().setPlayingNoteIndex(0).build();
 
         assertThat(invariants.isElementPlaying(-1)).isFalse();
     }
@@ -467,7 +430,6 @@ class LineInvariantsTest extends UnitTest {
         var element = (StaffElement) line.getElement(0);
 
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(1)
             .build();
@@ -486,7 +448,6 @@ class LineInvariantsTest extends UnitTest {
 
         // Playing note at index 1 is past the anchor, but SINGLE does not extend forward
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(1)
             .build();
@@ -508,7 +469,6 @@ class LineInvariantsTest extends UnitTest {
         var element = (StaffElement) line.getElement(1);
 
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setPlayingNoteIndex(0)
             .build();
@@ -526,7 +486,6 @@ class LineInvariantsTest extends UnitTest {
         when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(false);
 
         var invariants = seededBuilder()
-            .setEditMode(true)
             .setCurrentLine(line)
             .setSelectionProvider(selectionProvider)
             .setSelectionColor(Color.BLUE)

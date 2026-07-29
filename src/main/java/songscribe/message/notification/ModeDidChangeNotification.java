@@ -28,11 +28,9 @@ import songscribe.ui.action.ModeAction;
 public class ModeDidChangeNotification extends Message {
 
     private final ModeAction action;
-    private final boolean adjustmentMode;
 
     public ModeDidChangeNotification(ModeAction action) {
         this.action = action;
-        adjustmentMode = action.getActionCommand().startsWith("adjust-");
     }
 
     public ModeAction getAction() {
@@ -43,20 +41,8 @@ public class ModeDidChangeNotification extends Message {
         return action.getMode();
     }
 
-    @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    public boolean isAdjustmentMode() {
-        return adjustmentMode;
-    }
-
     @Override
     public String toString() {
-        return (
-            super.toString() +
-                "(mode = '" +
-                getMode() +
-                "', isAdjustmentMode = " +
-                adjustmentMode +
-                ')'
-        );
+        return super.toString() + "(mode = '" + getMode() + "')";
     }
 }

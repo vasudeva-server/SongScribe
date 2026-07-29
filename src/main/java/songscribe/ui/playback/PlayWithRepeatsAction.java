@@ -45,7 +45,6 @@ public final class PlayWithRepeatsAction extends SelectableUIAction {
             PrefsKey.PLAY_WITH_REPEATS,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_IN_GRACE_MODE,
             Flag.DISABLE_WHEN_MIDI_UNAVAILABLE
         );

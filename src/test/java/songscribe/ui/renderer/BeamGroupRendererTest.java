@@ -283,30 +283,18 @@ class BeamGroupRendererTest extends UnitTest {
     // getBeamHighlightColor tests
     // ======================================================================
 
-    /** Build a minimal LineInvariants in edit mode with the given line set as current. */
-    private static LineInvariants editModeInvariants(Line line) {
+    /** Build a minimal LineInvariants with the given line set as current. */
+    private static LineInvariants baseInvariants(Line line) {
         return RenderContextTestHelper.newContext(new Song())
-            .setEditMode(true)
             .setCurrentLine(line)
             .build();
-    }
-
-    @Test
-    void testGetBeamHighlightColor_nonEditMode_returnsNull() {
-        var line = lineWith(ElementType.QUAVER, ElementType.QUAVER);
-        var invariants = RenderContextTestHelper.newContext(new Song())
-            .setEditMode(false)
-            .setCurrentLine(line)
-            .build();
-
-        assertThat(RENDERER.getBeamHighlightColor(invariants, 0, 1)).isNull();
     }
 
     @Test
     void testGetBeamHighlightColor_twoOrMoreBeamableRemaining_returnsNull() {
         // Neither note is selected or hovered: 2 beamable notes remain → no highlight
         var line = lineWith(ElementType.QUAVER, ElementType.QUAVER);
-        var invariants = editModeInvariants(line);
+        var invariants = baseInvariants(line);
 
         assertThat(RENDERER.getBeamHighlightColor(invariants, 0, 1)).isNull();
     }
@@ -316,7 +304,6 @@ class BeamGroupRendererTest extends UnitTest {
         // One note selected, one beamable note remaining (< 2) → selection color
         var line = lineWith(ElementType.QUAVER, ElementType.QUAVER);
         var builder = RenderContextTestHelper.newContext(new Song())
-            .setEditMode(true)
             .setCurrentLine(line);
         RenderContextTestHelper.enableSelection(builder, 0);
         var invariants = builder.build();
@@ -332,7 +319,6 @@ class BeamGroupRendererTest extends UnitTest {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isElementSelected(0, 0)).thenReturn(true);
         var invariants = RenderContextTestHelper.newContext(new Song())
-            .setEditMode(true)
             .setCurrentLine(line)
             .setSelectionProvider(selectionProvider)
             .setSelectionColor(Color.BLUE)
@@ -355,7 +341,7 @@ class BeamGroupRendererTest extends UnitTest {
         // A crotchet in the range is not beamable: remainingBeamableNotes stays 0 (< 2).
         // No note is selected or hovered, so the result is null.
         var line = lineWith(ElementType.CROTCHET);
-        var invariants = editModeInvariants(line);
+        var invariants = baseInvariants(line);
 
         assertThat(RENDERER.getBeamHighlightColor(invariants, 0, 0)).isNull();
     }
@@ -364,7 +350,7 @@ class BeamGroupRendererTest extends UnitTest {
     void testGetBeamHighlightColor_hoveredNote_oneBeamableRemaining_returnsReplacedElementColor() {
         // One note hovered (not selected), one beamable remaining → replaced-element color
         var line = lineWith(ElementType.QUAVER, ElementType.QUAVER);
-        var invariants = editModeInvariants(line);
+        var invariants = baseInvariants(line);
 
         try (var previewMock = mockStatic(PreviewElementManager.class)) {
             // Element 0 is hovered; element 1 is beamable and not hovered → remainingBeamableNotes=1 < 2
@@ -384,7 +370,7 @@ class BeamGroupRendererTest extends UnitTest {
         // But with only one total note and one beamable, remaining = 1 < 2 but
         // no anySelected and no anyHovered → returns null
         var line = lineWith(ElementType.QUAVER);
-        var invariants = editModeInvariants(line);
+        var invariants = baseInvariants(line);
 
         // No selection, no hover: remainingBeamableNotes = 1 (< 2), anySelected = false,
         // anyHovered = false → method returns null

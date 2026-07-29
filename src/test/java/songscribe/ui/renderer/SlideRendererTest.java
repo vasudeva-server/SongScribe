@@ -311,8 +311,7 @@ class SlideRendererTest extends UnitTest {
     // ======================================================================
 
     private static LineInvariants.Builder editModeBuilder() {
-        return RenderContextTestHelper.newContext(new Song())
-            .setEditMode(true);
+        return RenderContextTestHelper.newContext(new Song());
     }
 
     @Test

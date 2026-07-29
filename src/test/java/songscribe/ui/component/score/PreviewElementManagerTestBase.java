@@ -79,7 +79,6 @@ abstract class PreviewElementManagerTestBase extends UnitTest {
         lc = mock(LineComponent.class);
         var score = mock(ScoreView.class);
 
-        when(lc.isEditMode()).thenReturn(true);
         when(lc.getScoreView()).thenReturn(score);
         when(lc.getViewScale()).thenReturn(ViewScale.IDENTITY);
         when(lc.getLine()).thenReturn(line);

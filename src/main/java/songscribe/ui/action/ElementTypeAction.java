@@ -39,14 +39,12 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     private static final Flag[] DURATION_FLAGS = new Flag[]{
         Flag.DISABLE_WHEN_PLAYING,
-        Flag.DISABLE_IN_ADJUSTMENT_MODE,
         Flag.DISABLE_WHEN_EDITING_TEXT,
     };
 
     static final Flag[] NON_DURATION_FLAGS = new Flag[]{
         Flag.DISABLE_IN_REST_MODE,
         Flag.DISABLE_WHEN_PLAYING,
-        Flag.DISABLE_IN_ADJUSTMENT_MODE,
         Flag.DISABLE_WHEN_EDITING_TEXT,
         Flag.DISABLE_IN_GRACE_MODE,
     };

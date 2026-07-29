@@ -50,24 +50,6 @@ public final class ModeAction extends SelectableUIAction {
         );
     }
 
-    public static ModeAction createAdjustMusicModeAction(MainFrame mainFrame) {
-        return new ModeAction(
-            mainFrame,
-            Mode.ADJUSTMENT,
-            Strings.get(Strings.ACTION_MODE_MUSIC_ADJUST), "mode-note-adjustment.svg", 26,
-            "adjust-note-mode", Strings.get(Strings.ACTION_MODE_MUSIC_ADJUST_TOOLTIP)
-        );
-    }
-
-    public static ModeAction createAdjustVerticalModeAction(MainFrame mainFrame) {
-        return new ModeAction(
-            mainFrame,
-            Mode.VERTICAL_ADJUSTMENT,
-            Strings.get(Strings.ACTION_MODE_VERTICAL_ADJUST), "mode-vertical-adjustment.svg", 26,
-            "adjust-vertical-mode", Strings.get(Strings.ACTION_MODE_VERTICAL_ADJUST_TOOLTIP)
-        );
-    }
-
     private ModeAction(
         MainFrame mainFrame,
         Mode mode,

@@ -445,17 +445,6 @@ public final class ScoreViewController {
             syncPreviewElementWithSelectedDuration();
         }
 
-        var ha = score.getHorizontalAdjustment();
-        var va = score.getVerticalAdjustment();
-
-        if (ha != null) {
-            ha.setEnabled(mode == Mode.ADJUSTMENT);
-        }
-
-        if (va != null) {
-            va.setEnabled(mode == Mode.VERTICAL_ADJUSTMENT);
-        }
-
         score.repaint();
     }
 

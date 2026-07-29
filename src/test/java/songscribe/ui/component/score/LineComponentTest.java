@@ -889,8 +889,8 @@ class LineComponentTest extends UnitTest {
 
         @Test
         void testDoubleClickOutsideSelectModeDoesNotOpenTheEditor() {
-            // Adjustment modes are not a context for editing lyrics.
-            when(mockScoreView.getMode()).thenReturn(Mode.ADJUSTMENT);
+            // EDIT mode without Alt down is not a context for editing lyrics.
+            when(mockScoreView.getMode()).thenReturn(Mode.EDIT);
 
             clickWith(
                 clickEvent(DOUBLE_CLICK, NO_MODIFIERS),

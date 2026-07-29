@@ -145,16 +145,8 @@ public final class RenderingUtils {
     /**
      * Returns the selection color if {@code element} is selected, otherwise the
      * standard element color.
-     * <p>
-     * The selection provider is wired independently of edit mode, so it can report a
-     * selection while the score is not editable. Selection highlighting is an edit-mode
-     * affordance only, matching {@code BeamGroupRenderer.getBeamHighlightColor}.
      */
     static Color decorationSelectionColor(LineElement element, LineInvariants invariants) {
-        if (!invariants.isEditMode()) {
-            return ELEMENT_COLOR;
-        }
-
         var selectionProvider = invariants.getSelectionProvider();
 
         if (selectionProvider != null

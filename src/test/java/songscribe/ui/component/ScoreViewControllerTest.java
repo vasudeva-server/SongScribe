@@ -101,8 +101,6 @@ import songscribe.ui.action.DurationActionGroup;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.action.ModeAction;
-import songscribe.ui.adjustment.HorizontalAdjustment;
-import songscribe.ui.adjustment.VerticalAdjustment;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.clipboard.Fragment;
 import songscribe.ui.component.score.LineComponent;
@@ -2061,13 +2059,6 @@ class ScoreViewControllerTest extends UnitTest {
         private ModeDidChangeNotification notificationFor(Mode mode) {
             var action = mock(ModeAction.class);
             when(action.getMode()).thenReturn(mode);
-            // Adjustment detection uses action.getActionCommand().startsWith("adjust-")
-            var command = switch (mode) {
-                case ADJUSTMENT -> "adjust-note-mode";
-                case VERTICAL_ADJUSTMENT -> "adjust-vertical-mode";
-                default -> mode.name().toLowerCase() + "-mode";
-            };
-            when(action.getActionCommand()).thenReturn(command);
             return new ModeDidChangeNotification(action);
         }
 
@@ -2089,32 +2080,6 @@ class ScoreViewControllerTest extends UnitTest {
             controller.modeDidChange(notificationFor(Mode.EDIT));
 
             verify(scoreMock).setPreviewElement(previewElementStub);
-        }
-
-        @Test
-        void testModeDidChangeEnablesHorizontalAdjustmentForAdjustmentMode() {
-            var ha = mock(HorizontalAdjustment.class);
-            var va = mock(VerticalAdjustment.class);
-            when(scoreMock.getHorizontalAdjustment()).thenReturn(ha);
-            when(scoreMock.getVerticalAdjustment()).thenReturn(va);
-
-            controller.modeDidChange(notificationFor(Mode.ADJUSTMENT));
-
-            verify(ha).setEnabled(true);
-            verify(va).setEnabled(false);
-        }
-
-        @Test
-        void testModeDidChangeEnablesVerticalAdjustmentForVerticalAdjustmentMode() {
-            var ha = mock(HorizontalAdjustment.class);
-            var va = mock(VerticalAdjustment.class);
-            when(scoreMock.getHorizontalAdjustment()).thenReturn(ha);
-            when(scoreMock.getVerticalAdjustment()).thenReturn(va);
-
-            controller.modeDidChange(notificationFor(Mode.VERTICAL_ADJUSTMENT));
-
-            verify(ha).setEnabled(false);
-            verify(va).setEnabled(true);
         }
 
     }

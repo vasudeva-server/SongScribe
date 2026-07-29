@@ -55,7 +55,6 @@ public final class PlayPauseAction extends SequencerAction {
             KeyEvent.VK_SPACE,
             0,
             Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_WHEN_SONG_EMPTY,
             Flag.DISABLE_WHEN_MIDI_UNAVAILABLE
         );

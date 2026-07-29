@@ -355,8 +355,7 @@ class HairpinRendererTest extends UnitTest {
     private static List<Color> drawColorsFor(Hairpin hairpin, boolean selected) {
         var builder = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResultFor(hairpin))
-            .setMiddleLineYSs(MIDDLE_LINE_Y_SS)
-            .setEditMode(true);
+            .setMiddleLineYSs(MIDDLE_LINE_Y_SS);
 
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isDecorationSelected(hairpin, 0)).thenReturn(selected);

@@ -42,7 +42,6 @@ public final class RewindAction extends SequencerAction {
             KeyEvent.VK_PERIOD,
             UIUtils.MENU_SHORTCUT_MASK,
             Flag.DISABLE_WHEN_EDITING_TEXT,
-            Flag.DISABLE_IN_ADJUSTMENT_MODE,
             Flag.DISABLE_WHEN_SONG_EMPTY,
             Flag.DISABLE_WHEN_MIDI_UNAVAILABLE
         );

@@ -1620,10 +1620,10 @@ public final class PreviewElementManager {
     /**
      * Returns whether preview element handling should be active for the given line.
      * <p>
-     * Requires: edit mode enabled, NOTE_EDIT mode, and a preview element set.
+     * Requires: NOTE_EDIT mode and a preview element set.
      */
     private static boolean shouldHandlePreviewElement(LineComponent lc) {
-        if (!lc.isEditMode() || !EditModeManager.hasPreviewElement()) {
+        if (!EditModeManager.hasPreviewElement()) {
             return false;
         }
 

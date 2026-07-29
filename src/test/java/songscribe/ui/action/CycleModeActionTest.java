@@ -107,17 +107,4 @@ class CycleModeActionTest extends MainFrameMockTest {
         assertThat(action.getCurrentAction()).isEqualTo(CycleModeAction.MODES[0]);
     }
 
-    @Test
-    void testModeDidChangeIgnoresAdjustmentMode() {
-        var action = CycleModeAction.createAction(mainFrame());
-        // Put currentIndex at 1 (SELECT) first
-        action.modeDidChange(new ModeDidChangeNotification(CycleModeAction.MODES[1]));
-        assertThat(action.getCurrentAction()).isEqualTo(CycleModeAction.MODES[1]);
-
-        // Send an adjustment-mode notification — currentIndex must not change
-        var adjustAction = ModeAction.createAdjustMusicModeAction(mainFrame());
-        action.modeDidChange(new ModeDidChangeNotification(adjustAction));
-
-        assertThat(action.getCurrentAction()).isEqualTo(CycleModeAction.MODES[1]);
-    }
 }

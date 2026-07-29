@@ -36,7 +36,6 @@ public final class EditLyricAction extends UIAction {
         Flag.REQUIRES_SINGLE_SELECTION,
         Flag.DISABLE_WHEN_PLAYING,
         Flag.DISABLE_WHEN_EDITING_TEXT,
-        Flag.DISABLE_IN_ADJUSTMENT_MODE,
         Flag.DISABLE_WHEN_BAR_SELECTED,
         Flag.DISABLE_WHEN_SONG_EMPTY,
         Flag.DISABLE_IN_GRACE_MODE,

@@ -63,16 +63,6 @@ class ModeActionTest extends MainFrameMockTest {
         assertThat(ModeAction.createEditModeAction(mainFrame()).getMode()).isEqualTo(Mode.EDIT);
     }
 
-    @Test
-    void testCreateAdjustMusicModeActionBindsAdjustmentMode() {
-        assertThat(ModeAction.createAdjustMusicModeAction(mainFrame()).getMode()).isEqualTo(Mode.ADJUSTMENT);
-    }
-
-    @Test
-    void testCreateAdjustVerticalModeActionBindsVerticalAdjustmentMode() {
-        assertThat(ModeAction.createAdjustVerticalModeAction(mainFrame()).getMode()).isEqualTo(Mode.VERTICAL_ADJUSTMENT);
-    }
-
     // Row 74: actionPerformed posts ModeDidChangeNotification with self as source
 
     @Test

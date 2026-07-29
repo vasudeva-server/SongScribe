@@ -177,7 +177,6 @@ class LineRenderer {
             .setActivelyEditedElement(editedElement)
             .setActivelyEditedVerse(editedVerse)
             .setSelectionProvider(lc.getSelectionProvider())
-            .setEditMode(lc.isEditMode())
             .setPlayingNoteIndex(lc.getPlayingNoteIndex())
             .setPlayingGraceNoteIndex(lc.getPlayingGraceNoteIndex())
             .setViewScale(score.getViewScale())
@@ -194,9 +193,7 @@ class LineRenderer {
     void drawStaffLines(Graphics2D g2, LineInvariants invariants) {
         var selectionProvider = invariants.getSelectionProvider();
         var lineIndex = invariants.getLineIndex();
-        var staffSelected = invariants.isEditMode()
-            && selectionProvider != null
-            && selectionProvider.isLineSelected(lineIndex);
+        var staffSelected = selectionProvider != null && selectionProvider.isLineSelected(lineIndex);
 
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
             g2.setColor(staffSelected ? ScoreView.getSelectionColor() : RenderingUtils.STAFF_LINE_COLOR);

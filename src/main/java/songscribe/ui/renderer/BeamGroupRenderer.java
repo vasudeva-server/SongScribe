@@ -122,10 +122,6 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         int beginIndex,
         int endIndex
     ) {
-        if (!invariants.isEditMode()) {
-            return null;
-        }
-
         var selectionProvider = invariants.getSelectionProvider();
         var line = invariants.requireCurrentLine();
         var lineIndex = invariants.getLineIndex();

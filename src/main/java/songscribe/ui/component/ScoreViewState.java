@@ -20,25 +20,19 @@
 
 package songscribe.ui.component;
 
-import org.jspecify.annotations.Nullable;
-
 import songscribe.ui.Mode;
-import songscribe.ui.adjustment.HorizontalAdjustment;
-import songscribe.ui.adjustment.VerticalAdjustment;
 
 /**
  * Holds the mutable view-state that ScoreView and ScoreViewController both read.
  * Plain storage: no bus subscriptions, no behavior.
  * <p>
  * The class is {@code public} so cross-package consumers (e.g. menu/action wiring)
- * can read state via the getters, but construction and adjustment-handle wiring
- * are deliberately package-private — only {@code ScoreView} owns the lifecycle.
+ * can read state via the getters, but construction is deliberately package-private —
+ * only {@code ScoreView} owns the lifecycle.
  */
 public class ScoreViewState {
 
     private Mode mode = Mode.EDIT;
-    @Nullable private HorizontalAdjustment horizontalAdjustment;
-    @Nullable private VerticalAdjustment verticalAdjustment;
 
     ScoreViewState() {
     }
@@ -49,21 +43,5 @@ public class ScoreViewState {
 
     public void setMode(Mode mode) {
         this.mode = mode;
-    }
-
-    public @Nullable HorizontalAdjustment getHorizontalAdjustment() {
-        return horizontalAdjustment;
-    }
-
-    void setHorizontalAdjustment(HorizontalAdjustment ha) {
-        this.horizontalAdjustment = ha;
-    }
-
-    public @Nullable VerticalAdjustment getVerticalAdjustment() {
-        return verticalAdjustment;
-    }
-
-    void setVerticalAdjustment(VerticalAdjustment va) {
-        this.verticalAdjustment = va;
     }
 }

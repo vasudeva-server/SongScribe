@@ -361,14 +361,6 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Returns whether the score is in an interactive editing mode (note edit or select),
-     * as opposed to an adjustment mode.
-     */
-    public boolean isEditMode() {
-        return !getScoreView().getMode().isAdjustmentMode();
-    }
-
-    /**
      * Marks the layout as dirty, requiring recalculation on next render.
      */
     public void invalidateLayout() {
@@ -828,11 +820,11 @@ public class LineComponent extends ScoreComponent
      * {@link #mousePressed} to have already switched permanently to SELECT mode by the time
      * the click arrives, which Alt does anywhere and a plain click does on the staff lines in
      * the clef/key signature column. {@code isSelectionActive} is the gate for exactly those
-     * cases, and additionally rules out the adjustment modes and playback. The staff-line
-     * route never reaches the editor, since no element sits in that column for the hit test
-     * below to find. Shift is excluded separately: shift+click extends the selection, and this
-     * method runs before the selection handler sees the click, so without the guard a
-     * shift+double-click would discard the selection the user was building.
+     * cases, and additionally rules out playback. The staff-line route never reaches the
+     * editor, since no element sits in that column for the hit test below to find. Shift is
+     * excluded separately: shift+click extends the selection, and this method runs before the
+     * selection handler sees the click, so without the guard a shift+double-click would
+     * discard the selection the user was building.
      */
     private boolean editLyricOnDoubleClickedElement(MouseEvent e) {
         var scoreView = getScoreView();

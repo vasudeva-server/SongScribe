@@ -81,8 +81,6 @@ public final class Actions {
     public static ModeAction SELECT_MODE_ACTION;
     public static ModeAction EDIT_MODE_ACTION;
     public static CycleModeAction CYCLE_MODE_ACTION;
-    public static ModeAction ADJUST_MUSIC_MODE_ACTION;
-    public static ModeAction ADJUST_VERTICAL_MODE_ACTION;
     public static ActionGroup<ModeAction> MODE_ACTION_GROUP;
 
     //
@@ -207,14 +205,7 @@ public final class Actions {
         SELECT_MODE_ACTION = ModeAction.createSelectModeAction(mainFrame);
         EDIT_MODE_ACTION = ModeAction.createEditModeAction(mainFrame);
         CYCLE_MODE_ACTION = CycleModeAction.createAction(mainFrame);
-        ADJUST_MUSIC_MODE_ACTION = ModeAction.createAdjustMusicModeAction(mainFrame);
-        ADJUST_VERTICAL_MODE_ACTION = ModeAction.createAdjustVerticalModeAction(mainFrame);
-        MODE_ACTION_GROUP = new ActionGroup<>(
-            SELECT_MODE_ACTION,
-            EDIT_MODE_ACTION,
-            ADJUST_MUSIC_MODE_ACTION,
-            ADJUST_VERTICAL_MODE_ACTION
-        );
+        MODE_ACTION_GROUP = new ActionGroup<>(SELECT_MODE_ACTION, EDIT_MODE_ACTION);
 
         //
         // Duration actions

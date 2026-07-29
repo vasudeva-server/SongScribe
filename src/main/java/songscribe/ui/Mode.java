@@ -28,15 +28,5 @@ public enum Mode {
     SELECT,
 
     // Editing notes
-    EDIT,
-
-    // Adjusting the horizontal position of notes
-    ADJUSTMENT,
-
-    // Adjusting the vertical position of score elements
-    VERTICAL_ADJUSTMENT;
-
-    public boolean isAdjustmentMode() {
-        return this == ADJUSTMENT || this == VERTICAL_ADJUSTMENT;
-    }
+    EDIT
 }

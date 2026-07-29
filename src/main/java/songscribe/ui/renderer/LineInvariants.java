@@ -80,7 +80,6 @@ public final class LineInvariants {
     private final StaffElement activelyEditedElement;
     private final int activelyEditedVerse;
     private final LineComponent.@Nullable SelectionProvider selectionProvider;
-    private final boolean editMode;
     private final Color selectionColor;
     private final int playingNoteIndex;
     private final int playingGraceNoteIndex;
@@ -108,7 +107,6 @@ public final class LineInvariants {
         activelyEditedElement = b.activelyEditedElement;
         activelyEditedVerse = b.activelyEditedVerse;
         selectionProvider = b.selectionProvider;
-        editMode = b.editMode;
         selectionColor = b.selectionColor;
         playingNoteIndex = b.playingNoteIndex;
         playingGraceNoteIndex = b.playingGraceNoteIndex;
@@ -232,11 +230,6 @@ public final class LineInvariants {
         return selectionProvider;
     }
 
-    /** Returns whether the score is in edit mode. */
-    public boolean isEditMode() {
-        return editMode;
-    }
-
     /**
      * Returns the color used to render selected elements and beams.
      * Defaults to {@link ScoreView#getSelectionColor()}; overridden during an
@@ -255,16 +248,8 @@ public final class LineInvariants {
      * <p>
      * Covers playback highlighting, selection, and hover (replaced-element) highlighting.
      * Does not include grace-cancel coloring (handled in LineRenderer).
-     * <p>
-     * Outside edit mode this always returns {@link Color#BLACK}: selection/hover/preview
-     * highlights are edit-mode concepts, and playback rendering runs only while the score
-     * is in edit mode.
      */
     public Color getElementColor(int elementIndex) {
-        if (!editMode) {
-            return Color.BLACK;
-        }
-
         return colorFor(
             elementIndex,
             () -> isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex),
@@ -285,10 +270,6 @@ public final class LineInvariants {
      * including) the next text-bearing syllable.
      */
     public Color getLyricColor(int elementIndex, StaffElement element, int verseIndex) {
-        if (!editMode) {
-            return Color.BLACK;
-        }
-
         return colorFor(
             elementIndex,
             () -> isLyricSpanPlaying(elementIndex, element, verseIndex),
@@ -304,7 +285,7 @@ public final class LineInvariants {
      * highlighted while the in-between or extender carrier notes are playing.
      */
     public Color getLyricConnectorColor(int sourceElementIndex, int verseIndex) {
-        if (sourceElementIndex < 0 || !editMode) {
+        if (sourceElementIndex < 0) {
             return Color.BLACK;
         }
 
@@ -320,8 +301,6 @@ public final class LineInvariants {
         );
     }
 
-    // Callers (getElementColor / getLyricColor / getLyricConnectorColor) gate on editMode
-    // before reaching here, so this method assumes edit mode is active.
     private Color colorFor(
         int elementIndex,
         BooleanSupplier playingCheck,
@@ -486,7 +465,6 @@ public final class LineInvariants {
         private StaffElement activelyEditedElement;
         private int activelyEditedVerse = NO_VERSE;
         private LineComponent.@Nullable SelectionProvider selectionProvider;
-        private boolean editMode;
         private Color selectionColor = ScoreView.getSelectionColor();
         private int playingNoteIndex = -1;
         private int playingGraceNoteIndex = -1;
@@ -535,11 +513,6 @@ public final class LineInvariants {
 
         public Builder setSelectionProvider(LineComponent.@Nullable SelectionProvider selectionProvider) {
             this.selectionProvider = selectionProvider;
-            return this;
-        }
-
-        public Builder setEditMode(boolean editMode) {
-            this.editMode = editMode;
             return this;
         }
 

@@ -70,8 +70,6 @@ import songscribe.ui.Mode;
 import songscribe.ui.ViewScale;
 import songscribe.ui.ZoomController;
 import songscribe.ui.platform.mac.PinchZoomGesture;
-import songscribe.ui.adjustment.HorizontalAdjustment;
-import songscribe.ui.adjustment.VerticalAdjustment;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.LineOverlayComponent;
@@ -293,7 +291,6 @@ public final class ScoreView
 
         // Initialize UI components
         initView();
-        initAdjustments();
         initScorePanel();
         initMainPanel();
         applyDocumentFonts();
@@ -425,11 +422,6 @@ public final class ScoreView
     @Nullable
     public LineComponent getLineComponent(int lineIndex) {
         return hierarchyNavigator != null ? hierarchyNavigator.getLineComponent(lineIndex) : null;
-    }
-
-    void initAdjustments() {
-        viewState.setHorizontalAdjustment(new HorizontalAdjustment(this));
-        viewState.setVerticalAdjustment(new VerticalAdjustment(this));
     }
 
     void initView() {
@@ -635,8 +627,6 @@ public final class ScoreView
             graphics2d.setColor(FlatLafProps.getColor(FlatLafKey.SCORE_PAGE_SCREEN_BACKGROUND));
             graphics2d.fillRect(0, 0, getWidth(), getHeight());
         }
-
-        drawEditElements(graphics2d);
     }
 
     /**
@@ -657,21 +647,6 @@ public final class ScoreView
     @Override
     public boolean isOptimizedDrawingEnabled() {
         return false;
-    }
-
-    private void drawEditElements(Graphics2D g2) {
-        var mode = viewState.getMode();
-        var horizontalAdjustment = viewState.getHorizontalAdjustment();
-        var verticalAdjustment = viewState.getVerticalAdjustment();
-
-        //noinspection StatementWithEmptyBody
-        if (mode == Mode.EDIT) {
-            // Insertion note rendering is now handled by LineComponent
-        } else if (mode == Mode.ADJUSTMENT && horizontalAdjustment != null) {
-            horizontalAdjustment.repaint(g2);
-        } else if (mode == Mode.VERTICAL_ADJUSTMENT && verticalAdjustment != null) {
-            verticalAdjustment.repaint(g2);
-        }
     }
 
     @Override
@@ -1059,14 +1034,6 @@ public final class ScoreView
 
     public void setMode(Mode mode) {
         viewState.setMode(mode);
-    }
-
-    public @Nullable HorizontalAdjustment getHorizontalAdjustment() {
-        return viewState.getHorizontalAdjustment();
-    }
-
-    public @Nullable VerticalAdjustment getVerticalAdjustment() {
-        return viewState.getVerticalAdjustment();
     }
 
     @Override

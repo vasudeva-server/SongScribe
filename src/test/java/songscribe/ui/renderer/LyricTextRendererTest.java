@@ -214,7 +214,6 @@ class LyricTextRendererTest extends UnitTest {
         var invariants = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResult)
             .setLyricRenderMetrics(lyricRenderMetrics())
-            .setEditMode(true)
             .setSelectionProvider(selectionProvider)
             .build();
 

@@ -56,7 +56,6 @@ class TieRendererTest extends UnitTest {
 
     private static LineInvariants.Builder baseBuilder() {
         return RenderContextTestHelper.newContext(new Song())
-            .setEditMode(true)
             .setSelectionColor(SELECTION_COLOR);
     }
 
@@ -113,18 +112,6 @@ class TieRendererTest extends UnitTest {
 
         // determineTieColor checks start first; start is non-BLACK, so it returns immediately
         assertThat(RENDERER.determineTieColor(tie, invariants)).isEqualTo(SELECTION_COLOR);
-    }
-
-    @Test
-    void testDetermineTieColor_nonEditMode_returnsElementColor() {
-        // Outside edit mode, getElementColor always returns BLACK → fallback to ELEMENT_COLOR
-        var tie = makeTie();
-        var invariants = RenderContextTestHelper.newContext(new Song())
-            .setEditMode(false)
-            .build();
-
-        assertThat(RENDERER.determineTieColor(tie, invariants))
-            .isEqualTo(RenderingUtils.ELEMENT_COLOR);
     }
 
     @Test

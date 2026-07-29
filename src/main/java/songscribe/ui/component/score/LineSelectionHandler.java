@@ -490,7 +490,7 @@ class LineSelectionHandler {
      * <p>
      * Selection is active when:
      * <ul>
-     *   <li>ScoreView is available and not in an adjustment mode</li>
+     *   <li>ScoreView is available</li>
      *   <li>Not playing back</li>
      *   <li>In SELECT mode (alt-click switches to SELECT mode permanently)</li>
      * </ul>
@@ -510,8 +510,7 @@ class LineSelectionHandler {
             return false;
         }
 
-        var mode = scoreView.getMode();
-        return mode != Mode.ADJUSTMENT && mode != Mode.VERTICAL_ADJUSTMENT && (mode == Mode.SELECT || e.isAltDown());
+        return scoreView.getMode() == Mode.SELECT || e.isAltDown();
     }
 
     // ======================================================================

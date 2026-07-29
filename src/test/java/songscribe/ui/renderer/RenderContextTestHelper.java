@@ -64,14 +64,12 @@ final class RenderContextTestHelper {
     }
 
     /**
-     * Puts {@code builder} into edit mode and installs a mock
-     * {@link LineComponent.SelectionProvider} that reports {@code selectedElementIndex}
-     * on line 0 as selected.
+     * Installs a mock {@link LineComponent.SelectionProvider} that reports
+     * {@code selectedElementIndex} on line 0 as selected.
      */
     static void enableSelection(LineInvariants.Builder builder, int selectedElementIndex) {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isElementSelected(selectedElementIndex, 0)).thenReturn(true);
-        builder.setEditMode(true);
         builder.setSelectionProvider(selectionProvider);
     }
 }
