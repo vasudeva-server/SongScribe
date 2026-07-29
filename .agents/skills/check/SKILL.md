@@ -168,6 +168,16 @@ If mutation testing is not needed, Phase 2b's static-analysis agents (check-test
 
 Wait for Phase 2 (and Phase 2b, if it ran) to complete, then choose the path based on whether `--fix` was in `$ARGUMENTS`.
 
+**If Phase 2b ran and any Test Quality findings are going to be fixed**, read
+`.agents/guides/testing-common.md` and `.agents/guides/testing-unit.md` in full
+before writing or editing a single test — do this once, before the first edit,
+not once per test. check-tests Phase 5 (which would normally carry this same
+requirement) is explicitly skipped in Phase 2b, so this skill must enforce it
+directly. **If any test being written or edited is an e2e test** (extends
+`E2ETest`, lives under `src/test/java/songscribe/e2e/`), also read
+`.agents/guides/testing-e2e.md` in full before touching it — this is on top
+of, not instead of, the two guides above.
+
 ### Path A: `--fix` mode
 
 1. **Fix all findings immediately** — every finding from every agent (Reuse, Quality, Efficiency, and Test Quality if Phase 2b ran), including minor and low-confidence ones. Do not ask any questions or seek approval.

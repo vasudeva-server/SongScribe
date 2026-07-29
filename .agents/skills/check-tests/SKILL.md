@@ -205,6 +205,17 @@ Skip this phase entirely unless the flag was set.
 
 Choose the path based on whether `--fix` was in `$ARGUMENTS`.
 
+**Before writing or editing a single test in this phase**, read
+`.agents/guides/testing-common.md` and `.agents/guides/testing-unit.md` in
+full, even if they were skimmed earlier for the audit. The audit only needed
+the Test Quality Principles section; writing tests requires the whole guide's
+conventions (naming, structure, fixtures, assertion style). Do this once per
+session before the first edit, not once per test. **If any test being written
+or edited is an e2e test** (extends `E2ETest`, lives under
+`src/test/java/songscribe/e2e/`), also read
+`.agents/guides/testing-e2e.md` in full before touching it — this is on top
+of, not instead of, the two guides above.
+
 ### Path A: `--fix` mode
 
 1. **Fix all findings immediately** — every finding from Phases 2–4 (Correctness,
@@ -244,7 +255,8 @@ Choose the path based on whether `--fix` was in `$ARGUMENTS`.
 4. **Approval** — use AskUserQuestion to present the final list of tests to fix or
    add, and get approval before changing anything. Describe each item in one
    plain sentence naming the actual change, not a category label.
-5. **Fix** — after approval, edit/add tests. Any change under `src/main/` or
+5. **Fix** — after approval, edit/add tests, following the testing guides read
+   at the start of this phase. Any change under `src/main/` or
    `src/test/` requires `./scripts/compile.sh` before re-running; then re-run the
    relevant `./scripts/test.sh <target>` (unit only) to confirm green. Briefly
    summarize what changed, in the same plain language.
