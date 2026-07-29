@@ -103,15 +103,11 @@ public final class EndingRenderer {
 
     /**
      * Hit-tests a click point against all endings on {@code line}, returning the ending
-     * whose bracket-and-margin-and-label bounding box (from its {@link
-     * LayoutResult.DecorationLayout}) contains the point, or {@code null} if none.
+     * whose bracket-and-margin-and-label bounding box contains the point, or
+     * {@code null} if none.
      * <p>
-     * Containment follows {@link Rectangle2D#contains}, so the left and top edges are
-     * inclusive and the right and bottom edges are exclusive. When endings overlap, the
-     * first match in document order wins.
-     * <p>
-     * This answers only the geometric question. Turning a hit into a selection result is the
-     * selection layer's job, which is why this returns the ending itself.
+     * The box and the overlap rule come from
+     * {@link RenderingUtils#hitTestDecoration}, shared with every other decoration.
      *
      * @param clickXSs      Click X in staff spaces (line-local, same space as DecorationLayout.xSs)
      * @param clickYSs      Click Y in staff spaces (component space, relative to the component top)
@@ -126,30 +122,8 @@ public final class EndingRenderer {
         @Nullable LayoutResult layoutResult,
         double middleLineYSs
     ) {
-        if (layoutResult == null) {
-            return null;
-        }
-
-        for (var ending : LineEndingSupport.findEndings(line)) {
-            var decorationLayout = layoutResult.getDecorationLayout(ending);
-
-            if (decorationLayout == null) {
-                continue;
-            }
-
-            var yTopSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), middleLineYSs);
-            var hitRect = new Rectangle2D.Double(
-                decorationLayout.xSs(),
-                yTopSs,
-                decorationLayout.widthSs(),
-                decorationLayout.heightSs() + decorationLayout.marginSs());
-
-            if (hitRect.contains(clickXSs, clickYSs)) {
-                return ending;
-            }
-        }
-
-        return null;
+        return RenderingUtils.hitTestDecoration(
+            LineEndingSupport.findEndings(line), clickXSs, clickYSs, layoutResult, middleLineYSs);
     }
 
     /**

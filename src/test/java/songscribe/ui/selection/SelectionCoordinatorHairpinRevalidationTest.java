@@ -30,6 +30,7 @@ import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.message.mutation.CrescendoAddition;
 import songscribe.message.mutation.CrescendoRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
 
@@ -89,13 +90,24 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
             .isFalse();
     }
 
+    /**
+     * The opposite direction, end to end: a change that leaves the hairpin on the line
+     * must not cost the user their selection.
+     * <p>
+     * This cannot isolate the guard's hairpin clause the way the test above does. The
+     * guard only acts when revalidation reports a stale selection, and revalidation
+     * reports nothing when the hairpin is alive, so removing the clause would leave this
+     * outcome unchanged. What the clause does in this case is covered directly by
+     * {@code LineSelectionStateTest.testRevalidateDecorationSelectionKeepsHairpinWhenStillOnLine}.
+     */
     @Test
     void testSongDidChangeKeepsHairpinSelectionWhenTheHairpinSurvives() {
         var fixture = selectedHairpinOnActiveLine();
 
-        // A mutation on the same line that leaves the hairpin in place — e.g. a redo.
+        // A redo that re-added the selected hairpin: it is on the line, so the mutation
+        // and the document agree, unlike a removal reported for a hairpin still present.
         fixture.coordinator().songDidChange(new SongDidChangeNotification(
-            List.of(new CrescendoRemoval(fixture.line(), fixture.hairpin())),
+            List.of(new CrescendoAddition(fixture.line(), fixture.hairpin())),
             fixture.line().getSong()
         ));
 

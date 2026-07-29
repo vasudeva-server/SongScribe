@@ -59,11 +59,6 @@ public final class MusicEditOperations {
 
     private static final int MIN_CONTENT_ELEMENTS = 4;
 
-    // How far past a selection endpoint an existing hairpin may sit and still be
-    // in play. Matches the reach Line.mergeOverlappingSpans uses when absorbing
-    // adjacent same-type spans, so the scan sees exactly what a merge would take.
-    private static final int HAIRPIN_ADJACENCY_REACH = 1;
-
     // A brand new hairpin needs something to slope across, so it takes at least
     // two pitched notes. Extending an existing hairpin has no such requirement.
     private static final int MIN_HAIRPIN_NOTES = 2;
@@ -274,16 +269,21 @@ public final class MusicEditOperations {
 
         // One action performs both Add and Extend, so the op name is chosen per
         // invocation rather than at construction time.
+        //
+        // These are the same keys HairpinAction puts on the menu item. The undo entry
+        // and the menu item must read alike — "Extend Crescendo" then "Undo Extend
+        // Crescendo" — so they share one string rather than two that happen to match
+        // and could later be edited apart.
         String opNameKey;
 
         if (resolvedState == HairpinActionState.CAN_ADD) {
             opNameKey = crescendo
-                ? Strings.ACTION_EDIT_OP_ADD_CRESCENDO
-                : Strings.ACTION_EDIT_OP_ADD_DIMINUENDO;
+                ? Strings.ACTION_HAIRPIN_CRESCENDO
+                : Strings.ACTION_HAIRPIN_DIMINUENDO;
         } else {
             opNameKey = crescendo
-                ? Strings.ACTION_EDIT_OP_EXTEND_CRESCENDO
-                : Strings.ACTION_EDIT_OP_EXTEND_DIMINUENDO;
+                ? Strings.ACTION_HAIRPIN_CRESCENDO_EXTEND
+                : Strings.ACTION_HAIRPIN_DIMINUENDO_EXTEND;
         }
 
         var line = state.getLine();
@@ -346,8 +346,8 @@ public final class MusicEditOperations {
 
     /**
      * Finds every hairpin that overlaps the selection or sits within
-     * {@link #HAIRPIN_ADJACENCY_REACH} of it — the same neighbourhood
-     * neighborhood {@code Line.mergeOverlappingSpans} absorbs when a hairpin is added.
+     * {@link Line#SPAN_ADJACENCY_REACH} of it — the same neighborhood
+     * {@code Line.mergeOverlappingSpans} absorbs when a hairpin is added.
      * <p>
      * The result is flat and untagged: it says which hairpins are nearby, not how
      * each one relates to the selection. Callers derive that from the hairpin's own
@@ -355,20 +355,28 @@ public final class MusicEditOperations {
      */
     private HairpinScan findHairpinsNearSelection(LineSelectionState state) {
         var line = state.getLine();
-        var scanBegin = state.getSelectionBegin() - HAIRPIN_ADJACENCY_REACH;
-        var scanEnd = state.getSelectionEnd() + HAIRPIN_ADJACENCY_REACH;
-        var crescendoList = new ArrayList<Crescendo>();
-        var diminuendoList = new ArrayList<Diminuendo>();
+        var scanBegin = state.getSelectionBegin() - Line.SPAN_ADJACENCY_REACH;
+        var scanEnd = state.getSelectionEnd() + Line.SPAN_ADJACENCY_REACH;
 
-        for (var re : line.getRangeElements()) {
-            if (re instanceof Crescendo cres && cres.overlaps(scanBegin, scanEnd)) {
-                crescendoList.add(cres);
-            } else if (re instanceof Diminuendo dim && dim.overlaps(scanBegin, scanEnd)) {
-                diminuendoList.add(dim);
+        return new HairpinScan(
+            nearbySpans(line.getCrescendos(), scanBegin, scanEnd),
+            nearbySpans(line.getDiminuendos(), scanBegin, scanEnd));
+    }
+
+    /**
+     * Returns the spans in {@code spans} that overlap the inclusive range
+     * {@code [scanBegin, scanEnd]}.
+     */
+    private static <H extends Hairpin> List<H> nearbySpans(List<H> spans, int scanBegin, int scanEnd) {
+        var nearby = new ArrayList<H>();
+
+        for (var span : spans) {
+            if (span.overlaps(scanBegin, scanEnd)) {
+                nearby.add(span);
             }
         }
 
-        return new HairpinScan(crescendoList, diminuendoList);
+        return nearby;
     }
 
     /**
@@ -399,8 +407,7 @@ public final class MusicEditOperations {
     public record HairpinResolution(
         HairpinActionState state,
         int spanBegin,
-        int spanEnd,
-        List<Hairpin> absorbedHairpins
+        int spanEnd
     ) {}
 
     /**
@@ -512,7 +519,7 @@ public final class MusicEditOperations {
                 return ineligibleHairpinResolution();
             }
 
-            return new HairpinResolution(HairpinActionState.CAN_ADD, begin, end, List.of());
+            return new HairpinResolution(HairpinActionState.CAN_ADD, begin, end);
         }
 
         // A crescendo and a diminuendo cannot occupy one span, so neither action
@@ -521,14 +528,14 @@ public final class MusicEditOperations {
             return blockedHairpinResolution();
         }
 
-        List<Hairpin> sameType;
+        List<? extends Hairpin> sameType;
         HairpinActionState extendState;
 
         if (crescendos.isEmpty()) {
-            sameType = List.copyOf(diminuendos);
+            sameType = diminuendos;
             extendState = HairpinActionState.EXTEND_DIMINUENDO;
         } else {
-            sameType = List.copyOf(crescendos);
+            sameType = crescendos;
             extendState = HairpinActionState.EXTEND_CRESCENDO;
         }
 
@@ -536,13 +543,17 @@ public final class MusicEditOperations {
         var spanEnd = end;
 
         for (var hairpin : sameType) {
+            // Each index accessor scans the line for the element, so read them once.
+            var anchorIndex = hairpin.getAnchorElementIndex();
+            var endIndex = hairpin.getEndElementIndex();
+
             // A hairpin already covering the whole selection has nothing to extend.
-            if (hairpin.getAnchorElementIndex() <= begin && hairpin.getEndElementIndex() >= end) {
+            if (anchorIndex <= begin && endIndex >= end) {
                 return blockedHairpinResolution();
             }
 
-            spanBegin = Math.min(spanBegin, hairpin.getAnchorElementIndex());
-            spanEnd = Math.max(spanEnd, hairpin.getEndElementIndex());
+            spanBegin = Math.min(spanBegin, anchorIndex);
+            spanEnd = Math.max(spanEnd, endIndex);
         }
 
         // Step 1 validated only the selection. The union is wider, and songs saved
@@ -552,15 +563,15 @@ public final class MusicEditOperations {
             return blockedHairpinResolution();
         }
 
-        return new HairpinResolution(extendState, spanBegin, spanEnd, sameType);
+        return new HairpinResolution(extendState, spanBegin, spanEnd);
     }
 
     private static HairpinResolution ineligibleHairpinResolution() {
-        return new HairpinResolution(HairpinActionState.INELIGIBLE, -1, -1, List.of());
+        return new HairpinResolution(HairpinActionState.INELIGIBLE, -1, -1);
     }
 
     private static HairpinResolution blockedHairpinResolution() {
-        return new HairpinResolution(HairpinActionState.BLOCKED, -1, -1, List.of());
+        return new HairpinResolution(HairpinActionState.BLOCKED, -1, -1);
     }
 
     /**
@@ -583,25 +594,18 @@ public final class MusicEditOperations {
      * Returns whether the inclusive element range {@code [begin, end]} can carry a
      * hairpin at all, independent of any hairpin already on the line.
      * <p>
-     * The end must be a pitched note. The start must be a pitched note too, or a
-     * grace note whose host is one — a grace note is an integral part of its host,
-     * and as the start endpoint the hairpin anchors to the grace note itself so it
-     * covers what the user selected. A lone grace note fails on the end test.
-     * Finally the range may not cross a repeat or a non-single barline.
+     * The end must be a pitched note. What may start one is {@link Line#canAnchorHairpin},
+     * shared with the reshaping a deletion performs so the two can never disagree about
+     * where a hairpin may begin. A lone grace note fails on the end test. Finally the
+     * range may not cross a repeat or a non-single barline.
      */
     private static boolean isHairpinEligibleSpan(Line line, int begin, int end) {
         if (!line.getElement(end).getType().isPitchedNote()) {
             return false;
         }
 
-        var beginType = line.getElement(begin).getType();
-
-        if (!beginType.isPitchedNote()) {
-            // The host of a grace note is the following element. It is in bounds
-            // because the end element is pitched, hence begin < end here.
-            if (!beginType.isGraceNote() || !line.getElement(begin + 1).getType().isPitchedNote()) {
-                return false;
-            }
+        if (!line.canAnchorHairpin(begin, end)) {
+            return false;
         }
 
         return !line.spansStructuralBoundary(begin, end);

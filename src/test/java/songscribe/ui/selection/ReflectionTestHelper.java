@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Objects;
 
 import songscribe.UnitTest;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -182,6 +183,20 @@ public final class ReflectionTestHelper {
         coordinator.saveActionStates();
         var state = Objects.requireNonNull(coordinator.getActiveSelection());
         state.selectEnding(ending);
+    }
+
+    /**
+     * Selects the given hairpin on the coordinator's active line.
+     */
+    public static void selectHairpin(SelectionCoordinator coordinator, Hairpin hairpin) {
+        coordinator.saveActionStates();
+        var state = coordinator.getActiveSelection();
+
+        if (state == null) {
+            throw new AssertionError("the test coordinator has no active line state");
+        }
+
+        state.selectHairpin(hairpin);
     }
 
     /**

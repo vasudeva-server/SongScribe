@@ -67,7 +67,7 @@ class HairpinActionTest extends MainFrameMockTest {
         var spanEnd = hasSpan ? STUB_SPAN_END : -1;
 
         when(mockEnv().ctrl().resolveHairpinAction()).thenReturn(
-            new MusicEditOperations.HairpinResolution(state, spanBegin, spanEnd, List.of()));
+            new MusicEditOperations.HairpinResolution(state, spanBegin, spanEnd));
     }
 
     /** A multi-note duration selection — the flag gate every resolved state is tested behind. */

@@ -22,14 +22,9 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import net.engio.mbassy.listener.Handler;
-
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.AddHairpinCommand;
-import songscribe.message.notification.DocumentDidLoadNotification;
-import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.component.MainFrame;
 
@@ -68,38 +63,30 @@ public final class HairpinAction extends UIAction {
         return isCrescendo;
     }
 
-    @Override
-    @Handler
-    public void musicSelectionDidChange(
-        MusicSelectionDidChangeNotification message
-    ) {
-        handleChange();
-    }
-
-    @Override
-    @Handler
-    public void songDidChange(SongDidChangeNotification message) {
-        handleChange();
-    }
-
-    @Override
-    @Handler
-    public void documentDidLoad(DocumentDidLoadNotification message) {
-        handleChange();
-    }
-
-    private void handleChange() {
-        updateEnabledState();
+    /**
+     * The state in which this action extends rather than adds, which is the only
+     * state that relabels it.
+     */
+    private MusicEditOperations.HairpinActionState extendState() {
+        return isCrescendo
+            ? MusicEditOperations.HairpinActionState.EXTEND_CRESCENDO
+            : MusicEditOperations.HairpinActionState.EXTEND_DIMINUENDO;
     }
 
     /**
      * Single writer of both the enabled flag and the menu label: the flags alone
      * cannot tell an add from an extend, and a flag-only enable would both mislabel
      * the item and allow a one-element hairpin.
+     * <p>
+     * Every disabling path relabels before returning. The label is this class's to
+     * maintain and nothing else resets it, so an early return that skipped it would
+     * strand "Extend Crescendo" on the menu after the selection that justified it
+     * was gone — a greyed-out promise to extend a hairpin that is no longer in play.
      */
     @Override
     public boolean updateEnabledState() {
         if (!super.updateEnabledState()) {
+            applyLabel(false);
             return false;
         }
 
@@ -109,6 +96,7 @@ public final class HairpinAction extends UIAction {
             // Without a controller the state cannot be resolved, and super has already
             // enabled the action from flags alone — exactly the flag-only enable this
             // override exists to prevent.
+            applyLabel(false);
             setEnabled(false);
             return false;
         }
@@ -118,12 +106,15 @@ public final class HairpinAction extends UIAction {
     }
 
     private void applyHairpinState(MusicEditOperations.HairpinActionState state) {
-        var extendState = isCrescendo
-            ? MusicEditOperations.HairpinActionState.EXTEND_CRESCENDO
-            : MusicEditOperations.HairpinActionState.EXTEND_DIMINUENDO;
-        var isExtend = state == extendState;
-        var canAdd = state == MusicEditOperations.HairpinActionState.CAN_ADD;
+        var isExtend = state == extendState();
+        applyLabel(isExtend);
+        setEnabled(isExtend || state == MusicEditOperations.HairpinActionState.CAN_ADD);
+    }
 
+    /**
+     * Sets the menu text and tooltip to either the extend or the add wording.
+     */
+    private void applyLabel(boolean isExtend) {
         String nameKey;
         String tooltipKey;
 
@@ -145,7 +136,6 @@ public final class HairpinAction extends UIAction {
 
         putValue(Action.NAME, Strings.get(nameKey));
         putValue(Action.SHORT_DESCRIPTION, Strings.get(tooltipKey));
-        setEnabled(canAdd || isExtend);
     }
 
     @Override

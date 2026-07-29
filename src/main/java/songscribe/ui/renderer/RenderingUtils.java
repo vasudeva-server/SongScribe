@@ -25,12 +25,15 @@ import static songscribe.util.GraphicsState.Property.FONT;
 
 import module java.desktop;
 
+import java.util.List;
 import java.util.function.DoubleConsumer;
 
+import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
+import songscribe.layout.LayoutResult;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -205,6 +208,61 @@ public final class RenderingUtils {
      */
     static double layoutYToComponentYSs(double layoutYSs, double middleLineYSs) {
         return middleLineYSs + layoutYSs;
+    }
+
+    /**
+     * Returns the first decoration in {@code decorations} whose drawn box contains the
+     * click point, or null if none does.
+     * <p>
+     * The box comes from the decoration's {@link LayoutResult.DecorationLayout} and
+     * spans its width and its height plus margin. Containment follows
+     * {@link Rectangle2D#contains}, so the left and top edges are inclusive and the
+     * right and bottom edges are exclusive. When decorations overlap, the first match
+     * in the given order wins.
+     * <p>
+     * This answers only the geometric question. Turning a hit into a selection is the
+     * selection layer's job, which is why this returns the decoration itself. Every
+     * decoration type hit-tests through here, so a change to the box or the overlap
+     * rule reaches all of them at once.
+     *
+     * @param decorations   the decorations to test, in the order ties should be broken
+     * @param clickXSs      click X in staff spaces (line-local, same space as DecorationLayout.xSs)
+     * @param clickYSs      click Y in staff spaces (component space, relative to the component top)
+     * @param layoutResult  the line's layout result, or null if layout has not run yet
+     * @param middleLineYSs the line's middle-staff-line Y in component space (staff spaces)
+     */
+    static <D extends LineElement> @Nullable D hitTestDecoration(
+        List<D> decorations,
+        double clickXSs,
+        double clickYSs,
+        @Nullable LayoutResult layoutResult,
+        double middleLineYSs
+    ) {
+        if (layoutResult == null) {
+            return null;
+        }
+
+        for (var decoration : decorations) {
+            var decorationLayout = layoutResult.getDecorationLayout(decoration);
+
+            // A decoration whose anchor element is missing gets no layout entry, so a
+            // null layout here is an expected incomplete decoration, not an error.
+            if (decorationLayout == null) {
+                continue;
+            }
+
+            var hitRect = new Rectangle2D.Double(
+                decorationLayout.xSs(),
+                layoutYToComponentYSs(decorationLayout.ySs(), middleLineYSs),
+                decorationLayout.widthSs(),
+                decorationLayout.heightSs() + decorationLayout.marginSs());
+
+            if (hitRect.contains(clickXSs, clickYSs)) {
+                return decoration;
+            }
+        }
+
+        return null;
     }
 
     // ==========================================================================

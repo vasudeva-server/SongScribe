@@ -37,11 +37,14 @@ import songscribe.UnitTest;
  */
 class LineSpansStructuralBoundaryTest extends UnitTest {
 
+    /** Every fixture below is a three-element line, so this is its last index. */
+    private static final int LAST_IDX = 2;
+
     @Test
     void testNotesOnlyRangeIsNotStructural() {
         var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET, ElementType.CROTCHET);
 
-        assertThat(line.spansStructuralBoundary(0, 2))
+        assertThat(line.spansStructuralBoundary(0, LAST_IDX))
             .as("a range of plain notes crosses nothing structural")
             .isFalse();
     }
@@ -50,7 +53,7 @@ class LineSpansStructuralBoundaryTest extends UnitTest {
     void testSingleBarlineIsNotStructural() {
         var line = lineWith(ElementType.CROTCHET, ElementType.SINGLE_BARLINE, ElementType.CROTCHET);
 
-        assertThat(line.spansStructuralBoundary(0, 2))
+        assertThat(line.spansStructuralBoundary(0, LAST_IDX))
             .as("a single barline is the one barline a span may cross")
             .isFalse();
     }
@@ -59,7 +62,7 @@ class LineSpansStructuralBoundaryTest extends UnitTest {
     void testDoubleBarlineIsStructural() {
         var line = lineWith(ElementType.CROTCHET, ElementType.DOUBLE_BARLINE, ElementType.CROTCHET);
 
-        assertThat(line.spansStructuralBoundary(0, 2))
+        assertThat(line.spansStructuralBoundary(0, LAST_IDX))
             .as("a double barline is a structural boundary")
             .isTrue();
     }
@@ -68,7 +71,7 @@ class LineSpansStructuralBoundaryTest extends UnitTest {
     void testFinalDoubleBarlineIsStructural() {
         var line = lineWith(ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE, ElementType.CROTCHET);
 
-        assertThat(line.spansStructuralBoundary(0, 2))
+        assertThat(line.spansStructuralBoundary(0, LAST_IDX))
             .as("a final double barline is a structural boundary")
             .isTrue();
     }
@@ -77,7 +80,7 @@ class LineSpansStructuralBoundaryTest extends UnitTest {
     void testRepeatLeftIsStructural() {
         var line = lineWith(ElementType.CROTCHET, ElementType.REPEAT_LEFT, ElementType.CROTCHET);
 
-        assertThat(line.spansStructuralBoundary(0, 2))
+        assertThat(line.spansStructuralBoundary(0, LAST_IDX))
             .as("a left repeat is a structural boundary")
             .isTrue();
     }
@@ -86,7 +89,7 @@ class LineSpansStructuralBoundaryTest extends UnitTest {
     void testRepeatRightIsStructural() {
         var line = lineWith(ElementType.CROTCHET, ElementType.REPEAT_RIGHT, ElementType.CROTCHET);
 
-        assertThat(line.spansStructuralBoundary(0, 2))
+        assertThat(line.spansStructuralBoundary(0, LAST_IDX))
             .as("a right repeat is a structural boundary")
             .isTrue();
     }
@@ -95,7 +98,7 @@ class LineSpansStructuralBoundaryTest extends UnitTest {
     void testRepeatLeftRightIsStructural() {
         var line = lineWith(ElementType.CROTCHET, ElementType.REPEAT_LEFT_RIGHT, ElementType.CROTCHET);
 
-        assertThat(line.spansStructuralBoundary(0, 2))
+        assertThat(line.spansStructuralBoundary(0, LAST_IDX))
             .as("a left-right repeat is a structural boundary")
             .isTrue();
     }
@@ -122,7 +125,7 @@ class LineSpansStructuralBoundaryTest extends UnitTest {
     void testBoundaryExactlyAtRangeStartIsStructural() {
         var line = lineWith(ElementType.DOUBLE_BARLINE, ElementType.CROTCHET, ElementType.CROTCHET);
 
-        assertThat(line.spansStructuralBoundary(0, 2))
+        assertThat(line.spansStructuralBoundary(0, LAST_IDX))
             .as("the range is inclusive at begin, so a boundary there counts")
             .isTrue();
     }
@@ -131,7 +134,7 @@ class LineSpansStructuralBoundaryTest extends UnitTest {
     void testBoundaryExactlyAtRangeEndIsStructural() {
         var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET, ElementType.DOUBLE_BARLINE);
 
-        assertThat(line.spansStructuralBoundary(0, 2))
+        assertThat(line.spansStructuralBoundary(0, LAST_IDX))
             .as("the range is inclusive at end, so a boundary there counts")
             .isTrue();
     }
@@ -140,7 +143,7 @@ class LineSpansStructuralBoundaryTest extends UnitTest {
     void testBoundaryJustBeforeRangeStartIsNotStructural() {
         var line = lineWith(ElementType.DOUBLE_BARLINE, ElementType.CROTCHET, ElementType.CROTCHET);
 
-        assertThat(line.spansStructuralBoundary(1, 2))
+        assertThat(line.spansStructuralBoundary(1, LAST_IDX))
             .as("a boundary outside the range on the left must be ignored")
             .isFalse();
     }

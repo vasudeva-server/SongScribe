@@ -511,6 +511,10 @@ class MusicEditOperationsMutationTest extends UnitTest {
      * on element 0. Selecting [2, 3] then extends that crescendo to [0, 3], so element
      * 0 lies inside the merged range but two notes outside the selection.
      */
+    /** The selection {@link #setupExtendEnv} is built for: the two notes past the crescendo. */
+    private static final int EXTEND_SELECTION_BEGIN = 2;
+    private static final int EXTEND_SELECTION_END = 3;
+
     private Env setupExtendEnv() {
         var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet());
         var line = env.line();
@@ -546,7 +550,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     @Test
     void testAddHairpinStripsPointDynamicsAcrossMergedRangeNotJustSelection() {
         var env = setupExtendEnv();
-        ReflectionTestHelper.selectRange(env.coordinator(), 2, 3);
+        ReflectionTestHelper.selectRange(env.coordinator(), EXTEND_SELECTION_BEGIN, EXTEND_SELECTION_END);
 
         env.operations().addHairpinToSelection(true);
 
@@ -560,7 +564,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     void testOneUndoRestoresBothTheHairpinAndTheStrippedPointDynamic() {
         var env = setupExtendEnv();
         var line = env.line();
-        ReflectionTestHelper.selectRange(env.coordinator(), 2, 3);
+        ReflectionTestHelper.selectRange(env.coordinator(), EXTEND_SELECTION_BEGIN, EXTEND_SELECTION_END);
 
         env.operations().addHairpinToSelection(true);
 

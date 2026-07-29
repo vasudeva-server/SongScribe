@@ -327,14 +327,19 @@ class LineSelectionHandler {
      * <p>
      * Takes the already-computed cascade result for this press, so an element head over the
      * decoration still wins and falls through to normal EDIT-mode handling.
+     * <p>
+     * Insertion must win wherever the preview is showing. A decoration is drawn above or
+     * below the staff but spans a range of staff positions, and if selecting it beat
+     * inserting, every position it covers would become unreachable for new notes — the
+     * user would have to move or delete the decoration to type there. Selecting a
+     * decoration is always available in SELECT mode, so nothing is lost by yielding here,
+     * whereas an unreachable insertion position has no workaround at all.
      */
     boolean handleEditModeDecorationPress(HitResult result) {
         if (MidiController.isPlaying()) {
             return false;
         }
 
-        // The insertion preview wins wherever it is showing: the click position is a
-        // valid staff position, and inserting there simply pushes the decoration aside.
         if (lc.hasPreviewElement()) {
             return false;
         }

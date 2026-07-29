@@ -320,7 +320,7 @@ class MutationLabelTest extends UnitTest {
     void testAddingCrescendoLabelsAddCrescendo() {
         var song = songWithNotes(HAIRPIN_FIXTURE_NOTE_COUNT);
         assertThat(hairpinUndoLabel(song, 0, 1))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_ADD_CRESCENDO));
+            .isEqualTo(labeled(Strings.ACTION_HAIRPIN_CRESCENDO));
     }
 
     @Test
@@ -334,7 +334,7 @@ class MutationLabelTest extends UnitTest {
         // declare a different op-name than the add path — the mutation batch is the same
         // shape either way, so a type-derived label could not tell them apart.
         assertThat(hairpinUndoLabel(song, EXTEND_SELECTION_BEGIN, EXTEND_SELECTION_END))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_EXTEND_CRESCENDO));
+            .isEqualTo(labeled(Strings.ACTION_HAIRPIN_CRESCENDO_EXTEND));
     }
 
     @Test

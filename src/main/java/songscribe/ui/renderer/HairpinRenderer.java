@@ -148,19 +148,14 @@ public final class HairpinRenderer {
 
     /**
      * Hit-tests a click point against all hairpins on {@code line}, returning the hairpin
-     * whose wedge-and-margin bounding box (from its {@link LayoutResult.DecorationLayout})
-     * contains the point, or {@code null} if none.
+     * whose wedge-and-margin bounding box contains the point, or {@code null} if none.
      * <p>
-     * The bounding box needs no extra tolerance band: a hairpin is only
-     * {@link Hairpin#HAIRPIN_OPENING_HEIGHT_SS} tall, so the box is already about as
+     * The box needs no extra tolerance band: a hairpin is only
+     * {@link Hairpin#HAIRPIN_OPENING_HEIGHT_SS} tall, so it is already about as
      * forgiving as a tolerance band would be.
      * <p>
-     * Containment follows {@link Rectangle2D#contains}, so the left and top edges are
-     * inclusive and the right and bottom edges are exclusive. When hairpins overlap, the
-     * first match in document order wins.
-     * <p>
-     * This answers only the geometric question. Turning a hit into a selection result is the
-     * selection layer's job, which is why this returns the hairpin itself.
+     * The box and the overlap rule come from
+     * {@link RenderingUtils#hitTestDecoration}, shared with every other decoration.
      *
      * @param clickXSs      Click X in staff spaces (line-local, same space as DecorationLayout.xSs)
      * @param clickYSs      Click Y in staff spaces (component space, relative to the component top)
@@ -175,35 +170,7 @@ public final class HairpinRenderer {
         @Nullable LayoutResult layoutResult,
         double middleLineYSs
     ) {
-        if (layoutResult == null) {
-            return null;
-        }
-
-        for (var rangeElement : line.getRangeElements()) {
-            if (!(rangeElement instanceof Hairpin hairpin)) {
-                continue;
-            }
-
-            var decorationLayout = layoutResult.getDecorationLayout(hairpin);
-
-            // A hairpin whose anchor/end note is missing gets no layout entry, so a null
-            // layout here is an expected incomplete hairpin, not an error — skip it.
-            if (decorationLayout == null) {
-                continue;
-            }
-
-            var yTopSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), middleLineYSs);
-            var hitRect = new Rectangle2D.Double(
-                decorationLayout.xSs(),
-                yTopSs,
-                decorationLayout.widthSs(),
-                decorationLayout.heightSs() + decorationLayout.marginSs());
-
-            if (hitRect.contains(clickXSs, clickYSs)) {
-                return hairpin;
-            }
-        }
-
-        return null;
+        return RenderingUtils.hitTestDecoration(
+            line.findRangeElements(Hairpin.class), clickXSs, clickYSs, layoutResult, middleLineYSs);
     }
 }

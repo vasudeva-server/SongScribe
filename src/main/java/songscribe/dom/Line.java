@@ -23,9 +23,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -104,6 +107,16 @@ public class Line {
      * Default trill Y position (above staff)
      */
     public static final double TRILL_DEFAULT_Y_SS = -3.375;  // -27px
+
+    /**
+     * How far past a span's endpoint a same-type span may sit and still count as
+     * touching it, in elements. Two spans this close describe one uninterrupted
+     * gesture, so adding or reshaping either one merges them.
+     * <p>
+     * Every place that decides "are these two spans adjacent?" must read this, or
+     * the menu would offer to extend a hairpin the model then declines to merge.
+     */
+    public static final int SPAN_ADJACENCY_REACH = 1;
 
     /** Ratio multiplier for horizontal element spacing (default: 1.0, user-adjustable). */
     private float elementSpacingRatio = 1f;
@@ -1797,7 +1810,7 @@ public class Line {
         var endIdx = elements.indexOf(span.getEndElement());
 
         // How far past an endpoint an existing span may sit and still be absorbed.
-        var reach = absorbAdjacent ? 1 : 0;
+        var reach = absorbAdjacent ? SPAN_ADJACENCY_REACH : 0;
 
         // Expand bounds to absorb adjacent/overlapping spans.
         var mergedAnchorIdx = anchorIdx;
@@ -1999,19 +2012,34 @@ public class Line {
      * {@link #removeRange}: this method is the whole of their response to a deletion.
      */
     private void adjustHairpinsForDeletion(List<StaffElement> deletedElements) {
+        var hairpins = findRangeElements(Hairpin.class);
+
+        // Every deletion in the app reaches this method, but most songs hold no hairpin
+        // at all. Leave before building the survivor bookkeeping, which is a full pass
+        // over the line and would be discarded unused.
+        if (hairpins.isEmpty()) {
+            return;
+        }
+
+        var doomed = new HashSet<>(deletedElements);
+
         // The post-deletion element order, computed while the doomed elements are still
         // in place so each hairpin's surviving endpoints can be resolved against it.
+        // survivorIndices records each survivor's new position as the list is built, so
+        // resolving an endpoint later is a lookup rather than another scan.
         var survivors = new ArrayList<StaffElement>();
+        var survivorIndices = new HashMap<StaffElement, Integer>();
 
         for (var element : elements) {
-            if (!deletedElements.contains(element)) {
+            if (!doomed.contains(element)) {
+                survivorIndices.putIfAbsent(element, survivors.size());
                 survivors.add(element);
             }
         }
 
         var spansByType = new LinkedHashMap<Class<?>, List<HairpinSpan>>();
 
-        for (var hairpin : findRangeElements(Hairpin.class)) {
+        for (var hairpin : hairpins) {
             var anchorIndex = hairpin.getAnchorElementIndex();
             var endIndex = hairpin.getEndElementIndex();
 
@@ -2020,7 +2048,7 @@ public class Line {
                 continue;
             }
 
-            var span = survivingSpanOf(hairpin, anchorIndex, endIndex, survivors);
+            var span = survivingSpanOf(hairpin, anchorIndex, endIndex, survivors, survivorIndices);
 
             if (span == null) {
                 removeInvalidatedRangeElement(hairpin);
@@ -2040,14 +2068,16 @@ public class Line {
      * deletion is applied, or null when what survives cannot carry a hairpin — a wedge
      * needs a note to start on and another to end on.
      *
-     * @param anchorIndex the hairpin's anchor index in the pre-deletion line
-     * @param endIndex    the hairpin's end index in the pre-deletion line
+     * @param anchorIndex     the hairpin's anchor index in the pre-deletion line
+     * @param endIndex        the hairpin's end index in the pre-deletion line
+     * @param survivorIndices each surviving element's post-deletion position
      */
     private @Nullable HairpinSpan survivingSpanOf(
         Hairpin hairpin,
         int anchorIndex,
         int endIndex,
-        List<StaffElement> survivors
+        List<StaffElement> survivors,
+        Map<StaffElement, Integer> survivorIndices
     ) {
         // Nothing outside the range can fall between two elements inside it, so what
         // survives of the range is still described by its first and last position.
@@ -2055,9 +2085,10 @@ public class Line {
         var last = -1;
 
         for (var i = anchorIndex; i <= endIndex; i++) {
-            var survivorIndex = survivors.indexOf(elements.get(i));
+            // Absent means the element is one of the doomed ones.
+            var survivorIndex = survivorIndices.get(elements.get(i));
 
-            if (survivorIndex < 0) {
+            if (survivorIndex == null) {
                 continue;
             }
 
@@ -2104,20 +2135,50 @@ public class Line {
         }
 
         for (var i = first; i <= last; i++) {
-            var type = survivors.get(i).getType();
-
-            if (type.isPitchedNote()) {
-                return i;
-            }
-
-            // A grace note belongs to the note it precedes, so it can begin a hairpin
-            // when that note is pitched.
-            if (type.isGraceNote() && i < last && survivors.get(i + 1).getType().isPitchedNote()) {
+            if (canAnchorHairpin(survivors, i, last)) {
                 return i;
             }
         }
 
         return -1;
+    }
+
+    /**
+     * Returns whether the element at {@code index} can begin a hairpin: a pitched note,
+     * or a grace note whose host is one.
+     *
+     * @param lastIndex the last index a hairpin may reach, bounding the host lookahead
+     */
+    public boolean canAnchorHairpin(int index, int lastIndex) {
+        return canAnchorHairpin(elements, index, lastIndex);
+    }
+
+    /**
+     * Returns whether the element at {@code index} in {@code candidates} can begin a
+     * hairpin.
+     * <p>
+     * A pitched note always can. A grace note belongs to the note it precedes, so it
+     * can begin one when that note is pitched — anchoring on the grace note rather than
+     * its host keeps the hairpin over what the user actually selected. Anything else,
+     * including a grace note with no host within reach, cannot.
+     * <p>
+     * Both the menu's eligibility test and the post-deletion reshaping read this, so a
+     * deletion can never leave a hairpin anchored somewhere the user could not have
+     * placed one.
+     *
+     * @param candidates the elements to test against, in document order
+     * @param lastIndex  the last usable index, bounding the host lookahead
+     */
+    private static boolean canAnchorHairpin(List<StaffElement> candidates, int index, int lastIndex) {
+        var type = candidates.get(index).getType();
+
+        if (type.isPitchedNote()) {
+            return true;
+        }
+
+        return type.isGraceNote()
+            && index < lastIndex
+            && candidates.get(index + 1).getType().isPitchedNote();
     }
 
     /**
@@ -2160,7 +2221,7 @@ public class Line {
 
         for (var span : spans) {
             // One surviving element between two hairpins is still a break in the gesture.
-            if (!run.isEmpty() && span.begin() > runEnd + 1) {
+            if (!run.isEmpty() && span.begin() > runEnd + SPAN_ADJACENCY_REACH) {
                 applySpanRun(run, runEnd, survivors);
                 run.clear();
                 runEnd = -1;

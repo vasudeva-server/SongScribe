@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import org.junit.jupiter.api.AfterEach;
 import javax.swing.JOptionPane;
@@ -50,7 +51,9 @@ import net.engio.mbassy.listener.Handler;
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
+import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
+import songscribe.dom.Hairpin;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.OptionDialogs;
 import songscribe.dom.Line;
@@ -608,6 +611,61 @@ class ScoreViewControllerTest extends UnitTest {
             // pointing at an ending no longer in the line. ScoreView owns the actual clearing,
             // so at this seam the controller's contract is that it asks for it.
             verify(scoreMock).deselect();
+        }
+
+        /**
+         * Builds a two-note line carrying {@code hairpin}, selects the hairpin, deletes it
+         * through the controller, and returns the song so the caller can assert on it.
+         */
+        private Song deleteSelectedHairpin(BiFunction<StaffElement, StaffElement, Hairpin> hairpinFactory) {
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = crotchet();
+            var noteB = crotchet();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+            });
+
+            var hairpin = hairpinFactory.apply(noteA, noteB);
+            song.withoutMutationTracking(() -> line.addRangeElement(hairpin));
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectHairpin(coordinator, hairpin);
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            assertThat(line.getRangeElements())
+                .as("the selected hairpin is gone from the line")
+                .doesNotContain(hairpin);
+            // Without a mutation bracket the deletion would be invisible to undo: the
+            // hairpin would vanish and no undo step would bring it back.
+            assertThat(song.isModified())
+                .as("the removal was recorded so undo can restore it")
+                .isTrue();
+
+            return song;
+        }
+
+        // A selected crescendo is removed by Delete and the removal is undoable.
+        @Test
+        void testHandleDeleteHairpinSelectionRemovesCrescendoFromLine() {
+            var song = deleteSelectedHairpin(Crescendo::new);
+
+            assertThat(song.getLine(0).getCrescendos()).isEmpty();
+        }
+
+        // The diminuendo case is separate because the controller switches on the hairpin's
+        // subtype: were the two branches swapped, a crescendo-only test would still pass.
+        @Test
+        void testHandleDeleteHairpinSelectionRemovesDiminuendoFromLine() {
+            var song = deleteSelectedHairpin(Diminuendo::new);
+
+            assertThat(song.getLine(0).getDiminuendos()).isEmpty();
         }
 
         // Row 19: no element/glissando selection, canDeleteLine() true → removes line
