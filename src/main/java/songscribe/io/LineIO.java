@@ -207,6 +207,11 @@ public final class LineIO {
         private StaffElementIO.StaffElementReader noteReader = null;
         private final StringBuilder value = new StringBuilder(20);
 
+        // True once any note in any line read so far named a retired accidental that was
+        // converted. Accumulated here because noteReader is replaced for each <line>, so
+        // its own flag does not survive to the end of the document.
+        private boolean sawLegacyAccidental = false;
+
         @Nullable
         private Where where = null;
 
@@ -254,6 +259,14 @@ public final class LineIO {
 
         public LegacyLineOffsets getLegacyOffsets() {
             return new LegacyLineOffsets(legacyTempoChangeYPosPx, legacyBeatChangeYPosPx, legacyFsEndingYPosPx, legacyTrillYPosPx);
+        }
+
+        /**
+         * Returns true if any note in any line read so far named a retired accidental,
+         * which was converted to the accidental that sounds the same.
+         */
+        public boolean sawLegacyAccidental() {
+            return sawLegacyAccidental;
         }
 
         private record SegmentParts(int a, int b, int secondComma) {}
@@ -524,6 +537,10 @@ public final class LineIO {
 
                     if (noteReader.isTrillFlagged()) {
                         accumulateLegacyTrillFlag(elementIndex);
+                    }
+
+                    if (noteReader.sawLegacyAccidental()) {
+                        sawLegacyAccidental = true;
                     }
 
                     line.addElement(n);

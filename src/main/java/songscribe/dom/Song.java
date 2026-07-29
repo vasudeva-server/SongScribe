@@ -116,8 +116,21 @@ public final class Song {
     // Sentinel passed to addLine(int, Line) meaning "append after the last line"
     private static final int APPEND = -1;
 
+    /**
+     * Line width used until the UI layer installs the preference-aware provider.
+     * <p>
+     * The real default comes from {@code PageModel.getDefaultLineWidthSs()}, which needs
+     * {@code Prefs} and the screen DPI and so is unreachable from the model layer. This
+     * constant stands in for it wherever a Song is built without the app running — the
+     * corpus generator and unit tests — so such a Song is never born with an unlayoutable
+     * zero-width staff. It is the Letter content area (8.5" page less 0.5" margins per
+     * side) at the standard 96-DPI headless resolution, expressed in staff spaces, which
+     * also keeps it within the page on higher-DPI displays.
+     */
+    public static final double FALLBACK_LINE_WIDTH_SS = 90.0;
+
     // Provides the default line width for new songs; set by the UI layer at startup
-    private static DoubleSupplier defaultLineWidthProvider = () -> 0.0;
+    private static DoubleSupplier defaultLineWidthProvider = () -> FALLBACK_LINE_WIDTH_SS;
 
     public static void setDefaultLineWidthProvider(DoubleSupplier provider) {
         defaultLineWidthProvider = provider;

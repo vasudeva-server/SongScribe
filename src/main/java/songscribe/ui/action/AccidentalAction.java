@@ -62,16 +62,6 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
         );
     }
 
-    public static AccidentalAction createNaturalFlatAction(MainFrame mainFrame) {
-        return new AccidentalAction(
-            mainFrame,
-            StaffElement.Accidental.NATURAL_FLAT,
-            Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_FLAT), "#\uE267", 32,
-            "natural-flat", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_FLAT_TOOLTIP), 0, 0,
-            Strings.ACTION_EDIT_OP_TOGGLE_NATURAL_FLAT
-        );
-    }
-
     public static AccidentalAction createNaturalAction(MainFrame mainFrame) {
         return new AccidentalAction(
             mainFrame,
@@ -100,16 +90,6 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
             Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_SHARP), "@\uF38A", 18,
             "double-sharp", Strings.get(Strings.ACTION_ACCIDENTAL_DOUBLE_SHARP_TOOLTIP), 0, 0,
             Strings.ACTION_EDIT_OP_TOGGLE_DOUBLE_SHARP
-        );
-    }
-
-    public static AccidentalAction createNaturalSharpAction(MainFrame mainFrame) {
-        return new AccidentalAction(
-            mainFrame,
-            StaffElement.Accidental.NATURAL_SHARP,
-            Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_SHARP), "#\uE268", 32,
-            "natural-sharp", Strings.get(Strings.ACTION_ACCIDENTAL_NATURAL_SHARP_TOOLTIP), 0, 0,
-            Strings.ACTION_EDIT_OP_TOGGLE_NATURAL_SHARP
         );
     }
 

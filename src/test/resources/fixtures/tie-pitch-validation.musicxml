@@ -164,7 +164,7 @@
         </pitch>
         <duration>480</duration>
         <type>quarter</type>
-        <accidental>natural-flat</accidental>
+        <accidental>flat</accidental>
       </note>
       <note default-x="0.00" relative-x="547.50">
         <pitch>

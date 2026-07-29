@@ -78,10 +78,10 @@ import songscribe.dom.StaffElement.Accidental;
  *   <li>a <b>cautionary natural</b> shows a glyph ({@code <accidental>natural})
  *       while carrying <b>no</b> key alteration ({@code <alter>} == 0).</li>
  * </ul>
- * This is also why no {@code <alter>}&rarr;{@code Accidental} reverse exists: a
- * given semitone (e.g. &minus;1) is spelled by more than one accidental
- * ({@code FLAT} or {@code NATURAL_FLAT}), so the glyph cannot be recovered from
- * the sounding alteration — the reader takes it from {@code <accidental>}.
+ * This is also why no {@code <alter>}&rarr;{@code Accidental} reverse exists:
+ * the two bullets above show {@code <alter>} and the displayed glyph varying
+ * independently of each other, so the glyph cannot be recovered from the
+ * sounding alteration alone — the reader takes it from {@code <accidental>}.
  */
 public final class PitchSpelling {
 

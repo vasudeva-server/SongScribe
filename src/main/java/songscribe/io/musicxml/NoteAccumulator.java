@@ -35,6 +35,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
+import songscribe.io.LegacyAccidentals;
 
 /**
  * Accumulates the child values of a single {@code <note>} element parsed by
@@ -126,6 +127,12 @@ final class NoteAccumulator {
 
     private boolean hasBreathMark = false;
 
+    // True when this note's <accidental> token was a retired legacy token
+    // (e.g. natural-flat) converted to its replacement via LegacyAccidentals.
+    // Per-note, like hasBreathMark; MusicXmlReader ORs it into its own
+    // persistent accidentalsConverted flag after appendStaffElement returns.
+    private boolean usedLegacyAccidental = false;
+
     // Tuplet grade for the current note, parsed from <actual-notes> (0 if absent).
     private int actualNotes = 0;
 
@@ -188,6 +195,7 @@ final class NoteAccumulator {
         hasFall = false;
         slideType = null;
         hasBreathMark = false;
+        usedLegacyAccidental = false;
         actualNotes = 0;
         beam1Type = null;
         beamLevelIsOne = false;
@@ -437,6 +445,14 @@ final class NoteAccumulator {
     }
 
     /**
+     * True when this note's {@code <accidental>} token was a retired legacy
+     * token converted to its replacement via {@link LegacyAccidentals}.
+     */
+    boolean usedLegacyAccidental() {
+        return usedLegacyAccidental;
+    }
+
+    /**
      * Snapshots this note's raw span markers for {@link RangeSpanResolver} to
      * pair with each run's pending anchor.
      */
@@ -515,6 +531,12 @@ final class NoteAccumulator {
         // The displayed accidental glyph comes from <accidental>, not <alter>.
         if (accidentalToken != null) {
             var accidental = AccidentalMapping.forToken(accidentalToken);
+
+            // A token the live map does not know may still be a retired one.
+            if (accidental == null) {
+                accidental = LegacyAccidentals.forLegacyToken(accidentalToken);
+                usedLegacyAccidental = accidental != null;
+            }
 
             if (accidental != null) {
                 element.setAccidental(accidental);

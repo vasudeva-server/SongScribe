@@ -332,6 +332,20 @@ class SongDefaultsTest extends UnitTest {
         assertThat(song.isModified()).isFalse();
     }
 
+    /**
+     * A song built without the running application — by a test, the corpus generator, or
+     * any headless tool — still has to be layoutable. The UI installs a preference-aware
+     * width provider at startup; with nothing installed, the fallback stands in. If it
+     * were zero instead, no content would fit on the staff and every line would fail
+     * layout, so the document would open as a "Line Too Full" warning rather than a song.
+     */
+    @Test
+    void testNewSongGetsTheFallbackLineWidthWhenNoProviderIsInstalled() {
+        assertThat(new Song().getLineWidthSs())
+            .as("a song built outside the app must be born layoutable, never zero-width")
+            .isEqualTo(Song.FALLBACK_LINE_WIDTH_SS);
+    }
+
     // -----------------------------------------------------------------------
     // Active verse — the one language a song shows at a time
     // -----------------------------------------------------------------------

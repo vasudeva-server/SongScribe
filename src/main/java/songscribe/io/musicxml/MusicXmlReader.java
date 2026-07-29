@@ -200,6 +200,12 @@ public final class MusicXmlReader extends DefaultHandler {
 
     private final NoteAccumulator note = new NoteAccumulator();
 
+    // True once any note's <accidental> token was a retired legacy token
+    // converted to its replacement (see NoteAccumulator.usedLegacyAccidental).
+    // Lives here rather than on NoteAccumulator because NoteAccumulator.reset()
+    // runs once per note; this flag must persist across the whole document.
+    private boolean accidentalsConverted = false;
+
     // -------------------------------------------------------------------------
     // Document-metadata reconstruction state — the document fonts recovered from
     // <defaults> (<word-font> → ANNOTATION, <lyric-font> → LYRICS) and the
@@ -276,7 +282,8 @@ public final class MusicXmlReader extends DefaultHandler {
             var parser = PARSER_FACTORY.newSAXParser();
             var handler = new MusicXmlReader();
             parser.parse(source, handler);
-            return new SongLoadResult.Success(handler.getSong(), handler.documentFonts, null);
+            return new SongLoadResult.Success(
+                handler.getSong(), handler.documentFonts, null, handler.accidentalsConverted);
         } catch (ParserConfigurationException e) {
             throw new SAXException("Failed to create SAX parser", e);
         }
@@ -752,6 +759,10 @@ public final class MusicXmlReader extends DefaultHandler {
 
         var element = note.appendStaffElement(currentLine);
         var markers = note.spanMarkers();
+
+        if (note.usedLegacyAccidental()) {
+            accidentalsConverted = true;
+        }
 
         // A note-anchored ending start (issue #306) was hosted on an invisible left
         // barline preceding this note; bind that pending anchor to this element.

@@ -170,7 +170,7 @@
         </pitch>
         <duration>480</duration>
         <type>quarter</type>
-        <accidental>natural-flat</accidental>
+        <accidental>flat</accidental>
       </note>
       <note default-x="0.00" relative-x="587.50">
         <pitch>
@@ -209,7 +209,7 @@
         </pitch>
         <duration>480</duration>
         <type>quarter</type>
-        <accidental>natural-sharp</accidental>
+        <accidental>sharp</accidental>
       </note>
       <note default-x="0.00" relative-x="802.50">
         <pitch>

@@ -70,6 +70,16 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
     private static final Font TEST_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
 
     /**
+     * Staff width for the wrap tests, narrow enough that a long title or subtitle in
+     * {@link #TEST_FONT} must wrap while a one-word one still fits.
+     * <p>
+     * Set explicitly rather than left at {@link Song#FALLBACK_LINE_WIDTH_SS}: at the
+     * fallback width the long strings below fit on a single line, so the wrap under
+     * test would never occur.
+     */
+    private static final double WRAP_TEST_LINE_WIDTH_SS = 20.0;
+
+    /**
      * A script family (issue #573) whose descenders — e.g. the tail of a "y" —
      * extend below the font's nominal {@link java.awt.FontMetrics#getDescent()}.
      * Not installed on every platform, so tests using it skip via {@code assumeTrue}
@@ -183,6 +193,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
         @Test
         void testWrappingTitleProducesGreaterHeightThanShortTitle() {
             var song = new Song();
+            song.setLineWidthSs(WRAP_TEST_LINE_WIDTH_SS);
 
             // Short title — expected to fit on one line.
             var current = song.getMetadata();
@@ -447,6 +458,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
         @Test
         void testHeightGrowsWhenSubtitleWraps() {
             var song = new Song();
+            song.setLineWidthSs(WRAP_TEST_LINE_WIDTH_SS);
             var current = song.getMetadata();
             song.setMetadata(new SongMetadata(
                 current.title(), current.number(), current.place(), current.year(),

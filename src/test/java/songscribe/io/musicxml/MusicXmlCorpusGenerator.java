@@ -282,8 +282,7 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
         var accidentals = List.of(
             StaffElement.Accidental.SHARP, StaffElement.Accidental.FLAT,
             StaffElement.Accidental.NATURAL, StaffElement.Accidental.DOUBLE_SHARP,
-            StaffElement.Accidental.DOUBLE_FLAT, StaffElement.Accidental.NATURAL_FLAT,
-            StaffElement.Accidental.NATURAL_SHARP);
+            StaffElement.Accidental.DOUBLE_FLAT);
         var pitches = List.of(C5, B4, A4, F4, C4);
 
         return buildSong(
@@ -399,7 +398,7 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
                 var beamNotes = addNotes(line, ElementType.QUAVER, 4);
                 line.addBeaming(new Beam(beamNotes.get(0), beamNotes.get(beamNotes.size() - 1)));
             },
-            // A tie chain across three crotchets (adjacent pairs merge into one span).
+            // A tie chain across three crotchets, stored as two adjacent spans.
             line -> {
                 var tied = addNotes(line, ElementType.CROTCHET, 3);
                 line.addTie(new Tie(tied.get(0), tied.get(1)));

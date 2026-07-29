@@ -81,14 +81,12 @@ class LyricEditorActionAuditTest extends MainFrameMockTest {
             DotAction.createDotAction(mainFrame),
             DotAction.createDoubleDotAction(mainFrame),
             RestModeAction.createAction(mainFrame),
-            // AccidentalToolbar
+            // Accidental actions (AccidentalToolbar has double-flat, flat, natural, sharp; double-sharp is menu-only)
             AccidentalAction.createDoubleFlatAction(mainFrame),
             AccidentalAction.createFlatAction(mainFrame),
-            AccidentalAction.createNaturalFlatAction(mainFrame),
             AccidentalAction.createNaturalAction(mainFrame),
             AccidentalAction.createSharpAction(mainFrame),
             AccidentalAction.createDoubleSharpAction(mainFrame),
-            AccidentalAction.createNaturalSharpAction(mainFrame),
             // ArticulationToolbar
             ForceArticulationAction.createAccentAction(mainFrame),
             DurationArticulationAction.createStaccatoAction(mainFrame),

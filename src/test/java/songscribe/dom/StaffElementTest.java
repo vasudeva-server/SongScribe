@@ -162,11 +162,8 @@ class StaffElementTest extends UnitTest {
             new Case(StaffElement.Accidental.NATURAL, MIDI_C5),           // +0
             new Case(StaffElement.Accidental.FLAT, MIDI_C5 - 1),          // -1
             new Case(StaffElement.Accidental.SHARP, MIDI_C5 + 1),         // +1
-            new Case(StaffElement.Accidental.DOUBLE_NATURAL, MIDI_C5),    // +0
             new Case(StaffElement.Accidental.DOUBLE_FLAT, MIDI_C5 - 2),   // -2
             new Case(StaffElement.Accidental.DOUBLE_SHARP, MIDI_C5 + 2),  // +2
-            new Case(StaffElement.Accidental.NATURAL_FLAT, MIDI_C5 - 1),  // -1
-            new Case(StaffElement.Accidental.NATURAL_SHARP, MIDI_C5 + 1), // +1
         };
 
         for (var c : cases) {

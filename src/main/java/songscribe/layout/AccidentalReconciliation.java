@@ -55,10 +55,9 @@ import songscribe.dom.Tie;
  * </pre>
  * Comparison is always by <em>sounding adjustment</em>
  * ({@link StaffElement#getPitchAdjustment}, with null treated as 0), never by enum identity:
- * {@code null} and {@code NATURAL} sound alike, as do {@code FLAT} and {@code NATURAL_FLAT}, and
- * there is no glyph worth drawing for a difference nobody can hear. The {@code null → NATURAL}
- * direction is the whole cross-key paste case — you cannot write "nothing" and get a natural in a
- * context that alters that pitch.
+ * {@code null} and {@code NATURAL} sound alike, and there is no glyph worth drawing for a
+ * difference nobody can hear. The {@code null → NATURAL} direction is the whole cross-key paste
+ * case — you cannot write "nothing" and get a natural in a context that alters that pitch.
  *
  * <p>The key signature never appears in the algorithm. It is already the last branch of
  * {@link StaffElement#findEffectiveAccidental}, so resolving <em>before</em> against the source
@@ -722,7 +721,7 @@ public final class AccidentalReconciliation {
     /**
      * Returns the sounding adjustment in semitones of an accidental, treating null — no
      * accidental at all — as no adjustment. Accidentals are only ever compared through this:
-     * {@code null} and {@code NATURAL} sound alike, as do {@code FLAT} and {@code NATURAL_FLAT}.
+     * {@code null} and {@code NATURAL} sound alike.
      */
     private static int adjustmentOf(StaffElement.@Nullable Accidental accidental) {
         return StaffElement.getPitchAdjustment(accidental);

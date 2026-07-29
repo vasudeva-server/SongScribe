@@ -26,7 +26,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.StaffElement.Accidental;
 
 /**
- * Bidirectional lookup table between SongScribe {@link Accidental} values and
+ * Bidirectional lookup between SongScribe {@link Accidental} values and
  * their MusicXML {@code <accidental>} glyph token.
  *
  * <p>The sounding {@code <alter>} semitone is <b>not</b> kept here: it is derived
@@ -34,8 +34,10 @@ import songscribe.dom.StaffElement.Accidental;
  * playback uses) via {@link PitchSpelling}, so there is a single source of truth
  * for the alteration.
  *
- * <p>{@link Accidental#DOUBLE_NATURAL} is not supported by MusicXML and has no
- * mapping in either direction.
+ * <p>Every {@link Accidental} has a MusicXML token and every token here maps back
+ * to an {@link Accidental}, so the two directions are exact inverses. Tokens for
+ * retired accidentals that only appear in old files live in
+ * {@link songscribe.io.LegacyAccidentals}, not here.
  */
 public final class AccidentalMapping {
 
@@ -48,23 +50,6 @@ public final class AccidentalMapping {
     public static final String ACCIDENTAL_SHARP         = "sharp";
     public static final String ACCIDENTAL_FLAT_FLAT     = "flat-flat";
     public static final String ACCIDENTAL_DOUBLE_SHARP  = "double-sharp";
-    public static final String ACCIDENTAL_NATURAL_FLAT  = "natural-flat";
-    public static final String ACCIDENTAL_NATURAL_SHARP = "natural-sharp";
-
-    // -------------------------------------------------------------------------
-    // Forward map: Accidental → AccidentalEntry (glyph token)
-    // DOUBLE_NATURAL is absent — it has no MusicXML representation.
-    // -------------------------------------------------------------------------
-
-    private static final Map<Accidental, AccidentalEntry> FORWARD_MAP = Map.of(
-        Accidental.NATURAL,       new AccidentalEntry(ACCIDENTAL_NATURAL),
-        Accidental.FLAT,          new AccidentalEntry(ACCIDENTAL_FLAT),
-        Accidental.SHARP,         new AccidentalEntry(ACCIDENTAL_SHARP),
-        Accidental.DOUBLE_FLAT,   new AccidentalEntry(ACCIDENTAL_FLAT_FLAT),
-        Accidental.DOUBLE_SHARP,  new AccidentalEntry(ACCIDENTAL_DOUBLE_SHARP),
-        Accidental.NATURAL_FLAT,  new AccidentalEntry(ACCIDENTAL_NATURAL_FLAT),
-        Accidental.NATURAL_SHARP, new AccidentalEntry(ACCIDENTAL_NATURAL_SHARP)
-    );
 
     // -------------------------------------------------------------------------
     // Reverse map: token → Accidental
@@ -75,9 +60,7 @@ public final class AccidentalMapping {
         ACCIDENTAL_FLAT,          Accidental.FLAT,
         ACCIDENTAL_SHARP,         Accidental.SHARP,
         ACCIDENTAL_FLAT_FLAT,     Accidental.DOUBLE_FLAT,
-        ACCIDENTAL_DOUBLE_SHARP,  Accidental.DOUBLE_SHARP,
-        ACCIDENTAL_NATURAL_FLAT,  Accidental.NATURAL_FLAT,
-        ACCIDENTAL_NATURAL_SHARP, Accidental.NATURAL_SHARP
+        ACCIDENTAL_DOUBLE_SHARP,  Accidental.DOUBLE_SHARP
     );
 
     private AccidentalMapping() {}
@@ -87,13 +70,22 @@ public final class AccidentalMapping {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the MusicXML representation for the given {@link Accidental},
-     * or {@code null} if the accidental has no entry in the forward map
-     * (e.g. {@link Accidental#DOUBLE_NATURAL}).
+     * Returns the MusicXML {@code <accidental>} token for the given
+     * {@link Accidental}. Every accidental has one, so this never returns
+     * {@code null}.
+     *
+     * <p>A switch rather than a map so that adding an {@link Accidental} without
+     * a token here fails to compile, instead of failing when a user first saves
+     * a score using the new accidental.
      */
-    @Nullable
-    public static AccidentalEntry forAccidental(Accidental accidental) {
-        return FORWARD_MAP.get(accidental);
+    public static String forAccidental(Accidental accidental) {
+        return switch (accidental) {
+            case NATURAL -> ACCIDENTAL_NATURAL;
+            case FLAT -> ACCIDENTAL_FLAT;
+            case SHARP -> ACCIDENTAL_SHARP;
+            case DOUBLE_FLAT -> ACCIDENTAL_FLAT_FLAT;
+            case DOUBLE_SHARP -> ACCIDENTAL_DOUBLE_SHARP;
+        };
     }
 
     /**
@@ -104,15 +96,4 @@ public final class AccidentalMapping {
     public static Accidental forToken(String token) {
         return REVERSE_MAP.get(token);
     }
-
-    // -------------------------------------------------------------------------
-    // Value type
-    // -------------------------------------------------------------------------
-
-    /**
-     * Carries the MusicXML {@code <accidental>} glyph token.
-     */
-    public record AccidentalEntry(
-        String token
-    ) {}
 }

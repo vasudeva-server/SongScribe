@@ -47,7 +47,7 @@ class TiePitchValidationTest extends UnitTest {
         BB_KEY_SIG_1,           // sp=0, no accidental (resolves to Bb via key sig)
         BB_KEY_SIG_2,           // sp=0, no accidental (resolves to Bb via key sig)
         DOUBLE_FLAT_PREFIX,     // sp=-2, DOUBLE_FLAT (sets accidental context)
-        NATURAL_FLAT_RESET,     // sp=-2, NATURAL_FLAT (resets to natural-flat)
+        FLAT_CANCELS_DOUBLE_FLAT, // sp=-2, FLAT (back to a single flat, matching the key sig)
         KEY_SIG_RESTORED,       // sp=-2, no accidental (reverts to key sig flat)
         B_NATURAL,              // sp=0, NATURAL
         B_SHARP_CONFLICT,       // sp=0, SHARP
@@ -90,8 +90,8 @@ class TiePitchValidationTest extends UnitTest {
         assertAll(
             () -> assertThat(canTiePair(Note.BB_KEY_SIG_1, Note.BB_KEY_SIG_2))
                 .as("key sig accidental ties").isTrue(),
-            () -> assertThat(canTiePair(Note.NATURAL_FLAT_RESET, Note.KEY_SIG_RESTORED))
-                .as("natural-flat resets to key sig").isTrue()
+            () -> assertThat(canTiePair(Note.FLAT_CANCELS_DOUBLE_FLAT, Note.KEY_SIG_RESTORED))
+                .as("explicit flat ties to the same pitch inherited from the key sig").isTrue()
         );
     }
 

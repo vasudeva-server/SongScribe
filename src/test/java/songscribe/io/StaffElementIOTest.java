@@ -33,6 +33,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.MockedStatic;
 import org.xml.sax.SAXException;
@@ -98,6 +99,34 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithAccidental("DOUBLESHARP"));
             var accidental = song.getLine(0).getElement(0).getAccidental();
             assertThat(accidental).isEqualTo(Accidental.DOUBLE_SHARP);
+        }
+
+        /**
+         * The retired names are seeded into the same map as the live ones, so an old
+         * {@code .mssw} loads instead of throwing. Every form an old file can hold is
+         * covered: each retired name as it was written, plus the underscore-less alias
+         * synthesized from it — the alias loop has to run over the seeded legacy names
+         * and not just the live constants. Without these cases the seeding could be
+         * wired up backwards and only {@code testUnknownAccidentalThrowsMeaningfulError}
+         * would notice, and it passes either way, since it asserts on a name that is
+         * legacy under neither wiring.
+         */
+        @ParameterizedTest
+        @CsvSource({
+            "NATURAL_FLAT,   FLAT",
+            "NATURALFLAT,    FLAT",
+            "NATURAL_SHARP,  SHARP",
+            "NATURALSHARP,   SHARP",
+            "DOUBLE_NATURAL, NATURAL",
+            "DOUBLENATURAL,  NATURAL",
+        })
+        void testRetiredAccidentalNameLoadsAsItsReplacement(String legacyName, Accidental expected)
+            throws Exception {
+            var song = parseXml(buildXmlWithAccidental(legacyName));
+
+            assertThat(song.getLine(0).getElement(0).getAccidental())
+                .as("%s must load as %s", legacyName, expected)
+                .isEqualTo(expected);
         }
     }
 

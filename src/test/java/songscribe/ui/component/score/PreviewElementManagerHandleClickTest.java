@@ -582,12 +582,12 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
         }
 
         @Test
-        void testReplacingANoteWithOneThatSoundsTheSameAsksNothing() {
-            // A flat rewritten as a natural-flat at the same staff position: a different symbol
-            // saying the same thing, so nothing was removed and nothing is asked.
-            setPreviewElement(note(F_STAFF_POSITION, StaffElement.Accidental.NATURAL_FLAT));
-            PreviewElementManager.setCurrentStaffPosition(F_STAFF_POSITION);
-            PreviewElementManager.setCurrentXIndex(0);
+        void testReplacingANoteWithOneCarryingAnAccidentalAsksNothing() {
+            // The plain G at 1:1 rewritten as a natural G at the same staff position: an accidental
+            // is added rather than taken away, so nothing was removed and nothing is asked.
+            setPreviewElement(note(G_STAFF_POSITION, StaffElement.Accidental.NATURAL));
+            PreviewElementManager.setCurrentStaffPosition(G_STAFF_POSITION);
+            PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setXPosSsMatchesElement(true);
 
             try (var optionDialogs = mockStatic(OptionDialogs.class)) {
@@ -595,8 +595,8 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
                 optionDialogs.verifyNoInteractions();
             }
 
-            assertThat(line.getElement(THIRD_NOTE).getAccidental())
-                .isEqualTo(StaffElement.Accidental.FLAT);
+            assertThat(line.getElement(1).getAccidental())
+                .isEqualTo(StaffElement.Accidental.NATURAL);
         }
     }
 

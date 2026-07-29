@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import songscribe.error.RuntimeError;
+import songscribe.smufl.SMuFLGlyph;
 
 import com.uber.nullaway.annotations.Initializer;
 
@@ -43,18 +44,6 @@ public class StaffElement extends LineElement implements Cloneable {
         77,
         79,
         81,
-    };
-
-    // How much to adjust the MIDI pitch for each Accidental value
-    private static final int[] MIDI_PITCH_ADJUSTMENT = new int[]{
-        0, // NATURAL
-        -1, // FLAT
-        1, // SHARP
-        0, // DOUBLE_NATURAL
-        -2, // DOUBLE_FLAT
-        2, // DOUBLE_SHARP
-        -1, // NATURAL_FLAT
-        1, // NATURAL_SHARP
     };
 
     // Note durations corresponding to dotCount
@@ -712,7 +701,7 @@ public class StaffElement extends LineElement implements Cloneable {
     // Every caller that compares accidentals by how they sound rather than by which enum
     // constant they are goes through here, so that rule is stated once.
     public static int getPitchAdjustment(@Nullable Accidental accidental) {
-        return (accidental == null) ? 0 : MIDI_PITCH_ADJUSTMENT[accidental.ordinal()];
+        return (accidental == null) ? 0 : accidental.semitones();
     }
 
     public int getDefaultDurationWithDots() {
@@ -922,42 +911,35 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public enum Accidental {
-        NATURAL("Natural", 1, 0, -1),
-        FLAT("Flat", 1, 1, -1),
-        SHARP("Sharp", 1, 2, -1),
-        DOUBLE_NATURAL("Double natural", 2, 0, 0),
-        DOUBLE_FLAT("Double flat", 2, 1, 1),
-        DOUBLE_SHARP("Double sharp", 1, 3, -1),
-        NATURAL_FLAT("Natural flat", 2, 0, 1),
-        NATURAL_SHARP("Natural sharp", 2, 0, 2);
+        NATURAL(0, SMuFLGlyph.ACCIDENTAL_NATURAL),
+        FLAT(-1, SMuFLGlyph.ACCIDENTAL_FLAT),
+        SHARP(1, SMuFLGlyph.ACCIDENTAL_SHARP),
+        DOUBLE_FLAT(-2, SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT),
+        DOUBLE_SHARP(2, SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP);
 
-        @Nullable
-        private final String displayName;
-        private final int widthFactor;
-        private final int[] components = new int[2];
+        private final int semitones;
+        private final SMuFLGlyph glyph;
 
-        Accidental(
-            @Nullable String displayName,
-            int widthFactor,
-            int firstComponent,
-            int secondComponent
-        ) {
-            this.displayName = displayName;
-            this.widthFactor = widthFactor;
-            components[0] = firstComponent;
-            components[1] = secondComponent;
+        Accidental(int semitones, SMuFLGlyph glyph) {
+            this.semitones = semitones;
+            this.glyph = glyph;
         }
 
-        public @Nullable String getDisplayName() {
-            return displayName;
+        public int semitones() {
+            return semitones;
         }
 
-        public int getWidthFactor() {
-            return widthFactor;
-        }
-
-        public int getComponent(int i) {
-            return components[i];
+        /**
+         * The single SMuFL glyph this accidental draws. Grace notes use this same regular
+         * glyph; the grace size comes from drawing it with a scaled-down font
+         * ({@link ElementType#GRACE_NOTE_SCALE}), mirroring how grace noteheads are rendered.
+         * There is no separate small-glyph table: Bravura's "small" accidentals are a distinct
+         * private-use set with their own (non-proportional) metrics, and have no
+         * double-flat/double-sharp variant, so they cannot scale uniformly with the regular
+         * glyphs.
+         */
+        public SMuFLGlyph glyph() {
+            return glyph;
         }
     }
 

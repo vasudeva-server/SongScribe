@@ -317,36 +317,11 @@ public final class NoteGeometry {
     public static final float GRACE_ACCIDENTAL_PADDING_SS =
         ElementType.GRACE_NOTE_SCALE * ACCIDENTAL_PADDING_SS;
 
-    static final float SPACE_BETWEEN_TWO_ACCIDENTALS_SS = 0.1625f; // 1.3px / 8 px/ss
-
-    /** Accidental glyph components indexed by {@code Accidental.ordinal()}. */
-    private static final SMuFLGlyph[][] ACCIDENTAL_COMPONENTS = {
-        {SMuFLGlyph.ACCIDENTAL_NATURAL},                                // NATURAL
-        {SMuFLGlyph.ACCIDENTAL_FLAT},                                   // FLAT
-        {SMuFLGlyph.ACCIDENTAL_SHARP},                                  // SHARP
-        {SMuFLGlyph.ACCIDENTAL_NATURAL, SMuFLGlyph.ACCIDENTAL_NATURAL}, // DOUBLE_NATURAL
-        {SMuFLGlyph.ACCIDENTAL_DOUBLE_FLAT},                            // DOUBLE_FLAT
-        {SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP},                           // DOUBLE_SHARP
-        {SMuFLGlyph.ACCIDENTAL_NATURAL, SMuFLGlyph.ACCIDENTAL_FLAT},    // NATURAL_FLAT
-        {SMuFLGlyph.ACCIDENTAL_NATURAL, SMuFLGlyph.ACCIDENTAL_SHARP},   // NATURAL_SHARP
-    };
-
-    /**
-     * Returns the glyph components for an accidental. Grace notes use these same regular glyphs;
-     * the grace size comes from drawing them with a scaled-down font ({@link ElementType#GRACE_NOTE_SCALE}),
-     * mirroring how grace noteheads are rendered. There is no separate small-glyph table: Bravura's
-     * "small" accidentals are a distinct private-use set with their own (non-proportional) metrics,
-     * and have no double-flat/double-sharp variant, so they cannot scale uniformly with the regular
-     * glyphs.
-     */
-    public static SMuFLGlyph[] getAccidentalComponents(Accidental accidental) {
-        return ACCIDENTAL_COMPONENTS[accidental.ordinal()];
-    }
-
     // Kerning adjustments for parenthesized accidentals (in staff-space units).
     // Positive = more space, negative = less space.
-    private static final EnumMap<SMuFLGlyph, Float> PAREN_LEFT_KERNING = new EnumMap<>(SMuFLGlyph.class);
-    private static final EnumMap<SMuFLGlyph, Float> PAREN_RIGHT_KERNING = new EnumMap<>(SMuFLGlyph.class);
+    // Package-private so NoteGeometryTest reads the real values instead of duplicating them.
+    static final EnumMap<SMuFLGlyph, Float> PAREN_LEFT_KERNING = new EnumMap<>(SMuFLGlyph.class);
+    static final EnumMap<SMuFLGlyph, Float> PAREN_RIGHT_KERNING = new EnumMap<>(SMuFLGlyph.class);
 
     static {
         PAREN_LEFT_KERNING.put(SMuFLGlyph.ACCIDENTAL_FLAT, 0.125f);
@@ -368,11 +343,10 @@ public final class NoteGeometry {
     private static @Nullable AccidentalBounds @Nullable [] baseAccidentalBoundsSs = null;
     private static @Nullable AccidentalBounds @Nullable [] baseAccidentalParenthesisBoundsSs = null;
 
-    // Cached bounding boxes of only the note-adjacent (rightmost) glyph, indexed by
-    // Accidental.ordinal(). Used for ledger-line shortening, which checks only the glyph closest to
-    // the notehead: the right paren when parenthesized, else the last component (e.g. the flat of a
-    // natural-flat).
-    private static @Nullable AccidentalBounds @Nullable [] closestAccidentalBoundsSs = null;
+    // Cached bounding boxes of only the note-adjacent (rightmost) glyph of a parenthesized
+    // accidental — the right paren — indexed by Accidental.ordinal(). Used for ledger-line
+    // shortening, which checks only the glyph closest to the notehead. Unparenthesized accidentals
+    // draw a single glyph, so their closest-glyph bounds are baseAccidentalBoundsSs.
     private static @Nullable AccidentalBounds @Nullable [] closestAccidentalParenthesisBoundsSs = null;
 
     // Accidental-bbox combiner that keeps the most recently visited (rightmost) glyph, isolating the
@@ -394,33 +368,39 @@ public final class NoteGeometry {
             return;
         }
 
-        baseAccidentalWidthsSs = computeComponentWidths(ACCIDENTAL_COMPONENTS);
+        var accidentals = Accidental.values();
+        var count = accidentals.length;
+
+        baseAccidentalWidthsSs = new float[count];
+
+        for (var i = 0; i < count; i++) {
+            baseAccidentalWidthsSs[i] = (float) SMuFLMetadata.getAdvanceWidthOrZero(accidentals[i].glyph());
+        }
 
         var beginParenthesisWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
         var endParenthesisWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
 
-        baseAccidentalParenthesisWidthsSs = new float[ACCIDENTAL_COMPONENTS.length];
+        baseAccidentalParenthesisWidthsSs = new float[count];
 
-        for (var i = 0; i < baseAccidentalParenthesisWidthsSs.length; i++) {
+        for (var i = 0; i < count; i++) {
             baseAccidentalParenthesisWidthsSs[i] =
                 baseAccidentalWidthsSs[i] + beginParenthesisWidthSs + endParenthesisWidthSs;
-            baseAccidentalParenthesisWidthsSs[i] += parenthesizedAccidentalKerningSs(i);
+            baseAccidentalParenthesisWidthsSs[i] += parenthesizedAccidentalKerningSs(accidentals[i].glyph());
         }
 
-        baseAccidentalBoundsSs = new AccidentalBounds[ACCIDENTAL_COMPONENTS.length];
-        baseAccidentalParenthesisBoundsSs = new AccidentalBounds[ACCIDENTAL_COMPONENTS.length];
-        closestAccidentalBoundsSs = new AccidentalBounds[ACCIDENTAL_COMPONENTS.length];
-        closestAccidentalParenthesisBoundsSs = new AccidentalBounds[ACCIDENTAL_COMPONENTS.length];
+        baseAccidentalBoundsSs = new AccidentalBounds[count];
+        baseAccidentalParenthesisBoundsSs = new AccidentalBounds[count];
+        closestAccidentalParenthesisBoundsSs = new AccidentalBounds[count];
 
-        for (var i = 0; i < ACCIDENTAL_COMPONENTS.length; i++) {
+        for (var i = 0; i < count; i++) {
+            var glyph = accidentals[i].glyph();
+
             baseAccidentalBoundsSs[i] = computeAccidentalBounds(
-                ACCIDENTAL_COMPONENTS[i], false, baseAccidentalWidthsSs[i], BBox::union);
+                glyph, false, baseAccidentalWidthsSs[i], BBox::union);
             baseAccidentalParenthesisBoundsSs[i] = computeAccidentalBounds(
-                ACCIDENTAL_COMPONENTS[i], true, baseAccidentalParenthesisWidthsSs[i], BBox::union);
-            closestAccidentalBoundsSs[i] = computeAccidentalBounds(
-                ACCIDENTAL_COMPONENTS[i], false, baseAccidentalWidthsSs[i], KEEP_RIGHTMOST);
+                glyph, true, baseAccidentalParenthesisWidthsSs[i], BBox::union);
             closestAccidentalParenthesisBoundsSs[i] = computeAccidentalBounds(
-                ACCIDENTAL_COMPONENTS[i], true, baseAccidentalParenthesisWidthsSs[i], KEEP_RIGHTMOST);
+                glyph, true, baseAccidentalParenthesisWidthsSs[i], KEEP_RIGHTMOST);
         }
     }
 
@@ -504,13 +484,13 @@ public final class NoteGeometry {
      *
      * <p>The accidental glyphs are laid out left to right with the notehead to the right, so the
      * nearest glyph is the rightmost one: the right parenthesis for a parenthesized accidental,
-     * otherwise the last accidental component (e.g. the flat of a natural-flat). Ledger-line
-     * shortening checks only this glyph rather than the full accidental span.
+     * otherwise the accidental glyph itself. Ledger-line shortening checks only this glyph rather
+     * than the full accidental span.
      *
      * <p>Returns {@code null} under the same conditions as {@link #getAccidentalBoundsSs}.
      */
-    public static @Nullable AccidentalBounds getClosestAccidentalComponentBoundsSs(StaffElement note) {
-        return accidentalBoundsFromTables(note, closestAccidentalBoundsSs, closestAccidentalParenthesisBoundsSs);
+    public static @Nullable AccidentalBounds getClosestAccidentalGlyphBoundsSs(StaffElement note) {
+        return accidentalBoundsFromTables(note, baseAccidentalBoundsSs, closestAccidentalParenthesisBoundsSs);
     }
 
     private static @Nullable AccidentalBounds accidentalBoundsFromTables(
@@ -638,7 +618,7 @@ public final class NoteGeometry {
         var extensionSs = SMuFLConstants.LEDGER_LINE_LENGTH_FRACTION * widthSs;
         var baseExtentSs = new LedgerExtentSs(headLeftSs - extensionSs, headRightSs + extensionSs);
 
-        return new LedgerLineGeometry(baseExtentSs, getClosestAccidentalComponentBoundsSs(note), headLeftSs);
+        return new LedgerLineGeometry(baseExtentSs, getClosestAccidentalGlyphBoundsSs(note), headLeftSs);
     }
 
     /**
@@ -764,16 +744,16 @@ public final class NoteGeometry {
 
     /**
      * Walks the glyph sequence that renders an accidental (optional left paren,
-     * components, optional right paren), invoking {@code visitor} with each glyph
+     * the accidental glyph, optional right paren), invoking {@code visitor} with each glyph
      * and its pen-position X. Centralises the advance-width and kerning bookkeeping
      * so the draw pass and bounds computation cannot drift apart.
      *
-     * <p>{@code scale} multiplies every advance, inter-component gap, and paren kerning so the
-     * pen positions track glyphs drawn at a scaled font size. Pass {@code 1f} for full-size
-     * accidentals and {@link ElementType#GRACE_NOTE_SCALE} for grace-note accidentals.
+     * <p>{@code scale} multiplies every advance and paren kerning so the pen positions track
+     * glyphs drawn at a scaled font size. Pass {@code 1f} for full-size accidentals and
+     * {@link ElementType#GRACE_NOTE_SCALE} for grace-note accidentals.
      */
     public static void walkAccidentalGlyphs(
-        SMuFLGlyph[] components,
+        SMuFLGlyph accidentalGlyph,
         boolean parenthesized,
         float startX,
         float scale,
@@ -784,20 +764,14 @@ public final class NoteGeometry {
         if (parenthesized) {
             visitor.accept(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT, x);
             x = advancePast(x, SMuFLGlyph.ACCIDENTAL_PARENS_LEFT, scale);
-            x += scale * PAREN_LEFT_KERNING.getOrDefault(components[0], 0f);
+            x += scale * PAREN_LEFT_KERNING.getOrDefault(accidentalGlyph, 0f);
         }
 
-        for (var i = 0; i < components.length; i++) {
-            if (i > 0) {
-                x += scale * SPACE_BETWEEN_TWO_ACCIDENTALS_SS;
-            }
-
-            visitor.accept(components[i], x);
-            x = advancePast(x, components[i], scale);
-        }
+        visitor.accept(accidentalGlyph, x);
+        x = advancePast(x, accidentalGlyph, scale);
 
         if (parenthesized) {
-            x += scale * PAREN_RIGHT_KERNING.getOrDefault(components[components.length - 1], 0f);
+            x += scale * PAREN_RIGHT_KERNING.getOrDefault(accidentalGlyph, 0f);
             visitor.accept(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT, x);
         }
     }
@@ -810,15 +784,9 @@ public final class NoteGeometry {
     // Private Helpers
     // ==========================================================================
 
-    private static float parenthesizedAccidentalKerningSs(int accidentalOrdinal) {
-        var components = ACCIDENTAL_COMPONENTS[accidentalOrdinal];
-
-        if (components.length == 0) {
-            return 0f;
-        }
-
-        return PAREN_LEFT_KERNING.getOrDefault(components[0], 0f)
-            + PAREN_RIGHT_KERNING.getOrDefault(components[components.length - 1], 0f);
+    private static float parenthesizedAccidentalKerningSs(SMuFLGlyph accidentalGlyph) {
+        return PAREN_LEFT_KERNING.getOrDefault(accidentalGlyph, 0f)
+            + PAREN_RIGHT_KERNING.getOrDefault(accidentalGlyph, 0f);
     }
 
     /**
@@ -827,11 +795,11 @@ public final class NoteGeometry {
      *
      * <p>{@code combine} selects what the result represents: {@link BBox#union} yields the full
      * accidental span, while {@link #KEEP_RIGHTMOST} yields only the glyph nearest the notehead —
-     * the rightmost one (the right parenthesis when parenthesized, otherwise the last component such
-     * as the flat of a natural-flat), used for ledger-line shortening (see {@link #getLedgerLineExtentSs}).
+     * the rightmost one, which is the right parenthesis of a parenthesized accidental — used for
+     * ledger-line shortening (see {@link #getLedgerLineExtentSs}).
      */
     private static @Nullable AccidentalBounds computeAccidentalBounds(
-        SMuFLGlyph[] components,
+        SMuFLGlyph accidentalGlyph,
         boolean parenthesized,
         float totalWidthSs,
         BinaryOperator<BBox> combine
@@ -840,7 +808,7 @@ public final class NoteGeometry {
         var accumulator = new BBox[]{null};
 
         // Base (non-grace) bounds: glyphs are laid out at full size.
-        walkAccidentalGlyphs(components, parenthesized, startX, 1f, (glyph, xSs) -> {
+        walkAccidentalGlyphs(accidentalGlyph, parenthesized, startX, 1f, (glyph, xSs) -> {
             var shifted = SMuFLMetadata.requireBBox(glyph).translateX(xSs);
             accumulator[0] = (accumulator[0] == null) ? shifted : combine.apply(accumulator[0], shifted);
         });
@@ -852,26 +820,5 @@ public final class NoteGeometry {
         }
 
         return new AccidentalBounds(box.left(), box.width(), box.top(), box.bottom());
-    }
-
-    private static float[] computeComponentWidths(SMuFLGlyph[][] componentTable) {
-        var widths = new float[componentTable.length];
-
-        for (var i = 0; i < componentTable.length; i++) {
-            var components = componentTable[i];
-            var width = 0f;
-
-            for (var c = 0; c < components.length; c++) {
-                if (c > 0) {
-                    width += SPACE_BETWEEN_TWO_ACCIDENTALS_SS;
-                }
-
-                width += (float) SMuFLMetadata.getAdvanceWidthOrZero(components[c]);
-            }
-
-            widths[i] = width;
-        }
-
-        return widths;
     }
 }

@@ -23,10 +23,12 @@ package songscribe.io;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
+import java.nio.file.Path;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.StaffElement.Accidental;
 import songscribe.font.FontKey;
 
 class SongLoaderTest extends UnitTest {
@@ -34,6 +36,10 @@ class SongLoaderTest extends UnitTest {
     // The full-line fixture has exactly 1 line containing 22 notes.
     private static final int FULL_LINE_FIXTURE_LINE_COUNT = 1;
     private static final int FULL_LINE_FIXTURE_LINE_0_ELEMENT_COUNT = 22;
+
+    // Hand-maintained .mssw holding the three retired accidentals; see the corpus README.
+    private static final File RETIRED_ACCIDENTALS_FILE =
+        Path.of("src/test/resources/corpus/legacy/retired-accidentals.mssw").toFile();
 
     @Test
     void testLoadDamagedFileReturnsParseError() throws Exception {
@@ -52,6 +58,48 @@ class SongLoaderTest extends UnitTest {
         var missing = new File("/no/such/file.mssw");
         var result = SongLoader.load(missing);
         assertThat(result).isInstanceOf(SongLoadResult.IoError.class);
+    }
+
+    /**
+     * An old {@code .mssw} naming a retired accidental must both convert it and say so.
+     * The load result's flag is what makes the reopened song count as modified, so the
+     * user is prompted to save the converted version instead of losing it on close.
+     */
+    @Test
+    void testLoadFileWithRetiredAccidentalsConvertsThemAndReportsIt() {
+        var result = SongLoader.load(RETIRED_ACCIDENTALS_FILE);
+
+        assertThat(result).isInstanceOf(SongLoadResult.Success.class);
+        var success = (SongLoadResult.Success) result;
+
+        assertThat(success.accidentalsConverted())
+            .as("a file holding retired accidentals must report that they were converted")
+            .isTrue();
+
+        // Line 0 is NATURAL_FLAT, NATURAL_SHARP, DOUBLE_NATURAL, in that order.
+        var line = success.song().getLine(0);
+
+        assertThat(line.getElement(0).getAccidental())
+            .as("NATURAL_FLAT sounds a flat").isEqualTo(Accidental.FLAT);
+        assertThat(line.getElement(1).getAccidental())
+            .as("NATURAL_SHARP sounds a sharp").isEqualTo(Accidental.SHARP);
+        assertThat(line.getElement(2).getAccidental())
+            .as("DOUBLE_NATURAL sounds a natural").isEqualTo(Accidental.NATURAL);
+    }
+
+    /**
+     * The negative half of the pair: without it the flag could be hardwired true and
+     * the test above would still pass, so every old file would open marked modified.
+     */
+    @Test
+    void testLoadFileWithoutRetiredAccidentalsReportsNoConversion() throws Exception {
+        var result = SongLoader.load(fixtureFile("full-line"));
+
+        assertThat(result).isInstanceOf(SongLoadResult.Success.class);
+
+        assertThat(((SongLoadResult.Success) result).accidentalsConverted())
+            .as("a file with no retired accidental must not be reported as converted")
+            .isFalse();
     }
 
     // row 42: ParserConfigurationException → ParseError

@@ -450,7 +450,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             return;
         }
 
-        var components = NoteGeometry.getAccidentalComponents(accidental);
+        var accidentalGlyph = accidental.glyph();
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             // Grace-note accidentals are drawn at grace scale, matching the clearance reserved
@@ -463,7 +463,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
 
             var startX = NoteGeometry.getAccidentalStartXSs(note);
             NoteGeometry.walkAccidentalGlyphs(
-                components,
+                accidentalGlyph,
                 note.isAccidentalInParentheses(),
                 startX,
                 scale,

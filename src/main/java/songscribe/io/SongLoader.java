@@ -59,7 +59,8 @@ public final class SongLoader {
                 warning = new LoadWarning(LoadWarning.Type.INVALID_LYRICS_DATE, invalidLyricsDate);
             }
 
-            return new SongLoadResult.Success(reader.getSong(), reader.getDocumentFonts(), warning);
+            return new SongLoadResult.Success(
+                reader.getSong(), reader.getDocumentFonts(), warning, reader.accidentalsConverted());
         } catch (SongIO.NewerVersionException e) {
             return new SongLoadResult.NewerVersion(file, e);
         } catch (SAXException e) {

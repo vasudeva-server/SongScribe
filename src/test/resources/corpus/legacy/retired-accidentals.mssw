@@ -16,13 +16,16 @@ Sri Chinmoy</rightinfo>
       <lyricsypos>6.25</lyricsypos>
       <notes>
           <note type="CROTCHET">
-            <staffposition>0</staffposition>
-            <annotation>
-              <name>dolce</name>
-              <alignment>0.0</alignment>
-              <placement>ABOVE</placement>
-              <useryoffset>2.0</useryoffset>
-            </annotation>
+            <staffposition>6</staffposition>
+            <prefix>NATURAL_FLAT</prefix>
+          </note>
+          <note type="CROTCHET">
+            <staffposition>6</staffposition>
+            <prefix>NATURAL_SHARP</prefix>
+          </note>
+          <note type="CROTCHET">
+            <staffposition>6</staffposition>
+            <prefix>DOUBLE_NATURAL</prefix>
           </note>
       </notes>
     </line>
@@ -30,27 +33,21 @@ Sri Chinmoy</rightinfo>
       <lyricsypos>6.25</lyricsypos>
       <notes>
           <note type="CROTCHET">
-            <staffposition>0</staffposition>
-            <annotation>
-              <name>rit.</name>
-              <alignment>0.5</alignment>
-              <placement>BELOW</placement>
-              <useryoffset>-2.0</useryoffset>
-            </annotation>
+            <staffposition>6</staffposition>
+            <prefix>NATURAL_FLAT</prefix>
+            <prefixinparenthesis />
           </note>
-      </notes>
-    </line>
-    <line>
-      <lyricsypos>6.25</lyricsypos>
-      <notes>
           <note type="CROTCHET">
-            <staffposition>0</staffposition>
-            <annotation>
-              <name>fine</name>
-              <alignment>1.0</alignment>
-              <placement>ABOVE</placement>
-              <useryoffset>2.0</useryoffset>
-            </annotation>
+            <staffposition>6</staffposition>
+            <prefix>FLAT</prefix>
+          </note>
+          <note type="CROTCHET">
+            <staffposition>6</staffposition>
+            <prefix>SHARP</prefix>
+          </note>
+          <note type="CROTCHET">
+            <staffposition>6</staffposition>
+            <prefix>NATURAL</prefix>
           </note>
       </notes>
     </line>

@@ -254,17 +254,30 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
         }
     }
 
+    /**
+     * {@code forAccidental} is non-null by contract, and the writer relies on it: it no
+     * longer has a skip branch for a missing token. Adding an accidental to the enum
+     * without a token now fails to compile, because that method is an exhaustive switch —
+     * this test guards the weaker mistake the compiler cannot see, a token that is present
+     * but blank, which would write an empty {@code <accidental>} and reload as none.
+     */
+    @Test
+    void testEveryAccidentalHasAMusicXmlToken() {
+        for (var accidental : StaffElement.Accidental.values()) {
+            assertThat(AccidentalMapping.forAccidental(accidental))
+                .as("%s must have a MusicXML <accidental> token", accidental)
+                .isNotBlank();
+        }
+    }
+
     @Test
     void testAllAccidentalsRoundTrip() throws Exception {
-        // DOUBLE_NATURAL has no MusicXML mapping and is intentionally excluded.
         var accidentals = List.of(
             StaffElement.Accidental.NATURAL,
             StaffElement.Accidental.FLAT,
             StaffElement.Accidental.SHARP,
             StaffElement.Accidental.DOUBLE_FLAT,
-            StaffElement.Accidental.DOUBLE_SHARP,
-            StaffElement.Accidental.NATURAL_FLAT,
-            StaffElement.Accidental.NATURAL_SHARP
+            StaffElement.Accidental.DOUBLE_SHARP
         );
 
         for (var accidental : accidentals) {

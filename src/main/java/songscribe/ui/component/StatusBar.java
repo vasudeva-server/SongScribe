@@ -211,17 +211,16 @@ public final class StatusBar extends JPanel {
     }
 
     /**
-     * Resolves an accidental to the form actually sounded, so a natural component never
-     * appears: a plain natural is not displayed at all, and natural flat/sharp collapse
-     * to a plain flat/sharp. DOUBLE_NATURAL is not reachable through normal note entry and
-     * has no chord-symbol glyph, so it is treated like NATURAL.
+     * Maps a note's accidental to the chord-symbol accidental shown beside the pitch name.
+     * A natural has no chord-symbol glyph — the pitch name alone already says "natural" —
+     * so it resolves to nothing, as does a note with no accidental at all.
      */
     private static @Nullable Accidental resolveAccidental(StaffElement.@Nullable Accidental accidental) {
         return switch (accidental) {
             case null -> null;
-            case StaffElement.Accidental.NATURAL, StaffElement.Accidental.DOUBLE_NATURAL -> null;
-            case StaffElement.Accidental.FLAT, StaffElement.Accidental.NATURAL_FLAT -> Accidental.FLAT;
-            case StaffElement.Accidental.SHARP, StaffElement.Accidental.NATURAL_SHARP -> Accidental.SHARP;
+            case StaffElement.Accidental.NATURAL -> null;
+            case StaffElement.Accidental.FLAT -> Accidental.FLAT;
+            case StaffElement.Accidental.SHARP -> Accidental.SHARP;
             case StaffElement.Accidental.DOUBLE_FLAT -> Accidental.DOUBLE_FLAT;
             case StaffElement.Accidental.DOUBLE_SHARP -> Accidental.DOUBLE_SHARP;
         };

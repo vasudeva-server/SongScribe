@@ -21,7 +21,9 @@ package songscribe.io;
 
 import java.io.PrintWriter;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
@@ -99,17 +101,47 @@ public final class StaffElementIO {
     private static final Map<String, StaffElement.Accidental> ACCIDENTAL_MAP =
         new HashMap<>();
 
+    // Every name in ACCIDENTAL_MAP that belongs to a retired accidental, so a reader
+    // can tell a name it converted from one it read as-is. Holds both the canonical
+    // legacy names and the underscore-less aliases synthesized from them.
+    private static final Set<String> LEGACY_ACCIDENTAL_NAMES = new HashSet<>();
+
     static {
         for (var accidental : StaffElement.Accidental.values()) {
-            var accidentalName = accidental.name();
-            ACCIDENTAL_MAP.put(accidentalName, accidental);
+            putAccidentalNameWithAlias(accidental.name(), accidental, false);
+        }
 
-            if (accidentalName.contains("_")) {
-                ACCIDENTAL_MAP.put(
-                    accidentalName.replace("_", ""),
-                    accidental
-                );
-            }
+        // Retired accidentals (NATURAL_FLAT, NATURAL_SHARP, DOUBLE_NATURAL)
+        // no longer exist as enum constants, but old files still serialize
+        // them by name. Route their canonical legacy names through the same
+        // alias-synthesis loop so the underscore-less variants they were
+        // ever written as (e.g. NATURALFLAT) still resolve.
+        for (var entry : LegacyAccidentals.legacyNames().entrySet()) {
+            putAccidentalNameWithAlias(entry.getKey(), entry.getValue(), true);
+        }
+    }
+
+    private static void putAccidentalNameWithAlias(
+        String accidentalName,
+        StaffElement.Accidental accidental,
+        boolean isLegacy
+    ) {
+        putAccidentalName(accidentalName, accidental, isLegacy);
+
+        if (accidentalName.contains("_")) {
+            putAccidentalName(accidentalName.replace("_", ""), accidental, isLegacy);
+        }
+    }
+
+    private static void putAccidentalName(
+        String accidentalName,
+        StaffElement.Accidental accidental,
+        boolean isLegacy
+    ) {
+        ACCIDENTAL_MAP.put(accidentalName, accidental);
+
+        if (isLegacy) {
+            LEGACY_ACCIDENTAL_NAMES.add(accidentalName);
         }
     }
 
@@ -312,6 +344,12 @@ public final class StaffElementIO {
         // LineIO.LineReader reads this after each note and coalesces runs into Trill range elements.
         private boolean trillFlagged = false;
 
+        // True once any element read by this reader named a retired accidental that was
+        // converted to its replacement. Unlike trillFlagged this is never reset: it answers
+        // "did anything in this file get converted", which the loader reports so a converted
+        // song opens modified. Read out via sawLegacyAccidental().
+        private boolean sawLegacyAccidental = false;
+
         // State for the lyric currently being parsed (valid while where == LYRIC)
         private int lyricNumber;
         private String lyricSyllabic = "";
@@ -324,6 +362,14 @@ public final class StaffElementIO {
          */
         public boolean isTrillFlagged() {
             return trillFlagged;
+        }
+
+        /**
+         * Returns true if any element this reader has read so far named a retired
+         * accidental, which was converted to the accidental that sounds the same.
+         */
+        public boolean sawLegacyAccidental() {
+            return sawLegacyAccidental;
         }
 
         public boolean startElement10(String qName, Attributes attributes) {
@@ -538,6 +584,10 @@ public final class StaffElementIO {
                         if (accidental == null) {
                             throw new IllegalArgumentException(
                                 "Unknown accidental: " + str);
+                        }
+
+                        if (LEGACY_ACCIDENTAL_NAMES.contains(str)) {
+                            sawLegacyAccidental = true;
                         }
 
                         element.setAccidental(accidental);

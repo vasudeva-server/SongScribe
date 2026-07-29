@@ -164,21 +164,16 @@ final class MusicXmlNoteWriter {
             return;
         }
 
-        var entry = AccidentalMapping.forAccidental(accidental);
-
-        if (entry == null) {
-            // DOUBLE_NATURAL has no MusicXML representation — skip silently.
-            return;
-        }
+        var token = AccidentalMapping.forAccidental(accidental);
 
         // A parenthesized accidental is a cautionary: cautionary="yes" parentheses="yes".
         if (note.isAccidentalInParentheses()) {
-            XML.writeValue(pw, MusicXmlTags.ACCIDENTAL, entry.token(),
+            XML.writeValue(pw, MusicXmlTags.ACCIDENTAL, token,
                 MusicXmlTags.ATTR_CAUTIONARY, MusicXmlTags.YES,
                 MusicXmlTags.ATTR_PARENTHESES, MusicXmlTags.YES
             );
         } else {
-            XML.writeValue(pw, MusicXmlTags.ACCIDENTAL, entry.token());
+            XML.writeValue(pw, MusicXmlTags.ACCIDENTAL, token);
         }
     }
 

@@ -38,6 +38,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.assertj.core.data.Offset;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.w3c.dom.Element;
 import org.xml.sax.InputSource;
 
@@ -602,35 +604,6 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         var xml = writeToString(song);
         assertThat(firstElementText(xml, "step")).as("<step> for C4").isEqualTo("C");
         assertThat(firstElementText(xml, "octave")).as("<octave> for C4").isEqualTo("4");
-    }
-
-    // -- DOUBLE_NATURAL: no MusicXML mapping → silently skipped on write --
-
-    @Test
-    void testDoubleNaturalAccidentalIsSkippedOnWriteAndRoundTripsToNull() throws Exception {
-        var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
-            note.setAccidental(StaffElement.Accidental.DOUBLE_NATURAL);
-            line.addElement(note);
-        });
-
-        var xml = writeToString(song);
-
-        var factory = DocumentBuilderFactory.newInstance();
-        var doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
-        assertThat(doc.getElementsByTagName("accidental").getLength())
-            .as("DOUBLE_NATURAL must emit no <accidental> element")
-            .isEqualTo(0);
-
-        var validator = new MusicXmlSchemaValidator();
-        assertThatCode(() -> validator.validate(xml))
-            .as("a DOUBLE_NATURAL song must remain schema-valid")
-            .doesNotThrowAnyException();
-
-        var song2 = parse(xml);
-        assertThat(song2.getLine(0).getElement(0).getAccidental())
-            .as("a skipped accidental round-trips back to null")
-            .isNull();
     }
 
     // -- Diagonal glissando: exercises BOTH the cos (X) and sin (Y) endpoint terms --
@@ -1216,5 +1189,30 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         assertThatCode(() -> validator.validate(xml))
             .as("a song with every credit field populated must be schema-valid")
             .doesNotThrowAnyException();
+    }
+
+    // A width read from a file or replayed from an undo record is never range-checked,
+    // so the writer's guard has to cover a negative as well as zero.
+    private static final double NEGATIVE_LINE_WIDTH_SS = -1.0;
+
+    /**
+     * A song whose line width was never initialized, or which picked up a bad width from
+     * a file or an undo replay, must not persist an unusable staff: nothing on the read
+     * side rejects one, so the document would reopen with a staff no content can fit and
+     * every line would fail layout ("Line Too Full") instead of showing the song. The
+     * writer substitutes {@link Song#FALLBACK_LINE_WIDTH_SS} for any width that is not
+     * positive — a guard that only caught zero would let a negative through.
+     */
+    @ParameterizedTest
+    @ValueSource(doubles = { 0, NEGATIVE_LINE_WIDTH_SS })
+    void testNonPositiveLineWidthIsWrittenAsTheFallbackWidth(double lineWidthSs) throws Exception {
+        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.setLineWidthSs(lineWidthSs);
+
+        var xml = writeToString(song);
+
+        assertThat(firstElementText(xml, MusicXmlTags.PAGE_WIDTH))
+            .as("a line width of %s must be written as the fallback width", lineWidthSs)
+            .isEqualTo(MusicXmlUnits.formatSsAsTenths(Song.FALLBACK_LINE_WIDTH_SS));
     }
 }

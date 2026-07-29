@@ -439,8 +439,8 @@ line's projected element sequence and compare, for each protected note, its
 sounding accidental **before** the edit against what it would sound **after**.
 Comparison is always by sounding adjustment
 (`StaffElement.getPitchAdjustment`, with `null` treated as no adjustment, i.e.
-`NATURAL`), never by enum identity — `null` and `NATURAL` sound alike, as do
-`FLAT` and `NATURAL_FLAT`. When the two differ, the note is given an explicit
+`NATURAL`), never by enum identity — `null` and `NATURAL` sound alike. When
+the two differ, the note is given an explicit
 accidental: its own prior accidental if it had one, otherwise `NATURAL`. That
 `null → NATURAL` direction is what a cross-key paste needs — a note that
 inherited no accidental in its source context must still read as an explicit

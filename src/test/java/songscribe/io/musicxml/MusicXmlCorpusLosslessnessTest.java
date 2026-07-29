@@ -53,7 +53,11 @@ import songscribe.io.SongLoader;
  * <ul>
  *   <li>{@code synthetic/} — feature-exercising songs built by
  *       {@link MusicXmlCorpusGenerator} (regenerate with {@code -Dcorpus.generate=true});</li>
- *   <li>{@code real/} — copies of the real Sri Chinmoy songs in {@code examples/}.</li>
+ *   <li>{@code real/} — copies of the real Sri Chinmoy songs in {@code examples/};</li>
+ *   <li>{@code legacy/} — hand-maintained documents carrying constructs the generator
+ *       cannot emit because the model no longer has anything to emit them from, such as
+ *       the retired accidentals in {@link songscribe.io.LegacyAccidentals}. Never
+ *       regenerate these; see {@code corpus/legacy/README.md}.</li>
  * </ul>
  *
  * <h2>Why a fixpoint, and why the second generation</h2>

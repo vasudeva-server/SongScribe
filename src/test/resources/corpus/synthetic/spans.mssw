@@ -9,7 +9,7 @@
   <lyricssource>LYRICIST</lyricssource>
   <rightinfo>Words and Music by
 Sri Chinmoy</rightinfo>
-  <linewidth>0.0</linewidth>
+  <linewidth>90.0</linewidth>
   <dynamicLayout>true</dynamicLayout>
   <lines>
     <line>
@@ -32,7 +32,7 @@ Sri Chinmoy</rightinfo>
     </line>
     <line>
       <lyricsypos>6.25</lyricsypos>
-      <ties>0,2;</ties>
+      <ties>0,1;1,2;</ties>
       <notes>
           <note type="CROTCHET">
             <staffposition>0</staffposition>

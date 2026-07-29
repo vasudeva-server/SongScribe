@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import songscribe.Constants;
 import songscribe.Version;
 import songscribe.dom.Song;
@@ -37,6 +39,8 @@ import songscribe.io.XML;
 import songscribe.util.DateUtils;
 
 final class MusicXmlHeaderWriter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MusicXmlHeaderWriter.class);
 
     private MusicXmlHeaderWriter() {}
 
@@ -252,7 +256,7 @@ final class MusicXmlHeaderWriter {
         XML.writeBeginTag(pw, MusicXmlTags.PAGE_LAYOUT);
         XML.indent();
         XML.writeValue(pw, MusicXmlTags.PAGE_HEIGHT, MusicXmlTags.PAGE_HEIGHT_TENTHS);
-        XML.writeValue(pw, MusicXmlTags.PAGE_WIDTH, MusicXmlUnits.formatSsAsTenths(song.getLineWidthSs()));
+        XML.writeValue(pw, MusicXmlTags.PAGE_WIDTH, MusicXmlUnits.formatSsAsTenths(lineWidthSs(song)));
         XML.dedent();
         XML.writeEndTag(pw, MusicXmlTags.PAGE_LAYOUT);
 
@@ -298,6 +302,30 @@ final class MusicXmlHeaderWriter {
             MusicXmlTags.ATTR_FONT_FAMILY, font.getPSName(),
             MusicXmlTags.ATTR_FONT_SIZE, String.valueOf(font.getSize())
         );
+    }
+
+    /**
+     * The line width to write as {@code <page-width>}, never zero or negative.
+     * <p>
+     * A song whose width never got initialized would otherwise persist a zero-width
+     * staff, and nothing on the read side rejects one: the document reopens with a
+     * staff no content can fit, so every line fails layout and the user gets the
+     * "Line Too Full" warning instead of their song. Substituting the fallback keeps
+     * the document openable, and the warning records that a song reached the writer
+     * in that state.
+     */
+    private static double lineWidthSs(Song song) {
+        var lineWidthSs = song.getLineWidthSs();
+
+        if (lineWidthSs > 0) {
+            return lineWidthSs;
+        }
+
+        LOG.warn(
+            "Song has a non-positive line width ({} ss); writing the fallback {} ss instead",
+            lineWidthSs, Song.FALLBACK_LINE_WIDTH_SS);
+
+        return Song.FALLBACK_LINE_WIDTH_SS;
     }
 
     /**

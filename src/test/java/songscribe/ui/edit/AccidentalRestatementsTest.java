@@ -220,13 +220,14 @@ class AccidentalRestatementsTest extends UnitTest {
     }
 
     @Test
-    void testRewritingAnAccidentalAsOneThatSoundsTheSameRemovesNothing() {
-        // A flat rewritten as a natural-flat: a different symbol saying the same thing, so no
-        // later note has lost anything and the notator is not interrupted.
+    void testWritingAnAccidentalWhereNoneWasRemovesNothing() {
+        // The note had nothing to lose: spelling it with an explicit natural adds a symbol rather
+        // than taking one away, so no later note has lost anything and the notator is not
+        // interrupted.
         var decision = confirmExpectingNoDialog(firstLine, List.of(
             new AccidentalRestatements.EditedNote(
                 FIRST_NOTE, F_STAFF_POSITION,
-                StaffElement.Accidental.FLAT, StaffElement.Accidental.NATURAL_FLAT)));
+                null, StaffElement.Accidental.NATURAL)));
 
         assertThat(decision.removal()).isEqualTo(AccidentalReconciliation.RestatementRemoval.NONE);
     }

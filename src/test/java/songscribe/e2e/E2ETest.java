@@ -345,9 +345,8 @@ public abstract class E2ETest {
 
     protected UIAction[] accidentalActions() {
         return new UIAction[]{
-            Actions.FLAT_ACTION, Actions.DOUBLE_FLAT_ACTION, Actions.NATURAL_FLAT_ACTION,
-            Actions.NATURAL_ACTION, Actions.SHARP_ACTION, Actions.DOUBLE_SHARP_ACTION,
-            Actions.NATURAL_SHARP_ACTION
+            Actions.FLAT_ACTION, Actions.DOUBLE_FLAT_ACTION,
+            Actions.NATURAL_ACTION, Actions.SHARP_ACTION, Actions.DOUBLE_SHARP_ACTION
         };
     }
 

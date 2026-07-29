@@ -841,7 +841,7 @@ class ScoreViewTest extends UnitTest {
             var fonts = DocumentFonts.defaultFonts();
             try (var mock = mockStatic(SongLoader.class)) {
                 mock.when(() -> SongLoader.load(STUB_FILE))
-                    .thenReturn(new SongLoadResult.Success(songMock, fonts, null));
+                    .thenReturn(SongLoadResult.Success.of(songMock, fonts));
 
                 var scoreView = new ScoreView(null);
                 assertThat(scoreView.openFile(STUB_FILE, false)).isFalse();
@@ -916,6 +916,50 @@ class ScoreViewTest extends UnitTest {
             assertThat(scoreView.isInitialized()).isTrue();
             // Callback must not have been invoked.
             assertThat(capturedFile.get()).isNull();
+        }
+
+        /**
+         * The user-visible effect of the whole retired-accidental conversion: the
+         * converted song opens dirty, so the title bar marks it and closing
+         * prompts to save. {@code setSong} clears the modified flag on its way in,
+         * so this also pins the ordering — re-marking before {@code setSong} would
+         * leave the song clean and the conversion would be lost on close.
+         */
+        @Test
+        @RequiresDisplay
+        void testOpenFileMarksSongModifiedWhenAccidentalsWereConverted() throws URISyntaxException {
+            var fixture = loadFixtureResult("full-line");
+            var converted = new SongLoadResult.Success(fixture.song(), fixture.fonts(), null, true);
+
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE)).thenReturn(converted);
+
+                var scoreView = new ScoreView(null);
+
+                assertThat(scoreView.openFile(STUB_FILE, false)).isTrue();
+                assertThat(fixture.song().isModified())
+                    .as("a converted song must open modified so the user is prompted to save it")
+                    .isTrue();
+            }
+        }
+
+        @Test
+        @RequiresDisplay
+        void testOpenFileLeavesSongUnmodifiedWhenNothingWasConverted() throws URISyntaxException {
+            // The negative half: without it the arm could mark every song modified.
+            var fixture = loadFixtureResult("full-line");
+
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE))
+                    .thenReturn(SongLoadResult.Success.of(fixture.song(), fixture.fonts()));
+
+                var scoreView = new ScoreView(null);
+
+                assertThat(scoreView.openFile(STUB_FILE, false)).isTrue();
+                assertThat(fixture.song().isModified())
+                    .as("an unconverted song must open clean")
+                    .isFalse();
+            }
         }
     }
 

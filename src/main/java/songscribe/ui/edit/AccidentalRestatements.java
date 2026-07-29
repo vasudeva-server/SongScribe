@@ -296,9 +296,10 @@ public final class AccidentalRestatements {
      *
      * <p>Losing it outright counts as a removal even when it was a natural. A natural cancels an
      * earlier sharp or flat, so taking one away changes what the note sounds exactly as taking a
-     * sharp away does, and a later note can restate it exactly the same way. Only an accidental
-     * <em>replaced</em> by another is compared by sound: rewriting a flat as a natural-flat removes
-     * nothing anyone can hear.
+     * sharp away does, and a later note can restate it exactly the same way. An accidental
+     * <em>replaced</em> by another is compared by sound rather than identity, but with only
+     * {@code null} and {@code NATURAL} left to sound alike, that comparison is definitional now —
+     * there is no longer a distinct pair of glyphs it needs to fold together.
      */
     private static boolean keepsAccidental(EditedNote note) {
         var after = note.after();

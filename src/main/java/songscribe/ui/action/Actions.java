@@ -109,11 +109,9 @@ public final class Actions {
 
     public static AccidentalAction FLAT_ACTION;
     public static AccidentalAction DOUBLE_FLAT_ACTION;
-    public static AccidentalAction NATURAL_FLAT_ACTION;
     public static AccidentalAction NATURAL_ACTION;
     public static AccidentalAction SHARP_ACTION;
     public static AccidentalAction DOUBLE_SHARP_ACTION;
-    public static AccidentalAction NATURAL_SHARP_ACTION;
     public static AccidentalInParensAction ACCIDENTAL_IN_PARENS_ACTION;
 
     public static ActionGroup<AccidentalAction> ACCIDENTAL_ACTION_GROUP;
@@ -262,20 +260,16 @@ public final class Actions {
 
         FLAT_ACTION = AccidentalAction.createFlatAction(mainFrame);
         DOUBLE_FLAT_ACTION = AccidentalAction.createDoubleFlatAction(mainFrame);
-        NATURAL_FLAT_ACTION = AccidentalAction.createNaturalFlatAction(mainFrame);
         NATURAL_ACTION = AccidentalAction.createNaturalAction(mainFrame);
         SHARP_ACTION = AccidentalAction.createSharpAction(mainFrame);
         DOUBLE_SHARP_ACTION = AccidentalAction.createDoubleSharpAction(mainFrame);
-        NATURAL_SHARP_ACTION = AccidentalAction.createNaturalSharpAction(mainFrame);
         ACCIDENTAL_IN_PARENS_ACTION = AccidentalInParensAction.createAction(mainFrame);
         ACCIDENTAL_ACTION_GROUP = new ActionGroup<>(
-            FLAT_ACTION,
             DOUBLE_FLAT_ACTION,
-            NATURAL_FLAT_ACTION,
+            FLAT_ACTION,
             NATURAL_ACTION,
             SHARP_ACTION,
-            DOUBLE_SHARP_ACTION,
-            NATURAL_SHARP_ACTION
+            DOUBLE_SHARP_ACTION
         );
 
         REPEAT_ACTIONS = new ElementTypeAction[]{

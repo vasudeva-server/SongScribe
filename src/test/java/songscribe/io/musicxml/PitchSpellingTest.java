@@ -53,8 +53,6 @@ class PitchSpellingTest extends UnitTest {
     private static final int SHARP_ALTER         = 1;
     private static final int DOUBLE_FLAT_ALTER   = -2;
     private static final int DOUBLE_SHARP_ALTER  = 2;
-    private static final int NATURAL_FLAT_ALTER  = -1;
-    private static final int NATURAL_SHARP_ALTER = 1;
 
     // -------------------------------------------------------------------------
     // Bijection: spell ∘ staffPositionFor  (forward then inverse)
@@ -100,8 +98,6 @@ class PitchSpellingTest extends UnitTest {
         assertThat(PitchSpelling.alterFor(Accidental.SHARP)).as("SHARP").isEqualTo(SHARP_ALTER);
         assertThat(PitchSpelling.alterFor(Accidental.DOUBLE_FLAT)).as("DOUBLE_FLAT").isEqualTo(DOUBLE_FLAT_ALTER);
         assertThat(PitchSpelling.alterFor(Accidental.DOUBLE_SHARP)).as("DOUBLE_SHARP").isEqualTo(DOUBLE_SHARP_ALTER);
-        assertThat(PitchSpelling.alterFor(Accidental.NATURAL_FLAT)).as("NATURAL_FLAT").isEqualTo(NATURAL_FLAT_ALTER);
-        assertThat(PitchSpelling.alterFor(Accidental.NATURAL_SHARP)).as("NATURAL_SHARP").isEqualTo(NATURAL_SHARP_ALTER);
     }
 
     @Test

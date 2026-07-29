@@ -46,8 +46,7 @@ import songscribe.ui.action.Actions;
  * test here rather than beside the engine's.
  *
  * <p>Fixture, in a song with no key signature — Fixture B of #676, flattened rather than sharpened
- * because only the flat-side accidentals have toolbar buttons ({@code AccidentalToolbar}); the
- * direction of the alteration is immaterial to what is being tested:
+ * for no particular reason; the direction of the alteration is immaterial to what is being tested:
  *
  * <pre>
  * F♭  G  A  F      ← the last F carries nothing and inherits the flat

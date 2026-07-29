@@ -29,7 +29,17 @@ import org.xml.sax.SAXException;
 
 public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadResult.Failure {
 
-    record Success(Song song, DocumentFonts fonts, @Nullable LoadWarning warning) implements SongLoadResult {}
+    record Success(Song song, DocumentFonts fonts, @Nullable LoadWarning warning, boolean accidentalsConverted)
+            implements SongLoadResult {
+
+        /**
+         * Convenience factory for the common case: no warning, no retired
+         * accidental conversion.
+         */
+        public static Success of(Song song, DocumentFonts fonts) {
+            return new Success(song, fonts, null, false);
+        }
+    }
 
     sealed interface Failure extends SongLoadResult permits
             SongLoadResult.IoError,

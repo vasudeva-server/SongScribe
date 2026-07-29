@@ -41,7 +41,7 @@ class SongLoadResultTest extends UnitTest {
     void testSongOrThrowOnSuccessReturnsSong() throws Exception {
         var song = mock(Song.class);
         var fonts = mock(DocumentFonts.class);
-        var result = new SongLoadResult.Success(song, fonts, null);
+        var result = SongLoadResult.Success.of(song, fonts);
         assertThat(result.songOrThrow()).isSameAs(song);
     }
 

@@ -313,18 +313,20 @@ class AccidentalReconciliationTest extends UnitTest {
         }
 
         @Test
-        void testNoMaterializationWhenFlatAndNaturalFlatMeetBecauseTheySoundAlike() {
-            assertThat(StaffElement.getPitchAdjustment(StaffElement.Accidental.NATURAL_FLAT))
-                .isEqualTo(StaffElement.getPitchAdjustment(StaffElement.Accidental.FLAT));
+        void testNoMaterializationWhenWritingANaturalWhereNoneWasBecauseTheySoundAlike() {
+            assertThat(StaffElement.getPitchAdjustment(StaffElement.Accidental.NATURAL))
+                .isEqualTo(StaffElement.getPitchAdjustment(null));
 
             var line = lineOf(
-                note(F_STAFF_POSITION, StaffElement.Accidental.FLAT), note(G_STAFF_POSITION),
+                note(F_STAFF_POSITION), note(G_STAFF_POSITION),
                 note(A_STAFF_POSITION), note(F_STAFF_POSITION));
 
+            // Spelling the first F with an explicit natural leaves the last F inheriting that
+            // natural instead of nothing, which sounds exactly the same.
             var accidentalChanges = AccidentalReconciliation.reconcile(pasteReplace(
                 line, FIRST_NOTE, FIRST_NOTE,
-                List.of(note(F_STAFF_POSITION, StaffElement.Accidental.NATURAL_FLAT)),
-                priors(StaffElement.Accidental.NATURAL_FLAT)));
+                List.of(note(F_STAFF_POSITION, StaffElement.Accidental.NATURAL)),
+                priors(StaffElement.Accidental.NATURAL)));
 
             assertThat(accidentalChanges).isEmpty();
         }

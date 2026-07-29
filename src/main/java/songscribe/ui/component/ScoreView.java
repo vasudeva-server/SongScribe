@@ -458,6 +458,13 @@ public final class ScoreView
                 installDocumentFonts(success.fonts());
                 setSong(success.song());
 
+                // setSong clears the modified flag internally; a silent retired-
+                // accidental conversion must still prompt the user to save the
+                // converted version, so re-mark modified after installing the song.
+                if (success.accidentalsConverted()) {
+                    success.song().setModified(true);
+                }
+
                 if (updateCurrentFile && onFileOpened != null) {
                     onFileOpened.accept(FileUtils.hasExtension(file, FileExtensions.SONGWRITER) ? null : file);
                 }

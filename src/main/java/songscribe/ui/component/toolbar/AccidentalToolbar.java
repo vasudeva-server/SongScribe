@@ -28,7 +28,7 @@ public class AccidentalToolbar extends Toolbar {
     public AccidentalToolbar() {
         add(new ToolbarToggleButton(Actions.DOUBLE_FLAT_ACTION));
         add(new ToolbarToggleButton(Actions.FLAT_ACTION));
-        add(new ToolbarToggleButton(Actions.NATURAL_FLAT_ACTION));
         add(new ToolbarToggleButton(Actions.NATURAL_ACTION));
+        add(new ToolbarToggleButton(Actions.SHARP_ACTION));
     }
 }

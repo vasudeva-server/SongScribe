@@ -688,6 +688,20 @@ public final class SongIO {
             }
         }
 
+        /**
+         * Returns true if this document named a retired accidental anywhere, which was
+         * converted to the accidental that sounds the same. Only one of the two note
+         * readers exists for a given file — {@code noteReader} for v1.0, {@code lineReader}
+         * for later versions — so both are consulted.
+         */
+        public boolean accidentalsConverted() {
+            if (noteReader != null && noteReader.sawLegacyAccidental()) {
+                return true;
+            }
+
+            return lineReader != null && lineReader.sawLegacyAccidental();
+        }
+
         public Song getSong() {
             // For legacy files that predate the discrete attribution tags, derive
             // composer/lyricist (and, for v1.0 only, date/place) from the blob.
