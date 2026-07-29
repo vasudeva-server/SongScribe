@@ -659,7 +659,7 @@ public final class MusicEditOperations {
         }
 
         // Stage 4: Preceding element check
-        return checkPrecedingElement(lineIndex, begin, end);
+        return checkPrecedingElement(line, begin, end);
     }
 
     // Returns the index of the right repeat within the selection, or -1 if invalid.
@@ -748,22 +748,15 @@ public final class MusicEditOperations {
         return false;
     }
 
-    // Walks backward from just before the selection start, across lines if needed,
-    // looking for an enclosing repeated section.
+    // Walks backward from just before the selection start, across as many preceding
+    // lines as needed, looking for an enclosing repeated section.
     private boolean hasEnclosingRepeat(int lineIndex, int selectionBegin) {
-        // Determine starting point for backward search
+        // Determine starting point for backward search. A negative element index means
+        // the selection starts at the head of its line, so the walk below skips the
+        // current line entirely: it either continues onto the previous line, or — when
+        // there is none — falls straight through and reports the song start.
         var searchLineIndex = lineIndex;
         var searchElementIndex = selectionBegin - 1;
-
-        if (searchElementIndex < 0) {
-            searchLineIndex--;
-
-            if (searchLineIndex < 0) {
-                return lineIndex == 0;
-            }
-
-            searchElementIndex = song.getLine(searchLineIndex).elementCount() - 1;
-        }
 
         // Walk backward
         while (searchLineIndex >= 0) {
@@ -793,36 +786,48 @@ public final class MusicEditOperations {
             }
         }
 
-        // Reached beginning of song — valid only on the first line
-        return lineIndex == 0;
+        // Reached the beginning of the song without meeting a section delimiter —
+        // the song start acts as an implicit left repeat, no matter which line the
+        // selection is on.
+        return true;
     }
 
-    // Examines the element immediately before the selection start and determines
-    // what action is needed (barline insertion, span extension, or invalid).
-    private EndingValidationResult checkPrecedingElement(
-        int lineIndex, int selectionBegin, int selectionEnd
-    ) {
-        // Find the preceding element (may be on a previous line)
-        var precedingLineIndex = lineIndex;
-        var precedingElementIndex = selectionBegin - 1;
-
-        if (precedingElementIndex < 0) {
-            precedingLineIndex--;
-
-            if (precedingLineIndex < 0) {
-                // Beginning of song — valid; the song start acts as an implicit left repeat
-                return EndingValidationResult.valid(
-                    EndingValidationResult.PrecedingAction.NONE,
-                    selectionBegin,
-                    selectionEnd
-                );
+    // Returns the index of the nearest element before selectionBegin that ending
+    // validation treats as content, or -1 when the selection has no such predecessor
+    // on this line.
+    private int indexOfPrecedingContentElement(Line line, int selectionBegin) {
+        for (var i = selectionBegin - 1; i >= 0; i--) {
+            if (!line.getElement(i).getType().isNonContentElement()) {
+                return i;
             }
-
-            precedingElementIndex = song.getLine(precedingLineIndex).elementCount() - 1;
         }
 
-        var precedingLine = song.getLine(precedingLineIndex);
-        var precedingType = precedingLine.getElement(precedingElementIndex).getType();
+        return -1;
+    }
+
+    // Examines the element preceding the selection start and determines what action
+    // is needed (none, span extension, or invalid).
+    private EndingValidationResult checkPrecedingElement(
+        Line line, int selectionBegin, int selectionEnd
+    ) {
+        // Grace notes, slides and breath marks are transparent everywhere else in this
+        // validation, so skip back over them to reach the element that actually decides
+        // where the 1st bracket anchors.
+        var precedingElementIndex = indexOfPrecedingContentElement(line, selectionBegin);
+
+        if (precedingElementIndex < 0) {
+            // Nothing on this line precedes the selection, so there is no element the
+            // span could be extended onto — an ending never spans lines. Whatever
+            // precedes on earlier lines has already been vetted by the backward scan
+            // for an enclosing repeat.
+            return EndingValidationResult.valid(
+                EndingValidationResult.PrecedingAction.NONE,
+                selectionBegin,
+                selectionEnd
+            );
+        }
+
+        var precedingType = line.getElement(precedingElementIndex).getType();
 
         if (precedingType.isDuration()) {
             // Note/rest predecessor — anchor the 1st bracket to the note at
@@ -845,8 +850,10 @@ public final class MusicEditOperations {
             );
         }
 
-        // Right repeat, double barline, or final double barline — invalid
-        // (REPEAT_LEFT_RIGHT is handled by the EXTEND_SPAN branch above).
+        // Unreachable today: the only element types left are the right repeat, the
+        // double barline and the final double barline, and the backward scan for an
+        // enclosing repeat has already rejected the selection when one of those sits
+        // before it. Kept as a defensive catch-all for element types added later.
         return EndingValidationResult.invalid();
     }
 

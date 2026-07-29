@@ -930,17 +930,105 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     @Test
+    void testCanMakeFirstSecondEndingReturnsExtendSpanWhenPrecedingElementIsRepeatLeft() {
+        // checkPrecedingElement: preceding element is a plain REPEAT_LEFT → action is
+        // EXTEND_SPAN; the span start is extended backward to include that repeat sign.
+        //
+        // Layout: [REPEAT_LEFT(0), CROTCHET(1), REPEAT_RIGHT(2), CROTCHET(3),
+        //          CROTCHET(4), SINGLE_BARLINE(5)]
+        // Selection 1–5. Preceding element at index 0 is REPEAT_LEFT → EXTEND_SPAN;
+        // spanStart extends back to 0.
+        var env = setupEnv(
+            repeatLeft(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 1, 5);
+        var result = env.operations().canMakeFirstSecondEnding();
+        assertThat(result.isValid())
+            .as("canMakeFirstSecondEnding() must be valid when preceding element is a left repeat")
+            .isTrue();
+        assertThat(result.getPrecedingAction())
+            .as("preceding action must be EXTEND_SPAN when preceding element is a left repeat")
+            .isEqualTo(EndingValidationResult.PrecedingAction.EXTEND_SPAN);
+        assertThat(result.getSpanStart())
+            .as("span start must be extended back to the preceding REPEAT_LEFT index")
+            .isZero();
+        assertThat(result.getSpanEnd())
+            .as("span end must remain the selection end index")
+            .isEqualTo(5);
+    }
+
+    @Test
+    void testCanMakeFirstSecondEndingSkipsGraceNotesToReachPrecedingBarline() {
+        // Grace notes carry no duration and are skipped everywhere else in this
+        // validation, so they must not hide the barline that anchors the 1st bracket.
+        //
+        // Layout: [REPEAT_LEFT(0), CROTCHET(1), SINGLE_BARLINE(2), GRACE_QUAVER(3),
+        //          GRACE_QUAVER(4), CROTCHET(5), REPEAT_RIGHT(6), CROTCHET(7),
+        //          CROTCHET(8), SINGLE_BARLINE(9)]
+        // Selection 5–9. Skipping both grace notes reaches SINGLE_BARLINE at index 2
+        // → EXTEND_SPAN with spanStart 2, so the grace notes fall inside the ending.
+        var env = setupEnv(
+            repeatLeft(), crotchet(), singleBarline(), graceQuaver(), graceQuaver(),
+            crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 5, 9);
+        var result = env.operations().canMakeFirstSecondEnding();
+        assertThat(result.isValid())
+            .as("grace notes before the selection must not make the ending invalid")
+            .isTrue();
+        assertThat(result.getPrecedingAction())
+            .as("preceding action must be EXTEND_SPAN once the grace notes are skipped")
+            .isEqualTo(EndingValidationResult.PrecedingAction.EXTEND_SPAN);
+        assertThat(result.getSpanStart())
+            .as("span start must be extended back past the grace notes to the barline")
+            .isEqualTo(2);
+        assertThat(result.getSpanEnd())
+            .as("span end must remain the selection end index")
+            .isEqualTo(9);
+    }
+
+    @Test
+    void testCanMakeFirstSecondEndingSkipsGraceNoteToReachPrecedingNote() {
+        // Same skipping rule, but the element behind the grace note is a note rather than
+        // a barline, so the bracket anchors at the selection start with no extension.
+        //
+        // Layout: [REPEAT_LEFT(0), CROTCHET(1), GRACE_QUAVER(2), CROTCHET(3),
+        //          REPEAT_RIGHT(4), CROTCHET(5), CROTCHET(6), SINGLE_BARLINE(7)]
+        // Selection 3–7. Skipping the grace note reaches CROTCHET at index 1 → NONE.
+        var env = setupEnv(
+            repeatLeft(), crotchet(), graceQuaver(), crotchet(),
+            repeatRight(), crotchet(), crotchet(), singleBarline()
+        );
+        ReflectionTestHelper.selectRange(env.coordinator(), 3, 7);
+        var result = env.operations().canMakeFirstSecondEnding();
+        assertThat(result.isValid())
+            .as("a grace note before the selection must not make the ending invalid")
+            .isTrue();
+        assertThat(result.getPrecedingAction())
+            .as("preceding action must be NONE when the element behind the grace note is a note")
+            .isEqualTo(EndingValidationResult.PrecedingAction.NONE);
+        assertThat(result.getSpanStart())
+            .as("span start must be the selection begin index")
+            .isEqualTo(3);
+        assertThat(result.getSpanEnd())
+            .as("span end must remain the selection end index")
+            .isEqualTo(7);
+    }
+
+    @Test
     void testCanMakeFirstSecondEndingReturnsFalseWhenPrecedingElementIsRightRepeat() {
-        // checkPrecedingElement: preceding element is REPEAT_RIGHT, which is a right-repeat;
-        // this branch returns invalid regardless of selection structure.
+        // A REPEAT_RIGHT immediately before the selection closes the preceding section,
+        // so the selection is not inside a repeated section and must be rejected.
         //
         // Layout: [REPEAT_LEFT(0), CROTCHET(1), CROTCHET(2), REPEAT_RIGHT(3),
         //          CROTCHET(4), CROTCHET(5), REPEAT_RIGHT(6), CROTCHET(7),
         //          CROTCHET(8), SINGLE_BARLINE(9)]
         // Selection 4–9. Preceding element at index 3 is REPEAT_RIGHT.
         // validateEndingStructure [4..9] passes (one REPEAT_RIGHT at 6, 4 content elements).
-        // hasEnclosingRepeat: scan from 4 backward finds REPEAT_LEFT at 0 → valid.
-        // checkPrecedingElement: preceding type is REPEAT_RIGHT → invalid.
+        // hasEnclosingRepeat starts its backward scan at index 3, sees the REPEAT_RIGHT
+        // and returns invalid there — it never reaches the REPEAT_LEFT at index 0, and
+        // checkPrecedingElement is never called. The rejection belongs to that scan, not
+        // to the preceding-element check.
         var env = setupEnv(
             repeatLeft(), crotchet(), crotchet(), repeatRight(),
             crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
@@ -1481,10 +1569,10 @@ class MusicEditOperationsMutationTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     /**
-     * Verifies the updated backward-scan rules in {@code hasEnclosingRepeat}:
-     * double barlines act as section delimiters, reaching the beginning of a
-     * non-first line is invalid, and reaching the beginning of the first line
-     * is valid.
+     * Verifies the backward-scan rules in {@code hasEnclosingRepeat}: double
+     * barlines and right repeats act as section delimiters, the scan continues
+     * onto preceding lines for as long as it needs to, and reaching the beginning
+     * of the song is valid regardless of which line the selection is on.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -1539,51 +1627,226 @@ class MusicEditOperationsMutationTest extends UnitTest {
             messageCenterMock = mockStatic(MessageCenter.class);
 
             ReflectionTestHelper.selectRange(coordinator, 1, 5);
-            assertThat(ops.canMakeFirstSecondEnding().isValid()).isTrue();
+            assertThat(ops.canMakeFirstSecondEnding().isValid())
+                .as("reaching the beginning of the song on line 0 must satisfy the enclosing-repeat rule")
+                .isTrue();
         }
 
-        // Non-first line: reaching beginning of song without a left repeat is invalid
+        // The very opening of the song: nothing precedes the selection on its line and
+        // there is no preceding line either, so the backward scan runs out immediately.
         @Test
-        void testNonFirstLineNoRepeatIsInvalid() {
+        void testSelectionAtSongOpeningIsValid() {
+            // Populate the Song's initial line so the fixture sits at line index 0 with no
+            // line before it. addElement keeps the constructor's FINAL_DOUBLE_BARLINE last,
+            // so it lands at index 6 and stays outside the selection.
+            //
+            // idx: 0        1        2             3        4        5              6
+            //      CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE FINAL_DOUBLE_BARLINE
+            // Selection 0–5: the scan starts before index 0, finds no preceding line,
+            // and reaches the beginning of the song → valid, span anchored at index 0
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> {
+                line.addElement(crotchet());
+                line.addElement(crotchet());
+                line.addElement(repeatRight());
+                line.addElement(crotchet());
+                line.addElement(crotchet());
+                line.addElement(singleBarline());
+            });
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            var ops = new MusicEditOperations(song, coordinator);
+            messageCenterMock = mockStatic(MessageCenter.class);
+
+            ReflectionTestHelper.selectRange(coordinator, 0, 5);
+            var result = ops.canMakeFirstSecondEnding();
+            assertThat(result.isValid())
+                .as("a selection starting at the song's very first element must be valid")
+                .isTrue();
+            assertThat(result.getPrecedingAction())
+                .as("nothing precedes the selection, so no span adjustment is needed")
+                .isEqualTo(EndingValidationResult.PrecedingAction.NONE);
+            assertThat(result.getSpanStart())
+                .as("span start must be the song's first element")
+                .isZero();
+            assertThat(result.getSpanEnd())
+                .as("span end must remain the selection end index")
+                .isEqualTo(5);
+        }
+
+        // Non-first line: reaching beginning of song without a left repeat is valid
+        @Test
+        void testNonFirstLineNoRepeatIsValid() {
             // Line 0: CROTCHET CROTCHET CROTCHET
             // Line 1: CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
             //         idx: 0        1        2             3        4        5
-            // Selection 0–5 on line 1. No repeat found; lineIndex==1 → invalid
-            var line0 = new Line(song);
+            // Selection 0–5 on line 1. The scan crosses onto line 0, meets no delimiter
+            // and reaches the beginning of the song, which is an implicit left repeat → valid
+            //
+            // Populate the Song's initial line rather than adding one, so no line
+            // precedes the fixture. Its FINAL_DOUBLE_BARLINE has to go: once the line
+            // is no longer the last, that terminal would act as a section delimiter.
+            var line0 = song.getLine(0);
             song.withoutMutationTracking(() -> {
+                line0.removeElement(0);
                 line0.addElement(crotchet());
                 line0.addElement(crotchet());
                 line0.addElement(crotchet());
-                song.addLine(line0);
             });
 
             var env = setupEnv(
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
             );
             ReflectionTestHelper.selectRange(env.coordinator(), 0, 5);
-            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isFalse();
+            var result = env.operations().canMakeFirstSecondEnding();
+            assertThat(result.isValid())
+                .as("the song start is an implicit left repeat even on a non-first line")
+                .isTrue();
+            assertThat(result.getPrecedingAction())
+                .as("a selection at the head of its line needs no span adjustment")
+                .isEqualTo(EndingValidationResult.PrecedingAction.NONE);
+            assertThat(result.getSpanStart())
+                .as("span start must stay at the head of the selection's own line")
+                .isZero();
+            assertThat(result.getSpanEnd())
+                .as("span end must remain the selection end index")
+                .isEqualTo(5);
+        }
+
+        // The scan keeps walking back past an intervening line to find the left repeat
+        @Test
+        void testRepeatLeftTwoLinesBackIsValid() {
+            // Song line 0: FINAL_DOUBLE_BARLINE  (the Song constructor's initial line,
+            //              left in place — the scan never reaches it here)
+            // Song line 1: REPEAT_LEFT  CROTCHET  CROTCHET
+            // Song line 2: CROTCHET CROTCHET
+            // Song line 3: CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
+            //              idx: 0        1        2             3        4        5
+            // Selection 0–5 on line 3. Scan crosses line 2, then finds REPEAT_LEFT on line 1
+            var previousLine = new Line(song);
+            var interveningLine = new Line(song);
+            song.withoutMutationTracking(() -> {
+                previousLine.addElement(repeatLeft());
+                previousLine.addElement(crotchet());
+                previousLine.addElement(crotchet());
+                song.addLine(previousLine);
+                interveningLine.addElement(crotchet());
+                interveningLine.addElement(crotchet());
+                song.addLine(interveningLine);
+            });
+
+            var env = setupEnv(
+                crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+            );
+            ReflectionTestHelper.selectRange(env.coordinator(), 0, 5);
+            var result = env.operations().canMakeFirstSecondEnding();
+            assertThat(result.isValid())
+                .as("scan must keep walking back past an intervening line to find the left repeat")
+                .isTrue();
+            assertThat(result.getPrecedingAction())
+                .as("a selection at the head of its line needs no span adjustment")
+                .isEqualTo(EndingValidationResult.PrecedingAction.NONE);
+            assertThat(result.getSpanStart())
+                .as("span start must stay at the head of the selection's own line")
+                .isZero();
+            assertThat(result.getSpanEnd())
+                .as("span end must remain the selection end index")
+                .isEqualTo(5);
+        }
+
+        // A delimiter two lines back still stops the scan before the left repeat
+        @Test
+        void testDoubleBarlineTwoLinesBackBlocksScan() {
+            // Song line 0: FINAL_DOUBLE_BARLINE  (the Song constructor's initial line,
+            //              left in place — the scan stops before it)
+            // Song line 1: REPEAT_LEFT  CROTCHET  DOUBLE_BARLINE
+            // Song line 2: CROTCHET CROTCHET
+            // Song line 3: CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
+            //              idx: 0        1        2             3        4        5
+            // Selection 0–5 on line 3. The scan meets DOUBLE_BARLINE on line 1 → invalid
+            var previousLine = new Line(song);
+            var interveningLine = new Line(song);
+            song.withoutMutationTracking(() -> {
+                previousLine.addElement(repeatLeft());
+                previousLine.addElement(crotchet());
+                previousLine.addElement(doubleBarline());
+                song.addLine(previousLine);
+                interveningLine.addElement(crotchet());
+                interveningLine.addElement(crotchet());
+                song.addLine(interveningLine);
+            });
+
+            var env = setupEnv(
+                crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+            );
+            ReflectionTestHelper.selectRange(env.coordinator(), 0, 5);
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+                .as("a double barline two lines back must stop the scan short of the left repeat")
+                .isFalse();
+        }
+
+        // A selection at the head of a line anchors its span there, never onto the
+        // barline that ends the previous line (an ending never spans two lines).
+        @Test
+        void testSpanStartsAtLineHeadWhenPreviousLineEndsWithBarline() {
+            // Song line 0: FINAL_DOUBLE_BARLINE  (the Song constructor's initial line,
+            //              left in place — the scan stops at the REPEAT_LEFT before it)
+            // Song line 1: REPEAT_LEFT  CROTCHET  CROTCHET  SINGLE_BARLINE
+            // Song line 2: CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
+            //              idx: 0        1        2             3        4        5
+            // Selection 0–5 on line 2 → the span must start at index 0 of line 2, never
+            // at line 1's trailing SINGLE_BARLINE (index 3 of a different line)
+            var previousLine = new Line(song);
+            song.withoutMutationTracking(() -> {
+                previousLine.addElement(repeatLeft());
+                previousLine.addElement(crotchet());
+                previousLine.addElement(crotchet());
+                previousLine.addElement(singleBarline());
+                song.addLine(previousLine);
+            });
+
+            var env = setupEnv(
+                crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
+            );
+            ReflectionTestHelper.selectRange(env.coordinator(), 0, 5);
+            var result = env.operations().canMakeFirstSecondEnding();
+            assertThat(result.isValid())
+                .as("a selection at the head of a line whose predecessor ends in a barline is valid")
+                .isTrue();
+            assertThat(result.getPrecedingAction())
+                .as("the span must not be extended onto the previous line's barline")
+                .isEqualTo(EndingValidationResult.PrecedingAction.NONE);
+            assertThat(result.getSpanStart())
+                .as("span start must be the head of the selection's own line")
+                .isZero();
+            assertThat(result.getSpanEnd())
+                .as("span end must remain the selection end index")
+                .isEqualTo(5);
         }
 
         // Non-first line: REPEAT_LEFT on previous line crosses the line boundary → valid
         @Test
         void testRepeatLeftOnPreviousLineIsValid() {
-            // Line 0: REPEAT_LEFT  CROTCHET  CROTCHET
-            // Line 1: CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
-            //         idx: 0        1        2             3        4        5
-            // Selection 0–5 on line 1. Scan crosses to line 0, finds REPEAT_LEFT → valid
-            var line0 = new Line(song);
+            // Song line 0: FINAL_DOUBLE_BARLINE  (the Song constructor's initial line,
+            //              left in place — the scan stops at the REPEAT_LEFT before it)
+            // Song line 1: REPEAT_LEFT  CROTCHET  CROTCHET
+            // Song line 2: CROTCHET CROTCHET REPEAT_RIGHT  CROTCHET CROTCHET SINGLE_BARLINE
+            //              idx: 0        1        2             3        4        5
+            // Selection 0–5 on line 2. Scan crosses to line 1, finds REPEAT_LEFT → valid
+            var previousLine = new Line(song);
             song.withoutMutationTracking(() -> {
-                line0.addElement(repeatLeft());
-                line0.addElement(crotchet());
-                line0.addElement(crotchet());
-                song.addLine(line0);
+                previousLine.addElement(repeatLeft());
+                previousLine.addElement(crotchet());
+                previousLine.addElement(crotchet());
+                song.addLine(previousLine);
             });
 
             var env = setupEnv(
                 crotchet(), crotchet(), repeatRight(), crotchet(), crotchet(), singleBarline()
             );
             ReflectionTestHelper.selectRange(env.coordinator(), 0, 5);
-            assertThat(env.operations().canMakeFirstSecondEnding().isValid()).isTrue();
+            assertThat(env.operations().canMakeFirstSecondEnding().isValid())
+                .as("a REPEAT_LEFT on the previous line must satisfy the enclosing-repeat rule")
+                .isTrue();
         }
     }
 
