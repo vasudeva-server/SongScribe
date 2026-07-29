@@ -39,7 +39,7 @@ import songscribe.ui.selection.SelectionCoordinator;
 @SuppressWarnings({ "OverlyBroadThrowsClause", "StaticVariableMayNotBeInitialized", "StaticVariableUsedBeforeInitialization" })
 class TieToggleTest extends UnitTest {
 
-    // Element indices in connections.mssw
+    // Element indices in connections.musicxml
     private static final int EIGHTH_1 = 1;
     private static final int EIGHTH_2 = 2;
     private static final int TIED_1 = 3;

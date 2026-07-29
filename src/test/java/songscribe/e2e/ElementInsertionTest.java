@@ -55,14 +55,14 @@ import songscribe.util.Utils;
  * E2E tests for element insertion mechanics, including grace note insertion,
  * cancellation, drag-connect, and deletion.
  * <p>
- * The insertion.mssw fixture is loaded once for the entire class. Nested classes
+ * The insertion.musicxml fixture is loaded once for the entire class. Nested classes
  * are ordered so that grace note tests run first, then general insertion tests
  * append at the end of the line. FullLine uses a separate fixture.
  */
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
 class ElementInsertionTest extends E2ETest {
 
-    // Element indices for insertion.mssw.
+    // Element indices for insertion.musicxml.
     // Multiple constants may share the same index to name positions at different
     // points in the test (e.g., STANDALONE and PAIR_D_GRACE both map to 7 because
     // GraceNoteDragConnect inserts a grace note at STANDALONE's original position).

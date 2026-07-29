@@ -110,7 +110,9 @@ class SongIOTest extends UnitTest {
 
     @Test
     void testOpeningNewerVersionFileThrowsNewerVersionException() {
-        assertThatThrownBy(() -> loadFixture("newer-version"))
+        // Goes through the legacy reader directly: loadFixture reports a failed load as an
+        // IllegalStateException, which would hide the version exception under test.
+        assertThatThrownBy(() -> SongLoader.load(fixtureFile("newer-version")).songOrThrow())
             .isInstanceOf(SongIO.NewerVersionException.class);
     }
 

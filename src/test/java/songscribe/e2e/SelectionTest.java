@@ -62,7 +62,7 @@ class SelectionTest extends E2ETest {
         loadFixture("selection1");
     }
 
-    // Element indices for selection1.mssw
+    // Element indices for selection1.musicxml
     private enum Sel1 {
         QUARTER_TEMPO(0),
         WHOLE(1),
@@ -90,7 +90,7 @@ class SelectionTest extends E2ETest {
         }
     }
 
-    // Element indices for selection2.mssw
+    // Element indices for selection2.musicxml
     private enum Sel2 {
         STACCATO(0),
         ACCENT(1),
@@ -104,12 +104,12 @@ class SelectionTest extends E2ETest {
         SEMIQUAVER_REST(9),
         DEMI_SEMIQUAVER_REST(10),
         NOTE(11),
-        SINGLE_BARLINE(12),
-        DOUBLE_BARLINE(13),
-        REPEAT_LEFT(14),
-        REPEAT_RIGHT(15),
-        REPEAT_LEFT_RIGHT(16),
-        BREATH_MARK(17),
+        BREATH_MARK(12),
+        SINGLE_BARLINE(13),
+        DOUBLE_BARLINE(14),
+        REPEAT_LEFT(15),
+        REPEAT_RIGHT(16),
+        REPEAT_LEFT_RIGHT(17),
         FINAL_DOUBLE_BARLINE(18),
         ;
 

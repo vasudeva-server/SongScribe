@@ -46,7 +46,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SuppressWarnings({ "OverlyBroadThrowsClause", "StaticVariableMayNotBeInitialized" })
 class SlideMidiIntegrationTest extends UnitTest {
 
-    // Element indices in connections.mssw
+    // Element indices in connections.musicxml
     private static final int TEMPO_INDEX = 0;
 
     private static final int PLAIN_NOTE_STAFF_POS = -2;

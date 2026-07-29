@@ -299,7 +299,7 @@ class SongLoadingTest extends UnitTest {
         );
     }
 
-    // selection2.mssw has no dynamics — regression guard for older files without them.
+    // selection2.musicxml has no dynamics — regression guard for documents without them.
     private static final int SELECTION2_ELEMENT_COUNT = 19;
 
     @Test

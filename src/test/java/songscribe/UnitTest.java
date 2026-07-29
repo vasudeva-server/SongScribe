@@ -173,10 +173,11 @@ public abstract class UnitTest {
     }
 
     /**
-     * Loads a fixture file and returns the parsed song.
+     * Loads a fixture file and returns the parsed song, preferring a MusicXML fixture over a legacy
+     * one of the same name (see {@link #loadFixtureResult}).
      */
     public static Song loadFixture(String fixtureName) throws IllegalArgumentException, IOException, SAXException, URISyntaxException {
-        return SongLoader.load(fixtureFile(fixtureName)).songOrThrow();
+        return loadFixtureResult(fixtureName).song();
     }
 
     /**

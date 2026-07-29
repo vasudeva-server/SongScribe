@@ -41,13 +41,13 @@ import songscribe.dom.DynamicAttachment.DynamicType;
  * Integration tests for the dynamics markings feature.
  * Covers serialization (E6) and regression checks for coexisting features.
  *
- * <p>All tests share the selection1.mssw fixture loaded once in {@code @BeforeAll}.
+ * <p>All tests share the selection1.musicxml fixture loaded once in {@code @BeforeAll}.
  * Each test operates on unique note indices to avoid cross-test interference.
  */
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
 class DynamicsMarkingTest extends E2ETest {
 
-    // Element indices for selection1.mssw — each test uses a unique set
+    // Element indices for selection1.musicxml — each test uses a unique set
     private enum Note {
         FERMATA_COEXIST(10),
         CRESCENDO_START(11),

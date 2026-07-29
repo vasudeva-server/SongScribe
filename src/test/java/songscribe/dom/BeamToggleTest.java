@@ -40,7 +40,7 @@ import songscribe.ui.selection.SelectionCoordinator;
 @SuppressWarnings({ "OverlyBroadThrowsClause", "StaticVariableMayNotBeInitialized", "StaticVariableUsedBeforeInitialization" })
 class BeamToggleTest extends UnitTest {
 
-    // Element indices in connections.mssw
+    // Element indices in connections.musicxml
     private static final int EIGHTH_1 = 1;
     private static final int EIGHTH_2 = 2;
 

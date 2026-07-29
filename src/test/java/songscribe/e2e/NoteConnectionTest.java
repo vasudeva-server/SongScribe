@@ -54,7 +54,7 @@ class NoteConnectionTest extends E2ETest {
         loadFixture("connections");
     }
 
-    // Element indices for connections.mssw.
+    // Element indices for connections.musicxml.
     // After PAIR_E_SRC is deleted, subsequent elements shift down by 1;
     // the post-deletion entries capture these shifted positions.
     private enum Element {

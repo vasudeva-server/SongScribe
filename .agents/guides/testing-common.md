@@ -187,8 +187,10 @@ Fixture files live in `src/test/resources/fixtures/`. Always write a new fixture
 subject is the legacy `.mssw` reader or the format migration itself; only that kind of
 test should add or use a `.mssw` fixture (see [AGENTS.md](../../AGENTS.md)).
 `UnitTest.loadFixture` / `E2ETest.loadFixture` prefer a `.musicxml` fixture over a
-`.mssw` fixture of the same name, so the pre-existing `.mssw` fixtures that predate the
-format switch keep loading unchanged.
+`.mssw` fixture of the same name, so the remaining legacy-reader fixtures keep loading
+unchanged. Those are the only `.mssw` fixtures left: `damaged`, `newer-version`,
+`lyrics-date-invalid`, and `full-line`. Reach for `UnitTest.fixtureFile` (`.mssw`-only)
+just when the legacy reader itself is the subject.
 
 ### Don't build state by inserting into an empty score in E2E tests
 

@@ -36,7 +36,7 @@ import songscribe.ui.selection.LineSelectionState;
 @SuppressWarnings({ "OverlyBroadThrowsClause", "StaticVariableMayNotBeInitialized", "StaticVariableUsedBeforeInitialization" })
 class TiePitchValidationTest extends UnitTest {
 
-    // Element indices in tie-pitch-validation.mssw (ordinals match fixture order)
+    // Element indices in tie-pitch-validation.musicxml (ordinals match fixture order)
     private enum Note {
         SAME_PITCH_1,           // sp=-1, no accidental
         SAME_PITCH_2,           // sp=-1, no accidental

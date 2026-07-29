@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<score-partwise version="4.0">
+  <movement-title>Tie pitch validation</movement-title>
+  <identification>
+    <creator type="composer">Sri Chinmoy</creator>
+    <creator type="lyricist">Sri Chinmoy</creator>
+    <rights>Copyright © 2026 Sri Chinmoy Centre, Creative Commons BY-NC-ND 4.0</rights>
+    <encoding>
+      <software>SongScribe 2.0.0</software>
+      <encoding-date>2026-07-28</encoding-date>
+      <supports element="accidental" type="yes" />
+      <supports element="beam" type="yes" />
+      <supports element="stem" type="yes" />
+    </encoding>
+    <miscellaneous>
+      <miscellaneous-field name="lyrics-source">LYRICIST</miscellaneous-field>
+      <miscellaneous-field name="sub-attribution-font">HelveticaNeue</miscellaneous-field>
+      <miscellaneous-field name="sub-attribution-font-size">15</miscellaneous-field>
+    </miscellaneous>
+  </identification>
+  <defaults>
+    <scaling>
+      <millimeters>7</millimeters>
+      <tenths>40</tenths>
+    </scaling>
+    <page-layout>
+      <page-height>1596</page-height>
+      <page-width>945.00</page-width>
+    </page-layout>
+    <staff-layout>
+      <staff-distance>0</staff-distance>
+    </staff-layout>
+    <music-font font-family="Bravura" font-size="32" />
+    <word-font font-family="HelveticaNeue" font-size="15" />
+    <lyric-font font-family="HelveticaNeue" font-size="17" />
+    <lyric-language xml:lang="en" />
+  </defaults>
+  <credit>
+    <credit-type>title</credit-type>
+    <credit-words font-family="HelveticaNeue" font-size="30" font-weight="normal" font-style="normal" justify="center">Tie pitch validation</credit-words>
+  </credit>
+  <credit>
+    <credit-type>composer</credit-type>
+    <credit-words font-family="HelveticaNeue" font-size="15" font-weight="normal" font-style="normal" relative-y="0.00">Sri Chinmoy</credit-words>
+  </credit>
+  <credit>
+    <credit-type>lyricist</credit-type>
+    <credit-words font-family="HelveticaNeue" font-size="15" font-weight="normal" font-style="normal" relative-y="0.00">Sri Chinmoy</credit-words>
+  </credit>
+  <credit>
+    <credit-type>rights</credit-type>
+    <credit-words font-family="HelveticaNeue" font-size="15" font-weight="normal" font-style="normal" relative-y="0.00">Copyright © 2026 Sri Chinmoy Centre, Creative Commons BY-NC-ND 4.0</credit-words>
+  </credit>
+  <part-list>
+    <score-part id="P1"><part-name></part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <print new-system="yes" />
+      <attributes>
+        <divisions>480</divisions>
+        <key><fifths>-5</fifths></key>
+        <time print-object="no"><senza-misura/></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <direction>
+        <direction-type>
+          <metronome>
+            <beat-unit>quarter</beat-unit>
+            <per-minute>120</per-minute>
+          </metronome>
+        </direction-type>
+        <direction-type>
+          <words>Moderate</words>
+        </direction-type>
+        <sound tempo="120" />
+      </direction>
+      <note default-x="0.00" relative-x="120.00">
+        <pitch>
+          <step>C</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+      </note>
+      <note default-x="0.00" relative-x="156.25">
+        <pitch>
+          <step>C</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+      </note>
+      <note default-x="0.00" relative-x="205.00">
+        <pitch>
+          <step>F</step>
+          <alter>1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <accidental>sharp</accidental>
+      </note>
+      <note default-x="0.00" relative-x="241.25">
+        <pitch>
+          <step>F</step>
+          <alter>1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+      </note>
+      <note default-x="0.00" relative-x="290.00">
+        <pitch>
+          <step>B</step>
+          <alter>1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <accidental>sharp</accidental>
+      </note>
+      <note default-x="0.00" relative-x="326.25">
+        <pitch>
+          <step>C</step>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+      </note>
+      <note default-x="0.00" relative-x="362.50">
+        <pitch>
+          <step>B</step>
+          <alter>1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+      </note>
+      <note default-x="0.00" relative-x="398.75">
+        <pitch>
+          <step>B</step>
+          <alter>1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+      </note>
+      <note default-x="0.00" relative-x="455.00">
+        <pitch>
+          <step>D</step>
+          <alter>-2</alter>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <accidental>flat-flat</accidental>
+      </note>
+      <note default-x="0.00" relative-x="511.25">
+        <pitch>
+          <step>D</step>
+          <alter>-1</alter>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <accidental>natural-flat</accidental>
+      </note>
+      <note default-x="0.00" relative-x="547.50">
+        <pitch>
+          <step>D</step>
+          <alter>-1</alter>
+          <octave>5</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+      </note>
+      <note default-x="0.00" relative-x="593.75">
+        <pitch>
+          <step>B</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <accidental>natural</accidental>
+      </note>
+      <note default-x="0.00" relative-x="642.50">
+        <pitch>
+          <step>B</step>
+          <alter>1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <accidental>sharp</accidental>
+      </note>
+      <note default-x="0.00" relative-x="691.25">
+        <pitch>
+          <step>F</step>
+          <alter>1</alter>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <accidental>sharp</accidental>
+      </note>
+      <note default-x="0.00" relative-x="737.50">
+        <pitch>
+          <step>F</step>
+          <octave>4</octave>
+        </pitch>
+        <duration>480</duration>
+        <type>quarter</type>
+        <accidental>natural</accidental>
+      </note>
+      <barline location="right">
+        <bar-style>light-heavy</bar-style>
+      </barline>
+    </measure>
+  </part>
+</score-partwise>
