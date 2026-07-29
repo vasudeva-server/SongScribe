@@ -59,7 +59,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     }
 
     @Test
-    void w1_printableCharWithinCapInserts() throws Exception {
+    void printableCharWithinCapInserts() throws Exception {
         var element = crotchet();
         var line = song.getLine(0);
         song.withoutMutationTracking(() -> line.addElement(element));
@@ -74,7 +74,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     }
 
     @Test
-    void w2_printableCharExceedingCapBeepsAndRejects() throws Exception {
+    void printableCharExceedingCapBeepsAndRejects() throws Exception {
         var element = crotchet();
         var line = song.getLine(0);
         song.withoutMutationTracking(() -> line.addElement(element));
@@ -97,7 +97,12 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     }
 
     @Test
-    void w3_pasteWithNewlineSilentlyDropped() throws Exception {
+    void pasteWithNewlineKeepsOnlyTheWordBeforeIt() throws Exception {
+        // A lyric editor holds a single syllable, so a bulk insertion is trimmed to its
+        // leading word; the newline is one of the boundaries that ends that word, and
+        // everything from it on — including "def" — is dropped along with it. Paste
+        // dispatches through Document.replace (as JTextComponent#replaceSelection does),
+        // not insertString, so the test goes through the same entry point.
         var element = crotchet();
         var line = song.getLine(0);
         song.withoutMutationTracking(() -> line.addElement(element));
@@ -106,13 +111,76 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
         editor.setText("");
         editor.attachListeners();
 
-        editor.getDocument().insertString(editor.getDocument().getLength(), "abc\ndef", null);
+        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 0, "abc\ndef", null);
 
-        assertThat(editor.getText()).isEqualTo("abcdef");
+        assertThat(editor.getText()).isEqualTo("abc");
     }
 
     @Test
-    void w4_replaceWithinCapAllowed() throws Exception {
+    void pasteWithMultipleWordsKeepsOnlyTheFirst() throws Exception {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("");
+        editor.attachListeners();
+
+        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 0, "hello world", null);
+
+        assertThat(editor.getText()).isEqualTo("hello");
+    }
+
+    @Test
+    void pasteWithLeadingWhitespaceSkipsItBeforeKeepingTheFirstWord() throws Exception {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("");
+        editor.attachListeners();
+
+        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 0, "  hello world", null);
+
+        assertThat(editor.getText()).isEqualTo("hello");
+    }
+
+    @Test
+    void pasteWithNoWordCharactersInsertsNothing() throws Exception {
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("");
+        editor.attachListeners();
+
+        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 0, "123, 456", null);
+
+        assertThat(editor.getText()).isEmpty();
+    }
+
+    @Test
+    void pasteWithDevanagariCombiningMarksKeepsTheWholeFirstWord() throws Exception {
+        // The vowel signs in "हिन्दी" (hindī) attach to their consonant as combining
+        // marks, not standalone letters, so the word survives only if those marks count
+        // as word characters too.
+        var element = crotchet();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(element));
+
+        var editor = new LyricEditor(score, line, element);
+        editor.setText("");
+        editor.attachListeners();
+
+        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 0, "हिन्दी गीत", null);
+
+        assertThat(editor.getText()).isEqualTo("हिन्दी");
+    }
+
+    @Test
+    void replaceWithinCapAllowed() throws Exception {
         // currentLength=5, replacedLength=3, text.length=3 → net 5 ≤ 32
         var element = crotchet();
         var line = song.getLine(0);
@@ -129,7 +197,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
     }
 
     @Test
-    void w5_replaceExceedingCapBeepsAndRejects() throws Exception {
+    void replaceExceedingCapBeepsAndRejects() throws Exception {
         // currentLength=30, replacedLength=2, text.length=5 → net 33 > 32 → beep + reject
         var element = crotchet();
         var line = song.getLine(0);

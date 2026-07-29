@@ -25,6 +25,7 @@ import module java.desktop;
 import java.awt.event.MouseEvent;
 import java.util.Collections;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 
 import javax.swing.event.DocumentEvent;
 import javax.swing.text.AttributeSet;
@@ -151,6 +152,17 @@ public final class LyricEditor extends MyJTextField {
     private static final Logger LOG = LoggerFactory.getLogger(LyricEditor.class);
 
     static final int MAX_LENGTH_CHARS = 32;
+
+    /**
+     * Matches the leading word a bulk insertion keeps; see {@link #firstWordOf}.
+     * {@code \p{L}} covers every letter category (upper, lower, title, modifier, and
+     * caseless letters, e.g. CJK ideographs). {@code \p{Mn}} and {@code \p{Mc}} are also
+     * needed, not just letters: in Devanagari and Bengali a vowel sign attaches to the
+     * preceding consonant as a combining mark rather than a standalone letter, so without
+     * them a word would be cut off after its first consonant.
+     */
+    private static final Pattern FIRST_WORD_PATTERN =
+        Pattern.compile("^\\s*([\\p{L}\\p{Mn}\\p{Mc}]+)");
 
     // The text of each Placeholder. Only this editor uses them, so they live here.
     private static final String HYPHEN = "-";
@@ -755,10 +767,12 @@ public final class LyricEditor extends MyJTextField {
     }
 
     /**
-     * Returns {@code text} unchanged when the proposed insertion is permitted, or
-     * {@code null} when it must be rejected. Newlines are dropped silently; insertions
-     * that would push the document past {@link #MAX_LENGTH_CHARS} are rejected with a
-     * beep so the user notices the limit.
+     * Returns the text to actually insert, or {@code null} when the insertion must be
+     * rejected. Newlines are dropped silently. A bulk insertion — paste, an IME commit,
+     * a drag-and-drop — is trimmed to its first word, since a lyric editor holds a single
+     * syllable; a single typed character is left as is. Insertions that would push the
+     * document past {@link #MAX_LENGTH_CHARS} are rejected with a beep so the user notices
+     * the limit; the length check runs against the trimmed text, not the raw pasted text.
      */
     @Nullable
     private static String filterInsertion(int currentLength, int replacedLength, String text) {
@@ -766,13 +780,26 @@ public final class LyricEditor extends MyJTextField {
             return text;
         }
 
-        if (currentLength - replacedLength + text.length() > MAX_LENGTH_CHARS) {
-            trace("reject: inserting '{}' would exceed {} characters", text, MAX_LENGTH_CHARS);
+        var candidate = text.length() > 1 ? firstWordOf(text) : text;
+
+        if (currentLength - replacedLength + candidate.length() > MAX_LENGTH_CHARS) {
+            trace("reject: inserting '{}' would exceed {} characters", candidate, MAX_LENGTH_CHARS);
             UIUtils.beep();
             return null;
         }
 
-        return text;
+        return candidate;
+    }
+
+    /**
+     * Returns the leading run of word characters in {@code text}, after skipping any
+     * leading whitespace, or an empty string when it has none. Word characters are letters
+     * of any script plus the combining marks some scripts attach to them; the first
+     * character outside that set, and everything after it, is discarded.
+     */
+    private static String firstWordOf(String text) {
+        var matcher = FIRST_WORD_PATTERN.matcher(text);
+        return matcher.find() ? matcher.group(1) : "";
     }
 
     /**
