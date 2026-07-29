@@ -28,10 +28,8 @@ import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
@@ -722,8 +720,7 @@ public final class SelectionCoordinator {
 
         // Still the decide phase: the prompt must run before any modification bracket opens, for
         // the same reason the ending confirms above do.
-        var decision = AccidentalRestatements.confirm(
-            score, removedAccidentals(line, changes), changedElements(line, changes));
+        var decision = AccidentalRestatements.confirm(score, line, editedNotes(line, changes));
 
         if (decision.isCancelled()) {
             return;
@@ -874,50 +871,30 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * The explicit accidentals this action takes away — a toggle-off, or a change to a different
-     * one, or a replacement that carries none. Compared by sounding adjustment, like everything
-     * else about accidentals: rewriting a flat as a natural-flat removes nothing anyone can hear.
+     * This action's changes, described for the restatement prompt: each changed note's accidental
+     * now, and the one its stand-in will carry instead — which is none for a toggle-off or for a
+     * replacement that bears no accidental.
      *
      * <p>The staff position is the live note's, which is the position the accidental being removed
      * was written at. An in-place modification never moves it, but taking it from the stand-in
      * would state the wrong thing if one ever did.
      */
-    private static List<AccidentalRestatements.RemovedAccidental> removedAccidentals(
+    private static List<AccidentalRestatements.EditedNote> editedNotes(
         Line line, List<PendingChange> changes) {
 
-        var removed = new ArrayList<AccidentalRestatements.RemovedAccidental>();
+        var edited = new ArrayList<AccidentalRestatements.EditedNote>(changes.size());
 
         for (var change : changes) {
             var element = line.getElement(change.index());
-            var accidental = element.getAccidental();
 
-            if (accidental == null) {
-                continue;
-            }
-
-            var replacement = change.standIn().getAccidental();
-
-            if (StaffElement.getPitchAdjustment(replacement) != StaffElement.getPitchAdjustment(accidental)) {
-                removed.add(new AccidentalRestatements.RemovedAccidental(
-                    line, change.index(), element.getStaffPosition(), accidental));
-            }
+            edited.add(new AccidentalRestatements.EditedNote(
+                change.index(),
+                element.getStaffPosition(),
+                element.getAccidental(),
+                change.standIn().getAccidental()));
         }
 
-        return removed;
-    }
-
-    /**
-     * The live elements this action changes, as the restatement scan's exclusion set: whatever they
-     * carry today, they are not going to be carrying it afterwards.
-     */
-    private static Set<StaffElement> changedElements(Line line, List<PendingChange> changes) {
-        var elements = new LinkedHashSet<StaffElement>();
-
-        for (var change : changes) {
-            elements.add(line.getElement(change.index()));
-        }
-
-        return elements;
+        return edited;
     }
 
     /**

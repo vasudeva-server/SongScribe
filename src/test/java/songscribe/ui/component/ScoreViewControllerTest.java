@@ -37,6 +37,9 @@ import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
+import javax.swing.JOptionPane;
+
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -48,6 +51,8 @@ import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
+import songscribe.layout.NoteGeometry;
+import songscribe.ui.OptionDialogs;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -109,6 +114,14 @@ import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
 
 class ScoreViewControllerTest extends UnitTest {
+
+    // Measuring a projected line reads accidental widths out of a static table that has to be
+    // built first. Without this the class passes only when some earlier test class happens to
+    // have built it, and fails whenever it runs alone.
+    @BeforeAll
+    static void initializeNoteGeometry() {
+        NoteGeometry.initializeAccidentalWidths();
+    }
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -948,6 +961,178 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(clipboardManager.getFragment())
                 .as("declining must not consume the clipboard")
                 .isNotNull();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Restatement prompt on delete, cut and paste-replace (#681)
+    // -----------------------------------------------------------------------
+
+    /**
+     * Deleting, cutting or pasting over a note takes its explicit accidental away, so all three ask
+     * whether the later notes restating it should go too. The question is put before anything is
+     * mutated and before the clipboard is written, so Cancel leaves the score, the selection and
+     * the clipboard exactly as they were.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RestatementPrompt {
+
+        private static final int F_STAFF_POSITION = 3;
+
+        private Song song = new Song();
+        private Line line = song.getLine(0);
+
+        @BeforeEach
+        void setUpLineWithARestatement() {
+            song = new Song();
+            song.setLineWidthSs(UNCONSTRAINED_LINE_WIDTH_SS);
+            line = song.getLine(0);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(sharpNote());
+
+                // The restatement: a second sharp at the same staff position, later in the song.
+                line.addElement(sharpNote());
+            });
+        }
+
+        private static StaffElement sharpNote() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(F_STAFF_POSITION);
+            note.setAccidental(StaffElement.Accidental.SHARP);
+            return note;
+        }
+
+        private ScoreViewController controllerSelectingTheFirstNote(ClipboardManager clipboardManager) {
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, 0);
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+
+            return new ScoreViewController(
+                scoreMock, mock(MusicEditOperations.class), coordinator, clipboardManager);
+        }
+
+        private MockedStatic<OptionDialogs> answering(int answer) {
+            var optionDialogs = mockStatic(OptionDialogs.class);
+
+            optionDialogs.when(() -> OptionDialogs.showConfirmDialog(
+                any(), any(), any(), anyInt(), anyInt())).thenReturn(answer);
+
+            return optionDialogs;
+        }
+
+        @Test
+        void testDeleteCancelledRemovesNothingAtAll() {
+            var controller = controllerSelectingTheFirstNote(mock(ClipboardManager.class));
+
+            try (var optionDialogs = answering(JOptionPane.CANCEL_OPTION)) {
+                controller.handleDelete();
+
+                // Positive control: without this the assertions below would also pass had
+                // handleDelete bailed out before ever reaching the prompt.
+                optionDialogs.verify(() -> OptionDialogs.showConfirmDialog(
+                    any(), any(), any(), anyInt(), anyInt()));
+            }
+
+            assertThat(line.effectiveElementCount())
+                .as("the deletion was abandoned, not just the restatement removal")
+                .isEqualTo(2);
+            assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+            assertThat(line.getElement(1).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+        }
+
+        @Test
+        void testDeleteAcceptedRemovesTheNoteAndTheRestatement() {
+            var controller = controllerSelectingTheFirstNote(mock(ClipboardManager.class));
+
+            try (var ignored = answering(JOptionPane.YES_OPTION)) {
+                controller.handleDelete();
+            }
+
+            assertThat(line.effectiveElementCount()).isEqualTo(1);
+            assertThat(line.getElement(0).getAccidental())
+                .as("the surviving note is the accepted restatement, now cleared")
+                .isNull();
+        }
+
+        @Test
+        void testDeleteDeclinedRemovesTheNoteAndLeavesTheRestatement() {
+            var controller = controllerSelectingTheFirstNote(mock(ClipboardManager.class));
+
+            try (var ignored = answering(JOptionPane.NO_OPTION)) {
+                controller.handleDelete();
+            }
+
+            assertThat(line.effectiveElementCount()).isEqualTo(1);
+            assertThat(line.getElement(0).getAccidental())
+                .as("declining leaves every restatement alone")
+                .isEqualTo(StaffElement.Accidental.SHARP);
+        }
+
+        @Test
+        void testCutCancelledLeavesBothTheClipboardAndTheScoreUntouched() {
+            // The prompt runs before the copy, exactly as the ending confirm does, so a cancelled
+            // cut must not have written the clipboard either.
+            var clipboardManager = new ClipboardManager();
+            var controller = controllerSelectingTheFirstNote(clipboardManager);
+
+            try (var ignored = answering(JOptionPane.CANCEL_OPTION)) {
+                controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.CUT));
+            }
+
+            assertThat(clipboardManager.isEmpty())
+                .as("nothing was copied — the cancel happens before the copy")
+                .isTrue();
+            assertThat(line.effectiveElementCount()).isEqualTo(2);
+            assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+            assertThat(line.getElement(1).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+        }
+
+        @Test
+        void testPasteReplaceCancelledLeavesTheScoreAndTheClipboardUntouched() {
+            // A paste over a selection deletes what it covers, so it asks the same question. Cancel
+            // must leave the line exactly as it was, the way a too-narrow line already does.
+            var clipboardManager = new ClipboardManager();
+            var pastedNote = ElementType.CROTCHET.newInstance();
+            clipboardManager.setFragment(
+                new Fragment(List.of(pastedNote), Collections.singletonList(null), List.of()));
+
+            var controller = controllerSelectingTheFirstNote(clipboardManager);
+
+            try (var ignored = answering(JOptionPane.CANCEL_OPTION)) {
+                controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE));
+            }
+
+            assertThat(line.effectiveElementCount()).isEqualTo(2);
+            assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+            assertThat(line.getElement(1).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+            assertThat(clipboardManager.getFragment())
+                .as("cancelling must not consume the clipboard")
+                .isNotNull();
+        }
+
+        @Test
+        void testPasteReplaceAcceptedClearsTheRestatement() {
+            var clipboardManager = new ClipboardManager();
+            var pastedNote = ElementType.CROTCHET.newInstance();
+            clipboardManager.setFragment(
+                new Fragment(List.of(pastedNote), Collections.singletonList(null), List.of()));
+
+            var controller = controllerSelectingTheFirstNote(clipboardManager);
+
+            try (var optionDialogs = answering(JOptionPane.YES_OPTION)) {
+                controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE));
+                optionDialogs.verify(() -> OptionDialogs.showConfirmDialog(
+                    any(), any(), any(), anyInt(), anyInt()));
+            }
+
+            assertThat(line.getElement(1).getAccidental())
+                .as("the accepted restatement went with the overwritten note's sharp")
+                .isNull();
         }
     }
 

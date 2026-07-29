@@ -820,11 +820,28 @@ class AccidentalReconciliationTest extends UnitTest {
         }
 
         @Test
-        void testScanIgnoresAnotherStaffPositionAndAnotherAdjustment() {
+        void testScanIgnoresAnAccidentalAtAnotherStaffPosition() {
+            // Move 1:2's flat to the G line. A flat somewhere else says nothing about the F flat
+            // being removed, so only 2:0 is left to offer.
             firstLine.getElement(THIRD_NOTE).setStaffPosition(G_STAFF_POSITION);
-            secondLine.getElement(FIRST_NOTE).setAccidental(null);
 
-            assertThat(scanFromFirstFlat()).isEmpty();
+            assertThat(scanFromFirstFlat()).containsExactly(new AccidentalReconciliation.Restatement(
+                secondLine, secondLine.getElement(FIRST_NOTE)));
+        }
+
+        @Test
+        void testScanKeepsWhatItFoundBeforeStoppingAtADifferentAdjustment() {
+            // Clear 2:3's natural so the scan runs past it, then put a sharp and a flat at the F
+            // position after it. The sharp is a fresh decision, so the scan stops there — but the
+            // two restatements it had already collected still come back, and the flat past the
+            // sharp does not.
+            secondLine.getElement(FOURTH_NOTE).setAccidental(null);
+            secondLine.addElement(note(F_STAFF_POSITION, StaffElement.Accidental.SHARP));
+            secondLine.addElement(note(F_STAFF_POSITION, StaffElement.Accidental.FLAT));
+
+            assertThat(scanFromFirstFlat()).containsExactly(
+                new AccidentalReconciliation.Restatement(firstLine, firstLine.getElement(THIRD_NOTE)),
+                new AccidentalReconciliation.Restatement(secondLine, secondLine.getElement(FIRST_NOTE)));
         }
 
         @Test
@@ -840,15 +857,55 @@ class AccidentalReconciliationTest extends UnitTest {
         }
 
         @Test
+        void testAnExcludedCancellationCannotStopTheScan() {
+            // 1:2 now cancels the flat instead of restating it — but the same edit deletes it, so
+            // it will not be there to cancel anything and 2:0 must still be offered.
+            firstLine.getElement(THIRD_NOTE).setAccidental(StaffElement.Accidental.NATURAL);
+
+            var excluded = Set.of(firstLine.getElement(FIRST_NOTE), firstLine.getElement(THIRD_NOTE));
+
+            assertThat(AccidentalReconciliation.findRestatements(
+                song, firstLine, FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT, excluded))
+                .containsExactly(new AccidentalReconciliation.Restatement(
+                    secondLine, secondLine.getElement(FIRST_NOTE)));
+        }
+
+        @Test
         void testYesClearsTheRestatementOnTheEditedLineAndSuppressesMaterialization() {
-            // Without suppression the bare F that the removed flat was covering would be
-            // materialized to a flat, handing the accidental straight back.
+            // Give line 1 a fourth note, a bare F after the accepted restatement. Without
+            // suppression that F — which the removed flat was covering — would be materialized to
+            // a flat, handing the accidental straight back and defeating the removal.
+            firstLine.addElement(note(F_STAFF_POSITION));
+
             var accidentalChanges = AccidentalReconciliation.reconcileModification(
                 firstLine,
                 toggle(FIRST_NOTE, null, F_STAFF_POSITION),
                 acceptedRemoval());
 
             assertThat(accidentalChanges).containsExactly(change(firstLine, THIRD_NOTE, null));
+        }
+
+        @Test
+        void testSuppressionAppliesOnlyAtTheRemovedAccidentalsStaffPosition() {
+            // A note the user did not touch, at a staff position nothing was removed from, must
+            // still be protected. Toggling the G sharp off moves the context at the G line, so the
+            // bare G has to be pinned to the sharp it used to sound — while the bare F, inside the
+            // consented region, is left to change.
+            var line = lineOf(
+                note(G_STAFF_POSITION, StaffElement.Accidental.SHARP),
+                note(F_STAFF_POSITION, StaffElement.Accidental.FLAT),
+                note(G_STAFF_POSITION),
+                note(F_STAFF_POSITION));
+
+            var accidentalChanges = AccidentalReconciliation.reconcileModification(
+                line,
+                toggle(FIRST_NOTE, null, G_STAFF_POSITION),
+                new AccidentalReconciliation.RestatementRemoval(
+                    Set.of(line.getElement(SECOND_NOTE)), Set.of(F_STAFF_POSITION)));
+
+            assertThat(accidentalChanges).containsExactly(
+                change(line, SECOND_NOTE, null),
+                change(line, THIRD_NOTE, StaffElement.Accidental.SHARP));
         }
 
         @Test
@@ -892,6 +949,52 @@ class AccidentalReconciliationTest extends UnitTest {
 
             // ...and line 2 is not reconciled at all, since the edit does not touch it.
             assertThat(AccidentalReconciliation.reconcileModification(secondLine, List.of())).isEmpty();
+        }
+
+        /** Deleting {@code 1:0}, the note carrying the flat the whole example turns on. */
+        private AccidentalReconciliation.InsertionRegion deleteTheFirstFlat() {
+            return new AccidentalReconciliation.InsertionRegion(
+                firstLine, FIRST_NOTE,
+                new InsertionSpacingCalculator.DeletedRange(FIRST_NOTE, FIRST_NOTE),
+                List.of(), List.of(), List.of());
+        }
+
+        @Test
+        void testYesClearsTheRestatementAndSuppressesMaterializationForADeletion() {
+            // The same consent, reached through the region-based reconciliation that the range
+            // delete, the cut and the paste-replace all run — a different walk from the in-place
+            // one above, because the deleted note leaves the projected sequence entirely.
+            //
+            // Line 1 gains a bare F after the accepted restatement: without suppression it would
+            // be materialized to a flat and hand the accidental straight back.
+            firstLine.addElement(note(F_STAFF_POSITION));
+
+            assertThat(AccidentalReconciliation.reconcile(deleteTheFirstFlat(), acceptedRemoval()))
+                .containsExactly(change(firstLine, THIRD_NOTE, null));
+        }
+
+        @Test
+        void testTheSameDeletionWithNoConsentLeavesTheRestatementInPlace() {
+            // Answering No must leave the deletion behaving exactly as it did before this feature:
+            // 1:2's flat stays, and the bare F after it keeps sounding flat through that flat, so
+            // nothing has to change at all.
+            firstLine.addElement(note(F_STAFF_POSITION));
+
+            assertThat(AccidentalReconciliation.reconcile(deleteTheFirstFlat())).isEmpty();
+        }
+
+        @Test
+        void testAPasteReplaceCarriesTheConsentToo() {
+            // The paste-replace variant: the deleted note is replaced by a G rather than simply
+            // going away, so the sequence holds an inserted element the walk must resolve past
+            // before it reaches the accepted restatement.
+            firstLine.addElement(note(F_STAFF_POSITION));
+
+            var accidentalChanges = AccidentalReconciliation.reconcile(
+                pasteReplace(firstLine, FIRST_NOTE, FIRST_NOTE, List.of(note(G_STAFF_POSITION)), priors()),
+                acceptedRemoval());
+
+            assertThat(accidentalChanges).containsExactly(change(firstLine, THIRD_NOTE, null));
         }
     }
 

@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
@@ -35,6 +36,9 @@ import static org.mockito.Mockito.when;
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
+import java.util.List;
+
+import javax.swing.JOptionPane;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -428,6 +432,120 @@ class NoteDragHandlerTest extends UnitTest {
             // at the position it left.
             assertThat(realLine.getElement(0).getStaffPosition()).isEqualTo(DRAGGED_POSITION_SP);
             assertThat(realLine.getElement(0).getAccidental()).isNull();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Restatement prompt on release (#681)
+    // -------------------------------------------------------------------------
+
+    /**
+     * A drag is the one edit that has already changed the score before it asks about restatements:
+     * the notes moved live as the mouse moved. Cancel therefore has to put them back rather than
+     * merely decline to go forward, and it must leave nothing behind to undo, because the
+     * modification bracket that would have recorded an undo step never opened.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RestatementPromptOnRelease {
+
+        private static final int ORIGINAL_POSITION_SP = 4;
+        private static final int DRAGGED_POSITION_SP = 6;
+
+        private Line realLine = detachedLine();
+
+        @BeforeEach
+        void setUpWithARestatement() {
+            var realSong = new Song();
+            realLine = realSong.getLine(0);
+
+            realSong.withoutMutationTracking(() -> {
+                realLine.addElement(sharpNote(ORIGINAL_POSITION_SP));
+
+                // The restatement: a second sharp at the same staff position, later in the song.
+                // Dragging the first note away takes its sharp with it, so this one is offered.
+                realLine.addElement(sharpNote(ORIGINAL_POSITION_SP));
+            });
+
+            when(lc.getLine()).thenReturn(realLine);
+        }
+
+        private static StaffElement sharpNote(int staffPosition) {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(staffPosition);
+            note.setAccidental(StaffElement.Accidental.SHARP);
+            return note;
+        }
+
+        private void dragAndReleaseAnswering(int answer) {
+            setupSingleSelection(0);
+            pressOnNote(0);
+            dragToPosition(DRAGGED_POSITION_SP);
+
+            try (var optionDialogs = mockStatic(songscribe.ui.OptionDialogs.class)) {
+                optionDialogs.when(() -> songscribe.ui.OptionDialogs.showConfirmDialog(
+                    any(), any(), any(), anyInt(), anyInt())).thenReturn(answer);
+
+                handler.handleRelease();
+            }
+        }
+
+        /**
+         * Every element modification the release posted, across all captured notifications.
+         * {@code atLeast(0)} because a cancelled release posts nothing at all — which is the
+         * point of the Cancel test and would otherwise fail as "wanted but not invoked".
+         */
+        private List<ElementModification> postedElementModifications() {
+            var captor = ArgumentCaptor.forClass(Message.class);
+            messageCenterMock.verify(() -> MessageCenter.post(captor.capture()), atLeast(0));
+
+            return captor.getAllValues().stream()
+                .filter(m -> m instanceof SongDidChangeNotification)
+                .map(m -> (SongDidChangeNotification) m)
+                .flatMap(n -> n.getMutations().stream())
+                .filter(m -> m instanceof ElementModification)
+                .map(m -> (ElementModification) m)
+                .toList();
+        }
+
+        @Test
+        void testCancelPutsTheDraggedNoteBackAndRecordsNothing() {
+            dragAndReleaseAnswering(JOptionPane.CANCEL_OPTION);
+
+            assertThat(realLine.getElement(0).getStaffPosition())
+                .as("the drag was undone, not committed")
+                .isEqualTo(ORIGINAL_POSITION_SP);
+            assertThat(realLine.getElement(0).getAccidental())
+                .as("the accidental the drag cleared is back")
+                .isEqualTo(StaffElement.Accidental.SHARP);
+            assertThat(realLine.getElement(1).getAccidental())
+                .as("the restatement was left alone")
+                .isEqualTo(StaffElement.Accidental.SHARP);
+
+            // Nothing was recorded, so there is no undo step — which is exactly why the revert has
+            // to happen here: Ctrl-Z could not get the user back.
+            assertThat(postedElementModifications()).isEmpty();
+        }
+
+        @Test
+        void testYesCommitsTheDragAndClearsTheRestatement() {
+            dragAndReleaseAnswering(JOptionPane.YES_OPTION);
+
+            assertThat(realLine.getElement(0).getStaffPosition()).isEqualTo(DRAGGED_POSITION_SP);
+            assertThat(realLine.getElement(1).getAccidental())
+                .as("the accepted restatement is gone")
+                .isNull();
+            assertThat(postedElementModifications()).isNotEmpty();
+        }
+
+        @Test
+        void testNoCommitsTheDragAndLeavesTheRestatementAlone() {
+            dragAndReleaseAnswering(JOptionPane.NO_OPTION);
+
+            assertThat(realLine.getElement(0).getStaffPosition()).isEqualTo(DRAGGED_POSITION_SP);
+            assertThat(realLine.getElement(1).getAccidental())
+                .isEqualTo(StaffElement.Accidental.SHARP);
+            assertThat(postedElementModifications()).isNotEmpty();
         }
     }
 

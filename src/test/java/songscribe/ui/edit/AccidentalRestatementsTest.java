@@ -27,7 +27,6 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Set;
 
 import javax.swing.JOptionPane;
 
@@ -67,8 +66,10 @@ class AccidentalRestatementsTest extends UnitTest {
     private static final int F_STAFF_POSITION = 3;
 
     private static final int FIRST_NOTE = 0;
+    private static final int SECOND_NOTE = 1;
     private static final int THIRD_NOTE = 2;
     private static final int FOURTH_NOTE = 3;
+    private static final int FIFTH_NOTE = 4;
 
     /** D♭ major: B E A D G are flattened, so an F needs an explicit flat to sound flat. */
     private static final int FIVE_FLATS = 5;
@@ -123,21 +124,38 @@ class AccidentalRestatementsTest extends UnitTest {
     }
 
     /** Toggling the flat off {@code 1:0}, as the prompt describes it. */
-    private List<AccidentalRestatements.RemovedAccidental> toggleOffTheFirstFlat() {
-        return List.of(new AccidentalRestatements.RemovedAccidental(
-            firstLine, FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT));
-    }
-
-    private Set<StaffElement> theToggledNote() {
-        return Set.of(firstLine.getElement(FIRST_NOTE));
+    private static List<AccidentalRestatements.EditedNote> toggleOffTheFirstFlat() {
+        return List.of(new AccidentalRestatements.EditedNote(
+            FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT, null));
     }
 
     private AccidentalRestatements.Decision confirmWithAnswer(int answer) {
+        return confirmWithAnswer(answer, firstLine, toggleOffTheFirstFlat());
+    }
+
+    private static AccidentalRestatements.Decision confirmWithAnswer(
+        int answer, Line line, List<AccidentalRestatements.EditedNote> edited) {
+
         try (var optionDialogs = mockStatic(OptionDialogs.class)) {
             optionDialogs.when(() -> OptionDialogs.showConfirmDialog(
-                any(), any(), any(), anyInt(), anyInt(), anyInt())).thenReturn(answer);
+                any(), any(), any(), anyInt(), anyInt())).thenReturn(answer);
 
-            return AccidentalRestatements.confirm(null, toggleOffTheFirstFlat(), theToggledNote());
+            return AccidentalRestatements.confirm(null, line, edited);
+        }
+    }
+
+    /**
+     * Runs the confirm and asserts the dialog never appeared, which is the only observable
+     * difference between "found nothing to ask about" and "asked and was answered No".
+     */
+    private static AccidentalRestatements.Decision confirmExpectingNoDialog(
+        Line line, List<AccidentalRestatements.EditedNote> edited) {
+
+        try (var optionDialogs = mockStatic(OptionDialogs.class)) {
+            var decision = AccidentalRestatements.confirm(null, line, edited);
+
+            optionDialogs.verifyNoInteractions();
+            return decision;
         }
     }
 
@@ -173,14 +191,20 @@ class AccidentalRestatementsTest extends UnitTest {
     }
 
     @Test
-    void testNothingIsAskedWhenTheEditRemovesNoAccidental() {
-        try (var optionDialogs = mockStatic(OptionDialogs.class)) {
-            var decision = AccidentalRestatements.confirm(null, List.of(), Set.of());
+    void testNothingIsAskedWhenTheEditChangesNothing() {
+        var decision = confirmExpectingNoDialog(firstLine, List.of());
 
-            assertThat(decision.isCancelled()).isFalse();
-            assertThat(decision.removal()).isEqualTo(AccidentalReconciliation.RestatementRemoval.NONE);
-            optionDialogs.verifyNoInteractions();
-        }
+        assertThat(decision.isCancelled()).isFalse();
+        assertThat(decision.removal()).isEqualTo(AccidentalReconciliation.RestatementRemoval.NONE);
+    }
+
+    @Test
+    void testNothingIsAskedWhenTheEditRemovesNoAccidental() {
+        // The G at 1:1 has no accidental to lose, so there is nothing to consent to.
+        var decision = confirmExpectingNoDialog(firstLine, List.of(
+            new AccidentalRestatements.EditedNote(SECOND_NOTE, G_STAFF_POSITION, null, null)));
+
+        assertThat(decision.removal()).isEqualTo(AccidentalReconciliation.RestatementRemoval.NONE);
     }
 
     @Test
@@ -189,14 +213,52 @@ class AccidentalRestatementsTest extends UnitTest {
         firstLine.getElement(THIRD_NOTE).setAccidental(null);
         secondLine.getElement(FIRST_NOTE).setAccidental(null);
 
-        try (var optionDialogs = mockStatic(OptionDialogs.class)) {
-            var decision = AccidentalRestatements.confirm(
-                null, toggleOffTheFirstFlat(), theToggledNote());
+        var decision = confirmExpectingNoDialog(firstLine, toggleOffTheFirstFlat());
 
-            assertThat(decision.isCancelled()).isFalse();
-            assertThat(decision.removal()).isEqualTo(AccidentalReconciliation.RestatementRemoval.NONE);
-            optionDialogs.verifyNoInteractions();
-        }
+        assertThat(decision.isCancelled()).isFalse();
+        assertThat(decision.removal()).isEqualTo(AccidentalReconciliation.RestatementRemoval.NONE);
+    }
+
+    @Test
+    void testRewritingAnAccidentalAsOneThatSoundsTheSameRemovesNothing() {
+        // A flat rewritten as a natural-flat: a different symbol saying the same thing, so no
+        // later note has lost anything and the notator is not interrupted.
+        var decision = confirmExpectingNoDialog(firstLine, List.of(
+            new AccidentalRestatements.EditedNote(
+                FIRST_NOTE, F_STAFF_POSITION,
+                StaffElement.Accidental.FLAT, StaffElement.Accidental.NATURAL_FLAT)));
+
+        assertThat(decision.removal()).isEqualTo(AccidentalReconciliation.RestatementRemoval.NONE);
+    }
+
+    @Test
+    void testRemovingAnExplicitNaturalCountsEvenThoughItBendsNoPitch() {
+        // A natural bends the pitch by zero, exactly as writing no accidental does — but it is
+        // there to cancel an earlier flat, so taking it away really does change what the note
+        // sounds, and a later natural really is restating it. Give 2:3's natural a restatement.
+        secondLine.addElement(note(F_STAFF_POSITION, StaffElement.Accidental.NATURAL));
+
+        var decision = confirmWithAnswer(JOptionPane.YES_OPTION, secondLine, List.of(
+            new AccidentalRestatements.EditedNote(
+                FOURTH_NOTE, F_STAFF_POSITION, StaffElement.Accidental.NATURAL, null)));
+
+        assertThat(decision.answer()).isEqualTo(AccidentalRestatements.Answer.YES);
+        assertThat(decision.removal().notes()).containsExactly(secondLine.getElement(FIFTH_NOTE));
+    }
+
+    @Test
+    void testAGraceNotesAccidentalIsNeverTreatedAsARemoval() {
+        // A grace note sits outside the accidental-context system — the reconciliation walk skips
+        // everything that is not a full-size note — so its accidental never lent anything to a
+        // later note and cannot have been restated. Editing one must not offer 1:2 or 2:0.
+        var graceNote = ElementType.GRACE_QUAVER.newInstance();
+        graceNote.setStaffPosition(F_STAFF_POSITION);
+        graceNote.setAccidental(StaffElement.Accidental.FLAT);
+        firstLine.setElement(FIRST_NOTE, graceNote);
+
+        var decision = confirmExpectingNoDialog(firstLine, toggleOffTheFirstFlat());
+
+        assertThat(decision.removal()).isEqualTo(AccidentalReconciliation.RestatementRemoval.NONE);
     }
 
     @Test
@@ -227,13 +289,14 @@ class AccidentalRestatementsTest extends UnitTest {
     }
 
     @Test
-    void testTheDeletedRangeYieldsOneRemovalPerExplicitAccidentalAndExcludesEveryElement() {
+    void testTheDeletedRangeDescribesEveryElementAsLosingWhateverItCarries() {
+        // Every element in the range, not only the ones with accidentals: they are all going away,
+        // so none may be offered back or allowed to stand in for a cancellation.
         assertThat(AccidentalRestatements.inDeletedRange(secondLine, FIRST_NOTE, THIRD_NOTE))
-            .containsExactly(new AccidentalRestatements.RemovedAccidental(
-                secondLine, FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT));
-
-        assertThat(AccidentalRestatements.elementsIn(secondLine, FIRST_NOTE, THIRD_NOTE))
-            .containsExactlyInAnyOrder(
-                secondLine.getElement(0), secondLine.getElement(1), secondLine.getElement(2));
+            .containsExactly(
+                new AccidentalRestatements.EditedNote(
+                    FIRST_NOTE, F_STAFF_POSITION, StaffElement.Accidental.FLAT, null),
+                new AccidentalRestatements.EditedNote(SECOND_NOTE, A_STAFF_POSITION, null, null),
+                new AccidentalRestatements.EditedNote(THIRD_NOTE, F_STAFF_POSITION, null, null));
     }
 }

@@ -558,6 +558,8 @@ public final class AccidentalReconciliation {
                 continue;
             }
 
+            // Must stay below the consent-removed test above, which flags its notes user-changed
+            // too: reached first, this skip would swallow their clearing changes.
             if (projected.userChanged) {
                 continue;
             }
@@ -763,8 +765,10 @@ public final class AccidentalReconciliation {
         private final boolean survivor;
 
         /**
-         * True for a restatement the user accepted for removal. Implies {@link #userChanged} — the
-         * user did decide it — and additionally makes the walk emit its clearing change.
+         * True for a restatement the user accepted for removal. Such a note is also flagged
+         * {@link #userChanged}, since the user did decide it, so the walk must test this flag
+         * <em>first</em> — the user-changed skip would otherwise swallow the clearing change this
+         * one exists to emit.
          */
         private final boolean consentRemoved;
 

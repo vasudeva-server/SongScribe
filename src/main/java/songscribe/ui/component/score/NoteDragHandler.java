@@ -312,6 +312,7 @@ class NoteDragHandler {
      */
     private List<AccidentalReconciliation.AccidentalChange> reconcileVacatedPositions(
         Line line, int finalDelta, AccidentalRestatements.Decision decision) {
+
         var changes = PitchShifter.intendedChanges(dragGroup, finalDelta);
         var afterClones = new ArrayList<StaffElement>(dragGroup.size());
 

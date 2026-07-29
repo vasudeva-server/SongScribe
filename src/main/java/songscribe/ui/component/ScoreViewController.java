@@ -674,9 +674,7 @@ public final class ScoreViewController {
         var rangeEnd = line.effectiveDeleteEnd(end);
 
         return AccidentalRestatements.confirm(
-            score,
-            AccidentalRestatements.inDeletedRange(line, reconciledBegin, rangeEnd),
-            AccidentalRestatements.elementsIn(line, reconciledBegin, rangeEnd));
+            score, line, AccidentalRestatements.inDeletedRange(line, reconciledBegin, rangeEnd));
     }
 
     /**
@@ -904,9 +902,8 @@ public final class ScoreViewController {
             ? AccidentalRestatements.Decision.PROCEED
             : AccidentalRestatements.confirm(
                 score,
+                line,
                 AccidentalRestatements.inDeletedRange(
-                    line, spacingDeleteRange.begin(), spacingDeleteRange.end()),
-                AccidentalRestatements.elementsIn(
                     line, spacingDeleteRange.begin(), spacingDeleteRange.end()));
 
         if (decision.isCancelled()) {

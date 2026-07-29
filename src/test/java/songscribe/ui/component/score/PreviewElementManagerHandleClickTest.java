@@ -493,7 +493,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
 
             try (var optionDialogs = mockStatic(OptionDialogs.class)) {
                 optionDialogs.when(() -> OptionDialogs.showConfirmDialog(
-                    any(), any(), any(), anyInt(), anyInt(), anyInt())).thenReturn(answer);
+                    any(), any(), any(), anyInt(), anyInt())).thenReturn(answer);
 
                 PreviewElementManager.handleClick(lc);
             }
@@ -551,6 +551,41 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
             // Same staff position, same flat: the accidental survives the replacement, so there is
             // nothing to consent to.
             setPreviewElement(note(F_STAFF_POSITION, StaffElement.Accidental.FLAT));
+            PreviewElementManager.setCurrentStaffPosition(F_STAFF_POSITION);
+            PreviewElementManager.setCurrentXIndex(0);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+
+            try (var optionDialogs = mockStatic(OptionDialogs.class)) {
+                PreviewElementManager.handleClick(lc);
+                optionDialogs.verifyNoInteractions();
+            }
+
+            assertThat(line.getElement(THIRD_NOTE).getAccidental())
+                .isEqualTo(StaffElement.Accidental.FLAT);
+        }
+
+        @Test
+        void testNothingIsAskedWhenTheReplacedNoteHasNoAccidental() {
+            // The everyday case — replacing a plain note. Nothing is taken away, so the prompt must
+            // stay out of the way; were this branch lost, every ordinary click would raise it.
+            setPreviewElement(note(A_STAFF_POSITION, null));
+            PreviewElementManager.setCurrentStaffPosition(A_STAFF_POSITION);
+            PreviewElementManager.setCurrentXIndex(1);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+
+            try (var optionDialogs = mockStatic(OptionDialogs.class)) {
+                PreviewElementManager.handleClick(lc);
+                optionDialogs.verifyNoInteractions();
+            }
+
+            assertThat(line.getElement(1).getStaffPosition()).isEqualTo(A_STAFF_POSITION);
+        }
+
+        @Test
+        void testReplacingANoteWithOneThatSoundsTheSameAsksNothing() {
+            // A flat rewritten as a natural-flat at the same staff position: a different symbol
+            // saying the same thing, so nothing was removed and nothing is asked.
+            setPreviewElement(note(F_STAFF_POSITION, StaffElement.Accidental.NATURAL_FLAT));
             PreviewElementManager.setCurrentStaffPosition(F_STAFF_POSITION);
             PreviewElementManager.setCurrentXIndex(0);
             PreviewElementManager.setXPosSsMatchesElement(true);

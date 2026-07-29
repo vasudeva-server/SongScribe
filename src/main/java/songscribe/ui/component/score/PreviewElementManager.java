@@ -24,7 +24,6 @@ import module java.desktop;
 
 import java.awt.event.MouseEvent;
 import java.util.List;
-import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 import org.jspecify.annotations.Nullable;
@@ -1409,11 +1408,14 @@ public final class PreviewElementManager {
             return;
         }
 
+        // Decided once and used both to ask and to act, so the question can never be asked about a
+        // click that then does something else.
+        var appends = currentXIndex == line.elementCount();
+        var replacesExisting = !appends && !forceInsert && xPosSsMatchesElement;
+
         // Replacing a note takes its explicit accidental away, so this path asks the same question
         // every other removal path does — here, before the bracket opens, since a dialog must never
         // be open inside one. An append or an insert removes nothing and is never asked.
-        var replacesExisting =
-            (currentXIndex != line.elementCount()) && !forceInsert && xPosSsMatchesElement;
         var decision = replacesExisting
             ? confirmReplacementRestatements(lc, line, currentXIndex, previewElement)
             : AccidentalRestatements.Decision.PROCEED;
@@ -1427,9 +1429,9 @@ public final class PreviewElementManager {
         // SongDidChangeNotification, which the ScoreViewController uses to
         // invalidate the line's cached layout.
         line.withModification(OpNames.addLabel(previewElement.getType()), () -> {
-            if (currentXIndex == line.elementCount()) {
+            if (appends) {
                 addPreviewElement(lc, line);
-            } else if (!forceInsert && xPosSsMatchesElement) {
+            } else if (replacesExisting) {
                 modifyExistingElement(lc, currentXIndex, line, decision);
             } else {
                 insertElement(lc, currentXIndex, line);
@@ -1968,11 +1970,10 @@ public final class PreviewElementManager {
      * Asks whether replacing the element at {@code elementIndex} should also take away the later
      * notes that restate the accidental it removes.
      *
-     * <p>The replacement keeps the accidental only when it lands at the same staff position
-     * sounding the same — the preview's accidental at the mouse's staff position, which is what
-     * {@link #modifyExistingElement} writes. Anything else takes the old one away: a different
-     * pitch, a different accidental, or no accidental at all. Compared by sounding adjustment,
-     * like everywhere else: rewriting a flat as a natural-flat removes nothing anyone can hear.
+     * <p>The replacement carries the old accidental's staff position forward only when it lands at
+     * that same position as a pitched note — a replacement that is not a pitched note bears no
+     * accidental at all, whatever the preview holds, since applying the staff position snaps it to
+     * its default place too. Anything else gives the old accidental up.
      *
      * <p>Must be called before the modification bracket opens, and its answer honored — Cancel
      * means the click does nothing at all.
@@ -1981,30 +1982,18 @@ public final class PreviewElementManager {
         LineComponent lc, Line line, int elementIndex, StaffElement previewElement) {
 
         var existing = line.getElement(elementIndex);
-        var accidental = existing.getAccidental();
-
-        if ((accidental == null) || !existing.getType().isPitchedNote()) {
-            return AccidentalRestatements.Decision.PROCEED;
-        }
-
         var staffPosition = existing.getStaffPosition();
-
-        // A replacement that is not a pitched note carries no accidental at all, whatever the
-        // preview holds — applyStaffPosition snaps it to its default position too.
-        var keepsAccidental = previewElement.getType().isPitchedNote()
-            && (currentStaffPosition == staffPosition)
-            && (StaffElement.getPitchAdjustment(previewElement.getAccidental())
-                == StaffElement.getPitchAdjustment(accidental));
-
-        if (keepsAccidental) {
-            return AccidentalRestatements.Decision.PROCEED;
-        }
+        var landsAtSamePosition = previewElement.getType().isPitchedNote()
+            && (currentStaffPosition == staffPosition);
 
         return AccidentalRestatements.confirm(
             lc,
-            List.of(new AccidentalRestatements.RemovedAccidental(
-                line, elementIndex, staffPosition, accidental)),
-            Set.of(existing));
+            line,
+            List.of(new AccidentalRestatements.EditedNote(
+                elementIndex,
+                staffPosition,
+                existing.getAccidental(),
+                landsAtSamePosition ? previewElement.getAccidental() : null)));
     }
 
     /**

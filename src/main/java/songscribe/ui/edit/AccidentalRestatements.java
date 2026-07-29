@@ -24,7 +24,6 @@ import java.awt.Component;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 
 import javax.swing.JOptionPane;
 
@@ -90,21 +89,33 @@ public final class AccidentalRestatements {
     }
 
     /**
-     * One explicit accidental an edit is about to take away, described before anything is mutated.
+     * One element an edit is about to change, described before anything is mutated: what explicit
+     * accidental it carries now, and what it will carry <em>at that same staff position</em>
+     * afterwards. Every caller describes its edit as a list of these and lets {@link #confirm} work
+     * out which of them actually lose an accidental, so that rule lives in one place.
      *
-     * @param line          The line the note sits on
-     * @param index         The note's index on {@code line}
-     * @param staffPosition The staff position the accidental was written at. Passed separately
+     * @param index         The element's index on the line being edited
+     * @param staffPosition The staff position the accidental is written at now. Stated separately
      *                      because a pitch shift moves the note before this is applied, and it is
      *                      the position the accidental <em>was</em> written at that matters
-     * @param accidental    The accidental being removed
+     * @param before        The explicit accidental the element carries now, or null for none
+     * @param after         The explicit accidental it will carry at {@code staffPosition}
+     *                      afterwards, or null when it will carry none there. A note that moves to
+     *                      another staff position, or becomes something that cannot bear an
+     *                      accidental, gives its accidental up and so passes null
      */
-    public record RemovedAccidental(
-        Line line,
+    public record EditedNote(
         int index,
         int staffPosition,
-        StaffElement.Accidental accidental
+        StaffElement.@Nullable Accidental before,
+        StaffElement.@Nullable Accidental after
     ) {}
+
+    /**
+     * One explicit accidental an edit really does take away — an {@link EditedNote} that
+     * {@link #confirm} has decided against.
+     */
+    private record RemovedAccidental(int index, int staffPosition, StaffElement.Accidental accidental) {}
 
     /**
      * The notator's answer and everything the caller needs to honor it.
@@ -138,39 +149,63 @@ public final class AccidentalRestatements {
     }
 
     /**
-     * Scans forward for restatements of every accidental in {@code removed} and, when there is at
-     * least one, asks the notator what to do about them.
+     * Works out which of {@code edited} actually lose an explicit accidental, scans forward for
+     * restatements of each, and — when there is at least one — asks the notator what to do about
+     * them.
+     *
+     * <p>Every element of {@code edited} is excluded from the scan whether or not it loses
+     * anything: the edit is about to change all of them, so none may be offered back to the user or
+     * allowed to stand in for a cancellation.
      *
      * <p>Mutates nothing, and shows nothing when the scan comes up empty — which is the common
      * case, so the ordinary edit is not made to pay for this feature with a dialog.
      *
-     * @param parent   The component to parent the dialog on, or null when there is no owning window
-     * @param removed  The accidentals this edit takes away, described pre-mutation
-     * @param excluded Notes this edit itself deletes or changes. They are neither offered nor
-     *                 allowed to stop a scan, because they will not be there afterwards
+     * @param parent The component to parent the dialog on, or null when there is no owning window
+     * @param line   The line being edited. Every {@link EditedNote} indexes into it; an edit whose
+     *               removals span two lines does not exist, because a removal is always something
+     *               one selection or one click does
+     * @param edited The elements this edit changes, described pre-mutation
      * @return The decision, which is always a plain proceed when nothing was found
      */
-    public static Decision confirm(
-        @Nullable Component parent, List<RemovedAccidental> removed, Set<StaffElement> excluded) {
-
-        if (removed.isEmpty()) {
+    public static Decision confirm(@Nullable Component parent, Line line, List<EditedNote> edited) {
+        if (edited.isEmpty()) {
             return Decision.PROCEED;
         }
 
         // Identity semantics come for free: StaffElement and Line override neither equals nor
         // hashCode. Insertion-ordered so the offered notes stay in song order, since the removals
         // are scanned in song order and each scan runs forward.
+        var excluded = new LinkedHashSet<StaffElement>();
+        var removed = new ArrayList<RemovedAccidental>();
+
+        for (var note : edited) {
+            var element = line.getElement(note.index());
+            excluded.add(element);
+
+            var before = note.before();
+
+            // A grace note sits outside the accidental-context system entirely — the reconciliation
+            // walk skips every element that is not a pitched note — so its accidental never lent
+            // anything to a later note and cannot have been restated.
+            if ((before != null) && element.getType().isPitchedNote() && !keepsAccidental(note)) {
+                removed.add(new RemovedAccidental(note.index(), note.staffPosition(), before));
+            }
+        }
+
+        if (removed.isEmpty()) {
+            return Decision.PROCEED;
+        }
+
         var notes = new LinkedHashSet<StaffElement>();
         var lines = new LinkedHashSet<Line>();
         var suppressedStaffPositions = new LinkedHashSet<Integer>();
+        var song = line.getSong();
 
         for (var removal : removed) {
-            var line = removal.line();
             suppressedStaffPositions.add(removal.staffPosition());
 
             var restatements = AccidentalReconciliation.findRestatements(
-                line.getSong(), line, removal.index(), removal.staffPosition(),
-                removal.accidental(), excluded);
+                song, line, removal.index(), removal.staffPosition(), removal.accidental(), excluded);
 
             for (var restatement : restatements) {
                 if (notes.add(restatement.note())) {
@@ -188,8 +223,7 @@ public final class AccidentalRestatements {
             Strings.CONFIRM_TITLE_ACCIDENTAL_RESTATEMENTS,
             Strings.CONFIRM_ACCIDENTAL_RESTATEMENTS,
             JOptionPane.YES_NO_CANCEL_OPTION,
-            JOptionPane.QUESTION_MESSAGE,
-            JOptionPane.NO_OPTION
+            JOptionPane.QUESTION_MESSAGE
         );
 
         if (answer == JOptionPane.CANCEL_OPTION) {
@@ -257,34 +291,40 @@ public final class AccidentalRestatements {
     }
 
     /**
-     * The explicit accidentals a deletion of {@code [begin, end]} on {@code line} takes away, for
-     * {@link #confirm}. Shared by the range delete, the cut and the paste-replace, which differ in
-     * what they do next but not in what they remove.
+     * Whether {@code note} still carries an explicit accidental once the edit is done. Called only
+     * for a note that has one now.
+     *
+     * <p>Losing it outright counts as a removal even when it was a natural. A natural cancels an
+     * earlier sharp or flat, so taking one away changes what the note sounds exactly as taking a
+     * sharp away does, and a later note can restate it exactly the same way. Only an accidental
+     * <em>replaced</em> by another is compared by sound: rewriting a flat as a natural-flat removes
+     * nothing anyone can hear.
      */
-    public static List<RemovedAccidental> inDeletedRange(Line line, int begin, int end) {
-        var removed = new ArrayList<RemovedAccidental>();
+    private static boolean keepsAccidental(EditedNote note) {
+        var after = note.after();
+
+        if (after == null) {
+            return false;
+        }
+
+        return StaffElement.getPitchAdjustment(after) == StaffElement.getPitchAdjustment(note.before());
+    }
+
+    /**
+     * A deletion of {@code [begin, end]} on {@code line}, described for {@link #confirm}: every
+     * element in the range is going away, so each carries whatever accidental it has now and none
+     * afterwards. Shared by the range delete, the cut and the paste-replace, which differ in what
+     * they do next but not in what they remove.
+     */
+    public static List<EditedNote> inDeletedRange(Line line, int begin, int end) {
+        var edited = new ArrayList<EditedNote>();
 
         for (var i = begin; i <= end && i < line.effectiveElementCount(); i++) {
             var element = line.getElement(i);
-            var accidental = element.getAccidental();
 
-            if ((accidental != null) && element.getType().isPitchedNote()) {
-                removed.add(new RemovedAccidental(
-                    line, i, element.getStaffPosition(), accidental));
-            }
+            edited.add(new EditedNote(i, element.getStaffPosition(), element.getAccidental(), null));
         }
 
-        return removed;
-    }
-
-    /** Every element of {@code [begin, end]} on {@code line}, as an exclusion set for the scan. */
-    public static Set<StaffElement> elementsIn(Line line, int begin, int end) {
-        var elements = new LinkedHashSet<StaffElement>();
-
-        for (var i = begin; i <= end && i < line.effectiveElementCount(); i++) {
-            elements.add(line.getElement(i));
-        }
-
-        return elements;
+        return edited;
     }
 }

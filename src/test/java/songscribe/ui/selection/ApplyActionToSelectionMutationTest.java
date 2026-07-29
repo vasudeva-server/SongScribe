@@ -22,14 +22,19 @@ package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import javax.swing.JOptionPane;
+
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -44,6 +49,7 @@ import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
+import songscribe.layout.NoteGeometry;
 import songscribe.dom.Beam;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
@@ -56,6 +62,7 @@ import songscribe.ui.action.DotAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.OptionDialogs;
 
 /**
  * Mutation-emission tests for {@link SelectionCoordinator#applyActionToSelection}.
@@ -70,6 +77,14 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     private AccidentalAction SHARP_ACTION;
     private FermataAction FERMATA_ACTION;
     private DotAction DOT_ACTION;
+
+    // Applying a width-changing action measures the projected line, which reads accidental widths
+    // out of a static table that has to be built first. Without this the class passes only when
+    // some earlier test class happens to have built it, and fails whenever it runs alone.
+    @BeforeAll
+    static void initializeNoteGeometry() {
+        NoteGeometry.initializeAccidentalWidths();
+    }
 
     @BeforeEach
     void setUp() {
@@ -148,6 +163,88 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
             .as("no TupletRemoval mutations should be emitted")
             .isEmpty();
         assertNoTieMutations();
+    }
+
+    // ---- Restatement prompt on an accidental toggle (#681) ----
+
+    private static final int F_STAFF_POSITION = 3;
+
+    private static StaffElement sharpNote() {
+        var note = ElementType.CROTCHET.newInstance();
+        note.setStaffPosition(F_STAFF_POSITION);
+        note.setAccidental(StaffElement.Accidental.SHARP);
+        return note;
+    }
+
+    /**
+     * Two sharps at the same staff position, with only the first one selected. Toggling that first
+     * sharp off takes an accidental away, so the second one is offered as a restatement of it.
+     */
+    private SelectionCoordinator coordinatorWithARestatement() {
+        var songMock = createSongMock();
+        var coordinator = ReflectionTestHelper.createCoordinator(
+            List.of(sharpNote(), sharpNote()), List.of(SHARP_ACTION), songMock);
+        var line = getLine(coordinator);
+
+        // Teach the song mock the line list the forward scan walks.
+        when(songMock.lineCount()).thenReturn(1);
+        when(songMock.getLine(0)).thenReturn(line);
+        when(songMock.indexOfLine(line)).thenReturn(0);
+
+        ReflectionTestHelper.selectRange(coordinator, 0, 0);
+
+        // Building the line emitted insertions of its own; only what the toggle does matters here.
+        capturedMutations.clear();
+        return coordinator;
+    }
+
+    private void toggleTheFirstSharpOffAnswering(SelectionCoordinator coordinator, int answer) {
+        try (var optionDialogs = mockStatic(OptionDialogs.class)) {
+            optionDialogs.when(() -> OptionDialogs.showConfirmDialog(
+                any(), any(), any(), anyInt(), anyInt())).thenReturn(answer);
+
+            coordinator.applyActionToSelection(SHARP_ACTION, false, null);
+        }
+    }
+
+    @Test
+    void testAccidentalToggleOffCancelledLeavesTheLineUntouched() {
+        var coordinator = coordinatorWithARestatement();
+        var line = getLine(coordinator);
+
+        toggleTheFirstSharpOffAnswering(coordinator, JOptionPane.CANCEL_OPTION);
+
+        assertThat(line.getElement(0).getAccidental())
+            .as("the toggle itself was abandoned, not just the restatement removal")
+            .isEqualTo(StaffElement.Accidental.SHARP);
+        assertThat(line.getElement(1).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+        assertThat(capturedMutations).as("no undo step was created").isEmpty();
+    }
+
+    @Test
+    void testAccidentalToggleOffAcceptedClearsTheRestatementToo() {
+        var coordinator = coordinatorWithARestatement();
+        var line = getLine(coordinator);
+
+        toggleTheFirstSharpOffAnswering(coordinator, JOptionPane.YES_OPTION);
+
+        assertThat(line.getElement(0).getAccidental()).isNull();
+        assertThat(line.getElement(1).getAccidental())
+            .as("the accepted restatement went with it")
+            .isNull();
+    }
+
+    @Test
+    void testAccidentalToggleOffDeclinedLeavesTheRestatementInPlace() {
+        var coordinator = coordinatorWithARestatement();
+        var line = getLine(coordinator);
+
+        toggleTheFirstSharpOffAnswering(coordinator, JOptionPane.NO_OPTION);
+
+        assertThat(line.getElement(0).getAccidental()).isNull();
+        assertThat(line.getElement(1).getAccidental())
+            .as("declining leaves every restatement alone")
+            .isEqualTo(StaffElement.Accidental.SHARP);
     }
 
     // ---- ElementReplaceable path: duration change ----

@@ -323,11 +323,15 @@ public final class ScoreInputHandler extends KeyAdapter
             var begin = selection.begin();
             var end = selection.end();
 
+            // The window parents the restatement prompt a pitch shift may raise, so it opens over
+            // the score rather than against the screen.
+            var window = callback.getWindow();
+
             switch (code) {
-                case KeyEvent.VK_UP ->
-                        applyPitchShift(coordinator, PitchShifter.shiftPitch(line, begin, end, RAISE_PITCH_DELTA_SP));
-                case KeyEvent.VK_DOWN ->
-                        applyPitchShift(coordinator, PitchShifter.shiftPitch(line, begin, end, LOWER_PITCH_DELTA_SP));
+                case KeyEvent.VK_UP -> applyPitchShift(
+                        coordinator, PitchShifter.shiftPitch(window, line, begin, end, RAISE_PITCH_DELTA_SP));
+                case KeyEvent.VK_DOWN -> applyPitchShift(
+                        coordinator, PitchShifter.shiftPitch(window, line, begin, end, LOWER_PITCH_DELTA_SP));
                 case KeyEvent.VK_LEFT -> moveSelection(coordinator, selection, MOVE_LEFT);
                 case KeyEvent.VK_RIGHT -> moveSelection(coordinator, selection, MOVE_RIGHT);
                 default -> { }

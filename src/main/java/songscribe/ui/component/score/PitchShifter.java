@@ -84,8 +84,13 @@ public final class PitchShifter {
      * the selection range (nothing removed, or nothing removed within/before it);
      * otherwise returns the range adjusted for the removals, or {@code {-1, -1}} if
      * every element in the range was removed and the selection should be cleared.
+     *
+     * @param parent The component to parent the restatement prompt on, or null when there is no
+     *               owning window. Without it the prompt is placed against the screen rather than
+     *               the score window
      */
-    public static int @Nullable [] shiftPitch(Line line, int begin, int end, int deltaSp) {
+    public static int @Nullable [] shiftPitch(
+            @Nullable Component parent, Line line, int begin, int end, int deltaSp) {
         var group = buildPitchShiftGroup(line, begin, end);
 
         if (group.isEmpty()) {
@@ -104,7 +109,7 @@ public final class PitchShifter {
 
         // Asked before anything is mutated, so Cancel is simply "nothing happened" — the same
         // contract the two early returns above already have.
-        var decision = confirmRestatements(null, line, group);
+        var decision = confirmRestatements(parent, line, group);
 
         if (decision.isCancelled()) {
             return null;
@@ -213,7 +218,8 @@ public final class PitchShifter {
     /**
      * Asks whether this shift should also take away the later notes that restate the accidentals
      * it removes — every explicit accidental in {@code group}, since a note that leaves a staff
-     * position gives up the accidental written for it.
+     * position gives up the accidental written for it, which is why each entry states no accidental
+     * at all as its post-shift one.
      *
      * <p>Read off each entry's {@code beforeClone} rather than the live element, because a drag has
      * already moved and cleared the live notes by the time it asks. Must be called before any
@@ -227,22 +233,17 @@ public final class PitchShifter {
     static AccidentalRestatements.Decision confirmRestatements(
             @Nullable Component parent, Line line, List<PitchShiftEntry> group) {
 
-        var removed = new ArrayList<AccidentalRestatements.RemovedAccidental>();
-
-        // Identity semantics come for free: StaffElement overrides neither equals nor hashCode.
-        var moved = new LinkedHashSet<StaffElement>();
+        var edited = new ArrayList<AccidentalRestatements.EditedNote>(group.size());
 
         for (var entry : group) {
-            var accidental = entry.beforeClone().getAccidental();
-            moved.add(line.getElement(entry.index()));
-
-            if (accidental != null) {
-                removed.add(new AccidentalRestatements.RemovedAccidental(
-                        line, entry.index(), entry.originalStaffPositionSp(), accidental));
-            }
+            edited.add(new AccidentalRestatements.EditedNote(
+                    entry.index(),
+                    entry.originalStaffPositionSp(),
+                    entry.beforeClone().getAccidental(),
+                    null));
         }
 
-        return AccidentalRestatements.confirm(parent, removed, moved);
+        return AccidentalRestatements.confirm(parent, line, edited);
     }
 
     /**
