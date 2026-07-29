@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 
 /**
@@ -55,6 +56,10 @@ class LyricLiftTest extends UnitTest {
     private static final double BEAM_REST_SS = BEAM_FACTOR * DEFAULT_LINE_REST_SS;
 
     private static final String SYLLABLE_TEXT = "la";
+    // These columns are synthetic — the lyric lives on the column alone, which is all the lift
+    // rules read.
+    private static final Lyric SYLLABLE_LYRIC =
+        new Lyric(Lyric.FIRST_VERSE, SYLLABLE_TEXT, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
     private static final double NO_SYLLABLE_WIDTH_SS = 0.0;
     private static final int NO_BEAM_GROUP_ID = 0;
     private static final int FIRST_BEAM_GROUP_ID = 0;
@@ -131,7 +136,7 @@ class LyricLiftTest extends UnitTest {
 
     private static ElementColumn column(
         ElementType type,
-        @Nullable String syllable,
+        @Nullable Lyric lyric,
         double syllableWidthSs,
         double minGapSs,
         boolean beamed,
@@ -142,7 +147,7 @@ class LyricLiftTest extends UnitTest {
             Collections.emptyList(),
             0.0, 0.0,
             0.0, 0.0,
-            syllable,
+            lyric,
             syllableWidthSs,
             beamed);
         elementColumn.setMinGapToNextSyllableSs(minGapSs);
@@ -155,7 +160,7 @@ class LyricLiftTest extends UnitTest {
     }
 
     private static ElementColumn plainSyllableColumn(double syllableWidthSs, double minGapSs) {
-        return column(ElementType.CROTCHET, SYLLABLE_TEXT, syllableWidthSs, minGapSs, false, NO_BEAM_GROUP_ID);
+        return column(ElementType.CROTCHET, SYLLABLE_LYRIC, syllableWidthSs, minGapSs, false, NO_BEAM_GROUP_ID);
     }
 
     private static ElementColumn narrowSyllableColumn() {
@@ -163,7 +168,7 @@ class LyricLiftTest extends UnitTest {
     }
 
     private static ElementColumn beamedSyllableColumn(double syllableWidthSs, double minGapSs) {
-        return column(ElementType.SEMIQUAVER, SYLLABLE_TEXT, syllableWidthSs, minGapSs, true, FIRST_BEAM_GROUP_ID);
+        return column(ElementType.SEMIQUAVER, SYLLABLE_LYRIC, syllableWidthSs, minGapSs, true, FIRST_BEAM_GROUP_ID);
     }
 
     private static ElementColumn lyricLessColumn() {
@@ -185,7 +190,7 @@ class LyricLiftTest extends UnitTest {
     private static ElementColumn graceColumn(double rightExtentSs, double syllableWidthSs, double minGapSs) {
         var graceColumn = new ElementColumn(
             ElementType.GRACE_QUAVER.newInstance(), Collections.emptyList(),
-            0.0, rightExtentSs, 0.0, 0.0, SYLLABLE_TEXT, syllableWidthSs, false);
+            0.0, rightExtentSs, 0.0, 0.0, SYLLABLE_LYRIC, syllableWidthSs, false);
         graceColumn.setMinGapToNextSyllableSs(minGapSs);
         return graceColumn;
     }
@@ -203,7 +208,7 @@ class LyricLiftTest extends UnitTest {
 
         var syllableColumn = new ElementColumn(
             ElementType.CROTCHET.newInstance(), Collections.emptyList(),
-            0.0, rightExtentSs, 0.0, 0.0, SYLLABLE_TEXT, syllableWidthSs, false);
+            0.0, rightExtentSs, 0.0, 0.0, SYLLABLE_LYRIC, syllableWidthSs, false);
         syllableColumn.setMinGapToNextSyllableSs(minGapSs);
         return syllableColumn;
     }

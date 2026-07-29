@@ -62,6 +62,15 @@ class ElementColumnTest extends UnitTest {
     private static final LyricRenderMetrics LYRIC_METRICS =
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
 
+    // A column carries the lyric it was built from, and reads its syllable text off that, so a
+    // test that wants a syllable supplies the lyric it belongs to.
+    private static final Lyric SYLLABLE_LYRIC = lyricWithText(SYLLABLE);
+    private static final Lyric EMPTY_TEXT_LYRIC = lyricWithText("");
+
+    private static Lyric lyricWithText(String text) {
+        return new Lyric(Lyric.FIRST_VERSE, text, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+    }
+
     private static StaffElement element(ElementType type) {
         return type.newInstance();
     }
@@ -95,7 +104,7 @@ class ElementColumnTest extends UnitTest {
 
         var column = new ElementColumn(
             note, List.of(graceNote), LEFT_EXTENT, RIGHT_EXTENT,
-            STEM_TOP, STEM_BOTTOM, SYLLABLE, SYLLABLE_WIDTH, true);
+            STEM_TOP, STEM_BOTTOM, SYLLABLE_LYRIC, SYLLABLE_WIDTH, true);
 
         assertThat(column.getElement()).isSameAs(note);
         assertThat(column.getGraceNotes()).containsExactly(graceNote);
@@ -103,9 +112,23 @@ class ElementColumnTest extends UnitTest {
         assertThat(column.getRightExtentSs()).isEqualTo(RIGHT_EXTENT);
         assertThat(column.getStemTopSs()).isEqualTo(STEM_TOP);
         assertThat(column.getStemBottomSs()).isEqualTo(STEM_BOTTOM);
-        assertThat(column.getSyllable()).isEqualTo(SYLLABLE);
+        assertThat(column.getLyric()).isSameAs(SYLLABLE_LYRIC);
+        assertThat(column.getSyllable())
+            .as("the syllable text is read off the stored lyric, not held separately")
+            .isEqualTo(SYLLABLE);
         assertThat(column.getSyllableWidthSs()).isEqualTo(SYLLABLE_WIDTH);
         assertThat(column.isBeamed()).isTrue();
+    }
+
+    @Test
+    void testAColumnBuiltWithoutALyricReportsNone() {
+        var column = new ElementColumn(
+            element(ElementType.CROTCHET), List.of(), 0, 0, 0, 0, null, 0, false);
+
+        assertThat(column.getLyric())
+            .as("an element carrying no lyric in the verse being laid out yields a null lyric")
+            .isNull();
+        assertThat(column.getSyllable()).isNull();
     }
 
     @Test
@@ -153,7 +176,7 @@ class ElementColumnTest extends UnitTest {
     @Test
     void testHasSyllableFalseWhenEmptyString() {
         var column = new ElementColumn(
-            element(ElementType.CROTCHET), List.of(), 0, 0, 0, 0, "", 0, false);
+            element(ElementType.CROTCHET), List.of(), 0, 0, 0, 0, EMPTY_TEXT_LYRIC, 0, false);
 
         assertThat(column.hasSyllable()).isFalse();
     }
@@ -161,7 +184,7 @@ class ElementColumnTest extends UnitTest {
     @Test
     void testHasSyllableTrueWhenNonEmpty() {
         var column = new ElementColumn(
-            element(ElementType.CROTCHET), List.of(), 0, 0, 0, 0, SYLLABLE, SYLLABLE_WIDTH, false);
+            element(ElementType.CROTCHET), List.of(), 0, 0, 0, 0, SYLLABLE_LYRIC, SYLLABLE_WIDTH, false);
 
         assertThat(column.hasSyllable()).isTrue();
     }

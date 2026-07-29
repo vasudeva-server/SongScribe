@@ -193,12 +193,10 @@ public class ElementColumnBuilder {
             rightExtentExcludingAugmentationSs,
             stemTopSs,
             stemBottomSs,
-            syllable,
+            lyric,
             syllableWidthSs,
             beamed
         );
-
-        column.setLyric(lyric);
 
         if (syllable != null) {
             column.setSyllableFirstGraphemeWidthSs(lyricRenderMetrics.firstGraphemeWidthSs(syllable));

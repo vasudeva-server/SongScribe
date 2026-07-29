@@ -183,7 +183,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
     }
 
     /** Column for an ordinary note (full-size notehead width) with no measured syllable. */
-    private static ElementColumn normalColumn(StaffElement element, double xSs) {
+    private ElementColumn normalColumn(StaffElement element, double xSs) {
         return normalColumn(element, xSs, 0.0);
     }
 
@@ -191,21 +191,25 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
      * Column for an ordinary note carrying a syllable of {@code syllableWidthSs}. Verse 1 reads its
      * box width off the column rather than re-measuring, so a lyric-bearing column has to supply it.
      */
-    private static ElementColumn normalColumn(StaffElement element, double xSs, double syllableWidthSs) {
+    private ElementColumn normalColumn(StaffElement element, double xSs, double syllableWidthSs) {
         return column(element, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, syllableWidthSs);
     }
 
     /** Column for a grace note (small-notehead width, no flag for simplicity). */
-    private static ElementColumn graceColumn(StaffElement element, double xSs) {
+    private ElementColumn graceColumn(StaffElement element, double xSs) {
         return graceColumn(element, xSs, 0.0);
     }
 
     /** Grace-note column carrying a syllable of {@code syllableWidthSs} (see {@link #normalColumn}). */
-    private static ElementColumn graceColumn(StaffElement element, double xSs, double syllableWidthSs) {
+    private ElementColumn graceColumn(StaffElement element, double xSs, double syllableWidthSs) {
         return column(element, xSs, ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS, syllableWidthSs);
     }
 
-    private static ElementColumn column(
+    /**
+     * The column carries the element's lyric for the song's active verse, the way
+     * {@code ElementColumnBuilder} builds it — that is where every later pass reads it from.
+     */
+    private ElementColumn column(
         StaffElement element, double xSs, double noteheadWidthSs, double syllableWidthSs) {
 
         var column = new ElementColumn(
@@ -213,7 +217,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
             Collections.emptyList(),
             0.0,
             noteheadWidthSs,
-            0.0, 0.0, null, syllableWidthSs, false);
+            0.0, 0.0, element.getLyricForVerse(song.getActiveVerse()), syllableWidthSs, false);
         column.setXSs(xSs);
         return column;
     }
@@ -244,7 +248,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
             0.0,
             FLAG_INFLATED_GRACE_RIGHT_EXTENT_SS,
             FLAG_INFLATED_GRACE_RIGHT_EXTENT_SS,
-            0.0, 0.0, null, widthSs, false);
+            0.0, 0.0, grace.getLyricForVerse(song.getActiveVerse()), widthSs, false);
         graceCol.setNoteheadWidthSs(ElementColumnBuilder.GRACE_NOTE_HEAD_WIDTH_SS);
         graceCol.setXSs(GRACE_X_SS);
         var hostCol = normalColumn(host, HOST_X_SS);

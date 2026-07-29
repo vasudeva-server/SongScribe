@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -329,6 +330,56 @@ class SongDefaultsTest extends UnitTest {
     void testNewSongIsNotModified() {
         var song = new Song();
         assertThat(song.isModified()).isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // Active verse — the one language a song shows at a time
+    // -----------------------------------------------------------------------
+
+    // Verse numbering is 1-based, so these are the two values just below the first real verse.
+    private static final int VERSE_ZERO = 0;
+    private static final int NEGATIVE_VERSE = -1;
+    private static final int SECOND_VERSE = 2;
+
+    @Test
+    void testNewSongOpensOnItsFirstVerse() {
+        assertThat(new Song().getActiveVerse()).isEqualTo(Lyric.FIRST_VERSE);
+    }
+
+    // Verse 0 names no verse at all. Accepting it would leave layout looking up a verse no lyric
+    // carries, so every syllable in the song would read as absent and the score would show no words.
+    @Test
+    void testSetActiveVerseRejectsVerseZero() {
+        var song = new Song();
+
+        assertThatThrownBy(() -> song.setActiveVerse(VERSE_ZERO))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining(String.valueOf(VERSE_ZERO));
+        assertThat(song.getActiveVerse())
+            .as("a rejected verse must leave the song on the one it was showing")
+            .isEqualTo(Lyric.FIRST_VERSE);
+    }
+
+    @Test
+    void testSetActiveVerseRejectsANegativeVerse() {
+        var song = new Song();
+
+        assertThatThrownBy(() -> song.setActiveVerse(NEGATIVE_VERSE))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThat(song.getActiveVerse()).isEqualTo(Lyric.FIRST_VERSE);
+    }
+
+    // The guard rejects below the first verse, not at or below it: verse 1 is the default and has
+    // to stay selectable, including after switching away and back.
+    @Test
+    void testSetActiveVerseAcceptsTheFirstVerseAndAnyVerseAboveIt() {
+        var song = new Song();
+
+        song.setActiveVerse(SECOND_VERSE);
+        assertThat(song.getActiveVerse()).isEqualTo(SECOND_VERSE);
+
+        song.setActiveVerse(Lyric.FIRST_VERSE);
+        assertThat(song.getActiveVerse()).isEqualTo(Lyric.FIRST_VERSE);
     }
 
 }

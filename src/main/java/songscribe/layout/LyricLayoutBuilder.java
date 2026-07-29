@@ -21,7 +21,7 @@
 package songscribe.layout;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -94,9 +94,10 @@ public final class LyricLayoutBuilder {
      * languages, held in the document but never shown alongside the one the user picked, so they
      * produce no boxes, no connectors and no second row to make space for.
      * <p>
-     * {@code activeVerse} must be the verse {@code columns} were built for: the syllable widths
-     * cached on them are reused here rather than re-measured, so a mismatch would place this
-     * verse's text on another verse's measurements.
+     * {@code activeVerse} stamps the boxes and connectors this emits. The lyrics themselves come
+     * off the columns, which {@link ElementColumnBuilder} already resolved for that verse and
+     * measured the cached syllable widths against, so text and widths cannot come from different
+     * verses.
      *
      * @param columns                per-element columns in line order (X positions already finalized)
      * @param activeVerse            the verse to lay out, from {@link songscribe.dom.Song#getActiveVerse()}
@@ -104,6 +105,7 @@ public final class LyricLayoutBuilder {
      * @param hasLeadingContinuation true if the previous line ended with an active extender
      *                               that should continue from x = 0 on this line
      * @param lineWidthSs            width of the line in staff spaces (reserved for future use)
+     * @return the boxes and connectors for that verse, and whether an extender runs off the line
      */
     public static Result build(
         List<ElementColumn> columns,
@@ -112,21 +114,7 @@ public final class LyricLayoutBuilder {
         boolean hasLeadingContinuation,
         double lineWidthSs) {
 
-        var verseResult = buildVerse(
-            activeVerse, columns, lyricRenderMetrics, hasLeadingContinuation, lineWidthSs);
-
-        return new Result(
-            verseResult.boxesByElement, verseResult.connectors, verseResult.hasTrailingContinuation);
-    }
-
-    private static VerseResult buildVerse(
-        int verse,
-        List<ElementColumn> columns,
-        LyricRenderMetrics lyricRenderMetrics,
-        boolean hasLeadingContinuation,
-        double lineWidthSs) {
-
-        var boxesByElement = new LinkedHashMap<StaffElement, List<LyricBoxLayout>>(columns.size());
+        var boxesByElement = new HashMap<StaffElement, List<LyricBoxLayout>>(columns.size());
         var connectors = new ArrayList<LyricConnectorLayout>(columns.size());
         var state = new ExtenderState(hasLeadingContinuation);
 
@@ -134,7 +122,7 @@ public final class LyricLayoutBuilder {
             var column = columns.get(columnIndex);
             var element = column.getElement();
 
-            var lyric = element.getLyricForVerse(verse);
+            var lyric = column.getLyric();
             var extend = lyric != null ? lyric.extend() : null;
 
             // The host of a paired grace note never carries a syllable of its own, so it emits no
@@ -144,7 +132,7 @@ public final class LyricLayoutBuilder {
             if (isHostOfPairedGraceColumn(columns, columnIndex)) {
                 if (extend == Lyric.Extend.STOP) {
                     state.closeGraceHostExtender(
-                        connectors, verse, column.getNoteheadRightEdgeXSs(), columnIndex);
+                        connectors, activeVerse, column.getNoteheadRightEdgeXSs(), columnIndex);
                 }
 
                 continue;
@@ -160,11 +148,11 @@ public final class LyricLayoutBuilder {
                 }
 
                 if (extend == Lyric.Extend.STOP) {
-                    state.closeExtenderPastHead(connectors, verse, column.getNoteheadRightEdgeXSs());
+                    state.closeExtenderPastHead(connectors, activeVerse, column.getNoteheadRightEdgeXSs());
                     continue;
                 }
 
-                state.closeExtender(connectors, verse, column.getLeftEdgeXSs());
+                state.closeExtender(connectors, activeVerse, column.getLeftEdgeXSs());
                 continue;
             }
 
@@ -180,14 +168,13 @@ public final class LyricLayoutBuilder {
 
             if (extend == Lyric.Extend.STOP) {
                 // STOP carrier: ends active extender past this note's notehead, no box.
-                state.closeExtenderPastHead(connectors, verse, column.getNoteheadRightEdgeXSs());
+                state.closeExtenderPastHead(connectors, activeVerse, column.getNoteheadRightEdgeXSs());
                 continue;
             }
 
             var text = lyric.text();
-            // ElementColumnBuilder measured this syllable's width for the same verse the column was
-            // built for, which is the one being laid out; reuse the cached value to avoid a
-            // redundant TextLayout allocation per layout pass.
+            // ElementColumnBuilder measured this syllable's width when it resolved the lyric above;
+            // reuse the cached value to avoid a redundant TextLayout allocation per layout pass.
             var widthSs = column.getSyllableWidthSs();
             // A grace's host is the column immediately after it, resolved once here so the union the
             // syllable is placed on and the melisma that shares that placement are read off the same
@@ -195,15 +182,13 @@ public final class LyricLayoutBuilder {
             var hostColumn = column.isGraceNote() && columnIndex + 1 < columns.size()
                 ? columns.get(columnIndex + 1)
                 : null;
-            var hostLyric = hostColumn != null
-                ? hostColumn.getElement().getLyricForVerse(verse)
-                : null;
+            var hostLyric = hostColumn != null ? hostColumn.getLyric() : null;
             var graceUnionWidthSs = column.isGraceNote()
                 ? spacedGraceHostUnionWidthSs(columns, columnIndex, column, hostColumn)
                 : 0;
             var boxXSs = computeLyricBoxLeftXSs(
                 column, lyric, hostLyric, widthSs, graceUnionWidthSs, lyricRenderMetrics);
-            var box = new LyricBoxLayout(boxXSs, widthSs, verse, text);
+            var box = new LyricBoxLayout(boxXSs, widthSs, activeVerse, text);
             boxesByElement.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
 
             // Close any pending hyphen at the start of this syllable.
@@ -211,7 +196,7 @@ public final class LyricLayoutBuilder {
                 connectors.add(new LyricConnectorLayout(
                     state.pendingHyphenStartXSs,
                     boxXSs,
-                    verse,
+                    activeVerse,
                     LyricConnectorLayout.Kind.HYPHEN,
                     state.pendingHyphenColumnIndex));
                 state.pendingHyphenStartXSs = -1;
@@ -219,7 +204,7 @@ public final class LyricLayoutBuilder {
             }
 
             // Close any active extender at the start of this syllable.
-            state.closeExtender(connectors, verse, boxXSs);
+            state.closeExtender(connectors, activeVerse, boxXSs);
 
             var syllableEndXSs = boxXSs + widthSs;
             var opensHyphen = Lyric.syllabicContinues(lyric.syllabic());
@@ -243,19 +228,19 @@ public final class LyricLayoutBuilder {
         // Any START that reaches the end of the line without being closed by a STOP or a
         // text-bearing note continues the melisma onto the next line.
         if (state.extenderActive) {
-            emitDanglingExtender(connectors, columns, state, verse);
+            emitDanglingExtender(connectors, columns, state, activeVerse);
             hasTrailingContinuation = true;
         }
 
         if (state.pendingHyphenStartXSs >= 0) {
-            emitDanglingHyphen(connectors, columns, state, verse);
+            emitDanglingHyphen(connectors, columns, state, activeVerse);
         }
 
         // Always the lyric space width: a melisma is sung on a single (non-hyphenated) syllable,
         // so the gap before the following word is a word space, never a hyphen cell.
         clampExtendersToFollowingSyllable(connectors, boxesByElement, lyricRenderMetrics.spaceWidthSs());
 
-        return new VerseResult(boxesByElement, connectors, hasTrailingContinuation);
+        return new Result(boxesByElement, connectors, hasTrailingContinuation);
     }
 
     /**
@@ -424,7 +409,7 @@ public final class LyricLayoutBuilder {
             }
 
             var column = columns.get(i);
-            var lyric = column.getElement().getLyricForVerse(verse);
+            var lyric = column.getLyric();
             var extend = lyric != null ? lyric.extend() : null;
 
             if (extend != Lyric.Extend.CONTINUE && extend != Lyric.Extend.STOP) {
@@ -547,10 +532,4 @@ public final class LyricLayoutBuilder {
             closeExtenderPastHead(connectors, verse, headRightEdgeXSs);
         }
     }
-
-    private record VerseResult(
-        Map<StaffElement, List<LyricBoxLayout>> boxesByElement,
-        List<LyricConnectorLayout> connectors,
-        boolean hasTrailingContinuation
-    ) {}
 }

@@ -712,18 +712,6 @@ public final class LayoutResult {
         return null;
     }
 
-    /**
-     * Returns true if {@code pointYPx} (in pixels) falls within the vertical extent of the lyric
-     * row on this line, regardless of X position. The row is reserved whether or not the line
-     * carries any lyric yet, so this answers for the space, not for its contents.
-     */
-    public boolean isYInLyricBounds(LyricRenderMetrics lyricRenderMetrics, double pointYPx) {
-        var baseYSs = lyricAreaBaseYSs();
-        var pointYSs = ScaleContext.pxToSs(pointYPx);
-
-        return pointYSs >= baseYSs && pointYSs <= baseYSs + lyricRenderMetrics.lyricBoxHeightSs();
-    }
-
     // Package-private for direct unit testing of the formula.
     //
     // Built on staffBottomYSsInLine() so the hit-test row rides the same painted frame as the
@@ -1002,7 +990,7 @@ public final class LayoutResult {
                 ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(previewElement, false, StaffElement.Direction.UP),
                 0,
                 0,
-                null,
+                null,  // a preview element carries no lyric
                 0,
                 false
             );

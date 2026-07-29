@@ -59,16 +59,16 @@ public final class ElementColumn {
     private final double rightExtentExcludingAugmentationSs;
     private final double stemTopSs;
     private final double stemBottomSs;
-    private final @Nullable String syllable;
+    // The element's lyric for the verse this column was built for — the song's active verse, and
+    // the one syllableWidthSs measures. Null when the element carries no lyric in that verse.
+    // The syllable text is read off this rather than stored alongside it, so the text and the
+    // verse it came from cannot drift apart.
+    private final @Nullable Lyric lyric;
     private final double syllableWidthSs;
     private final boolean beamed;
     // Width of the syllable's first grapheme cluster — what a grace note centers on its notehead.
     // Measured by ElementColumnBuilder; falls back to the whole syllable width.
     private double syllableFirstGraphemeWidthSs;
-    // The element's lyric for the verse this column was built for — the song's active verse, the
-    // one whose text `syllable` holds and whose width `syllableWidthSs` measures. Set by
-    // ElementColumnBuilder; null when the element carries no lyric in that verse.
-    private @Nullable Lyric lyric;
     // Minimum required gap between this column's right edge and the next column's syllable
     // left edge. Always set by ElementColumnBuilder: lyric space width for non-hyphenated or
     // lyric-less columns, hyphen cell width for hyphenated ones.
@@ -104,7 +104,7 @@ public final class ElementColumn {
      * @param rightExtentExcludingAugmentationSs Right extent excluding augmentation (dots and fall); used for comfortable spacing
      * @param stemTopSs                  Top of stem (if stem up), or element head top if no stem
      * @param stemBottomSs               Bottom of stem (if stem down), or element head bottom if no stem
-     * @param syllable                   Associated lyric syllable text (null if none)
+     * @param lyric                      The element's lyric for the verse being laid out (null if none)
      * @param syllableWidthSs            Measured width of syllable text in staff spaces (0 if no syllable)
      * @param beamed                     Whether this element is part of a beam group
      */
@@ -116,7 +116,7 @@ public final class ElementColumn {
         double rightExtentExcludingAugmentationSs,
         double stemTopSs,
         double stemBottomSs,
-        @Nullable String syllable,
+        @Nullable Lyric lyric,
         double syllableWidthSs,
         boolean beamed) {
         this.element = element;
@@ -127,7 +127,7 @@ public final class ElementColumn {
         this.noteheadWidthSs = rightExtentExcludingAugmentationSs;
         this.stemTopSs = stemTopSs;
         this.stemBottomSs = stemBottomSs;
-        this.syllable = syllable;
+        this.lyric = lyric;
         this.syllableWidthSs = syllableWidthSs;
         this.syllableFirstGraphemeWidthSs = syllableWidthSs;
         this.beamed = beamed;
@@ -147,11 +147,11 @@ public final class ElementColumn {
         double rightExtentSs,
         double stemTopSs,
         double stemBottomSs,
-        @Nullable String syllable,
+        @Nullable Lyric lyric,
         double syllableWidthSs,
         boolean beamed) {
         this(element, graceNotes, leftExtentSs, rightExtentSs, rightExtentSs,
-            stemTopSs, stemBottomSs, syllable, syllableWidthSs, beamed);
+            stemTopSs, stemBottomSs, lyric, syllableWidthSs, beamed);
     }
 
     // ==========================================================================
@@ -456,18 +456,20 @@ public final class ElementColumn {
     // ==========================================================================
 
     /**
-     * Returns the associated lyric syllable text.
+     * Returns the associated lyric syllable text, read off {@link #getLyric()} so it always
+     * belongs to the verse {@link #getSyllableWidthSs()} was measured for.
      *
      * @return Syllable text, or null if no syllable
      */
     public @Nullable String getSyllable() {
-        return syllable;
+        return lyric != null ? lyric.text() : null;
     }
 
     /**
      * Returns whether this column has an associated syllable.
      */
     public boolean hasSyllable() {
+        var syllable = getSyllable();
         return syllable != null && !syllable.isEmpty();
     }
 
@@ -499,16 +501,12 @@ public final class ElementColumn {
 
     /**
      * Returns the element's lyric for the verse this column was built for, or null if it carries
-     * none there. Reading the lyric off the column rather than off the element is what keeps the
-     * spacing pass on the same verse the syllable width was measured for — the element itself
-     * holds every verse and cannot say which one is being laid out.
+     * none there. Reading the lyric off the column rather than off the element is what keeps every
+     * later pass on the same verse the syllable width was measured for — the element itself holds
+     * every verse and cannot say which one is being laid out.
      */
     public @Nullable Lyric getLyric() {
         return lyric;
-    }
-
-    void setLyric(@Nullable Lyric lyric) {
-        this.lyric = lyric;
     }
 
     /**
@@ -621,7 +619,7 @@ public final class ElementColumn {
         sb.append(", extent=[").append(leftExtentSs).append(", ").append(rightExtentSs).append(']');
 
         if (hasSyllable()) {
-            sb.append(", syllable='").append(syllable).append('\'');
+            sb.append(", syllable='").append(getSyllable()).append('\'');
             sb.append(", syllableWidth=").append(syllableWidthSs);
         }
 

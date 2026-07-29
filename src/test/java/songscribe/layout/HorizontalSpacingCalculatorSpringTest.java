@@ -112,6 +112,8 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         MELISMA_SPILL_SYLLABLE_WIDTH_SS + LyricLayoutBuilder.MIN_MELISMA_LENGTH_SS;
     /** Verse the spacing path lays out — the one a column's measured syllable belongs to. */
     private static final int MAIN_VERSE = 1;
+    /** A verse well past the first, to catch any path that still assumes verse 1. */
+    private static final int LATER_VERSE = 3;
     private static final boolean HAS_MELISMA = true;
     private static final boolean NO_MELISMA = false;
 
@@ -142,11 +144,15 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
      */
     private static final double BELOW_BOUNDARY_NUDGE_SS = 0.125;
 
+    /** A plain word-final syllable in the verse being laid out — carries no melisma of its own. */
+    private static final Lyric PLAIN_SYLLABLE_LYRIC =
+        new Lyric(MAIN_VERSE, SYLLABLE_TEXT, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false);
+
     private static ElementColumn column(
         ElementType type,
         double leftExtentSs,
         double rightExtentSs,
-        @Nullable String syllable,
+        @Nullable Lyric lyric,
         double syllableWidthSs,
         boolean beamed) {
 
@@ -156,7 +162,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
             leftExtentSs,
             rightExtentSs,
             0.0, 0.0,
-            syllable,
+            lyric,
             syllableWidthSs,
             beamed);
     }
@@ -198,7 +204,8 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
      */
     private static ElementColumn syllableColumn(double rightExtentSs, double syllableWidthSs) {
         var syllableColumn = column(
-            ElementType.CROTCHET, NO_LEFT_EXTENT_SS, rightExtentSs, SYLLABLE_TEXT, syllableWidthSs, false);
+            ElementType.CROTCHET, NO_LEFT_EXTENT_SS, rightExtentSs,
+            PLAIN_SYLLABLE_LYRIC, syllableWidthSs, false);
         syllableColumn.setMinCollisionGapToNextSyllableSs(SPACE_COLLISION_GAP_SS);
         return syllableColumn;
     }
@@ -210,9 +217,14 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
 
     /** A grace column bearing a lyric of the given width; its host carries no syllable of its own. */
     private static ElementColumn graceSyllableColumn(double syllableWidthSs) {
+        return graceSyllableColumn(syllableWidthSs, PLAIN_SYLLABLE_LYRIC);
+    }
+
+    /** As above, for the given lyric — the one the spacing path reads off the column. */
+    private static ElementColumn graceSyllableColumn(double syllableWidthSs, Lyric lyric) {
         var graceColumn = column(
             ElementType.GRACE_QUAVER, NO_LEFT_EXTENT_SS, GRACE_RIGHT_EXTENT_SS,
-            SYLLABLE_TEXT, syllableWidthSs, false);
+            lyric, syllableWidthSs, false);
         graceColumn.setMinCollisionGapToNextSyllableSs(SPACE_COLLISION_GAP_SS);
         graceColumn.setSyllableFirstGraphemeWidthSs(FIRST_GRAPHEME_WIDTH_SS);
         return graceColumn;
@@ -226,19 +238,28 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
      * is being laid out.
      */
     private static ElementColumn melismaGraceColumn(double syllableWidthSs) {
-        var graceColumn = graceSyllableColumn(syllableWidthSs);
-        var graceLyric = new Lyric(MAIN_VERSE, SYLLABLE_TEXT, Lyric.Extend.START, Lyric.Syllabic.SINGLE, false);
+        return melismaGraceColumn(syllableWidthSs, MAIN_VERSE);
+    }
+
+    /** As above, with the pair's melisma written in {@code verse} — the verse the column carries. */
+    private static ElementColumn melismaGraceColumn(double syllableWidthSs, int verse) {
+        var graceLyric = new Lyric(verse, SYLLABLE_TEXT, Lyric.Extend.START, Lyric.Syllabic.SINGLE, false);
+        var graceColumn = graceSyllableColumn(syllableWidthSs, graceLyric);
         graceColumn.getElement().lyrics.add(graceLyric);
-        graceColumn.setLyric(graceLyric);
         return graceColumn;
     }
 
     /** A plain column carrying the text-less STOP that ends its grace's melisma. */
     private static ElementColumn melismaHostColumn() {
-        var hostColumn = plainColumn();
-        var hostLyric = new Lyric(MAIN_VERSE, "", Lyric.Extend.STOP, null, false);
+        return melismaHostColumn(MAIN_VERSE);
+    }
+
+    /** As above, for the same {@code verse} the grace's melisma is written in. */
+    private static ElementColumn melismaHostColumn(int verse) {
+        var hostLyric = new Lyric(verse, "", Lyric.Extend.STOP, null, false);
+        var hostColumn = column(
+            ElementType.CROTCHET, NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS, hostLyric, 0.0, false);
         hostColumn.getElement().lyrics.add(hostLyric);
-        hostColumn.setLyric(hostLyric);
         return hostColumn;
     }
 
@@ -277,7 +298,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     private static ElementColumn hyphenatedSyllableColumn() {
         var syllableColumn = column(
             ElementType.CROTCHET, NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS,
-            SYLLABLE_TEXT, SYLLABLE_WIDTH_SS, false);
+            PLAIN_SYLLABLE_LYRIC, SYLLABLE_WIDTH_SS, false);
         syllableColumn.setMinCollisionGapToNextSyllableSs(HYPHEN_COLLISION_GAP_SS);
         return syllableColumn;
     }
@@ -666,6 +687,32 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         assertThat(spring.strutSs()).isCloseTo(
             HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS, within(TOLERANCE));
         assertThat(spring.strutSs()).isLessThan(melismaSpring.strutSs());
+    }
+
+    // The pair's melisma belongs to whichever language the columns were built for, so the space
+    // reserved for it must not depend on that language being the first one. The spacing path reads
+    // the lyric off the column for exactly this reason: the elements hold every verse at once and
+    // cannot say which is being laid out, so a path that asked them would only ever see verse 1 and
+    // would reserve nothing here — packing the following note against a melisma that is drawn anyway.
+    @Test
+    void testBuildSpringReservesTheMelismaTailWhicheverVerseTheColumnsCarry() {
+        var next = plainColumn();
+
+        var firstVerseSpring = HorizontalSpacingCalculator.buildSpring(
+            melismaHostColumn(Lyric.FIRST_VERSE), next, DEFAULT_LINE_REST_SS,
+            melismaGraceColumn(MELISMA_SPILL_SYLLABLE_WIDTH_SS, Lyric.FIRST_VERSE), null);
+
+        var laterVerseSpring = HorizontalSpacingCalculator.buildSpring(
+            melismaHostColumn(LATER_VERSE), next, DEFAULT_LINE_REST_SS,
+            melismaGraceColumn(MELISMA_SPILL_SYLLABLE_WIDTH_SS, LATER_VERSE), null);
+
+        assertThat(laterVerseSpring.strutSs())
+            .as("a melisma in a later language reserves exactly what the same melisma reserves in the first")
+            .isCloseTo(firstVerseSpring.strutSs(), within(TOLERANCE));
+        // Guards the comparison above: both must be the melisma-widened strut, not two equal
+        // no-melisma struts that would agree for the wrong reason.
+        assertThat(laterVerseSpring.strutSs())
+            .isGreaterThan(HEAD_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS);
     }
 
     // A grace syllable that already spans the union has no melisma drawn, so the pair reserves the

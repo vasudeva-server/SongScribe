@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -517,10 +518,11 @@ public final class InsertionSpacingCalculator {
         }
 
         var fragmentStart = columns.size();
+        var activeVerse = line.getSong().getActiveVerse();
 
         for (var element : fragment) {
             columns.add(columnBuilder != null
-                ? columnBuilder.buildDetachedColumn(element, line.getSong().getActiveVerse())
+                ? columnBuilder.buildDetachedColumn(element, activeVerse)
                 : createLightweightColumn(element));
         }
 
@@ -785,7 +787,7 @@ public final class InsertionSpacingCalculator {
         double stemBottomSs = 0;
 
         // No syllable information for lightweight columns
-        String syllable = null;
+        Lyric lyric = null;
         double syllableWidthSs = 0;
 
         //noinspection ConstantValue
@@ -797,7 +799,7 @@ public final class InsertionSpacingCalculator {
             rightExtentExcludingAugmentationSs,
             stemTopSs,
             stemBottomSs,
-            syllable,
+            lyric,
             syllableWidthSs,
             false
         );

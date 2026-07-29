@@ -34,6 +34,7 @@ import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
 import songscribe.dom.Lyric;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
@@ -50,6 +51,17 @@ class ElementColumnBuilderTest extends UnitTest {
     // Arbitrary non-zero values used only as mock stubs to pin exact return path in buildColumn
     private static final double HYPHEN_GLYPH_WIDTH_SS = 0.5;
     private static final double NON_HYPHENATED_SPACE_WIDTH_SS = 0.3;
+
+    /** A second language for the same notes, to prove a column follows the song's active verse. */
+    private static final int SECOND_VERSE = Lyric.FIRST_VERSE + 1;
+
+    /** Metrics that measure every syllable as zero-width, so only the lyric identity is under test. */
+    private static LyricRenderMetrics lyricMetricsMock() {
+        var metrics = mock(LyricRenderMetrics.class);
+        when(metrics.spaceWidthSs()).thenReturn(NON_HYPHENATED_SPACE_WIDTH_SS);
+        when(metrics.lyricBoxWidthSs(anyString())).thenReturn(0.0);
+        return metrics;
+    }
 
     @BeforeAll
     static void initializeNoteGeometry() {
@@ -378,6 +390,66 @@ class ElementColumnBuilderTest extends UnitTest {
                 .isEqualTo(NON_HYPHENATED_SPACE_WIDTH_SS
                     * ElementColumnBuilder.NON_HYPHENATED_GAP_SPACE_WIDTH_MULTIPLIER);
         }
+    }
+
+    // A song's verses are the languages its lyrics are written in, and one is shown at a time. The
+    // column has to carry that verse's lyric, because everything downstream reads it there rather
+    // than off the element — the element holds every language at once and cannot say which is being
+    // laid out. If the builder stamped verse 1 regardless, a song showing its second language would
+    // lay out and space the first language's words instead.
+    @Test
+    void testBuildColumnCarriesTheActiveVerseLyric() {
+        var metrics = lyricMetricsMock();
+        var song = new Song();
+        var line = song.getLine(0);
+        var note = element(ElementType.CROTCHET);
+        song.withoutMutationTracking(() -> {
+            line.addElement(note);
+            note.setLyricForVerse(
+                Lyric.FIRST_VERSE, Lyric.Syllabic.SINGLE, false, "heart", Lyric.Extend.NONE);
+            note.setLyricForVerse(
+                SECOND_VERSE, Lyric.Syllabic.SINGLE, false, "coeur", Lyric.Extend.NONE);
+        });
+
+        var builder = new ElementColumnBuilder(metrics);
+
+        assertThat(builder.buildColumn(note, line).getSyllable())
+            .as("a song opens on its first verse")
+            .isEqualTo("heart");
+
+        song.setActiveVerse(SECOND_VERSE);
+        var secondVerseColumn = builder.buildColumn(note, line);
+
+        assertThat(secondVerseColumn.getLyric())
+            .isNotNull()
+            .extracting(Lyric::verse)
+            .isEqualTo(SECOND_VERSE);
+        assertThat(secondVerseColumn.getSyllable())
+            .as("the column follows the song to its second language")
+            .isEqualTo("coeur");
+    }
+
+    // A note with words in one language but not another contributes no syllable while the language
+    // it lacks is showing, rather than falling back to the words it does have.
+    @Test
+    void testBuildColumnCarriesNoLyricWhenTheActiveVerseHasNone() {
+        var metrics = lyricMetricsMock();
+        var song = new Song();
+        var line = song.getLine(0);
+        var note = element(ElementType.CROTCHET);
+        song.withoutMutationTracking(() -> {
+            line.addElement(note);
+            note.setLyricForVerse(
+                Lyric.FIRST_VERSE, Lyric.Syllabic.SINGLE, false, "heart", Lyric.Extend.NONE);
+        });
+
+        song.setActiveVerse(SECOND_VERSE);
+        var column = new ElementColumnBuilder(metrics).buildColumn(note, line);
+
+        assertThat(column.getLyric()).isNull();
+        assertThat(column.getSyllable()).isNull();
+        assertThat(column.hasSyllable()).isFalse();
+        assertThat(column.getSyllableWidthSs()).isZero();
     }
 
     // Row 21: buildColumns on an empty line returns an empty list

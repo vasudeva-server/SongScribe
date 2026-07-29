@@ -121,21 +121,25 @@ class LyricLayoutBuilderTest extends UnitTest {
     }
 
     /** Places {@code element} in a column at the given X with notehead-width right extent. */
-    private static ElementColumn columnAt(StaffElement element, double xSs) {
+    private ElementColumn columnAt(StaffElement element, double xSs) {
         return columnAt(element, xSs, 0.0);
     }
 
     /**
      * Places {@code element} in a column at the given X with notehead-width right extent and a
      * pre-measured {@code syllableWidthSs} — the width the builder reuses rather than re-measuring.
+     * <p>
+     * The column carries the element's lyric for the song's active verse, the way
+     * {@code ElementColumnBuilder} builds it, so switching the active verse means rebuilding the
+     * columns — exactly as a real layout pass does.
      */
-    private static ElementColumn columnAt(StaffElement element, double xSs, double syllableWidthSs) {
+    private ElementColumn columnAt(StaffElement element, double xSs, double syllableWidthSs) {
         var column = new ElementColumn(
             element,
             Collections.emptyList(),
             0.0,
             SMuFLConstants.NOTE_HEAD_WIDTH_SS,
-            0.0, 0.0, null, syllableWidthSs, false);
+            0.0, 0.0, element.getLyricForVerse(song.getActiveVerse()), syllableWidthSs, false);
         column.setXSs(xSs);
         return column;
     }
@@ -317,7 +321,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             0.0,
             rightExtentWithDotsSs,
             rightExtentExcludingAugmentationSs,
-            0.0, 0.0, syllableText, syllableWidthSs, false);
+            0.0, 0.0, n1.getLyricForVerse(song.getActiveVerse()), syllableWidthSs, false);
         col.setXSs(noteXSs);
 
         var result = buildLyrics(List.of(col), LYRIC_METRICS, false, LINE_WIDTH_SS);
@@ -357,7 +361,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             0.0,
             flagInflatedRightExtentSs,
             flagInflatedRightExtentSs,
-            0.0, 0.0, syllableText, syllableWidthSs, false);
+            0.0, 0.0, n1.getLyricForVerse(song.getActiveVerse()), syllableWidthSs, false);
         col.setNoteheadWidthSs(noteheadWidthSs);
         col.setXSs(noteXSs);
 
@@ -699,7 +703,7 @@ class LyricLayoutBuilderTest extends UnitTest {
             0.0,
             flagInflatedRightExtentSs,
             flagInflatedRightExtentSs,
-            0.0, 0.0, null, 0.0, false);
+            0.0, 0.0, n2.getLyricForVerse(song.getActiveVerse()), 0.0, false);
         col1.setNoteheadWidthSs(noteheadWidthSs);
         col1.setXSs(col1XSs);
 
@@ -1065,9 +1069,9 @@ class LyricLayoutBuilderTest extends UnitTest {
         n2.lyrics.add(new Lyric(SECOND_VERSE, "deux", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
         addToLine(n1, n2);
 
-        var columns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));
+        var firstVerseColumns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));
 
-        var firstVerseResult = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var firstVerseResult = buildLyrics(firstVerseColumns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(boxesOf(firstVerseResult.boxes(), n1)).hasSize(1);
         assertThat(boxesOf(firstVerseResult.boxes(), n1).getFirst().text()).isEqualTo("do");
@@ -1077,7 +1081,11 @@ class LyricLayoutBuilderTest extends UnitTest {
 
         song.setActiveVerse(SECOND_VERSE);
 
-        var secondVerseResult = buildLyrics(columns, LYRIC_METRICS, false, LINE_WIDTH_SS);
+        // Rebuilt after the switch, the way a layout pass rebuilds its columns: a column carries
+        // the verse it was built for, so reusing the first verse's columns would lay out that verse.
+        var secondVerseColumns = List.of(columnAt(n1, 5), columnAt(n2, 5 + COLUMN_SPACING_SS));
+
+        var secondVerseResult = buildLyrics(secondVerseColumns, LYRIC_METRICS, false, LINE_WIDTH_SS);
 
         assertThat(boxesOf(secondVerseResult.boxes(), n1)).hasSize(1);
         assertThat(boxesOf(secondVerseResult.boxes(), n1).getFirst().text()).isEqualTo("un");

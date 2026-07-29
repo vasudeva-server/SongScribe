@@ -31,12 +31,15 @@ import songscribe.UnitTest;
  */
 class SongLyricsTextTest extends UnitTest {
 
+    /** A second language for the same notes, used to prove the text follows the showing verse. */
+    private static final int SECOND_VERSE = Lyric.FIRST_VERSE + 1;
+
     // Helper: add a note with a lyric to a line.
     private static StaffElement noteWithLyric(
         Lyric.Syllabic syllabic, boolean compound, String text, Lyric.Extend extend
     ) {
         var note = new StaffElement(ElementType.CROTCHET);
-        note.setLyricForVerse(1, syllabic, compound, text, extend);
+        note.setLyricForVerse(Lyric.FIRST_VERSE, syllabic, compound, text, extend);
         return note;
     }
 
@@ -145,5 +148,44 @@ class SongLyricsTextTest extends UnitTest {
         });
 
         assertThat(song.getLyricsText()).isEqualTo("yes ");
+    }
+
+    // A song's verses are the languages its lyrics are written in, and it shows one at a time, so
+    // the assembled text is the showing language's — not always the first one's.
+    @Test
+    void testTextComesFromTheActiveVerseNotAlwaysTheFirst() {
+        var song = new Song();
+        song.withoutMutationTracking(() -> {
+            var note = new StaffElement(ElementType.CROTCHET);
+            note.setLyricForVerse(
+                Lyric.FIRST_VERSE, Lyric.Syllabic.SINGLE, false, "heart", Lyric.Extend.NONE);
+            note.setLyricForVerse(
+                SECOND_VERSE, Lyric.Syllabic.SINGLE, false, "coeur", Lyric.Extend.NONE);
+            song.getLine(0).addElement(note);
+        });
+
+        assertThat(song.getLyricsText())
+            .as("a song opens on its first verse")
+            .isEqualTo("heart ");
+
+        song.setActiveVerse(SECOND_VERSE);
+
+        assertThat(song.getLyricsText())
+            .as("selecting the second language must yield that language's words")
+            .isEqualTo("coeur ");
+    }
+
+    // Selecting a verse the song carries no lyrics in leaves nothing to assemble, rather than
+    // falling back to another verse's words.
+    @Test
+    void testAVerseWithNoLyricsYieldsEmptyText() {
+        var song = new Song();
+        song.withoutMutationTracking(() ->
+            song.getLine(0).addElement(
+                noteWithLyric(Lyric.Syllabic.SINGLE, false, "heart", Lyric.Extend.NONE)));
+
+        song.setActiveVerse(SECOND_VERSE);
+
+        assertThat(song.getLyricsText()).isEmpty();
     }
 }
