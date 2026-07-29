@@ -504,4 +504,37 @@ class TupletRendererTest extends UnitTest {
         verify(g2, never()).fill(any(Shape.class));
         verify(g2, never()).drawString(any(String.class), any(float.class), any(float.class));
     }
+
+    @Test
+    void testRenderTupletsFromLine_nullEndNote_skipsWithoutDrawing() {
+        // The right arm is positioned from the end note's own head width, so the renderer must have
+        // an end note to measure. A tuplet whose end element has gone away — deleted, or its column
+        // pruned — must be skipped silently rather than throwing while painting the score.
+        var line = detachedLine();
+        var anchor = ElementType.QUAVER.newInstance();
+        var end = ElementType.QUAVER.newInstance();
+        line.addElement(anchor);
+        line.addElement(end);
+        var tuplet = new Tuplet(anchor, end, 3);
+        line.addRangeElement(tuplet);
+
+        var decorLayout = new LayoutResult.DecorationLayout(1.0, -2.0, 4.0, 1.0, 0.0);
+        var layoutResult = LayoutResult.builder()
+            .putDecorationLayout(tuplet, decorLayout)
+            .build();
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setCurrentLine(line)
+            .setLayoutResult(layoutResult)
+            .build();
+
+        // Null out the end element after the layout has been built
+        tuplet.setEndElement(null);
+
+        var g2 = mockG2();
+
+        RENDERER.renderTupletsFromLine(g2, line, invariants, ElementFrame.LINE_LEVEL);
+
+        verify(g2, never()).fill(any(Shape.class));
+        verify(g2, never()).drawString(any(String.class), any(float.class), any(float.class));
+    }
 }

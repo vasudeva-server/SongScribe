@@ -71,7 +71,7 @@ class NoteColumnGeometryTest extends UnitTest {
     void testSemibreve_noStem_noteheadDrivenRight() {
         // A semibreve has no stem and no flag: the right edge is the bare notehead right edge.
         // The expectation is read straight from the font metadata rather than from
-        // getGlyphRightEdgeSs, which is the very lookup the production path uses — deriving both
+        // noteheadWidthSs, which is the very lookup the production path uses — deriving both
         // sides from it would hide a whole-note-specific error in that lookup.
         var note = ElementType.SEMIBREVE.newInstance();
         note.setUpper(true);
@@ -138,7 +138,7 @@ class NoteColumnGeometryTest extends UnitTest {
             var noteheadBBox = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph());
 
             // A grace note is the regular glyph drawn at GRACE_NOTE_SCALE, and both the column
-            // (via getGlyphRightEdgeSs) and the stem anchors work at that scale, so the bbox has
+            // (via noteheadWidthSs) and the stem anchors work at that scale, so the bbox has
             // to be scaled to be compared against them.
             var scale = noteType.isGraceNote() ? ElementType.GRACE_NOTE_SCALE : 1f;
             var noteheadLeftSs = scale * noteheadBBox.left();
@@ -295,7 +295,7 @@ class NoteColumnGeometryTest extends UnitTest {
         var attachExtent = NoteColumnGeometry.glissandoAttachExtentSs(note, false);
         var noteheadBBox = SMuFLMetadata.requireBBox(ElementType.CROTCHET.requireSMuFLGlyph());
 
-        // Read from the font metadata, not from getGlyphRightEdgeSs: that is the lookup the
+        // Read from the font metadata, not from noteheadWidthSs: that is the lookup the
         // production path forwards, so using it here would compare a value against itself.
         assertThat(attachExtent.rightSs()).isCloseTo(noteheadBBox.right(), within(TOLERANCE_SS));
     }

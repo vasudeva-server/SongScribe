@@ -24,6 +24,8 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.engraving.SMuFLConstants;
+
 /**
  * Abstract base class for elements that span multiple elements.
  * <p>
@@ -196,6 +198,24 @@ public abstract class RangeElement extends LineElement {
      * @return span width in staff-space units
      */
     public abstract double getSpanWidthSs(double anchorXSs, double endXSs);
+
+    /**
+     * Returns the end element's own glyph width in staff spaces — per type, so a whole note is
+     * measured as a whole note (refs #694). Implementations of {@link #getSpanWidthSs} whose span
+     * runs past the end element's origin need this to know how far past it to reach.
+     *
+     * <p>Falls back to the black-notehead width for a range that has no end element yet, which is
+     * the same reservation such a range got before the width became per-type.
+     */
+    protected double getEndElementWidthSs() {
+        var endElement = getEndElement();
+
+        if (endElement == null) {
+            return SMuFLConstants.NOTE_HEAD_WIDTH_SS;
+        }
+
+        return endElement.getType().getElementWidthSs();
+    }
 
     /**
      * Returns the index of the anchor element within its line.

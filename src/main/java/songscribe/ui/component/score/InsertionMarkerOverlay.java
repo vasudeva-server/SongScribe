@@ -25,7 +25,6 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
-import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
 import songscribe.ui.component.ScoreView;
 import songscribe.util.GraphicUtils;
@@ -105,8 +104,10 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
         // betweenElementsOnly=true: paste placement never snaps onto an existing element's own
         // position, so mouseXSs is ignored.
         var previewElement = ElementType.CROTCHET.newInstance();
+        // Center the marker on the head the insertion X was computed for, measured per type rather
+        // than with the black-notehead constant (refs #694).
         var xSs = layoutResult.calculateInsertionXSs(targetIndex, 0, previewElement, domLine, true)
-            + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
+            + previewElement.getType().getElementWidthSs() / 2;
 
         var middleLineYSs = line.getMiddleLineYSs();
         var topYSs = middleLineYSs + Staff.spToSs(Staff.MIN_STAFF_POSITION_SP);

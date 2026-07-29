@@ -28,6 +28,8 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.engraving.SMuFLConstants;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Tests for {@link Hairpin} — getContentHeightSs and getSpanWidthSs.
@@ -112,6 +114,48 @@ class HairpinTest extends UnitTest {
 
             assertThat(hairpin.getSpanWidthSs(anchorXSs, endXSs))
                 .isCloseTo(expectedWidthSs, within(DOUBLE_EPSILON));
+        }
+
+        /**
+         * The span runs past the end note's head, so it is measured with that note's own head
+         * width. A hairpin ending on a whole note therefore reaches further than one ending on a
+         * quarter note at the same X, because the whole notehead is the wider glyph (#694).
+         *
+         * <p>The expected width comes straight from the font metadata rather than from the element
+         * type, so this fails if the whole note is ever measured as a black notehead again.
+         */
+        @Test
+        void testGetSpanWidthSsExtendsFurtherForAWiderEndNotehead() {
+            var anchor = new StaffElement(ElementType.CROTCHET);
+            var wholeNoteHairpin = createHairpin(anchor, new StaffElement(ElementType.SEMIBREVE));
+            var crotchetHairpin = createHairpin(anchor, new StaffElement(ElementType.CROTCHET));
+
+            double anchorXSs = 0.0;
+            double endXSs = Hairpin.HAIRPIN_OPENING_HEIGHT_SS + 2.0;
+            var wholeNoteWidthSs = SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_WHOLE).right();
+
+            assertThat(wholeNoteHairpin.getSpanWidthSs(anchorXSs, endXSs))
+                .as("a whole note's head is wider, so the hairpin must reach further")
+                .isGreaterThan(crotchetHairpin.getSpanWidthSs(anchorXSs, endXSs))
+                .isCloseTo(endXSs - anchorXSs + wholeNoteWidthSs, within(DOUBLE_EPSILON));
+        }
+
+        /**
+         * A hairpin whose end element has been cleared still reports a usable span rather than
+         * failing, falling back to the black-notehead width.
+         */
+        @Test
+        void testGetSpanWidthSsFallsBackToTheBlackNoteheadWhenThereIsNoEndElement() {
+            var hairpin = createHairpin(
+                new StaffElement(ElementType.CROTCHET), new StaffElement(ElementType.CROTCHET));
+            hairpin.setEndElement(null);
+
+            double anchorXSs = 0.0;
+            double endXSs = Hairpin.HAIRPIN_OPENING_HEIGHT_SS + 2.0;
+
+            assertThat(hairpin.getSpanWidthSs(anchorXSs, endXSs))
+                .isCloseTo(
+                    endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS, within(DOUBLE_EPSILON));
         }
     }
 }

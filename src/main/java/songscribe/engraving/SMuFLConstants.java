@@ -42,6 +42,15 @@ public final class SMuFLConstants {
     public static final double TIE_MIDPOINT_THICKNESS_SS;
 
     // Glyph advance widths
+    /**
+     * The width of {@code noteheadBlack} specifically — <em>not</em> "the" notehead width. Use it
+     * only for a quantity that really is tied to the black notehead, or as a generic spacing floor.
+     *
+     * <p>To ask how wide a particular element's head is, call
+     * {@link songscribe.dom.ElementType#getElementWidthSs()} on its type instead: {@code
+     * noteheadWhole} is wider than {@code noteheadBlack}, so a whole note measured with this
+     * constant comes out about half a staff space short (refs #694).
+     */
     public static final double NOTE_HEAD_WIDTH_SS;
     public static final double G_CLEF_WIDTH_SS;
     public static final double REPEAT_DOTS_ADVANCE_WIDTH_SS;

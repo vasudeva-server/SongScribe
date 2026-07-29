@@ -21,6 +21,7 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -47,6 +48,10 @@ class TrillRendererTest extends UnitTest {
     private static final double TRILL_TOP_Y_SS = -3.0;
     private static final double ANCHOR_LAYOUT_X_SS = 5.0;
     private static final double END_ELEMENT_X_SS = 15.0;
+
+    // The wavy length is reconstructed from a scale factor and a segment count, so it carries a
+    // little floating-point rounding rather than being exact.
+    private static final double WAVY_LENGTH_TOLERANCE_SS = 1e-9;
 
     // ==========================================================================
     // drawWavyLine — segment count (row 29)
@@ -162,6 +167,63 @@ class TrillRendererTest extends UnitTest {
 
         assertThat(glyphCaptor.getAllValues())
             .anyMatch(s -> s.equals(SMuFLGlyph.WIGGLE_TRILL_FASTER.asString()));
+    }
+
+    /**
+     * The wavy line stops at the end note's right edge, measured with that note's own head width.
+     * Ending on a whole note therefore runs the line further right than ending on a quarter note at
+     * the same X — before #694 both used the black-notehead width, so the line stopped short of a
+     * whole note's ink and appeared to end in mid-air before reaching the note it targets.
+     *
+     * <p>The drawn length is only observable through the transform {@code drawWavyLine} applies, so
+     * it is reconstructed here: the method tiles {@code segments} glyphs of
+     * {@code WIGGLE_SEGMENT_WIDTH_SS} each under a horizontal scale chosen so the total equals the
+     * real length.
+     */
+    @Test
+    void testRenderTrillWavyLineReachesTheEndNotesOwnRightEdge() {
+        var blackRightSs = ElementType.CROTCHET.getElementWidthSs();
+        var wholeRightSs = ElementType.SEMIBREVE.getElementWidthSs();
+
+        assertThat(wholeRightSs)
+            .as("precondition: the whole notehead really is the wider glyph")
+            .isGreaterThan(blackRightSs);
+
+        assertThat(wavyLineLengthSs(ElementType.SEMIBREVE) - wavyLineLengthSs(ElementType.CROTCHET))
+            .describedAs("the wavy line grows by the whole head's extra width, nothing else")
+            .isCloseTo(wholeRightSs - blackRightSs, within(WAVY_LENGTH_TOLERANCE_SS));
+    }
+
+    /**
+     * Renders a multi-note trill ending on {@code endType} and returns the wavy line's drawn length
+     * in staff spaces, reconstructed from the tiling {@code drawWavyLine} performs.
+     */
+    private static double wavyLineLengthSs(ElementType endType) {
+        var g2Spy = spy(RenderContextTestHelper.realG2());
+        var anchor = ElementType.CROTCHET.newInstance();
+        var endNote = endType.newInstance();
+
+        var layoutResult = mock(LayoutResult.class);
+        when(layoutResult.getElementXSs(endNote)).thenReturn(END_ELEMENT_X_SS);
+
+        RENDERER.renderTrillAtPosition(
+            g2Spy, anchor, endNote,
+            ANCHOR_LAYOUT_X_SS, TRILL_TOP_Y_SS,
+            Color.BLACK, layoutResult);
+
+        var scaleCaptor = ArgumentCaptor.forClass(Double.class);
+        verify(g2Spy).scale(scaleCaptor.capture(), org.mockito.ArgumentMatchers.eq(1d));
+
+        var glyphCaptor = ArgumentCaptor.forClass(String.class);
+        verify(g2Spy, org.mockito.Mockito.atLeastOnce())
+            .drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
+        var segments = glyphCaptor.getAllValues().stream()
+            .filter(s -> s.equals(SMuFLGlyph.WIGGLE_TRILL_FASTER.asString()))
+            .count();
+
+        assertThat(segments).as("the multi-note path must draw at least one wiggle").isPositive();
+
+        return scaleCaptor.getValue() * segments * TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS;
     }
 
     @Test

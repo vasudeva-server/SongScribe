@@ -22,7 +22,6 @@ package songscribe.dom;
 
 import module java.desktop;
 
-import songscribe.engraving.SMuFLConstants;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 
@@ -140,26 +139,39 @@ public class Tuplet extends RangeElement {
      * X of the visual bracket's left edge — where the left arm is drawn — given the anchor column's
      * reference X, the anchor note's stem direction, and the stem thickness. The arm sits on the
      * anchor note's stem side (insetting a full notehead width for a down-stem, only the stem width
-     * for an up-stem) and extends {@link #ARM_EXTENSION_SS} outward past it.
+     * for an up-stem) and extends {@link #ARM_EXTENSION_SS} outward past it. A stemless anchor — a
+     * whole note — has no stem for the arm to sit on, so it insets the full head width whatever
+     * direction the element happens to store, putting the arm outside the head's left edge.
      * <p>
      * Shared by the renderer ({@code TupletRenderer.renderTupletsFromLine}) and the stacker's sloped
      * clearance ({@code StructuralStacker.computeTupletClearanceLeftYSs}) so the reserved arm position
      * and the drawn arm position stay in lockstep — mirroring LilyPond's use of the bracket's visual
      * X-bounds {@code x0}/{@code x1} for both slope and placement (tuplet-bracket.cc).
+     *
+     * @param anchorXSs      X of the anchor column's reference point
+     * @param anchorHasStem  whether the anchor note draws a stem at all
+     * @param anchorStemUp   whether the anchor note's stem points up; meaningless, and ignored,
+     *                       when {@code anchorHasStem} is false
+     * @param stemSs         stem thickness in staff spaces
+     * @param noteheadWidthSs the anchor note's own head width in staff spaces
      */
-    public static double bracketLeftEdgeXSs(double anchorXSs, boolean anchorStemUp, double stemSs) {
-        return anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS
-            - (anchorStemUp ? stemSs : SMuFLConstants.NOTE_HEAD_WIDTH_SS)
-            - ARM_EXTENSION_SS;
+    public static double bracketLeftEdgeXSs(double anchorXSs, boolean anchorHasStem,
+        boolean anchorStemUp, double stemSs, double noteheadWidthSs) {
+        var insetSs = anchorHasStem && anchorStemUp ? stemSs : noteheadWidthSs;
+
+        return anchorXSs + noteheadWidthSs - insetSs - ARM_EXTENSION_SS;
     }
 
     /**
      * X of the visual bracket's right edge — where the right arm is drawn — given the end column's
      * reference X. The arm clears the end notehead and extends {@link #ARM_EXTENSION_SS} outward past
      * it. See {@link #bracketLeftEdgeXSs} for why this is shared with the renderer.
+     *
+     * @param endXSs         X of the end column's reference point
+     * @param noteheadWidthSs the end note's own head width in staff spaces
      */
-    public static double bracketRightEdgeXSs(double endXSs) {
-        return endXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS + ARM_EXTENSION_SS;
+    public static double bracketRightEdgeXSs(double endXSs, double noteheadWidthSs) {
+        return endXSs + noteheadWidthSs + ARM_EXTENSION_SS;
     }
 
     /**

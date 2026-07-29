@@ -96,16 +96,20 @@ public final class TupletRenderer {
             }
 
             var anchorNote = tuplet.getAnchorElement();
+            var endNote = tuplet.getEndElement();
 
-            if (anchorNote == null) {
+            if (anchorNote == null || endNote == null) {
                 continue;
             }
 
             var anchorXSs = decorLayout.xSs();
             var endXSs = anchorXSs + decorLayout.widthSs();
+            var anchorType = anchorNote.getType();
             var isUpper = anchorNote.getDirection().isUp();
-            var leftXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, isUpper, LineThickness.STEM_SS);
-            var rightXSs = Tuplet.bracketRightEdgeXSs(endXSs);
+            var leftXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorType.isNoteWithStem(),
+                isUpper, LineThickness.STEM_SS, anchorType.getElementWidthSs());
+            var rightXSs = Tuplet.bracketRightEdgeXSs(endXSs,
+                endNote.getType().getElementWidthSs());
 
             var numberOnly = tuplet.isNumberOnly(line);
             var bracketLine = new BracketLine(anchorXSs, decorLayout.widthSs(),

@@ -28,6 +28,8 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Tuplet;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
@@ -152,6 +154,97 @@ class TupletTest extends UnitTest {
 
             assertThat(tuplet.getSpanWidthSs(anchorXSs, endXSs))
                 .isCloseTo(expectedWidthSs, within(EPSILON));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // bracketLeftEdgeXSs(): where the left arm sits relative to the anchor head
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class BracketLeftEdgeXSs {
+
+        private static final double ANCHOR_X_SS = 2.0;
+
+        // A whole note draws no stem, so there is nothing for the arm to sit on and it must clear
+        // the head's left edge — the same geometry a down-stem gets. The stored direction is
+        // leftover state on a stemless element and must not move the arm; when it did, an UP whole
+        // note put the arm flush against the head's right edge instead (#694, phase 6).
+        @Test
+        void testAStemlessAnchorPutsTheArmOutsideTheHeadLeftEdgeWhateverDirectionItStores() {
+            var wholeNoteWidthSs = ElementType.SEMIBREVE.getElementWidthSs();
+            var expectedXSs = ANCHOR_X_SS - Tuplet.ARM_EXTENSION_SS;
+
+            for (var storedStemUp : new boolean[]{true, false}) {
+                assertThat(Tuplet.bracketLeftEdgeXSs(
+                    ANCHOR_X_SS, false, storedStemUp, NoteGeometry.STEM_WIDTH_SS, wholeNoteWidthSs))
+                    .as("stemless anchor storing stemUp=%s", storedStemUp)
+                    .isCloseTo(expectedXSs, within(EPSILON));
+            }
+        }
+
+        // A stemmed anchor still distinguishes the two directions: an up-stem hangs off the head's
+        // right edge, so the arm insets only the stem thickness and lands further right.
+        @Test
+        void testAnUpStemAnchorInsetsOnlyTheStemWidth() {
+            var crotchetWidthSs = ElementType.CROTCHET.getElementWidthSs();
+            var expectedXSs =
+                ANCHOR_X_SS + crotchetWidthSs - NoteGeometry.STEM_WIDTH_SS - Tuplet.ARM_EXTENSION_SS;
+
+            assertThat(Tuplet.bracketLeftEdgeXSs(
+                ANCHOR_X_SS, true, true, NoteGeometry.STEM_WIDTH_SS, crotchetWidthSs))
+                .isCloseTo(expectedXSs, within(EPSILON));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // bracketRightEdgeXSs(): where the right arm sits relative to the end head
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class BracketRightEdgeXSs {
+
+        private static final double END_X_SS = 7.0;
+
+        // The right arm always clears the end note's whole head, whatever direction that note's stem
+        // takes, and then extends outward past it.
+        @Test
+        void testTheArmClearsTheEndHeadAndExtendsPastIt() {
+            var crotchetWidthSs = SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).right();
+
+            assertThat(Tuplet.bracketRightEdgeXSs(END_X_SS, crotchetWidthSs))
+                .isCloseTo(END_X_SS + crotchetWidthSs + Tuplet.ARM_EXTENSION_SS, within(EPSILON));
+        }
+
+        // Ending on a whole note pushes the arm further right by exactly the extra head width, since
+        // the whole notehead is the wider glyph. Measured with the black-notehead constant instead,
+        // the arm landed inside a whole note's ink rather than clear of it (#694).
+        @Test
+        void testAWiderEndHeadPushesTheArmFurtherRight() {
+            var blackRightSs = SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).right();
+            var wholeRightSs = SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_WHOLE).right();
+
+            assertThat(wholeRightSs)
+                .as("precondition: the whole notehead really is the wider glyph")
+                .isGreaterThan(blackRightSs);
+            assertThat(Tuplet.bracketRightEdgeXSs(END_X_SS, wholeRightSs)
+                - Tuplet.bracketRightEdgeXSs(END_X_SS, blackRightSs))
+                .describedAs("the arm moves right by the whole head's extra width, nothing else")
+                .isCloseTo(wholeRightSs - blackRightSs, within(EPSILON));
+        }
+
+        // A grace note's head is narrower than a full-size one, so its arm sits further left —
+        // the same per-type measurement working in the other direction.
+        @Test
+        void testANarrowerGraceEndHeadPullsTheArmLeft() {
+            var graceWidthSs = ElementType.GRACE_QUAVER.getElementWidthSs();
+            var crotchetWidthSs = ElementType.CROTCHET.getElementWidthSs();
+
+            assertThat(Tuplet.bracketRightEdgeXSs(END_X_SS, graceWidthSs))
+                .isLessThan(Tuplet.bracketRightEdgeXSs(END_X_SS, crotchetWidthSs))
+                .isCloseTo(END_X_SS + graceWidthSs + Tuplet.ARM_EXTENSION_SS, within(EPSILON));
         }
     }
 

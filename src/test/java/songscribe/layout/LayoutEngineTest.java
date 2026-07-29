@@ -1046,6 +1046,25 @@ class LayoutEngineTest extends UnitTest {
             .isCloseTo(expectedEndXSs, within(TOLERANCE));
     }
 
+    // A left tie endpoint attaches at the note's own right edge, so a whole note — whose head is
+    // wider than a black notehead — pushes the endpoint further right by exactly that difference.
+    // With the shared black-notehead constant the endpoint used to land inside a whole note's ink.
+    @Test
+    void testTieEndpointXSsAttachesToTheNotesOwnHeadWidth() {
+        var columnXSs = 10.0;
+        var wholeNoteXSs = LayoutEngine.tieEndpointXSs(columnXSs, 1, false, ElementType.SEMIBREVE);
+        var crotchetXSs = LayoutEngine.tieEndpointXSs(columnXSs, 1, false, ElementType.CROTCHET);
+        var expectedDifferenceSs = ElementType.SEMIBREVE.getElementWidthSs()
+            - ElementType.CROTCHET.getElementWidthSs();
+
+        assertThat(expectedDifferenceSs)
+            .as("precondition: the whole notehead really is the wider glyph")
+            .isPositive();
+        assertThat(wholeNoteXSs - crotchetXSs)
+            .describedAs("the left endpoint moves right by the whole head's extra width, nothing else")
+            .isCloseTo(expectedDifferenceSs, within(TOLERANCE));
+    }
+
     // T19b: A space note whose edge-seat row lands on a staff line is pushed past it, dropping the seat
     //      below the head box so the endpoints recede to the notehead center (center attach). Both
     //      endpoints share the pushed Y. SP_TIE_SPACE_CENTER (sp 1, a space) arcs down (stem up) onto the

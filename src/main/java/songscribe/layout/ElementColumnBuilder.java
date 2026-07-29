@@ -68,12 +68,14 @@ public class ElementColumnBuilder {
      * against a full-size one, so that bbox is 1.408 ss — wider than the full-size notehead it is
      * supposed to shrink, and 0.52 ss wider than the head actually drawn. Reserving it made every
      * grace column charge phantom ink into its gaps (refs #560).
+     *
+     * <p>The layout itself no longer reads this: it consults
+     * {@code ElementType.GRACE_QUAVER.getElementWidthSs()}, which derives the same number by a
+     * different route. The constant is kept as the independent cross-check the tests assert against,
+     * so a regression back to {@code noteheadBlackSmall} fails a test instead of passing unnoticed.
      */
     public static final double GRACE_NOTE_HEAD_WIDTH_SS =
         SMuFLConstants.NOTE_HEAD_WIDTH_SS * ElementType.GRACE_NOTE_SCALE;
-
-    // Half note head width (for left/right extent calculation) (ss)
-    static final double HALF_NOTE_HEAD_SS = SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2.0;
 
     // Non-hyphenated syllables reserve more than the bare space glyph, so consecutive words
     // read as clearly separated rather than crowded.
@@ -206,7 +208,7 @@ public class ElementColumnBuilder {
         // so a flag never shifts the syllable off the notehead. Non-note columns keep the default
         // (their augmentation-excluded right extent).
         if (element.getType().isNote()) {
-            column.setNoteheadWidthSs(getNoteheadRightExtent(element.getType()));
+            column.setNoteheadWidthSs(element.getType().getElementWidthSs());
         }
 
         var syllabic = lyric != null ? lyric.syllabic() : null;
@@ -304,8 +306,9 @@ public class ElementColumnBuilder {
             return type.getElementWidthSs();
         }
 
-        // Element head right edge: use small notehead width for grace notes
-        var noteheadRightExtentSs = getNoteheadRightExtent(type);
+        // Element head right edge — per type, so a whole note is measured as a whole note and a
+        // grace note as the grace-scaled head.
+        var noteheadRightExtentSs = type.getElementWidthSs();
 
         // Augmentation dots extend the right edge. Derived from the same positions the renderer
         // draws (see NoteGeometry.dotsRightExtentSs), so spacing reserves exactly what is painted —
@@ -339,17 +342,6 @@ public class ElementColumnBuilder {
         return rightExtentSs;
     }
 
-    /**
-     * Returns the notehead's own width in staff spaces for a note {@code type} — the reduced grace
-     * notehead for grace notes, the standard notehead otherwise — excluding stem, flag, and
-     * augmentation dots. Only meaningful for note types; callers gate on {@link ElementType#isNote()}.
-     */
-    private static double getNoteheadRightExtent(ElementType type) {
-        return type.isGraceNote()
-            ? GRACE_NOTE_HEAD_WIDTH_SS
-            : SMuFLConstants.NOTE_HEAD_WIDTH_SS;
-    }
-
     // ==========================================================================
     // Stem Calculations
     // ==========================================================================
@@ -357,7 +349,10 @@ public class ElementColumnBuilder {
     /**
      * Calculates the Y position of the stem top.
      * For stem-up elements, this is the stem tip above the element head.
-     * For stem-down or stemless elements, this is the element head top.
+     * For stem-down or stemless elements, this is the top edge of the element's own glyph bounding
+     * box ({@link ElementType#getNoteheadTopOffsetSs()}) — a rest reaches far higher than a
+     * notehead, and a barline spans half the staff height — rather than a fixed notehead
+     * half-height.
      *
      * <pre>
      * Stem up:            Stem down:
@@ -381,9 +376,9 @@ public class ElementColumnBuilder {
     double calculateStemTopSs(StaffElement element) {
         var elementType = element.getType();
 
-        // Rests and stemless elements: use element head top
+        // Rests and stemless elements: use the element's own glyph bbox top
         if (!elementType.isNoteWithStem()) {
-            return -HALF_NOTE_HEAD_SS;
+            return elementType.getNoteheadTopOffsetSs();
         }
 
         var direction = NoteGeometry.effectiveDirection(element);
@@ -395,14 +390,17 @@ public class ElementColumnBuilder {
             return -(NoteGeometry.stemLengthSs(elementType) - forcedShorteningSs);
         }
 
-        // Stem down: top is just above element head
-        return -HALF_NOTE_HEAD_SS;
+        // Stem down: top is the notehead top
+        return elementType.getNoteheadTopOffsetSs();
     }
 
     /**
      * Calculates the Y position of the stem bottom.
      * For stem-down elements, this is the stem tip below the element head.
-     * For stem-up or stemless elements, this is the element head bottom.
+     * For stem-up or stemless elements, this is the bottom edge of the element's own glyph bounding
+     * box ({@link ElementType#getNoteheadBottomOffsetSs()}) — a rest reaches far lower than a
+     * notehead, and a barline spans half the staff height — rather than a fixed notehead
+     * half-height.
      *
      * A stem forced into its unnatural direction is shortened (Ross &amp; Gourlay), so the reported
      * tip floats correspondingly higher. Direction and length are the drawn ones — see
@@ -414,9 +412,9 @@ public class ElementColumnBuilder {
     double calculateStemBottomSs(StaffElement element) {
         var elementType = element.getType();
 
-        // Rests and stemless elements: use element head bottom
+        // Rests and stemless elements: use the element's own glyph bbox bottom
         if (!elementType.isNoteWithStem()) {
-            return HALF_NOTE_HEAD_SS;
+            return elementType.getNoteheadBottomOffsetSs();
         }
 
         var direction = NoteGeometry.effectiveDirection(element);
@@ -428,8 +426,8 @@ public class ElementColumnBuilder {
             return NoteGeometry.stemLengthSs(elementType) - forcedShorteningSs;
         }
 
-        // Stem up: bottom is just below element head
-        return HALF_NOTE_HEAD_SS;
+        // Stem up: bottom is the notehead bottom
+        return elementType.getNoteheadBottomOffsetSs();
     }
 
     // ==========================================================================

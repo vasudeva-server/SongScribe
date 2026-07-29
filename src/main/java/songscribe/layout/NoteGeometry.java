@@ -721,23 +721,6 @@ public final class NoteGeometry {
             flagBBox.height());
     }
 
-    /**
-     * Returns the right edge of the element's primary glyph bounding box in staff spaces,
-     * relative to the element X — the notehead for notes, the rest glyph for rests.
-     *
-     * <p>The value is read from bravura_metadata.json via SMuFLMetadata. Grace notes use the
-     * regular notehead glyph drawn at {@link ElementType#GRACE_NOTE_SCALE}, so their right edge
-     * is the regular edge scaled by that factor (mirroring {@link #getAccidentalWidthSs}).
-     *
-     * <p>The element type must have a SMuFL glyph; barlines and repeats do not.
-     */
-    public static double getGlyphRightEdgeSs(StaffElement note) {
-        var noteType = note.getType();
-        var rightSs = SMuFLMetadata.requireBBox(noteType.requireSMuFLGlyph()).right();
-
-        return noteType.isGraceNote() ? ElementType.GRACE_NOTE_SCALE * rightSs : rightSs;
-    }
-
     // ==========================================================================
     // Helpers (also used by NoteRenderer for drawing)
     // ==========================================================================

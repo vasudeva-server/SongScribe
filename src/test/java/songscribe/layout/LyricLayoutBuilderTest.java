@@ -299,6 +299,50 @@ class LyricLayoutBuilderTest extends UnitTest {
             .isCloseTo(expectedBoxLeftXSs, within(TOLERANCE));
     }
 
+    // A whole notehead is half a staff space wider than a black one, so centering a syllable with
+    // the black-notehead constant left it visibly off-center under a whole note (#694). This column
+    // comes from the real builder rather than the synthetic helper above, so the width under test is
+    // the one the layout actually computes.
+    @Test
+    void testWholeNoteLyricBoxIsCenteredOnTheWholeNotehead() {
+        var wholeNote = ElementType.SEMIBREVE.newInstance();
+        var syllableText = "heart";
+        wholeNote.lyrics.add(
+            new Lyric(Lyric.FIRST_VERSE, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        addToLine(wholeNote);
+
+        var noteXSs = 10.0;
+        var column = new ElementColumnBuilder(LYRIC_METRICS).buildDetachedColumn(wholeNote, song.getActiveVerse());
+        column.setXSs(noteXSs);
+
+        var result = buildLyrics(List.of(column), LYRIC_METRICS, false, LINE_WIDTH_SS);
+        var boxes = boxesOf(result.boxes(), wholeNote);
+        assertThat(boxes).as("expected exactly one box for the whole note").hasSize(1);
+
+        var box = boxes.getFirst();
+        var expectedCenterXSs = noteXSs + ElementType.SEMIBREVE.getElementWidthSs() / 2.0;
+
+        assertThat(box.xSs() + box.widthSs() / 2.0)
+            .as("the syllable's center sits on the whole notehead's center, not the black notehead's")
+            .isCloseTo(expectedCenterXSs, within(TOLERANCE));
+    }
+
+    // The column-level and element-level notehead centers are two same-named accessors reached by
+    // different paths — the lyric goes through the column, articulations through the element. They
+    // disagreed by 0.254 ss on a whole note before #694.
+    @Test
+    void testWholeNoteColumnAndElementNoteheadCentersAgree() {
+        var wholeNote = ElementType.SEMIBREVE.newInstance();
+        addToLine(wholeNote);
+
+        var noteXSs = 10.0;
+        var column = new ElementColumnBuilder(LYRIC_METRICS).buildDetachedColumn(wholeNote, song.getActiveVerse());
+        column.setXSs(noteXSs);
+
+        assertThat(column.getNoteheadCenterXSs())
+            .isCloseTo(noteXSs + NoteGeometry.getNoteheadCenterXSs(wholeNote), within(TOLERANCE));
+    }
+
     // Dotted note: the lyric box must be centerd on the notehead extent
     // (rightExtentExcludingAugmentationSs), not the full extent that includes the dot.
     // Dots must not shift the lyric to the right (#451).

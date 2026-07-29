@@ -246,14 +246,24 @@ public enum ElementType {
     }
 
     /**
-     * Returns the element width in staff spaces, excluding flag extent for note types.
+     * Returns the distance in staff spaces from the element origin to the right edge of the
+     * element's glyph — the notehead alone for note types, excluding stem, flag, and
+     * augmentation dots, and already grace-scaled for grace notes. This is a right edge measured
+     * from the origin, not a bounding-box width: for glyphs whose bounding box does not start at
+     * x = 0 the two differ.
+     *
+     * <p>This is the single source of truth for how wide an element's own glyph is. Anything that
+     * needs a notehead width should call this rather than
+     * {@link songscribe.engraving.SMuFLConstants#NOTE_HEAD_WIDTH_SS}, which is the black notehead
+     * specifically and leaves a whole note about half a staff space short (refs #694).
      */
     public double getElementWidthSs() {
         return baseWidthSs;
     }
 
     /**
-     * Returns the horizontal center of the element in staff spaces.
+     * Returns the horizontal midpoint in staff spaces between the element origin and the right
+     * edge of the element's glyph (see {@link #getElementWidthSs()}).
      * For note types, excludes the flag.
      */
     public double getElementCenterXSs() {
@@ -305,6 +315,15 @@ public enum ElementType {
      */
     public double getNoteheadTopOffsetSs() {
         return noteheadTopOffsetSs;
+    }
+
+    /**
+     * Returns the Y offset in staff spaces from the notehead center to the bottom of the notehead.
+     * The returned value is positive (the bottom is below the note center).
+     * Mirrors {@link #getNoteheadTopOffsetSs()}.
+     */
+    public double getNoteheadBottomOffsetSs() {
+        return noteheadTopOffsetSs + fullElementHeightSs;
     }
 
     /**
@@ -717,7 +736,10 @@ public enum ElementType {
         for (var type : types) {
             var glyph = SMUFL_GLYPHS.get(type);
             var bbox = requireBBox(glyph, type);
-            type.setSymmetricBounds(bbox.width(), bbox.height(), bbox.top());
+            // Width is the glyph's right edge from the origin, not the bbox width, so that
+            // baseWidthSs means the same thing for every glyph-bearing type (see
+            // getElementWidthSs()). The two differ only when bBoxSW's x is non-zero.
+            type.setSymmetricBounds(bbox.right(), bbox.height(), bbox.top());
         }
     }
 

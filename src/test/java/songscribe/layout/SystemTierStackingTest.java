@@ -45,6 +45,8 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.stacking.StackingUtils;
 import songscribe.layout.stacking.SystemStacker;
 import songscribe.layout.stacking.VerticalStackingCalculator;
@@ -383,7 +385,7 @@ class SystemTierStackingTest extends UnitTest {
 
             var annotationFont = fonts.getAnnotationFont();
             var annotWidthSs = annotLeft.computeContentWidthSs(annotationFont);
-            var noteheadWidthSs = NoteGeometry.getGlyphRightEdgeSs(noteLeft);
+            var noteheadWidthSs = noteLeft.getType().getElementWidthSs();
 
             var layoutLeft = require(result.getDecorationLayout(annotLeft), "left annotation layout");
             var layoutCenter = require(result.getDecorationLayout(annotCenter), "center annotation layout");
@@ -401,6 +403,36 @@ class SystemTierStackingTest extends UnitTest {
             assertThat(layoutRight.xSs())
                 .describedAs("right-aligned (1.0): x = columnX + noteheadWidth - annotWidth")
                 .isCloseTo(NOTE3_X_SS + noteheadWidthSs - annotWidthSs, within(TOLERANCE));
+        }
+
+        // A right-aligned annotation is pushed right by the width of the head it sits over, so on a
+        // whole note it must use the wider whole notehead. Before #694 every note type was anchored
+        // with the black-notehead width, leaving an annotation over a whole note visibly left of
+        // where it belongs. The expected width comes from the font metadata, so this fails if a
+        // whole note is measured as a black notehead again.
+        @Test
+        void testRightAlignedAnnotationOnAWholeNoteAnchorsToTheWholeNoteheadWidth() {
+            var fonts = DocumentFonts.defaultFonts();
+            var wholeNote = ElementType.SEMIBREVE.newInstance();
+            var annotation = new AnnotationAttachment(wholeNote, new Annotation("Andante molto", 1.0f));
+            wholeNote.addAttachment(annotation);
+
+            var line = newLine();
+            populate(line, wholeNote);
+
+            var result = stackColumns(List.of(columnFor(wholeNote, NOTE1_X_SS)), line);
+
+            var annotWidthSs = annotation.computeContentWidthSs(fonts.getAnnotationFont());
+            var wholeNoteheadWidthSs = SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_WHOLE).right();
+            var layout = require(result.getDecorationLayout(annotation), "whole-note annotation layout");
+
+            assertThat(layout.xSs())
+                .describedAs("right-aligned (1.0): x = columnX + wholeNoteheadWidth - annotWidth")
+                .isCloseTo(NOTE1_X_SS + wholeNoteheadWidthSs - annotWidthSs, within(TOLERANCE));
+
+            assertThat(wholeNoteheadWidthSs)
+                .as("precondition: a whole notehead is wider than a black one, or this proves nothing")
+                .isGreaterThan(SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).right());
         }
 
         @Test

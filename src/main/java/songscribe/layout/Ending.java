@@ -339,7 +339,9 @@ public class Ending extends RangeElement {
     }
 
     /**
-     * Returns the horizontal span width for collision detection.
+     * Returns the horizontal span width for collision detection. The span runs past the end
+     * element's head, so it is measured with that element's own width
+     * ({@link #getEndElementWidthSs()}).
      *
      * @param anchorXSs X position of the anchor element in staff-space units
      * @param endXSs    X position of the end element in staff-space units
@@ -347,7 +349,8 @@ public class Ending extends RangeElement {
      */
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(SMuFLConstants.NOTE_HEAD_WIDTH_SS, endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS);
+        // NOTE_HEAD_WIDTH_SS here is a generic minimum-span floor, not the end note's head width.
+        return Math.max(SMuFLConstants.NOTE_HEAD_WIDTH_SS, endXSs - anchorXSs + getEndElementWidthSs());
     }
 
     /**

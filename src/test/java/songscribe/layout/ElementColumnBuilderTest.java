@@ -26,6 +26,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -266,12 +268,21 @@ class ElementColumnBuilderTest extends UnitTest {
         assertThat(graceExtent).isLessThan(regularExtent);
     }
 
-    // T3: Non-flagged types (CROTCHET, MINIM, SEMIBREVE) are unchanged by beamed/upper
+    // T3: Non-flagged types (CROTCHET, MINIM, SEMIBREVE) are unchanged by beamed/upper.
+    // Each expected width is read straight from the font metadata rather than from the element
+    // type's own computation, so this is an independent check that a whole note is measured as a
+    // whole notehead and not as a black one (refs #694).
     @Test
     void testNonFlaggedTypesUnchanged() {
-        for (var type : new ElementType[]{ElementType.CROTCHET, ElementType.MINIM, ElementType.SEMIBREVE}) {
+        var glyphsByType = Map.of(
+            ElementType.CROTCHET, SMuFLGlyph.NOTEHEAD_BLACK,
+            ElementType.MINIM, SMuFLGlyph.NOTEHEAD_HALF,
+            ElementType.SEMIBREVE, SMuFLGlyph.NOTEHEAD_WHOLE);
+
+        for (var entry : glyphsByType.entrySet()) {
+            var type = entry.getKey();
             var n = element(type);
-            var noteheadOnly = SMuFLConstants.NOTE_HEAD_WIDTH_SS;
+            var noteheadOnly = SMuFLMetadata.requireBBox(entry.getValue()).right();
             var extentUnbeamed = ElementColumnBuilder.calculateRightExtentSs(n, false, StaffElement.Direction.UP);
             var extentBeamed = ElementColumnBuilder.calculateRightExtentSs(n, true, StaffElement.Direction.UP);
 
@@ -282,6 +293,33 @@ class ElementColumnBuilderTest extends UnitTest {
                 .as("Beamed %s should equal notehead extent", type)
                 .isEqualTo(noteheadOnly);
         }
+    }
+
+    /**
+     * A whole note's column must measure the head it actually draws. The two widths the column
+     * carries — the notehead width lyrics center on, and the augmentation-excluded right extent the
+     * spacer reserves — are both the {@code noteheadWhole} bbox right edge, so the flag extent
+     * (their difference) is exactly zero. Before #694 the notehead width came from the black
+     * notehead, leaving a negative flag extent for a glyph that has no flag at all.
+     *
+     * <p>The expected width is read from the font metadata, not from the element type, so this
+     * fails if the whole note is ever measured as a black notehead again.
+     */
+    @Test
+    void testWholeNoteColumnMeasuresTheWholeNoteheadOnBothAxesOfWidth() {
+        var column = new ElementColumnBuilder(lyricMetricsMock())
+            .buildDetachedColumn(element(ElementType.SEMIBREVE), Lyric.FIRST_VERSE);
+        var expectedWidthSs = SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_WHOLE).right();
+
+        assertThat(column.getNoteheadWidthSs())
+            .as("the width lyrics center on is the whole notehead's own")
+            .isEqualTo(expectedWidthSs);
+        assertThat(column.getRightExtentExcludingAugmentationSs())
+            .as("the width spacing reserves is the same measurement")
+            .isEqualTo(expectedWidthSs);
+        assertThat(column.getFlagExtentSs())
+            .as("a whole note has no flag, so the two widths leave nothing between them")
+            .isZero();
     }
 
     // T4: Stem-up and stem-down unbeamed quaver each use their own stem anchor + flag — exact values
@@ -530,9 +568,10 @@ class ElementColumnBuilderTest extends UnitTest {
         @Test
         void testStemTopSsStemDown() {
             // Default direction is DOWN (stem-down), sp=0 -> natural (forcedDown needs sp>0)
-            // -> top = element head top = -HALF_NOTE_HEAD_SS
+            // -> top = the notehead glyph's own top edge
             var note = element(ElementType.CROTCHET);
-            assertThat(builder.calculateStemTopSs(note)).isEqualTo(-ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+            assertThat(builder.calculateStemTopSs(note))
+                .isEqualTo(ElementType.CROTCHET.getNoteheadTopOffsetSs());
         }
 
         @Test
@@ -571,9 +610,10 @@ class ElementColumnBuilderTest extends UnitTest {
 
         @Test
         void testStemTopSsStemless() {
-            // Rest has no stem: top = -HALF_NOTE_HEAD_SS
+            // Rest has no stem: top = the rest glyph's own top edge
             var rest = element(ElementType.CROTCHET_REST);
-            assertThat(builder.calculateStemTopSs(rest)).isEqualTo(-ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+            assertThat(builder.calculateStemTopSs(rest))
+                .isEqualTo(ElementType.CROTCHET_REST.getNoteheadTopOffsetSs());
         }
 
         @Test
@@ -597,18 +637,50 @@ class ElementColumnBuilderTest extends UnitTest {
 
         @Test
         void testStemBottomSsStemUp() {
-            // isUpper=true, sp=0 -> bottom = element head bottom = HALF_NOTE_HEAD_SS, unaffected by
+            // isUpper=true, sp=0 -> bottom = the notehead glyph's own bottom edge, unaffected by
             // the (top-side) forced shortening.
             var note = element(ElementType.CROTCHET);
             note.setUpper(true);
-            assertThat(builder.calculateStemBottomSs(note)).isEqualTo(ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+            assertThat(builder.calculateStemBottomSs(note))
+                .isEqualTo(ElementType.CROTCHET.getNoteheadBottomOffsetSs());
         }
 
         @Test
         void testStemBottomSsStemless() {
-            // Rest has no stem: bottom = HALF_NOTE_HEAD_SS
+            // Rest has no stem: bottom = the rest glyph's own bottom edge
             var rest = element(ElementType.CROTCHET_REST);
-            assertThat(builder.calculateStemBottomSs(rest)).isEqualTo(ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+            assertThat(builder.calculateStemBottomSs(rest))
+                .isEqualTo(ElementType.CROTCHET_REST.getNoteheadBottomOffsetSs());
+        }
+
+        // A barline's bounds come from a different branch of the type initializer than notes and
+        // rests do, so it needs its own case: it spans the whole staff height, reaching much further
+        // than either end of a notehead. The old code baked in half a notehead *width* for every
+        // stemless element, which understated a barline at both ends (refs #694).
+        @Test
+        void testStemTopAndBottomSsBarlineSpanTheWholeGlyph() {
+            var barline = element(ElementType.SINGLE_BARLINE);
+
+            assertThat(builder.calculateStemTopSs(barline))
+                .isEqualTo(ElementType.SINGLE_BARLINE.getNoteheadTopOffsetSs());
+            assertThat(builder.calculateStemBottomSs(barline))
+                .isEqualTo(ElementType.SINGLE_BARLINE.getNoteheadBottomOffsetSs());
+
+            assertThat(builder.calculateStemBottomSs(barline) - builder.calculateStemTopSs(barline))
+                .as("a barline spans the staff, far taller than a notehead's single staff space")
+                .isGreaterThan(1.0);
+        }
+
+        // A whole note draws no stem either, so its column is the notehead alone — and that head is
+        // the wider whole notehead, whose vertical span is still a single staff space.
+        @Test
+        void testStemTopAndBottomSsWholeNoteSpanTheNoteheadOnly() {
+            var wholeNote = element(ElementType.SEMIBREVE);
+
+            assertThat(builder.calculateStemTopSs(wholeNote))
+                .isEqualTo(ElementType.SEMIBREVE.getNoteheadTopOffsetSs());
+            assertThat(builder.calculateStemBottomSs(wholeNote))
+                .isEqualTo(ElementType.SEMIBREVE.getNoteheadBottomOffsetSs());
         }
 
         @Test
@@ -626,7 +698,8 @@ class ElementColumnBuilderTest extends UnitTest {
             var grace = element(ElementType.GRACE_QUAVER);
             grace.setDirection(StaffElement.Direction.DOWN);
 
-            assertThat(builder.calculateStemBottomSs(grace)).isEqualTo(ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+            assertThat(builder.calculateStemBottomSs(grace))
+                .isEqualTo(ElementType.GRACE_QUAVER.getNoteheadBottomOffsetSs());
         }
     }
 }

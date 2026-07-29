@@ -35,7 +35,6 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
 import songscribe.engraving.LineThickness;
-import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.Ending;
 import songscribe.layout.LayoutResult;
@@ -176,8 +175,9 @@ public class StructuralStacker {
             // (shared Tuplet helpers) so reserved and drawn geometry match.
             var endXSs = anchorXSs + widthSs;
             var anchorStemUp = anchor.getDirection().isUp();
-            var leftArmXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorStemUp, LineThickness.STEM_SS);
-            var rightArmXSs = Tuplet.bracketRightEdgeXSs(endXSs);
+            var leftArmXSs = Tuplet.bracketLeftEdgeXSs(anchorXSs, anchorColumn.hasStem(),
+                anchorStemUp, LineThickness.STEM_SS, anchorColumn.getNoteheadWidthSs());
+            var rightArmXSs = Tuplet.bracketRightEdgeXSs(endXSs, endColumn.getNoteheadWidthSs());
 
             // Sloped clearance: find the left-endpoint ceiling that keeps the tilted bracket clear of
             // every non-rest tip. The clearance has already folded in every spanned tip along the
@@ -498,7 +498,7 @@ public class StructuralStacker {
      */
     private static double boundEdgeXSs(ElementColumn column, boolean rightEndpoint) {
         var headLeftXSs = column.getXSs();
-        var headRightXSs = headLeftXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
+        var headRightXSs = headLeftXSs + column.getNoteheadWidthSs();
 
         // Right endpoint contributes its RIGHT edge. An up-stem's right edge coincides with the
         // head's right edge, so the stem-bound and head-bound cases both resolve to headRight.

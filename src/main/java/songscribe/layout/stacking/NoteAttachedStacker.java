@@ -29,7 +29,6 @@ import songscribe.dom.ArticulationType;
 import songscribe.layout.ElementColumn;
 import songscribe.dom.FermataAttachment;
 import songscribe.layout.LayoutResult;
-import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.ShapeProfile;
 import songscribe.layout.StaffExtents;
@@ -289,14 +288,16 @@ public class NoteAttachedStacker {
      * @return a built {@link LayoutResult} containing {@link LayoutResult.DecorationLayout}s
      */
     public static LayoutResult computePreviewDecorationLayouts(StaffElement note, double xSs) {
+        var noteheadWidthSs = note.getType().getElementWidthSs();
+
         // Create minimal extents just wide enough to contain the note
-        var lineWidthSs = xSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS + 1.0;
+        var lineWidthSs = xSs + noteheadWidthSs + 1.0;
         var extents = new StaffExtents(lineWidthSs);
 
         // Seed note bounds using the non-beamed path
         var bounds = computeNoteBounds(note);
-        extents.ySet(true, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, bounds.topSs());
-        extents.ySet(false, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, bounds.botSs());
+        extents.ySet(true, xSs, noteheadWidthSs, bounds.topSs());
+        extents.ySet(false, xSs, noteheadWidthSs, bounds.botSs());
 
         var builder = new LayoutResult.Builder();
         var staffPosition = note.getStaffPosition();
@@ -344,7 +345,7 @@ public class NoteAttachedStacker {
         var type = element.getType();
         var direction = element.getDirection();
         var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
-        var noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
+        var noteheadBotSs = centerYSs + type.getNoteheadBottomOffsetSs();
         var topSs = Math.min(centerYSs + type.getTopYOffsetSs(direction), noteheadTopSs);
         var botSs = Math.max(topSs + type.getElementHeightSs(direction), noteheadBotSs);
         return new NoteBounds(topSs, botSs);
@@ -376,7 +377,7 @@ public class NoteAttachedStacker {
                     * Staff.STAFF_POSITION_OFFSET_SS;
                 var type = element.getType();
                 var noteheadTopSs = centerYSs + type.getNoteheadTopOffsetSs();
-                var noteheadBotSs = noteheadTopSs + type.getFullElementHeightSs();
+                var noteheadBotSs = centerYSs + type.getNoteheadBottomOffsetSs();
                 topSs = Math.min(stemLayout.topYSs(), noteheadTopSs);
                 botSs = Math.max(stemLayout.bottomYSs(), noteheadBotSs);
             } else {
@@ -385,8 +386,9 @@ public class NoteAttachedStacker {
                 botSs = bounds.botSs();
             }
 
-            noteAttachedExtents.ySet(true, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, topSs);
-            noteAttachedExtents.ySet(false, xSs, SMuFLConstants.NOTE_HEAD_WIDTH_SS, botSs);
+            var noteheadWidthSs = element.getType().getElementWidthSs();
+            noteAttachedExtents.ySet(true, xSs, noteheadWidthSs, topSs);
+            noteAttachedExtents.ySet(false, xSs, noteheadWidthSs, botSs);
 
             // Track lowest notehead bottom for lyrics baseline calculation
             var noteheadCenterYSs = element.getStaffPosition()
@@ -853,7 +855,7 @@ public class NoteAttachedStacker {
             } else {
                 // Later notes sit under the flat wavy line, which clears them by a notehead-wide box.
                 footprintXSs = column.getXSs();
-                profile = StaffExtents.Profile.flat(SMuFLConstants.NOTE_HEAD_WIDTH_SS);
+                profile = StaffExtents.Profile.flat(note.getType().getElementWidthSs());
                 paddingSs = TRILL_SPANNER_PADDING_SS;
             }
 

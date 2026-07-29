@@ -52,6 +52,11 @@ class ElementColumnTest extends UnitTest {
 
     private static final double POSITION_TOLERANCE_SS = 1e-9;
 
+    // A notehead is one staff space tall, so it reaches half a staff space each side of its center.
+    // Stated as a literal rather than read from the glyph: the point of the test is that a stemless
+    // column spans the head's height, which is nothing like the head's half-width (0.59) it used to.
+    private static final double NOTEHEAD_HALF_HEIGHT_SS = 0.5;
+
     // Staff positions (Sp, positive = below the middle line) far enough apart that a flag at one
     // hangs entirely clear of a notehead at the other.
     private static final int HIGH_STAFF_POSITION_SP = -4;   // top staff line
@@ -232,6 +237,41 @@ class ElementColumnTest extends UnitTest {
     }
 
     // ==========================================================================
+    // Vertical span of a stemless column (refs #694)
+    // ==========================================================================
+
+    // A rest is far taller than a notehead, and the column's span must say so. It used to be baked
+    // to a fixed half-notehead-width either way, which understated a rest by about a staff space at
+    // each end.
+    @Test
+    void testARestColumnSpansItsOwnGlyphNotANotehead() {
+        var rest = builtColumn(element(ElementType.CROTCHET_REST));
+        var positionSs = rest.getPositionSs();
+
+        assertThat(rest.getAbsoluteTopYSs())
+            .isCloseTo(positionSs + ElementType.CROTCHET_REST.getNoteheadTopOffsetSs(), within(POSITION_TOLERANCE_SS));
+        assertThat(rest.getAbsoluteBottomYSs())
+            .isCloseTo(
+                positionSs + ElementType.CROTCHET_REST.getNoteheadBottomOffsetSs(), within(POSITION_TOLERANCE_SS));
+        assertThat(rest.getAbsoluteBottomYSs() - rest.getAbsoluteTopYSs())
+            .as("a quarter rest is taller than a notehead, which spans a single staff space")
+            .isGreaterThan(1.0);
+    }
+
+    // A whole note draws no stem, so its column is the notehead alone — half a staff space above and
+    // below center, not the half notehead *width* (0.59) the builder used to bake in.
+    @Test
+    void testAWholeNoteColumnSpansTheNoteheadHeight() {
+        var wholeNote = builtColumn(element(ElementType.SEMIBREVE));
+        var positionSs = wholeNote.getPositionSs();
+
+        assertThat(wholeNote.getAbsoluteTopYSs())
+            .isCloseTo(positionSs - NOTEHEAD_HALF_HEIGHT_SS, within(POSITION_TOLERANCE_SS));
+        assertThat(wholeNote.getAbsoluteBottomYSs())
+            .isCloseTo(positionSs + NOTEHEAD_HALF_HEIGHT_SS, within(POSITION_TOLERANCE_SS));
+    }
+
+    // ==========================================================================
     // Left-facing band and the flag discount (refs #560)
     // ==========================================================================
 
@@ -242,11 +282,13 @@ class ElementColumnTest extends UnitTest {
 
         // The up-stem reaches well above the notehead, but it stands on the notehead's right edge,
         // so nothing approaching from the left can meet it.
-        assertThat(upStem.getAbsoluteTopYSs()).isLessThan(positionSs - ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+        assertThat(upStem.getAbsoluteTopYSs())
+            .isLessThan(positionSs + ElementType.CROTCHET.getNoteheadTopOffsetSs());
         assertThat(upStem.getLeftFacingTopYSs())
-            .isCloseTo(positionSs - ElementColumnBuilder.HALF_NOTE_HEAD_SS, within(POSITION_TOLERANCE_SS));
+            .isCloseTo(positionSs + ElementType.CROTCHET.getNoteheadTopOffsetSs(), within(POSITION_TOLERANCE_SS));
         assertThat(upStem.getLeftFacingBottomYSs())
-            .isCloseTo(positionSs + ElementColumnBuilder.HALF_NOTE_HEAD_SS, within(POSITION_TOLERANCE_SS));
+            .isCloseTo(
+                positionSs + ElementType.CROTCHET.getNoteheadBottomOffsetSs(), within(POSITION_TOLERANCE_SS));
     }
 
     @Test
@@ -256,7 +298,7 @@ class ElementColumnTest extends UnitTest {
         // A down-stem sits on the notehead's LEFT edge, so it does face left and the band must reach
         // past the notehead all the way to the stem tip.
         assertThat(downStem.getLeftFacingBottomYSs())
-            .isGreaterThan(downStem.getPositionSs() + ElementColumnBuilder.HALF_NOTE_HEAD_SS);
+            .isGreaterThan(downStem.getPositionSs() + ElementType.CROTCHET.getNoteheadBottomOffsetSs());
     }
 
     @Test

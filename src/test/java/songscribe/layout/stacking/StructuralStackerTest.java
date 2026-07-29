@@ -41,6 +41,7 @@ import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
 
 /**
@@ -67,6 +68,8 @@ class StructuralStackerTest extends UnitTest {
         when(column.getElement()).thenReturn(element);
         when(column.getXSs()).thenReturn(xSs);
         when(column.getAbsoluteTopYSs()).thenReturn(absoluteTopYSs);
+        // Bound-edge geometry reads the column's own head width, as a real column reports it.
+        when(column.getNoteheadWidthSs()).thenReturn(element.getType().getElementWidthSs());
 
         return column;
     }

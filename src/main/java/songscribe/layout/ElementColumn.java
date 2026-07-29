@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.ElementType;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.Staff;
@@ -361,6 +362,11 @@ public final class ElementColumn {
      * Returns the absolute X of the notehead center, excluding the flag and augmentation dots.
      * Used to horizontally anchor lyrics so neither a flag nor a dot shifts the lyric position.
      * Only valid after X position has been set by the spacing calculator.
+     * <p>
+     * Agrees with {@link songscribe.layout.NoteGeometry#getNoteheadCenterXSs} for every type now
+     * that both derive from the same per-type width, {@link ElementType#getElementWidthSs()}.
+     * Previously this one used the black-notehead constant, so the two drifted apart on any type
+     * whose head is not a black notehead — a whole note most visibly (refs #694).
      */
     public double getNoteheadCenterXSs() {
         return xSs + getNoteheadWidthSs() / 2.0;
@@ -425,9 +431,13 @@ public final class ElementColumn {
      * left-facing band starts at the notehead top in every case, and the column's own top counts only
      * when the stem points down — which {@link #getLeftFacingBottomYSs()} covers, since a down-stem
      * reaches downward.
+     *
+     * <p>"Notehead top" is this element type's own glyph bounding-box top
+     * ({@link ElementType#getNoteheadTopOffsetSs()}), not a fixed notehead half-height: a rest or a
+     * barline faces left with all the ink its glyph actually occupies.
      */
     public double getLeftFacingTopYSs() {
-        return getPositionSs() - ElementColumnBuilder.HALF_NOTE_HEAD_SS;
+        return getPositionSs() + element.getType().getNoteheadTopOffsetSs();
     }
 
     /**

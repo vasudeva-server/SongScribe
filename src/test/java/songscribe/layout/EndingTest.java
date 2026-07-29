@@ -36,6 +36,8 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
+import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
 /**
  * Unit tests for {@link Ending}: label format, span-width geometry, split-element search,
@@ -99,6 +101,51 @@ class EndingTest extends UnitTest {
             double span = 10.0;
             assertThat(ending.getSpanWidthSs(anchorX, anchorX + span))
                 .isEqualTo(span + SMuFLConstants.NOTE_HEAD_WIDTH_SS);
+        }
+
+        /** Builds an ending, on its own line, whose end element has the given type. */
+        private static Ending endingEndingOn(ElementType endType) {
+            var song = new Song();
+            var line = song.getLine(0);
+            var anchor = new StaffElement(ElementType.CROTCHET);
+            var end = new StaffElement(endType);
+            var built = new Ending(anchor, end);
+            song.withoutMutationTracking(() -> {
+                line.addElement(anchor);
+                line.addElement(end);
+                line.addRangeElement(built);
+            });
+
+            return built;
+        }
+
+        // The span covers the end note's head, so an ending that stops on a whole note stretches
+        // further than one that stops on a quarter note at the same X (#694). The expected width is
+        // read from the font metadata so this fails if a whole note is measured as a black one again.
+        @Test
+        void testWiderEndNoteheadStretchesTheSpan() {
+            double anchorX = 10.0;
+            double span = 10.0;
+            var wholeNoteWidthSs = SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_WHOLE).right();
+
+            assertThat(endingEndingOn(ElementType.SEMIBREVE).getSpanWidthSs(anchorX, anchorX + span))
+                .as("a whole note's head is wider, so the bracket must reach further")
+                .isGreaterThan(ending.getSpanWidthSs(anchorX, anchorX + span))
+                .isEqualTo(span + wholeNoteWidthSs);
+        }
+
+        // The lower bound is a generic minimum bracket width, not the end note's head: a grace head
+        // is narrower than the floor, and a zero-length span on one still yields the floor.
+        @Test
+        void testMinimumSpanFloorDoesNotTrackTheEndNoteheadWidth() {
+            double anchorX = 10.0;
+            var graceEnding = endingEndingOn(ElementType.GRACE_QUAVER);
+
+            assertThat(ElementType.GRACE_QUAVER.getElementWidthSs())
+                .as("precondition: the grace head must be narrower than the floor to exercise it")
+                .isLessThan(SMuFLConstants.NOTE_HEAD_WIDTH_SS);
+            assertThat(graceEnding.getSpanWidthSs(anchorX, anchorX))
+                .isEqualTo(SMuFLConstants.NOTE_HEAD_WIDTH_SS);
         }
     }
 

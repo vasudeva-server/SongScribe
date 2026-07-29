@@ -28,7 +28,9 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.smufl.SMuFLGlyph;
+import songscribe.smufl.SMuFLMetadata;
 
+import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
 import songscribe.engraving.LineThickness;
 
@@ -626,6 +628,62 @@ class ElementTypeTest extends UnitTest {
     @Nested
     class ElementHeightTests {
 
+        private static final double OFFSET_TOLERANCE_SS = 1e-9;
+
+        // ------------------------------------------------------------------
+        // Notehead top/bottom offsets (refs #694). Everything that reserves vertical space for a
+        // stemless element derives its expected value from these two accessors, so without a test
+        // that pins them to the font metadata a wrong sign or a wrong field here would go
+        // unnoticed everywhere.
+        // ------------------------------------------------------------------
+
+        @Test
+        void testRestOffsetsMatchItsGlyphBoundingBox() {
+            // The rest glyph's own box, measured from the note center: top above, bottom below.
+            var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.REST_QUARTER);
+
+            assertThat(ElementType.CROTCHET_REST.getNoteheadTopOffsetSs())
+                .as("the top offset is the glyph's own top, above the center so negative")
+                .isCloseTo(bbox.top(), within(OFFSET_TOLERANCE_SS))
+                .isNegative();
+            assertThat(ElementType.CROTCHET_REST.getNoteheadBottomOffsetSs())
+                .as("the bottom offset is the top plus the glyph's height, below the center")
+                .isCloseTo(bbox.top() + bbox.height(), within(OFFSET_TOLERANCE_SS))
+                .isPositive();
+        }
+
+        @Test
+        void testNoteheadOffsetsSpanOneStaffSpaceAroundTheCenter() {
+            // A notehead is one staff space tall and sits centered on its staff position, so it
+            // reaches half a staff space each way. Stated as literals because that symmetry is the
+            // property under test, not something to re-read from the glyph.
+            assertThat(ElementType.CROTCHET.getNoteheadTopOffsetSs())
+                .isCloseTo(-0.5, within(OFFSET_TOLERANCE_SS));
+            assertThat(ElementType.CROTCHET.getNoteheadBottomOffsetSs())
+                .isCloseTo(0.5, within(OFFSET_TOLERANCE_SS));
+        }
+
+        @Test
+        void testBarlineOffsetsSpanTheFullStaffHeight() {
+            // A barline's bounds come from a different branch of the type initializer than notes
+            // and rests, so it needs its own check: it spans the whole staff, centered.
+            var halfStaffHeightSs = Staff.STAFF_HEIGHT_SS / 2;
+
+            assertThat(ElementType.SINGLE_BARLINE.getNoteheadTopOffsetSs())
+                .isCloseTo(-halfStaffHeightSs, within(OFFSET_TOLERANCE_SS));
+            assertThat(ElementType.SINGLE_BARLINE.getNoteheadBottomOffsetSs())
+                .isCloseTo(halfStaffHeightSs, within(OFFSET_TOLERANCE_SS));
+        }
+
+        @Test
+        void testBarlineOffsetsReachFurtherThanANotehead() {
+            // The practical consequence: a barline's collision band is far taller than a notehead's.
+            assertThat(ElementType.SINGLE_BARLINE.getNoteheadTopOffsetSs())
+                .isLessThan(ElementType.CROTCHET.getNoteheadTopOffsetSs());
+            assertThat(ElementType.SINGLE_BARLINE.getNoteheadBottomOffsetSs())
+                .isGreaterThan(ElementType.CROTCHET.getNoteheadBottomOffsetSs());
+        }
+
         @Test
         void testBarlineHeightEqualsStaffHeight() {
             var staffHeight = Staff.STAFF_HEIGHT_SS;
@@ -673,6 +731,8 @@ class ElementTypeTest extends UnitTest {
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ElementWidthTests {
+
+        private static final double WIDTH_TOLERANCE_SS = 1e-9;
 
         @Test
         void testBreathMarkWidth() {
@@ -732,6 +792,69 @@ class ElementTypeTest extends UnitTest {
             // Semibreve notehead width equals element width (no flag)
             assertThat(ElementType.SEMIBREVE.getElementWidthSs())
                 .isEqualTo(ElementType.SEMIBREVE.getFullElementWidthSs());
+        }
+
+        // ------------------------------------------------------------------
+        // Per-type head width (refs #694). Expected values are read straight from the font
+        // metadata, so these fail if a type is ever measured with the wrong glyph again.
+        // ------------------------------------------------------------------
+
+        @Test
+        void testWholeNoteWidthIsTheWholeNoteheadGlyphRightEdge() {
+            assertThat(ElementType.SEMIBREVE.getElementWidthSs())
+                .isCloseTo(SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_WHOLE).right(), within(WIDTH_TOLERANCE_SS));
+        }
+
+        @Test
+        void testWholeNoteIsWiderThanTheBlackAndHalfNoteheads() {
+            // The whole notehead is the widest of the three, which is why measuring it with the
+            // black-notehead constant left it short — the bug behind the lyric-centering drift.
+            assertThat(ElementType.SEMIBREVE.getElementWidthSs())
+                .as("a whole note is wider than a quarter note's head")
+                .isGreaterThan(ElementType.CROTCHET.getElementWidthSs())
+                .as("and wider than a half note's head too, not just the black one")
+                .isGreaterThan(ElementType.MINIM.getElementWidthSs());
+        }
+
+        @Test
+        void testHalfAndQuarterNoteheadsShareTheBlackNoteheadWidth() {
+            // noteheadHalf and noteheadBlack are the same width, which is what
+            // SMuFLConstants.NOTE_HEAD_WIDTH_SS holds — the constant is right for these two types
+            // and wrong only for the whole note.
+            assertThat(ElementType.MINIM.getElementWidthSs())
+                .isCloseTo(SMuFLConstants.NOTE_HEAD_WIDTH_SS, within(WIDTH_TOLERANCE_SS))
+                .isCloseTo(ElementType.CROTCHET.getElementWidthSs(), within(WIDTH_TOLERANCE_SS));
+        }
+
+        @Test
+        void testCrotchetWidthIsTheBlackNoteheadGlyphRightEdge() {
+            assertThat(ElementType.CROTCHET.getElementWidthSs())
+                .isCloseTo(SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).right(), within(WIDTH_TOLERANCE_SS));
+        }
+
+        @Test
+        void testGraceNoteWidthIsTheBlackNoteheadScaledDown() {
+            // A grace note draws the regular black notehead at GRACE_NOTE_SCALE, so its measured
+            // width must be scaled too — the unscaled bbox overstates the drawn ink.
+            var blackRightSs = SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_BLACK).right();
+
+            assertThat(ElementType.GRACE_QUAVER.getElementWidthSs())
+                .isCloseTo(ElementType.GRACE_NOTE_SCALE * blackRightSs, within(WIDTH_TOLERANCE_SS))
+                .isLessThan(blackRightSs);
+        }
+
+        @Test
+        void testRestWidthIsTheGlyphRightEdgeNotItsBoundingBoxWidth() {
+            // The quarter rest's bounding box starts a hair right of the origin, so its right edge
+            // and its raw box width differ. The right edge is the one layout wants: it is the
+            // distance from the element origin to the last of the ink.
+            var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.REST_QUARTER);
+
+            assertThat(bbox.left())
+                .as("precondition: this glyph must have a non-zero left bearing to tell the two apart")
+                .isNotEqualTo(0.0);
+            assertThat(ElementType.CROTCHET_REST.getElementWidthSs())
+                .isCloseTo(bbox.right(), within(WIDTH_TOLERANCE_SS));
         }
 
         @Test

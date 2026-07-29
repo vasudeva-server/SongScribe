@@ -884,8 +884,10 @@ public class LayoutEngine {
             // once it clears the box (LilyPond get_attachment's edge-vs-center step). dir = +1 for the
             // left endpoint (tie extends rightward), -1 for the right.
             var centerAttach = seatSs > Staff.STAFF_POSITION_OFFSET_SS;
-            var startXSs = tieEndpointXSs(startColumn.getXSs(), 1, centerAttach);
-            var endXSs = tieEndpointXSs(endColumn.getXSs(), -1, centerAttach);
+            var startXSs = tieEndpointXSs(
+                startColumn.getXSs(), 1, centerAttach, startElement.getType());
+            var endXSs = tieEndpointXSs(
+                endColumn.getXSs(), -1, centerAttach, endElement.getType());
 
             var tieWidthSs = endXSs - startXSs;
 
@@ -938,10 +940,13 @@ public class LayoutEngine {
      * @param dir          +1 for the left endpoint (tie extends rightward), -1 for the right endpoint
      * @param centerAttach true when the seat has cleared the head box, so the endpoint attaches at the
      *                     notehead center rather than its facing edge
+     * @param noteType     the type of the note this endpoint attaches to, for its own head width
      */
-    static double tieEndpointXSs(double noteLeftXSs, int dir, boolean centerAttach) {
-        var centerXSs = noteLeftXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
-        var facingEdgeXSs = centerXSs + dir * SMuFLConstants.NOTE_HEAD_WIDTH_SS / 2;
+    static double tieEndpointXSs(
+        double noteLeftXSs, int dir, boolean centerAttach, ElementType noteType) {
+        var noteheadWidthSs = noteType.getElementWidthSs();
+        var centerXSs = noteLeftXSs + noteheadWidthSs / 2;
+        var facingEdgeXSs = centerXSs + dir * noteheadWidthSs / 2;
         var skylineXSs = centerAttach ? centerXSs : facingEdgeXSs;
 
         return skylineXSs + dir * NOTE_HEAD_GAP_SS;

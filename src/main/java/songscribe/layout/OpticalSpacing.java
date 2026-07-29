@@ -249,6 +249,9 @@ public final class OpticalSpacing {
      * the middle line). Unconditionally additive - a downstem right after a barline always gets a
      * little more room, never less. A grace note never reaches the formula: it always stems up.
      *
+     * <p>The barline's span is stated here rather than read from {@code prev}, so the barline
+     * column's own vertical span (which is the same full staff height) is never counted twice.
+     *
      * <p>Package-private so the per-gap debug dump can report this term on its own rather than only
      * as part of the summed correction.
      */

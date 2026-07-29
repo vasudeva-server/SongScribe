@@ -97,7 +97,7 @@ final class NoteColumnGeometry {
 
         // ---- augmentation dots (extend right) ----
         var rightSs = NoteGeometry.dotsRightExtentSs(
-            note, beamed, direction, NoteGeometry.getGlyphRightEdgeSs(note));
+            note, beamed, direction, noteType.getElementWidthSs());
 
         // ---- accidental (extend left only) ----
         if (note.getAccidental() != null) {

@@ -20,8 +20,6 @@
 
 package songscribe.dom;
 
-import songscribe.engraving.SMuFLConstants;
-
 /**
  * Base class for hairpin dynamic markings (crescendo and diminuendo).
  * <p>
@@ -105,7 +103,9 @@ public abstract sealed class Hairpin extends RangeElement
     }
 
     /**
-     * Returns the horizontal span width for collision detection.
+     * Returns the horizontal span width for collision detection. The span runs past the end
+     * element's head, so it is measured with that element's own width
+     * ({@link #getEndElementWidthSs()}).
      *
      * @param anchorXSs X position of the anchor element in staff-space units
      * @param endXSs    X position of the end element in staff-space units
@@ -113,7 +113,7 @@ public abstract sealed class Hairpin extends RangeElement
      */
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
-        return Math.max(HAIRPIN_OPENING_HEIGHT_SS, endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS);
+        return Math.max(HAIRPIN_OPENING_HEIGHT_SS, endXSs - anchorXSs + getEndElementWidthSs());
     }
 
     @Override
