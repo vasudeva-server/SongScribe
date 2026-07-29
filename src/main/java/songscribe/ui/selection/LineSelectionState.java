@@ -221,24 +221,55 @@ public final class LineSelectionState {
      */
     public boolean revalidateDecorationSelection() {
         if (selectedSlideElementIndex != -1) {
-            if (selectedSlideElementIndex >= line.effectiveElementCount()
-                    || line.getElement(selectedSlideElementIndex).getSlide() == null) {
-                clearSelection();
-                return true;
-            }
-        } else if (selectedEnding != null) {
-            if (!LineEndingSupport.findEndings(line).contains(selectedEnding)) {
-                clearSelection();
-                return true;
-            }
-        } else if (selectedHairpin != null) {
-            if (!line.getRangeElements().contains(selectedHairpin)) {
-                clearSelection();
-                return true;
-            }
+            return clearIfStale(
+                selectedSlideElementIndex >= line.effectiveElementCount()
+                    || line.getElement(selectedSlideElementIndex).getSlide() == null
+            );
+        }
+
+        if (selectedEnding != null) {
+            return clearIfStale(!LineEndingSupport.findEndings(line).contains(selectedEnding));
+        }
+
+        if (selectedHairpin != null) {
+            return clearIfStale(!line.getRangeElements().contains(selectedHairpin));
         }
 
         return false;
+    }
+
+    /**
+     * Drops the whole selection when {@code stale} says it no longer refers to anything
+     * live on the line. Shared tail of the {@code revalidate*} methods.
+     *
+     * @return whether the selection was cleared
+     */
+    private boolean clearIfStale(boolean stale) {
+        if (!stale) {
+            return false;
+        }
+
+        clearSelection();
+        return true;
+    }
+
+    /**
+     * Clears the element selection if its range no longer fits the line — e.g. after an
+     * undo that removed an element the selection covered. No-op if the range is still in
+     * bounds, or if there is no element selection.
+     *
+     * <p>Bounded by {@link Line#elementCount()} rather than
+     * {@link Line#effectiveElementCount()}: what makes a range unusable is that it can no
+     * longer be indexed at all. Whether a selection may reach the song-owned terminal is a
+     * separate question, decided where the selection is made.
+     *
+     * @return whether the selection was cleared
+     */
+    public boolean revalidateElementSelection() {
+        // Every caller that sets the range leaves selectionBegin <= selectionEnd, so the
+        // end alone bounds it. That ordering is a habit of the callers, not something this
+        // class checks — a caller that selected backwards would slip past this guard.
+        return clearIfStale(hasElementSelection() && selectionEnd >= line.elementCount());
     }
 
     @Nullable
@@ -635,13 +666,14 @@ public final class LineSelectionState {
 
     /**
      * Returns whether the stem direction can be modified, either by flipping it
-     * or by restoring it to automatic.
+     * or by restoring it to automatic. Only notes that actually carry a stem
+     * qualify — rests and whole notes have none.
      */
     public boolean canModifyStemDirection() {
         return getSelectionSize() != 0 &&
             line.getElements(selectionBegin, selectionEnd)
             .stream()
-            .anyMatch(element -> !element.getType().isRest());
+            .anyMatch(element -> element.getType().isNoteWithStem());
     }
 
     /**

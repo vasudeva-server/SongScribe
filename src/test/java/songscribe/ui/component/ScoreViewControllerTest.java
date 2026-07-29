@@ -766,6 +766,151 @@ class ScoreViewControllerTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // songDidChange — stale-selection guard
+    // -----------------------------------------------------------------------
+
+    /**
+     * The undo-side mirror of
+     * {@code HandleDelete.testHandleDeleteAllButLastFewNotesDoesNotCrashSongDidChangeHandlers}.
+     * Forward delete clears the selection itself before shrinking the line, so it never
+     * reaches this guard; undo has no such courtesy. Undoing an insertion removes elements
+     * while leaving the selection untouched, which leaves the selected range running past
+     * the end of the line, and every later reader of that range indexes off the end and
+     * throws. The {@code songDidChange} handler is the only thing standing between an undo
+     * and that crash, so these tests pin the call down where it is made rather than only on
+     * {@link LineSelectionState}, where the method it calls is already covered.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SongDidChangeStaleSelection {
+
+        /** Notes added to the fixture line, ahead of the song-maintained terminal barline. */
+        private static final int NOTE_COUNT = 4;
+
+        /** Notes the simulated undo removes — enough to strand the end of the selection. */
+        private static final int UNDONE_NOTE_COUNT = 2;
+
+        private Song song;
+        private Line line;
+        private SelectionCoordinator coordinator;
+        private LineSelectionState state;
+        private MusicEditOperations operationsMock;
+
+        @BeforeEach
+        void setUp() {
+            song = new Song();
+            line = song.getLine(0);
+
+            song.withoutMutationTracking(() -> {
+                for (var i = 0; i < NOTE_COUNT; i++) {
+                    line.addElement(ElementType.CROTCHET.newInstance());
+                }
+            });
+
+            coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectRange(coordinator, 0, NOTE_COUNT - 1);
+
+            var activeSelection = coordinator.getActiveSelection();
+
+            if (activeSelection == null) {
+                throw new IllegalStateException("Expected an active selection");
+            }
+
+            state = activeSelection;
+            operationsMock = mock(MusicEditOperations.class);
+        }
+
+        private ScoreViewController buildController() {
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+
+            // getMainPanel() is left returning null so the handler stops right after the
+            // guard and the tuplet cache. The repaint branches past that point want the
+            // whole Swing tree, and none of them bear on the selection.
+            return new ScoreViewController(
+                scoreMock,
+                operationsMock,
+                coordinator,
+                mock(ClipboardManager.class)
+            );
+        }
+
+        /**
+         * Shrinks the line the way undoing an insertion does: elements go away and the
+         * selection is left exactly as it was.
+         */
+        private void undoTheInsertions() {
+            song.withoutMutationTracking(() -> {
+                for (var i = 0; i < UNDONE_NOTE_COUNT; i++) {
+                    line.removeElement(0);
+                }
+            });
+        }
+
+        /**
+         * The mutation list is left empty on purpose: the guard runs on every song change,
+         * ahead of every branch that inspects the mutations, so no particular mutation is
+         * what triggers it.
+         */
+        private SongDidChangeNotification songDidChange() {
+            return new SongDidChangeNotification(List.of(), song);
+        }
+
+        @Test
+        void testSongDidChangeClearsSelectionLeftRunningPastTheEndOfTheLine() {
+            undoTheInsertions();
+
+            assertThat(state.getSelectionEnd())
+                .as("the fixture must strand the selection, or this test proves nothing")
+                .isGreaterThanOrEqualTo(line.elementCount());
+
+            buildController().songDidChange(songDidChange());
+
+            assertThat(state.hasElementSelection()).isFalse();
+        }
+
+        @Test
+        void testSongDidChangeLeavesSelectionStillWithinTheLineAlone() {
+            // The guard must not be a blanket "clear on every song change": that would pass
+            // the test above while making the user's selection vanish after any edit.
+            buildController().songDidChange(songDidChange());
+
+            assertThat(state.hasElementSelection()).isTrue();
+            assertThat(state.getSelectionBegin()).isEqualTo(0);
+            assertThat(state.getSelectionEnd()).isEqualTo(NOTE_COUNT - 1);
+        }
+
+        /**
+         * The guard has to run before {@code warmTupletCache}, which is the first reader of
+         * the selected range in this handler. Nothing but program order keeps the two in
+         * that sequence, so reading the selection from inside the cache warm-up is the only
+         * way to notice the day someone reorders them.
+         */
+        @Test
+        void testSongDidChangeClearsTheSelectionBeforeWarmingTheTupletCache() {
+            var controller = buildController();
+            undoTheInsertions();
+
+            // Stubbed only now, so the sole recorded call is the one the handler makes.
+            var selectionSurvivedIntoCacheWarmUp = new boolean[1];
+
+            when(operationsMock.canToggleTuplet()).thenAnswer(invocation -> {
+                selectionSurvivedIntoCacheWarmUp[0] = state.hasElementSelection();
+                return new TupletToggleInfo(false, null, false);
+            });
+
+            controller.songDidChange(songDidChange());
+
+            // Without this the assertion below would pass vacuously if the warm-up stopped
+            // being called at all.
+            verify(operationsMock).canToggleTuplet();
+            assertThat(selectionSurvivedIntoCacheWarmUp[0])
+                .as("warmTupletCache must not be the first to read a stranded selection")
+                .isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // handleCopy — rows 21, 22
     // -----------------------------------------------------------------------
 

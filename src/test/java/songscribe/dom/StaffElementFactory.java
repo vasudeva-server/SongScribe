@@ -25,6 +25,10 @@ public final class StaffElementFactory {
 
     private StaffElementFactory() {}
 
+    public static StaffElement semibreve() {
+        return ElementType.SEMIBREVE.newInstance();
+    }
+
     public static StaffElement crotchet() {
         return ElementType.CROTCHET.newInstance();
     }

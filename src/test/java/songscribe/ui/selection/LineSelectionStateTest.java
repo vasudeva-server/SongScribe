@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +37,9 @@ import songscribe.layout.Ending;
 import songscribe.ui.action.TupletAction;
 
 class LineSelectionStateTest extends UnitTest {
+
+    /** Index of the terminal barline appended after the two notes of {@link #twoNoteLine()}. */
+    private static final int TERMINAL_ELEMENT_INDEX = 2;
 
     /**
      * Builds an {@link Ending} spanning the line's first two elements. The line must
@@ -618,6 +622,89 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.revalidateDecorationSelection()).isTrue();
         assertThat(state.hasHairpinSelection()).isFalse();
         assertThat(state.getSelectedHairpin()).isNull();
+    }
+
+    // -- revalidateElementSelection --
+
+    @Test
+    void testRevalidateElementSelectionNoOpWhenNothingSelected() {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+
+        assertThat(state.revalidateElementSelection()).isFalse();
+    }
+
+    @Test
+    void testRevalidateElementSelectionKeepsSelectionStillWithinTheLine() {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+
+        assertThat(state.revalidateElementSelection()).isFalse();
+        assertThat(state.getSelectionBegin()).isEqualTo(0);
+        assertThat(state.getSelectionEnd()).isEqualTo(1);
+    }
+
+    @Test
+    void testRevalidateElementSelectionClearsSelectionRunningPastTheEndOfTheLine() {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+
+        // Simulates undoing an insertion: the element the selection reached is gone.
+        line.removeElement(1);
+
+        assertThat(state.revalidateElementSelection()).isTrue();
+        assertThat(state.hasElementSelection()).isFalse();
+        assertThat(state.getSelectionEnd()).isEqualTo(-1);
+    }
+
+    /**
+     * Pins down the choice of {@link Line#elementCount()} over
+     * {@link Line#effectiveElementCount()}. The two differ only on a line that ends with a
+     * barline the song maintains itself — which every line in a real song does. The terminal
+     * is a real, indexable element, so a selection reaching it is usable and must survive.
+     * Bounding the check by the terminal-excluding count would clear such a selection on
+     * every song change, and the user would watch their selection vanish after an unrelated
+     * edit.
+     */
+    @Test
+    void testRevalidateElementSelectionKeepsSelectionReachingTheSongOwnedTerminal() {
+        var line = twoNoteLine();
+        var terminal = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+        line.addElement(terminal);
+        when(line.getSong().isAutoMaintainedTerminal(terminal, line)).thenReturn(true);
+
+        assertThat(line.effectiveElementCount())
+            .as("the fixture must make the two counts differ, or this test proves nothing")
+            .isLessThan(line.elementCount());
+
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(TERMINAL_ELEMENT_INDEX);
+
+        assertThat(state.revalidateElementSelection()).isFalse();
+        assertThat(state.getSelectionEnd()).isEqualTo(TERMINAL_ELEMENT_INDEX);
+    }
+
+    /**
+     * The crash this guards against: every selection query walks the selected range, so a
+     * range left pointing past the end of a shrunk line throws before anything else can
+     * notice it is stale.
+     */
+    @Test
+    void testRevalidatedSelectionMakesTupletQuerySafeOnAShrunkLine() {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+
+        line.removeElement(1);
+        state.revalidateElementSelection();
+
+        assertThat(state.canToggleTuplet().canToggle()).isFalse();
     }
 
     // -- canToggleBeaming / canToggleTuplet with grace notes (refs #592) --
@@ -1556,7 +1643,7 @@ class LineSelectionStateTest extends UnitTest {
     }
 
     @Test
-    void testCanModifyStemDirectionReturnsTrueWhenAtLeastOneNonRestInRange() {
+    void testCanModifyStemDirectionReturnsTrueWhenAtLeastOneStemmedNoteInRange() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
@@ -1577,5 +1664,29 @@ class LineSelectionStateTest extends UnitTest {
         state.extendSelectionTo(1);
 
         assertThat(state.canModifyStemDirection()).isFalse();
+    }
+
+    @Test
+    void testCanModifyStemDirectionReturnsFalseWhenSelectionIsAllWholeNotes() {
+        var line = detachedLine();
+        line.addElement(ElementType.SEMIBREVE.newInstance());
+        line.addElement(ElementType.SEMIBREVE.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+
+        assertThat(state.canModifyStemDirection()).isFalse();
+    }
+
+    @Test
+    void testCanModifyStemDirectionReturnsTrueWhenWholeNoteSelectedWithStemmedNote() {
+        var line = detachedLine();
+        line.addElement(ElementType.SEMIBREVE.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+
+        assertThat(state.canModifyStemDirection()).isTrue();
     }
 }

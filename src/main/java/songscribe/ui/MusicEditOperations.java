@@ -903,6 +903,13 @@ public final class MusicEditOperations {
         EnumSet<ElementField> stemFields,
         StaffElement.@Nullable Direction newDirection
     ) {
+        // Rests, whole notes, and non-note elements carry no stem, so a direction change
+        // would be an invisible edit that still dirties the song and pushes an undo entry.
+        // Enforced here so it holds for every caller, including the beam-group loop.
+        if (!line.getElement(index).getType().isNoteWithStem()) {
+            return;
+        }
+
         if (newDirection == null) {
             // Re-enabling auto on an already-auto element changes nothing. Recording a mutation
             // anyway would mark the song modified and push an empty entry onto the undo stack.
@@ -938,7 +945,9 @@ public final class MusicEditOperations {
             for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
                 var note = line.getElement(i);
 
-                if (note.getType().isRest()) {
+                // applyStemChange already ignores stemless elements. Stopping here as well
+                // keeps one from dragging its entire beam group into the edit below.
+                if (!note.getType().isNoteWithStem()) {
                     continue;
                 }
 

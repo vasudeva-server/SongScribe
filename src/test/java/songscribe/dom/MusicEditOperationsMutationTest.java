@@ -73,8 +73,14 @@ class MusicEditOperationsMutationTest extends UnitTest {
     /** Number of crotchets spanned by the tie fixture in the stem-direction tests. */
     private static final int TIED_NOTE_COUNT = 3;
 
-    /** Notes in the [note, rest, note] fixture that are eligible for a stem change. */
-    private static final int NOTE_COUNT_EXCLUDING_REST = 2;
+    /**
+     * Elements eligible for a stem change in the three-element fixtures whose middle
+     * element is stemless — [note, rest, note] and [note, whole note, note].
+     */
+    private static final int STEMMED_NOTE_COUNT = 2;
+
+    /** Last element index of the three-element fixtures whose middle element is stemless. */
+    private static final int STEMLESS_MIDDLE_FIXTURE_LAST_INDEX = 2;
 
     /** Last element index of the three-note fixture in the single-note extend test. */
     private static final int SINGLE_NOTE_EXTEND_END = 2;
@@ -155,6 +161,17 @@ class MusicEditOperationsMutationTest extends UnitTest {
             .hasSize(1);
 
         return didChanges.getFirst();
+    }
+
+    /**
+     * Returns the element indices the given mutations modified, so a test can assert which
+     * elements were touched rather than merely how many.
+     */
+    private static List<Integer> modifiedIndices(List<Mutation> mutations) {
+        return mutations.stream()
+            .filter(ElementModification.class::isInstance)
+            .map(mutation -> ((ElementModification) mutation).index())
+            .toList();
     }
 
     private void verifyNoDidChange() {
@@ -998,7 +1015,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // The rest at index 1 must not receive an ElementModification; only the
         // two notes at indices 0 and 2 are flipped.
         var env = setupEnv(crotchet(), crotchetRest(), crotchet());
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, STEMLESS_MIDDLE_FIXTURE_LAST_INDEX);
         env.operations().flipStemDirection();
 
         var notification = captureSingleDidChange();
@@ -1006,11 +1023,80 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
         assertThat(mutations)
             .as("exactly two modifications — one per note, none for the rest")
-            .hasSize(2);
+            .hasSize(STEMMED_NOTE_COUNT)
+            .allSatisfy(mutation -> assertThat(mutation).isInstanceOf(ElementModification.class));
 
-        for (var mutation : mutations) {
-            assertThat(mutation).isInstanceOf(ElementModification.class);
-        }
+        // Counting the modifications is not enough: a guard that skipped the wrong element
+        // would still produce two. Name the indices that must have been touched.
+        assertThat(modifiedIndices(mutations))
+            .as("the notes on either side of the rest, not the rest itself")
+            .containsExactlyInAnyOrder(0, STEMLESS_MIDDLE_FIXTURE_LAST_INDEX);
+    }
+
+    @Test
+    void testFlipStemDirectionSkipsWholeNotes() {
+        // [CROTCHET(0), SEMIBREVE(1), CROTCHET(2)] — all three selected. A whole note
+        // has no stem, so it must not receive an ElementModification.
+        var env = setupEnv(crotchet(), semibreve(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, STEMLESS_MIDDLE_FIXTURE_LAST_INDEX);
+        env.operations().flipStemDirection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+
+        assertThat(mutations)
+            .as("exactly two modifications — one per stemmed note, none for the whole note")
+            .hasSize(STEMMED_NOTE_COUNT)
+            .allSatisfy(mutation -> assertThat(mutation).isInstanceOf(ElementModification.class));
+
+        assertThat(modifiedIndices(mutations))
+            .as("the crotchets on either side of the whole note, not the whole note itself")
+            .containsExactlyInAnyOrder(0, STEMLESS_MIDDLE_FIXTURE_LAST_INDEX);
+    }
+
+    @Test
+    void testFlipStemDirectionSkipsWholeNoteTiePartnersOutsideSelection() {
+        // [CROTCHET(0), SEMIBREVE(1), CROTCHET(2)], tie spans [0..2]. Only index 0 is
+        // selected, so indices 1 and 2 are pulled in as tie partners — but the whole
+        // note at index 1 is stemless and must be skipped while the tie chain is still
+        // walked through it to reach index 2.
+        var env = setupEnv(crotchet(), semibreve(), crotchet());
+        song.withoutMutationTracking(
+            () -> env.line().addTie(
+                new Tie(
+                    env.line().getElement(0),
+                    env.line().getElement(STEMLESS_MIDDLE_FIXTURE_LAST_INDEX)
+                )
+            )
+        );
+        ReflectionTestHelper.selectNote(env.coordinator(), 0);
+        env.operations().flipStemDirection();
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+
+        assertThat(mutations)
+            .as("selected note and the far tie partner are flipped; the whole note between them is not")
+            .hasSize(STEMMED_NOTE_COUNT)
+            .allSatisfy(mutation -> assertThat(mutation).isInstanceOf(ElementModification.class));
+
+        // The count alone cannot tell the two outcomes apart: skipping the far tie partner
+        // and flipping the whole note instead also yields two modifications.
+        assertThat(modifiedIndices(mutations))
+            .as("the selected crotchet and the far tie partner, not the whole note between them")
+            .containsExactlyInAnyOrder(0, STEMLESS_MIDDLE_FIXTURE_LAST_INDEX);
+    }
+
+    @Test
+    void testFlipStemDirectionEmitsNoNotificationWhenSelectionIsAllStemless() {
+        // Nothing in [SEMIBREVE(0), CROTCHET_REST(1)] carries a stem, so the flip has
+        // nothing to change. Recording mutations anyway would mark the song modified and
+        // push an undo entry that undoes nothing the user can see.
+        var env = setupEnv(semibreve(), crotchetRest());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        env.operations().flipStemDirection();
+
+        verifyNoDidChange();
     }
 
     @Test
@@ -1120,7 +1206,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
         assertThat(mutations)
             .as("exactly two modifications — one per note, none for the rest")
-            .hasSize(NOTE_COUNT_EXCLUDING_REST);
+            .hasSize(STEMMED_NOTE_COUNT);
     }
 
     @Test
