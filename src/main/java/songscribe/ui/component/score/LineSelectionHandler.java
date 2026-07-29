@@ -77,6 +77,7 @@ class LineSelectionHandler {
     LineSelectionHandler(LineComponent lc) {
         this.lc = lc;
         hitTesters = List.of(
+            this::hitTestLyric,
             context -> ElementHitTest.hit(lc, context),
             this::hitTestSlide,
             this::hitTestHairpin,
@@ -137,6 +138,9 @@ class LineSelectionHandler {
      * without a selection state, or the reverse — note-head and staff-line hit-testing,
      * which need no selection state at all, would silently stop reporting hits instead of
      * failing loudly. Whoever breaks the invariant has to revisit this guard.
+     * <p>
+     * The layout is ensured here, so every tester reads a current layout rather than a stale
+     * one.
      */
     private @Nullable HitTestContext buildContext(Point point) {
         var line = lc.getLine();
@@ -145,12 +149,39 @@ class LineSelectionHandler {
             return null;
         }
 
+        // The lyric boxes come from the layout, so the layout has to be current before the
+        // cascade reads it.
+        var ready = lc.readyLayout();
+
         return new HitTestContext(
             point,
             line,
-            lc.getLayoutResult(),
-            lc.getMiddleLineYSs()
+            ready == null ? null : ready.layoutResult(),
+            lc.getMiddleLineYSs(),
+            lc.findLyricRenderMetrics()
         );
+    }
+
+    /**
+     * Asks the layout which lyric box contains the point, and wraps the answer as a hit result.
+     * Returns null when the line has no layout or no lyric metrics yet — neither the boxes nor
+     * the row height can be known then.
+     */
+    private HitResult.@Nullable Lyric hitTestLyric(HitTestContext context) {
+        var layoutResult = context.layoutResult();
+        var lyricRenderMetrics = context.lyricRenderMetrics();
+
+        if (layoutResult == null || lyricRenderMetrics == null) {
+            return null;
+        }
+
+        var lyricHit = layoutResult.hitTestLyric(lyricRenderMetrics, context.line(), context.pointPx());
+
+        if (lyricHit == null) {
+            return null;
+        }
+
+        return new HitResult.Lyric(lyricHit.element(), lyricHit.verse());
     }
 
     /**
@@ -229,6 +260,26 @@ class LineSelectionHandler {
     }
 
     /**
+     * Hit-tests a point, in view pixels, against the lyric row alone.
+     * <p>
+     * Answers the same question as looking for a {@link HitResult.Lyric} in
+     * {@link #hitTestViewPoint}'s result — the lyric tester runs first, so nothing else in the
+     * cascade can outrank it — without running the five testers whose answers such a caller
+     * discards. {@code mouseMoved} asks this on every pixel of pointer motion, and the other
+     * testers between them walk the line's elements twice and build two throwaway lists per
+     * call.
+     */
+    HitResult.@Nullable Lyric hitTestLyricViewPoint(Point viewPoint) {
+        var context = buildContext(lc.getViewScale().toDocumentPoint(viewPoint));
+
+        if (context == null) {
+            return null;
+        }
+
+        return hitTestLyric(context);
+    }
+
+    /**
      * Returns whether the given point, in view pixels, is horizontally within the staff
      * header, regardless of its Y. Unlike {@link #isStaffLineHit}, this covers the whole
      * header column, since no element can be inserted anywhere in it.
@@ -242,15 +293,15 @@ class LineSelectionHandler {
     // Public delegation entry points
     // ======================================================================
 
-    void handlePress(MouseEvent e) {
+    void handlePress(MouseEvent e, HitResult hitResult) {
         dragging = false;
         pressHandled = false;
         dragStart.setLocation(e.getPoint());
         dragRectangle.setBounds(0, 0, 0, 0);
 
-        // Hit-test in document pixels; the drag rectangle stays in view pixels (below)
-        // because it is a pixel-space overlay rendered outside the staff-space transform.
-        pressHitResult = hitTest(lc.getViewScale().toDocumentPoint(e.getPoint()));
+        // The caller hit-tests in document pixels; the drag rectangle stays in view pixels
+        // (below) because it is a pixel-space overlay rendered outside the staff-space transform.
+        pressHitResult = hitResult;
 
         var lineSelectionState = lc.getLineSelectionState();
 
@@ -271,6 +322,8 @@ class LineSelectionHandler {
         }
 
         switch (pressHitResult) {
+            case HitResult.Lyric(var element, var verse) -> pressHandled = selectLyric(element, verse);
+
             case HitResult.ElementHead(var index) -> {
                 selectAndPlayElement(index);
                 pressHandled = true;
@@ -316,26 +369,31 @@ class LineSelectionHandler {
     }
 
     /**
-     * Selects an ending or hairpin hit by a press in EDIT mode, returning whether one was
-     * selected.
+     * Selects a lyric, ending or hairpin hit by a press in EDIT mode, returning whether one
+     * was selected.
      * <p>
      * EDIT mode otherwise routes presses to element insertion, and reaching the selection
-     * handler at all requires SELECT mode (see {@link #isSelectionActive}), so before this
-     * existed a decoration could not be selected until something else had switched modes.
-     * Selecting it in place, without leaving EDIT mode, follows the idiom already
-     * established for clicking a lyric.
+     * handler at all requires SELECT mode (see {@link #isSelectionActive}), so without this
+     * none of them could be selected until something else had switched modes.
      * <p>
      * Takes the already-computed cascade result for this press, so an element head over the
      * decoration still wins and falls through to normal EDIT-mode handling.
      * <p>
-     * Insertion must win wherever the preview is showing. A decoration is drawn above or
-     * below the staff but spans a range of staff positions, and if selecting it beat
-     * inserting, every position it covers would become unreachable for new notes — the
-     * user would have to move or delete the decoration to type there. Selecting a
+     * For a decoration, insertion must win wherever the preview is showing. A decoration is
+     * drawn above or below the staff but spans a range of staff positions, and if selecting
+     * it beat inserting, every position it covers would become unreachable for new notes —
+     * the user would have to move or delete the decoration to type there. Selecting a
      * decoration is always available in SELECT mode, so nothing is lost by yielding here,
      * whereas an unreachable insertion position has no workaround at all.
+     * <p>
+     * A lyric follows the opposite rule and wins over insertion, because the preview really
+     * can reach the lyric row: {@code mouseMoved} clears the preview over a lyric box before
+     * a press can ever arrive there. The {@link LineComponent#hasPreviewElement()} guard is
+     * therefore a fallback for a lyric rather than the rule — it only bites if a preview
+     * appears over lyric text with no mouse movement to clear it, and insertion winning is
+     * the safe answer in that case.
      */
-    boolean handleEditModeDecorationPress(HitResult result) {
+    boolean handleEditModePress(HitResult result) {
         if (MidiController.isPlaying()) {
             return false;
         }
@@ -345,6 +403,7 @@ class LineSelectionHandler {
         }
 
         var selected = switch (result) {
+            case HitResult.Lyric(var element, var verse) -> selectLyric(element, verse);
             case HitResult.Ending(var ending) -> selectEnding(ending);
             case HitResult.Hairpin(var hairpin) -> selectHairpin(hairpin);
             default -> false;
@@ -465,6 +524,21 @@ class LineSelectionHandler {
     private void prepareSelection() {
         lc.getScoreView().clearSelection();
         lc.getScoreView().getSelectionCoordinator().activateLine(lc.getLineIndex());
+    }
+
+    /**
+     * Makes the lyric on {@code element} in verse {@code verse} the sole selection.
+     * <p>
+     * A lyric selection lives on the selection coordinator rather than in this line's
+     * {@link LineSelectionState}, which clears any prior selection and activates the owning
+     * line itself, so unlike an ending or a hairpin there is no state that can be missing:
+     * this always succeeds.
+     */
+    private boolean selectLyric(StaffElement element, int verse) {
+        var scoreView = lc.getScoreView();
+        scoreView.getSelectionCoordinator().selectLyric(element, verse);
+        scoreView.selectionChanged();
+        return true;
     }
 
     /**

@@ -25,20 +25,24 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricRenderMetrics;
 
 /**
  * Inputs shared by every {@link HitTester} in a hit-test cascade.
  *
- * @param pointPx       the hit-test point in document pixels
- * @param line          the line being hit-tested
- * @param layoutResult  the line's layout result, or {@code null} if unavailable
- * @param middleLineYSs the y-coordinate of the staff's middle line, in staff-spaces
+ * @param pointPx            the hit-test point in document pixels
+ * @param line               the line being hit-tested
+ * @param layoutResult       the line's layout result, or {@code null} if unavailable
+ * @param middleLineYSs      the y-coordinate of the staff's middle line, in staff-spaces
+ * @param lyricRenderMetrics the song-wide lyric render metrics the lyric hit test needs for the
+ *                           lyric row's height, or {@code null} when unavailable
  */
 public record HitTestContext(
     Point pointPx,
     Line line,
     @Nullable LayoutResult layoutResult,
-    double middleLineYSs
+    double middleLineYSs,
+    @Nullable LyricRenderMetrics lyricRenderMetrics
 ) {
     /**
      * Copies {@code pointPx} because {@link Point} is mutable: without this, a caller that

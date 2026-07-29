@@ -48,8 +48,10 @@ import org.mockito.MockedStatic;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 import songscribe.layout.InsertionSpacingCalculator.InsertionResult;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LineSpacing;
@@ -62,6 +64,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.PasteModeManager;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -913,6 +916,319 @@ class LineComponentTest extends UnitTest {
 
                 lyricEditor.verifyNoInteractions();
             }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Click on a lyric — cascade-reported HitResult.Lyric
+    // -------------------------------------------------------------------------
+
+    /**
+     * These tests drive the real {@code mouseClicked} with the hit-test cascade reporting a
+     * lyric under the cursor, the way {@link LineSelectionHandlerTest} stubs the same tester:
+     * a mocked {@link LayoutResult#hitTestLyric} stands in for real layout geometry.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ClickOnLyric {
+
+        /** Index of the sole element on the line, which the click resolves to. */
+        private static final int LYRIC_ELEMENT_INDEX = 0;
+
+        private static final int VERSE = Lyric.FIRST_VERSE;
+
+        private ScoreView mockScoreView;
+        private Line line;
+        private StaffElement element;
+        private LayoutResult mockLayout;
+
+        @BeforeEach
+        void setUp() {
+            mockScoreView = mock(ScoreView.class);
+            when(mockScoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            when(mockScoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
+            // SELECT mode with no editor open is the state the gesture is designed for.
+            when(mockScoreView.getMode()).thenReturn(Mode.SELECT);
+            when(mockScoreView.getActiveLyricEditor()).thenReturn(null);
+            when(mockScoreView.findLyricRenderMetrics()).thenReturn(LYRIC_RENDER_METRICS);
+            lc.setScoreView(mockScoreView);
+
+            var song = new Song();
+            line = song.getLine(0);
+            element = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(element));
+            lc.song = song;
+            lc.setLine(line, 0);
+            // Inject a clean layout so the heavyweight layout engine never runs; its lyric
+            // hit test is stubbed per-test below.
+            mockLayout = mock(LayoutResult.class);
+            lc.layoutResult = mockLayout;
+            lc.layoutDirty = false;
+        }
+
+        /** Stubs the layout's lyric hit test to report {@code element}/{@code VERSE} as hit. */
+        private void stubLyricHit() {
+            when(mockLayout.hitTestLyric(any(), any(), any()))
+                .thenReturn(new LayoutResult.LyricHit(element, VERSE));
+        }
+
+        /**
+         * Runs {@code mouseClicked} with the edit-mode managers stubbed to decline the click, and
+         * hands the test the static {@link LyricEditor} stub to assert against. Unlike
+         * {@code DoubleClickLyricEditing.clickWith} this leaves the element hit test real: the
+         * lyric test runs first and consumes the click, so nothing below it is reached.
+         */
+        private void clickWith(MouseEvent event, Consumer<MockedStatic<LyricEditor>> assertions) {
+            var graceMock = mock(GraceModeManager.class);
+            var pasteMock = mock(PasteModeManager.class);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                 MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+
+                lc.mouseClicked(event);
+
+                assertions.accept(lyricEditor);
+            }
+        }
+
+        @Test
+        void testDoubleClickOnNonBlankLyricOpensTheEditorOnTheClickedElement() {
+            element.lyrics.add(new Lyric(VERSE, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+            stubLyricHit();
+
+            clickWith(
+                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
+                lyricEditor -> lyricEditor.verify(() ->
+                    LyricEditor.deselectAndOpenOn(mockScoreView, line, LYRIC_ELEMENT_INDEX)));
+        }
+
+        @Test
+        void testDoubleClickOnBlankLyricDoesNotOpenTheEditor() {
+            // A melisma carrier has no text of its own — a "blank" lyric.
+            element.lyrics.add(new Lyric(VERSE, "", Lyric.Extend.STOP, null, false));
+            stubLyricHit();
+
+            clickWith(clickEvent(DOUBLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
+        }
+
+        /**
+         * The click must be swallowed by the lyric branch rather than falling through to element
+         * insertion. This runs in EDIT mode deliberately: in SELECT mode the selection handler
+         * reports every single click as handled before {@code mouseClicked} could ever reach
+         * {@link PreviewElementManager}, so the assertion below would hold with the lyric branch
+         * deleted outright. EDIT mode is also the only mode in which an insertion preview exists
+         * at all, so it is the only mode where the bug this guards against can happen.
+         */
+        @Test
+        void testSingleClickOnLyricConsumesTheClickWithoutOpeningTheEditorOrReachingPreviewElementManager() {
+            when(mockScoreView.getMode()).thenReturn(Mode.EDIT);
+            element.lyrics.add(new Lyric(VERSE, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+            stubLyricHit();
+
+            try (var previewManager = mockStatic(PreviewElementManager.class)) {
+                clickWith(clickEvent(SINGLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
+
+                previewManager.verifyNoInteractions();
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Press during playback — the press path is gated before the cascade
+    // -------------------------------------------------------------------------
+
+    /**
+     * A press does nothing at all while the song is playing.
+     * <p>
+     * The guard reads {@code PlaybackController}, the same state the {@code DISABLE_WHEN_PLAYING}
+     * action flag resolves against, and deliberately not the sequencer-running check that the
+     * handlers further down the press path use. These tests leave that sequencer check reporting
+     * "not playing" precisely so the guard under test is the only thing that can refuse the press:
+     * with it removed, the press would fall through and select the lyric.
+     * <p>
+     * Selecting is the effect these tests watch because it is the one a unit test can observe
+     * cheaply. The guard's other job is to stop the mode switch, which programmatic action
+     * invocation let through during playback — see the comment on {@code mousePressed}.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class PressDuringPlayback {
+
+        private static final int PRESS_X_PX = 100;
+        private static final int PRESS_Y_PX = 50;
+
+        private SelectionCoordinator coordinator;
+        private StaffElement element;
+
+        @BeforeEach
+        void setUp() {
+            var mockScoreView = mock(ScoreView.class);
+            coordinator = mock(SelectionCoordinator.class);
+            when(mockScoreView.getSelectionCoordinator()).thenReturn(coordinator);
+            when(mockScoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
+            // EDIT mode: a lyric is selectable in place there, which is the effect these tests
+            // watch for.
+            when(mockScoreView.getMode()).thenReturn(Mode.EDIT);
+            when(mockScoreView.findLyricRenderMetrics()).thenReturn(LYRIC_RENDER_METRICS);
+            lc.setScoreView(mockScoreView);
+
+            var song = new Song();
+            var line = song.getLine(0);
+            element = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(element));
+            lc.song = song;
+            lc.setLine(line, 0);
+
+            // Inject a clean layout reporting the lyric under the pointer, so the cascade — if it
+            // is reached at all — resolves the press to that lyric.
+            var mockLayout = mock(LayoutResult.class);
+            when(mockLayout.hitTestLyric(any(), any(), any()))
+                .thenReturn(new LayoutResult.LyricHit(element, Lyric.FIRST_VERSE));
+            lc.layoutResult = mockLayout;
+            lc.layoutDirty = false;
+        }
+
+        /** Runs the real {@code mousePressed} with playback reporting {@code playing}. */
+        private void pressWhilePlaying(boolean playing) {
+            var graceMock = mock(GraceModeManager.class);
+            var pasteMock = mock(PasteModeManager.class);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                 MockedStatic<PreviewElementManager> preview = mockStatic(PreviewElementManager.class);
+                 MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class)) {
+
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+                playback.when(PlaybackController::isPlaying).thenReturn(playing);
+
+                lc.mousePressed(new MouseEvent(
+                    lc, MouseEvent.MOUSE_PRESSED, 0L, NO_MODIFIERS,
+                    PRESS_X_PX, PRESS_Y_PX, PRESS_X_PX, PRESS_Y_PX,
+                    SINGLE_CLICK, false, MouseEvent.BUTTON1));
+            }
+        }
+
+        @Test
+        void testPressOnALyricWhilePlayingSelectsNothing() {
+            pressWhilePlaying(true);
+
+            verify(coordinator, never()).selectLyric(any(), anyInt());
+        }
+
+        /**
+         * The control for the test above: the same press with playback stopped does select, so a
+         * pass there cannot come from the fixture failing to resolve the lyric in the first place.
+         */
+        @Test
+        void testTheSamePressWithPlaybackStoppedSelectsTheLyric() {
+            pressWhilePlaying(false);
+
+            verify(coordinator).selectLyric(element, Lyric.FIRST_VERSE);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Mouse move over a lyric — insertion preview suppression
+    // -------------------------------------------------------------------------
+
+    /**
+     * The rule that makes a lyric outrank the insertion preview: in EDIT mode, moving the pointer
+     * over lyric text clears the preview instead of tracking it, so the staff positions a lyric box
+     * covers cannot be clicked to insert a note. Endings and hairpins take the opposite deal — see
+     * {@code LineSelectionHandler.handleEditModePress}.
+     * <p>
+     * Drives the real {@code mouseMoved} with the layout's lyric hit test stubbed; the real lyric
+     * geometry behind it is covered by {@code LayoutResultTest}.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MoveOverLyric {
+
+        /**
+         * Pointer X, in view pixels, well past the clef/key-signature header. The header is tested
+         * before the lyric row and clears the preview on its own, so a point inside it would make
+         * the lyric test below pass for the wrong reason.
+         * {@link #testMoveWithNoLyricUnderThePointerTracksTheMouse} is what rules that out: it
+         * moves to this same X and expects the preview to be tracked, which only happens outside
+         * the header.
+         */
+        private static final int X_PAST_HEADER_PX = 1000;
+
+        private static final int Y_PX = 50;
+
+        /** A mouse move carries no buttons and no click count. */
+        private static final int NO_CLICKS = 0;
+
+        private StaffElement element;
+        private LayoutResult mockLayout;
+
+        @BeforeEach
+        void setUp() {
+            var mockScoreView = mock(ScoreView.class);
+            when(mockScoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            when(mockScoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
+            when(mockScoreView.getMode()).thenReturn(Mode.EDIT);
+            when(mockScoreView.findLyricRenderMetrics()).thenReturn(LYRIC_RENDER_METRICS);
+            lc.setScoreView(mockScoreView);
+
+            var song = new Song();
+            var line = song.getLine(0);
+            element = ElementType.CROTCHET.newInstance();
+            song.withoutMutationTracking(() -> line.addElement(element));
+            lc.song = song;
+            lc.setLine(line, 0);
+            // Inject a clean layout so the heavyweight layout engine never runs; its lyric hit
+            // test is stubbed per-test below.
+            mockLayout = mock(LayoutResult.class);
+            lc.layoutResult = mockLayout;
+            lc.layoutDirty = false;
+        }
+
+        /**
+         * Runs the real {@code mouseMoved} with the two edit-mode managers stubbed to decline the
+         * event, and hands the test the {@link PreviewElementManager} stub to assert against.
+         */
+        private void moveWith(Consumer<MockedStatic<PreviewElementManager>> assertions) {
+            var graceMock = mock(GraceModeManager.class);
+            var pasteMock = mock(PasteModeManager.class);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                 MockedStatic<PreviewElementManager> preview = mockStatic(PreviewElementManager.class)) {
+
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+
+                lc.mouseMoved(new MouseEvent(
+                    lc, MouseEvent.MOUSE_MOVED, 0L, NO_MODIFIERS,
+                    X_PAST_HEADER_PX, Y_PX, X_PAST_HEADER_PX, Y_PX,
+                    NO_CLICKS, false, MouseEvent.NOBUTTON));
+
+                assertions.accept(preview);
+            }
+        }
+
+        @Test
+        void testMoveOverALyricClearsThePreviewInsteadOfTrackingTheMouse() {
+            when(mockLayout.hitTestLyric(any(), any(), any()))
+                .thenReturn(new LayoutResult.LyricHit(element, Lyric.FIRST_VERSE));
+
+            moveWith(preview -> {
+                preview.verify(PreviewElementManager::clearPreviewElement);
+                preview.verify(() -> PreviewElementManager.trackMouse(any(), any()), never());
+            });
+        }
+
+        @Test
+        void testMoveWithNoLyricUnderThePointerTracksTheMouse() {
+            when(mockLayout.hitTestLyric(any(), any(), any())).thenReturn(null);
+
+            moveWith(preview -> {
+                preview.verify(() -> PreviewElementManager.trackMouse(any(), any()));
+                preview.verify(PreviewElementManager::clearPreviewElement, never());
+            });
         }
     }
 

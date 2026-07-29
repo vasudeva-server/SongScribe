@@ -47,6 +47,7 @@ import songscribe.engraving.Staff;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.LineInvariants;
 import songscribe.util.GraphicsState;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.error.RuntimeError;
 
@@ -717,12 +718,20 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // No preview anywhere in the clef/key signature column or over the lyrics, since a
-        // click there selects rather than inserting an element. The header test is two
-        // comparisons, so it runs before the lyric test, which loops over every element in
-        // the line.
+        // No preview anywhere in the clef/key signature column or over the lyrics, since a click
+        // there selects rather than inserting an element. The header test is two comparisons, so it
+        // runs before the lyric test, which walks the line's lyric boxes. This fires on every pixel
+        // of pointer motion, so it asks only about lyrics rather than running the whole cascade.
+        //
+        // This is what makes a lyric outrank the preview rather than the other way round. The lyric
+        // row is not out of the preview's reach: the row sits just below the line's laid-out content,
+        // so on a line whose content stays high, a preview for a low note would be drawn right on top
+        // of the lyric text. Clearing it here means the staff positions a lyric box covers cannot be
+        // clicked to insert a note — the accepted price of leaving lyric text clickable wherever it
+        // is drawn. Note that endings and hairpins take the opposite deal (see handleEditModePress).
         if (getScoreView().getMode() == Mode.EDIT
-            && (selectionHandler.isWithinHeaderX(e.getPoint()) || hitTestLyric(e.getPoint()) != null)) {
+            && (selectionHandler.isWithinHeaderX(e.getPoint())
+                || selectionHandler.hitTestLyricViewPoint(e.getPoint()) != null)) {
             clearPreviewElement();
             return;
         }
@@ -771,17 +780,22 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        var lyricHit = hitTestLyric(e.getPoint());
+        // The same lyric test the press path's cascade runs first, so both agree on which
+        // syllable is under the pointer. Only the lyric answer matters here, so the rest of the
+        // cascade is skipped.
+        var lyricHit = selectionHandler.hitTestLyricViewPoint(e.getPoint());
 
         if (lyricHit != null) {
+            // Consumed either way: the press already selected the lyric, and nothing below this
+            // should insert an element or re-resolve the click to a note.
             if (e.getClickCount() == DOUBLE_CLICK_COUNT
                 && line != null
                 && getScoreView().getActiveLyricEditor() == null) {
-                var lyric = lyricHit.element().getLyricForVerse(lyricHit.verse());
+                var element = lyricHit.element();
+                var lyric = element.getLyricForVerse(lyricHit.verse());
 
                 if (lyric != null && !lyric.text().isBlank()) {
-                    LyricEditor.deselectAndOpenOn(
-                        getScoreView(), line, line.getElementIndex(lyricHit.element()));
+                    LyricEditor.deselectAndOpenOn(getScoreView(), line, line.getElementIndex(element));
                 }
             }
 
@@ -870,55 +884,63 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        // In EDIT mode, alt+click anywhere and a plain click on the staff lines in the
-        // clef/key signature area both switch to SELECT mode, then fall through to normal
-        // handling so the rest of this method acts as if we had been in SELECT mode all
-        // along.
+        // A press does nothing at all while the song is playing.
         //
-        // The cascade walks every element in the line, so it runs at most once per press:
-        // pressHit is shared with the ending test further down. Alt+click never needs it.
-        HitResult pressHit = null;
-
-        if (scoreView != null && scoreView.getMode() == Mode.EDIT) {
-            if (e.isAltDown()) {
-                Actions.SELECT_MODE_ACTION.perform(this);
-            } else {
-                pressHit = selectionHandler.hitTestViewPoint(e.getPoint());
-
-                if (pressHit instanceof HitResult.StaffLine) {
-                    Actions.SELECT_MODE_ACTION.perform(this);
-                }
-            }
-        }
-
-        var lyricHit = hitTestLyric(e.getPoint());
-
-        if (lyricHit != null) {
-            getScoreView().getSelectionCoordinator().selectLyric(lyricHit.element(), lyricHit.verse());
-            getScoreView().selectionChanged();
-            repaint();
+        // This is a guard, not only an optimization: the mode switch below was reached during
+        // playback and really did switch modes. Invoking an action programmatically does not
+        // consult its enabled state, so DISABLE_WHEN_PLAYING on the mode actions — which stops the
+        // menu item, the keyboard shortcut and the toolbar button — did not stop this call. A
+        // staff-line press in the header, or any alt+click, therefore flipped EDIT to SELECT
+        // mid-playback. Nothing was selected, because isSelectionActive refuses while playing, so
+        // the only symptom was the mode changing on its own.
+        //
+        // Everything else below already refused: the EDIT-mode selection path, the pitch-drag
+        // handler and the selection handler each check playback themselves. Returning here also
+        // keeps the cascade — which walks every element in the line — from running for an answer
+        // none of them will read.
+        //
+        // Read from PlaybackController rather than the sequencer, since this stands in for
+        // DISABLE_WHEN_PLAYING and that flag resolves against this same state. The grace-mode and
+        // paste-mode guards stay above it so their behavior is untouched.
+        if (PlaybackController.isPlaying()) {
             return;
         }
 
-        // An ending or hairpin is selectable in EDIT mode too, in place and without switching
-        // modes, the same way a lyric is. A non-null pressHit means we were in EDIT mode
-        // without alt held; the mode is re-checked because a staff-line hit above may have
-        // just switched us to SELECT, where the selection handler below handles decorations
-        // along with everything else.
-        if (pressHit != null
-            && scoreView != null
+        // In EDIT mode, alt+click anywhere and a plain click on the staff lines in the clef/key
+        // signature area both switch to SELECT mode, then fall through to normal handling so the
+        // rest of this method acts as if we had been in SELECT mode all along.
+        //
+        // The cascade walks every element in the line, so it runs exactly once per press: this one
+        // result feeds the mode switch, the EDIT-mode selection path, the pitch-drag handler and
+        // the press dispatch, all below. This is the only handler that needs the whole cascade —
+        // mouseMoved and mouseClicked ask about lyrics alone.
+        var pressHit = selectionHandler.hitTestViewPoint(e.getPoint());
+
+        if (scoreView != null
             && scoreView.getMode() == Mode.EDIT
-            && selectionHandler.handleEditModeDecorationPress(pressHit)) {
+            && (e.isAltDown() || pressHit instanceof HitResult.StaffLine)) {
+            Actions.SELECT_MODE_ACTION.perform(this);
+        }
+
+        // A lyric, ending or hairpin is selectable in EDIT mode too, in place and without switching
+        // modes. The mode is re-checked because an alt+click or a staff-line hit above may have just
+        // switched us to SELECT, where the selection handler below handles all of them along with
+        // everything else.
+        if (scoreView != null
+            && scoreView.getMode() == Mode.EDIT
+            && selectionHandler.handleEditModePress(pressHit)) {
             return;
         }
 
-        // In SELECT mode, note head press starts a pitch drag
-        if (noteDragHandler.handlePress(e)) {
+        // In SELECT mode, a note head press starts a pitch drag. The drag handler reads this same
+        // cascade result rather than hit-testing again, so a lyric that outranked an element
+        // rectangle reaching into the lyric row can never be mistaken for a note to drag.
+        if (noteDragHandler.handlePress(e, pressHit)) {
             return;
         }
 
         if (selectionHandler.isSelectionActive(e)) {
-            selectionHandler.handlePress(e);
+            selectionHandler.handlePress(e, pressHit);
         }
     }
 
@@ -974,6 +996,18 @@ public class LineComponent extends ScoreComponent
      */
     public LyricRenderMetrics getLyricRenderMetrics() {
         return getScoreView().getLyricRenderMetrics();
+    }
+
+    /**
+     * Returns the lyric render metrics this line is laid out with, or null when the view has not
+     * been populated with them yet.
+     * <p>
+     * Unlike {@link #getLyricRenderMetrics()}, which exits the application when they are missing,
+     * this reports their absence. Hit testing uses it so that a hit test somehow reaching a line
+     * before the first layout declines to find a lyric rather than taking the app down.
+     */
+    @Nullable LyricRenderMetrics findLyricRenderMetrics() {
+        return getScoreView().findLyricRenderMetrics();
     }
 
     private GraceModeManager getGraceModeManager() {
@@ -1060,19 +1094,6 @@ public class LineComponent extends ScoreComponent
      */
     @Nullable SelectionProvider getSelectionProvider() {
         return selectionProvider;
-    }
-
-    private LayoutResult.@Nullable LyricHit hitTestLyric(Point pointPx) {
-        var ready = readyLayout();
-
-        if (ready == null) {
-            return null;
-        }
-
-        // Convert the view-pixel event point to document pixels once, at this input
-        // boundary, so the layout hit-test operates in the zoom-independent document space.
-        var pointDocPx = getViewScale().toDocumentPoint(pointPx);
-        return ready.layoutResult().hitTestLyric(getScoreView().getLyricRenderMetrics(), ready.line(), pointDocPx);
     }
 
     /** Package-private for testing. */

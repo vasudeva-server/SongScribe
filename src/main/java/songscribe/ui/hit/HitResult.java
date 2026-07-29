@@ -24,6 +24,8 @@ package songscribe.ui.hit;
  * Result of a hit test against the selectable elements of a single staff line.
  */
 public sealed interface HitResult {
+    record Lyric(songscribe.dom.StaffElement element, int verse) implements HitResult {}
+
     record ElementHead(int index) implements HitResult {}
 
     record Slide(int elementIndex) implements HitResult {}

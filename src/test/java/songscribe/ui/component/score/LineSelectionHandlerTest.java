@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -53,6 +54,7 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.layout.Ending;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
@@ -159,6 +161,21 @@ class LineSelectionHandlerTest extends UnitTest {
             .thenReturn(hairpin);
     }
 
+    /** Verse number used by lyric hit-test fixtures, chosen to not be verse 1. */
+    private static final int LYRIC_VERSE = 2;
+
+    /**
+     * Stubs the layout the lyric tester reads to report {@code lyricHit} for {@code line}
+     * (or no hit when null), and supplies non-null lyric render metrics so the tester runs
+     * instead of declining for lack of them.
+     */
+    private void stubLyricHit(Line line, LayoutResult.@Nullable LyricHit lyricHit) {
+        var mockLayout = mock(LayoutResult.class);
+        when(mockLayout.hitTestLyric(any(), any(), any())).thenReturn(lyricHit);
+        when(lc.readyLayout()).thenReturn(new LineComponent.ReadyLayout(line, mockLayout));
+        when(lc.findLyricRenderMetrics()).thenReturn(mock(LyricRenderMetrics.class));
+    }
+
     /**
      * Registers a two-note line and its selection state on the component, which
      * {@code buildContext} requires before any tester runs.
@@ -211,6 +228,8 @@ class LineSelectionHandlerTest extends UnitTest {
         // Y far from the middle line, so the staff-line tester cannot hit.
         private static final int Y_OUTSIDE_RADIUS = 1000;
 
+        private Line line;
+
         @BeforeEach
         void configureCommonStubs() {
             // Identity scale so px coordinates in Point arguments equal ss in the code.
@@ -218,7 +237,7 @@ class LineSelectionHandlerTest extends UnitTest {
                 .thenAnswer(inv -> inv.getArgument(0));
 
             when(lc.getMiddleLineYSs()).thenReturn(MIDDLE_LINE_Y_SS);
-            givenLine();
+            line = givenLine();
         }
 
         @Test
@@ -312,6 +331,72 @@ class LineSelectionHandlerTest extends UnitTest {
             var result = handler.hitTest(new Point(0, (int) MIDDLE_LINE_Y_SS));
 
             assertThat(result).isInstanceOf(HitResult.Ending.class);
+        }
+
+        @Test
+        void testPointOnLyricReturnsLyricResult() {
+            var element = line.getElement(0);
+            stubLyricHit(line, new LayoutResult.LyricHit(element, LYRIC_VERSE));
+
+            var result = handler.hitTest(new Point(0, 0));
+
+            assertThat(result).isEqualTo(new HitResult.Lyric(element, LYRIC_VERSE));
+        }
+
+        // The cascade checks the lyric tester before the element-head tester, so a point
+        // hitting both resolves to the lyric — this documents the deliberate priority
+        // (see LineSelectionHandler.handleEditModePress for why a lyric outranks insertion).
+        @Test
+        void testPointAtBothLyricAndElementHeadReturnsLyric() {
+            var element = line.getElement(0);
+            stubLyricHit(line, new LayoutResult.LyricHit(element, LYRIC_VERSE));
+            elementHitTestMock.when(() -> ElementHitTest.hit(any(), any()))
+                .thenReturn(new HitResult.ElementHead(0));
+
+            var result = handler.hitTest(new Point(0, 0));
+
+            assertThat(result).isEqualTo(new HitResult.Lyric(element, LYRIC_VERSE));
+        }
+
+        // The ordinary case in real use: the layout and the lyric metrics are both there, and the
+        // layout simply reports no lyric box under the point. Without this the lyric tester is
+        // only ever exercised when it succeeds, so a tester that answered "lyric" for every point
+        // would pass the rest of the suite.
+        @Test
+        void testPointWithNoLyricUnderItFallsThroughTheLyricTester() {
+            stubLyricHit(line, null);
+
+            var result = handler.hitTest(new Point(0, Y_OUTSIDE_RADIUS));
+
+            assertThat(result).isInstanceOf(HitResult.Nothing.class);
+        }
+
+        // buildContext supplies a null layoutResult when the component has no ready layout;
+        // the lyric tester must decline rather than dereference it.
+        @Test
+        void testNullLayoutResultLyricTesterDeclinesRatherThanThrows() {
+            // lc.readyLayout() defaults to null (unstubbed), so layoutResult() is null.
+            when(lc.findLyricRenderMetrics()).thenReturn(mock(LyricRenderMetrics.class));
+
+            var result = handler.hitTest(new Point(0, 0));
+
+            assertThat(result).isInstanceOf(HitResult.Nothing.class);
+        }
+
+        // A ready layout with no lyric metrics yet must also decline rather than throw, even
+        // though the layout itself would report a hit if asked.
+        @Test
+        void testNullLyricRenderMetricsLyricTesterDeclinesRatherThanThrows() {
+            var element = line.getElement(0);
+            var mockLayout = mock(LayoutResult.class);
+            when(mockLayout.hitTestLyric(any(), any(), any()))
+                .thenReturn(new LayoutResult.LyricHit(element, LYRIC_VERSE));
+            when(lc.readyLayout()).thenReturn(new LineComponent.ReadyLayout(line, mockLayout));
+            // lc.findLyricRenderMetrics() defaults to null (unstubbed).
+
+            var result = handler.hitTest(new Point(0, 0));
+
+            assertThat(result).isInstanceOf(HitResult.Nothing.class);
         }
 
         /**
@@ -517,7 +602,7 @@ class LineSelectionHandlerTest extends UnitTest {
 
             // Press at (0, PRESS_Y_OUTSIDE_RADIUS=0): |0 - MIDDLE_LINE_Y_SS(10)| = 10 > 2.0 →
             // hitTest → Nothing → pressHandled = false → handleDrag will proceed.
-            handler.handlePress(pressEvent(0, PRESS_Y_OUTSIDE_RADIUS));
+            pressAt(pressEvent(0, PRESS_Y_OUTSIDE_RADIUS));
 
             // Drag to (30, 30): dragStart=(0,0), drag rect = [0, 0, 30, 30].
             // Element 0 at X=10, height rect from middleLineY+topOffset to +height:
@@ -568,7 +653,7 @@ class LineSelectionHandlerTest extends UnitTest {
             var mockCoordinator = mock(SelectionCoordinator.class);
             when(mockScoreView.getSelectionCoordinator()).thenReturn(mockCoordinator);
 
-            handler.handlePress(pressEvent(0, PRESS_Y_OUTSIDE_RADIUS));
+            pressAt(pressEvent(0, PRESS_Y_OUTSIDE_RADIUS));
             handler.handleDrag(dragEvent(DRAG_END_X, DRAG_END_Y));
 
             // Both elements within drag rect → selection spans from 0 to 1
@@ -605,7 +690,7 @@ class LineSelectionHandlerTest extends UnitTest {
         var ending = newEnding();
         stubEndingHit(ending);
 
-        handler.handlePress(pressEvent(0, 0));
+        pressAt(pressEvent(0, 0));
 
         assertThat(lineSelState.isDecorationSelected(ending))
             .as("ending is selected after pressing on it")
@@ -639,7 +724,7 @@ class LineSelectionHandlerTest extends UnitTest {
         var ending = newEnding();
         stubEndingHit(ending);
 
-        handler.handlePress(pressEvent(0, 0));
+        pressAt(pressEvent(0, 0));
         handler.handleDrag(dragEvent(DRAG_TARGET_X, DRAG_TARGET_Y));
 
         assertThat(lineSelState.isDecorationSelected(ending))
@@ -677,7 +762,7 @@ class LineSelectionHandlerTest extends UnitTest {
         stubSlideHit(1);
 
         try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
-            handler.handlePress(pressEvent(0, 0));
+            pressAt(pressEvent(0, 0));
             handler.handleDrag(dragEvent(DRAG_TARGET_X, DRAG_TARGET_Y));
 
             optionDialogsMock.verify(() -> OptionDialogs.showWarningMessage(
@@ -693,26 +778,80 @@ class LineSelectionHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // handleEditModeDecorationPress
+    // handlePress — HitResult.Lyric arm
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testPressOnLyricSelectsItAndNotifiesScoreView() {
+        var line = givenLine();
+        when(lc.getLineIndex()).thenReturn(0);
+        var mockCoordinator = mock(SelectionCoordinator.class);
+        when(mockScoreView.getSelectionCoordinator()).thenReturn(mockCoordinator);
+
+        scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble()))
+            .thenAnswer(inv -> inv.getArgument(0));
+
+        var element = line.getElement(0);
+        stubLyricHit(line, new LayoutResult.LyricHit(element, LYRIC_VERSE));
+
+        pressAt(pressEvent(0, 0));
+
+        verify(mockCoordinator).selectLyric(element, LYRIC_VERSE);
+        verify(mockScoreView).selectionChanged();
+    }
+
+    /**
+     * A press that selects a lyric must be marked handled, so a rubber-band drag does not
+     * start and immediately replace the lyric selection.
+     */
+    @Test
+    void testPressOnLyricSuppressesRubberBandDrag() {
+        var line = givenLine();
+        when(lc.getLineIndex()).thenReturn(0);
+        when(lc.getWidth()).thenReturn(1000);
+        when(lc.getHeight()).thenReturn(1000);
+        when(mockScoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+
+        scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble()))
+            .thenAnswer(inv -> inv.getArgument(0));
+
+        var element = line.getElement(0);
+        stubLyricHit(line, new LayoutResult.LyricHit(element, LYRIC_VERSE));
+
+        pressAt(pressEvent(0, 0));
+        handler.handleDrag(dragEvent(DRAG_TARGET_X, DRAG_TARGET_Y));
+
+        assertThat(handler.isDragging())
+            .as("no rubber-band drag started after a press on a lyric")
+            .isFalse();
+    }
+
+    // -------------------------------------------------------------------------
+    // handleEditModePress
     // -------------------------------------------------------------------------
 
     /**
-     * The EDIT-mode entry point that lets a decoration be selected without first switching to
-     * SELECT mode. The mode check itself lives in {@code LineComponent.mousePressed}; this
-     * class only decides whether the press landed on a decoration.
+     * The EDIT-mode entry point that lets a lyric, ending or hairpin be selected without
+     * first switching to SELECT mode. The mode check itself lives in
+     * {@code LineComponent.mousePressed}; this class only decides whether the press landed
+     * on one of them.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class HandleEditModeDecorationPress {
+    class HandleEditModePress {
 
         private LineSelectionState lineSelectionState;
+        private SelectionCoordinator coordinator;
+        private Line line;
 
         @BeforeEach
         void configureCommonStubs() {
-            lineSelectionState = new LineSelectionState(givenLine());
+            line = givenLine();
+            lineSelectionState = new LineSelectionState(line);
             when(lc.getLineSelectionState()).thenReturn(lineSelectionState);
             when(lc.getLineIndex()).thenReturn(0);
-            when(mockScoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            coordinator = mock(SelectionCoordinator.class);
+            when(mockScoreView.getSelectionCoordinator()).thenReturn(coordinator);
             scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble()))
                 .thenAnswer(inv -> inv.getArgument(0));
         }
@@ -722,7 +861,7 @@ class LineSelectionHandlerTest extends UnitTest {
          * under test, the same way {@code LineComponent.mousePressed} does.
          */
         private boolean pressAtOrigin() {
-            return handler.handleEditModeDecorationPress(handler.hitTestViewPoint(new Point(0, 0)));
+            return handler.handleEditModePress(handler.hitTestViewPoint(new Point(0, 0)));
         }
 
         @Test
@@ -739,6 +878,61 @@ class LineSelectionHandlerTest extends UnitTest {
                 .isTrue();
             verify(mockScoreView).selectionChanged();
             verify(lc).repaint();
+        }
+
+        @Test
+        void testPressOnLyricSelectsItAndReportsHandled() {
+            var element = line.getElement(0);
+            stubLyricHit(line, new LayoutResult.LyricHit(element, LYRIC_VERSE));
+
+            assertThat(pressAtOrigin())
+                .as("press on a lyric is handled")
+                .isTrue();
+
+            verify(coordinator).selectLyric(element, LYRIC_VERSE);
+            verify(mockScoreView).selectionChanged();
+            verify(lc).repaint();
+        }
+
+        /**
+         * Selecting a lyric mid-playback would move the selection out from under the
+         * playing sequence, so the press is refused outright.
+         */
+        @Test
+        void testPressOnLyricDuringPlaybackIsNotHandled() {
+            var element = line.getElement(0);
+            stubLyricHit(line, new LayoutResult.LyricHit(element, LYRIC_VERSE));
+
+            try (var midiMock = mockStatic(MidiController.class)) {
+                midiMock.when(MidiController::isPlaying).thenReturn(true);
+
+                assertThat(pressAtOrigin())
+                    .as("press on a lyric is refused while MIDI playback is running")
+                    .isFalse();
+            }
+
+            verify(coordinator, never()).selectLyric(any(), anyInt());
+            verify(mockScoreView, never()).selectionChanged();
+        }
+
+        /**
+         * Unlike a decoration, a lyric wins over the insertion preview (see
+         * {@link LineSelectionHandler#handleEditModePress}) — but the preview can still reach
+         * the lyric row when the mouse never moved to clear it, and this fallback guard is
+         * what refuses the press in that case.
+         */
+        @Test
+        void testPressOnLyricWithPreviewElementShowingIsNotHandled() {
+            var element = line.getElement(0);
+            stubLyricHit(line, new LayoutResult.LyricHit(element, LYRIC_VERSE));
+            when(lc.hasPreviewElement()).thenReturn(true);
+
+            assertThat(pressAtOrigin())
+                .as("press is left to the insertion preview")
+                .isFalse();
+
+            verify(coordinator, never()).selectLyric(any(), anyInt());
+            verify(mockScoreView, never()).selectionChanged();
         }
 
         /**
@@ -845,14 +1039,14 @@ class LineSelectionHandlerTest extends UnitTest {
         }
 
         /**
-         * Only endings and hairpins are decorations. Feeding every other {@link HitResult}
-         * variant in directly — rather than driving them through the cascade — keeps this
-         * exhaustive: adding a variant to the sealed interface without deciding what this
-         * method should do with it will not slip through unnoticed.
+         * Only lyrics, endings and hairpins are handled here. Feeding every other
+         * {@link HitResult} variant in directly — rather than driving them through the
+         * cascade — keeps this exhaustive: adding a variant to the sealed interface without
+         * deciding what this method should do with it will not slip through unnoticed.
          */
         @Test
-        void testEveryNonDecorationHitResultIsNotHandled() {
-            var nonDecorationResults = List.of(
+        void testEveryUnhandledHitResultIsNotHandled() {
+            var unhandledResults = List.of(
                 new HitResult.ElementHead(0),
                 new HitResult.Slide(0),
                 new HitResult.GraceGlissando(),
@@ -860,9 +1054,9 @@ class LineSelectionHandlerTest extends UnitTest {
                 new HitResult.Nothing()
             );
 
-            for (var result : nonDecorationResults) {
-                assertThat(handler.handleEditModeDecorationPress(result))
-                    .as("%s is not a decoration press", result)
+            for (var result : unhandledResults) {
+                assertThat(handler.handleEditModePress(result))
+                    .as("%s is not handled by handleEditModePress", result)
                     .isFalse();
             }
 
@@ -1010,6 +1204,11 @@ class LineSelectionHandlerTest extends UnitTest {
         // Use the 10-arg constructor that sets xAbs/yAbs (screen coords) so
         // MouseEvent.getXOnScreen() / getYOnScreen() do not NPE in handler code.
         return new MouseEvent(lc, MouseEvent.MOUSE_PRESSED, 0L, 0, x, y, x, y, 1, false, MouseEvent.BUTTON1);
+    }
+
+    /** Presses at the event's point with the cascade result the production caller supplies. */
+    private void pressAt(MouseEvent event) {
+        handler.handlePress(event, handler.hitTestViewPoint(event.getPoint()));
     }
 
     private MouseEvent dragEvent(int x, int y) {

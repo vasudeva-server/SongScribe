@@ -57,6 +57,7 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.ui.Mode;
@@ -65,6 +66,7 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.ScaleContext;
 import songscribe.engraving.Staff;
+import songscribe.ui.hit.HitResult;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.LineSelectionState;
@@ -73,7 +75,6 @@ class NoteDragHandlerTest extends UnitTest {
 
     // Static mocks
     private MockedStatic<EditModeManager> editModeMgrMock;
-    private MockedStatic<ElementHitTest> hitTestMock;
     private MockedStatic<PreviewElementManager> previewMgrMock;
     private MockedStatic<MessageCenter> messageCenterMock;
     private MockedStatic<MidiController> midiControllerMock;
@@ -101,7 +102,6 @@ class NoteDragHandlerTest extends UnitTest {
     @BeforeEach
     void setUp() {
         editModeMgrMock = mockStatic(EditModeManager.class);
-        hitTestMock = mockStatic(ElementHitTest.class);
         previewMgrMock = mockStatic(PreviewElementManager.class);
         messageCenterMock = mockStatic(MessageCenter.class);
         midiControllerMock = mockStatic(MidiController.class);
@@ -134,7 +134,6 @@ class NoteDragHandlerTest extends UnitTest {
         midiControllerMock.close();
         messageCenterMock.close();
         previewMgrMock.close();
-        hitTestMock.close();
         editModeMgrMock.close();
     }
 
@@ -595,12 +594,20 @@ class NoteDragHandlerTest extends UnitTest {
             );
         }
 
+        /**
+         * The cascade result a press on the line's first note produces, so each guard test below
+         * proves its own guard refused rather than the press having missed every element.
+         */
+        private HitResult noteHeadHit() {
+            return new HitResult.ElementHead(0);
+        }
+
         @Test
         void testNotSelectModeReturnsFalse() {
             var mockScore = lc.getScoreView();
             when(mockScore.getMode()).thenReturn(Mode.EDIT);
 
-            var result = handler.handlePress(pressEvent());
+            var result = handler.handlePress(pressEvent(), noteHeadHit());
 
             assertThat(result).isFalse();
         }
@@ -609,23 +616,35 @@ class NoteDragHandlerTest extends UnitTest {
         void testMidiPlayingReturnsFalse() {
             midiControllerMock.when(MidiController::isPlaying).thenReturn(true);
 
-            var result = handler.handlePress(pressEvent());
+            var result = handler.handlePress(pressEvent(), noteHeadHit());
 
             assertThat(result).isFalse();
         }
 
         @Test
         void testShiftDownReturnsFalse() {
-            var result = handler.handlePress(shiftPressEvent());
+            var result = handler.handlePress(shiftPressEvent(), noteHeadHit());
 
             assertThat(result).isFalse();
         }
 
         @Test
         void testHitMissReturnsFalse() {
-            hitTestMock.when(() -> ElementHitTest.hitTestElement(any(), any())).thenReturn(-1);
+            var result = handler.handlePress(pressEvent(), new HitResult.Nothing());
 
-            var result = handler.handlePress(pressEvent());
+            assertThat(result).isFalse();
+        }
+
+        /**
+         * A lyric outranks a note head in the hit-test cascade, so lyric text drawn over an
+         * element's rectangle arrives here as a lyric. Dragging it would change the pitch of a
+         * note the user was aiming past.
+         */
+        @Test
+        void testLyricHitReturnsFalse() {
+            var lyricHit = new HitResult.Lyric(ElementType.CROTCHET.newInstance(), Lyric.FIRST_VERSE);
+
+            var result = handler.handlePress(pressEvent(), lyricHit);
 
             assertThat(result).isFalse();
         }
@@ -670,12 +689,11 @@ class NoteDragHandlerTest extends UnitTest {
     }
 
     /**
-     * Mocks the hit test to return the given index and calls handlePress. Also records the
-     * pressed note's staff position so {@link #dragToPosition} can compute the right delta.
+     * Presses on the note at {@code hitIndex}, supplying the cascade result the production
+     * caller would pass. Also records the pressed note's staff position so
+     * {@link #dragToPosition} can compute the right delta.
      */
     private void pressOnNote(int hitIndex) {
-        hitTestMock.when(() -> ElementHitTest.hitTestElement(any(), any())).thenReturn(hitIndex);
-
         var line = lc.getLine();
 
         if (line != null) {
@@ -683,7 +701,7 @@ class NoteDragHandlerTest extends UnitTest {
         }
 
         var event = mouseEvent(lc, MouseEvent.MOUSE_PRESSED, MOUSE_X, PRESS_SCREEN_Y, MouseEvent.BUTTON1);
-        handler.handlePress(event);
+        handler.handlePress(event, new HitResult.ElementHead(hitIndex));
     }
 
     /**

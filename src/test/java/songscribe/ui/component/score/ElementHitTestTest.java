@@ -192,7 +192,7 @@ class ElementHitTestTest extends UnitTest {
             var centerXSs = type.getElementWidthSs() / 2;
             var centerYSs = MIDDLE_LINE_Y_SS + type.getNoteheadTopOffsetSs() + type.getFullElementHeightSs() / 2;
             var pointPx = new Point((int) centerXSs, (int) centerYSs);
-            var context = new HitTestContext(pointPx, line, null, MIDDLE_LINE_Y_SS);
+            var context = new HitTestContext(pointPx, line, null, MIDDLE_LINE_Y_SS, null);
 
             var result = ElementHitTest.hit(lc, context);
 
@@ -208,7 +208,7 @@ class ElementHitTestTest extends UnitTest {
             var lc = lcFor(line);
 
             var pointPx = new Point(1000, (int) MIDDLE_LINE_Y_SS);
-            var context = new HitTestContext(pointPx, line, null, MIDDLE_LINE_Y_SS);
+            var context = new HitTestContext(pointPx, line, null, MIDDLE_LINE_Y_SS, null);
 
             var result = ElementHitTest.hit(lc, context);
 

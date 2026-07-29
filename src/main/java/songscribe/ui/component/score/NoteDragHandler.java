@@ -36,6 +36,7 @@ import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.ScaleContext;
 import songscribe.engraving.Staff;
+import songscribe.ui.hit.HitResult;
 import songscribe.ui.playback.MidiController;
 
 /**
@@ -94,8 +95,14 @@ class NoteDragHandler {
     /**
      * Handles a mouse press. Returns {@code true} if a pitch-drag was initiated
      * and the event should not be processed further.
+     * <p>
+     * Takes the cascade result the caller already computed for this press rather than
+     * hit-testing the point again. Reading the cascade is also what keeps a lyric out of this
+     * path: the lyric tester outranks the note-head tester, so a press on lyric text arrives
+     * here as a lyric hit and is declined, and text drawn over an element's rectangle cannot
+     * start a pitch drag.
      */
-    boolean handlePress(MouseEvent e) {
+    boolean handlePress(MouseEvent e, HitResult hitResult) {
         var scoreView = lc.getScoreView();
 
         if (scoreView.getMode() != Mode.SELECT) {
@@ -113,9 +120,7 @@ class NoteDragHandler {
 
         dragMoved = false;
 
-        var hitIndex = ElementHitTest.hitTestElement(lc, lc.getViewScale().toDocumentPoint(e.getPoint()));
-
-        if (hitIndex == -1) {
+        if (!(hitResult instanceof HitResult.ElementHead(var hitIndex))) {
             return false;
         }
 
