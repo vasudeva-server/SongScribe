@@ -22,8 +22,12 @@ package songscribe.dom;
 public record BeatChange(Duration duration, Duration beat) {
 
     /**
-     * Translates a legacy beat-change enum name (canonical, underscore-less, or typo variant)
-     * into the new record form. Called from the IO layer when reading v2.4-or-earlier files.
+     * Translates a legacy beat-change enum name into the new record form. Called from the IO
+     * layer when reading v2.4-or-earlier files. Each canonical name is paired with its
+     * underscore-less form (the same stripping rule {@code StaffElementIO}'s accidental-map
+     * loop applies), except for the two cases noted below, which pair the canonical name with a
+     * historical misspelling that must keep being accepted because it was actually written into
+     * old {@code .mssw} files.
      */
     public static BeatChange fromLegacyName(String legacyName) {
         return switch (legacyName) {
@@ -33,8 +37,12 @@ public record BeatChange(Duration duration, Duration beat) {
                 new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM);
             case "MINIM_EQUALS_DOTTED_CROCHET", "MINIMEQUALSDOTTEDCROCHET" ->
                 new BeatChange(Duration.MINIM, Duration.CROTCHET_DOTTED);
+            // "CROTCHETQUALSDOTTEDCROCHET" is not the underscore-less form (missing E) — it is a
+            // historical typo preserved in old .mssw files and must keep being accepted as-is.
             case "CROTCHET_EQUALS_DOTTED_CROCHET", "CROTCHETQUALSDOTTEDCROCHET" ->
                 new BeatChange(Duration.CROTCHET, Duration.CROTCHET_DOTTED);
+            // "DOTTEDCROCHETQUALSCROCHET" is not the underscore-less form (missing E) — it is a
+            // historical typo preserved in old .mssw files and must keep being accepted as-is.
             case "DOTTED_CROCHET_EQUALS_CROCHET", "DOTTEDCROCHETQUALSCROCHET" ->
                 new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET);
             default -> throw new IllegalArgumentException("unknown legacy beat change: " + legacyName);
