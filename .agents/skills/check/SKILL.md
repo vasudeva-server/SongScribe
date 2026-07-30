@@ -52,6 +52,38 @@ the background needed to answer it: what the code does, what you saw, why you
 are unsure, and what each answer would lead you to do. Never ask a question that
 presumes the reader has the file in mind.
 
+## Findings Outside the Review Target
+
+The review target bounds **what is examined**, never **what may be reported**. A
+defect the review turns up in code the target does not contain — a neighboring
+method, a caller, a stale comment or guide, a branch the change just made dead —
+is a finding like any other and MUST be reported.
+
+This overrides the general "don't touch unrelated code" instruction, which
+carves out reviews explicitly. Within this skill there is no such thing as an
+out-of-scope defect.
+
+Do not soften, bury, or pre-decline such a finding. Specifically, never:
+
+- report it and then recommend against acting on it because it is "small",
+  "harmless", "cheap", "pre-existing", or "in a file this change doesn't touch";
+- mention it as an aside in a summary instead of listing it with the others;
+- decide on the user's behalf that it isn't worth the churn.
+
+Low cost is a reason to say the cost is low, not a reason to withhold the fix.
+Whether a fix is worth making is the user's call, and they cannot make it unless
+you put the choice in front of them.
+
+Every such finding must reach the user as an explicit, actionable proposal: what
+is wrong, and what the concrete change would be. In Path B, offer it for
+approval alongside the in-target findings. In Path A (`--fix`), fix it with
+everything else.
+
+Two things this does **not** license:
+
+- **Widening the review.** Report what the review surfaced on its way through
+  the target. Do not go hunting through unrelated packages for improvements.
+- **Editing unasked in Path B.** Report and offer; change nothing until approved.
 
 ## Phase 1: Determine Scope
 
@@ -120,6 +152,10 @@ agent's prompt, and tell the agent its findings will be shown to a reader who ha
 not read the code. An agent that returns dense, jargon-filled findings has not
 done its job.
 
+Also tell each agent it is free to report defects it notices in code outside the
+files under review — a caller, a neighboring method, a stale comment or guide.
+It should not filter those out for being out of scope.
+
 ### Agent 1: Code Reuse Review
 
 IMPORTANT: This agent must search the **entire codebase**, not just the review target. The goal is to find reuse opportunities between the reviewed code and the rest of the project.
@@ -180,7 +216,7 @@ of, not instead of, the two guides above.
 
 ### Path A: `--fix` mode
 
-1. **Fix all findings immediately** — every finding from every agent (Reuse, Quality, Efficiency, and Test Quality if Phase 2b ran), including minor and low-confidence ones. Do not ask any questions or seek approval.
+1. **Fix all findings immediately** — every finding from every agent (Reuse, Quality, Efficiency, and Test Quality if Phase 2b ran), including minor and low-confidence ones, **and including findings in code outside the review target** (see *Findings Outside the Review Target*). Do not ask any questions or seek approval.
 2. **Summarize** what was fixed when done, grouped by the same axes. Write the summary in plain language per **How to Write Findings** — for each fix, say what the code did before, what it does now, and what that means in practice.
 
 ### Path B: Interactive mode (default)
@@ -199,8 +235,8 @@ of, not instead of, the two guides above.
 
 2. **Clarifying questions.** If any findings need clarification (ambiguous code intent, unclear whether something is intentional, etc.), ask them via AskUserQuestion. Give the background in the question text itself: what the code does, what looked off, and what each answer would cause you to do. The answer options must be understandable without looking at the code.
 
-3. **Questionable findings.** For any findings you believe are false positives or not worth addressing, present them via AskUserQuestion and ask whether the user wants them fixed anyway. Say plainly why you think each one is not worth acting on. Do not silently skip findings.
+3. **Questionable findings.** For any findings you believe are false positives or not worth addressing, present them via AskUserQuestion and ask whether the user wants them fixed anyway. Say plainly why you think each one is not worth acting on. Do not silently skip findings. **"It's outside the review target" is not a reason to put a finding here** — see *Findings Outside the Review Target*. This step is for findings you believe are **wrong**, not for real defects you'd rather not touch.
 
-4. **Approval.** Once all questions are resolved, use AskUserQuestion to present the final list of issues to fix and ask for approval to proceed (or for further discussion). Describe each item in one plain sentence naming the actual change, not a category label.
+4. **Approval.** Once all questions are resolved, use AskUserQuestion to present the final list of issues to fix and ask for approval to proceed (or for further discussion). Describe each item in one plain sentence naming the actual change, not a category label. Findings in code outside the review target belong in this list on equal footing with the rest.
 
 5. **Fix.** After approval, fix the approved issues. Briefly summarize what was fixed when done, in the same plain language.

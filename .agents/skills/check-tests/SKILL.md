@@ -69,6 +69,45 @@ the background needed to answer it: what the test does, what looked wrong, why
 you are unsure, and what each answer would lead you to do. Never ask a question
 that presumes the reader has the file in mind.
 
+## Findings Outside the Audited Tests
+
+The scope bounds **what is audited**, never **what may be reported**. Auditing a
+test means reading the production code it exercises, so this audit routinely
+turns up defects that are not in a `*Test.java` file in scope: a bug in the
+production method under test, a shared test helper that misleads its callers, a
+stale comment or guide, a neighboring test in the same file that the scope
+happened to exclude. Every one of those MUST be reported.
+
+This overrides the general "don't touch unrelated code" instruction, which
+carves out reviews explicitly. Within this skill there is no such thing as an
+out-of-scope defect.
+
+Do not soften, bury, or pre-decline such a finding. Specifically, never:
+
+- report it and then recommend against acting on it because it is "small",
+  "harmless", "cheap", "pre-existing", or "not a test problem";
+- mention it as an aside in a summary instead of listing it with the others;
+- decide on the user's behalf that it isn't worth the churn.
+
+Low cost is a reason to say the cost is low, not a reason to withhold the fix.
+Whether a fix is worth making is the user's call, and they cannot make it unless
+you put the choice in front of them.
+
+A production bug found this way outranks every test finding — report it first.
+Say plainly whether any test in scope would have caught it, since that is itself
+a coverage finding.
+
+Every such finding must reach the user as an explicit, actionable proposal: what
+is wrong, and what the concrete change would be. In Path B, offer it for
+approval alongside the test findings. In Path A (`--fix`), fix it with
+everything else.
+
+Two things this does **not** license:
+
+- **Widening the audit.** Report what the audit surfaced on its way through the
+  tests in scope. Do not go hunting through unrelated packages.
+- **Editing unasked in Path B.** Report and offer; change nothing until approved.
+
 ## Phase 1: Parse Arguments and Determine Scope
 
 `$ARGUMENTS` may contain optional flags plus a scope token. Parse all flags
@@ -139,6 +178,11 @@ Copy the entire **How to Write Findings** section above verbatim into each
 agent's prompt, and tell the agent its findings will be shown to a reader who has
 not read the test or the production code. An agent that returns dense,
 jargon-filled findings has not done its job.
+
+Also tell each agent it is free to report defects it notices outside the tests
+under audit — a bug in the production code a test exercises, a misleading shared
+helper, a stale comment or guide. It should not filter those out for being out
+of scope.
 
 ### Agent 1: Correctness
 
@@ -220,7 +264,9 @@ of, not instead of, the two guides above.
 
 1. **Fix all findings immediately** — every finding from Phases 2–4 (Correctness,
    Usefulness, Coverage, and Mutation if it ran), including minor and
-   low-confidence ones. Do not ask any questions or seek approval.
+   low-confidence ones, **and including findings in code outside the audited
+   tests** (see *Findings Outside the Audited Tests*). Do not ask any questions
+   or seek approval.
 2. Any change under `src/main/` or `src/test/` requires `./scripts/compile.sh`
    before re-running; then re-run the relevant `./scripts/test.sh <target>`
    (unit only) to confirm green.
@@ -251,10 +297,15 @@ of, not instead of, the two guides above.
    code.
 3. **Questionable findings** — present suspected false positives via
    AskUserQuestion rather than silently dropping them, saying plainly why you
-   think each one is not worth acting on.
+   think each one is not worth acting on. **"It's outside the audited tests" is
+   not a reason to put a finding here** — see *Findings Outside the Audited
+   Tests*. This step is for findings you believe are **wrong**, not for real
+   defects you'd rather not touch.
 4. **Approval** — use AskUserQuestion to present the final list of tests to fix or
    add, and get approval before changing anything. Describe each item in one
-   plain sentence naming the actual change, not a category label.
+   plain sentence naming the actual change, not a category label. Findings in
+   code outside the audited tests belong in this list on equal footing with the
+   rest.
 5. **Fix** — after approval, edit/add tests, following the testing guides read
    at the start of this phase. Any change under `src/main/` or
    `src/test/` requires `./scripts/compile.sh` before re-running; then re-run the
