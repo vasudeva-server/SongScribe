@@ -84,7 +84,7 @@ class ActionsResetOnDocumentLoadTest extends UnitTest {
         Actions.DURATION_ACTION_GROUP.setSelected(Actions.HALF_NOTE_ACTION, true);
         Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
         Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
-        Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
+        Actions.STACCATO_ACTION.setSelected(true);
         Actions.NON_DURATION_ACTION_GROUP.setSelected(Actions.BREATH_MARK_ACTION, true);
         Actions.DYNAMIC_MARKING_ACTION_GROUP.setSelected(Actions.DYNAMIC_F_ACTION, true);
         Actions.FERMATA_ACTION.setSelected(true);
@@ -101,8 +101,8 @@ class ActionsResetOnDocumentLoadTest extends UnitTest {
                 .as("duration reset to QUARTER_NOTE").isSameAs(Actions.QUARTER_NOTE_ACTION),
             () -> assertThat(Actions.ACCIDENTAL_ACTION_GROUP.getSelected())
                 .as("accidental group cleared").isNull(),
-            () -> assertThat(Actions.ARTICULATION_ACTION_GROUP.getSelected())
-                .as("articulation group cleared").isNull(),
+            () -> assertThat(Actions.STACCATO_ACTION.isSelected())
+                .as("staccato off").isFalse(),
             () -> assertThat(Actions.DOT_ACTION_GROUP.getSelected())
                 .as("dot group cleared").isNull(),
             () -> assertThat(Actions.NON_DURATION_ACTION_GROUP.getSelected())

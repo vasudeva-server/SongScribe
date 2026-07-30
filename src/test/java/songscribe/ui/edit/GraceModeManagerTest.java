@@ -1587,7 +1587,7 @@ class GraceModeManagerTest extends UnitTest {
             // which is already stubbed. No save/restore dance needed.
             Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
-            Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
+            Actions.STACCATO_ACTION.setSelected(true);
             Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
             Actions.ACCENT_ACTION.setSelected(true);
 
@@ -1617,9 +1617,9 @@ class GraceModeManagerTest extends UnitTest {
             assertThat(Actions.ACCIDENTAL_ACTION_GROUP.getSelected())
                 .as("ACCIDENTAL_ACTION_GROUP should be cleared after entering grace note mode")
                 .isNull();
-            assertThat(Actions.ARTICULATION_ACTION_GROUP.getSelected())
-                .as("ARTICULATION_ACTION_GROUP should be cleared after entering grace note mode")
-                .isNull();
+            assertThat(Actions.STACCATO_ACTION.isSelected())
+                .as("STACCATO_ACTION should be cleared after entering grace note mode")
+                .isFalse();
             assertThat(Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected())
                 .as("ACCIDENTAL_IN_PARENS_ACTION should be cleared after entering grace note mode")
                 .isFalse();
@@ -1646,7 +1646,7 @@ class GraceModeManagerTest extends UnitTest {
 
             Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
-            Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
+            Actions.STACCATO_ACTION.setSelected(true);
             Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
             Actions.ACCENT_ACTION.setSelected(true);
 
@@ -1661,7 +1661,7 @@ class GraceModeManagerTest extends UnitTest {
                     decorationsWereSet[0] =
                         Actions.DOT_ACTION_GROUP.getSelected() != null
                             || Actions.ACCIDENTAL_ACTION_GROUP.getSelected() != null
-                            || Actions.ARTICULATION_ACTION_GROUP.getSelected() != null
+                            || Actions.STACCATO_ACTION.isSelected()
                             || Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected()
                             || Actions.ACCENT_ACTION.isSelected();
                 }

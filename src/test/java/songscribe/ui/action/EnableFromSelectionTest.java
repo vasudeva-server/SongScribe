@@ -168,7 +168,7 @@ class EnableFromSelectionTest extends MainFrameMockTest {
     void testArticulationActionStaysEnabledWhileTheGraceDurationIsSelected() {
         Actions.DURATION_ACTION_GROUP.setSelected(Actions.GRACE_EIGHTH_NOTE_ACTION, true);
         try {
-            var articulationAction = DurationArticulationAction.createStaccatoAction(mainFrame());
+            var articulationAction = ArticulationAction.createStaccatoAction(mainFrame());
             assertThat(articulationAction.enableFromDurationSelection(false)).isTrue();
         } finally {
             Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);

@@ -30,6 +30,7 @@ import static org.mockito.Mockito.when;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -204,6 +205,57 @@ class UIUtilsTest extends UnitTest {
             when(textField.isShowing()).thenReturn(true);
             when(mockManager.getFocusOwner()).thenReturn(textField);
             assertThat(UIUtils.isEditingTextIn(focusedFrame)).isTrue();
+        }
+    }
+
+    /**
+     * The tooltip is assembled as HTML, so any name or accelerator carrying {@code <},
+     * {@code >} or {@code &} has to be escaped. An unescaped {@code <} opens what the
+     * renderer reads as a tag and takes the rest of the tooltip with it.
+     */
+    @Nested
+    class SetToolTipText {
+
+        private String tooltipFor(String name, @Nullable KeyStroke accelerator) {
+            var action = new AbstractAction(name) {
+                @Override
+                public void actionPerformed(ActionEvent event) {
+                    // Never invoked; the tooltip is built from the action's values alone.
+                }
+            };
+            action.putValue(Action.SHORT_DESCRIPTION, "Toggle it");
+            action.putValue(Action.ACCELERATOR_KEY, accelerator);
+
+            var component = new JButton();
+            UIUtils.setToolTipText(component, action);
+            return component.getToolTipText();
+        }
+
+        @Test
+        void testEscapesLessThanInAccelerator() {
+            assertThat(tooltipFor("Staccato", KeyStroke.getKeyStroke('<')))
+                .contains("(&lt;)")
+                .doesNotContain("(<)");
+        }
+
+        @Test
+        void testEscapesGreaterThanInAccelerator() {
+            assertThat(tooltipFor("Accent", KeyStroke.getKeyStroke('>')))
+                .contains("(&gt;)")
+                .doesNotContain("(>)");
+        }
+
+        @Test
+        void testEscapesMarkupCharactersInActionName() {
+            assertThat(tooltipFor("Fit <Width> & Height", null))
+                .contains("Fit &lt;Width&gt; &amp; Height");
+        }
+
+        @Test
+        void testLeavesAnOrdinaryAcceleratorUnchanged() {
+            assertThat(tooltipFor("Sharp", KeyStroke.getKeyStroke(KeyEvent.VK_S, 0)))
+                .contains("<strong>Sharp</strong>")
+                .contains("(S)");
         }
     }
 }

@@ -87,19 +87,37 @@ public final class UIUtils {
 
         if ((tip != null) && !tip.isEmpty()) {
             var name = (String) action.getValue(Action.NAME);
-            var html = "<html><strong>" + name + "</strong>";
+            var html = "<html><strong>" + escapeHtml(name) + "</strong>";
             var accelerator = (KeyStroke) action.getValue(Action.ACCELERATOR_KEY);
 
             if (accelerator != null) {
                 var modifiers = Utils.getPlatformModifiersString(accelerator);
                 var keyName = Utils.getPlatformKeyString(accelerator);
-                html += "&nbsp;&nbsp;(" + modifiers + keyName + ')';
+                html += "&nbsp;&nbsp;(" + escapeHtml(modifiers + keyName) + ')';
             }
 
             tip = html + "<br>" + tip + "</html>";
         }
 
         component.setToolTipText(tip);
+    }
+
+    /**
+     * Escapes the characters Swing's HTML renderer would otherwise treat as markup.
+     * Without this, an accelerator or action name containing {@code <} — the staccato
+     * shortcut, for one — opens what the renderer reads as a tag, so the character and
+     * everything after it vanish from the tooltip.
+     */
+    private static String escapeHtml(@Nullable String text) {
+        if (text == null) {
+            return "";
+        }
+
+        // Ampersand first, so the ampersands introduced below are not escaped again.
+        return text
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;");
     }
 
     //

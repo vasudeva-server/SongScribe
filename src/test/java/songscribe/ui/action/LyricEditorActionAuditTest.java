@@ -88,8 +88,8 @@ class LyricEditorActionAuditTest extends MainFrameMockTest {
             AccidentalAction.createSharpAction(mainFrame),
             AccidentalAction.createDoubleSharpAction(mainFrame),
             // ArticulationToolbar
-            ForceArticulationAction.createAccentAction(mainFrame),
-            DurationArticulationAction.createStaccatoAction(mainFrame),
+            ArticulationAction.createAccentAction(mainFrame),
+            ArticulationAction.createStaccatoAction(mainFrame),
             // BarToolbar
             ElementTypeAction.createLeftRepeatAction(mainFrame),
             ElementTypeAction.createRightRepeatAction(mainFrame),

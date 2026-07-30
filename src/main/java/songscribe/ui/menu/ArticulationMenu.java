@@ -29,9 +29,6 @@ public class ArticulationMenu extends JMenu {
     public ArticulationMenu() {
         super(Strings.get(Strings.MENU_NOTATION_ARTICULATION));
         add(new JCheckBoxMenuItem(Actions.ACCENT_ACTION));
-
-        for (var action : Actions.ARTICULATION_ACTION_GROUP.getActions()) {
-            add(new JRadioButtonMenuItem(action));
-        }
+        add(new JCheckBoxMenuItem(Actions.STACCATO_ACTION));
     }
 }

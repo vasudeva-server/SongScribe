@@ -278,10 +278,7 @@ public final class EditModeManager {
             );
         }
 
-        var durationArticulationAction =
-            Actions.ARTICULATION_ACTION_GROUP.getSelected();
-
-        if (durationArticulationAction != null) {
+        if (Actions.STACCATO_ACTION.isSelected()) {
             element.addArticulation(
                 new Articulation(element, ArticulationType.STACCATO)
             );

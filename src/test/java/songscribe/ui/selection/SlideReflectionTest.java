@@ -36,8 +36,8 @@ import songscribe.layout.Ending;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.action.AccidentalAction;
+import songscribe.ui.action.ArticulationAction;
 import songscribe.ui.action.DotAction;
-import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
@@ -51,7 +51,7 @@ class SlideReflectionTest extends MainFrameMockTest {
     private AccidentalAction sharpAction;
     private DotAction dotAction;
     private FermataAction fermataAction;
-    private DurationArticulationAction staccatoAction;
+    private ArticulationAction staccatoAction;
 
     @BeforeEach
     void setUp() {
@@ -63,7 +63,7 @@ class SlideReflectionTest extends MainFrameMockTest {
         sharpAction = AccidentalAction.createSharpAction(mainFrame);
         dotAction = DotAction.createDotAction(mainFrame);
         fermataAction = FermataAction.createAction(mainFrame);
-        staccatoAction = DurationArticulationAction.createStaccatoAction(mainFrame);
+        staccatoAction = ArticulationAction.createStaccatoAction(mainFrame);
     }
 
     private List<UIAction.Reflectable> allActions() {

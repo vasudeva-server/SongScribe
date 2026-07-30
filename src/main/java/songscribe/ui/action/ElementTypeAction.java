@@ -227,7 +227,7 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             Kind.NON_DURATION, ElementType.BREATH_MARK,
             Strings.get(Strings.ACTION_BREATH_MARK), null, 0,
             "breath-mark", Strings.get(Strings.ACTION_BREATH_MARK_TOOLTIP),
-            0, 0,
+            KeyEvent.VK_COMMA, 0,
             Strings.ACTION_EDIT_OP_ADD_BREATH_MARK,
             NON_DURATION_FLAGS
         );

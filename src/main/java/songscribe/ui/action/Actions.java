@@ -120,9 +120,8 @@ public final class Actions {
     public static ActionGroup<ElementTypeAction> NON_DURATION_ACTION_GROUP;
 
     public static FirstSecondEndingAction MAKE_ENDING_ACTION;
-    public static ForceArticulationAction ACCENT_ACTION;
-    public static DurationArticulationAction STACCATO_ACTION;
-    public static ActionGroup<DurationArticulationAction> ARTICULATION_ACTION_GROUP;
+    public static ArticulationAction ACCENT_ACTION;
+    public static ArticulationAction STACCATO_ACTION;
 
     public static ToggleNotationAction TOGGLE_BEAM_ACTION;
     public static ToggleNotationAction TOGGLE_TIE_ACTION;
@@ -276,9 +275,8 @@ public final class Actions {
         NON_DURATION_ACTION_GROUP = new NonDurationActionGroup();
 
         MAKE_ENDING_ACTION = new FirstSecondEndingAction(mainFrame);
-        ACCENT_ACTION = ForceArticulationAction.createAccentAction(mainFrame);
-        STACCATO_ACTION = DurationArticulationAction.createStaccatoAction(mainFrame);
-        ARTICULATION_ACTION_GROUP = new ActionGroup<>(STACCATO_ACTION);
+        ACCENT_ACTION = ArticulationAction.createAccentAction(mainFrame);
+        STACCATO_ACTION = ArticulationAction.createStaccatoAction(mainFrame);
 
         TOGGLE_BEAM_ACTION = ToggleNotationAction.createBeamAction(mainFrame);
         TOGGLE_TIE_ACTION = ToggleNotationAction.createTieAction(mainFrame);
@@ -420,8 +418,8 @@ public final class Actions {
         DOT_ACTION_GROUP.clearSelection();
         ACCIDENTAL_ACTION_GROUP.clearSelection();
         ACCIDENTAL_IN_PARENS_ACTION.setSelected(false);
-        ARTICULATION_ACTION_GROUP.clearSelection();
         ACCENT_ACTION.setSelected(false);
+        STACCATO_ACTION.setSelected(false);
     }
 
     private static @Nullable List<AppMenuAction> appMenuActions = null;

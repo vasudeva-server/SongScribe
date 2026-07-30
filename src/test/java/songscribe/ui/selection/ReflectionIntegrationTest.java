@@ -34,8 +34,8 @@ import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.AccidentalInParensAction;
+import songscribe.ui.action.ArticulationAction;
 import songscribe.ui.action.DotAction;
-import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
@@ -54,7 +54,7 @@ class ReflectionIntegrationTest extends UnitTest {
     private DotAction dotAction;
     private DotAction doubleDotAction;
     private FermataAction fermataAction;
-    private DurationArticulationAction staccatoAction;
+    private ArticulationAction staccatoAction;
     private AccidentalInParensAction accidentalInParensAction;
 
     @BeforeEach
@@ -67,7 +67,7 @@ class ReflectionIntegrationTest extends UnitTest {
         dotAction = DotAction.createDotAction(MOCK_FRAME);
         doubleDotAction = DotAction.createDoubleDotAction(MOCK_FRAME);
         fermataAction = FermataAction.createAction(MOCK_FRAME);
-        staccatoAction = DurationArticulationAction.createStaccatoAction(MOCK_FRAME);
+        staccatoAction = ArticulationAction.createStaccatoAction(MOCK_FRAME);
         accidentalInParensAction = AccidentalInParensAction.createAction(MOCK_FRAME);
     }
 

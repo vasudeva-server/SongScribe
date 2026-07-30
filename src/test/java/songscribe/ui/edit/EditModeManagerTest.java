@@ -87,10 +87,10 @@ class EditModeManagerTest extends UnitTest {
         Actions.REST_ACTION.setSelected(false);
         Actions.DOT_ACTION_GROUP.clearSelection();
         Actions.ACCIDENTAL_ACTION_GROUP.clearSelection();
-        Actions.ARTICULATION_ACTION_GROUP.clearSelection();
         Actions.FERMATA_ACTION.setSelected(false);
         Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(false);
         Actions.ACCENT_ACTION.setSelected(false);
+        Actions.STACCATO_ACTION.setSelected(false);
     }
 
     // -------------------------------------------------------------------------
@@ -226,7 +226,7 @@ class EditModeManagerTest extends UnitTest {
             Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
             Actions.ACCENT_ACTION.setSelected(true);
-            Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
+            Actions.STACCATO_ACTION.setSelected(true);
             var barline = ElementType.SINGLE_BARLINE.newInstance();
             EditModeManager.decorateElement(barline);
             assertThat(barline.getDotCount()).isEqualTo(0);
@@ -261,13 +261,29 @@ class EditModeManagerTest extends UnitTest {
         }
 
         @Test
-        void testAddsStaccatoArticulationWhenArticulationGroupSelected() {
-            Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
+        void testAddsStaccatoArticulationWhenStaccatoActionSelected() {
+            Actions.STACCATO_ACTION.setSelected(true);
             var element = ElementType.CROTCHET.newInstance();
             EditModeManager.decorateElement(element);
             var articulations = element.getArticulations();
             assertThat(articulations).hasSize(1);
             assertThat(articulations.get(0).getType()).isEqualTo(ArticulationType.STACCATO);
+        }
+
+        /**
+         * Accent and staccato are independent toggles — the articulation menu offers both
+         * as check boxes, not as a one-of-several choice. Pins that: making either branch
+         * in decorateElement exclude the other would fail here and nowhere else.
+         */
+        @Test
+        void testAddsBothArticulationsWhenAccentAndStaccatoSelected() {
+            Actions.ACCENT_ACTION.setSelected(true);
+            Actions.STACCATO_ACTION.setSelected(true);
+            var element = ElementType.CROTCHET.newInstance();
+            EditModeManager.decorateElement(element);
+            assertThat(element.getArticulations())
+                .extracting(Articulation::getType)
+                .containsExactlyInAnyOrder(ArticulationType.ACCENT, ArticulationType.STACCATO);
         }
 
         @Test
@@ -291,7 +307,7 @@ class EditModeManagerTest extends UnitTest {
             Actions.DOT_ACTION_GROUP.setSelected(Actions.DOUBLE_DOT_ACTION, true);
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
             Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
-            Actions.ARTICULATION_ACTION_GROUP.setSelected(Actions.STACCATO_ACTION, true);
+            Actions.STACCATO_ACTION.setSelected(true);
             Actions.ACCENT_ACTION.setSelected(true);
 
             Actions.clearNoteDecorations();

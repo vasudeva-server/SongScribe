@@ -44,8 +44,8 @@ import songscribe.dom.StaffElement;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.AccidentalInParensAction;
+import songscribe.ui.action.ArticulationAction;
 import songscribe.ui.action.DotAction;
-import songscribe.ui.action.DurationArticulationAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
@@ -69,7 +69,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
     private AccidentalAction FLAT_ACTION;
     private DotAction DOT_ACTION;
     private FermataAction FERMATA_ACTION;
-    private DurationArticulationAction STACCATO_ACTION;
+    private ArticulationAction STACCATO_ACTION;
     private AccidentalInParensAction ACCIDENTAL_IN_PARENS_ACTION;
 
     // Applying a width-changing action now measures the projected line, which reads accidental
@@ -91,7 +91,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         FLAT_ACTION = AccidentalAction.createFlatAction(mainFrame);
         DOT_ACTION = DotAction.createDotAction(mainFrame);
         FERMATA_ACTION = FermataAction.createAction(mainFrame);
-        STACCATO_ACTION = DurationArticulationAction.createStaccatoAction(mainFrame);
+        STACCATO_ACTION = ArticulationAction.createStaccatoAction(mainFrame);
         ACCIDENTAL_IN_PARENS_ACTION = AccidentalInParensAction.createAction(mainFrame);
     }
 
