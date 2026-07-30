@@ -1135,9 +1135,10 @@ public final class PreviewElementManager {
 
         // In grace mode, lock the x-position to the host note slot
         var graceModeManager = EditModeManager.getGraceModeManager();
+        var inGraceMode = graceModeManager.isInProgress();
         double mouseXss;
 
-        if (graceModeManager.isInProgress()) {
+        if (inGraceMode) {
             mouseXss = graceModeManager.getLockedInsertionXSs();
         } else {
             mouseXss = ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(e.getX())).value());
@@ -1169,12 +1170,18 @@ public final class PreviewElementManager {
             return;
         }
 
-        var xIndex = layoutResult.findInsertionIndex(mouseXss, line);
+        // A host note belongs in the slot immediately after its grace note, so in grace mode the
+        // index comes from the pairing rather than from the locked x. The two disagree when a
+        // breath mark trails the grace note: it occupies that slot, and the locked x — which sits
+        // a fixed gap past the grace note — resolves past it. Inserting there would leave the
+        // breath mark between the pair, with the glissando pointing at it instead of the host.
+        var xIndex = inGraceMode
+            ? graceModeManager.getHostInsertionIndex()
+            : layoutResult.findInsertionIndex(mouseXss, line);
 
         // In grace mode the locked x coincides with an existing note that will be
         // shifted (not replaced), so suppress the element-at-x match to avoid
         // painting it red as if it were the replacement target.
-        var inGraceMode = graceModeManager.isInProgress();
         var elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXss, line);
 
         // Suppress preview over the song's auto-maintained terminal (unless the

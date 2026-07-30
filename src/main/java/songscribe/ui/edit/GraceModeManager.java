@@ -250,8 +250,13 @@ public final class GraceModeManager {
     }
 
     /**
-     * Returns the index at which the host note will be inserted (= graceNoteIndex + 1).
-     * Only meaningful when in {@link State#GRACE_NOTE_INSERT} state.
+     * Returns the index at which the host note will be inserted — the slot immediately
+     * after the grace note. This is the single definition of the host slot; callers must
+     * not recompute it from the grace note's index.
+     * <p>
+     * Valid throughout grace mode, i.e. whenever {@link #isInProgress()} is true: the grace
+     * note's index is recorded before the state leaves {@link State#INACTIVE} and is only
+     * cleared after it returns there.
      */
     public int getHostInsertionIndex() {
         return graceNoteIndex + 1;
@@ -357,7 +362,7 @@ public final class GraceModeManager {
         }
 
         var result = InsertionSpacingCalculator.calculateInsertion(
-            graceLine, previewElement, graceNoteIndex + 1,
+            graceLine, previewElement, getHostInsertionIndex(),
             graceLineComponent.getLayoutResult(), graceLineComponent.getLyricRenderMetrics()
         );
 
@@ -684,7 +689,7 @@ public final class GraceModeManager {
             return;
         }
 
-        var hostNoteIndex = graceNoteIndex + 1;
+        var hostNoteIndex = getHostInsertionIndex();
 
         // Determine the host note's pitch up front. For a drag-right connection the host
         // already exists on the line; for a host-note insertion the pitch comes from the
@@ -917,7 +922,7 @@ public final class GraceModeManager {
             return false;
         }
 
-        var nextIndex = graceNoteIndex + 1;
+        var nextIndex = getHostInsertionIndex();
         return nextIndex < graceLine.elementCount()
             && graceLine.getElement(nextIndex).getType().isPitchedNote();
     }

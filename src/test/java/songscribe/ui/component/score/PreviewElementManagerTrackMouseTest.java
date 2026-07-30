@@ -46,6 +46,8 @@ import songscribe.ui.edit.GraceModeManager;
  * <ul>
  *   <li>alt-key down clears the preview</li>
  *   <li>grace mode locks the insertion X to {@code getLockedInsertionXSs()}</li>
+ *   <li>grace mode pins the insertion index to {@code getHostInsertionIndex()}</li>
+ *   <li>outside grace mode the insertion index still comes from the layout</li>
  *   <li>an out-of-range staff position clears the preview</li>
  *   <li>a null layout result (mid-drag) resets the match flags without clearing</li>
  *   <li>the auto-maintained terminal suppresses the preview</li>
@@ -66,6 +68,15 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
 
     /** Arbitrary locked insertion X (staff-spaces) the grace-mode manager reports while pairing. */
     private static final double LOCKED_INSERTION_X_SS = 12.5;
+
+    /** The host slot the grace-mode manager is stubbed to report — right after the grace note. */
+    private static final int HOST_SLOT_X_INDEX = 2;
+
+    /** The index the layout is stubbed to report: the slot after the trailing breath mark. */
+    private static final int PAST_BREATH_MARK_X_INDEX = 3;
+
+    /** The index the layout is stubbed to report outside grace mode: the slot after the crotchet. */
+    private static final int AFTER_CROTCHET_X_INDEX = 1;
 
     private GraceModeManager graceModeManager;
 
@@ -146,6 +157,57 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
         assertThat(PreviewElementManager.getCurrentMouseXSs())
             .as("grace mode locks the insertion X to the grace manager's locked value")
             .isEqualTo(LOCKED_INSERTION_X_SS);
+    }
+
+    @Test
+    void testGraceModeTakesInsertionIndexFromTheHostSlot() {
+        // What this pins down is only that trackMouse takes the index from grace mode rather
+        // than from the layout. The layout is a mock, so the elements added below drive
+        // nothing — they are here to make the two stubbed indices concrete: in a real
+        // [crotchet] [grace] [breath mark] [terminal] line the breath mark occupies the grace
+        // note's host slot (index 2), and the locked x — a fixed gap past the grace note —
+        // resolves one slot further on (index 3). That the real layout resolves the locked x
+        // past a trailing breath mark is not exercised here.
+        song.withoutMutationTracking(() -> {
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(ElementType.GRACE_QUAVER.newInstance());
+            line.addElement(ElementType.BREATH_MARK.newInstance());
+        });
+
+        when(graceModeManager.isInProgress()).thenReturn(true);
+        when(graceModeManager.getLockedInsertionXSs()).thenReturn(LOCKED_INSERTION_X_SS);
+        when(graceModeManager.getHostInsertionIndex()).thenReturn(HOST_SLOT_X_INDEX);
+        when(lc.getMiddleLineYSs()).thenReturn(0.0);
+        setPreviewElement(ElementType.CROTCHET.newInstance());
+        stubLayout(PAST_BREATH_MARK_X_INDEX, -1);
+        PreviewElementManager.setCurrentXIndex(PRESET_X_INDEX);
+
+        PreviewElementManager.trackMouse(lc, mouseEvent(0, 0, false));
+
+        assertThat(PreviewElementManager.getCurrentXIndex())
+            .as("grace mode pins the insertion index to the host slot, not to what the locked x resolves to")
+            .isEqualTo(HOST_SLOT_X_INDEX);
+    }
+
+    @Test
+    void testOutsideGraceModeTakesInsertionIndexFromTheLayout() {
+        // The counterpart to the test above: with grace mode off the index must still come from
+        // the layout's x lookup. The stubbed index is deliberately non-zero, because an
+        // unstubbed getHostInsertionIndex() answers Mockito's int default of 0 — so a zero here
+        // would make the two sources indistinguishable and the grace-mode branch could be
+        // dropped altogether without any test noticing.
+        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+
+        when(lc.getMiddleLineYSs()).thenReturn(0.0);
+        setPreviewElement(ElementType.CROTCHET.newInstance());
+        stubLayout(AFTER_CROTCHET_X_INDEX, -1);
+        PreviewElementManager.setCurrentXIndex(PRESET_X_INDEX);
+
+        PreviewElementManager.trackMouse(lc, mouseEvent(0, 0, false));
+
+        assertThat(PreviewElementManager.getCurrentXIndex())
+            .as("outside grace mode the insertion index comes from the layout's x lookup")
+            .isEqualTo(AFTER_CROTCHET_X_INDEX);
     }
 
     @Test

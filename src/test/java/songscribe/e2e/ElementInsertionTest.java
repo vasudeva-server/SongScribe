@@ -440,6 +440,78 @@ class ElementInsertionTest extends E2ETest {
                     .as("quarter deselected").isFalse()
             );
         }
+
+        /**
+         * A breath mark sitting immediately after the grace note occupies the slot the host
+         * belongs in. The host's locked x sits a fixed gap past the grace note, which lands
+         * past the breath mark — so an insertion driven by that x would strand the breath
+         * mark between the pair, with the grace note's glissando pointing at it instead of
+         * at the host. The host slot therefore comes from the pairing, not from the x.
+         * <p>
+         * This is the only test that runs the real spacing arithmetic for that arrangement;
+         * the unit test in {@code PreviewElementManagerTrackMouseTest} mocks the layout and
+         * so covers only which of the two sources the insertion index is read from.
+         */
+        @Order(4)
+        @Test
+        void testHostGoesBeforeABreathMarkTrailingTheGraceNote() {
+            var countBefore = song().getLine(0).effectiveElementCount();
+
+            // Append a note and attach a breath mark to it, so the breath mark ends the line.
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            clickAction(Actions.BREATH_MARK_ACTION);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            var noteIndex = countBefore;
+            var breathMarkIndexBeforeGrace = noteIndex + 1;
+
+            // Drop the grace note between the note and its breath mark, leaving the breath
+            // mark trailing the grace note — the arrangement that used to misplace the host.
+            //
+            // The grace note must land on the middle line, and the click's staff position is
+            // what puts it there. The grace→breath gap does not charge the grace's flag when
+            // the flag hangs clear of the breath mark's ink band (getRightExtentFacingSs),
+            // while the locked x always charges the grace's full extent — so with the grace
+            // low enough the breath mark packs closer than the locked x, which then resolves
+            // past it. Place the grace up at the breath mark's own height instead and the flag
+            // is charged in the gap too, putting the breath mark at exactly the locked x: both
+            // index sources then agree and this test passes with or without the fix.
+            selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
+            clickAt(insertionPointBefore(0, breathMarkIndexBeforeGrace, 0));
+            performLayout(0);
+
+            // The second click places the host. Its x is ignored — grace mode locks it — so
+            // only the staff position, and hence the host's pitch, comes from this point.
+            clickAt(insertionPoint(0, -2));
+            performLayout(0);
+
+            var line = song().getLine(0);
+            var graceIndex = noteIndex + 1;
+            var hostIndex = graceIndex + 1;
+            var breathMarkIndex = hostIndex + 1;
+
+            assertAll(
+                () -> assertThat(line.effectiveElementCount())
+                    .as("the note, its breath mark and the grace/host pair are all present")
+                    .isEqualTo(breathMarkIndex + 1),
+                () -> assertThat(line.getElement(graceIndex).getType())
+                    .as("grace type").isEqualTo(ElementType.GRACE_QUAVER),
+                () -> assertThat(line.getElement(hostIndex).getType().isPitchedNote())
+                    .as("the host sits immediately after the grace note, before the breath mark")
+                    .isTrue(),
+                () -> assertThat(line.getElement(breathMarkIndex).getType())
+                    .as("the breath mark is pushed past the host rather than trapped inside the pair")
+                    .isEqualTo(ElementType.BREATH_MARK),
+                () -> assertThat(line.getElement(graceIndex).hasGlissando())
+                    .as("the grace note's glissando connects it to the host").isTrue(),
+                () -> assertThat(isGraceModeActive())
+                    .as("grace mode inactive").isFalse()
+            );
+        }
     }
 
 
