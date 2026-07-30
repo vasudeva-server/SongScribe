@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.Objects;
 
@@ -30,6 +31,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Unit tests for {@link SelectionCoordinator#isLyricSelected}.
@@ -56,7 +58,7 @@ class IsLyricSelectedTest extends UnitTest {
      * quarter note, with line 0 activated but nothing selected yet.
      */
     private SelectionCoordinator twoLineCoordinator(Song song) {
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
         var lineA = new Line(song);
         lineA.addElement(ElementType.CROTCHET.newInstance());

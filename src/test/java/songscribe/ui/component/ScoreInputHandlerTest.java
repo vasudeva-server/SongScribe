@@ -66,6 +66,7 @@ import songscribe.message.mutation.ElementModification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.ReflectionTestHelper;
@@ -1159,7 +1160,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
         song.addLine(secondLine);
 
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(mock(ScoreView.class));
         coordinator.registerLineState(0, new LineSelectionState(firstLine));
         coordinator.registerLineState(1, new LineSelectionState(secondLine));
         return coordinator;

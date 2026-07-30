@@ -50,6 +50,7 @@ import songscribe.layout.Ending;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LineEndingSupport;
 import songscribe.ui.EndingConfirms;
+import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
@@ -68,6 +69,10 @@ public final class SelectionCoordinator {
 
     public record LyricSelection(StaffElement element, int verse) {}
 
+    /** The score this coordinator selects within. Its mode is the source of truth for
+     *  {@link #isInSelectMode()}. */
+    private final ScoreView scoreView;
+
     /** Registry of per-line selection states, keyed by line index. */
     private final Map<Integer, LineSelectionState> lineStates = new HashMap<>();
 
@@ -83,9 +88,6 @@ public final class SelectionCoordinator {
      */
     @Nullable
     private LineComponent draggingLine = null;
-
-    /** Whether the user is in select mode (shift held down or select mode active). */
-    private boolean inSelectMode = false;
 
     // Lazy-initialized list of all reflectable actions discovered from Actions.
     @Nullable
@@ -134,7 +136,8 @@ public final class SelectionCoordinator {
         }
     };
 
-    public SelectionCoordinator() {
+    public SelectionCoordinator(ScoreView scoreView) {
+        this.scoreView = scoreView;
         MessageCenter.subscribe(this);
     }
 
@@ -275,12 +278,12 @@ public final class SelectionCoordinator {
     // Select mode
     // -------------------------------------------------------------------------
 
+    /**
+     * Whether the score is in select mode. Derived from the score's mode rather than cached,
+     * so there is no second copy of the fact to keep in step with it.
+     */
     public boolean isInSelectMode() {
-        return inSelectMode;
-    }
-
-    public void setInSelectMode(boolean inSelectMode) {
-        this.inSelectMode = inSelectMode;
+        return scoreView.getMode() == Mode.SELECT;
     }
 
     // -------------------------------------------------------------------------
@@ -1412,6 +1415,6 @@ public final class SelectionCoordinator {
     // In select mode the action is unconditionally disabled.
     // Package-private so tests for rows 93/94 can exercise the logic directly.
     void updateGraceNoteActionEnabled(boolean hasGraceNote) {
-        Actions.GRACE_EIGHTH_NOTE_ACTION.setEnabled(!inSelectMode && hasGraceNote);
+        Actions.GRACE_EIGHTH_NOTE_ACTION.setEnabled(!isInSelectMode() && hasGraceNote);
     }
 }

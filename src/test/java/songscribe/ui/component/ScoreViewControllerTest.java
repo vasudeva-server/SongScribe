@@ -2070,6 +2070,25 @@ class ScoreViewControllerTest extends UnitTest {
         }
 
         /**
+         * Entering select mode must leave the selection intact — it is the mode whose whole
+         * purpose is selecting. Dropping the mode guard around the clear would wipe the
+         * selection the instant the user switched into the mode they wanted it in.
+         */
+        @Test
+        void testModeDidChangeDoesNotClearSelectionWhenModeIsSelect() {
+            controller.modeDidChange(notificationFor(Mode.SELECT));
+
+            verify(scoreMock, never()).clearSelection();
+        }
+
+        @Test
+        void testModeDidChangeStoresTheNewModeOnTheScore() {
+            controller.modeDidChange(notificationFor(Mode.SELECT));
+
+            verify(scoreMock).setMode(Mode.SELECT);
+        }
+
+        /**
          * Edit entry must delegate unconditionally to {@link EditModeManager#makePreviewElement()},
          * which supplies a default type when no duration button is selected. A delete leaves both
          * duration groups deselected, so a controller that skipped the call in that case would

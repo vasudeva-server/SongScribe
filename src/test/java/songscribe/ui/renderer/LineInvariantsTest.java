@@ -71,7 +71,7 @@ class LineInvariantsTest extends UnitTest {
         return line;
     }
 
-    // Edit mode, not playing, not selected → Color.BLACK
+    // Not playing, not selected → Color.BLACK
     @Test
     void testDefaultReturnsBlack() {
         var invariants = seededBuilder().build();
@@ -79,7 +79,7 @@ class LineInvariantsTest extends UnitTest {
         assertThat(invariants.getElementColor(0)).isEqualTo(Color.BLACK);
     }
 
-    // Edit mode + element is in a tie with the playing note → playing color
+    // Element is in a tie with the playing note → playing color
     @Test
     void testElementInPlayingTieReturnsPlayingColor() {
         var invariants = seededBuilder()
@@ -117,7 +117,7 @@ class LineInvariantsTest extends UnitTest {
         assertThat(invariants.isElementPlaying(1)).isFalse();
     }
 
-    // Edit mode + element is playing → playing color
+    // Element is playing → playing color
     @Test
     void testPlayingElementReturnsPlayingColor() {
         var invariants = seededBuilder().setPlayingNoteIndex(0).build();
@@ -125,7 +125,7 @@ class LineInvariantsTest extends UnitTest {
         assertThat(invariants.getElementColor(0)).isEqualTo(ScoreView.getPlayingNoteColor());
     }
 
-    // Edit mode + element is selected → selectionColor
+    // Element is selected → selectionColor
     @Test
     void testSelectedElementReturnsSelectionColor() {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
@@ -158,7 +158,7 @@ class LineInvariantsTest extends UnitTest {
             .isInstanceOf(AssertionError.class);
     }
 
-    // Edit mode + element is hovered (preview-replacement target) → semi-transparent red
+    // Element is hovered (preview-replacement target) → semi-transparent red
     @Test
     void testHoveredElementReturnsReplacedElementColor() {
         var hoveredLocation = new ElementLocation(0, 0);
@@ -198,7 +198,7 @@ class LineInvariantsTest extends UnitTest {
             .hasMessage(BUILD_VALIDATION_MESSAGE);
     }
 
-    // getLyricConnectorColor() — sourceElementIndex < 0 → Color.BLACK regardless of edit mode
+    // getLyricConnectorColor() — sourceElementIndex < 0 → Color.BLACK
     @Test
     void testGetLyricConnectorColorNegativeSourceIndexReturnsBlack() {
         var invariants = seededBuilder().build();

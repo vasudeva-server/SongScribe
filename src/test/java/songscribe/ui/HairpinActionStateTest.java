@@ -22,6 +22,7 @@ package songscribe.ui;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.mock;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.crotchetRest;
 import static songscribe.dom.StaffElementFactory.doubleBarline;
@@ -38,6 +39,7 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.ui.MusicEditOperations.HairpinActionState;
 import songscribe.ui.MusicEditOperations.HairpinResolution;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -141,7 +143,7 @@ class HairpinActionStateTest extends UnitTest {
         @Test
         void testNoActiveSelectionStateIsIneligible() {
             // A coordinator with no registered line returns null from getActiveSelection().
-            var ops = new MusicEditOperations(minimalSongMock(), new SelectionCoordinator());
+            var ops = new MusicEditOperations(minimalSongMock(), new SelectionCoordinator(mock(ScoreView.class)));
 
             assertThat(ops.resolveHairpinAction().state())
                 .as("a null selection state must resolve to INELIGIBLE")

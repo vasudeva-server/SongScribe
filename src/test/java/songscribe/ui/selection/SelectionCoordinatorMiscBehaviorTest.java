@@ -36,9 +36,11 @@ import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.ui.Mode;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.SelectableUIAction;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 
 /**
@@ -65,7 +67,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         try (var toolkitStatic = mockStatic(Toolkit.class)) {
             toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(mockToolkit);
 
-            var coordinator = new SelectionCoordinator();
+            var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
             var mockLine = mock(LineComponent.class);
             when(mockLine.isDraggingSelection()).thenReturn(true);
@@ -210,8 +212,9 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
 
     @Test
     void testUpdateGraceNoteActionEnabledDisablesInSelectMode() {
-        var coordinator = new SelectionCoordinator();
-        coordinator.setInSelectMode(true);
+        var scoreView = mock(ScoreView.class);
+        when(scoreView.getMode()).thenReturn(Mode.SELECT);
+        var coordinator = new SelectionCoordinator(scoreView);
 
         // Force the grace-note action to enabled so we can observe the disable.
         Actions.GRACE_EIGHTH_NOTE_ACTION.setEnabled(true);
@@ -231,8 +234,9 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
 
     @Test
     void testUpdateGraceNoteActionEnabledFollowsHasGraceNoteWhenNotInSelectMode() {
-        var coordinator = new SelectionCoordinator();
-        coordinator.setInSelectMode(false);
+        var scoreView = mock(ScoreView.class);
+        when(scoreView.getMode()).thenReturn(Mode.EDIT);
+        var coordinator = new SelectionCoordinator(scoreView);
 
         // hasGraceNote=true, not in select mode → enabled.
         coordinator.updateGraceNoteActionEnabled(true);
@@ -270,7 +274,6 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
             List.of(gracNote, regularNote),
             List.of(sentinelAction)
         );
-        coordinator.setInSelectMode(false);
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.triggerReflection();
@@ -293,7 +296,6 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
             List.of(note1, note2),
             List.of(sentinelAction)
         );
-        coordinator.setInSelectMode(false);
 
         // Pre-condition: force it enabled so we can observe the disable.
         Actions.GRACE_EIGHTH_NOTE_ACTION.setEnabled(true);

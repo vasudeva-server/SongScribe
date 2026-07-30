@@ -51,13 +51,12 @@ class CycleModeActionTest extends MainFrameMockTest {
         playbackControllerMock.close();
     }
 
-    // Row 21: actionPerformed increments currentIndex mod 2; first call → SELECT mode, second → EDIT mode
+    // Row 21: actionPerformed toggles the current mode; first call → SELECT mode, second → EDIT mode
 
     @Test
     void testFirstActionPerformedActivatesSelectMode() {
-        // MODES[0] = EDIT, MODES[1] = SELECT; first call increments index from 0 to 1
         var action = CycleModeAction.createAction(mainFrame());
-        assertThat(action.getCurrentAction()).isEqualTo(CycleModeAction.MODES[0]);
+        assertThat(action.getCurrentAction()).isEqualTo(Actions.EDIT_MODE_ACTION);
 
         try (var messageCenterMock = mockStatic(MessageCenter.class)) {
             // Mock MessageCenter so the perform() call does not propagate to real handlers
@@ -65,7 +64,7 @@ class CycleModeActionTest extends MainFrameMockTest {
                 new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "cycle-mode"));
         }
 
-        assertThat(action.getCurrentAction()).isEqualTo(CycleModeAction.MODES[1]);
+        assertThat(action.getCurrentAction()).isEqualTo(Actions.SELECT_MODE_ACTION);
     }
 
     @Test
@@ -73,38 +72,37 @@ class CycleModeActionTest extends MainFrameMockTest {
         var action = CycleModeAction.createAction(mainFrame());
 
         try (var messageCenterMock = mockStatic(MessageCenter.class)) {
-            // First call: index 0 → 1 (SELECT)
+            // First call: EDIT → SELECT
             action.actionPerformed(
                 new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "cycle-mode"));
-            // Second call: index 1 → 0 (EDIT)
+            // Second call: SELECT → EDIT
             action.actionPerformed(
                 new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "cycle-mode"));
         }
 
-        assertThat(action.getCurrentAction()).isEqualTo(CycleModeAction.MODES[0]);
+        assertThat(action.getCurrentAction()).isEqualTo(Actions.EDIT_MODE_ACTION);
     }
 
-    // Row 22: modeDidChange syncs currentIndex from the ModeAction in the notification;
-    //          adjustment modes are skipped (index unchanged)
+    // Row 22: modeDidChange syncs the current mode from the ModeAction in the notification
 
     @Test
     void testModeDidChangeSyncsToSelectMode() {
         var action = CycleModeAction.createAction(mainFrame());
-        // Start at EDIT (index 0), send SELECT notification → currentIndex should become 1
-        action.modeDidChange(new ModeDidChangeNotification(CycleModeAction.MODES[1]));
+        // Start at EDIT, send a SELECT notification → current action should become SELECT
+        action.modeDidChange(new ModeDidChangeNotification(Actions.SELECT_MODE_ACTION));
 
-        assertThat(action.getCurrentAction()).isEqualTo(CycleModeAction.MODES[1]);
+        assertThat(action.getCurrentAction()).isEqualTo(Actions.SELECT_MODE_ACTION);
     }
 
     @Test
     void testModeDidChangeSyncsToEditMode() {
         var action = CycleModeAction.createAction(mainFrame());
-        // Put currentIndex at 1 (SELECT) first
-        action.modeDidChange(new ModeDidChangeNotification(CycleModeAction.MODES[1]));
-        // Now send EDIT notification → currentIndex should become 0
-        action.modeDidChange(new ModeDidChangeNotification(CycleModeAction.MODES[0]));
+        // Move to SELECT first
+        action.modeDidChange(new ModeDidChangeNotification(Actions.SELECT_MODE_ACTION));
+        // Now send an EDIT notification → current action should become EDIT
+        action.modeDidChange(new ModeDidChangeNotification(Actions.EDIT_MODE_ACTION));
 
-        assertThat(action.getCurrentAction()).isEqualTo(CycleModeAction.MODES[0]);
+        assertThat(action.getCurrentAction()).isEqualTo(Actions.EDIT_MODE_ACTION);
     }
 
 }

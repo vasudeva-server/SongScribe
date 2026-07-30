@@ -98,7 +98,7 @@ class RenderingUtilsTest extends UnitTest {
         // Frame with a valid element index (≥0) takes the fast path
         var frame = ElementFrame.LINE_LEVEL.withElement(0, Double.NaN);
 
-        // Outside edit mode, getElementColor always returns BLACK
+        // Nothing is playing, selected, or hovered, so getElementColor returns BLACK
         var color = RenderingUtils.getDecorationColor(element, invariants, frame);
 
         assertThat(color).isEqualTo(Color.BLACK);

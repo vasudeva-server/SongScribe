@@ -255,7 +255,7 @@ public final class ScoreView
         var headless = onFileOpened == null;
         viewState = new ScoreViewState();
 
-        selectionCoordinator = new SelectionCoordinator();
+        selectionCoordinator = new SelectionCoordinator(this);
         clipboardManager = new ClipboardManager();
         EditModeManager.init(clipboardManager, selectionCoordinator, this, this);
 
@@ -1012,10 +1012,6 @@ public final class ScoreView
 
     public SelectionCoordinator getSelectionCoordinator() {
         return selectionCoordinator;
-    }
-
-    public void setInSelectMode(boolean inSelectMode) {
-        selectionCoordinator.setInSelectMode(inSelectMode);
     }
 
     public ScoreViewState getViewState() {

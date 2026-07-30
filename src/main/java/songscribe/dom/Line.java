@@ -2325,8 +2325,7 @@ public class Line {
 
     public int getFirstTempoChange() {
         // On the first line the base tempo is anchored on the first element
-        // (see attachInitialTempoIfNeeded), so the tempo marking — and its vertical
-        // adjustment handle — belongs to that element.
+        // (see attachInitialTempoIfNeeded), so the tempo marking belongs to that element.
         if ((song.indexOfLine(this) == 0) && (elementCount() > 0)) {
             return 0;
         }

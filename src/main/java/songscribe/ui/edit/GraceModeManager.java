@@ -564,7 +564,6 @@ public final class GraceModeManager {
     ) {
         // Save action states before modifying anything
         selectionCoordinator.saveActionStates();
-        selectionCoordinator.setInSelectMode(false);
 
         var line = lineComponent.getLine();
 

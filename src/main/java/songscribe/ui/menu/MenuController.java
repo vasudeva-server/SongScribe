@@ -92,7 +92,6 @@ public class MenuController {
         menuBar.add(initFileMenu());
         menuBar.add(initEditMenu());
         menuBar.add(new NotationMenu(mainFrame));
-        //        menuBar.add(initModeMenu());
 
         if (SystemInfo.isMacOS) {
             // Desktop.getDesktop().setDefaultMenuBar(menuBar) is broken in macOS.

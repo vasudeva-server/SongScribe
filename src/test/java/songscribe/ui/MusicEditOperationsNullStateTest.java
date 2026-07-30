@@ -22,6 +22,7 @@ package songscribe.ui;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static songscribe.dom.StaffElementFactory.crotchet;
@@ -39,6 +40,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
@@ -82,7 +84,7 @@ class MusicEditOperationsNullStateTest extends UnitTest {
      */
     private MusicEditOperations opsWithNullState() {
         // A coordinator with no registered/activated line returns null from getActiveSelection().
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(mock(ScoreView.class));
         var ops = new MusicEditOperations(song, coordinator);
         messageCenterMock = mockStatic(MessageCenter.class);
         return ops;

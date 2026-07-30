@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.List;
 import java.util.Objects;
@@ -31,6 +32,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Unit tests for {@link SelectionCoordinator#canDeleteLine} and
@@ -56,7 +58,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
         var line = song.getLine(LINE_0);
         song.withoutMutationTracking(() -> line.addElement(0, ElementType.CROTCHET.newInstance()));
 
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(mock(ScoreView.class));
         coordinator.registerLineState(LINE_0, new LineSelectionState(line));
         coordinator.activateLine(LINE_0);
         return coordinator;
@@ -72,7 +74,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
         song.withoutMutationTracking(() -> firstLine.addElement(0, ElementType.CROTCHET.newInstance()));
         song.addLine(new Line(song));
 
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(mock(ScoreView.class));
         coordinator.registerLineState(LINE_0, new LineSelectionState(firstLine));
         coordinator.activateLine(LINE_0);
         return coordinator;
@@ -89,7 +91,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     @Test
     void testCanDeleteLineReturnsFalseWhenNoActiveLine() {
         // Coordinator with no registered lines and no active line.
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
         assertThat(coordinator.canDeleteLine())
             .as("canDeleteLine with no active line")

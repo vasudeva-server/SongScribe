@@ -454,10 +454,10 @@ class FragmentTest extends UnitTest {
     @Nested
     class AttachmentAliasing {
 
-        // Regression: mutating a pasted element's AnnotationAttachment the way
-        // VerticalAdjustment.adjustAnnotation (:201-214) does must never affect the
-        // original element's annotation. Guards against a shallow-clone reintroducing
-        // shared Annotation state between an original and its clipboard-derived clones.
+        // Regression: mutating a pasted element's AnnotationAttachment in place must never
+        // affect the original element's annotation. Guards against a shallow-clone
+        // reintroducing shared Annotation state between an original and its
+        // clipboard-derived clones.
         @Test
         void testMutatingPastedAnnotationDoesNotAffectOriginal() {
             var line = detachedLine();
@@ -485,8 +485,7 @@ class FragmentTest extends UnitTest {
         }
 
         // Same shape for TempoChangeAttachment/Tempo: mutating the pasted attachment's
-        // own userYOffsetSs (the way VerticalAdjustment.adjustTempoChange does) must
-        // never affect the original attachment.
+        // own userYOffsetSs in place must never affect the original attachment.
         @Test
         void testMutatingPastedTempoChangeAttachmentDoesNotAffectOriginal() {
             var line = detachedLine();

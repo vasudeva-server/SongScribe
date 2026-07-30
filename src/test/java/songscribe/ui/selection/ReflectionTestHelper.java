@@ -20,6 +20,9 @@
 
 package songscribe.ui.selection;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -30,7 +33,9 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.layout.Ending;
+import songscribe.ui.Mode;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Test utility for setting up a {@link SelectionCoordinator} with a {@link Line}
@@ -44,11 +49,22 @@ public final class ReflectionTestHelper {
     }
 
     /**
+     * A score-view stub reporting EDIT mode, which is what
+     * {@link SelectionCoordinator#isInSelectMode()} derives its answer from. Tests that need
+     * select-mode behavior build their own stub rather than using these helpers.
+     */
+    private static ScoreView editModeScoreView() {
+        var scoreView = mock(ScoreView.class);
+        when(scoreView.getMode()).thenReturn(Mode.EDIT);
+        return scoreView;
+    }
+
+    /**
      * Creates a SelectionCoordinator for an existing Line (e.g. from a fixture),
      * registered and activated at line index 0, with no reflectable actions.
      */
     public static SelectionCoordinator createCoordinatorForLine(Line line) {
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(editModeScoreView());
         var state = new LineSelectionState(line);
         coordinator.registerLineState(0, state);
         coordinator.activateLine(0);
@@ -118,7 +134,7 @@ public final class ReflectionTestHelper {
             line.addElement(note);
         }
 
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(editModeScoreView());
         var state = new LineSelectionState(line);
         coordinator.registerLineState(0, state);
         coordinator.activateLine(0);

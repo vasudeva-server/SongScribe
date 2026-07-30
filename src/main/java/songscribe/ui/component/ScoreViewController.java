@@ -432,16 +432,12 @@ public final class ScoreViewController {
     public void modeDidChange(ModeDidChangeNotification message) {
         var mode = message.getMode();
         score.setMode(mode);
-        score.setInSelectMode(mode == Mode.SELECT);
 
-        if (mode != Mode.SELECT) {
-            score.clearSelection();
-        }
-
-        // When entering edit mode, sync the preview element with the currently
-        // selected duration button. Reflection may have changed the selected button
-        // while in select mode without posting a DurationSelectedMessage.
+        // Entering edit mode drops any selection and syncs the preview element with the
+        // currently selected duration button. Reflection may have changed the selected
+        // button while in select mode without posting a DurationSelectedMessage.
         if (mode == Mode.EDIT) {
+            score.clearSelection();
             syncPreviewElementWithSelectedDuration();
         }
 

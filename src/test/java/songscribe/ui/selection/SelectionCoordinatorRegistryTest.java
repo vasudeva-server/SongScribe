@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.List;
 import java.util.Objects;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Unit tests for {@link SelectionCoordinator} line-state registry and active-line
@@ -104,7 +106,7 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
     void testClearLineStatesClearsAllStatesAndResetsActiveLineIndex() {
         // Register two states at indices 0 and 1.
         var song = minimalSongMock();
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
         var lineA = new songscribe.dom.Line(song);
         var lineB = new songscribe.dom.Line(song);
@@ -130,7 +132,7 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
      */
     @Test
     void testGetActiveLineIndexReturnsNegativeOneWhenNoLineActive() {
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
         assertThat(coordinator.getActiveLineIndex())
             .as("activeLineIndex with no line activated")
@@ -143,7 +145,7 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
     @Test
     void testGetActiveLineIndexReturnsCorrectIndexAfterActivation() {
         var song = minimalSongMock();
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(mock(ScoreView.class));
         coordinator.registerLineState(0, new LineSelectionState(new songscribe.dom.Line(song)));
         coordinator.registerLineState(1, new LineSelectionState(new songscribe.dom.Line(song)));
 
@@ -165,7 +167,7 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
     @Test
     void testActivateLineClearsPreviousLineSelectionAndSetsActiveIndex() {
         var song = minimalSongMock();
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
         var lineA = new songscribe.dom.Line(song);
         lineA.addElement(ElementType.CROTCHET.newInstance());

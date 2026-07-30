@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.Objects;
 
@@ -30,6 +31,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.layout.Ending;
+import songscribe.ui.component.ScoreView;
 
 /**
  * Unit tests for the cross-line guard logic and per-state delegation in
@@ -60,7 +62,7 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
      */
     private SelectionCoordinator twoLineCoordinator() {
         var song = minimalSongMock();
-        var coordinator = new SelectionCoordinator();
+        var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
         var lineA = new Line(song);
         lineA.addElement(ElementType.CROTCHET.newInstance());

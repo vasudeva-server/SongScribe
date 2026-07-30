@@ -310,7 +310,7 @@ class SlideRendererTest extends UnitTest {
     // target selection (CONNECTED), and no-provider fallback (Row 21)
     // ======================================================================
 
-    private static LineInvariants.Builder editModeBuilder() {
+    private static LineInvariants.Builder baseBuilder() {
         return RenderContextTestHelper.newContext(new Song());
     }
 
@@ -318,7 +318,7 @@ class SlideRendererTest extends UnitTest {
     void testDetermineGlissandoColor_standaloneGlissandoSelected_returnsSelectionColor() {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isSlideSelected(0, 0)).thenReturn(true);
-        var invariants = editModeBuilder()
+        var invariants = baseBuilder()
             .setSelectionProvider(selectionProvider)
             .build();
 
@@ -334,7 +334,7 @@ class SlideRendererTest extends UnitTest {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isSlideSelected(0, 0)).thenReturn(false);
         when(selectionProvider.isElementSelected(1, 0)).thenReturn(true);
-        var invariants = editModeBuilder()
+        var invariants = baseBuilder()
             .setSelectionProvider(selectionProvider)
             .build();
 
@@ -351,7 +351,7 @@ class SlideRendererTest extends UnitTest {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isSlideSelected(0, 0)).thenReturn(false);
         when(selectionProvider.isElementSelected(1, 0)).thenReturn(true);
-        var invariants = editModeBuilder()
+        var invariants = baseBuilder()
             .setSelectionProvider(selectionProvider)
             .build();
 
@@ -366,7 +366,7 @@ class SlideRendererTest extends UnitTest {
         // A fall directly selected as a standalone slide still highlights.
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isSlideSelected(0, 0)).thenReturn(true);
-        var invariants = editModeBuilder()
+        var invariants = baseBuilder()
             .setSelectionProvider(selectionProvider)
             .build();
 
@@ -379,7 +379,7 @@ class SlideRendererTest extends UnitTest {
     @Test
     void testDetermineGlissandoColor_noSelectionProvider_returnsBlack() {
         // selectionProvider is null → early return with BLACK
-        var invariants = editModeBuilder()
+        var invariants = baseBuilder()
             .setSelectionProvider(null)
             .build();
 
@@ -393,7 +393,7 @@ class SlideRendererTest extends UnitTest {
     void testDetermineGlissandoColor_playingNote_returnsPlayingColor() {
         // getElementColor returns non-BLACK for the playing note → early return
         // before glissando-specific selection logic fires
-        var invariants = editModeBuilder()
+        var invariants = baseBuilder()
             .setPlayingNoteIndex(0)
             .build();
 
