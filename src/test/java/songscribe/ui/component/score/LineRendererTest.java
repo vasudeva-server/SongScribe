@@ -55,6 +55,8 @@ import songscribe.dom.StaffElement;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.ui.FlatLafKey;
+import songscribe.ui.FlatLafProps;
 import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.renderer.ElementFrame;
@@ -99,6 +101,12 @@ class LineRendererTest extends UnitTest {
             .setLyricRenderMetrics(new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0, 0, 0));
     }
 
+    /** {@link #seededBuilder} with a layout that could not fit the staff width. */
+    private static LineInvariants.Builder overflowingBuilder() {
+        return seededBuilder()
+            .setLayoutResult(LayoutResult.builder().setOverflowsStaffWidth(true).build());
+    }
+
     /** Creates a real {@code Graphics2D} backed by an off-screen image, wrapped in a spy. */
     private static java.awt.Graphics2D spyGraphics() {
         var img = new BufferedImage(200, 200, BufferedImage.TYPE_INT_ARGB);
@@ -119,6 +127,17 @@ class LineRendererTest extends UnitTest {
          * the restore-on-close call can be distinguished from the test-driven setColor call.
          */
         private static final Color INITIAL_COLOR = Color.BLUE;
+
+        /**
+         * The color an over-full line's staff lines are drawn in. Read on demand rather than held in
+         * a static field: the lookup needs the theme installed, and a field would run it while this
+         * class initializes, which is not ordered against the {@code @BeforeAll} that installs it. A
+         * lookup with no theme calls {@code RuntimeError.exit} rather than failing the test cleanly.
+         * Matches how the neighbouring tests read {@link ScoreView#getSelectionColor()}.
+         */
+        private static Color overflowColor() {
+            return FlatLafProps.getColor(FlatLafKey.SCORE_STAFF_LINE_OVERFLOW_COLOR);
+        }
 
         /**
          * When the line is NOT selected (default — no selection provider),
@@ -163,6 +182,48 @@ class LineRendererTest extends UnitTest {
             // setColor(selectionColor) once inside the block; restore sets INITIAL_COLOR back
             verify(g2).setColor(ScoreView.getSelectionColor());
             verify(g2, never()).setColor(RenderingUtils.STAFF_LINE_COLOR);
+        }
+
+        /**
+         * A line whose content could not fit the staff draws its staff lines in the overflow
+         * color, which is the user's standing indication that the tail of the line is clipped
+         * (refs #696).
+         */
+        @Test
+        void testOverflowingLineUsesOverflowColor() {
+            var invariants = overflowingBuilder()
+                // no selectionProvider set → staffSelected = false
+                .build();
+            var g2 = spyGraphics();
+            g2.setColor(INITIAL_COLOR);
+
+            renderer.drawStaffLines(g2, invariants);
+
+            verify(g2).setColor(overflowColor());
+            verify(g2, never()).setColor(RenderingUtils.STAFF_LINE_COLOR);
+        }
+
+        /**
+         * Selection wins over overflow: it is the transient state the user is acting on, and the
+         * overflow color returns the moment the line is deselected.
+         */
+        @Test
+        void testSelectedOverflowingLineUsesSelectionColor() {
+            final int lineIndex = 0;
+            var selectionProvider = mock(LineComponent.SelectionProvider.class);
+            when(selectionProvider.isLineSelected(lineIndex)).thenReturn(true);
+
+            var invariants = overflowingBuilder()
+                .setLineIndex(lineIndex)
+                .setSelectionProvider(selectionProvider)
+                .build();
+            var g2 = spyGraphics();
+            g2.setColor(INITIAL_COLOR);
+
+            renderer.drawStaffLines(g2, invariants);
+
+            verify(g2).setColor(ScoreView.getSelectionColor());
+            verify(g2, never()).setColor(overflowColor());
         }
     }
 

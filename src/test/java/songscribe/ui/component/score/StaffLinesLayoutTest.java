@@ -154,8 +154,8 @@ class StaffLinesLayoutTest extends UnitTest {
     /**
      * Builds a laid-out {@link StaffPanel} whose lines carry exactly {@code lines}' extents.
      * <p>
-     * Passing a {@code null} entry leaves that line's {@code layoutResult} unset, which is the
-     * issue-#449 "line does not fit" state the layout must tolerate.
+     * Passing a {@code null} entry leaves that line's {@code layoutResult} unset — the state of a
+     * line whose layout pass has not run, which this layout must tolerate rather than crash on.
      */
     private static StaffPanel laidOutPanel(LineExtents... lines) {
         var panel = panelWith(lines);
@@ -191,16 +191,17 @@ class StaffLinesLayoutTest extends UnitTest {
             linePanel.setPreferredSize(new Dimension(LINE_WIDTH_PX, 0));
 
             var lineComponent = linePanel.getLineComponent();
-            lineComponent.setScoreView(scoreView);
             var extents = lines[i];
 
             if (extents == null) {
-                // setSong() already ran a real layout, so the result must be cleared
-                // explicitly rather than merely left unset — and the line marked as not
-                // fitting, or ensureAllLineLayouts() would simply lay it out again.
+                // setSong() already ran a real layout, so the result must be cleared explicitly
+                // rather than merely left unset. Withholding the score view is what keeps it
+                // cleared: performLayout returns early without one, so ensureAllLineLayouts cannot
+                // simply lay the line out again. Layout itself no longer has a failure mode — an
+                // over-full line is placed and clipped, not abandoned (refs #696).
                 lineComponent.layoutResult = null;
-                lineComponent.setLineDoesNotFit(true);
             } else {
+                lineComponent.setScoreView(scoreView);
                 lineComponent.layoutResult = LayoutResult.builder()
                     .setContentAboveStaffSs(extents.contentAboveStaffSs())
                     .setContentBelowStaffSs(extents.contentBelowStaffSs())
@@ -419,8 +420,8 @@ class StaffLinesLayoutTest extends UnitTest {
         }
 
         /**
-         * A line whose layout could not be produced (issue #449) is reserved the minimum
-         * staff surround instead of crashing the whole panel's layout.
+         * A line with no layout result — its layout pass never ran — is reserved the minimum staff
+         * surround instead of crashing the whole panel's layout.
          */
         @Test
         void testLineWithNullLayoutResultReservesTheMinimumStaffSurround() {

@@ -604,8 +604,8 @@ public final class InsertionSpacingCalculator {
      * is appended, exactly as the insertion projections do.
      * <p>
      * Without this gate an infeasible modification is not refused at mutation time: it surfaces
-     * later as {@code LINE_TOO_FULL_ERROR} and a <b>null</b> {@code LayoutResult}, so the line does
-     * not render at all.
+     * later as a line laid out on its collision floors, whose tail runs past the staff and is
+     * clipped, drawn in red (refs #696) — the modified element may itself be the part cut off.
      *
      * @param line               The line being modified, in its pre-modification state
      * @param projectedElements  The line's effective elements as they will read after the

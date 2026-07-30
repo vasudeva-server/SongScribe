@@ -41,7 +41,6 @@ import songscribe.ui.hit.HitResult;
 import songscribe.ui.component.ScoreView;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.LineSpacing;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.engraving.Staff;
 import songscribe.ui.renderer.ElementFrame;
@@ -151,21 +150,21 @@ public class LineComponent extends ScoreComponent
     boolean layoutDirty = true;
 
     /**
-     * True when the most recent layout attempt could not fit this line's content
-     * within the staff while maintaining minimum spacing.
+     * True once the overflow alert has been shown for the current document, so it is shown once
+     * and not once per overflowing line, per paint, or per episode. The red staff lines are the
+     * standing indication from then on, and they clear themselves when the line fits again — so
+     * there is nothing a second alert would tell the user (refs #696). Reset by
+     * {@link #resetOverflowWarning} when a document is installed. EDT-only, so a plain static
+     * boolean is safe.
      * <p>
-     * Interim handling for issue #449: rather than the fatal crash, the app keeps
-     * the last good layout (if any) and warns non-fatally. The proper fix — undo
-     * the offending edit — is blocked on the undo system being implemented.
+     * One flag for every line in the process, which is correct only because the app holds one
+     * document at a time: {@code MainFrame} is a singleton owning a single {@link ScoreView}, and
+     * every path that installs a document goes through {@link ScoreView#setSong}, which resets this.
+     * A second window, or a document-installing path that bypasses {@code setSong}, would have to
+     * scope the flag per document — otherwise it either swallows a warning the user needs or fires a
+     * stale one.
      */
-    private boolean lineDoesNotFit;
-
-    /**
-     * Guards the non-fatal "line too full" warning so a single dialog is shown per
-     * failure episode, not once per failing line per paint. Reset after the deferred
-     * dialog is dismissed. EDT-only, so a plain static boolean is safe.
-     */
-    private static boolean lineDoesNotFitWarningScheduled;
+    private static boolean overflowWarningShown;
 
     /** True when the previous line's lyric extender continues into this line. */
     private boolean hasLeadingLyricContinuation;
@@ -215,7 +214,6 @@ public class LineComponent extends ScoreComponent
         lineSelectionState = new LineSelectionState(line);
         layoutDirty = true;
         layoutResult = null;
-        lineDoesNotFit = false;
         middleLineYSsValid = false;
 
         // Register with coordinator if score is available
@@ -366,7 +364,6 @@ public class LineComponent extends ScoreComponent
     public void invalidateLayout() {
         layoutDirty = true;
         layoutResult = null;
-        lineDoesNotFit = false;
         middleLineYSsValid = false;
         revalidate();
         repaint();
@@ -385,24 +382,9 @@ public class LineComponent extends ScoreComponent
         return layoutResult;
     }
 
-    /**
-     * Puts this line into the issue #449 does-not-fit state, in which a null layout result
-     * is the expected steady state rather than a signal to lay out again.
-     * <p>
-     * Exists so tests can reproduce that state directly: it is otherwise only reachable by
-     * driving a real layout that fails to fit, which no unit test can arrange cheaply.
-     */
-    void setLineDoesNotFit(boolean lineDoesNotFit) {
-        this.lineDoesNotFit = lineDoesNotFit;
-    }
-
-    /**
-     * Returns true when no layout result exists and its absence is not the expected
-     * outcome of the issue #449 does-not-fit state, which deliberately keeps the last
-     * good result (or none at all) rather than producing a new one.
-     */
+    /** Returns true when this line has no layout result to read. */
     private boolean layoutMissing() {
-        return layoutResult == null && !lineDoesNotFit;
+        return layoutResult == null;
     }
 
     /** Returns true when the layout must be recomputed before its results can be read. */
@@ -469,41 +451,39 @@ public class LineComponent extends ScoreComponent
         var result = layoutEngine.layout(
             line, isLastLine, hasLeadingLyricContinuation, attribution);
 
-        if (result == null) {
-            // Issue #449 interim handling: the content cannot fit while maintaining
-            // minimum spacing. Crashing is not acceptable, and overflowing the margin
-            // is not either, so keep the last good layout (if any) and warn the user
-            // non-fatally. The proper fix — undo the offending edit — awaits the undo
-            // system. layoutResult is intentionally left unchanged.
-            lineDoesNotFit = true;
-            layoutDirty = false;
-            warnLineDoesNotFit();
-            return;
-        }
-
-        lineDoesNotFit = false;
         layoutResult = result;
         layoutDirty = false;
+
+        if (result.overflowsStaffWidth()) {
+            warnLineOverflows();
+        }
     }
 
     /**
-     * Shows the non-fatal "line too full" warning once per failure episode.
-     * <p>
-     * Deferred to a later EDT cycle because layout runs during paint; showing a
-     * modal dialog synchronously would re-enter painting. See issue #449.
+     * Clears the once-per-document guard on the overflow alert, so the next document that cannot
+     * fit a line warns about it. Called when a document is installed.
      */
-    private static void warnLineDoesNotFit() {
-        if (lineDoesNotFitWarningScheduled) {
+    public static void resetOverflowWarning() {
+        overflowWarningShown = false;
+    }
+
+    /**
+     * Warns, once per document, that content is being clipped.
+     * <p>
+     * Deferred to a later EDT cycle because layout runs during paint; showing a modal dialog
+     * synchronously would re-enter painting. The guard is set before the dialog rather than after
+     * it, so the several lines that typically overflow together produce one alert instead of one
+     * each (refs #696).
+     */
+    private static void warnLineOverflows() {
+        if (overflowWarningShown) {
             return;
         }
 
-        lineDoesNotFitWarningScheduled = true;
+        overflowWarningShown = true;
 
-        SwingUtilities.invokeLater(() -> {
-            OptionDialogs.showWarningMessage(
-                null, Strings.ALERT_TITLE_LINE_TOO_FULL, Strings.ALERT_LINE_TOO_FULL);
-            lineDoesNotFitWarningScheduled = false;
-        });
+        SwingUtilities.invokeLater(() -> OptionDialogs.showWarningMessage(
+            null, Strings.ALERT_TITLE_LINES_DO_NOT_FIT, Strings.ALERT_LINES_DO_NOT_FIT));
     }
 
     @Override
@@ -544,22 +524,26 @@ public class LineComponent extends ScoreComponent
         // ────────────────────────────────────────────────────────────────────────────
         var scale = getViewPixelsPerStaffSpace();
 
-        // layoutResult is null only when the very first layout could not fit the
-        // content (issue #449); with no prior layout to fall back on, skip drawing
-        // the staff content rather than crash. Recovers on the next layout that fits.
-        if (layoutResult != null) {
-            try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
-                g2.scale(scale, scale);
-                lineRenderer.render(g2);
-            }
+        // Layout always produces a result — an over-full line is placed on its collision floors
+        // and drawn clipped, not abandoned (refs #696) — so a null here is a broken invariant,
+        // not a line that would not fit.
+        var result = layoutResult;
+
+        if (result == null) {
+            throw unexpectedNullLayout();
+        }
+
+        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+            g2.scale(scale, scale);
+            lineRenderer.render(g2);
         }
 
         // Render the attribution pane directly in pixel space (first line only).
         // The pane is not a Swing child; it is rendered here after the staff-space
         // transform has been restored.
-        if (lineIndex == 0 && song != null && scoreView != null && layoutResult != null) {
+        if (lineIndex == 0 && song != null && scoreView != null) {
             var attribution = song.getAttributionElement();
-            var layout = layoutResult.getDecorationLayout(attribution);
+            var layout = result.getDecorationLayout(attribution);
 
             if (layout != null) {
                 var view = scoreView;
@@ -593,10 +577,12 @@ public class LineComponent extends ScoreComponent
             performLayout();
         }
 
-        if (layoutMissing()) {
-            // Sizing does not consult the layout, but a null one here still means the
-            // layout pass failed for a reason other than the fit failure of issue #449.
-            // The throw also guards the @Nullable getScoreView() dereference below.
+        var result = layoutResult;
+
+        if (result == null) {
+            // Layout always produces a result, so a null one means the pass never ran — it
+            // returns early without a score view. The throw also guards the @Nullable
+            // getScoreView() dereference below.
             throw unexpectedNullLayout();
         }
 
@@ -604,17 +590,13 @@ public class LineComponent extends ScoreComponent
         // element: LineRenderer draws the staff lines out to song.getLineWidthSs(), and
         // sizing the component any narrower clipped them there — an element-less line
         // collapsed to zero width and vanished entirely (issue #578).
-        double heightSs;
-
-        if (layoutResult != null) {
-            // The painted height, so the bounds hold everything this line draws — the measured
-            // lineHeightSs is the spacing input and can be shorter than the staff surround.
-            heightSs = layoutResult.paintLineHeightSs(getScoreView().getLyricRenderMetrics());
-        } else {
-            // Issue #449: the line has never had a fitting layout. Fall back to the same
-            // minimum extents StaffLinesLayout uses for a null LayoutResult.
-            heightSs = LineSpacing.MIN_LINE_HEIGHT_SS;
-        }
+        //
+        // The width is the staff width even for a line whose content overflows it: the overflow
+        // is meant to be clipped at the end of the staff, and these bounds are what clip it.
+        //
+        // The painted height, so the bounds hold everything this line draws — the measured
+        // lineHeightSs is the spacing input and can be shorter than the staff surround.
+        var heightSs = result.paintLineHeightSs(getScoreView().getLyricRenderMetrics());
 
         return new Dimension(
             toViewPx(new Ss(song.getLineWidthSs())).ceilPx(),
@@ -629,12 +611,6 @@ public class LineComponent extends ScoreComponent
         var result = layoutResult;
 
         if (result == null) {
-            if (lineDoesNotFit) {
-                // First layout could not fit the content (issue #449); fall back to the
-                // minimum above-staff space so the staff still positions sensibly.
-                return Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HALF_SS;
-            }
-
             throw unexpectedNullLayout();
         }
 
@@ -646,8 +622,9 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Builds the error for the unexpected case where layout ran but produced no
-     * result and the line is not in the known does-not-fit state (issue #449).
+     * Builds the error for the unexpected case where the layout pass produced no result. Layout
+     * itself cannot fail — an over-full line is placed and drawn clipped (refs #696) — so this
+     * means the pass never ran, which it skips only without a score view.
      */
     private RuntimeException unexpectedNullLayout() {
         return RuntimeError.exit("layout result is null after layout for line " + lineIndex);
@@ -1070,7 +1047,7 @@ public class LineComponent extends ScoreComponent
      * line, or null when this line has no layout yet.
      * <p>
      * A missing layout is expected rather than fatal here: an overlay can be asked for its bounds
-     * while a line is in the issue-#449 {@code lineDoesNotFit} state.
+     * before this line's layout pass has run, which it skips while it has no score view.
      */
     @Nullable
     LineInvariants previewInvariants() {

@@ -58,22 +58,19 @@ import songscribe.util.LogUtils;
  *   <li>{@link HorizontalSpacingCalculator} - Builds one {@link Spring} per adjacent column pair</li>
  *   <li>{@link LyricLift} - Stretches the springs' rests so syllables clear each other</li>
  *   <li>{@link SpringSpacer} - Solves the spring chain to fit the staff width, compressing gaps
- *       in proportion to their compliance; an unfittable line fails the layout</li>
+ *       in proportion to their compliance; a line that cannot fit even fully compressed is placed
+ *       on its collision floors and marked
+ *       {@link LayoutResult#overflowsStaffWidth() overflowing} instead of failing</li>
  *   <li>{@link VerticalStackingCalculator} - Positions elements vertically (layer-by-layer)</li>
  * </ol>
+ * <p>
+ * Layout always produces a result. There is no failure mode: every line can be placed, because
+ * the collision floors are always a placement, even when they do not fit.
  * <p>
  * Usage:
  * <pre>{@code
  * var engine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs);
- * LayoutResult result = engine.layout(line);
- *
- * if (result == null) {
- *     // Layout failed (line justification error)
- *     String error = engine.getLastError();
- *     // Display error to user
- * } else {
- *     // Use result for rendering
- * }
+ * var result = engine.layout(line);
  * }</pre>
  */
 public class LayoutEngine {
@@ -159,21 +156,9 @@ public class LayoutEngine {
     private final double staffRightMarginSs;
     private final DocumentFontsHolder fonts;
 
-    /**
-     * Reported via {@link #getLastError()} when the spring solver cannot fit the line even with
-     * every gap compressed to its collision floor. Diagnostic only — the user-facing warning
-     * lives in the UI layer, which keys off the null layout result.
-     */
-    private static final String LINE_TOO_FULL_ERROR =
-        "Line cannot fit within the staff margin while maintaining minimum spacing";
-
     // Calculators
     private final ElementColumnBuilder columnBuilder;
     private final VerticalStackingCalculator verticalCalculator;
-
-    // Error tracking
-    @Nullable
-    private String lastError;
 
     /**
      * Creates a new LayoutEngine.
@@ -192,8 +177,6 @@ public class LayoutEngine {
         // Initialize calculators
         columnBuilder = new ElementColumnBuilder(lyricRenderMetrics);
         verticalCalculator = new VerticalStackingCalculator();
-
-        lastError = null;
     }
 
     /**
@@ -201,9 +184,9 @@ public class LayoutEngine {
      * Equivalent to {@code layout(line, false, false)}.
      *
      * @param line The line to lay out
-     * @return LayoutResult with all positioned elements, or null if layout fails
+     * @return LayoutResult with all positioned elements
      */
-    public @Nullable LayoutResult layout(Line line) {
+    public LayoutResult layout(Line line) {
         return layout(line, false, false);
     }
 
@@ -213,9 +196,9 @@ public class LayoutEngine {
      *
      * @param line       The line to lay out
      * @param isLastLine Whether this line is the last line of the song
-     * @return LayoutResult with all positioned elements, or null if layout fails
+     * @return LayoutResult with all positioned elements
      */
-    public @Nullable LayoutResult layout(Line line, boolean isLastLine) {
+    public LayoutResult layout(Line line, boolean isLastLine) {
         return layout(line, isLastLine, false);
     }
 
@@ -233,9 +216,9 @@ public class LayoutEngine {
      *                                    melisma extender that should continue from x = 0
      *                                    on this line until the first syllable or rest that
      *                                    breaks it.
-     * @return LayoutResult with all positioned elements, or null if layout fails
+     * @return LayoutResult with all positioned elements
      */
-    public @Nullable LayoutResult layout(Line line, boolean isLastLine, boolean hasLeadingLyricContinuation) {
+    public LayoutResult layout(Line line, boolean isLastLine, boolean hasLeadingLyricContinuation) {
         return layout(line, isLastLine, hasLeadingLyricContinuation, null);
     }
 
@@ -250,15 +233,13 @@ public class LayoutEngine {
      * @param isLastLine                  Whether this line is the last line of the song
      * @param hasLeadingLyricContinuation True when the previous line's lyric extender continues
      * @param attribution                 The attribution block element, or null if not applicable
-     * @return LayoutResult with all positioned elements, or null if layout fails
+     * @return LayoutResult with all positioned elements
      */
-    public @Nullable LayoutResult layout(
+    public LayoutResult layout(
         Line line,
         boolean isLastLine,
         boolean hasLeadingLyricContinuation,
         @Nullable Attribution attribution) {
-
-        lastError = null;
 
         // Accidental widths are a layout input. Initialise them here (idempotent and cheap)
         // so layout never precedes initialisation, regardless of paint/layout ordering.
@@ -281,11 +262,10 @@ public class LayoutEngine {
         // natural zeros on empty columns. It deliberately gets no special-cased result: the
         // extents below feed inter-line spacing, so a line that invents content extents it does
         // not have spaces itself as if it held that content (refs #630).
-        if (!placeColumnsHorizontally(columns, line, isLastLine)) {
-            return null;
-        }
+        var fitsStaffWidth = placeColumnsHorizontally(columns, line, isLastLine);
 
         var builder = LayoutResult.builder();
+        builder.setOverflowsStaffWidth(!fitsStaffWidth);
 
         // Step 4: Create header elements (clef and key signature)
         createHeaderElements(line, builder);
@@ -348,9 +328,15 @@ public class LayoutEngine {
      * <p>
      * A line with no columns has nothing to solve and succeeds trivially — the solver anchors on
      * the first and last column, so it is the one pass an empty line cannot take.
+     * <p>
+     * A line the solver calls infeasible is still placed, on the struts the solver could not fit.
+     * Those floors are the tightest legal spacing there is, so the placement is the closest the
+     * line can come to fitting; what will not fit runs past the end of the staff, where the line
+     * component's bounds clip it. Placing it is what lets the score show an over-full line at all
+     * (refs #696) — the alternative was to abandon the layout, and the line then did not draw.
      *
-     * @return false when the line overflows the margin with every gap already at its collision
-     *         floor, in which case {@link #getLastError()} carries the reason
+     * @return true when the line fits the staff width; false when it overflowed and was placed on
+     *         its collision floors
      */
     private boolean placeColumnsHorizontally(
         List<ElementColumn> columns, Line line, boolean isLastLine) {
@@ -361,17 +347,15 @@ public class LayoutEngine {
 
         var lineRestSs = line.getSong().getDefaultRestLengthSs();
         var solution = HorizontalSpacingCalculator.solveLine(columns, line, staffRightMarginSs);
-
-        if (solution.isInfeasible()) {
-            // Every gap is frozen at its collision floor and the line still overflows the margin.
-            lastError = LINE_TOO_FULL_ERROR;
-            return false;
-        }
+        var fitsStaffWidth = !solution.isInfeasible();
 
         // Anchor the first column at the solved chain's origin, then lay the solved gaps out from it.
         columns.getFirst().setXSs(solution.firstXSs());
 
-        var gapLengthsSs = solution.result().gapLengthsSs();
+        // An infeasible solve carries no lengths — the struts it could not fit are the placement.
+        var gapLengthsSs = fitsStaffWidth
+            ? solution.result().gapLengthsSs()
+            : strutLengthsSs(solution.springs());
 
         if (gapLengthsSs == null) {
             throw new IllegalStateException("solve succeeded but gapLengthsSs is null");
@@ -383,11 +367,33 @@ public class LayoutEngine {
 
         // Pin the terminal flush-right on the last line.
         // Layout is the sole writer of the terminal's x position.
-        if (isLastLine) {
+        //
+        // An overflowing line is skipped: the chain above already placed the terminal on its
+        // collision floor out past the staff, which is as far left as it may legally sit, so there
+        // is no room to snap into and pulling it back toward the margin would land it on top of the
+        // content it follows. Skipping is not merely the same answer by another route — the snap
+        // recomputes the floor without the pair's outer neighbours, which understates it when the
+        // column before the terminal hosts a grace note carrying a syllable (refs #696).
+        if (isLastLine && fitsStaffWidth) {
             positionTerminalFlushRight(columns, lineRestSs);
         }
 
-        return true;
+        return fitsStaffWidth;
+    }
+
+    /**
+     * Returns every gap at its collision floor: the tightest placement of the chain that still
+     * honours each pair's minimum spacing. Used for a line the solver cannot fit, where the floors
+     * are all that is left to place it on.
+     */
+    private static double[] strutLengthsSs(List<Spring> springs) {
+        var lengthsSs = new double[springs.size()];
+
+        for (var i = 0; i < springs.size(); i++) {
+            lengthsSs[i] = springs.get(i).strutSs();
+        }
+
+        return lengthsSs;
     }
 
     private void positionTerminalFlushRight(List<ElementColumn> columns, double lineRestSs) {
@@ -413,15 +419,6 @@ public class LayoutEngine {
         }
 
         lastColumn.setXSs(flushRightXSs);
-    }
-
-    /**
-     * Returns the last error message from a failed layout attempt.
-     *
-     * @return Error message, or null if no error
-     */
-    public @Nullable String getLastError() {
-        return lastError;
     }
 
     /**

@@ -1199,7 +1199,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      * A song whose line width was never initialized, or which picked up a bad width from
      * a file or an undo replay, must not persist an unusable staff: nothing on the read
      * side rejects one, so the document would reopen with a staff no content can fit and
-     * every line would fail layout ("Line Too Full") instead of showing the song. The
+     * every line clipped and drawn in red instead of showing the song. The
      * writer substitutes {@link Song#FALLBACK_LINE_WIDTH_SS} for any width that is not
      * positive — a guard that only caught zero would let a negative through.
      */

@@ -309,10 +309,10 @@ final class MusicXmlHeaderWriter {
      * <p>
      * A song whose width never got initialized would otherwise persist a zero-width
      * staff, and nothing on the read side rejects one: the document reopens with a
-     * staff no content can fit, so every line fails layout and the user gets the
-     * "Line Too Full" warning instead of their song. Substituting the fallback keeps
-     * the document openable, and the warning records that a song reached the writer
-     * in that state.
+     * staff no content can fit, so every line opens clipped and drawn in red, behind a
+     * warning that content is being cut off, instead of showing the song. Substituting
+     * the fallback keeps the document readable, and the warning records that a song
+     * reached the writer in that state.
      */
     private static double lineWidthSs(Song song) {
         var lineWidthSs = song.getLineWidthSs();

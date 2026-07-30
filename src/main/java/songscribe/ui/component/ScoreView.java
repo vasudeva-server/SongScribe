@@ -853,6 +853,10 @@ public final class ScoreView
 
         this.song = song;
 
+        // A new document gets its own chance to warn that a line does not fit; the alert is shown
+        // once per document (refs #696).
+        LineComponent.resetOverflowWarning();
+
         // Reset zoom to 100% for the new/opened song before laying out at the old zoom.
         ZoomController.resetZoom();
 

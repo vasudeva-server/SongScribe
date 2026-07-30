@@ -88,6 +88,7 @@ public final class LayoutResult {
     private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
     private final List<LyricConnectorLayout> lyricConnectors;
     private final boolean hasTrailingLyricContinuation;
+    private final boolean overflowsStaffWidth;
 
     /**
      * Creates a layout result with the given data.
@@ -104,6 +105,9 @@ public final class LayoutResult {
      *                           coordinate frame
      * @param contentBelowStaffSs True extent of this line's content below the staff bottom, in staff
      *                           spaces; the anchor for placing this line's lyrics
+     * @param overflowsStaffWidth True when the line's content could not fit the staff width even at
+     *                           its collision floors, so the columns were placed on those floors and
+     *                           the tail of the line runs past the staff and is clipped
      */
     private LayoutResult(
         Map<StaffElement, ElementColumn> elementColumns,
@@ -118,7 +122,8 @@ public final class LayoutResult {
         double contentBelowStaffSs,
         Map<StaffElement, List<LyricBoxLayout>> lyricBoxes,
         List<LyricConnectorLayout> lyricConnectors,
-        boolean hasTrailingLyricContinuation) {
+        boolean hasTrailingLyricContinuation,
+        boolean overflowsStaffWidth) {
         this.elementColumns = Map.copyOf(elementColumns);
         this.elementBounds = Map.copyOf(elementBounds);
         this.beamLayouts = Map.copyOf(beamLayouts);
@@ -146,6 +151,7 @@ public final class LayoutResult {
         this.lyricBoxes = Collections.unmodifiableMap(copiedBoxes);
         this.lyricConnectors = List.copyOf(lyricConnectors);
         this.hasTrailingLyricContinuation = hasTrailingLyricContinuation;
+        this.overflowsStaffWidth = overflowsStaffWidth;
     }
 
     // ==========================================================================
@@ -777,6 +783,20 @@ public final class LayoutResult {
         return hasTrailingLyricContinuation;
     }
 
+    /**
+     * Returns true when this line's content could not fit the staff width even with every gap
+     * compressed to its collision floor. The columns were then placed on those floors — the
+     * tightest legal spacing there is — so the line still lays out and still draws, but its tail
+     * runs past the end of the staff, where the component's bounds clip it.
+     * <p>
+     * The renderer draws such a line's staff lines in the overflow color, which is the user's
+     * standing indication that content is missing; the accompanying alert is shown only once per
+     * document (see {@code LineComponent.warnLineOverflows}).
+     */
+    public boolean overflowsStaffWidth() {
+        return overflowsStaffWidth;
+    }
+
     // ==========================================================================
     // Preview Element Positioning (Edit Mode)
     // ==========================================================================
@@ -1115,6 +1135,7 @@ public final class LayoutResult {
         private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
         private final List<LyricConnectorLayout> lyricConnectors;
         private boolean hasTrailingLyricContinuation = false;
+        private boolean overflowsStaffWidth = false;
 
         public Builder() {
             elementColumns = new HashMap<>();
@@ -1229,6 +1250,18 @@ public final class LayoutResult {
          */
         public Builder setHasTrailingLyricContinuation(boolean hasTrailingLyricContinuation) {
             this.hasTrailingLyricContinuation = hasTrailingLyricContinuation;
+            return this;
+        }
+
+        /**
+         * Marks whether the line was placed on its collision floors because its content could not
+         * fit the staff width, so its tail runs past the staff and is clipped.
+         *
+         * @param overflowsStaffWidth true if the line overflows the staff width
+         * @return this builder for chaining
+         */
+        public Builder setOverflowsStaffWidth(boolean overflowsStaffWidth) {
+            this.overflowsStaffWidth = overflowsStaffWidth;
             return this;
         }
 
@@ -1353,7 +1386,8 @@ public final class LayoutResult {
                 contentBelowStaffSs,
                 lyricBoxes,
                 lyricConnectors,
-                hasTrailingLyricContinuation
+                hasTrailingLyricContinuation,
+                overflowsStaffWidth
             );
         }
     }

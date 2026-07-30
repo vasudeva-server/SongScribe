@@ -132,7 +132,7 @@ public abstract class E2ETest {
                 // Production does this in MainFrame.main() before initFrame(). Without it
                 // the provider stays at its 0.0 fallback, so every `new Song()` gets a zero
                 // line width, no content can ever fit the staff, and layout raises the
-                // "line too full" warning on each reset/fixture load.
+                // lines-do-not-fit warning on each reset/fixture load.
                 Song.setDefaultLineWidthProvider(PageModel::getDefaultLineWidthSs);
 
                 var mainFrame = MainFrame.getInstance();

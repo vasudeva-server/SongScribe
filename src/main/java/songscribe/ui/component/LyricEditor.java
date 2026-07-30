@@ -999,12 +999,13 @@ public final class LyricEditor extends MyJTextField {
     /**
      * Returns whether committing the current text as {@code kind}/{@code extend} keeps the line
      * layout feasible. A wider syllable can force spacing past the staff margin, and committing it
-     * anyway leaves the line unable to lay out (issue #449); when that would happen this warns the
-     * user, leaves the model untouched, and returns false so the caller aborts the commit and keeps
-     * the editor open for the user to shorten the lyric.
+     * anyway leaves the line laid out on its collision floors with its tail clipped at the end of
+     * the staff (refs #696) — quite possibly cutting off the syllable just typed. When that would
+     * happen this warns the user, leaves the model untouched, and returns false so the caller aborts
+     * the commit and keeps the editor open for the user to shorten the lyric.
      *
      * <p>An already-overflowing line is never blocked, so the user can still shorten a too-long
-     * syllable to recover; only an edit that turns a fitting line into one that cannot lay out is
+     * syllable to recover; only an edit that turns a fitting line into one that does not fit is
      * refused.
      */
     private boolean ensureLyricFits(CommitKind kind, Lyric.Extend extend) {

@@ -68,6 +68,7 @@ import songscribe.layout.PageModel;
 import songscribe.engraving.Staff;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.LineSelectionState;
@@ -717,6 +718,28 @@ class ScoreViewTest extends UnitTest {
             scoreView.setSong(new Song());
 
             assertThat(scoreView.isInitialized()).isTrue();
+        }
+    }
+
+    @Nested
+    class SetSongResetsTheOverflowWarning {
+
+        /**
+         * The alert that says a line's content is being clipped is shown once per document, guarded
+         * by a flag on {@link LineComponent} that only {@code setSong} clears. Installing a document
+         * has to clear it, or the first document of the session that cannot fit a line would be the
+         * only one ever to warn — every later document would clip content silently (refs #696).
+         * <p>
+         * The static method is mocked rather than its effect observed: the flag is private to
+         * {@code LineComponent}, in another package, so nothing in this test's package can read it.
+         */
+        @Test
+        void testSetSongReArmsTheClippedContentWarning() {
+            try (var lineComponent = mockStatic(LineComponent.class)) {
+                new ScoreView(null).setSong(new Song());
+
+                lineComponent.verify(LineComponent::resetOverflowWarning);
+            }
         }
     }
 

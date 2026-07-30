@@ -28,6 +28,7 @@ import module java.desktop;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
@@ -54,8 +55,12 @@ class LayoutEngineTest extends UnitTest {
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;
     private static final double TOLERANCE = 0.001;
 
-    /** Enough notes to exceed STAFF_RIGHT_MARGIN_SS even after maximum compression. */
-    private static final int OVERSTUFFED_NOTE_COUNT = 100;
+    /**
+     * How far the fit-boundary search climbs before giving up. Comfortably past the note count that
+     * cannot fit STAFF_RIGHT_MARGIN_SS even at maximum compression, so the search always finds the
+     * boundary; a search that runs out says the flag never turns on, which is itself the failure.
+     */
+    private static final int BOUNDARY_SEARCH_LIMIT = 100;
 
     /** Staff position (sp > 0) places the note below the middle staff line → auto stem up. */
     private static final int SP_BELOW_MIDDLE = 2;
@@ -399,6 +404,13 @@ class LayoutEngineTest extends UnitTest {
         assertThat(result.paintBelowMidlineSs(lyricRenderMetrics()))
             .describedAs("empty line painted extent below the midline")
             .isCloseTo(LineSpacing.MIN_BELOW_MIDLINE_SS, within(TOLERANCE));
+
+        // A line with no columns has no chain to solve, so it cannot fail to fit. Were it ever
+        // reported as overflowing, every empty line would draw red and every new document would
+        // open behind the clipped-content warning (refs #696).
+        assertThat(result.overflowsStaffWidth())
+            .describedAs("empty line overflow flag")
+            .isFalse();
     }
 
     // T5b: Empty first line (no columns) reserves room for a tall attribution (refs #616).
@@ -423,20 +435,161 @@ class LayoutEngineTest extends UnitTest {
             .isGreaterThan(withoutAttribution.getContentAboveStaffSs());
     }
 
-    // T6: Un-justifiable line returns null from layout() with a non-null getLastError()
-    @Test
-    void testOverstuffedLineReturnsNullWithError() {
-        var line = detachedLine();
+    // T6: A line that cannot fit is still laid out — on its collision floors, marked overflowing,
+    //     and running past the staff so the component's bounds clip it (refs #696). Layout has no
+    //     failure mode: before this it returned null and the line did not draw at all.
+    @Nested
+    class OverflowingLines {
 
-        for (var i = 0; i < OVERSTUFFED_NOTE_COUNT; i++) {
-            line.addElement(ElementType.CROTCHET.newInstance());
+        /**
+         * Loads {@code fixtures/overflowing-lines.musicxml} at the line width the file itself
+         * carries. Its first two lines cannot fit that width and its third can, so one document
+         * covers both sides of the fit decision — and, because it is read back through
+         * {@code MusicXmlReader}, covers them over a real document rather than a hand-built line.
+         * It is also the fixture for looking at an over-full line next to a normal one by eye.
+         * <p>
+         * If the spacing model changes enough that the note counts no longer straddle the width,
+         * the fixture is stale, not the model: regenerate it as three lines cycling
+         * {@code CROTCHET}, {@code QUAVER}, {@code SEMIBREVE} — 60, 60 and 8 notes — written
+         * through {@code MusicXmlWriter}, and check the counts still straddle the new limit.
+         */
+        private Song fixtureSong() throws Exception {
+            return loadFixture("overflowing-lines");
         }
 
-        var engine = engine();
-        var result = engine.layout(line, false);
+        private LayoutEngine engineFor(Song song) {
+            return new LayoutEngine(
+                lyricRenderMetrics(), song.getLineWidthSs(), DocumentFonts.defaultFonts());
+        }
 
-        assertThat(result).describedAs("layout() result for overstuffed line").isNull();
-        assertThat(engine.getLastError()).describedAs("getLastError() for overstuffed line").isNotNull();
+        /** The fixture's first line, which holds more than the staff can show. */
+        private Line overflowingLine(Song song) {
+            return song.getLine(0);
+        }
+
+        // T6a: The flag tracks the fit, line by line, over a real document — set on the two lines
+        //      that cannot fit and clear on the one that can, so it is neither stuck on nor off.
+        @Test
+        void testEachLineIsFlaggedByWhetherItFitsTheStaffWidth() throws Exception {
+            var song = fixtureSong();
+            var engine = engineFor(song);
+            var lineCount = song.lineCount();
+            var flags = new Boolean[lineCount];
+
+            for (var i = 0; i < lineCount; i++) {
+                flags[i] = engine.layout(song.getLine(i), i == lineCount - 1).overflowsStaffWidth();
+            }
+
+            assertThat(flags)
+                .describedAs("per-line overflow of the fixture at its stored width of %s Ss",
+                    song.getLineWidthSs())
+                .containsExactly(true, true, false);
+        }
+
+        // T6b: The placement of a line that cannot fit — every gap on its own collision floor, the
+        //      tightest legal spacing there is, with the tail left past the staff to be clipped.
+        @Test
+        void testOverflowingLineIsPlacedOnItsCollisionFloors() throws Exception {
+            var song = fixtureSong();
+            var line = overflowingLine(song);
+            var result = engineFor(song).layout(line, false);
+            var lineRestSs = song.getDefaultRestLengthSs();
+            var elements = line.getElements();
+            var floorsSs = new ArrayList<Double>();
+
+            // Each pair's own floor, not one floor reused: the fixture cycles three note widths, so
+            // neighbouring pairs have genuinely different floors and a placement that reused a
+            // single floor for every gap would fail here. The floors come from the spacing model
+            // rather than from literals, which keeps the assertion tied to the model — the model's
+            // own arithmetic is HorizontalSpacingCalculatorSpringTest's subject, not this test's.
+            for (var i = 1; i < elements.size(); i++) {
+                var prevColumn = require(
+                    result.getElementColumn(elements.get(i - 1)), "ElementColumn " + (i - 1));
+                var currColumn = require(
+                    result.getElementColumn(elements.get(i)), "ElementColumn " + i);
+                var floorSs = HorizontalSpacingCalculator
+                    .buildSpring(prevColumn, currColumn, lineRestSs)
+                    .strutSs();
+                floorsSs.add(floorSs);
+
+                assertThat(result.getElementXSs(elements.get(i))
+                        - result.getElementXSs(elements.get(i - 1)))
+                    .describedAs("gap %d of an overflowing line sits on its own collision floor", i)
+                    .isCloseTo(floorSs, within(TOLERANCE));
+            }
+
+            // Guards the assertions above against losing their point: if the fixture were ever
+            // regenerated with notes of one width, every floor would coincide and the loop could no
+            // longer tell a per-gap placement from a single floor copied across all of them.
+            assertThat(Set.copyOf(floorsSs))
+                .describedAs("distinct collision floors among this line's gaps — with only one, the"
+                    + " per-gap check above would pass on a single floor reused for every gap")
+                .hasSizeGreaterThan(1);
+
+            // The point of placing it at all: the tail really is out past the staff waiting to be
+            // clipped, rather than squeezed inside the staff on top of itself.
+            assertThat(result.getElementXSs(elements.getLast()))
+                .describedAs("last element of an overflowing line, against the staff width")
+                .isGreaterThan(song.getLineWidthSs());
+        }
+
+        // T6c: The same line as the song's last line. The last line's terminal is normally snapped
+        //      flush against the right margin; on an overflowing line that snap is skipped, so the
+        //      terminal stays out past the staff with the rest of the overflow instead of being
+        //      pulled back on top of the content it follows (refs #696).
+        @Test
+        void testOverflowingLastLineLeavesItsTerminalPastTheStaff() throws Exception {
+            var song = fixtureSong();
+            var line = overflowingLine(song);
+            var asLastLine = engineFor(song).layout(line, true);
+            var asInnerLine = engineFor(song).layout(line, false);
+            var terminal = line.getElements().getLast();
+
+            assertThat(asLastLine.getElementXSs(terminal))
+                .describedAs("terminal of an overflowing last line, against the staff width")
+                .isGreaterThan(song.getLineWidthSs());
+            assertThat(asLastLine.getElementXSs(terminal))
+                .describedAs("being the last line must not move an overflowing line's terminal")
+                .isCloseTo(asInnerLine.getElementXSs(terminal), within(TOLERANCE));
+        }
+
+        // T6d: The flag flips exactly where the solver's verdict flips, rather than at some margin
+        //      of its own. The boundary is found rather than written down, so it stays correct when
+        //      the spacing model changes.
+        @Test
+        void testOverflowFlagFlipsAtTheFitBoundary() {
+            var firstOverflowingCount = 0;
+
+            for (var count = 1; count <= BOUNDARY_SEARCH_LIMIT && firstOverflowingCount == 0; count++) {
+                if (overflowsWith(count)) {
+                    firstOverflowingCount = count;
+                }
+            }
+
+            assertThat(firstOverflowingCount)
+                .describedAs("no note count up to %d overflows a %s Ss staff, so there is no"
+                    + " boundary to test — the flag may be stuck off",
+                    BOUNDARY_SEARCH_LIMIT, STAFF_RIGHT_MARGIN_SS)
+                .isGreaterThan(1);
+
+            assertThat(overflowsWith(firstOverflowingCount - 1))
+                .describedAs("%d notes are one below the first count that overflows, so they must"
+                    + " still fit", firstOverflowingCount - 1)
+                .isFalse();
+            assertThat(overflowsWith(firstOverflowingCount))
+                .describedAs("%d notes are the first count that overflows", firstOverflowingCount)
+                .isTrue();
+        }
+
+        private boolean overflowsWith(int noteCount) {
+            var line = detachedLine();
+
+            for (var i = 0; i < noteCount; i++) {
+                line.addElement(ElementType.CROTCHET.newInstance());
+            }
+
+            return engine().layout(line, false).overflowsStaffWidth();
+        }
     }
 
     // T7: layout(line, false, true) threads hasLeadingLyricContinuation — a leading extender

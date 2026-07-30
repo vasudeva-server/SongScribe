@@ -29,6 +29,8 @@ import songscribe.dom.Line;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
+import songscribe.ui.FlatLafKey;
+import songscribe.ui.FlatLafProps;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.dom.AnnotationAttachment;
@@ -194,9 +196,19 @@ class LineRenderer {
         var selectionProvider = invariants.getSelectionProvider();
         var lineIndex = invariants.getLineIndex();
         var staffSelected = selectionProvider != null && selectionProvider.isLineSelected(lineIndex);
+        var layoutResult = invariants.getLayoutResult();
 
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
-            g2.setColor(staffSelected ? ScoreView.getSelectionColor() : RenderingUtils.STAFF_LINE_COLOR);
+            // Red says this line holds more than the staff can show, so the tail of its content is
+            // clipped (refs #696). Selection still wins: it is the transient state the user is
+            // acting on, and the red returns the moment the line is deselected.
+            if (staffSelected) {
+                g2.setColor(ScoreView.getSelectionColor());
+            } else if (layoutResult.overflowsStaffWidth()) {
+                g2.setColor(FlatLafProps.getColor(FlatLafKey.SCORE_STAFF_LINE_OVERFLOW_COLOR));
+            } else {
+                g2.setColor(RenderingUtils.STAFF_LINE_COLOR);
+            }
 
             var lineWidth = invariants.getSong().getLineWidthSs();
             var middleLineYSs = invariants.getMiddleLineYSs();

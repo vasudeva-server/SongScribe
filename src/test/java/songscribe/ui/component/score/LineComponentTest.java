@@ -23,11 +23,13 @@ package songscribe.ui.component.score;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,10 +37,12 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
 
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,7 +61,9 @@ import songscribe.layout.LayoutResult;
 import songscribe.layout.LineSpacing;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.engraving.Staff;
+import songscribe.Strings;
 import songscribe.ui.Mode;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.ScoreView;
@@ -92,8 +98,68 @@ class LineComponentTest extends UnitTest {
     private static final LyricRenderMetrics LYRIC_RENDER_METRICS =
         new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
 
+    /** A staff too narrow for OVERFLOWING_NOTE_COUNT notes at their tightest legal spacing. */
+    private static final double NARROW_LINE_WIDTH_SS = 20.0;
+
+    /** Enough notes that NARROW_LINE_WIDTH_SS cannot hold them even fully compressed. */
+    private static final int OVERFLOWING_NOTE_COUNT = 40;
+
+    /** Few enough notes to leave NARROW_LINE_WIDTH_SS room to spare. */
+    private static final int FITTING_NOTE_COUNT = 2;
+
+    /** On the middle staff line, so the notes add no vertical extent of their own. */
+    private static final int SP_ON_THE_MIDDLE_LINE = 0;
+
+    /**
+     * Well above the top staff line (negative is upward). Notes placed here give the line real
+     * content above the staff, so its painted height clears the minimum staff surround.
+     */
+    private static final int SP_WELL_ABOVE_THE_STAFF = -12;
+
     /** A clean LineComponent under test. */
     private LineComponent lc;
+
+    /**
+     * A LineComponent that will run a real layout of {@code noteCount} notes, all at
+     * {@code staffPosition}, against a {@link #NARROW_LINE_WIDTH_SS} staff. The score view is a mock,
+     * which the layout tolerates because the line carries no lyrics — the only thing that would read
+     * a font off it.
+     * <p>
+     * The notes go on the song's <em>second</em> line, so the component under test is not the first.
+     * Laying out the first line measures the attribution block, which builds Swing labels and so
+     * cannot run while {@code SwingUtilities} is mocked — and the attribution has nothing to do with
+     * whether a line fits.
+     */
+    private static LineComponent componentWithNotes(int noteCount, int staffPosition) {
+        var scoreView = mock(ScoreView.class);
+        when(scoreView.getLyricRenderMetrics()).thenReturn(LYRIC_RENDER_METRICS);
+        when(scoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+        when(scoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
+
+        // The width is set rather than left at its default: with no width provider installed outside
+        // the running app, the default is not a value this test controls.
+        var song = new Song();
+
+        song.withoutMutationTracking(() -> song.setLineWidthSs(NARROW_LINE_WIDTH_SS));
+        song.withoutMutationTracking(() -> song.addLine(song.lineCount(), new Line(song)));
+
+        final int lineIndex = 1;
+        var line = song.getLine(lineIndex);
+
+        song.withoutMutationTracking(() -> {
+            for (var i = 0; i < noteCount; i++) {
+                var note = ElementType.CROTCHET.newInstance();
+                note.setStaffPosition(staffPosition);
+                line.addElement(note);
+            }
+        });
+
+        var component = new LineComponent();
+        component.setScoreView(scoreView);
+        component.song = song;
+        component.setLine(line, lineIndex);
+        return component;
+    }
 
     @BeforeEach
     void setUp() {
@@ -341,6 +407,196 @@ class LineComponentTest extends UnitTest {
             assertThat(size.height)
                 .as("height = ceil(this line's paintLineHeightSs → view px)")
                 .isEqualTo((int) Math.ceil(pxPerSs * paintLineHeightSs));
+        }
+
+        /**
+         * A line whose content cannot fit the staff is sized like any other: its height comes from
+         * what it actually paints, and its width is the staff width — which is what clips the tail
+         * running past the staff end.
+         * <p>
+         * Before issue #696, such a line had no layout at all and fell back to a fixed
+         * {@link LineSpacing#MIN_LINE_HEIGHT_SS}. Were that fallback ever reinstated for an
+         * overflowing line, the component would be shorter than the staff surround it draws, so the
+         * staff would be clipped at top and bottom and would overlap the line above.
+         */
+        @Test
+        void testOverflowingLineIsSizedToWhatItPaintsAndClippedToTheStaffWidth() {
+            final double pxPerSs = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+            var lineComponent = componentWithNotes(OVERFLOWING_NOTE_COUNT, SP_WELL_ABOVE_THE_STAFF);
+
+            lineComponent.ensureLayout();
+
+            var result = lineComponent.getLayoutResult();
+
+            if (result == null) {
+                throw new AssertionError("layout produced no result for an over-full line");
+            }
+
+            // States the case this test is about, so it cannot quietly become a test of a line that
+            // fits if the width or note count ever drift.
+            assertThat(result.overflowsStaffWidth())
+                .as("the line under test must be one that cannot fit")
+                .isTrue();
+
+            var paintedHeightSs = result.paintLineHeightSs(LYRIC_RENDER_METRICS);
+            var size = lineComponent.getPreferredSize();
+
+            assertThat(size.height)
+                .as("height = ceil(the over-full line's own painted height → view px)")
+                .isEqualTo((int) Math.ceil(pxPerSs * paintedHeightSs));
+
+            // Without this the equality above would also hold if the height were the old fixed
+            // minimum and the painted height happened to equal it.
+            assertThat(paintedHeightSs)
+                .as("an over-full line of notes above the staff must paint taller than the minimum"
+                    + " surround, or the height assertion cannot tell the two apart")
+                .isGreaterThan(LineSpacing.MIN_LINE_HEIGHT_SS);
+
+            assertThat(size.width)
+                .as("width = ceil(staff width → view px), even though the content runs past it")
+                .isEqualTo((int) Math.ceil(pxPerSs * NARROW_LINE_WIDTH_SS));
+
+            // The width above is a clip, not a fit: the line really does extend beyond it.
+            var line = lineComponent.getLine();
+
+            if (line == null) {
+                throw new AssertionError("the component under test has no line");
+            }
+
+            assertThat(result.getElementXSs(line.getElements().getLast()))
+                .as("last element of an over-full line, against the staff width it is clipped to")
+                .isGreaterThan(NARROW_LINE_WIDTH_SS);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Overflow warning — shown once per document, not once per over-full line
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class OverflowWarning {
+
+        private MockedStatic<OptionDialogs> dialogs;
+        private MockedStatic<SwingUtilities> swing;
+
+        /** Runnables handed to {@code SwingUtilities.invokeLater}, awaiting {@link #runDeferred}. */
+        private final List<Runnable> deferred = new ArrayList<>();
+
+        @BeforeEach
+        void captureTheAlertPath() {
+            // Run one layout before the mocks go in. The layout path initializes classes that build
+            // Swing labels on the way (the tuplet glyph metrics, via GraphicUtils), and a label
+            // cannot be constructed while SwingUtilities is mocked — JLabel asks it where the
+            // mnemonic is and gets 0 instead of "nowhere". Class initialization happens once per
+            // JVM, so paying for it here with real Swing available keeps it out of the mocked
+            // window. A line that fits, so this warm-up raises no alert of its own.
+            fittingComponent().ensureLayout();
+
+            dialogs = mockStatic(OptionDialogs.class);
+            swing = mockStatic(SwingUtilities.class);
+
+            // The alert is deferred through invokeLater because layout runs during paint. This
+            // stands in for the event queue: it holds each runnable until runDeferred() releases it.
+            //
+            // Holding them rather than running them inline is the whole point. Run inline, each
+            // alert would complete before the next line is laid out, which would set the guard in
+            // time no matter where the production code sets it — and the "one alert for several
+            // over-full lines" test would pass even with the guard set after the dialog. Deferring
+            // is also what lets the dialog be observed at all: left on the real event queue it would
+            // run on the event dispatch thread, where this thread's static mock does not apply.
+            swing.when(() -> SwingUtilities.invokeLater(any(Runnable.class)))
+                .thenAnswer(invocation -> deferred.add(invocation.getArgument(0, Runnable.class)));
+
+            // Each test states its own starting point rather than inheriting whatever an earlier
+            // test left in the static guard.
+            LineComponent.resetOverflowWarning();
+        }
+
+        @AfterEach
+        void releaseTheAlertPath() {
+            swing.close();
+            dialogs.close();
+            LineComponent.resetOverflowWarning();
+        }
+
+        /**
+         * Drains the stand-in event queue, running what layout deferred. Drains repeatedly, since a
+         * runnable may schedule another — Swing's own revalidate tasks land here too.
+         */
+        private void runDeferred() {
+            while (!deferred.isEmpty()) {
+                var pending = List.copyOf(deferred);
+                deferred.clear();
+                pending.forEach(Runnable::run);
+            }
+        }
+
+        /** Asserts how many clipped-content alerts have been shown so far. */
+        private void assertAlertCount(int expected, String description) {
+            dialogs.verify(
+                () -> OptionDialogs.showWarningMessage(
+                    any(),
+                    eq(Strings.ALERT_TITLE_LINES_DO_NOT_FIT),
+                    eq(Strings.ALERT_LINES_DO_NOT_FIT)),
+                times(expected).description(description));
+        }
+
+        /**
+         * Several lines in a document typically overflow together, and the user is told once. The
+         * guard is set before the dialog is scheduled rather than after it is dismissed, which is
+         * what makes this hold; setting it afterwards would give one modal per over-full line
+         * (refs #696).
+         */
+        @Test
+        void testSeveralOverflowingLinesProduceOneAlert() {
+            // All three laid out before anything deferred runs, as they are during one paint pass.
+            overflowingComponent().ensureLayout();
+            overflowingComponent().ensureLayout();
+            overflowingComponent().ensureLayout();
+
+            runDeferred();
+
+            assertAlertCount(1, "alerts shown for three over-full lines in one document");
+        }
+
+        /**
+         * A line that fits says nothing. Without this, the alert would be tied to laying out at all
+         * rather than to a line that cannot fit, and every document would warn.
+         */
+        @Test
+        void testALineThatFitsProducesNoAlert() {
+            fittingComponent().ensureLayout();
+            runDeferred();
+
+            assertAlertCount(0, "alerts shown for a line with room to spare");
+        }
+
+        /**
+         * Installing a document re-arms the warning, so the next document that cannot fit a line
+         * says so. Without the reset, only the first over-full document of the session would warn.
+         */
+        @Test
+        void testInstallingADocumentReArmsTheAlert() {
+            overflowingComponent().ensureLayout();
+            runDeferred();
+            assertAlertCount(1, "alerts shown for the first document");
+
+            LineComponent.resetOverflowWarning();
+            overflowingComponent().ensureLayout();
+            runDeferred();
+
+            assertAlertCount(2, "alerts shown after a second document was installed");
+        }
+
+        /** A LineComponent wired for a real layout of a line its staff cannot hold. */
+        private LineComponent overflowingComponent() {
+            return componentWithNotes(OVERFLOWING_NOTE_COUNT, SP_ON_THE_MIDDLE_LINE);
+        }
+
+        /** The control: the same wiring, over a line with room to spare. */
+        private LineComponent fittingComponent() {
+            return componentWithNotes(FITTING_NOTE_COUNT, SP_ON_THE_MIDDLE_LINE);
         }
     }
 

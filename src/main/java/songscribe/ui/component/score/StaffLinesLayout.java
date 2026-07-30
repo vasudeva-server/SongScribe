@@ -144,8 +144,8 @@ public class StaffLinesLayout implements LayoutManager2 {
             var result = layoutResultOf(parent.getComponent(i));
 
             if (result == null) {
-                // The line could not fit its content (issue #449) and has no layout to
-                // measure; reserve the minimum staff surround so it still stacks sensibly.
+                // Not a line panel, or a line whose layout pass never ran; with no layout to
+                // measure, reserve the minimum staff surround so it still stacks sensibly.
                 aboveMidlineSs[i] = LineSpacing.MIN_ABOVE_MIDLINE_SS;
                 belowMidlineSs[i] = LineSpacing.MIN_BELOW_MIDLINE_SS;
                 paintAboveMidlineSs[i] = LineSpacing.MIN_ABOVE_MIDLINE_SS;

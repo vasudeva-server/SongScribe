@@ -336,8 +336,8 @@ class SongDefaultsTest extends UnitTest {
      * A song built without the running application — by a test, the corpus generator, or
      * any headless tool — still has to be layoutable. The UI installs a preference-aware
      * width provider at startup; with nothing installed, the fallback stands in. If it
-     * were zero instead, no content would fit on the staff and every line would fail
-     * layout, so the document would open as a "Line Too Full" warning rather than a song.
+     * were zero instead, no content would fit on the staff, so every line would open
+     * clipped and drawn in red rather than showing the song.
      */
     @Test
     void testNewSongGetsTheFallbackLineWidthWhenNoProviderIsInstalled() {

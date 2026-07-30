@@ -574,8 +574,9 @@ deliberately not gated: they stack vertically, independent of the note column,
 and cannot make a line wider.
 
 Without this gate, an infeasible modification isn't refused at mutation time —
-it surfaces later as `LayoutEngine`'s `LINE_TOO_FULL_ERROR` with a `null`
-`LayoutResult`, so the line doesn't render at all.
+it surfaces later as a line laid out on its collision floors, whose tail runs
+past the end of the staff and is clipped, with the staff lines drawn in red
+(refs #696). The pasted or modified content may itself be the part cut off.
 
 ---
 
