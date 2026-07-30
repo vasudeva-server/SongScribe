@@ -67,9 +67,9 @@ like `Ending.bracketRanges`.
 
 - **Trailing breath mark.** A breath mark is positionally attached to the element
   before it, so a copy or cut ending at `end` must also carry a breath mark sitting
-  at `end + 1`. This is computed once by `ScoreViewController.effectiveDeleteEnd`
-  (a pure query, no line mutation) and shared by copy, cut, and the paste-replace
-  fit check — one rule, one implementation, three call sites.
+  at `end + 1`. This is computed once by `Line.effectiveDeleteEnd`
+  (a pure query, no line mutation) and shared by copy, cut, the paste-replace
+  fit check, and the selection highlight — one rule, one implementation.
 - **Orphan paired grace note.** If the last element the effective range would
   include is a paired grace note whose host lies *outside* the range (`
   line.isPairedGraceNote(effectiveEnd)`), it's dropped from the capture. A grace
@@ -107,10 +107,11 @@ was nothing to confirm).
 
 ### `effectiveDeleteEnd` — a pure query
 
-`ScoreViewController.effectiveDeleteEnd(Line, int begin, int end)` extends `end`
-past a trailing breath mark and mutates nothing. It is shared, unchanged, by
-`deleteElementRange`, `Fragment.capture`, and `tryInsertFragment`'s paste-replace
-delete range — the breath-mark rule is defined once.
+`Line.effectiveDeleteEnd(int end)` extends `end` past a trailing breath mark and
+mutates nothing. It is shared, unchanged, by `deleteElementRange`,
+`Fragment.capture`, `tryInsertFragment`'s paste-replace delete range, and
+`LineSelectionState.isElementSelected` — the breath-mark rule is defined once, so
+what paints as selected is exactly what a delete or a copy carries away.
 
 ### Cut = confirm-first, then one bracket
 

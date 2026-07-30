@@ -1042,6 +1042,104 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.isElementSelected(-1)).isFalse();
     }
 
+    @Test
+    void testIsElementSelectedIncludesBreathMarkAfterSelectionEnd() {
+        // [CROTCHET(0), BREATH_MARK(1), CROTCHET(2)] — the breath mark belongs to the
+        // crotchet before it and is deleted with it, so selecting only that crotchet must
+        // report the breath mark as selected too (refs #698).
+        var line = lineWith(ElementType.CROTCHET, ElementType.BREATH_MARK, ElementType.CROTCHET);
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+
+        assertThat(state.isElementSelected(1)).as("breath mark after the selection").isTrue();
+        assertThat(state.isElementSelected(2)).as("crotchet past the breath mark").isFalse();
+    }
+
+    @Test
+    void testIsElementSelectedIncludesBreathMarkAfterAMultiElementSelection() {
+        // [CROTCHET(0), CROTCHET(1), BREATH_MARK(2), CROTCHET(3)] — dragging across the two
+        // crotchets must carry the breath mark trailing the range *end*. Selecting a single
+        // element leaves begin and end equal, so only a range this wide can tell the two
+        // apart: extending from begin instead would reach index 1, not the breath mark.
+        var line = lineWith(
+            ElementType.CROTCHET, ElementType.CROTCHET, ElementType.BREATH_MARK, ElementType.CROTCHET
+        );
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(1);
+
+        assertThat(state.isElementSelected(2)).as("breath mark after the range end").isTrue();
+        assertThat(state.isElementSelected(3)).as("crotchet past the breath mark").isFalse();
+    }
+
+    @Test
+    void testIsElementSelectedExcludesABreathMarkBeforeTheSelection() {
+        // [CROTCHET(0), BREATH_MARK(1), CROTCHET(2), CROTCHET(3)] — the breath mark belongs
+        // to crotchet 0, which is outside the selection, so selecting crotchet 2 must leave
+        // it unselected. Only a lookup below the selection start reaches this branch, and
+        // making the breath-mark rule symmetric would silently break it (refs #698).
+        var line = lineWith(
+            ElementType.CROTCHET, ElementType.BREATH_MARK, ElementType.CROTCHET, ElementType.CROTCHET
+        );
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(2);
+
+        assertThat(state.isElementSelected(1)).as("breath mark before the selection").isFalse();
+        assertThat(state.isElementSelected(0)).as("crotchet owning that breath mark").isFalse();
+    }
+
+    @Test
+    void testIsElementSelectedHandlesASelectionEndingAtTheLastElement() {
+        // [CROTCHET(0), CROTCHET(1)] — with the selection on the last element there is no
+        // successor to inspect for a breath mark, so the range must come back unextended
+        // rather than reaching past the end of the line.
+        var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(1);
+
+        assertThat(state.isElementSelected(1)).as("the selected last element").isTrue();
+        assertThat(state.isElementSelected(2)).as("one index past the end of the line").isFalse();
+    }
+
+    @Test
+    void testIsElementSelectedCountsTrailingBreathMarkWithoutWideningTheRange() {
+        // The trailing breath mark reads as selected without joining the range: the range is
+        // what the toolbar actions reflect and what a tie or a beam is built from, and a
+        // single-note selection must stay single (refs #698).
+        var line = lineWith(ElementType.CROTCHET, ElementType.BREATH_MARK, ElementType.CROTCHET);
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+
+        assertThat(state.isElementSelected(1))
+            .as("breath mark reads as selected")
+            .isTrue();
+        assertThat(state.getSelectionEnd())
+            .as("breath mark does not move the selection end")
+            .isEqualTo(0);
+        assertThat(state.getSelectionSize())
+            .as("breath mark does not grow the selection")
+            .isEqualTo(1);
+        assertThat(state.getSingleSelectedElement())
+            .as("the selection is still the single clicked crotchet")
+            .isSameAs(line.getElement(0));
+    }
+
+    @Test
+    void testIsElementSelectedReturnsFalseForLeadingBreathMarkWithNoSelection() {
+        // With nothing selected, nothing is selected — including index 0. The fixture leads
+        // with a breath mark because that is the input that exposes a missing guard: without
+        // the early return, the empty range (-1) would be extended onto the breath mark and
+        // report it as selected. Insertion forbids a breath mark at index 0, so this line is
+        // not reachable through the UI; it is here to keep the query correct on its own terms
+        // rather than by way of an invariant enforced in another subsystem.
+        var line = lineWith(ElementType.BREATH_MARK, ElementType.CROTCHET);
+        var state = new LineSelectionState(line);
+
+        assertThat(state.isElementSelected(0))
+            .as("leading breath mark with no selection")
+            .isFalse();
+    }
+
     // -- getSelectionSize --
 
     @Test

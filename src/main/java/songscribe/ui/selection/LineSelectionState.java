@@ -39,6 +39,14 @@ import songscribe.layout.LineEndingSupport;
  * <p>
  * Each LineComponent owns a LineSelectionState that tracks which elements (if any)
  * are selected on that line, and whether the line itself is selected for deletion.
+ * <p>
+ * Two answers to "what is selected" live here on purpose, and they do not always
+ * agree. Every query but one — {@link #getSelectionSize}, {@link #getSelection},
+ * {@link #getSingleSelectedElement}, the tie/beam/tuplet toggles — reports the raw
+ * {@code selectionBegin..selectionEnd} range, which is what a tie or a beam is built
+ * from. {@link #isElementSelected} alone reports a wider set, taking in a trailing
+ * breath mark; see its documentation for why. Making the two agree would change what
+ * the toggles operate on, so the disagreement is the design, not a bug to fix.
  */
 public final class LineSelectionState {
 
@@ -349,9 +357,19 @@ public final class LineSelectionState {
 
     /**
      * Returns whether the element at the given index is selected.
+     *
+     * <p>A breath mark immediately after the selection counts as selected. It is owned by
+     * the element before it and goes wherever that element goes — a deletion or a copy of
+     * the selection carries it along ({@link Line#effectiveDeleteEnd}) — so it has to read
+     * as selected too, or deleting the selection would take away an element the user never
+     * saw highlighted (refs #698).
      */
     public boolean isElementSelected(int elementIndex) {
-        return (elementIndex >= 0) && (selectionBegin <= elementIndex) && (elementIndex <= selectionEnd);
+        if (elementIndex < 0 || !hasElementSelection()) {
+            return false;
+        }
+
+        return (selectionBegin <= elementIndex) && (elementIndex <= line.effectiveDeleteEnd(selectionEnd));
     }
 
     /**

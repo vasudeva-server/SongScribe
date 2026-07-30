@@ -97,7 +97,9 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
 
     /**
      * Row 22: isElementSelected returns false when the active line has no element
-     * selection (state.hasElementSelection() is false).
+     * selection. The coordinator does not check for that itself — it delegates, and
+     * {@link LineSelectionState#isElementSelected} answers false for every index once
+     * the selection range is empty.
      */
     @Test
     void testIsElementSelectedReturnsFalseWhenNoElementSelection() {

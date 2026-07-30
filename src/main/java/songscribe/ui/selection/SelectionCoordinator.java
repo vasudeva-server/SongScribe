@@ -297,7 +297,7 @@ public final class SelectionCoordinator {
         }
 
         var state = getActiveSelection();
-        return (state != null) && state.hasElementSelection() && state.isElementSelected(elementIndex);
+        return (state != null) && state.isElementSelected(elementIndex);
     }
 
     /**
