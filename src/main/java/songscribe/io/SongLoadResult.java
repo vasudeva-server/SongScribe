@@ -98,7 +98,7 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
         }
     }
 
-    default Song songOrThrow() throws IOException, SAXException {
+    default Song songOrThrow() throws IOException, SAXException, SongIO.NewerVersionException {
         return switch (this) {
             case Success s -> s.song();
             case IoError e -> throw e.cause();

@@ -274,14 +274,29 @@ public final class ObjC {
             throw asRuntime("objc_autoreleasePoolPush", t);
         }
 
+        T result;
+
         try {
-            return body.get();
-        } finally {
-            try {
-                AUTORELEASE_POOL_POP.invoke(pool);
-            } catch (Throwable t) {
-                throw asRuntime("objc_autoreleasePoolPop", t);
-            }
+            result = body.get();
+        } catch (RuntimeException bodyException) {
+            popQuietly(pool, bodyException);
+            throw bodyException;
+        }
+
+        try {
+            AUTORELEASE_POOL_POP.invoke(pool);
+        } catch (Throwable t) {
+            throw asRuntime("objc_autoreleasePoolPop", t);
+        }
+
+        return result;
+    }
+
+    private static void popQuietly(MemorySegment pool, Throwable primary) {
+        try {
+            AUTORELEASE_POOL_POP.invoke(pool);
+        } catch (Throwable popThrowable) {
+            primary.addSuppressed(popThrowable);
         }
     }
 

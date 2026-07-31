@@ -411,7 +411,7 @@ public final class MusicXmlReader extends DefaultHandler {
         String localName,
         String qName,
         Attributes attributes
-    ) throws SAXException {
+    ) throws SAXException, UnsupportedFormatException {
         value.delete(0, value.length());
 
         switch (where) {
