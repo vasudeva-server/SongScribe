@@ -338,10 +338,5 @@ class SelectionContentTest extends MainFrameMockTest {
         public StaffElement createReplacement(StaffElement element, boolean selected) {
             return new StaffElement(ElementType.CROTCHET_REST, element);
         }
-
-        @Override
-        protected void performAction(ActionEvent e) {
-            // Not used in tests
-        }
     }
 }

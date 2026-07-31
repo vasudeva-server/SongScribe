@@ -78,10 +78,7 @@ class ActionGroupTest extends MainFrameMockTest {
                 performCount[0]++;
             }
         };
-        var otherAction = new SelectableUIAction(mainFrame(), "other", "cmd-other") {
-            @Override
-            protected void performAction(ActionEvent e) {}
-        };
+        var otherAction = new SelectableUIAction(mainFrame(), "other", "cmd-other") {};
         var group = new ActionGroup<>(trackingAction, otherAction);
         var source = new Object();
         group.select(trackingAction, source);
@@ -178,14 +175,8 @@ class ActionGroupTest extends MainFrameMockTest {
 
         @BeforeEach
         void createSelectableActions() {
-            selectableA = new SelectableUIAction(mainFrame(), "A", "cmd-a") {
-                @Override
-                protected void performAction(ActionEvent e) {}
-            };
-            selectableB = new SelectableUIAction(mainFrame(), "B", "cmd-b") {
-                @Override
-                protected void performAction(ActionEvent e) {}
-            };
+            selectableA = new SelectableUIAction(mainFrame(), "A", "cmd-a") {};
+            selectableB = new SelectableUIAction(mainFrame(), "B", "cmd-b") {};
         }
 
         @Test

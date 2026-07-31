@@ -53,10 +53,7 @@ class SelectableUIActionTest extends MainFrameMockTest {
 
     @Test
     void testIsSelectedReturnsFalseOnConstruction() {
-        var action = new SelectableUIAction(mainFrame(), "Test", "test-cmd") {
-            @Override
-            protected void performAction(ActionEvent e) {}
-        };
+        var action = new SelectableUIAction(mainFrame(), "Test", "test-cmd") {};
 
         assertThat(action.isSelected()).isFalse();
     }
@@ -65,10 +62,7 @@ class SelectableUIActionTest extends MainFrameMockTest {
 
     @Test
     void testResetSetsSelectedToFalse() {
-        var action = new SelectableUIAction(mainFrame(), "Test", "test-cmd") {
-            @Override
-            protected void performAction(ActionEvent e) {}
-        };
+        var action = new SelectableUIAction(mainFrame(), "Test", "test-cmd") {};
 
         action.setSelected(true);
         action.reset();
@@ -82,10 +76,7 @@ class SelectableUIActionTest extends MainFrameMockTest {
     void testPrefsKeyCtorSetsSelectedFromPrefs() {
         prefsMock.when(() -> Prefs.getBoolean(PrefsKey.LOOP_PLAYBACK)).thenReturn(true);
 
-        var action = new SelectableUIAction(mainFrame(), "Test", null, 0, "test-cmd", null, PrefsKey.LOOP_PLAYBACK) {
-            @Override
-            protected void performAction(ActionEvent e) {}
-        };
+        var action = new SelectableUIAction(mainFrame(), "Test", null, 0, "test-cmd", null, PrefsKey.LOOP_PLAYBACK) {};
 
         assertThat(action.isSelected()).isTrue();
     }
