@@ -503,8 +503,18 @@ public class Line {
      * </ul>
      */
     public void adjustExtendsForInsertion(int insertionIndex) {
-        var predecessorIndex = insertionIndex - 1;
+        adjustExtends(insertionIndex - 1, insertionIndex);
+    }
 
+    /**
+     * The body of {@link #adjustExtendsForInsertion}, with the two indices it derives from the
+     * insertion point passed in: the chain member that loses its successor
+     * ({@code predecessorIndex}) and the first surviving member of the broken chain
+     * ({@code cascadeStartIndex}). They differ by the inserted element, which sits between
+     * them once it is in the list — hence the two callers, one before the insertion and one
+     * after it.
+     */
+    private void adjustExtends(int predecessorIndex, int cascadeStartIndex) {
         if (predecessorIndex < 0 || predecessorIndex >= effectiveElementCount()) {
             return;
         }
@@ -537,8 +547,84 @@ public class Line {
         });
 
         for (var fix : fixes) {
-            cascadeClearExtend(insertionIndex, fix.verse());
+            cascadeClearExtend(cascadeStartIndex, fix.verse());
         }
+    }
+
+    /**
+     * Breaks the lyric chains that a bare element about to be inserted at
+     * {@code insertionIndex} interrupts — the syllabic chain on the predecessor and the
+     * melisma chain running through it. Must be called inside a modification bracket,
+     * <em>before</em> {@link #addElement(int, StaffElement)}, while the pre-insertion
+     * indices still hold.
+     *
+     * <p>Only the predecessor half of the repair belongs here. The rest runs after the
+     * insertion — see {@link #repairNeighborsAfterInsertion} — so an insertion path calls
+     * this, inserts, then calls that. A path that inserts first and records later wants
+     * {@link #repairNeighborsAfterUntrackedInsertion} instead, which does both halves in
+     * post-insertion indices.
+     */
+    public void repairNeighborsBeforeInsertion(int insertionIndex) {
+        adjustSyllablesForNeighborChange(insertionIndex - 1, null);
+        adjustExtendsForInsertion(insertionIndex);
+    }
+
+    /**
+     * Repairs what the element just inserted at {@code insertedIndex} could only disturb once
+     * it was in the list: the successor's syllabic chain, a connecting glissando on the
+     * predecessor left with no valid target, and the grace-host melisma of a pair the
+     * insertion landed inside. The predecessor half of the repair runs before the insertion —
+     * see {@link #repairNeighborsBeforeInsertion}.
+     *
+     * <p>Must be called inside a modification bracket, <em>after</em>
+     * {@link #addElement(int, StaffElement)}.
+     */
+    public void repairNeighborsAfterInsertion(int insertedIndex) {
+        adjustSyllablesForSuccessorAfterInsertion(insertedIndex);
+
+        // A connecting glissando joins a note to the note that immediately follows it.
+        // Inserting another pitched note simply re-targets it, but inserting anything else
+        // (rest, breath mark, grace note) leaves it with no valid target, so remove it from
+        // the preceding note.
+        if (!getElement(insertedIndex).getType().isPitchedNote() && insertedIndex > 0) {
+            var precedingElement = getElement(insertedIndex - 1);
+
+            if (precedingElement.hasGlissando()) {
+                modifyElement(insertedIndex - 1, ElementField.SLIDE, precedingElement::removeSlide);
+            }
+        }
+
+        // A pitched insertion between a grace note and its host re-targets the glissando, so
+        // the inserted element is the new host. The extend adjustment made before the insertion
+        // removed the melisma that pointed at the old host — carrier and all, leaving it an
+        // ordinary note free to take a syllable of its own — so re-establish the melisma against
+        // the new host. The non-pitched case fell through the glissando strip above and no
+        // longer reads as paired.
+        if (isPairedGraceNote(insertedIndex - 1)) {
+            syncGraceHostMelisma(insertedIndex - 1);
+        }
+    }
+
+    /**
+     * Repairs the neighbors of the element already inserted at {@code insertedIndex}, doing
+     * entirely in post-insertion indices what an insertion path does on both sides of
+     * {@link #addElement(int, StaffElement)}, so a caller that inserted the element earlier can
+     * record the repairs later.
+     *
+     * <p>Grace mode is that caller: it inserts its grace note with mutation tracking suspended
+     * (a lone grace note is not undoable), where a repair would be applied but never recorded,
+     * leaving undo unable to put back the broken chain or the stripped glissando. It defers the
+     * repairs to the bracket that makes the grace-host pairing undoable and calls this from
+     * there.
+     *
+     * <p>Must be called inside a modification bracket. The repairs are recorded after the
+     * insertion they belong to, which is what reverse-order undo needs: their indices only
+     * hold while the inserted element is in the list.
+     */
+    public void repairNeighborsAfterUntrackedInsertion(int insertedIndex) {
+        adjustSyllablesForNeighborChange(insertedIndex - 1, null);
+        adjustExtends(insertedIndex - 1, insertedIndex + 1);
+        repairNeighborsAfterInsertion(insertedIndex);
     }
 
     /**

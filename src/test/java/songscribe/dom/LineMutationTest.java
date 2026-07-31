@@ -1502,6 +1502,163 @@ class LineMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // Neighbor repair after an insertion that already happened (#659)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RepairNeighborsAfterUntrackedInsertion {
+
+        /** Inserts a bare note at {@code index} the way grace mode does: untracked, unrepaired. */
+        private void insertUnrepairedAt(int index) {
+            song.withoutMutationTracking(() -> line.addElement(index, new StaffElement(ElementType.QUAVER)));
+        }
+
+        @Test
+        void testRepairBreaksTheSyllabicChainOnBothSides() {
+            var first = new StaffElement(ElementType.QUAVER);
+            first.lyrics.add(new Lyric(VERSE, "A", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            var second = new StaffElement(ElementType.QUAVER);
+            second.lyrics.add(new Lyric(VERSE, "mi", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+            addExtendChain(first, second);
+
+            insertUnrepairedAt(1);
+            song.withModification(() -> line.repairNeighborsAfterUntrackedInsertion(1));
+
+            assertThat(first.lyrics.getFirst().syllabic())
+                .as("the hyphenated predecessor no longer continues into the inserted note")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(second.lyrics.getFirst().syllabic())
+                .as("the displaced successor has no preceding syllable left")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
+        @Test
+        void testRepairCascadesPastTheInsertedElement() {
+            var start = makeExtendElement(Lyric.Extend.START);
+            var continueElement = makeExtendElement(Lyric.Extend.CONTINUE);
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(start, continueElement, stop);
+
+            // The cascade starts past the inserted note: starting at it would find no lyric
+            // there and leave the severed carriers behind.
+            insertUnrepairedAt(1);
+            song.withModification(() -> line.repairNeighborsAfterUntrackedInsertion(1));
+
+            assertThat(extendOf(start)).isEqualTo(Lyric.Extend.NONE);
+            assertNoLyricForVerse(continueElement, VERSE);
+            assertNoLyricForVerse(stop, VERSE);
+        }
+
+        @Test
+        void testRepairAtIndexZeroBreaksOnlyTheSuccessorSide() {
+            // A word ending that also starts a melisma, so both halves of the repair have
+            // something to act on and skipping either one is visible.
+            var first = new StaffElement(ElementType.QUAVER);
+            first.lyrics.add(new Lyric(VERSE, "mi", Lyric.Extend.START, Lyric.Syllabic.END, false));
+            var stop = makeExtendElement(Lyric.Extend.STOP);
+            addExtendChain(first, stop);
+
+            insertUnrepairedAt(0);
+            song.withModification(() -> line.repairNeighborsAfterUntrackedInsertion(0));
+
+            // Nothing precedes index 0, so the predecessor half has no chain to break and the
+            // melisma running out of the first note survives untouched.
+            assertThat(extendOf(first))
+                .as("no predecessor, so the melisma still begins where it did")
+                .isEqualTo(Lyric.Extend.START);
+            assertThat(extendOf(stop))
+                .as("the melisma still ends where it did")
+                .isEqualTo(Lyric.Extend.STOP);
+
+            // The successor half runs regardless: the inserted note carries no syllable, so
+            // the word ending has nothing left in front of it.
+            assertThat(first.lyrics.getFirst().syllabic())
+                .as("the displaced word ending becomes a word of its own")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
+        @Test
+        void testRepairHandlesEachVerseIndependently() {
+            var verse2 = 2;
+
+            // Verse 1 runs a melisma across the pair; verse 2 hyphenates a word across it.
+            var predecessor = new StaffElement(ElementType.QUAVER);
+            predecessor.lyrics.add(new Lyric(VERSE, "x", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
+            predecessor.lyrics.add(new Lyric(verse2, "A", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+
+            var follower = new StaffElement(ElementType.QUAVER);
+            follower.lyrics.add(new Lyric(VERSE, "", Lyric.Extend.STOP, null, false));
+            follower.lyrics.add(new Lyric(verse2, "mi", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+
+            addExtendChain(predecessor, follower);
+
+            insertUnrepairedAt(1);
+            song.withModification(() -> line.repairNeighborsAfterUntrackedInsertion(1));
+
+            assertThat(requireLyricForVerse(predecessor, VERSE).extend())
+                .as("verse 1's melisma is cleared where the inserted note cuts it")
+                .isEqualTo(Lyric.Extend.NONE);
+            assertNoLyricForVerse(follower, VERSE);
+
+            assertThat(requireLyricForVerse(predecessor, verse2).syllabic())
+                .as("verse 2's hyphen no longer continues into the inserted note")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(requireLyricForVerse(follower, verse2).syllabic())
+                .as("verse 2's word ending has no preceding syllable left")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
+        /**
+         * The repair is not only about lyrics: an element inserted in front of a paired grace
+         * note leaves that note's connecting glissando with nothing to connect to, and the
+         * removal has to be recorded like any other, or undo re-inserts the grace note without
+         * its glissando.
+         */
+        @Test
+        void testRepairStripsTheGlissandoTheInsertedNoteLeftPointingNowhere() {
+            var pairedGrace = new StaffElement(ElementType.GRACE_QUAVER);
+            pairedGrace.setGlissando();
+            var host = new StaffElement(ElementType.QUAVER);
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(pairedGrace);
+                line.addElement(host);
+                line.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
+                // A second grace note, which is what grace mode inserts and what the pair's
+                // glissando now points at instead of the host.
+                line.addElement(1, new StaffElement(ElementType.GRACE_QUAVER));
+            });
+
+            song.withModification(() -> line.repairNeighborsAfterUntrackedInsertion(1));
+
+            assertThat(pairedGrace.hasGlissando())
+                .as("the glissando has no valid target left, so it goes")
+                .isFalse();
+
+            var modification = findSingleMutationOfType(captureSingleDidChange(), ElementModification.class);
+            assertThat(modification.index())
+                .as("the removal is recorded against the note that lost the glissando")
+                .isZero();
+            assertThat(modification.fields()).containsExactly(ElementField.SLIDE);
+            assertThat(modification.beforeElement().hasGlissando())
+                .as("undo restores the glissando from the before-snapshot")
+                .isTrue();
+        }
+
+        /** Reads the verse's lyric, failing the test when the element carries none. */
+        private Lyric requireLyricForVerse(StaffElement element, int verse) {
+            var lyric = element.getLyricForVerse(verse);
+
+            if (lyric == null) {
+                throw new AssertionError("expected a verse " + verse + " lyric");
+            }
+
+            return lyric;
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Grace-host melisma sync
     // -----------------------------------------------------------------------
 

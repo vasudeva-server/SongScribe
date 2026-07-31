@@ -144,6 +144,13 @@ public final class GraceModeManager {
     // edge and an eligible host note exists. A preview glissando is drawn while true.
     private boolean pendingConnect = false;
 
+    // True only while the untracked grace-note insertion is in flight, telling the
+    // insertion path to leave the repairs around the insertion point to us.
+    private boolean deferringInsertionRepairs = false;
+
+    // True when the insertion path took that offer, so the pairing owes the repairs.
+    private boolean insertionRepairsOwed = false;
+
     public GraceModeManager(
         EditModeManager editModeManager,
         SelectionCoordinator selectionCoordinator
@@ -189,6 +196,29 @@ public final class GraceModeManager {
      */
     public static boolean hasPendingConnect() {
         return instance != null && instance.pendingConnect;
+    }
+
+    /**
+     * Hands the neighbor repairs around the insertion now in flight over to grace mode, and
+     * returns whether it took them. True only while grace mode inserts its grace note, which
+     * it does with mutation tracking suspended: a repair made there would be applied but never
+     * recorded, so undo could not put back the broken lyric chain or the stripped glissando.
+     * Grace mode re-runs the repairs inside the bracket that makes the pairing undoable — see
+     * {@link Line#repairNeighborsAfterUntrackedInsertion}.
+     *
+     * <p>Asking and taking are one call because they must never come apart: a caller that
+     * skipped the repairs without recording that it had would drop them silently, with undo
+     * left unable to restore the neighbors and nothing to point at the cause. Only an insertion
+     * path calls this, and only where it is about to insert — an append or a replacement
+     * disturbs no neighbor, so it asks nothing and owes nothing.
+     */
+    public static boolean deferInsertionRepairs() {
+        if (instance == null || !instance.deferringInsertionRepairs) {
+            return false;
+        }
+
+        instance.insertionRepairsOwed = true;
+        return true;
     }
 
     /**
@@ -581,7 +611,15 @@ public final class GraceModeManager {
         // recording a mutation: a lone grace note is not undoable. It only becomes part
         // of an undo step once it is paired with a host note (see enterGraceNotePaired,
         // which retroactively records the insertion into the pairing's bracket).
-        line.getSong().withoutMutationTracking(() -> PreviewElementManager.handleClick(lineComponent));
+        // The insertion's repairs to the neighboring elements would be lost the same way, so
+        // they are deferred to the pairing bracket (see enterGraceNotePaired), not made here.
+        deferringInsertionRepairs = true;
+
+        try {
+            line.getSong().withoutMutationTracking(() -> PreviewElementManager.handleClick(lineComponent));
+        } finally {
+            deferringInsertionRepairs = false;
+        }
 
         // No SongDidChangeNotification fires while tracking is suspended, so invalidate
         // the line's layout directly to lay out and render the new grace note.
@@ -739,6 +777,15 @@ public final class GraceModeManager {
             // empty (the PitchShifter pattern) — the record exists only to drive undo/redo.
             line.applyChange(new ElementInsertion(line, graceNoteIndex, note), () -> {});
 
+            // The repairs the insertion deferred, recorded here so undo can put back the
+            // syllabic and melisma chains the grace note broke, and the connecting glissando
+            // it took away from the note in front of it. They run before the host insertion
+            // below, while the element after the grace note is still the one the grace note
+            // was inserted in front of.
+            if (insertionRepairsOwed) {
+                line.repairNeighborsAfterUntrackedInsertion(graceNoteIndex);
+            }
+
             if (!connectNext) {
                 // Insert the host note at the locked x position. The preview element was
                 // built undecorated on entry to grace mode (see enterGraceNote), so the
@@ -832,6 +879,8 @@ public final class GraceModeManager {
         justEnteredInsert = false;
         pendingCancel = false;
         pendingConnect = false;
+        deferringInsertionRepairs = false;
+        insertionRepairsOwed = false;
 
         // The host preview's connecting glissando is gated on the state cleared just above, and
         // nothing else takes the overlays down on the way out of grace mode: a commit would leave

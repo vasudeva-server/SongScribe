@@ -26,6 +26,7 @@ import static org.mockito.Mockito.verify;
 
 import java.awt.Font;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -38,6 +39,7 @@ import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
@@ -47,6 +49,7 @@ import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.message.mutation.ElementField;
+import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.FontChange;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.component.ScoreView;
@@ -242,6 +245,188 @@ class MutationReplayerRoundTripTest extends UnitTest {
     // -----------------------------------------------------------------------
     // Line-scoped mutations
     // -----------------------------------------------------------------------
+
+    /**
+     * The grace-note case, which cannot use {@link #assertRoundTrip}: the element is already
+     * on the line when the bracket opens, so the pre-edit state to restore predates it.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class DeferredInsertionRepair {
+
+        private static final String FIRST_SYLLABLE = "A";
+        private static final String SECOND_SYLLABLE = "mi";
+
+        /** The two notes the grace note is inserted between. */
+        private static final int NOTE_COUNT = 2;
+
+        /**
+         * Issue #659 at the model level. Grace mode inserts its grace note with mutation
+         * tracking suspended and defers the lyric-chain repairs, so the pairing bracket
+         * carries both the retroactive insertion record and the repairs — and undo, replaying
+         * that batch in reverse, has to put the hyphen back.
+         */
+        @Test
+        void testUndoRestoresTheHyphenTheGraceNoteInsertionBroke() {
+            var song = songWithNotes(NOTE_COUNT);
+            var line = song.getLine(0);
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                setSyllable(line, 0, Lyric.Syllabic.BEGIN, FIRST_SYLLABLE);
+                setSyllable(line, 1, Lyric.Syllabic.END, SECOND_SYLLABLE);
+                line.addElement(1, grace);
+            });
+
+            var batch = UndoTestSupport.captureBatch(song, () -> {
+                line.applyChange(new ElementInsertion(line, 1, grace), () -> {});
+                line.repairNeighborsAfterUntrackedInsertion(1);
+            });
+
+            assertThat(syllabicAt(line, 0))
+                .as("the inserted grace note breaks the hyphen chain")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+            UndoTestSupport.replayUndo(scoreView, batch);
+
+            assertThat(line.effectiveElementCount())
+                .as("undo removes the grace note")
+                .isEqualTo(NOTE_COUNT);
+            assertThat(syllabicAt(line, 0))
+                .as("undo re-establishes the hyphen on the first syllable")
+                .isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(syllabicAt(line, 1))
+                .as("undo re-establishes the word ending on the second syllable")
+                .isEqualTo(Lyric.Syllabic.END);
+
+            UndoTestSupport.replayRedo(scoreView, batch);
+
+            assertThat(line.effectiveElementCount())
+                .as("redo puts the grace note back")
+                .isEqualTo(NOTE_COUNT + 1);
+            assertThat(syllabicAt(line, 0))
+                .as("redo breaks the hyphen chain again")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
+        /**
+         * The melisma half of the same story. A melisma is one syllable held across several
+         * notes, marked START on the note carrying the word and STOP on a text-less carrier
+         * where it ends. The repair has to start its cascade one slot past the inserted note,
+         * since its indices are post-insertion — get that wrong and the syllables above still
+         * round-trip perfectly while a held note never comes back.
+         */
+        @Test
+        void testUndoRestoresTheMelismaTheGraceNoteInsertionBroke() {
+            var song = songWithNotes(NOTE_COUNT);
+            var line = song.getLine(0);
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                line.getElement(0).setLyricForVerse(
+                    Lyric.FIRST_VERSE, Lyric.Syllabic.SINGLE, false, FIRST_SYLLABLE, Lyric.Extend.START);
+                line.getElement(1).setLyricForVerse(
+                    Lyric.FIRST_VERSE, null, false, "", Lyric.Extend.STOP);
+                line.addElement(1, grace);
+            });
+
+            var batch = UndoTestSupport.captureBatch(song, () -> {
+                line.applyChange(new ElementInsertion(line, 1, grace), () -> {});
+                line.repairNeighborsAfterUntrackedInsertion(1);
+            });
+
+            assertThat(extendAt(line, 0))
+                .as("the inserted grace note ends the melisma on the note that started it")
+                .isEqualTo(Lyric.Extend.NONE);
+            assertThat(line.getElement(2).getLyricForVerse(Lyric.FIRST_VERSE))
+                .as("the severed carrier is dropped rather than left as an empty lyric")
+                .isNull();
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+            UndoTestSupport.replayUndo(scoreView, batch);
+
+            assertThat(line.effectiveElementCount())
+                .as("undo removes the grace note")
+                .isEqualTo(NOTE_COUNT);
+            assertThat(extendAt(line, 0))
+                .as("undo re-establishes the melisma on the note that held the syllable")
+                .isEqualTo(Lyric.Extend.START);
+            assertThat(extendAt(line, 1))
+                .as("undo brings back the carrier the melisma ended on")
+                .isEqualTo(Lyric.Extend.STOP);
+
+            UndoTestSupport.replayRedo(scoreView, batch);
+
+            assertThat(extendAt(line, 0))
+                .as("redo breaks the melisma again")
+                .isEqualTo(Lyric.Extend.NONE);
+            assertThat(line.getElement(2).getLyricForVerse(Lyric.FIRST_VERSE))
+                .as("redo drops the carrier again")
+                .isNull();
+        }
+
+        /**
+         * The glissando half of the same story, and the one arrangement that reaches it: a
+         * grace note dropped between an existing pair and its host leaves that pair's
+         * glissando connecting to the newcomer rather than to a note it may legally reach, so
+         * the deferred repair takes it off. Recorded nowhere, undo would put the pair back
+         * silently unpaired.
+         */
+        @Test
+        void testUndoRestoresTheGlissandoTheGraceNoteInsertionBroke() {
+            var song = songWithNotes(NOTE_COUNT);
+            var line = song.getLine(0);
+            var pairedGrace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                pairedGrace.setGlissando();
+                line.addElement(0, pairedGrace);
+                line.addElement(1, grace);
+            });
+
+            var batch = UndoTestSupport.captureBatch(song, () -> {
+                line.applyChange(new ElementInsertion(line, 1, grace), () -> {});
+                line.repairNeighborsAfterUntrackedInsertion(1);
+            });
+
+            assertThat(pairedGrace.hasGlissando())
+                .as("the inserted grace note leaves the existing pair's glissando no valid target")
+                .isFalse();
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+            UndoTestSupport.replayUndo(scoreView, batch);
+
+            assertThat(line.effectiveElementCount())
+                .as("undo removes the grace note")
+                .isEqualTo(NOTE_COUNT + 1);
+            assertThat(line.getElement(0).hasGlissando())
+                .as("undo reconnects the pair the insertion broke")
+                .isTrue();
+
+            UndoTestSupport.replayRedo(scoreView, batch);
+
+            assertThat(line.getElement(0).hasGlissando())
+                .as("redo disconnects it again")
+                .isFalse();
+        }
+
+        private static void setSyllable(Line line, int index, Lyric.Syllabic syllabic, String text) {
+            line.getElement(index)
+                .setLyricForVerse(Lyric.FIRST_VERSE, syllabic, false, text, Lyric.Extend.NONE);
+        }
+
+        private static Lyric.@Nullable Syllabic syllabicAt(Line line, int index) {
+            var lyric = line.getElement(index).getLyricForVerse(Lyric.FIRST_VERSE);
+            return lyric == null ? null : lyric.syllabic();
+        }
+
+        private static Lyric.@Nullable Extend extendAt(Line line, int index) {
+            var lyric = line.getElement(index).getLyricForVerse(Lyric.FIRST_VERSE);
+            return lyric == null ? null : lyric.extend();
+        }
+    }
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested

@@ -21,6 +21,7 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mockStatic;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.dom.ElementType;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
+import songscribe.ui.edit.GraceModeManager;
 
 /**
  * Tests for structural side-effects in {@link PreviewElementManager}:
@@ -49,6 +51,17 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
     /** After a pitched insertion at {@link #HOST_INDEX}, the original host sits one slot later. */
     private static final int DISPLACED_HOST_INDEX = 2;
 
+    /** The two notes {@link #addHyphenatedPair} puts on the line. */
+    private static final int HYPHENATED_PAIR_COUNT = 2;
+
+    /** Where the tests insert, splitting the hyphenated pair. */
+    private static final int INSERTION_INDEX = 1;
+
+    private static final int PREDECESSOR_INDEX = 0;
+
+    /** After the insertion at {@link #INSERTION_INDEX}, the second syllable sits one slot later. */
+    private static final int DISPLACED_SUCCESSOR_INDEX = 2;
+
     // -----------------------------------------------------------------------
     // Grace-host melisma helpers
     // -----------------------------------------------------------------------
@@ -69,6 +82,19 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
             line.addElement(grace);
             line.addElement(ElementType.MINIM.newInstance());
             line.syncGraceHostMelisma(GRACE_INDEX);
+        });
+    }
+
+    /** Builds {@code ["hel" BEGIN, "lo" END]} — one word split across two notes. */
+    private void addHyphenatedPair() {
+        song.withoutMutationTracking(() -> {
+            var note0 = ElementType.CROTCHET.newInstance();
+            note0.setLyricForVerse(VERSE, Lyric.Syllabic.BEGIN, false, "hel", Lyric.Extend.NONE);
+            line.addElement(note0);
+
+            var note1 = ElementType.CROTCHET.newInstance();
+            note1.setLyricForVerse(VERSE, Lyric.Syllabic.END, false, "lo", Lyric.Extend.NONE);
+            line.addElement(note1);
         });
     }
 
@@ -232,45 +258,104 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
         @Test
         void testInsertionBreaksSyllableChainOnPredecessor() {
             song.setLineWidthSs(WIDE_LINE_SS);
-
-            song.withoutMutationTracking(() -> {
-                var note0 = ElementType.CROTCHET.newInstance();
-                note0.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "hel", Lyric.Extend.NONE);
-                line.addElement(note0);
-
-                var note1 = ElementType.CROTCHET.newInstance();
-                note1.setLyricForVerse(1, Lyric.Syllabic.END, false, "lo", Lyric.Extend.NONE);
-                line.addElement(note1);
-            });
+            addHyphenatedPair();
 
             setPreviewElement(ElementType.CROTCHET.newInstance());
-            PreviewElementManager.setCurrentXIndex(1);
+            PreviewElementManager.setCurrentXIndex(INSERTION_INDEX);
             PreviewElementManager.setXPosSsMatchesElement(false);
             PreviewElementManager.handleClick(lc);
 
             // effectiveElementCount excludes the auto-maintained FINAL_DOUBLE_BARLINE terminal
             assertThat(line.effectiveElementCount())
-                .as("effective element count increases to 3 after insertion")
-                .isEqualTo(3);
+                .as("effective element count increases by the inserted note")
+                .isEqualTo(HYPHENATED_PAIR_COUNT + 1);
 
-            // Predecessor (index 0) syllabic: BEGIN chain broken → SINGLE
-            var pred = line.getElement(0);
-            var predLyric = pred.getLyricForVerse(1);
-            assertThat(predLyric).as("predecessor still has a lyric").isNotNull();
-            //noinspection ConstantValue -- need for NullAway
-            assertThat(predLyric == null ? null : predLyric.syllabic())
+            assertThat(requireLyric(PREDECESSOR_INDEX, VERSE).syllabic())
                 .as("predecessor 'hel' syllabic downgraded to SINGLE by insertion")
                 .isEqualTo(Lyric.Syllabic.SINGLE);
-
-            // Successor (now at index 2) syllabic: END → SINGLE (no preceding syllable)
-            var succ = line.getElement(2);
-            var succLyric = succ.getLyricForVerse(1);
-            assertThat(succLyric).as("successor still has a lyric").isNotNull();
-            //noinspection ConstantValue -- need for NullAway
-            assertThat(succLyric == null ? null : succLyric.syllabic())
+            assertThat(requireLyric(DISPLACED_SUCCESSOR_INDEX, VERSE).syllabic())
                 .as("successor 'lo' syllabic changed to SINGLE (no preceding syllable)")
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
+
+        /**
+         * The same insertion with grace mode deferring the repairs (#659): grace mode inserts
+         * its grace note with mutation tracking suspended, where a repair would be applied but
+         * never recorded, so the chains must be left exactly as they were for the pairing
+         * bracket to break them there.
+         */
+        @Test
+        void testGraceModeDeferralLeavesTheSyllableChainUntouched() {
+            song.setLineWidthSs(WIDE_LINE_SS);
+            addHyphenatedPair();
+
+            try (var graceModeMock = mockStatic(GraceModeManager.class)) {
+                graceModeMock.when(GraceModeManager::deferInsertionRepairs).thenReturn(true);
+
+                setPreviewElement(ElementType.GRACE_QUAVER.newInstance());
+                PreviewElementManager.setCurrentXIndex(INSERTION_INDEX);
+                PreviewElementManager.setXPosSsMatchesElement(false);
+                PreviewElementManager.handleClick(lc);
+
+                assertThat(line.effectiveElementCount())
+                    .as("the grace note was inserted between the two syllables")
+                    .isEqualTo(HYPHENATED_PAIR_COUNT + 1);
+                assertThat(requireLyric(PREDECESSOR_INDEX, VERSE).syllabic())
+                    .as("the predecessor keeps the hyphen for the pairing bracket to break")
+                    .isEqualTo(Lyric.Syllabic.BEGIN);
+                assertThat(requireLyric(DISPLACED_SUCCESSOR_INDEX, VERSE).syllabic())
+                    .as("the displaced successor keeps its word ending")
+                    .isEqualTo(Lyric.Syllabic.END);
+
+                // The one call both asks to defer and records the debt, so having been called
+                // is what proves the pairing bracket will run the repairs.
+                graceModeMock.verify(GraceModeManager::deferInsertionRepairs);
+            }
+        }
+
+        /**
+         * A non-pitched insertion between a paired grace note and its host leaves the
+         * glissando with nothing it may legally connect to, so the insertion takes it off.
+         */
+        @Test
+        void testNonPitchedInsertionStripsTheGlissandoItOrphaned() {
+            song.setLineWidthSs(WIDE_LINE_SS);
+            addPairedGraceCarryingSyllable();
+
+            setPreviewElement(ElementType.GRACE_QUAVER.newInstance());
+            PreviewElementManager.setCurrentXIndex(HOST_INDEX);
+            PreviewElementManager.setXPosSsMatchesElement(false);
+            PreviewElementManager.handleClick(lc);
+
+            assertThat(line.getElement(GRACE_INDEX).hasGlissando())
+                .as("the grace note the insertion cut in front of is disconnected")
+                .isFalse();
+        }
+
+        /**
+         * The same insertion with grace mode deferring the repairs (#659). The strip is a
+         * tracked modification like any other, so making it here — with tracking suspended —
+         * would apply it where undo can never take it back.
+         */
+        @Test
+        void testGraceModeDeferralLeavesTheGlissandoConnected() {
+            song.setLineWidthSs(WIDE_LINE_SS);
+            addPairedGraceCarryingSyllable();
+
+            try (var graceModeMock = mockStatic(GraceModeManager.class)) {
+                graceModeMock.when(GraceModeManager::deferInsertionRepairs).thenReturn(true);
+
+                setPreviewElement(ElementType.GRACE_QUAVER.newInstance());
+                PreviewElementManager.setCurrentXIndex(HOST_INDEX);
+                PreviewElementManager.setXPosSsMatchesElement(false);
+                PreviewElementManager.handleClick(lc);
+
+                assertThat(line.getElement(GRACE_INDEX).hasGlissando())
+                    .as("the glissando stays on for the pairing bracket to strip")
+                    .isTrue();
+            }
+        }
+
 
         /**
          * Middle syllable promotion: inserting before a MIDDLE syllable promotes it to BEGIN.

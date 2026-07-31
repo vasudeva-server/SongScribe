@@ -752,15 +752,6 @@ public final class ScoreViewController {
         } else {
             var rangeEnd = line.effectiveDeleteEnd(end);
 
-            // Contiguous range: clean up the element before the range, then batch-remove.
-            if (begin > 0) {
-                var prevElement = line.getElement(begin - 1);
-
-                if (prevElement.hasGlissando()) {
-                    prevElement.removeSlide();
-                }
-            }
-
             // Shift elements after the selection to fill the gap, mirroring the
             // per-element xPos adjustment that deleteNote performs.
             if (rangeEnd < line.effectiveElementCount() - 1) {
@@ -775,6 +766,17 @@ public final class ScoreViewController {
                 // Recorded before the removal, for the reason given in the other branch.
                 commitDeletionAccidentals(line, accidentalChanges);
                 AccidentalRestatements.commitOtherLines(decision, line);
+
+                // Clean up the element before the range: its glissando has nothing left to
+                // point at. Recorded like every other change here — stripping it raw would
+                // leave undo restoring the deleted notes but not the glissando.
+                if (begin > 0) {
+                    var prevElement = line.getElement(begin - 1);
+
+                    if (prevElement.hasGlissando()) {
+                        line.modifyElement(begin - 1, ElementField.SLIDE, prevElement::removeSlide);
+                    }
+                }
 
                 // Mirror deleteNote: adjust syllable relations and melisma extends
                 // on neighbors before removing. Both helpers require the target
@@ -1024,9 +1026,9 @@ public final class ScoreViewController {
         var cloneCount = clones.size();
 
         // Repair the lyric seams around the insertion point, mirroring the
-        // single-note insert path in PreviewElementManager.
-        line.adjustSyllablesForNeighborChange(insertAt - 1, null);
-        line.adjustExtendsForInsertion(insertAt);
+        // single-note insert path in PreviewElementManager. The successor half runs after
+        // the clones are in, against the last of them rather than the first.
+        line.repairNeighborsBeforeInsertion(insertAt);
 
         // Hard ordering constraint: every clone must be inserted before the first
         // addPastedRangeElement. Adding a span re-parents only the span, not its
@@ -1194,7 +1196,7 @@ public final class ScoreViewController {
             var prevElement = line.getElement(xIndex - 1);
 
             if (prevElement.hasGlissando()) {
-                prevElement.removeSlide();
+                line.modifyElement(xIndex - 1, ElementField.SLIDE, prevElement::removeSlide);
             }
         }
 

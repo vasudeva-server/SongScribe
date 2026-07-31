@@ -43,6 +43,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.Song;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.InsertionSpacingCalculator;
@@ -1871,6 +1872,362 @@ class GraceModeManagerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // Deferred insertion repair (#659)
+    //
+    // The grace note goes in with mutation tracking suspended, so the repairs the
+    // insertion owes its neighbors — broken lyric chains, and a connecting glissando
+    // left pointing at the newcomer — are deferred to the pairing bracket, the only
+    // place they can be recorded, and so the only place undo can undo them from.
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class DeferredInsertionRepair {
+
+        private static final int VERSE = 1;
+        private static final int GRACE_INDEX = 1;
+        private static final int HYPHENATED_INDEX = 0;
+        /** Where {@link #graceInsertedIntoAnExistingPair} puts the grace note that owns the glissando. */
+        private static final int EXISTING_PAIR_INDEX = 0;
+        /** The three elements {@link #hyphenatedLineWithGrace} puts on the line. */
+        private static final int HYPHENATED_LINE_COUNT = 3;
+        /** Where a click-inserted host note lands, right after the grace note. */
+        private static final int NEW_HOST_INDEX = GRACE_INDEX + 1;
+        /** That insertion pushes the original successor one slot further along. */
+        private static final int DISPLACED_SUCCESSOR_INDEX = NEW_HOST_INDEX + 1;
+        private static final int GRACE_STAFF_POSITION = 2;
+        private static final int HOST_STAFF_POSITION = 4;
+        /** Must differ from the grace note's pitch, or the pairing is rejected. */
+        private static final int NEW_HOST_STAFF_POSITION = 5;
+        private static final int PREDECESSOR_STAFF_POSITION = 6;
+        private static final int MOUSE_DOWN_X = 100;
+        private static final int MOUSE_DOWN_Y = 100;
+        /** Far enough right of MOUSE_DOWN_X to be classified as a drag, not a click. */
+        private static final int RELEASE_X = 200;
+        /** Where grace mode is entered. Anywhere on the line will do; nothing reads it back. */
+        private static final int ENTRY_CLICK_X = 50;
+        private static final int ENTRY_CLICK_Y = 60;
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+        private MockedStatic<PreviewElementManager> previewMock;
+        private MockedStatic<EditModeManager> editModeManagerMock;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+            previewMock = mockStatic(PreviewElementManager.class);
+            editModeManagerMock = mockStatic(EditModeManager.class);
+            var mockFrame = mock(MainFrame.class);
+            var mockScore = mock(ScoreView.class);
+            var mockRootPane = mock(JRootPane.class);
+            when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
+            when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
+            when(mockFrame.getRootPane()).thenReturn(mockRootPane);
+            when(mockFrame.requireScoreView()).thenReturn(mockScore);
+            when(mockFrame.getScoreView()).thenReturn(mockScore);
+            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            Actions.initialize(mockFrame);
+        }
+
+        @AfterEach
+        void tearDown() throws Exception {
+            // Closed in a finally: Mockito allows one static mock per class per thread, so a
+            // throw above here would leave three registered and fail unrelated later tests
+            // with an error that points nowhere near the cause.
+            try {
+                // Drain pending invokeLater tasks before resetting Actions (see the sibling fixtures).
+                javax.swing.SwingUtilities.invokeAndWait(() -> {});
+                Actions.resetForTest();
+            } finally {
+                editModeManagerMock.close();
+                previewMock.close();
+                messageCenterMock.close();
+            }
+        }
+
+        @Test
+        void testTheGraceNoteInsertionRunsWithTheRepairsDeferred() {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            editModeManagerMock.when(EditModeManager::getPreviewElement)
+                .thenReturn(ElementType.GRACE_QUAVER.newInstance());
+            previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
+
+            // Sample the offer at the moment the insertion runs — the only moment it holds.
+            var clicked = new boolean[1];
+            var deferredDuringClick = new boolean[1];
+            previewMock.when(() -> PreviewElementManager.handleClick(any(LineComponent.class)))
+                .thenAnswer(invocation -> {
+                    clicked[0] = true;
+                    deferredDuringClick[0] = GraceModeManager.deferInsertionRepairs();
+                    return null;
+                });
+
+            try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
+                calcMock.when(
+                    () -> InsertionSpacingCalculator.hasRoomForGraceNote(any(), anyInt(), any(), any())
+                ).thenReturn(true);
+
+                var line = suspendableLine();
+                var lineComponent = mock(LineComponent.class);
+                when(lineComponent.getLine()).thenReturn(line);
+                when(lineComponent.getLayoutResult()).thenReturn(null);
+                var e = mouseEvent(
+                    lineComponent, MouseEvent.MOUSE_PRESSED, ENTRY_CLICK_X, ENTRY_CLICK_Y, MouseEvent.BUTTON1);
+
+                manager.mousePressed(lineComponent, e);
+            }
+
+            // Guards the assertion below: without the click the sample never runs and the
+            // flag reads trivially false.
+            assertThat(clicked[0])
+                .as("entering grace mode should insert the grace note")
+                .isTrue();
+            assertThat(deferredDuringClick[0])
+                .as("the insertion must be told to leave the neighbor repairs to the pairing")
+                .isTrue();
+            assertThat(GraceModeManager.deferInsertionRepairs())
+                .as("the offer must not outlive the grace note's own insertion")
+                .isFalse();
+        }
+
+        @Test
+        void testPairingBreaksTheHyphenTheDeferredInsertionLeftIntact() {
+            var line = hyphenatedLineWithGrace();
+
+            connectByDragRight(line, true);
+
+            assertThat(line.isPairedGraceNote(GRACE_INDEX))
+                .as("the drag-right commit must connect the grace note to its host")
+                .isTrue();
+
+            // This fixture's song suspends mutation tracking, so nothing here is recorded —
+            // that the repair reaches the undo record is MutationReplayerRoundTripTest's job.
+            // What this proves is that the pairing runs it at all.
+            assertThat(syllabicAt(line, HYPHENATED_INDEX))
+                .as("the deferred repair runs during the pairing")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
+        /**
+         * The other pairing branch: instead of dragging onto a note that is already there,
+         * the user clicks to drop a brand-new host note in. The repair has to run before that
+         * host goes in, while the note after the grace is still the one the grace note was
+         * inserted in front of — run it afterwards and it would break the word ending on the
+         * new host, which has no lyric, and leave the real one hyphenated to nothing.
+         */
+        @Test
+        void testPairingRepairsBeforeInsertingANewHostNote() {
+            var line = hyphenatedLineWithGrace();
+            var manager = graceModeManagerOn(line, true);
+            var lineComponent = mock(LineComponent.class);
+            // Built on its own line: nesting a stub inside another stub's argument leaves
+            // Mockito mid-stubbing and it throws.
+            var scoreViewStub = graceScoreViewStub();
+            when(lineComponent.getScoreView()).thenReturn(scoreViewStub);
+            manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
+            manager.setGraceLineComponent(lineComponent);
+
+            var hostPreview = ElementType.CROTCHET.newInstance();
+            hostPreview.setStaffPosition(NEW_HOST_STAFF_POSITION);
+            when(editModeManager.getPreviewElement()).thenReturn(hostPreview);
+
+            // The host goes in through the real insert path, which this fixture mocks out.
+            // Stand in for it so the indices move exactly as they do in production.
+            previewMock.when(() -> PreviewElementManager.handleClick(lineComponent, true))
+                .thenAnswer(invocation -> {
+                    line.addElement(NEW_HOST_INDEX, hostPreview);
+                    return null;
+                });
+
+            var e = mouseEvent(
+                lineComponent, MouseEvent.MOUSE_CLICKED, RELEASE_X, MOUSE_DOWN_Y, MouseEvent.BUTTON1);
+            assertThat(manager.mouseClicked(lineComponent, e))
+                .as("the click must be consumed by grace mode")
+                .isTrue();
+
+            assertThat(syllabicAt(line, HYPHENATED_INDEX))
+                .as("the deferred repair runs even when the host note is a new one")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(line.getElement(NEW_HOST_INDEX).getLyricForVerse(VERSE))
+                .as("the freshly inserted host carries no lyric of its own")
+                .isNull();
+            assertThat(syllabicAt(line, DISPLACED_SUCCESSOR_INDEX))
+                .as("the repair broke the word ending on the original successor, "
+                    + "which the host insertion then pushed one slot further along")
+                .isEqualTo(Lyric.Syllabic.SINGLE);
+        }
+
+        @Test
+        void testPairingLeavesTheChainAloneWhenNoRepairIsOwed() {
+            var line = hyphenatedLineWithGrace();
+
+            // Nothing was deferred, so the guard in the pairing must skip the repair entirely.
+            connectByDragRight(line, false);
+
+            assertThat(syllabicAt(line, HYPHENATED_INDEX))
+                .as("a pairing that owes no repair must not touch the lyric chains")
+                .isEqualTo(Lyric.Syllabic.BEGIN);
+        }
+
+        /**
+         * Lyrics are not all the insertion owes its neighbors. Dropping a grace note between an
+         * existing pair and its host leaves that pair's glissando connecting to the newcomer
+         * instead, so the repair has to take it off — and, being deferred, take it off where
+         * undo can see it.
+         */
+        @Test
+        void testPairingStripsTheGlissandoTheDeferredInsertionLeftConnected() {
+            var line = graceInsertedIntoAnExistingPair();
+
+            connectByDragRight(line, true);
+
+            assertThat(line.getElement(EXISTING_PAIR_INDEX).hasGlissando())
+                .as("the deferred repair disconnects the pair the grace note cut into")
+                .isFalse();
+        }
+
+        @Test
+        void testPairingLeavesTheGlissandoAloneWhenNoRepairIsOwed() {
+            var line = graceInsertedIntoAnExistingPair();
+
+            connectByDragRight(line, false);
+
+            assertThat(line.getElement(EXISTING_PAIR_INDEX).hasGlissando())
+                .as("a pairing that owes no repair must not touch the glissando")
+                .isTrue();
+        }
+
+        /**
+         * Cancelling must leave no debt behind. The flags live on the manager, not on the
+         * line, so a cancel that failed to clear them would hand the repair to the *next*
+         * grace note, which would then rewrite a word it never touched.
+         */
+        @Test
+        void testAbortingClearsTheRepairDebt() {
+            var line = hyphenatedLineWithGrace();
+            var manager = graceModeManagerOn(line, true);
+
+            manager.keyPressed(new KeyEvent(
+                mock(LineComponent.class), KeyEvent.KEY_PRESSED, 0L, 0,
+                KeyEvent.VK_ESCAPE, KeyEvent.CHAR_UNDEFINED));
+
+            assertThat(line.effectiveElementCount())
+                .as("escape must take the grace note back out")
+                .isEqualTo(HYPHENATED_LINE_COUNT - 1);
+            assertThat(syllabicAt(line, HYPHENATED_INDEX))
+                .as("a cancelled grace note must leave the hyphen exactly as it found it")
+                .isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(getField(manager, "insertionRepairsOwed"))
+                .as("the cancelled operation must not leave a repair owed for the next one")
+                .isEqualTo(false);
+        }
+
+        /**
+         * A song mock that actually runs the body of {@code withoutMutationTracking} —
+         * {@link #minimalSongMock} leaves that method a do-nothing mock, which would swallow
+         * the grace-note insertion and removal these tests turn on.
+         */
+        private Song suspendableSongMock() {
+            var song = minimalSongMock();
+            doAnswer(invocation -> {
+                ((Runnable) invocation.getArgument(0)).run();
+                return null;
+            }).when(song).withoutMutationTracking(any(Runnable.class));
+            return song;
+        }
+
+        /** A one-note line on a song that really suspends rather than swallowing. */
+        private Line suspendableLine() {
+            var line = new Line(suspendableSongMock());
+            line.addElement(ElementType.GRACE_QUAVER.newInstance());
+            return line;
+        }
+
+        /** {@code ["A" BEGIN, grace, "mi" END]} — a hyphenated word with a grace note in it. */
+        private Line hyphenatedLineWithGrace() {
+            var line = new Line(suspendableSongMock());
+
+            var predecessor = ElementType.CROTCHET.newInstance();
+            predecessor.setStaffPosition(PREDECESSOR_STAFF_POSITION);
+            predecessor.setLyricForVerse(VERSE, Lyric.Syllabic.BEGIN, false, "A", Lyric.Extend.NONE);
+            line.addElement(predecessor);
+
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setStaffPosition(GRACE_STAFF_POSITION);
+            line.addElement(grace);
+
+            var host = ElementType.CROTCHET.newInstance();
+            host.setStaffPosition(HOST_STAFF_POSITION);
+            host.setLyricForVerse(VERSE, Lyric.Syllabic.END, false, "mi", Lyric.Extend.NONE);
+            line.addElement(host);
+
+            return line;
+        }
+
+        /**
+         * {@code [grace →, grace, note]} — a grace note dropped between an already-paired
+         * grace note and the host it points at, which is the one arrangement that leaves a
+         * glissando with no valid target.
+         */
+        private Line graceInsertedIntoAnExistingPair() {
+            var line = new Line(suspendableSongMock());
+
+            var pairedGrace = ElementType.GRACE_QUAVER.newInstance();
+            pairedGrace.setStaffPosition(PREDECESSOR_STAFF_POSITION);
+            pairedGrace.setGlissando();
+            line.addElement(pairedGrace);
+
+            var grace = ElementType.GRACE_QUAVER.newInstance();
+            grace.setStaffPosition(GRACE_STAFF_POSITION);
+            line.addElement(grace);
+
+            var host = ElementType.CROTCHET.newInstance();
+            host.setStaffPosition(HOST_STAFF_POSITION);
+            line.addElement(host);
+
+            return line;
+        }
+
+        /**
+         * A manager parked mid-operation on {@code line}, as if the grace note had just gone
+         * in, with the insertion's repairs recorded as owed or not.
+         */
+        private GraceModeManager graceModeManagerOn(Line line, boolean repairsOwed) {
+            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+
+            manager.setState(GraceModeManager.State.GRACE_NOTE);
+            manager.setGraceNote(line.getElement(GRACE_INDEX));
+            setField(manager, "graceNoteIndex", GRACE_INDEX);
+            manager.setGraceLine(line);
+            setField(manager, "insertionRepairsOwed", repairsOwed);
+            return manager;
+        }
+
+        /**
+         * Drives the drag-right commit that pairs the grace note with the note after it,
+         * with the insertion's repairs recorded as owed or not.
+         */
+        private void connectByDragRight(Line line, boolean repairsOwed) {
+            var manager = graceModeManagerOn(line, repairsOwed);
+            var lineComponent = mock(LineComponent.class);
+
+            manager.setGraceLineComponent(lineComponent);
+            setField(manager, "mouseDownPoint", new Point(MOUSE_DOWN_X, MOUSE_DOWN_Y));
+            setField(manager, "mouseDownTime", System.currentTimeMillis() - GraceModeManager.MIN_DRAG_MILLIS);
+            setField(manager, "pendingConnect", true);
+
+            var e = mouseEvent(lineComponent, MouseEvent.MOUSE_RELEASED, RELEASE_X, MOUSE_DOWN_Y, MouseEvent.BUTTON1);
+            assertThat(manager.mouseReleased(lineComponent, e))
+                .as("the release must be consumed by grace mode")
+                .isTrue();
+        }
+
+        private static Lyric.@Nullable Syllabic syllabicAt(Line line, int index) {
+            var lyric = line.getElement(index).getLyricForVerse(VERSE);
+            return lyric == null ? null : lyric.syllabic();
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------------
 
@@ -1883,6 +2240,16 @@ class GraceModeManagerTest extends UnitTest {
             var field = findField(target.getClass(), name);
             field.setAccessible(true);
             field.set(target, value);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static @Nullable Object getField(Object target, String name) {
+        try {
+            var field = findField(target.getClass(), name);
+            field.setAccessible(true);
+            return field.get(target);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }

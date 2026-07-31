@@ -55,6 +55,7 @@ import songscribe.ui.action.ElementTypeAction;
 import songscribe.undo.OpNames;
 import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.edit.GraceModeManager;
 import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.Ending;
@@ -1875,30 +1876,19 @@ public final class PreviewElementManager {
 
         previewElement.setXOffsetPx(ScaleContext.ssToRoundedPx(insertion.insertedElementXSs()));
 
-        line.adjustSyllablesForNeighborChange(xIndex - 1, null);
-        line.adjustExtendsForInsertion(xIndex);
-        line.addElement(xIndex, previewElement);
-        line.adjustSyllablesForSuccessorAfterInsertion(xIndex);
+        // Grace mode inserts its grace note with mutation tracking suspended, so a repair made
+        // here would never reach the undo record. It takes the repairs over, running them
+        // inside the bracket that makes the pairing undoable.
+        var repairsDeferred = GraceModeManager.deferInsertionRepairs();
 
-        // A connecting glissando joins a note to the note that immediately follows it.
-        // Inserting another pitched note simply re-targets it, but inserting anything else
-        // (rest, breath mark, grace note) leaves it with no valid target, so remove it from
-        // the preceding note.
-        if (!previewElement.getType().isPitchedNote() && xIndex > 0) {
-            var precedingElement = line.getElement(xIndex - 1);
-
-            if (precedingElement.hasGlissando()) {
-                precedingElement.removeSlide();
-            }
+        if (!repairsDeferred) {
+            line.repairNeighborsBeforeInsertion(xIndex);
         }
 
-        // A pitched insertion between a grace note and its host re-targets the glissando, so
-        // the inserted element is the new host. adjustExtendsForInsertion removed the melisma
-        // that pointed at the old host — carrier and all, leaving it an ordinary note free to
-        // take a syllable of its own — so re-establish the melisma against the new host. The
-        // non-pitched case fell through the glissando strip above and no longer reads as paired.
-        if (line.isPairedGraceNote(xIndex - 1)) {
-            line.syncGraceHostMelisma(xIndex - 1);
+        line.addElement(xIndex, previewElement);
+
+        if (!repairsDeferred) {
+            line.repairNeighborsAfterInsertion(xIndex);
         }
 
         var shift = ScaleContext.ssToRoundedPx(insertion.shiftForSubsequentElementsSs());
