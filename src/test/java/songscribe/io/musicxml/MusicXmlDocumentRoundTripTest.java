@@ -79,7 +79,10 @@ class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
     private static final String FOOTNOTES     = "Full round-trip footnote text";
 
     // -- Layout: line width + row-height adjustment --
-    private static final double LINE_WIDTH_SS            = 130.0;
+    // The width is deliberately fractional, and on the finest grid the model
+    // uses (1/8 staff space): a whole-number width would pass even if the
+    // reader rounded <page-width> to a whole staff space.
+    private static final double LINE_WIDTH_SS            = 130.125;
     private static final double ROW_HEIGHT_ADJUSTMENT_SS = 2.5;
 
     // -- Custom fonts: the five roles that round-trip (annotation, lyrics,

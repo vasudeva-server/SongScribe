@@ -313,12 +313,16 @@ final class MusicXmlHeaderReader {
         if (qName.equals(MusicXmlTags.PAGE_WIDTH)) {
             // page-width (tenths) → line width (staff spaces). Write-forward
             // <page-height>/<scaling> are ignored, so the recovered width is
-            // the sole canonical page-layout value.
+            // the sole canonical page-layout value. The conversion must not
+            // round: the width is a fractional model value, and the writer
+            // emits it exactly, so rounding here would shift it on every open.
             var song = reader.songOrNull();
 
             if (song != null) {
                 song.setLineWidthSs(
-                    MusicXmlUnits.tenthsToSs(MusicXmlUnits.parseDoubleOrThrow(MusicXmlTags.PAGE_WIDTH, reader.valueString()))
+                    MusicXmlUnits.tenthsToExactSs(
+                        MusicXmlUnits.parseDoubleOrThrow(MusicXmlTags.PAGE_WIDTH, reader.valueString())
+                    )
                 );
             }
 

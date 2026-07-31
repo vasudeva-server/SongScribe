@@ -97,11 +97,24 @@ final class MusicXmlUnits {
     }
 
     /**
+     * Converts a MusicXML tenths value to staff-spaces (tenths ÷ 10) without
+     * rounding — the exact inverse of {@link #ssToTenths(double)}. Use this for
+     * measures the model stores as a fractional double, such as the line width:
+     * {@link #tenthsToSs(double)}'s whole-staff-space rounding would silently
+     * change a value the writer emitted faithfully.
+     */
+    static double tenthsToExactSs(double tenths) {
+        return tenths / MusicXmlTags.TENTHS_PER_STAFF_SPACE;
+    }
+
+    /**
      * Converts a MusicXML {@code relative-y}/{@code relative-x} value in tenths to
      * SongScribe staff-spaces (tenths ÷ 10), rounded to the nearest integer.
+     * Position values are whole staff-spaces in the model; for a fractional
+     * measure use {@link #tenthsToExactSs(double)}.
      */
     static int tenthsToSs(double tenths) {
-        return (int) Math.round(tenths / MusicXmlTags.TENTHS_PER_STAFF_SPACE);
+        return (int) Math.round(tenthsToExactSs(tenths));
     }
 
     /**
