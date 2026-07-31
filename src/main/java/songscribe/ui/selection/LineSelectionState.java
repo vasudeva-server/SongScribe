@@ -20,7 +20,7 @@
 
 package songscribe.ui.selection;
 
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.IntStream;
 
@@ -34,7 +34,6 @@ import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
 import songscribe.layout.LineEndingSupport;
-import songscribe.ui.action.TupletAction;
 
 /**
  * Per-line selection state and query methods.
@@ -626,15 +625,12 @@ public final class LineSelectionState {
         var song = line.getSong();
         var context = TupletValidator.describeSpan(
             song, line, song.indexOfLine(line), beginIndex, endIndex);
-        var grades = new LinkedHashSet<Integer>();
+        var grades = new HashSet<Integer>();
 
-        for (var candidate : TupletAction.Tuplet.values()) {
-            if (candidate == TupletAction.Tuplet.REMOVE) {
-                continue;
-            }
-
-            var grade = candidate.getSize();
-
+        // The range comes from the model, not from the menu's list of actions: what a
+        // tuplet number may be is a fact about tuplets, and a selection query must not
+        // change because someone reorders a menu.
+        for (var grade = TupletValidator.MIN_GRADE; grade <= TupletValidator.MAX_GRADE; grade++) {
             if (TupletValidator.validate(context, grade, TupletValidator.Strictness.STRICT).valid()) {
                 grades.add(grade);
             }

@@ -21,18 +21,10 @@ package songscribe.io;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.nio.file.attribute.PosixFileAttributeView;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.xml.sax.SAXException;
 
 import songscribe.FileExtensions;
-import songscribe.dom.TupletLoadPass;
 import songscribe.io.musicxml.MusicXmlReader;
 import songscribe.util.FileUtils;
 
@@ -41,13 +33,13 @@ import songscribe.util.FileUtils;
  * <p>
  * Use this for all file-open paths (UI and headless converters) so the
  * extension allow-list and error mapping live in one place.
+ * <p>
+ * Opening a file never writes to it. A load that migrated or dropped tuplets
+ * reports what it did on the {@link SongLoadResult.Success} it returns, and the
+ * caller decides what to tell the user and whether to save — rewriting the file
+ * here would delete musical content from disk before the user had seen it.
  */
 public final class SongFileLoader {
-
-    private static final Logger LOG = LoggerFactory.getLogger(SongFileLoader.class);
-
-    /** Suffix of the scratch file the in-place rewrite writes before it swaps. */
-    private static final String REWRITE_TEMP_SUFFIX = ".rewrite";
 
     private SongFileLoader() {}
 
@@ -66,8 +58,7 @@ public final class SongFileLoader {
      *   │      startElement: root ≠ <score-partwise>            ─► UnsupportedFormatException
      *   │      startElement: version missing/unparseable/<4.0   ─► UnsupportedFormatException
      *   │      endDocument:  <software> null/blank/¬startsWith(PACKAGE_NAME) ─► ForeignSoftwareException
-     *   │      (otherwise) ─► Success
-     *   │      Success that migrated anything ─► rewritten in place, then silenced
+     *   │      (otherwise) ─► Success (carrying the tuplet load report, if any)
      *   │      catch ForeignSoftwareException  ► WrongSoftware(file, software)
      *   │      catch UnsupportedFormatException ► UnsupportedFileFormat(file, detail)
      *   │      catch SAXException              ► ParseError(file, e)
@@ -82,13 +73,7 @@ public final class SongFileLoader {
 
         if (FileUtils.hasExtension(file, FileExtensions.MUSICXML, FileExtensions.XML)) {
             try {
-                var result = MusicXmlReader.read(file);
-
-                if (result.tupletReport().isEmpty() && !result.accidentalsConverted()) {
-                    return result;
-                }
-
-                return rewriteAndSilence(file, result);
+                return MusicXmlReader.read(file);
             } catch (MusicXmlReader.ForeignSoftwareException e) {
                 return new SongLoadResult.WrongSoftware(file, e.software());
             } catch (MusicXmlReader.UnsupportedFormatException e) {
@@ -101,87 +86,5 @@ public final class SongFileLoader {
         }
 
         return new SongLoadResult.UnsupportedFileFormat(file, FileUtils.getExtension(file.getName()));
-    }
-
-    /**
-     * Brings a migrated MusicXML file up to date on disk and returns a result that reports
-     * nothing, so the migration never reaches the user.
-     * <p>
-     * The current format can record everything the migration derived, so writing the loaded
-     * song back means the next open finds nothing to migrate. Only {@code .musicxml} takes
-     * this route — {@code .mssw} is legacy read-only and is reported to the user instead.
-     * <p>
-     * A failed rewrite is deliberately not fatal and deliberately not reported: the song in
-     * memory is correct either way, the original file is untouched, and the only cost is
-     * that the same migration runs again on the next open.
-     */
-    private static SongLoadResult.Success rewriteAndSilence(File file, SongLoadResult.Success success) {
-        try {
-            rewriteInPlace(file, success);
-        } catch (IOException e) {
-            LOG.warn("Could not rewrite migrated file '{}'; it will be migrated again on the next open",
-                file.getName(), e);
-        }
-
-        return new SongLoadResult.Success(
-            success.song(),
-            success.fonts(),
-            success.warnings(),
-            false,
-            TupletLoadPass.Report.empty());
-    }
-
-    /**
-     * Overwrites {@code file} with the loaded song, never leaving it half-written.
-     * <p>
-     * The new content is written to a scratch file in the same directory and only then
-     * swapped in, so a crash or a full disk mid-write loses the rewrite rather than the
-     * user's song. The scratch file is a sibling because a rename is only atomic within one
-     * filesystem. {@code ATOMIC_MOVE} is the swap of choice and the plain replace is the
-     * fallback for filesystems that do not offer it.
-     */
-    private static void rewriteInPlace(File file, SongLoadResult.Success success) throws IOException {
-        var target = file.toPath();
-        var directory = target.toAbsolutePath().getParent();
-        var scratch = Files.createTempFile(directory, file.getName(), REWRITE_TEMP_SUFFIX);
-
-        try {
-            if (!SongFileWriter.write(success.song(), success.fonts(), scratch.toFile())) {
-                throw new IOException("The writer reported an error while rewriting " + target);
-            }
-
-            copyPermissions(target, scratch);
-            swap(scratch, target);
-        } finally {
-            // A no-op once the swap has moved it; the cleanup matters on the failure paths.
-            Files.deleteIfExists(scratch);
-        }
-    }
-
-    /**
-     * Carries the song's own permissions onto its replacement. A scratch file is created
-     * readable by its owner alone, so without this a rewrite the user never asked for would
-     * also quietly narrow who may read the song. Failing to copy them is not worth losing
-     * the rewrite over — the content is what matters.
-     */
-    private static void copyPermissions(Path target, Path scratch) {
-        try {
-            var view = Files.getFileAttributeView(target, PosixFileAttributeView.class);
-
-            if (view != null) {
-                Files.setPosixFilePermissions(scratch, view.readAttributes().permissions());
-            }
-        } catch (IOException | UnsupportedOperationException e) {
-            LOG.warn("Could not carry the permissions of '{}' onto its replacement", target, e);
-        }
-    }
-
-    private static void swap(Path scratch, Path target) throws IOException {
-        try {
-            Files.move(scratch, target,
-                StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-        } catch (AtomicMoveNotSupportedException e) {
-            Files.move(scratch, target, StandardCopyOption.REPLACE_EXISTING);
-        }
     }
 }

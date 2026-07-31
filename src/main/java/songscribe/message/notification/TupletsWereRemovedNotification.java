@@ -23,14 +23,13 @@ package songscribe.message.notification;
 import songscribe.message.Message;
 
 /**
- * Posted once per beat-defining edit whose new beat context forced one or more tuplets
- * out of the song, so the UI can tell the user why brackets they did not touch have
- * disappeared.
+ * Posted once per edit that forced one or more tuplets out of the song, so the UI can tell
+ * the user why brackets they did not touch have disappeared.
  *
- * <p>The removals themselves happen in {@code Song}'s beat-edit chokepoint, which cannot
- * raise an alert of its own: {@code songscribe.dom} must not depend on the UI. This
- * notification is the whole of the report — it carries no payload because the warning is
- * the same regardless of how many tuplets went or which edit dropped them.
+ * <p>The removals themselves happen in {@code songscribe.dom} and in the paste path, neither
+ * of which may raise an alert of its own: {@code songscribe.dom} must not depend on the UI.
+ * The only payload is {@link Cause}, because the warning differs by what the user just did
+ * but not by how many tuplets went.
  *
  * <p>Posted after the outermost modification bracket has closed, so a subscriber that
  * shows a modal alert does not block with the score still painted as it was before the
@@ -38,4 +37,23 @@ import songscribe.message.Message;
  * suspended, because neither re-derives the removals.
  */
 public class TupletsWereRemovedNotification extends Message {
+
+    /** What the user did that cost them the tuplets. */
+    public enum Cause {
+        /** A change to the beat — the song's tempo, a tempo change, or a metric modulation. */
+        BEAT_EDIT,
+
+        /** A paste whose destination broke the pasted tuplet's span. */
+        PASTE
+    }
+
+    private final Cause cause;
+
+    public TupletsWereRemovedNotification(Cause cause) {
+        this.cause = cause;
+    }
+
+    public Cause getCause() {
+        return cause;
+    }
 }

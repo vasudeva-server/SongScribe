@@ -53,6 +53,11 @@ public class LineTrackBuilder {
      * absolute offsets makes the group close exactly, because the tuplet's total
      * written duration times {@code M / N} is an integer by construction.
      *
+     * <p>The ratio comes straight off the tuplet rather than being inferred from
+     * the surrounding beat. That is the payoff for storing {@code M}: what is
+     * printed is what is heard, and editing the tempo can no longer silently
+     * re-time an existing tuplet.
+     *
      * @param elementIndex Index of the element
      * @return Duration in ticks, adjusted for tuplet if applicable
      */
@@ -86,28 +91,6 @@ public class LineTrackBuilder {
      */
     private static long scaledOffset(long writtenTicks, int normalNotes, int grade) {
         return ((writtenTicks * normalNotes * 2) + grade) / (grade * 2L);
-    }
-
-    /**
-     * Calculates the tuplet scaling factor for an element: {@code M / N} taken
-     * straight from the tuplet's stored ratio.
-     *
-     * <p>This is the payoff for storing {@code M} on the tuplet rather than
-     * inferring a factor from the surrounding beat: what is printed is what is
-     * heard, and editing the tempo can no longer silently re-time an existing
-     * tuplet.
-     *
-     * @param elementIndex Index of the element
-     * @return Scaling factor (1.0 if not in a resolved tuplet)
-     */
-    float getTupletFactor(int elementIndex) {
-        var tuplet = line.findTupletAt(elementIndex);
-
-        if ((tuplet == null) || !tuplet.isResolved()) {
-            return 1;
-        }
-
-        return (float) tuplet.getNormalNotes() / tuplet.getGrade();
     }
 
     /**

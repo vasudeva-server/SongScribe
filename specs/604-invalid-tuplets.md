@@ -422,17 +422,12 @@ Because a barrier is defined *relative* to the beat in effect, editing the song'
 - When one or more tuplets are removed, show a warning **once per edit**, not once per tuplet:
 
 ```properties
-alert.title.tuplets.removed = Tuplets Removed
-alert.tuplets.removed = The change to the beat caused one or more tuplets to no longer be valid musically, so they were removed.
+alert.title.tuplets.removed  = Tuplets Removed
+alert.tuplets.removed.beat   = The change to the beat caused one or more tuplets to no longer be valid musically, so they were removed.
+alert.tuplets.removed.paste  = One or more pasted tuplets are not valid musically where they were pasted, so their brackets were removed. The notes were pasted as usual.
 ```
 
-```java
-OptionDialogs.showWarningMessage(
-    mainFrame,
-    Strings.ALERT_TITLE_TUPLETS_REMOVED,
-    Strings.ALERT_TUPLETS_REMOVED
-);
-```
+`Song` cannot raise an alert of its own, so it posts a `TupletsWereRemovedNotification` once the outermost modification bracket closes and `ScoreViewController` turns that into the dialog. The notification carries a `Cause` — `BEAT_EDIT` or `PASTE` — because paste reaches the same chokepoint ([§11](#11-paste)) and "the beat changed" would be a puzzle to someone who just pressed Paste. Nesting is collapsed: one user action produces one warning however many beat-defining writes it nests or tuplets it costs.
 
 Keys go in the `alert` group in sorted position. The wording avoids pluralization, so this is a plain `Strings.get(key)` — no MessageFormat pattern, and no apostrophe trap. `OptionDialogs` auto-suppresses in headless and test contexts.
 
@@ -469,17 +464,9 @@ record Success(Song song, DocumentFonts fonts,
 
 `MusicXmlReader.read` starts populating it (currently hardcodes `null`, `:280-301`). All four `Success` construction sites and the existing `INVALID_LYRICS_DATE` path are touched.
 
-**One migration report covers every migration**, including the retired-accidental conversion that is silent today. A single dialog with a header and one bullet per migration type, replacing the bare dirty flag at `ScoreView.java:452-458`:
+**One migration report covers every migration**, including the retired-accidental conversion that is silent today. `ui/dialog/MigrationWindow` — a non-modal utility window, deliberately not a `BaseDialog` — replaces the bare dirty flag at `ScoreView.java:452-458`. It lists the changes as a tree: one group per kind of change, one leaf per change naming its line, element range and the reason, under `dialog.migration.*` keys. Dropping a tuplet removes music the user wrote, so the leaf says which rule rejected it rather than only counting.
 
-```properties
-alert.song.migrated = The following modifications were made during migration of this song:\n{0}
-alert.song.migrated.accidentals = - Retired accidentals were converted.
-alert.song.migrated.tuplets.dropped = - {0,choice,1#One tuplet was removed|1<{0} tuplets were removed} as musically invalid.
-alert.song.migrated.tuplets.updated = - {0,choice,1#One tuplet was updated|1<{0} tuplets were updated} to record the printed ratio.
-alert.title.song.migrated = Song Updated
-```
-
-Assemble the applicable bullets, join with `\n`, and pass the result as `{0}` to `alert.song.migrated`. Each bullet key with a count is read through the varargs `Strings.get(key, count)`; the wrapper likewise. Keys go in the `alert` group in sorted position. No apostrophes appear in any pattern, so the MessageFormat apostrophe trap does not arise. Surfaced through `OptionDialogs.showWarningMessage`.
+**Opening a file never writes to it.** Both routes report through the window and both re-mark the song modified after `setSong`; saving the corrected version stays the user's decision. Rewriting the file in place on open — even atomically, even though the current format could record everything the pass derived — would delete musical content from disk before the user had seen the song, with no undo and no backup. The loader's job is to report, not to decide.
 
 Add a `LoadWarning.Type` member for dropped tuplets so the condition is also available as structured data to non-UI callers.
 
@@ -562,7 +549,11 @@ This is deliberately the opposite of the MusicXML policy, and the distinction is
 
 `Fragment` (`ui/clipboard/Fragment.java:70`) captures `spans[]`, so tuplets travel through the clipboard. Pasting a tuplet into a different beat context can produce a tuplet that violates constraints 5–7 without any other call site firing — it would then survive, render and play until the next save-and-reopen, and vanish there with no explanation the user can connect to the paste.
 
-Validate each pasted tuplet against the target context under STRICT, and drop the invalid ones inside the paste's own modification bracket, using the same companion pattern as [§5](#5-beat-edits-invalidate-tuplets). The notes survive; only the bracket goes.
+A tuplet on the clipboard already carries its ratio, so the ratio travels with it and is **not** re-derived from the destination's beat. Re-deriving would destroy exactly the tuplets this model preserves deliberately: a document may legitimately state a ratio the convention would not choose (the 3:2 and the third-party 7:8 above), and copying such a group and pasting it back where it came from would delete it. Paste therefore takes the `validateStated` path.
+
+What the destination can still break is the span's **placement** — a beat barrier, or a barline, repeat or breath mark now inside it. Those are checked under STRICT, exactly as creating the tuplet by hand there would be, and a tuplet that fails is dropped inside the paste's own modification bracket. Because a rejected bracket is never added, the drop records no mutation of its own and the paste's single undo step covers it by construction.
+
+The user is told, on the same terms as a beat edit: the paste path calls `Song.noteTupletsWereRemoved(Cause.PASTE)`, so one paste produces one warning ([§5](#5-beat-edits-invalidate-tuplets)). The notes survive; only the bracket goes.
 
 The ASCII diagram at `ui/clipboard/Fragment.java:45` documents the capture/paste flow and must be updated in the same commit.
 
@@ -653,10 +644,10 @@ BlockedBy: Phase 3
 
 BlockedBy: Phase 6
 
-1. Widen `SongLoadResult.Success` to `List<LoadWarning> warnings` plus `tupletsDropped` and `tupletsMigrated`; update all four construction sites.
+1. Widen `SongLoadResult.Success` to `List<LoadWarning> warnings` plus the `TupletLoadPass.Report`; update all four construction sites.
 2. Add the dropped-tuplet `LoadWarning.Type` member.
-3. Add the five `alert.song.migrated*` keys in sorted position.
-4. Assemble the bullets and surface the report in `ScoreView` (`:452-458`), absorbing the existing `accidentalsConverted` path into it.
+3. Add the `dialog.migration.*` keys in sorted position.
+4. Surface the report through `MigrationWindow` in `ScoreView` (`:452-458`), absorbing the existing `accidentalsConverted` path into it.
 5. Re-mark the song modified after `setSong`, not inside the pass.
 6. Tests: migration marks the song modified; a song with drops reports them; a pure migration reports without a drop bullet; the accidentals bullet appears alongside the tuplet bullets.
 
@@ -687,7 +678,7 @@ BlockedBy: Phase 4, Phase 5
 1. Validate each pasted tuplet against the target context under STRICT.
 2. Drop the invalid ones inside the paste's modification bracket, as companions.
 3. Update the ASCII diagram at `ui/clipboard/Fragment.java:45`.
-4. Tests: copy a triplet from a quarter-beat passage, paste under a dotted-quarter beat, assert the bracket is dropped and the notes survive; a paste into a compatible context keeps the bracket.
+4. Tests: a tuplet whose stated ratio the destination's convention would not derive survives a copy-and-paste round trip; a paste whose destination puts a breath mark inside the span drops the bracket and keeps the notes; nothing is judged during replay.
 
 * * *
 

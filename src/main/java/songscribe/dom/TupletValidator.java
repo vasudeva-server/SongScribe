@@ -89,8 +89,11 @@ import org.jspecify.annotations.Nullable;
  */
 public final class TupletValidator {
 
+    /** Smallest printed tuplet number that says anything: a group of one re-times nothing. */
+    public static final int MIN_GRADE = 2;
+
     /** Largest printed tuplet number this editor can create or a file may state. */
-    static final int MAX_GRADE = 7;
+    public static final int MAX_GRADE = 7;
 
     /** Dot counts a written note value may carry: none, one or two. */
     private static final int MAX_DOT_COUNT = 2;
@@ -206,17 +209,10 @@ public final class TupletValidator {
      */
     public static Result validate(SpanContext context, int grade, Strictness strictness) {
         var strict = strictness == Strictness.STRICT;
+        var divisionFailure = divisionFailure(context.writtenTicks(), grade);
 
-        if (grade <= 0 || grade > MAX_GRADE) {
-            return invalid(Reason.BAD_RATIO);
-        }
-
-        if (context.writtenTicks() == 0) {
-            return invalid(Reason.EMPTY_SPAN);
-        }
-
-        if (context.writtenTicks() % grade != 0) {
-            return invalid(Reason.NOT_NOTATABLE);
+        if (divisionFailure != null) {
+            return invalid(divisionFailure);
         }
 
         var noteValueTicks = context.writtenTicks() / grade;
@@ -226,16 +222,10 @@ public final class TupletValidator {
             return invalid(Reason.NOT_NOTATABLE);
         }
 
-        if (context.hasFermata()) {
-            return invalid(Reason.FERMATA);
-        }
+        var placementFailure = placementFailure(context, strict);
 
-        if (strict && context.crossesBeatBarrier()) {
-            return invalid(Reason.BEAT_BARRIER);
-        }
-
-        if (strict && context.crossesStructuralBoundary()) {
-            return invalid(Reason.STRUCTURAL_BOUNDARY);
+        if (placementFailure != null) {
+            return invalid(placementFailure);
         }
 
         // Both of these apply under either strictness, because reaching them at all means
@@ -266,50 +256,100 @@ public final class TupletValidator {
     }
 
     /**
-     * Load path for a file that stated its own ratio. Applies constraints 1, 2 and 4 only,
-     * and accepts the stated M without the conventional-span or redundancy test: a file
-     * that explicitly says 3:2 is asking for a real re-timing, and redundancy is a
-     * property of derivation rather than of the tuplet. The tuplet is dropped when the
-     * stated V disagrees with {@code S / N}.
+     * The path for a tuplet that already carries a ratio — read from a file that stated one,
+     * or travelling on the clipboard — rather than one to be derived here.
      *
-     * @param line          the line holding the span
-     * @param beginIndex    the index of the span's anchor element
-     * @param endIndex      the index of the span's last element, inclusive
-     * @param grade         N, as printed in the file
-     * @param normalNotes   M, as stated in the file
-     * @param noteValue     the base type of V, as stated in the file
-     * @param noteValueDots the dot count of V, as stated in the file
+     * <p>The stated M is accepted without the conventional-span or redundancy test: a
+     * document that explicitly says 3:2 is asking for a real re-timing, and redundancy is a
+     * property of the derivation rather than of the tuplet. What is still checked is that
+     * the ratio is self-consistent — the stated V must equal {@code S / N} — and that the
+     * span's placement does not break it. Under {@link Strictness#STRICT} the placement
+     * check includes the beat barrier and the structural boundary, which is what makes a
+     * paste drop a tuplet the destination genuinely splits while leaving one it merely would
+     * not have derived alone.
+     *
+     * @param context       the span as measured by {@link #describeSpan}
+     * @param grade         N, as stated
+     * @param normalNotes   M, as stated
+     * @param noteValue     the base type of V, as stated
+     * @param noteValueDots the dot count of V, as stated
+     * @param strictness    how much of the placement rule set to enforce
      * @return a valid result echoing the stated ratio, or the reason it was rejected
      */
     public static Result validateStated(
-        Line line, int beginIndex, int endIndex,
-        int grade, int normalNotes, ElementType noteValue, int noteValueDots
+        SpanContext context, int grade, int normalNotes,
+        ElementType noteValue, int noteValueDots, Strictness strictness
     ) {
-        if (grade <= 0 || grade > MAX_GRADE || normalNotes <= 0 || grade == normalNotes) {
+        if (normalNotes <= 0 || grade == normalNotes) {
             return invalid(Reason.BAD_RATIO);
         }
 
-        var writtenTicks = writtenTicks(line, beginIndex, endIndex);
+        var divisionFailure = divisionFailure(context.writtenTicks(), grade);
 
-        if (writtenTicks == 0) {
-            return invalid(Reason.EMPTY_SPAN);
-        }
-
-        if (writtenTicks % grade != 0) {
-            return invalid(Reason.NOT_NOTATABLE);
+        if (divisionFailure != null) {
+            return invalid(divisionFailure);
         }
 
         var statedTicks = notatableTicks(noteValue, noteValueDots);
 
-        if (statedTicks == NOT_NOTATABLE_TICKS || writtenTicks / grade != statedTicks) {
+        if (statedTicks == NOT_NOTATABLE_TICKS || context.writtenTicks() / grade != statedTicks) {
             return invalid(Reason.NOT_NOTATABLE);
         }
 
-        if (hasFermata(line, beginIndex, endIndex)) {
-            return invalid(Reason.FERMATA);
+        var placementFailure = placementFailure(context, strictness == Strictness.STRICT);
+
+        if (placementFailure != null) {
+            return invalid(placementFailure);
         }
 
         return new Result(true, null, normalNotes, noteValue, noteValueDots);
+    }
+
+    /**
+     * The constraints on N and on the span's total duration, shared by the derived and the
+     * stated paths: N is a usable printed number, the span holds some written duration, and
+     * that duration divides into N equal parts.
+     *
+     * @return the reason it failed, or null when it did not
+     */
+    private static @Nullable Reason divisionFailure(int writtenTicks, int grade) {
+        if (grade < MIN_GRADE || grade > MAX_GRADE) {
+            return Reason.BAD_RATIO;
+        }
+
+        if (writtenTicks == 0) {
+            return Reason.EMPTY_SPAN;
+        }
+
+        if (writtenTicks % grade != 0) {
+            return Reason.NOT_NOTATABLE;
+        }
+
+        return null;
+    }
+
+    /**
+     * The constraints on where the span sits rather than on what it contains. The fermata
+     * holds under either strictness — it inflates the performed duration and so breaks the
+     * exact ratio whatever the tuplet says. The beat barrier and the structural boundary are
+     * editor policy and hold under {@link Strictness#STRICT} only.
+     *
+     * @return the reason it failed, or null when it did not
+     */
+    private static @Nullable Reason placementFailure(SpanContext context, boolean strict) {
+        if (context.hasFermata()) {
+            return Reason.FERMATA;
+        }
+
+        if (strict && context.crossesBeatBarrier()) {
+            return Reason.BEAT_BARRIER;
+        }
+
+        if (strict && context.crossesStructuralBoundary()) {
+            return Reason.STRUCTURAL_BOUNDARY;
+        }
+
+        return null;
     }
 
     /**
@@ -347,7 +387,7 @@ public final class TupletValidator {
                 // Read the barrier against the beat that was running before this element,
                 // then let the element redefine it.
                 var barrierHere = isBeatBarrier(element, runningBeat);
-                var definedBeat = beatDefinedAt(element);
+                var definedBeat = Song.beatDefinedAt(element);
 
                 if (definedBeat != null) {
                     runningBeat = definedBeat;
@@ -387,8 +427,12 @@ public final class TupletValidator {
         return verdicts;
     }
 
-    /** A tuplet and the verdict the walk reached for it. */
-    public record Verdict(int lineIndex, Tuplet tuplet, Result result) {}
+    /**
+     * A tuplet and the verdict the walk reached for it. The measured span rides along so a
+     * caller that wants to judge the tuplet a second way — the load pass re-judges one
+     * carrying a stated ratio — can do so without walking the beat again.
+     */
+    public record Verdict(int lineIndex, Tuplet tuplet, SpanContext context, Result result) {}
 
     /** The span facts accumulated for the one tuplet the forward walk currently has open. */
     private static final class OpenSpan {
@@ -441,7 +485,8 @@ public final class TupletValidator {
                 hasFermata, crossesBeatBarrier, crossesStructuralBoundary
             );
 
-            return new Verdict(lineIndex, tuplet, validate(context, tuplet.getGrade(), strictness));
+            return new Verdict(
+                lineIndex, tuplet, context, validate(context, tuplet.getGrade(), strictness));
         }
     }
 
@@ -492,7 +537,7 @@ public final class TupletValidator {
                 return true;
             }
 
-            var definedBeat = beatDefinedAt(element);
+            var definedBeat = Song.beatDefinedAt(element);
 
             if (definedBeat != null) {
                 runningBeat = definedBeat;
@@ -516,27 +561,6 @@ public final class TupletValidator {
         var tempoChange = element.findAttachment(TempoChangeAttachment.class);
 
         return tempoChange != null && tempoChange.getTempo().getTempoType() != runningBeat;
-    }
-
-    /**
-     * The beat {@code element} defines, or null when it defines none. Precedence matches
-     * {@link Song#resolveBeatAt}: when one element carries both, the metric modulation
-     * wins over the tempo marking's note value.
-     */
-    private static @Nullable Duration beatDefinedAt(StaffElement element) {
-        var beatChange = element.findAttachment(BeatChangeAttachment.class);
-
-        if (beatChange != null) {
-            return beatChange.getBeatChange().beat();
-        }
-
-        var tempoChange = element.findAttachment(TempoChangeAttachment.class);
-
-        if (tempoChange != null) {
-            return tempoChange.getTempo().getTempoType();
-        }
-
-        return null;
     }
 
     /** Whether the span crosses a barline, a repeat, or a breath mark it may not contain. */

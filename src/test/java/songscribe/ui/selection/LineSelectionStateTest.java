@@ -50,6 +50,9 @@ class LineSelectionStateTest extends UnitTest {
     /** Index of the terminal barline appended after the two notes of {@link #twoNoteLine()}. */
     private static final int TERMINAL_ELEMENT_INDEX = 2;
 
+    /** Five notes — the span a quintuplet covers. */
+    private static final int QUINTUPLET_NOTE_COUNT = 5;
+
     /**
      * Builds an {@link Ending} spanning the line's first two elements. The line must
      * already contain at least two elements.
@@ -737,6 +740,78 @@ class LineSelectionStateTest extends UnitTest {
             .extracting(tuplet -> tuplet != null ? tuplet.getGrade() : 0)
             .isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
         assertThat(info.coversExisting()).isFalse();
+    }
+
+    /**
+     * The set must name the grades the span could really become, not simply every grade.
+     * Three quarter notes at a quarter beat total three quarters, so only a 3 and a 6 say
+     * anything, and the other four are each refused for a different reason: a 2 leaves a
+     * dotted quarter with no conventional span, a 4 leaves a dotted eighth with none, a 5
+     * and a 7 do not divide the span evenly at all.
+     */
+    @Test
+    void testValidGradesNamesOnlyTheGradesTheSpanCanBecome() {
+        var line = withQuarterBeat(detachedLine());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(2);
+
+        var info = state.canToggleTuplet();
+
+        assertThat(info.validGrades())
+            .as("three quarters at a quarter beat are notatable as 3:2 or 6:4 and nothing else")
+            .containsExactlyInAnyOrder(
+                TupletAction.Tuplet.TRIPLET.getSize(), TupletAction.Tuplet.SEXTUPLET.getSize());
+    }
+
+    /**
+     * The counterpart to the case above: a span that only one grade fits. Five eighths
+     * divide evenly by five and by nothing else in range, so every other grade leaves a
+     * written value that is not a note.
+     */
+    @Test
+    void testValidGradesCanNameASingleGrade() {
+        var line = withQuarterBeat(detachedLine());
+
+        for (var i = 0; i < QUINTUPLET_NOTE_COUNT; i++) {
+            line.addElement(ElementType.QUAVER.newInstance());
+        }
+
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(QUINTUPLET_NOTE_COUNT - 1);
+
+        var info = state.canToggleTuplet();
+
+        assertThat(info.validGrades())
+            .as("five eighths at a quarter beat are a quintuplet or nothing")
+            .containsExactly(TupletAction.Tuplet.QUINTUPLET.getSize());
+    }
+
+    /**
+     * A rest carries written duration exactly as a note does, so a span containing one is
+     * still a candidate. Before this rule a rest anywhere in the selection disabled the
+     * tuplet control outright.
+     */
+    @Test
+    void testValidGradesCountsARestAsPartOfTheSpan() {
+        var line = withQuarterBeat(detachedLine());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET_REST.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var state = new LineSelectionState(line);
+        state.setSelectionFromClick(0);
+        state.extendSelectionTo(2);
+
+        var info = state.canToggleTuplet();
+
+        assertThat(info.validGrades())
+            .as("a rest contributes its duration, so the span reads the same as three notes")
+            .containsExactlyInAnyOrder(
+                TupletAction.Tuplet.TRIPLET.getSize(), TupletAction.Tuplet.SEXTUPLET.getSize());
     }
 
     @Test

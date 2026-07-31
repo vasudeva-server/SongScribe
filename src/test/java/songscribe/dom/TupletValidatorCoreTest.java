@@ -68,6 +68,9 @@ class TupletValidatorCoreTest extends UnitTest {
     /** An undotted written value. */
     private static final int NO_DOTS = 0;
 
+    /** A written value carrying a single dot. */
+    private static final int ONE_DOT = 1;
+
     /** The only line these fixtures build. */
     private static final int LINE_INDEX = 0;
 
@@ -434,10 +437,8 @@ class TupletValidatorCoreTest extends UnitTest {
             );
             var line = song.getLine(LINE_INDEX);
 
-            var result = TupletValidator.validateStated(
-                line, FIRST_INDEX, line.elementCount() - 1,
-                GRADE_TRIPLET, NORMAL_TWO, ElementType.QUAVER, NO_DOTS
-            );
+            var result = validateStatedOverWholeLine(
+                song, line, GRADE_TRIPLET, NORMAL_TWO, ElementType.QUAVER);
 
             assertAll(
                 () -> assertThat(result.valid())
@@ -457,10 +458,8 @@ class TupletValidatorCoreTest extends UnitTest {
             );
             var line = song.getLine(LINE_INDEX);
 
-            var result = TupletValidator.validateStated(
-                line, FIRST_INDEX, line.elementCount() - 1,
-                GRADE_TRIPLET, NORMAL_TWO, ElementType.SEMIQUAVER, NO_DOTS
-            );
+            var result = validateStatedOverWholeLine(
+                song, line, GRADE_TRIPLET, NORMAL_TWO, ElementType.SEMIQUAVER);
 
             assertRejects(result, Reason.NOT_NOTATABLE);
         }
@@ -474,18 +473,82 @@ class TupletValidatorCoreTest extends UnitTest {
             );
             var line = song.getLine(LINE_INDEX);
 
-            var result = TupletValidator.validateStated(
-                line, FIRST_INDEX, line.elementCount() - 1,
-                GRADE_TRIPLET, NORMAL_THREE, ElementType.QUAVER, NO_DOTS
-            );
+            var result = validateStatedOverWholeLine(
+                song, line, GRADE_TRIPLET, NORMAL_THREE, ElementType.QUAVER);
 
             assertRejects(result, Reason.BAD_RATIO);
         }
     }
 
+    /**
+     * The derivation must be able to land on a <em>dotted</em> written value, not only an
+     * undotted one. Three dotted eighths under a dotted-quarter beat total three dotted
+     * eighths, so a 3 gives a written value of one dotted eighth and a conventional span of
+     * two of them — a real 3:2 whose unit carries a dot.
+     *
+     * <p>This is the migration case for the three tuplets in the reference corpus whose
+     * written value is dotted. If the dotted entries were missing from the validator's
+     * table of notatable values, the derivation would call this span unwritable and the
+     * load pass would silently drop the bracket.
+     */
+    @Test
+    void testDerivationLandsOnADottedWrittenValue() {
+        var song = dottedQuaverLine(GRADE_TRIPLET);
+        var line = song.getLine(LINE_INDEX);
+
+        var result = TupletValidator.validateDerived(
+            song, line, LINE_INDEX, FIRST_INDEX, GRADE_TRIPLET - 1,
+            GRADE_TRIPLET, Strictness.STRICT);
+
+        assertAll(
+            () -> assertThat(result.valid())
+                .as("span must be valid, but was rejected with %s", result.reason())
+                .isTrue(),
+            () -> assertThat(result.normalNotes()).as("derived M").isEqualTo(NORMAL_TWO),
+            () -> assertThat(result.noteValue()).as("derived V's base type")
+                .isEqualTo(ElementType.QUAVER),
+            () -> assertThat(result.noteValueDots()).as("derived V's dot count").isEqualTo(ONE_DOT)
+        );
+    }
+
+    /** A line of {@code count} dotted eighths under a dotted-quarter beat. */
+    private static Song dottedQuaverLine(int count) {
+        var song = new Song();
+        var line = song.getLine(LINE_INDEX);
+
+        song.withoutMutationTracking(() -> {
+            song.setTempo(new Tempo(
+                Tempo.DEFAULT_BPM, Duration.CROTCHET_DOTTED,
+                Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO));
+
+            for (var i = 0; i < count; i++) {
+                var note = ElementType.QUAVER.newInstance();
+                note.setDotCount(ONE_DOT);
+                line.addElement(note);
+            }
+        });
+
+        return song;
+    }
+
     // -----------------------------------------------------------------------
     // Shared assertions
     // -----------------------------------------------------------------------
+
+    /**
+     * Judges the line's whole span against a ratio the caller states, as a file would.
+     * Leniently, because that is the load path: the beat barrier and the structural
+     * boundary constrain creation, not a document that already exists.
+     */
+    private static TupletValidator.Result validateStatedOverWholeLine(
+        Song song, Line line, int grade, int normalNotes, ElementType noteValue
+    ) {
+        var context = TupletValidator.describeSpan(
+            song, line, LINE_INDEX, FIRST_INDEX, line.elementCount() - 1);
+
+        return TupletValidator.validateStated(
+            context, grade, normalNotes, noteValue, NO_DOTS, TupletValidator.Strictness.LENIENT);
+    }
 
     private static void assertDerives(
         TupletValidator.Result result, int normalNotes, ElementType noteValue

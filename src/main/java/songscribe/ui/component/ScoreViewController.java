@@ -251,22 +251,33 @@ public final class ScoreViewController {
 
     @Handler
     public void handleToggleTuplet(ToggleTupletCommand message) {
-        operations.toggleTuplet(message.getTupletSize(), operations.canToggleTuplet());
+        // The cached form, not operations.canToggleTuplet(): computing it walks the song
+        // backward to the governing beat and tests every candidate grade, and the cache
+        // holds the answer for this very selection, warmed by the same notification that
+        // enabled the action the user just triggered.
+        operations.toggleTuplet(message.getTupletSize(), canToggleTuplet());
         score.selectionChanged();
     }
 
     /**
-     * Warns that a beat-defining edit forced tuplets out of the song. Every route into such
-     * an edit — either attachment dialog's Add, Modify or Remove button, and the song's own
-     * tempo note value — reports through this one handler, so the wording is uniform and the
-     * warning appears exactly once per edit no matter how many tuplets went.
+     * Warns that an edit forced tuplets out of the song. Every route that can do so — either
+     * attachment dialog's Add, Modify or Remove button, the song's own tempo note value, and
+     * a paste whose destination breaks the pasted span — reports through this one handler,
+     * so the warning appears exactly once per edit no matter how many tuplets went. Only the
+     * wording varies, because "the beat changed" would be a puzzle to someone who just
+     * pressed Paste.
      */
     @Handler
     public void tupletsWereRemoved(TupletsWereRemovedNotification message) {
+        var messageKey = switch (message.getCause()) {
+            case BEAT_EDIT -> Strings.ALERT_TUPLETS_REMOVED_BEAT;
+            case PASTE -> Strings.ALERT_TUPLETS_REMOVED_PASTE;
+        };
+
         OptionDialogs.showWarningMessage(
             null,
             Strings.ALERT_TITLE_TUPLETS_REMOVED,
-            Strings.ALERT_TUPLETS_REMOVED
+            messageKey
         );
     }
 
@@ -1113,6 +1124,13 @@ public final class ScoreViewController {
         // line, and before any span is added, so the bracket is never created and
         // needs no undo of its own.
         reconciliation = reconciliation.dropTupletsRejectedByTarget(line);
+
+        // Losing a bracket is the one part of a paste the user did not ask for, so it
+        // warns on exactly the same terms as a beat edit that costs them one — Song
+        // collapses both into a single notification when this paste's bracket closes.
+        if (!reconciliation.tupletsRejectedByTarget().isEmpty()) {
+            line.getSong().noteTupletsWereRemoved(TupletsWereRemovedNotification.Cause.PASTE);
+        }
 
         // A pasted hairpin flush against a same-type hairpin already on the line is
         // merged into it by addPastedRangeElement, the same rule that applies when

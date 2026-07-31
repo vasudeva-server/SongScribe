@@ -20,6 +20,7 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -37,6 +38,7 @@ import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.message.notification.TupletsWereRemovedNotification;
 import songscribe.ui.component.ScoreView;
 import songscribe.undo.MutationReplayer;
 
@@ -433,5 +435,133 @@ class SongBeatEditTupletTest extends UnitTest {
                 .as("the fixture must be unchanged apart from the attachment")
                 .isGreaterThanOrEqualTo(SPAN_NOTE_COUNT);
         }
+    }
+
+    // -----------------------------------------------------------------------
+    // The warning the user actually sees
+    // -----------------------------------------------------------------------
+
+    /**
+     * The removals are only half the job: the user has to be told why brackets they did not
+     * touch have gone. {@code Song} cannot raise the alert itself, so it posts a
+     * notification once the outermost bracket closes and the UI turns that into a dialog.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RemovalNotice {
+
+        @Test
+        void testAnEditThatRemovesATupletPostsOneNotice() {
+            var song = crotchetTripletAtSimpleBeat();
+
+            var causes = captureRemovalNotices(() ->
+                attachThroughChokepoint(
+                    song, MIDDLE_INDEX, ElementField.BEAT_CHANGE, toCompoundBeat()));
+
+            assertThat(causes)
+                .as("one edit, one warning, however many tuplets it cost")
+                .containsExactly(TupletsWereRemovedNotification.Cause.BEAT_EDIT);
+        }
+
+        /**
+         * The semiquaver fixture is the one that survives the new beat on its own merits — a
+         * semiquaver triplet derives to 3:2 under either beat — so a barrier on its anchor
+         * costs it nothing and there is nothing to warn about.
+         */
+        @Test
+        void testAnEditThatRemovesNothingPostsNoNotice() {
+            var song = semiquaverTripletAtSimpleBeat();
+
+            var causes = captureRemovalNotices(() ->
+                attachThroughChokepoint(
+                    song, ANCHOR_INDEX, ElementField.BEAT_CHANGE, toCompoundBeat()));
+
+            assertAll(
+                () -> assertThat(tupletCount(song))
+                    .as("the fixture must survive, or this proves nothing about the warning")
+                    .isEqualTo(ONE_TUPLET),
+                () -> assertThat(causes).isEmpty()
+            );
+        }
+
+        /**
+         * The case the depth counting exists for. {@code BeatChangeDialog} runs a
+         * beat-defining edit whose inner write is itself a beat-defining edit, so two
+         * brackets are open when the tuplet goes. The user performed one action and must see
+         * one warning — the counters collapse the pair rather than reporting each.
+         */
+        @Test
+        void testTwoNestedBeatDefiningEditsStillPostOneNotice() {
+            var song = crotchetTripletAtSimpleBeat();
+            var line = song.getLine(FIRST_LINE_INDEX);
+            var middle = line.getElement(MIDDLE_INDEX);
+
+            var causes = captureRemovalNotices(() -> song.withModification(() ->
+                song.withBeatDefiningEdit(FIRST_LINE_INDEX, MIDDLE_INDEX, () ->
+                    song.withBeatDefiningEdit(FIRST_LINE_INDEX, MIDDLE_INDEX, () ->
+                        middle.addAttachment(toCompoundBeat())))));
+
+            assertAll(
+                () -> assertThat(causes)
+                    .as("nesting must not double the warning")
+                    .containsExactly(TupletsWereRemovedNotification.Cause.BEAT_EDIT),
+                () -> assertThat(tupletCount(song))
+                    .as("the nested edit must still have removed the tuplet")
+                    .isZero()
+            );
+        }
+
+        /**
+         * Undo and redo re-apply a batch that already carries the removals, so re-announcing
+         * them would put a warning in front of the user for an action they took to reverse
+         * the first one.
+         */
+        @Test
+        void testReplayPostsNoNotice() {
+            var song = crotchetTripletAtSimpleBeat();
+            var middle = song.getLine(FIRST_LINE_INDEX).getElement(MIDDLE_INDEX);
+
+            var causes = captureRemovalNotices(() -> song.withModification(() -> song.withReplay(() ->
+                song.withBeatDefiningEdit(FIRST_LINE_INDEX, MIDDLE_INDEX,
+                    () -> middle.addAttachment(toCompoundBeat())))));
+
+            assertThat(causes).isEmpty();
+        }
+
+        /**
+         * The paste path drops tuplets outside {@code dom} and reports through the same
+         * chokepoint, so the user gets one warning per paste with wording that names what
+         * they did rather than blaming a beat change they never made.
+         */
+        @Test
+        void testThePastePathReportsItsOwnCause() {
+            var song = crotchetTripletAtSimpleBeat();
+
+            var causes = captureRemovalNotices(() -> song.withModification(() ->
+                song.noteTupletsWereRemoved(TupletsWereRemovedNotification.Cause.PASTE)));
+
+            assertThat(causes).containsExactly(TupletsWereRemovedNotification.Cause.PASTE);
+        }
+    }
+
+    /** Every {@link TupletsWereRemovedNotification} {@code edit} caused, in the order posted. */
+    private static List<TupletsWereRemovedNotification.Cause> captureRemovalNotices(Runnable edit) {
+        var causes = new ArrayList<TupletsWereRemovedNotification.Cause>();
+        var listener = new Object() {
+            @Handler(priority = Integer.MAX_VALUE)
+            void onTupletsWereRemoved(TupletsWereRemovedNotification notification) {
+                causes.add(notification.getCause());
+            }
+        };
+
+        MessageCenter.subscribe(listener);
+
+        try {
+            edit.run();
+        } finally {
+            MessageCenter.unsubscribe(listener);
+        }
+
+        return causes;
     }
 }

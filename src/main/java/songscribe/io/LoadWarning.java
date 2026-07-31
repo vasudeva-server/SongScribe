@@ -26,9 +26,9 @@ package songscribe.io;
  * user-facing strings and dialogs to the UI layer.
  *
  * @param type        which load problem occurred
- * @param description text identifying the occurrence — the offending raw text
- *                    for a malformed field, or the count for a problem that is
- *                    reported in aggregate
+ * @param description the offending raw text, identifying the occurrence to the
+ *                    user — for {@link Type#INVALID_LYRICS_DATE}, the date that
+ *                    would not parse
  */
 public record LoadWarning(Type type, String description) {
 

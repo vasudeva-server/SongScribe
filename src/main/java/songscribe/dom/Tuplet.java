@@ -80,7 +80,10 @@ public class Tuplet extends RangeElement {
      */
     public static final int UNRESOLVED_NORMAL_NOTES = 0;
 
-    private int grade;
+    // N, M and V are set once, together, and never change afterwards. Changing N alone
+    // would leave the tuplet printing one ratio and playing another, so there is no
+    // setter: a grade change is a remove plus an add, which re-derives all three.
+    private final int grade;
     private int normalNotes;
     private @Nullable ElementType noteValue;
     private int noteValueDots;
@@ -283,13 +286,6 @@ public class Tuplet extends RangeElement {
      */
     public int getGrade() {
         return grade;
-    }
-
-    /**
-     * Sets the tuplet grade.
-     */
-    public void setGrade(int grade) {
-        this.grade = grade;
     }
 
     /**

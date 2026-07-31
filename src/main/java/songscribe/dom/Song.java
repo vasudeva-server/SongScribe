@@ -266,12 +266,13 @@ public final class Song {
     // when that outermost call unwinds.
     private boolean beatEditRemovedTuplets = false;
 
-    // Armed by the outermost beat-defining edit that removed tuplets, and disarmed by
-    // endModification, which posts TupletsWereRemovedNotification. Deferring the post to
-    // the outermost bracket keeps a modal warning from going up while the score is still
-    // painted as it was before the removals, and collapses an edit that nests several
-    // beat-defining writes into the one report the user should see.
-    private boolean tupletsRemovedNoticePending = false;
+    // Why the in-flight edit removed tuplets, or null when it removed none. Armed by the
+    // outermost beat-defining edit and by the paste path, and disarmed by endModification,
+    // which posts TupletsWereRemovedNotification. Deferring the post to the outermost
+    // bracket keeps a modal warning from going up while the score is still painted as it
+    // was before the removals, and collapses an edit that nests several beat-defining
+    // writes into the one report the user should see.
+    private TupletsWereRemovedNotification.@Nullable Cause tupletsRemovedNoticeCause = null;
 
     // While positive, Line mutation guards are bypassed so Song can auto-maintain
     // the terminal invariant without triggering the guards that protect against
@@ -471,28 +472,75 @@ public final class Song {
      * @return The effective tempo at this position
      */
     public Tempo getTempoAt(int lineIndex, int noteIndex) {
-        // find the last tempo change
+        var found = walkBackFrom(lineIndex, noteIndex,
+            element -> element.findAttachment(TempoChangeAttachment.class));
+
+        if (found == null) {
+            return getEffectiveTempo();
+        }
+
+        return found.value().getTempo();
+    }
+
+    /** Where a backward walk stopped, and what it found there. */
+    private record Found<T>(T value, int lineIndex, int elementIndex) {}
+
+    /**
+     * Examines one element during a backward walk, returning what it defines or null when
+     * it defines nothing. A dedicated interface rather than {@code Function} so the nullable
+     * return is part of the contract.
+     */
+    @FunctionalInterface
+    private interface BackwardProbe<T> {
+        @Nullable T examine(StaffElement element);
+    }
+
+    /**
+     * Walks backward from a position — through the rest of that line, then through every
+     * earlier line in full — and returns the first element for which {@code probe} produces
+     * a non-null value, together with where it was found.
+     *
+     * <pre>
+     * walkBackFrom(line 3, element 5)
+     *
+     *   line 0   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
+     *   line 1   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
+     *   line 2   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
+     *   line 3   [e0 e1 e2 e3 e4 e5] &lt;- scanned backward from e5 only
+     *                             ^
+     *                             start
+     * </pre>
+     *
+     * <p>Cost is O(elements before the start), with no cache. Both callers — the tempo
+     * lookup and the beat lookup — share this walk so that a change to what "before this
+     * position" means cannot be fixed in one and forgotten in the other.
+     *
+     * @return the first hit, or null when the walk reached the start of the song without one
+     */
+    private <T> @Nullable Found<T> walkBackFrom(
+        int lineIndex, int elementIndex, BackwardProbe<T> probe
+    ) {
         var lastLine = true;
 
         for (var i = lineIndex; i >= 0; i--) {
             var currentLine = lines.get(i);
 
             for (
-                var elementIndex = lastLine ? noteIndex : (currentLine.elementCount() - 1);
-                elementIndex >= 0;
-                elementIndex--
+                var index = lastLine ? elementIndex : (currentLine.elementCount() - 1);
+                index >= 0;
+                index--
             ) {
-                var attachment = currentLine.getElement(elementIndex).findAttachment(TempoChangeAttachment.class);
+                var value = probe.examine(currentLine.getElement(index));
 
-                if (attachment != null) {
-                    return attachment.getTempo();
+                if (value != null) {
+                    return new Found<>(value, i, index);
                 }
             }
 
             lastLine = false;
         }
 
-        return getEffectiveTempo();
+        return null;
     }
 
     /**
@@ -547,31 +595,10 @@ public final class Song {
      * @return the beat in effect at this position and the position that defined it
      */
     public BeatAt resolveBeatAt(int lineIndex, int elementIndex) {
-        var lastLine = true;
+        var found = walkBackFrom(lineIndex, elementIndex, Song::beatDefinedAt);
 
-        for (var i = lineIndex; i >= 0; i--) {
-            var currentLine = lines.get(i);
-
-            for (
-                var index = lastLine ? elementIndex : (currentLine.elementCount() - 1);
-                index >= 0;
-                index--
-            ) {
-                var element = currentLine.getElement(index);
-                var beatChange = element.findAttachment(BeatChangeAttachment.class);
-
-                if (beatChange != null) {
-                    return new BeatAt(beatChange.getBeatChange().beat(), i, index);
-                }
-
-                var tempoChange = element.findAttachment(TempoChangeAttachment.class);
-
-                if (tempoChange != null) {
-                    return new BeatAt(tempoChange.getTempo().getTempoType(), i, index);
-                }
-            }
-
-            lastLine = false;
+        if (found != null) {
+            return new BeatAt(found.value(), found.lineIndex(), found.elementIndex());
         }
 
         if (tempo == null) {
@@ -579,6 +606,30 @@ public final class Song {
         }
 
         return new BeatAt(tempo.getTempoType(), BeatAt.NO_DEFINING_EVENT, BeatAt.NO_DEFINING_EVENT);
+    }
+
+    /**
+     * The beat {@code element} defines, or null when it defines none.
+     *
+     * <p>When one element carries both kinds of marking the metric modulation wins, because
+     * it is the more specific statement about the beat than a tempo marking's note value.
+     * This is the single definition of that precedence: {@code TupletValidator}'s forward
+     * walk calls it too, so the two cannot answer differently for the same element.
+     */
+    static @Nullable Duration beatDefinedAt(StaffElement element) {
+        var beatChange = element.findAttachment(BeatChangeAttachment.class);
+
+        if (beatChange != null) {
+            return beatChange.getBeatChange().beat();
+        }
+
+        var tempoChange = element.findAttachment(TempoChangeAttachment.class);
+
+        if (tempoChange != null) {
+            return tempoChange.getTempo().getTempoType();
+        }
+
+        return null;
     }
 
     /**
@@ -1527,9 +1578,10 @@ public final class Song {
             MessageCenter.post(new SongDidChangeNotification(mutations, this, opName));
         }
 
-        if (tupletsRemovedNoticePending) {
-            tupletsRemovedNoticePending = false;
-            MessageCenter.post(new TupletsWereRemovedNotification());
+        if (tupletsRemovedNoticeCause != null) {
+            var cause = tupletsRemovedNoticeCause;
+            tupletsRemovedNoticeCause = null;
+            MessageCenter.post(new TupletsWereRemovedNotification(cause));
         }
     }
 
@@ -1623,7 +1675,7 @@ public final class Song {
                 // the outermost bracket, in which case endModification has already run by
                 // the time this method unwinds.
                 if (beatDefiningEditDepth == 1 && beatEditRemovedTuplets) {
-                    tupletsRemovedNoticePending = true;
+                    noteTupletsWereRemoved(TupletsWereRemovedNotification.Cause.BEAT_EDIT);
                 }
 
                 return beatEditRemovedTuplets;
@@ -1666,6 +1718,30 @@ public final class Song {
         }
 
         return song.withBeatDefiningEdit(lineIndex, elementIndex, edit);
+    }
+
+    /**
+     * Records that the edit in flight cost the user one or more tuplets, so a single
+     * {@link TupletsWereRemovedNotification} goes up once the outermost modification bracket
+     * closes. Calling it more than once within one bracket still yields one notification;
+     * the first cause recorded is the one reported, since it names the action the user took.
+     *
+     * <p>The beat-edit chokepoint arms this itself. It is public for the paste path, which
+     * drops tuplets outside {@code dom} and must warn on the same terms — the alternative
+     * being a second, differently-timed warning the user would have no way to relate to the
+     * first.
+     *
+     * <p>Does nothing during undo/redo replay or while mutation tracking is suspended:
+     * neither re-derives the removals, so neither should re-announce them.
+     *
+     * @param cause what the user did that removed them
+     */
+    public void noteTupletsWereRemoved(TupletsWereRemovedNotification.Cause cause) {
+        if (isReplaying() || isMutationTrackingSuspended() || tupletsRemovedNoticeCause != null) {
+            return;
+        }
+
+        tupletsRemovedNoticeCause = cause;
     }
 
     /**

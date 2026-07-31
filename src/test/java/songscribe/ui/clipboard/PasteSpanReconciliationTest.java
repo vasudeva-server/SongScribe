@@ -679,10 +679,14 @@ class PasteSpanReconciliationTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     /**
-     * Three quavers under a 3 are a triplet at a quarter beat — 3:2 eighths — and mean
-     * nothing at a dotted-quarter beat, where three eighths already fill the beat and no
-     * conventional span lies below the printed 3. Copying the group from the first
-     * context into the second is exactly the paste this rule exists for.
+     * A tuplet on the clipboard already carries the ratio it was created or loaded with, so
+     * pasting does not re-derive one from the destination's beat. Re-deriving would delete
+     * the very tuplets the model preserves deliberately — a document may legitimately state
+     * a ratio the convention would not choose, and copying such a group and pasting it back
+     * where it came from would destroy it.
+     * <p>
+     * What the destination can still break is the span's <em>placement</em>: a beat barrier,
+     * or a barline, repeat or breath mark now sitting inside it. Those drop the bracket.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -736,8 +740,13 @@ class PasteSpanReconciliationTest extends UnitTest {
             return reconciliation.dropTupletsRejectedByTarget(line);
         }
 
+        /**
+         * Three quavers under a 3 are 3:2 eighths. A dotted-quarter beat would never derive
+         * that ratio — three eighths already fill the beat — but the group states it, and a
+         * stated ratio means the same thing wherever it is written.
+         */
         @Test
-        void testATripletCopiedFromAQuarterBeatIsDroppedUnderADottedQuarterBeat() {
+        void testATripletCopiedFromAQuarterBeatKeepsItsRatioUnderADottedQuarterBeat() {
             var song = songWithBeat(Duration.CROTCHET_DOTTED);
             var line = song.getLine(0);
             var notes = tripletQuavers();
@@ -747,10 +756,54 @@ class PasteSpanReconciliationTest extends UnitTest {
                 () -> paste(line, EMPTY_LINE_PASTE_INDEX, notes, List.of(tuplet)));
 
             assertThat(result.fragmentSpans())
-                .as("the destination beat leaves the printed 3 with nothing to say")
+                .as("the ratio travels with the tuplet rather than being re-derived")
+                .containsExactly(tuplet);
+            assertThat(result.tupletsRejectedByTarget()).isEmpty();
+        }
+
+        /**
+         * The round trip the stated-ratio rule exists to protect. A 3:2 over three eighths
+         * under a dotted-quarter beat is a ratio the convention would not derive, so
+         * re-deriving on paste would delete a group the user merely moved.
+         */
+        @Test
+        void testCopyingATupletAndPastingItBackDoesNotDestroyIt() {
+            var song = songWithBeat(Duration.CROTCHET_DOTTED);
+            var line = song.getLine(0);
+            var notes = tripletQuavers();
+            var tuplet = tripletOver(notes);
+
+            var result = song.withModificationResult(
+                () -> paste(line, EMPTY_LINE_PASTE_INDEX, notes, List.of(tuplet)));
+
+            assertThat(result.tupletsRejectedByTarget())
+                .as("pasting a group back into the context it came from must not delete it")
                 .isEmpty();
-            assertThat(result.tupletsRejectedByTarget()).containsExactly(tuplet);
-            assertThat(line.getElements(EMPTY_LINE_PASTE_INDEX, TRIPLET_NOTE_COUNT - 1))
+            assertThat(result.fragmentSpans()).containsExactly(tuplet);
+        }
+
+        /**
+         * The destination can still break the span's placement. A breath mark inside the
+         * pasted group splits it, so the bracket goes even though the ratio is untouched —
+         * and the notes stay, because only the bracket was ever at stake.
+         */
+        @Test
+        void testABreathMarkInsideThePastedSpanDropsTheBracket() {
+            var song = songWithBeat(Duration.CROTCHET);
+            var line = song.getLine(0);
+            var notes = new ArrayList<StaffElement>(tripletQuavers());
+            var tuplet = new Tuplet(notes.getFirst(), notes.getLast(), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
+            notes.add(1, ElementType.BREATH_MARK.newInstance());
+
+            var result = song.withModificationResult(
+                () -> paste(line, EMPTY_LINE_PASTE_INDEX, notes, List.of(tuplet)));
+
+            assertThat(result.tupletsRejectedByTarget())
+                .as("a breath mark inside the span breaks it wherever it was pasted")
+                .containsExactly(tuplet);
+            assertThat(result.fragmentSpans()).isEmpty();
+            assertThat(line.getElements(EMPTY_LINE_PASTE_INDEX, notes.size() - 1))
                 .as("the notes survive — only the bracket goes")
                 .containsExactlyElementsOf(notes);
         }
@@ -771,13 +824,15 @@ class PasteSpanReconciliationTest extends UnitTest {
 
         @Test
         void testOnlyTheTupletIsJudged() {
-            // A beam over the same three quavers says nothing about timing, so the beat
-            // context that rejects the tuplet has no opinion about it.
-            var song = songWithBeat(Duration.CROTCHET_DOTTED);
+            // A beam says nothing about timing, so the rule has no opinion about it: it
+            // survives the paste that costs the tuplet its bracket.
+            var song = songWithBeat(Duration.CROTCHET);
             var line = song.getLine(0);
-            var notes = tripletQuavers();
-            var tuplet = tripletOver(notes);
+            var notes = new ArrayList<StaffElement>(tripletQuavers());
+            var tuplet = new Tuplet(notes.getFirst(), notes.getLast(), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
             var beam = new Beam(notes.getFirst(), notes.getLast());
+            notes.add(1, ElementType.BREATH_MARK.newInstance());
 
             var result = song.withModificationResult(
                 () -> paste(line, EMPTY_LINE_PASTE_INDEX, notes, List.of(tuplet, beam)));
@@ -818,11 +873,14 @@ class PasteSpanReconciliationTest extends UnitTest {
         @Test
         void testNothingIsRejectedDuringReplay() {
             // Undo and redo re-apply a recorded batch that already reflects every drop
-            // the paste made, so the rule must stay out of the replay entirely.
-            var song = songWithBeat(Duration.CROTCHET_DOTTED);
+            // the paste made, so the rule must stay out of the replay entirely. The span
+            // used here is one the rule would otherwise reject outright.
+            var song = songWithBeat(Duration.CROTCHET);
             var line = song.getLine(0);
-            var notes = tripletQuavers();
-            var tuplet = tripletOver(notes);
+            var notes = new ArrayList<StaffElement>(tripletQuavers());
+            var tuplet = new Tuplet(notes.getFirst(), notes.getLast(), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
+            notes.add(1, ElementType.BREATH_MARK.newInstance());
 
             var result = song.withModificationResult(() -> {
                 var holder = new PasteSpanReconciliation[1];

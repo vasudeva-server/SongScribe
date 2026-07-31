@@ -139,6 +139,22 @@ class TupletValidatorConstraintsTest extends UnitTest {
         );
     }
 
+    /**
+     * Judges {@code song}'s first line from its start through {@code endIndex} against a
+     * ratio the caller states, as a file would. Leniently, because that is the load path:
+     * the beat barrier and the structural boundary constrain creation, not a document that
+     * already exists.
+     */
+    private static Result validateStated(
+        Song song, Line line, int endIndex, int grade, int normalNotes, ElementType noteValue
+    ) {
+        var context = TupletValidator.describeSpan(
+            song, line, FIRST_LINE_INDEX, FIRST_INDEX, endIndex);
+
+        return TupletValidator.validateStated(
+            context, grade, normalNotes, noteValue, NO_DOTS, Strictness.LENIENT);
+    }
+
     private static void attach(Song song, int elementIndex, Attachment attachment) {
         song.withoutMutationTracking(
             () -> song.getLine(FIRST_LINE_INDEX).getElement(elementIndex).addAttachment(attachment)
@@ -188,12 +204,12 @@ class TupletValidatorConstraintsTest extends UnitTest {
         /** The stated-ratio load path applies the same exclusion. */
         @Test
         void testFermataInSpanIsRejectedForAStatedRatio() {
-            var line = songWithFermata().getLine(FIRST_LINE_INDEX);
+            var song = songWithFermata();
+            var line = song.getLine(FIRST_LINE_INDEX);
 
-            var result = TupletValidator.validateStated(
-                line, FIRST_INDEX, lastFixtureIndex(line),
-                GRADE_TRIPLET, NORMAL_TWO, ElementType.CROTCHET, NO_DOTS
-            );
+            var result = validateStated(
+                song, line, lastFixtureIndex(line),
+                GRADE_TRIPLET, NORMAL_TWO, ElementType.CROTCHET);
 
             assertRejects(result, Reason.FERMATA);
         }
@@ -411,8 +427,8 @@ class TupletValidatorConstraintsTest extends UnitTest {
             );
             var line = song.getLine(0);
 
-            var result = TupletValidator.validateStated(
-                line, 0, GRADE_TRIPLET - 1, GRADE_TRIPLET, NORMAL_SIX, ElementType.QUAVER, NO_DOTS);
+            var result = validateStated(
+                song, line, GRADE_TRIPLET - 1, GRADE_TRIPLET, NORMAL_SIX, ElementType.QUAVER);
 
             assertThat(result.valid())
                 .as("a ratio the file states is trusted even where derivation would refuse")

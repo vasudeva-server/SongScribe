@@ -112,14 +112,22 @@ public final class TupletLoadPass {
             return new Report(List.of());
         }
 
+        // The counts are derived on demand rather than stored. Caching them would mean a
+        // second component on the record that a caller could construct out of step with the
+        // list it summarizes, and the list is short and read a handful of times per load.
+
         /** How many tuplets the pass removed. */
         public int dropped() {
-            return (int) changes.stream().filter(Change.Removed.class::isInstance).count();
+            return count(Change.Removed.class);
         }
 
         /** How many tuplets the pass completed from the convention. */
         public int migrated() {
-            return (int) changes.stream().filter(Change.Updated.class::isInstance).count();
+            return count(Change.Updated.class);
+        }
+
+        private int count(Class<? extends Change> kind) {
+            return (int) changes.stream().filter(kind::isInstance).count();
         }
 
         public boolean isEmpty() {
@@ -175,8 +183,14 @@ public final class TupletLoadPass {
             var statedNoteValue = tuplet.getNoteValue();
             var result = verdict.result();
 
+            // A file that stated its own ratio is judged on that ratio instead of on the
+            // one the walk derived, and leniently: the beat barrier and the structural
+            // boundary constrain creation, not a document that already exists.
             if (statedNoteValue != null) {
-                result = validateStated(line, tuplet, statedNoteValue, result);
+                result = TupletValidator.validateStated(
+                    verdict.context(), tuplet.getGrade(), tuplet.getNormalNotes(),
+                    statedNoteValue, tuplet.getNoteValueDots(),
+                    TupletValidator.Strictness.LENIENT);
             }
 
             var derivedNoteValue = result.noteValue();
@@ -213,26 +227,5 @@ public final class TupletLoadPass {
         }
 
         return NO_POPULATED_LINE;
-    }
-
-    /**
-     * Judges a tuplet whose file stated its own ratio, applying only the constraints that
-     * hold regardless of the beat. A span whose ends the line does not hold is malformed
-     * and out of scope for this pass, so it keeps the walk's own verdict rather than being
-     * indexed past the end of the line.
-     */
-    private static TupletValidator.Result validateStated(
-        Line line, Tuplet tuplet, ElementType statedNoteValue, TupletValidator.Result walkResult
-    ) {
-        var beginIndex = tuplet.getAnchorElementIndex();
-        var endIndex = tuplet.getEndElementIndex();
-
-        if (beginIndex < 0 || endIndex < beginIndex || endIndex >= line.elementCount()) {
-            return walkResult;
-        }
-
-        return TupletValidator.validateStated(
-            line, beginIndex, endIndex, tuplet.getGrade(),
-            tuplet.getNormalNotes(), statedNoteValue, tuplet.getNoteValueDots());
     }
 }

@@ -40,8 +40,8 @@ import songscribe.layout.InsertionSpacingCalculator;
 
 /**
  * Decides which spans survive a paste: the ones the paste lands <em>inside</em> of on
- * the destination line (#614), and the pasted tuplets the destination's beat context
- * rejects (#604).
+ * the destination line (#614), and the pasted tuplets whose span the destination breaks
+ * (#604).
  *
  * <p>The two rules are independent and run in that order, at two different moments of
  * the paste — see {@link #reconcile} and {@link #dropTupletsRejectedByTarget}.
@@ -134,10 +134,10 @@ import songscribe.layout.InsertionSpacingCalculator;
  *
  * @param targetSpansToRemove     Spans on the destination line to remove before inserting
  * @param fragmentSpans           The fragment's spans that should still be added
- * @param tupletsRejectedByTarget The pasted tuplets the destination's beat context
- *                                rejected, named separately so the two drop rules stay
- *                                tellable apart; empty until
- *                                {@link #dropTupletsRejectedByTarget} has run
+ * @param tupletsRejectedByTarget The pasted tuplets the destination rejected, named
+ *                                separately so the two drop rules stay tellable apart and
+ *                                so the caller can warn the user about this one; empty
+ *                                until {@link #dropTupletsRejectedByTarget} has run
  */
 public record PasteSpanReconciliation(
     List<RangeElement> targetSpansToRemove,
@@ -234,14 +234,15 @@ public record PasteSpanReconciliation(
      * Drops the pasted tuplets the destination rejects (#604) — the second drop rule,
      * independent of the straddle rule above and applied after it.
      *
-     * <p>A tuplet travels through the clipboard with the notes it brackets, but what a
-     * tuplet <em>means</em> is fixed by the beat in effect where it lands: three eighths
-     * under a 3 are a triplet at a quarter beat and say nothing at all at a
-     * dotted-quarter beat, where three eighths already fill the beat. The paste is the
-     * only moment that mismatch is knowable, and nothing else fires for it — left alone,
-     * the tuplet would render and play until the next save-and-reopen dropped it, with
-     * no explanation the user could connect to the paste. Only the bracket goes; the
-     * pasted notes are untouched.
+     * <p>A tuplet travels through the clipboard with the notes it brackets <em>and</em>
+     * with its ratio, so what it means does not change on the way. What the destination
+     * can change is whether the span still holds together: a beat barrier, or a barline,
+     * repeat or breath mark, now sitting inside it splits the group in two. The paste is
+     * the only moment that is knowable, and nothing else fires for it — left alone, such a
+     * tuplet would render and play until the next save-and-reopen dropped it, with no
+     * explanation the user could connect to the paste. Only the bracket goes; the pasted
+     * notes are untouched, and the caller warns the user through
+     * {@code Song.noteTupletsWereRemoved}.
      *
      * <p><b>Call this after the fragment's elements have been inserted into
      * {@code line} and before its spans are added.</b> Every index the validator reads
@@ -290,9 +291,19 @@ public record PasteSpanReconciliation(
     }
 
     /**
-     * Whether the beat context at the destination refuses the tuplet now spanning
-     * {@code line}. Pasting chooses what gets written, so it validates strictly, exactly
-     * as creating the tuplet by hand there would.
+     * Whether the destination refuses the tuplet now spanning {@code line}.
+     * <p>
+     * A tuplet on the clipboard already carries its ratio, so the ratio travels with it and
+     * is not re-derived from the destination's beat. Re-deriving would destroy exactly the
+     * tuplets the model goes out of its way to preserve — a document may legitimately state
+     * a ratio the convention would not choose, and copying such a tuplet and pasting it back
+     * where it came from would delete it. What the destination can still break is the span's
+     * <em>placement</em>: a beat barrier or a barline, repeat or breath mark now inside it.
+     * Those are checked strictly, exactly as creating the tuplet by hand there would be.
+     * <p>
+     * A tuplet with no ratio yet cannot occur on the clipboard — the load pass resolves or
+     * drops every one before a song is ever shown — but if one arrives, its ratio is derived
+     * from the destination as creation would.
      */
     private static boolean isRejectedByTarget(Song song, Line line, int lineIndex, Tuplet tuplet) {
         var beginIndex = tuplet.getAnchorElementIndex();
@@ -305,9 +316,18 @@ public record PasteSpanReconciliation(
             return false;
         }
 
-        var result = TupletValidator.validateDerived(
-            song, line, lineIndex, beginIndex, endIndex,
-            tuplet.getGrade(), TupletValidator.Strictness.STRICT);
+        var context = TupletValidator.describeSpan(song, line, lineIndex, beginIndex, endIndex);
+        var noteValue = tuplet.getNoteValue();
+        TupletValidator.Result result;
+
+        if (noteValue == null) {
+            result = TupletValidator.validate(
+                context, tuplet.getGrade(), TupletValidator.Strictness.STRICT);
+        } else {
+            result = TupletValidator.validateStated(
+                context, tuplet.getGrade(), tuplet.getNormalNotes(),
+                noteValue, tuplet.getNoteValueDots(), TupletValidator.Strictness.STRICT);
+        }
 
         return !result.valid();
     }

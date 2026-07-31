@@ -230,6 +230,31 @@ class LineTrackBuilderTest extends UnitTest {
             assertThat(result).isEqualTo(PPQ);
         }
 
+        /**
+         * A tuplet read from a file carries only its printed number until the load pass
+         * derives the ratio, and playback must not try to scale by a ratio that is not there
+         * yet. The load pass resolves or drops every tuplet before a song is playable, so
+         * this should be unreachable — but the arithmetic divides by the printed number and
+         * multiplies by a count that is zero while unresolved, so if it ever were reached
+         * without the guard every note in the group would collapse to nothing and the
+         * passage would go silent.
+         */
+        @Test
+        void testUnresolvedTupletPlaysAtTheWrittenDuration() {
+            var line = detachedLine();
+            line.addElement(crotchet());
+            line.addElement(crotchet());
+            line.addElement(crotchet());
+            line.addRangeElement(Tuplet.withUnresolvedRatio(
+                line.getElement(0), line.getElement(TRIPLET_MEMBER_COUNT - 1), TRIPLET_GRADE));
+
+            var result = new LineTrackBuilder(line).getElementDurationWithTuplet(0);
+
+            assertThat(result)
+                .as("an unresolved ratio must leave the written duration alone, not zero it")
+                .isEqualTo(PPQ);
+        }
+
         @Test
         void testTripletElementDurationIsScaledDown() {
             // 3 quavers written as 3:2 → each sounds for 2/3 of a quaver.
@@ -337,60 +362,6 @@ class LineTrackBuilderTest extends UnitTest {
                     (long) (2 * TRIPLET_QUAVER_TICKS),
                     (long) (TRIPLET_MEMBER_COUNT * TRIPLET_QUAVER_TICKS)
                 );
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Row 24 — getTupletFactor
-    // -------------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class GetTupletFactor {
-
-        private static final float FACTOR_TOLERANCE = 0.0001f;
-
-        @ParameterizedTest(name = "{0}")
-        @MethodSource("tupletFactorCases")
-        void testTupletFactor(String description, float expected, float actual) {
-            assertThat(actual).isCloseTo(expected, offset(FACTOR_TOLERANCE));
-        }
-
-        static Stream<Arguments> tupletFactorCases() {
-            // No tuplet → the element plays at its written value.
-            var plainLine = detachedLine();
-            plainLine.addElement(crotchet());
-            var noTupletFactor = new LineTrackBuilder(plainLine).getTupletFactor(0);
-
-            var tripletLine = tupletLine(
-                TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, false,
-                repeated(ElementType.QUAVER, TRIPLET_GRADE)
-            );
-            var tripletFactor = new LineTrackBuilder(tripletLine).getTupletFactor(0);
-
-            var dupletLine = tupletLine(
-                DUPLET_GRADE, DUPLET_NORMAL_NOTES, ElementType.CROTCHET, false,
-                repeated(ElementType.CROTCHET, DUPLET_GRADE)
-            );
-            var dupletFactor = new LineTrackBuilder(dupletLine).getTupletFactor(0);
-
-            var quintupletLine = tupletLine(
-                QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES, ElementType.QUAVER, false,
-                repeated(ElementType.QUAVER, QUINTUPLET_GRADE)
-            );
-            var quintupletFactor = new LineTrackBuilder(quintupletLine).getTupletFactor(0);
-
-            // The quintuplet's members are quavers, but the factor must ignore the
-            // surrounding beat and come only from the stored 5:4 ratio.
-            return Stream.of(
-                Arguments.of("no tuplet returns 1.0", 1.0f, noTupletFactor),
-                Arguments.of("3:2 returns 2/3",
-                    (float) TRIPLET_NORMAL_NOTES / TRIPLET_GRADE, tripletFactor),
-                Arguments.of("2:3 returns 3/2",
-                    (float) DUPLET_NORMAL_NOTES / DUPLET_GRADE, dupletFactor),
-                Arguments.of("5:4 returns 4/5",
-                    (float) QUINTUPLET_NORMAL_NOTES / QUINTUPLET_GRADE, quintupletFactor)
-            );
         }
     }
 

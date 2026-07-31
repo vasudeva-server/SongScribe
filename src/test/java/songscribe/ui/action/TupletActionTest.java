@@ -217,6 +217,30 @@ class TupletActionTest extends MainFrameMockTest {
     // -----------------------------------------------------------------------
 
     /** Fires {@code musicSelectionDidChange} on all seven actions with the given tuplet state. */
+    /**
+     * Every other test here passes either all grades or none, and those two cases cannot
+     * tell a per-grade check apart from no check at all: replacing the enabled state with a
+     * blanket "the selection can carry some tuplet" would pass all of them. This one names a
+     * mixed set — the shape ordinary music actually produces — so only a per-grade check
+     * satisfies it. If it broke, the menu would offer the user grades that cannot be applied
+     * and clicking one would fail the validator's own precondition.
+     */
+    @Test
+    void testOnlyTheGradesInValidGradesAreEnabled() {
+        var validGrades = Set.of(
+            TupletAction.Tuplet.TRIPLET.getSize(), TupletAction.Tuplet.SEXTUPLET.getSize());
+
+        fireAll(new TupletToggleInfo(true, validGrades, null, false));
+
+        for (var action : addActions()) {
+            var grade = action.getTuplet().getSize();
+
+            assertThat(action.isEnabled())
+                .as("grade %d must be enabled only when the span could become it", grade)
+                .isEqualTo(validGrades.contains(grade));
+        }
+    }
+
     private void fireAll(TupletToggleInfo info) {
         when(mockEnv().ctrl().canToggleTuplet()).thenReturn(info);
         var notification = new MusicSelectionDidChangeNotification(mockEnv().score());

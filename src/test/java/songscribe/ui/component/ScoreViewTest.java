@@ -59,8 +59,10 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
 import songscribe.dom.TupletLoadPass;
+import songscribe.dom.TupletValidator;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
+import songscribe.io.LoadWarning;
 import songscribe.io.SongIO;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongLoader;
@@ -760,6 +762,12 @@ class ScoreViewTest extends UnitTest {
         // are exercised by mocking SongLoader.load within each test's try-with-resources.
         private static final File STUB_FILE = new File("stub.mssw");
 
+        /** Where the dropped tuplet in the migration-report fixture sat. */
+        private static final int DROPPED_LINE_INDEX = 0;
+        private static final int DROPPED_BEGIN_INDEX = 0;
+        private static final int DROPPED_END_INDEX = 2;
+        private static final int DROPPED_GRADE = 3;
+
         // An actual-inches value that clearly exceeds MAX_LINE_WIDTH_INCHES; used in the
         // direct LineWidthTooLarge test so the value is self-documenting rather than raw.
         private static final double EXCESS_LINE_WIDTH_INCHES = 100.0;
@@ -965,6 +973,68 @@ class ScoreViewTest extends UnitTest {
                 assertThat(scoreView.openFile(STUB_FILE, false)).isTrue();
                 assertThat(fixture.song().isModified())
                     .as("a converted song must open modified so the user is prompted to save it")
+                    .isTrue();
+            }
+        }
+
+        /**
+         * The other half of the same condition. Dropping a tuplet on load removes music the
+         * user wrote, so the song must open modified for that reason alone — with no
+         * accidental conversion involved. Without this the condition could be reduced to the
+         * accidentals flag and every tuplet the loader dropped would be lost silently on
+         * close, which is the failure this whole change exists to prevent.
+         */
+        @Test
+        @RequiresDisplay
+        void testOpenFileMarksSongModifiedWhenTupletsWereDropped() throws URISyntaxException {
+            var fixture = loadFixtureResult("full-line");
+            var dropped = new SongLoadResult.Success(
+                fixture.song(), fixture.fonts(), List.of(), false,
+                new TupletLoadPass.Report(List.of(new TupletLoadPass.Change.Removed(
+                    DROPPED_LINE_INDEX, DROPPED_BEGIN_INDEX, DROPPED_END_INDEX,
+                    DROPPED_GRADE, TupletValidator.Reason.NOT_NOTATABLE))));
+
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE)).thenReturn(dropped);
+
+                var scoreView = new ScoreView(null);
+
+                assertThat(scoreView.openFile(STUB_FILE, false)).isTrue();
+                assertThat(fixture.song().isModified())
+                    .as("a song that lost a tuplet on load must open modified, accidentals or not")
+                    .isTrue();
+            }
+        }
+
+        /**
+         * A legacy file can arrive with an unrelated problem — a date that would not parse —
+         * and a tuplet migration at the same time. These are carried on two separate fields
+         * and handled by two separate pieces of code, so the risk is that one path swallows
+         * the other: reporting the date and forgetting the tuplets would leave the corrected
+         * song clean, and it would be lost on close with no prompt.
+         */
+        @Test
+        @RequiresDisplay
+        void testOpenFileHandlesAWarningAndATupletReportTogether() throws URISyntaxException {
+            var fixture = loadFixtureResult("full-line");
+            var both = new SongLoadResult.Success(
+                fixture.song(), fixture.fonts(),
+                List.of(new LoadWarning(LoadWarning.Type.INVALID_LYRICS_DATE, "1984-13")),
+                false,
+                new TupletLoadPass.Report(List.of(new TupletLoadPass.Change.Removed(
+                    DROPPED_LINE_INDEX, DROPPED_BEGIN_INDEX, DROPPED_END_INDEX,
+                    DROPPED_GRADE, TupletValidator.Reason.NOT_NOTATABLE))));
+
+            try (var mock = mockStatic(SongLoader.class)) {
+                mock.when(() -> SongLoader.load(STUB_FILE)).thenReturn(both);
+
+                var scoreView = new ScoreView(null);
+
+                assertThat(scoreView.openFile(STUB_FILE, false))
+                    .as("neither report may abort the open")
+                    .isTrue();
+                assertThat(fixture.song().isModified())
+                    .as("the tuplet report must still mark the song modified alongside the warning")
                     .isTrue();
             }
         }

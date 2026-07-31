@@ -22,6 +22,8 @@ package songscribe.io.musicxml;
 import java.io.PrintWriter;
 
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
@@ -30,6 +32,8 @@ import songscribe.dom.Tuplet;
 import songscribe.io.XML;
 
 final class MusicXmlNoteWriter {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MusicXmlNoteWriter.class);
 
     private MusicXmlNoteWriter() {}
 
@@ -280,13 +284,20 @@ final class MusicXmlNoteWriter {
         XML.writeValue(pw, MusicXmlTags.ACTUAL_NOTES, Integer.toString(grade));
 
         if (normalTypeToken == null) {
+            // Reaching here means a tuplet escaped the load pass without a ratio, which the
+            // model says cannot happen. Say so rather than letting a placeholder ratio go to
+            // disk unremarked: 2:1 is not the compound duplet a 2 over a dotted beat means.
+            LOG.warn("Writing a tuplet with grade {} whose ratio was never resolved;"
+                + " falling back to a placeholder <normal-notes>", grade);
             XML.writeValue(pw, MusicXmlTags.NORMAL_NOTES,
                 Integer.toString(largestPowerOfTwoBelowGrade(grade)));
         } else {
+            var dotCount = tuplet.getNoteValueDots();
+
             XML.writeValue(pw, MusicXmlTags.NORMAL_NOTES, Integer.toString(tuplet.getNormalNotes()));
             XML.writeValue(pw, MusicXmlTags.NORMAL_TYPE, normalTypeToken);
 
-            for (var i = 0; i < tuplet.getNoteValueDots(); i++) {
+            for (var i = 0; i < dotCount; i++) {
                 XML.writeEmptyTag(pw, MusicXmlTags.NORMAL_DOT);
             }
         }

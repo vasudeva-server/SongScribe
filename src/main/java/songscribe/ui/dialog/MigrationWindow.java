@@ -46,9 +46,9 @@ import songscribe.util.UIUtils;
  * user can leave open beside the score while walking through the changes, so it must not
  * take part in the blocking-dialog counter, and it carries no OK/Cancel lifecycle.
  *
- * <p>Only the legacy {@code .mssw} route reaches this window. The current format can record
- * everything a migration derives, so a migrated MusicXML file is rewritten on open and the
- * user is never told — see {@code SongFileLoader}.
+ * <p>Both load routes reach this window. Dropping a tuplet removes musical content the user
+ * put there, so it is reported whatever the file's format was; saving the corrected version
+ * stays the user's decision, which is why the loader never writes to the file it opened.
  */
 public final class MigrationWindow extends JDialog {
 
@@ -74,8 +74,8 @@ public final class MigrationWindow extends JDialog {
         setType(Window.Type.UTILITY);
         setDefaultCloseOperation(DISPOSE_ON_CLOSE);
 
-        var content = new JPanel(new BorderLayout(0, FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP)));
         var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_EXTRA_GAP);
+        var content = new JPanel(new BorderLayout(0, gap));
         content.setBorder(UIUtils.spacingBorder(FlatLafKey.DIALOG_STD_PADDING));
         content.add(new JLabel(Strings.get(Strings.DIALOG_MIGRATION_MESSAGE)), BorderLayout.NORTH);
 

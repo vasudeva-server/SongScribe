@@ -31,7 +31,9 @@ import songscribe.message.MessageCenter;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.menu.TupletMenuItems;
+import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 
 public class TupletPopupButton extends PopupButton {
 
@@ -66,12 +68,43 @@ public class TupletPopupButton extends PopupButton {
 
     @Handler
     public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
+        handleChange(message.getScoreViewController());
+    }
+
+    /**
+     * Which grades are valid depends on the notes and the beat, not only on where the
+     * selection sits, so an edit that changes neither the selection nor the caret can still
+     * change the answer. Without this the button would keep pointing at a grade the span can
+     * no longer become, and clicking it would fail the validator's own precondition.
+     */
+    @Handler
+    public void songDidChange(SongDidChangeNotification message) {
+        handleChange(getScoreViewController());
+    }
+
+    @Handler
+    public void documentDidLoad(DocumentDidLoadNotification message) {
+        handleChange(getScoreViewController());
+    }
+
+    /**
+     * The controller for the document on screen, or null before one exists. Unlike the
+     * selection notification, the song and load notifications carry no controller of their
+     * own, so it is looked up the same way the tuplet menu looks it up.
+     */
+    private static @Nullable ScoreViewController getScoreViewController() {
+        var scoreView = MainFrame.getInstance().getScoreView();
+
+        return (scoreView != null) ? scoreView.getController() : null;
+    }
+
+    private void handleChange(@Nullable ScoreViewController ctrl) {
         // Disable button if none of its actions are enabled
         setEnabled(
             Actions.TOGGLE_TUPLET_ACTIONS.stream().anyMatch(UIAction::isEnabled)
         );
 
-        updateDefaultAction(message.getScoreViewController());
+        updateDefaultAction(ctrl);
     }
 
     /**
