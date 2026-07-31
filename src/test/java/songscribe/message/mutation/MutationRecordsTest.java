@@ -165,7 +165,7 @@ class MutationRecordsTest extends UnitTest {
             String name,
             Mutation mutation,
             Line line,
-            Function<Mutation, Object> spanGetter,
+            Function<? super Mutation, Object> spanGetter,
             Object expectedSpan
         ) {
             assertThat(mutation).isInstanceOf(LineScopedMutation.class);

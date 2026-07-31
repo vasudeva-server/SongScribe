@@ -124,7 +124,7 @@ class PasteReconciliationUndoTest extends UnitTest {
      * carrying the spans {@code spansOver} builds over that one pasted note.
      */
     private void pasteOneQuaverInside(
-        Function<StaffElement, List<RangeElement>> spansOver
+        Function<? super StaffElement, ? extends List<RangeElement>> spansOver
     ) {
         var pastedNote = ElementType.QUAVER.newInstance();
         var clipboardManager = new ClipboardManager();

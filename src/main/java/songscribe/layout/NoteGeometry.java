@@ -740,7 +740,7 @@ public final class NoteGeometry {
         boolean parenthesized,
         float startX,
         float scale,
-        BiConsumer<SMuFLGlyph, Float> visitor
+        BiConsumer<SMuFLGlyph, ? super Float> visitor
     ) {
         var x = startX;
 

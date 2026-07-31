@@ -111,7 +111,7 @@ final class MusicXmlHairpinWriter {
      * alternating key/value list): when {@code shiftSs} is non-zero, adds
      * {@code attrName} and the ss→tenths-formatted value; otherwise does nothing.
      */
-    private static void addShiftAttr(List<String> attrs, String attrName, double shiftSs) {
+    private static void addShiftAttr(List<? super String> attrs, String attrName, double shiftSs) {
         if (shiftSs != 0) {
             attrs.add(attrName);
             attrs.add(MusicXmlUnits.formatSsAsTenths(shiftSs));

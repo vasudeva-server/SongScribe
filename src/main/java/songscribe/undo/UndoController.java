@@ -433,7 +433,7 @@ public final class UndoController {
      * would mislabel — e.g. deleting a tuplet-spanned note (tuplet-removal companion
      * emitted first) must still read "Delete Note". Callers pass a non-empty step.
      */
-    private static Mutation dominantMutation(List<Mutation> step) {
+    private static Mutation dominantMutation(List<? extends Mutation> step) {
         for (var mutation : step) {
             if (mutation instanceof LineInsertion || mutation instanceof LineDeletion) {
                 return mutation;

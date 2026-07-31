@@ -515,7 +515,7 @@ public final class MusicEditOperations {
      * Returns the spans in {@code spans} that overlap the inclusive range
      * {@code [scanBegin, scanEnd]}.
      */
-    private static <H extends Hairpin> List<H> nearbySpans(List<H> spans, int scanBegin, int scanEnd) {
+    private static <H extends Hairpin> List<H> nearbySpans(List<? extends H> spans, int scanBegin, int scanEnd) {
         var nearby = new ArrayList<H>();
 
         for (var span : spans) {

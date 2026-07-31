@@ -521,7 +521,7 @@ public final class Song {
      * @return the first hit, or null when the walk reached the start of the song without one
      */
     private <T> @Nullable Found<T> walkBackFrom(
-        int lineIndex, int elementIndex, BackwardProbe<T> probe
+        int lineIndex, int elementIndex, BackwardProbe<? extends T> probe
     ) {
         var lastLine = true;
 

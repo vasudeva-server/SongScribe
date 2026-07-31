@@ -42,7 +42,7 @@ import songscribe.ui.dialog.BaseDialog;
 public class DialogOpenAction<T extends BaseDialog> extends UIAction {
 
     private @Nullable T dialog = null;
-    private final Function<MainFrame, T> dialogFactory;
+    private final Function<? super MainFrame, ? extends T> dialogFactory;
 
     public DialogOpenAction(MainFrame mainFrame, String name, Function<MainFrame, T> dialogFactory, Flag... flags) {
         this(mainFrame, name, 0, 0, dialogFactory, flags);
@@ -53,7 +53,7 @@ public class DialogOpenAction<T extends BaseDialog> extends UIAction {
         String name,
         int virtualKey,
         int modifiers,
-        Function<MainFrame, T> dialogFactory,
+        Function<? super MainFrame, ? extends T> dialogFactory,
         Flag... flags
     ) {
         super(mainFrame, name, toKebabCase(name), virtualKey, modifiers, flags);

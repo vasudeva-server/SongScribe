@@ -221,7 +221,7 @@ public final class AccidentalMaterializer {
     private static List<SavedAccidental> apply(
         Line line,
         List<AccidentalReconciliation.AccidentalChange> accidentalChanges,
-        List<StaffElement> detachedElements) {
+        List<? extends StaffElement> detachedElements) {
 
         var detachedIdentities = new IdentityHashMap<StaffElement, Boolean>();
 

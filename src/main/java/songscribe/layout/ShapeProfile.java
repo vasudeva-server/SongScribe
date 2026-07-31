@@ -306,7 +306,7 @@ public final class ShapeProfile {
     }
 
     private static void addEdge(
-        List<Edge> edges, double x0Ss, double y0Ss, double x1Ss, double y1Ss) {
+        List<? super Edge> edges, double x0Ss, double y0Ss, double x1Ss, double y1Ss) {
 
         if (x0Ss == x1Ss) {
             return;

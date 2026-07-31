@@ -99,8 +99,8 @@ public final class DocumentFonts implements DocumentFontsHolder {
      * value-source functions to resolve each font name and size from the system defaults.
      */
     private static DocumentFonts buildFrom(
-        Function<SystemPrefsKey, String> nameSource,
-        ToIntFunction<SystemPrefsKey> sizeSource
+        Function<? super SystemPrefsKey, String> nameSource,
+        ToIntFunction<? super SystemPrefsKey> sizeSource
     ) {
         var result = new DocumentFonts();
 

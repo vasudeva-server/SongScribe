@@ -94,10 +94,10 @@ class MessageCenterTest extends UnitTest {
 
     /** Records invocation order via a shared list. */
     private static final class OrderedListener {
-        private final List<Integer> order;
+        private final List<? super Integer> order;
         private final int tag;
 
-        OrderedListener(List<Integer> order, int tag) {
+        OrderedListener(List<? super Integer> order, int tag) {
             this.order = order;
             this.tag = tag;
         }

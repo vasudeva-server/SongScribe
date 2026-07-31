@@ -288,7 +288,7 @@ public final class LyricLayoutBuilder {
      * of its start, so it is naturally excluded.
      */
     private static double firstBoxLeftXSsAfter(
-        Map<StaffElement, List<LyricBoxLayout>> boxesByElement,
+        Map<StaffElement, ? extends List<LyricBoxLayout>> boxesByElement,
         double xSs) {
 
         var nextLeftXSs = Double.NaN;

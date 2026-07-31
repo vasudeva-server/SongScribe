@@ -254,7 +254,7 @@ public final class ScoreInputHandler extends KeyAdapter
      * keystroke in {@code bindings} so the caller can disable it again later.
      */
     private static void registerKeyStroke(
-        Map<KeyStroke, Object> bindings,
+        Map<? super KeyStroke, Object> bindings,
         InputMap inputMap,
         ActionMap actionMap,
         KeyStroke keyStroke,

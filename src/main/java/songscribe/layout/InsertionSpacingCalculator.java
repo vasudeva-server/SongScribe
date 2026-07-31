@@ -436,7 +436,7 @@ public final class InsertionSpacingCalculator {
      * fail to lay out.
      */
     private static void appendTerminalIfPresent(
-        List<ElementColumn> columns, Line line, @Nullable ElementColumnBuilder columnBuilder) {
+        List<? super ElementColumn> columns, Line line, @Nullable ElementColumnBuilder columnBuilder) {
 
         var elementCount = line.elementCount();
 
@@ -475,7 +475,7 @@ public final class InsertionSpacingCalculator {
      */
     public static FragmentInsertionResult calculateFragmentInsertion(
         Line line,
-        List<StaffElement> fragment,
+        List<? extends StaffElement> fragment,
         int insertIndex,
         @Nullable DeletedRange deleteRange,
         @Nullable LayoutResult layout,
@@ -617,7 +617,7 @@ public final class InsertionSpacingCalculator {
      */
     public static ModificationResult calculateModification(
         Line line,
-        List<StaffElement> projectedElements,
+        List<? extends StaffElement> projectedElements,
         @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         var effectiveCount = line.effectiveElementCount();

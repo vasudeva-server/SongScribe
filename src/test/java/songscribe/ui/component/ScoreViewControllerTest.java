@@ -617,7 +617,7 @@ class ScoreViewControllerTest extends UnitTest {
          * Builds a two-note line carrying {@code hairpin}, selects the hairpin, deletes it
          * through the controller, and returns the song so the caller can assert on it.
          */
-        private Song deleteSelectedHairpin(BiFunction<StaffElement, StaffElement, Hairpin> hairpinFactory) {
+        private Song deleteSelectedHairpin(BiFunction<StaffElement, ? super StaffElement, ? extends Hairpin> hairpinFactory) {
             var song = new Song();
             var line = song.getLine(0);
             var noteA = crotchet();

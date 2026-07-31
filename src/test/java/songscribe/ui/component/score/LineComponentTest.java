@@ -1117,7 +1117,7 @@ class LineComponentTest extends UnitTest {
          * Runs {@code mouseClicked} with the edit-mode managers and the element hit test
          * stubbed, and hands the test the static LyricEditor stub to assert against.
          */
-        private void clickWith(MouseEvent event, Consumer<MockedStatic<LyricEditor>> assertions) {
+        private void clickWith(MouseEvent event, Consumer<? super MockedStatic<LyricEditor>> assertions) {
             var graceMock = mock(GraceModeManager.class);
             var pasteMock = mock(PasteModeManager.class);
 
@@ -1265,7 +1265,7 @@ class LineComponentTest extends UnitTest {
          * {@code DoubleClickLyricEditing.clickWith} this leaves the element hit test real: the
          * lyric test runs first and consumes the click, so nothing below it is reached.
          */
-        private void clickWith(MouseEvent event, Consumer<MockedStatic<LyricEditor>> assertions) {
+        private void clickWith(MouseEvent event, Consumer<? super MockedStatic<LyricEditor>> assertions) {
             var graceMock = mock(GraceModeManager.class);
             var pasteMock = mock(PasteModeManager.class);
 
@@ -1478,7 +1478,7 @@ class LineComponentTest extends UnitTest {
          * Runs the real {@code mouseMoved} with the two edit-mode managers stubbed to decline the
          * event, and hands the test the {@link PreviewElementManager} stub to assert against.
          */
-        private void moveWith(Consumer<MockedStatic<PreviewElementManager>> assertions) {
+        private void moveWith(Consumer<? super MockedStatic<PreviewElementManager>> assertions) {
             var graceMock = mock(GraceModeManager.class);
             var pasteMock = mock(PasteModeManager.class);
 

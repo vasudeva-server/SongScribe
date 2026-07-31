@@ -335,7 +335,7 @@ public class MidiSequenceBuilder {
         int lineStart,
         int lineEnd,
         TrackPosition startPosition,
-        List<Ending> endings,
+        List<? extends Ending> endings,
         VelocityMap velocityMap
     ) throws InvalidMidiDataException {
         var skipSpans = new ArrayList<SkipSpan>();

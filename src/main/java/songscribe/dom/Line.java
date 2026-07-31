@@ -2012,7 +2012,7 @@ public class Line {
      */
     private <R extends RangeElement> void mergeOverlappingSpans(
         R span,
-        Class<R> type,
+        Class<? extends R> type,
         Consumer<? super R> remover,
         boolean absorbAdjacent
     ) {
@@ -2161,7 +2161,7 @@ public class Line {
      */
     private <H extends Hairpin> void addHairpin(
         H hairpin,
-        BiFunction<Line, H, ? extends Mutation> mutationFactory,
+        BiFunction<Line, ? super H, ? extends Mutation> mutationFactory,
         Class<H> type
     ) {
         hairpin.setParentLine(this);
@@ -2182,7 +2182,7 @@ public class Line {
      */
     private <H extends Hairpin> void removeHairpin(
         H hairpin,
-        BiFunction<Line, H, ? extends Mutation> mutationFactory
+        BiFunction<? super Line, H, ? extends Mutation> mutationFactory
     ) {
         var index = rangeElements.indexOf(hairpin);
 
@@ -2379,7 +2379,7 @@ public class Line {
      * @param candidates the elements to test against, in document order
      * @param lastIndex  the last usable index, bounding the host lookahead
      */
-    private static boolean canAnchorHairpin(List<StaffElement> candidates, int index, int lastIndex) {
+    private static boolean canAnchorHairpin(List<? extends StaffElement> candidates, int index, int lastIndex) {
         var type = candidates.get(index).getType();
 
         if (type.isPitchedNote()) {
@@ -2401,7 +2401,7 @@ public class Line {
         Hairpin hairpin,
         int first,
         int last,
-        List<StaffElement> survivors
+        List<? extends StaffElement> survivors
     ) {
         if (survivors.get(last) == hairpin.getEndElement()) {
             return last;
@@ -2451,7 +2451,7 @@ public class Line {
      * @param run    the hairpins to replace, ordered by their post-deletion start
      * @param runEnd the run's last post-deletion index
      */
-    private void applySpanRun(List<HairpinSpan> run, int runEnd, List<StaffElement> survivors) {
+    private void applySpanRun(List<HairpinSpan> run, int runEnd, List<? extends StaffElement> survivors) {
         if (run.isEmpty()) {
             return;
         }

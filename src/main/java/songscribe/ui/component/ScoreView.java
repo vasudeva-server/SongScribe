@@ -1234,7 +1234,7 @@ public final class ScoreView
      * the screen; the previous mode is restored so ordinary scrolling keeps the blit.
      * Refs #651.
      */
-    private void runWithoutViewportBlit(Consumer<JScrollPane> body) {
+    private void runWithoutViewportBlit(Consumer<? super JScrollPane> body) {
         if (scrollPane == null) {
             return;
         }
@@ -1641,7 +1641,7 @@ public final class ScoreView
      * than {@link Container#getComponents()} because that returns a defensive copy, and this
      * runs from {@link #validateTree()} on every layout pass.
      */
-    private void forEachLineOverlay(Consumer<LineOverlayComponent> action) {
+    private void forEachLineOverlay(Consumer<? super LineOverlayComponent> action) {
         for (var i = 0; i < getComponentCount(); i++) {
             if (getComponent(i) instanceof LineOverlayComponent overlay) {
                 action.accept(overlay);

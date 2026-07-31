@@ -18,7 +18,7 @@ public final class MessageCenter {
     // handler in catch(Throwable) and swallows whatever it throws, so a throwing
     // @Handler silently aborts delivery to every lower-priority subscriber of that
     // post — invisible to tests without this probe.
-    private static @Nullable Consumer<String> publicationErrorProbe;
+    private static @Nullable Consumer<? super String> publicationErrorProbe;
 
     // Test-only observation hook, null in production. Production objects subscribe in
     // their constructors, so merely constructing one in a test leaves a zombie listener
@@ -27,7 +27,7 @@ public final class MessageCenter {
     private static @Nullable Consumer<Object> subscriptionProbe;
 
     // Package-private — for use only by MessageCenterTestHelper in tests.
-    static void setPublicationErrorProbeForTesting(@Nullable Consumer<String> probe) {
+    static void setPublicationErrorProbeForTesting(@Nullable Consumer<? super String> probe) {
         publicationErrorProbe = probe;
     }
 

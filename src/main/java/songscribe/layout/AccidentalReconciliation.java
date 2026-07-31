@@ -675,7 +675,7 @@ public final class AccidentalReconciliation {
      * meaningful.
      */
     private static boolean endsTie(
-        List<Tie> ties,
+        List<? extends Tie> ties,
         IdentityHashMap<StaffElement, Integer> positionsByElement,
         StaffElement element,
         int position) {

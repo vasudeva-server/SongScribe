@@ -164,14 +164,12 @@ class SongIOTest extends UnitTest {
     void testWriteSongOptionalStringFieldsOmittedWhenEmpty() {
         var song = new Song();
         // Song() sets non-empty defaults for some fields — clear them explicitly.
-        {
-            var m = song.getMetadata();
-            song.setMetadata(new SongMetadata(
-                "", m.number(), "", "", m.month(), m.day(),
-                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
-                "", "", 0, 0
-            ));
-        }
+        var m = song.getMetadata();
+        song.setMetadata(new SongMetadata(
+            "", m.number(), "", "", m.month(), m.day(),
+            m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
+            "", "", 0, 0
+        ));
         song.setUnderLyrics("");
         song.setBanglaLyrics("");
         song.setTranslatedLyrics("");

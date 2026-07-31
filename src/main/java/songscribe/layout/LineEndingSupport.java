@@ -38,7 +38,7 @@ public final class LineEndingSupport {
     }
 
     /** Returns the {@link Ending} that spans {@code elementIndex}, or null if none. */
-    public static @Nullable Ending findEndingAt(List<Ending> endings, int elementIndex) {
+    public static @Nullable Ending findEndingAt(List<? extends Ending> endings, int elementIndex) {
         for (var ending : endings) {
             var start = ending.getAnchorElementIndex();
             var end = ending.getEndElementIndex();
@@ -67,7 +67,7 @@ public final class LineEndingSupport {
     }
 
     /** Returns true if {@code elementIndex} is the anchor of any ending. */
-    public static boolean isStartOfAnyEnding(List<Ending> endings, int elementIndex) {
+    public static boolean isStartOfAnyEnding(List<? extends Ending> endings, int elementIndex) {
         for (var ending : endings) {
             if (ending.getAnchorElementIndex() == elementIndex) {
                 return true;
@@ -83,7 +83,7 @@ public final class LineEndingSupport {
     }
 
     /** Returns true if {@code elementIndex} is the end of any ending. */
-    public static boolean isEndOfAnyEnding(List<Ending> endings, int elementIndex) {
+    public static boolean isEndOfAnyEnding(List<? extends Ending> endings, int elementIndex) {
         for (var ending : endings) {
             if (ending.getEndElementIndex() == elementIndex) {
                 return true;

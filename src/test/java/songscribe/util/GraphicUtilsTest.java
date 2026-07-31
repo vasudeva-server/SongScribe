@@ -223,7 +223,7 @@ class GraphicUtilsTest extends UnitTest {
          * places it via the {@code g2} transform, so the captured local shape must be re-transformed
          * by the transform that was active at fill time to recover the on-screen geometry.
          */
-        private static Rectangle2D capturePlacedBounds(Consumer<Graphics2D> draw) {
+        private static Rectangle2D capturePlacedBounds(Consumer<? super Graphics2D> draw) {
             var image = new BufferedImage(IMAGE_SIZE, IMAGE_SIZE, BufferedImage.TYPE_INT_ARGB);
             var g2 = spy(image.createGraphics());
             var placed = new Shape[]{null};
@@ -297,7 +297,7 @@ class GraphicUtilsTest extends UnitTest {
          * path passed to {@code g2.draw} and stroking it with the stroke that was set. {@code drawPath}
          * draws in device space (no transform), so these bounds are the on-screen geometry.
          */
-        private static Rectangle2D captureStrokedBounds(Consumer<Graphics2D> draw) {
+        private static Rectangle2D captureStrokedBounds(Consumer<? super Graphics2D> draw) {
             var image = new BufferedImage(IMAGE_SIZE, IMAGE_SIZE, BufferedImage.TYPE_INT_ARGB);
             var g2 = spy(image.createGraphics());
             var stroked = new Shape[]{null};
@@ -453,7 +453,7 @@ class GraphicUtilsTest extends UnitTest {
          * Captures the vertices of the {@link java.awt.geom.Path2D} {@code drawPath} builds, before
          * it is stroked, so a test can assert the exact inset coordinates {@code capInset} produced.
          */
-        private static List<Point2D> capturePathPoints(Consumer<Graphics2D> draw) {
+        private static List<Point2D> capturePathPoints(Consumer<? super Graphics2D> draw) {
             var image = new BufferedImage(IMAGE_SIZE, IMAGE_SIZE, BufferedImage.TYPE_INT_ARGB);
             var g2 = spy(image.createGraphics());
             var captured = new Shape[]{null};
@@ -483,7 +483,7 @@ class GraphicUtilsTest extends UnitTest {
         }
 
         /** Returns how many times {@code drawPath} invoked {@code g2.draw}. */
-        private static int countDraws(Consumer<Graphics2D> draw) {
+        private static int countDraws(Consumer<? super Graphics2D> draw) {
             var image = new BufferedImage(IMAGE_SIZE, IMAGE_SIZE, BufferedImage.TYPE_INT_ARGB);
             var g2 = spy(image.createGraphics());
             var drawCount = new int[]{0};

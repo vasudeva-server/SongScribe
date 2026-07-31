@@ -256,7 +256,7 @@ public class StructuralStacker {
      */
     static double computeTupletClearanceLeftYSs(
         List<ElementColumn> nonRestColumns,
-        Function<ElementColumn, List<ScriptObstacle>> scriptObstacles,
+        Function<? super ElementColumn, ? extends List<ScriptObstacle>> scriptObstacles,
         double dySs,
         double anchorXSs,
         double widthSs,
@@ -312,7 +312,7 @@ public class StructuralStacker {
      * the bare centerline, which would let the bracket sit 0.25ss too low against within-staff notes.
      */
     private static double columnTipTopSs(
-        ElementColumn column, ToDoubleFunction<ElementColumn> obstacleTopSs) {
+        ElementColumn column, ToDoubleFunction<? super ElementColumn> obstacleTopSs) {
         var staffTopCeilingYSs = StackingUtils.STAFF_TOP_Y_SS - TUPLET_STAFF_PADDING_SS;
         return Math.min(obstacleTopSs.applyAsDouble(column), staffTopCeilingYSs);
     }

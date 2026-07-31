@@ -173,7 +173,7 @@ class MusicEditOperationsBeamWithPredecessorTest extends UnitTest {
     }
 
     /** Replays {@code mutations} in reverse order under replay mode, exactly as undo does. */
-    private void replayUndo(List<Mutation> mutations) {
+    private void replayUndo(List<? extends Mutation> mutations) {
         var scoreView = mock(ScoreView.class);
         when(scoreView.getSong()).thenReturn(song);
 

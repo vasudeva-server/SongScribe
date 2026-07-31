@@ -279,7 +279,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
      */
     private record FallProjection(double anchorXSs, List<Spring> springs, double trailingReservationSs) {
 
-        private double widthSs(ToDoubleFunction<Spring> gapSs) {
+        private double widthSs(ToDoubleFunction<? super Spring> gapSs) {
             return anchorXSs + springs.stream().mapToDouble(gapSs).sum() + trailingReservationSs;
         }
 

@@ -204,7 +204,7 @@ class SongBeatEditTupletTest extends UnitTest {
     }
 
     /** Replays {@code batch} in reverse order inside a bracket, exactly as undo does. */
-    private static void replayUndo(Song song, List<Mutation> batch) {
+    private static void replayUndo(Song song, List<? extends Mutation> batch) {
         var scoreView = mock(ScoreView.class);
         when(scoreView.getSong()).thenReturn(song);
 

@@ -55,7 +55,7 @@ public final class SongScribe {
     // Package-private for testing: accepts explicit platform flags so tests can
     // exercise Windows and "other OS" branches without requiring a real OS switch.
     static @Nullable String resolveLogDir(
-        Function<String, @Nullable String> env,
+        Function<? super String, @Nullable String> env,
         boolean isMacOS,
         boolean isWindows
     ) {
@@ -117,7 +117,7 @@ public final class SongScribe {
 
     // Package-private for testing: accepts an env-var provider so tests can
     // control whether TRUNCATE_LOG is considered set without touching the real OS env.
-    static void truncateLogIfRequested(Function<String, @Nullable String> env) {
+    static void truncateLogIfRequested(Function<? super String, @Nullable String> env) {
         if (env.apply("TRUNCATE_LOG") == null) {
             return;
         }

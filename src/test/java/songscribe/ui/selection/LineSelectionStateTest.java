@@ -174,7 +174,7 @@ class LineSelectionStateTest extends UnitTest {
     @ParameterizedTest
     @MethodSource("decorationKinds")
     void testSelectDecorationClearsElementAndLineSelectionAndFiresCallback(
-        Function<Line, SelectedDecoration> makeDecoration
+        Function<? super Line, ? extends SelectedDecoration> makeDecoration
     ) {
         var line = twoNoteLine();
         var decoration = makeDecoration.apply(line);
@@ -244,7 +244,7 @@ class LineSelectionStateTest extends UnitTest {
 
     @ParameterizedTest
     @MethodSource("decorationKinds")
-    void testSetSelectionFromClickClearsTheDecoration(Function<Line, SelectedDecoration> makeDecoration) {
+    void testSetSelectionFromClickClearsTheDecoration(Function<? super Line, ? extends SelectedDecoration> makeDecoration) {
         var line = twoNoteLine();
         var state = new LineSelectionState(line);
         state.selectDecoration(makeDecoration.apply(line));
@@ -257,7 +257,7 @@ class LineSelectionStateTest extends UnitTest {
 
     @ParameterizedTest
     @MethodSource("decorationKinds")
-    void testSetLineSelectedTrueClearsTheDecoration(Function<Line, SelectedDecoration> makeDecoration) {
+    void testSetLineSelectedTrueClearsTheDecoration(Function<? super Line, ? extends SelectedDecoration> makeDecoration) {
         var line = twoNoteLine();
         var state = new LineSelectionState(line);
         state.selectDecoration(makeDecoration.apply(line));
@@ -270,7 +270,7 @@ class LineSelectionStateTest extends UnitTest {
 
     @ParameterizedTest
     @MethodSource("decorationKinds")
-    void testClearSelectionClearsTheDecoration(Function<Line, SelectedDecoration> makeDecoration) {
+    void testClearSelectionClearsTheDecoration(Function<? super Line, ? extends SelectedDecoration> makeDecoration) {
         var line = twoNoteLine();
         var state = new LineSelectionState(line);
         state.selectDecoration(makeDecoration.apply(line));

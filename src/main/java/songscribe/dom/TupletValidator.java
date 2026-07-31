@@ -617,7 +617,7 @@ public final class TupletValidator {
         return spans;
     }
 
-    private static void addSpan(NavigableSet<Integer> spans, int spanTicks, int noteValueTicks) {
+    private static void addSpan(NavigableSet<? super Integer> spans, int spanTicks, int noteValueTicks) {
         if (spanTicks % noteValueTicks != 0) {
             return;
         }

@@ -117,7 +117,7 @@ final class UndoTestSupport {
      * Replays {@code batch} in reverse (undo) order inside a bracket and replay mode,
      * exactly as {@link UndoController#undo()} does.
      */
-    static void replayUndo(ScoreView scoreView, List<Mutation> batch) {
+    static void replayUndo(ScoreView scoreView, List<? extends Mutation> batch) {
         var song = scoreView.getSong();
         song.withModification(() -> song.withReplay(() -> {
             for (var i = batch.size() - 1; i >= 0; i--) {
@@ -130,7 +130,7 @@ final class UndoTestSupport {
      * Replays {@code batch} in forward (redo) order inside a bracket and replay mode,
      * exactly as {@link UndoController#redo()} does.
      */
-    static void replayRedo(ScoreView scoreView, List<Mutation> batch) {
+    static void replayRedo(ScoreView scoreView, List<? extends Mutation> batch) {
         var song = scoreView.getSong();
         song.withModification(() -> song.withReplay(() -> {
             for (var mutation : batch) {

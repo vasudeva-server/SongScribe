@@ -879,7 +879,7 @@ public final class HorizontalSpacingCalculator {
         ElementColumn curr,
         @Nullable ElementColumn beforePrev,
         @Nullable ElementColumn afterCurr,
-        ToDoubleFunction<ElementColumn> gapAccessor) {
+        ToDoubleFunction<? super ElementColumn> gapAccessor) {
 
         var right = lyricRightExtentSs(prev, beforePrev);
         var left = lyricLeftExtentSs(curr, afterCurr);
