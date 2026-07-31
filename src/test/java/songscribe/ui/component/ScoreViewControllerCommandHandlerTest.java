@@ -22,6 +22,7 @@ package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -29,8 +30,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.*;
-
-import java.util.ArrayList;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -500,15 +499,14 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
     }
 
     /**
-     * Pins the re-arm ordering that makes the toggle reachable a second time: the
-     * handler arms {@code EditModeManager} with the current target before calling
-     * {@link MusicEditOperations#toggleBeamWithPredecessor(Line, int)}, which opens its
-     * own modification bracket. If the order were reversed, that bracket's commit
-     * notification would find an empty pending slot and clear the target the instant
-     * the toggle succeeded, disarming the key on the very press that used it.
+     * The handler hands the remembered target to the toggle and must not arm anything
+     * itself. Arming belongs to the toggle's two modifying branches, because the handler
+     * cannot know in advance whether the toggle will change the line: every refusing path
+     * opens no modification bracket, so an arm made here would sit unclaimed until some
+     * later unrelated edit adopted it as its own placement.
      */
     @Test
-    void testHandleToggleBeamWithPreviousArmsInsertionBeforeTogglingBeam() {
+    void testHandleToggleBeamWithPreviousTogglesTheTargetWithoutArmingItself() {
         var line = new Line(new Song());
         var elementIndex = 2;
         var insertion = new EditModeManager.Insertion(line, elementIndex);
@@ -519,7 +517,41 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
             mock(ClipboardManager.class)
         );
 
-        var callOrder = new ArrayList<String>();
+        try (
+            MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class);
+            MockedStatic<EditModeManager> editModeManager = mockStatic(EditModeManager.class);
+            MockedStatic<MusicEditOperations> operations = mockStatic(MusicEditOperations.class);
+            MockedStatic<UIUtils> uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(insertion);
+            operations.when(() -> MusicEditOperations.toggleBeamWithPredecessor(line, elementIndex))
+                .thenReturn(true);
+
+            controller.handleToggleBeamWithPrevious(new ToggleBeamWithPreviousCommand());
+
+            operations.verify(() -> MusicEditOperations.toggleBeamWithPredecessor(line, elementIndex));
+            editModeManager.verify(() -> EditModeManager.armInsertion(any(), anyInt()), never());
+            uiUtils.verify(UIUtils::beep, never());
+        }
+    }
+
+    /**
+     * A toggle that refuses — the note before the target is a rest, a tie already joins the
+     * pair, and so on — has to be audible. Without this the key would fail silently and the
+     * user would have no way to tell the press registered at all.
+     */
+    @Test
+    void testHandleToggleBeamWithPreviousBeepsWhenTheToggleRefuses() {
+        var line = new Line(new Song());
+        var elementIndex = 2;
+        var insertion = new EditModeManager.Insertion(line, elementIndex);
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
 
         try (
             MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class);
@@ -529,21 +561,12 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         ) {
             playback.when(PlaybackController::isPlaying).thenReturn(false);
             editModeManager.when(EditModeManager::getLastInsertion).thenReturn(insertion);
-            editModeManager.when(() -> EditModeManager.armInsertion(line, elementIndex))
-                .then(invocation -> {
-                    callOrder.add("armInsertion");
-                    return null;
-                });
             operations.when(() -> MusicEditOperations.toggleBeamWithPredecessor(line, elementIndex))
-                .then(invocation -> {
-                    callOrder.add("toggleBeamWithPredecessor");
-                    return true;
-                });
+                .thenReturn(false);
 
             controller.handleToggleBeamWithPrevious(new ToggleBeamWithPreviousCommand());
 
-            assertThat(callOrder).containsExactly("armInsertion", "toggleBeamWithPredecessor");
-            uiUtils.verify(UIUtils::beep, never());
+            uiUtils.verify(UIUtils::beep);
         }
     }
 

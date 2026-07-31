@@ -213,40 +213,57 @@ public final class ScoreInputHandler extends KeyAdapter
      * that action stays disabled in edit mode, and a disabled action bound to the window's
      * input map is skipped outright, so it could never report failure. This binding resolves
      * first regardless of any action's enabled state.
+     * <p>
+     * That precedence is exactly why the mode guard is an {@code isEnabled} override rather
+     * than an early return from {@code actionPerformed}. Swing invokes an enabled binding and
+     * stops searching, so a guard that ran and did nothing would still swallow the key —
+     * leaving select mode, where the score view holds focus, with no working beam shortcut at
+     * all. Reporting the binding as disabled instead lets the search continue to the root
+     * pane, where the toggle-beam action's own plain {@code b} accelerator lives.
      */
     private void registerToggleBeamWithPreviousBinding(
         Map<KeyStroke, Object> bindings, InputMap inputMap, ActionMap actionMap) {
-        var actionKey = new Object();
-        var keyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_B, 0);
-        bindings.put(keyStroke, actionKey);
-        inputMap.put(keyStroke, actionKey);
-        actionMap.put(actionKey, new AbstractAction() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (callback.getMode() != Mode.EDIT) {
-                    return;
+        registerKeyStroke(bindings, inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_B, 0),
+            new AbstractAction() {
+                @Override
+                public boolean isEnabled() {
+                    // Grace mode and paste mode own the keyboard while they are in progress,
+                    // matching the precedence the Escape branch establishes above. The mode
+                    // test comes first so the manager is not consulted outside edit mode.
+                    return callback.getMode() == Mode.EDIT
+                        && !EditModeManager.getGraceModeManager().isInProgress()
+                        && !EditModeManager.getPasteModeManager().isInProgress();
                 }
 
-                // Grace mode and paste mode own the keyboard while they are in progress,
-                // matching the precedence the Escape branch establishes above.
-                if (EditModeManager.getGraceModeManager().isInProgress()
-                    || EditModeManager.getPasteModeManager().isInProgress()) {
-                    return;
+                @Override
+                public void actionPerformed(ActionEvent e) {
+                    MessageCenter.post(new ToggleBeamWithPreviousCommand());
                 }
-
-                MessageCenter.post(new ToggleBeamWithPreviousCommand());
-            }
-        });
+            });
     }
 
     private void registerBinding(
         Map<KeyStroke, Object> bindings, InputMap inputMap, ActionMap actionMap, int keyCode, int modifiers) {
-        var actionKey = new Object();
         var keyStroke = KeyStroke.getKeyStroke(keyCode, modifiers);
         var shift = (modifiers & InputEvent.SHIFT_DOWN_MASK) != 0;
+        registerKeyStroke(bindings, inputMap, actionMap, keyStroke, new KeyAction(callback, keyCode, shift));
+    }
+
+    /**
+     * Wires {@code action} to {@code keyStroke} on the component's maps, recording the
+     * keystroke in {@code bindings} so the caller can disable it again later.
+     */
+    private static void registerKeyStroke(
+        Map<KeyStroke, Object> bindings,
+        InputMap inputMap,
+        ActionMap actionMap,
+        KeyStroke keyStroke,
+        Action action
+    ) {
+        var actionKey = new Object();
         bindings.put(keyStroke, actionKey);
         inputMap.put(keyStroke, actionKey);
-        actionMap.put(actionKey, new KeyAction(callback, keyCode, shift));
+        actionMap.put(actionKey, action);
     }
 
     /**

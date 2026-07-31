@@ -1840,8 +1840,11 @@ public final class PreviewElementManager {
         if (EditModeManager.elementWasModified(line, elementIndex)) {
             // Same reasoning as addPreviewElement's identical guard: this branch is reached only
             // after elementWasModified performed a setElement merging REPEAT_LEFT with
-            // REPEAT_RIGHT, so a commit always follows, and the element it arms is a
-            // REPEAT_LEFT_RIGHT, which is not beamable.
+            // REPEAT_RIGHT, so a commit always follows. Unlike there, the armed index is not
+            // necessarily the merged element — elementWasModified's REPEAT_LEFT branch merges at
+            // elementIndex - 1, leaving the arm on the untouched element after it. Harmless
+            // either way: that element's predecessor is the merged REPEAT_LEFT_RIGHT, which is
+            // not beamable, so a beam request against it is refused.
             EditModeManager.previewElementDidChange(line, elementIndex);
             return null;
         }

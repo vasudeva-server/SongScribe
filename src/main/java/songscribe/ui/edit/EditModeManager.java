@@ -214,8 +214,13 @@ public final class EditModeManager {
     }
 
     /**
-     * Records a placement that is still inside its modification bracket. The pending
+     * Records a placement whose modification bracket has not yet closed. The pending
      * insertion becomes the last insertion when the resulting song change arrives.
+     *
+     * <p>Only call this on a path that is certain to commit. A pending insertion left
+     * unclaimed is not discarded — the next song change of any kind promotes it, so an
+     * arm made ahead of a path that turns out to change nothing resurfaces later as a
+     * stale target.
      *
      * @param line The line the element was placed in
      * @param elementIndex The index of the placed element within that line
@@ -224,7 +229,10 @@ public final class EditModeManager {
         instance().pendingInsertion = new Insertion(line, elementIndex);
     }
 
-    /** Clears both insertion slots; intended for tests only. */
+    /**
+     * Clears both insertion slots. Called when a mode change or a document load invalidates
+     * whatever the insertion-relative keys would have acted on.
+     */
     void resetInsertions() {
         pendingInsertion = null;
         lastInsertion = null;
@@ -394,7 +402,14 @@ public final class EditModeManager {
             return;
         }
 
-        inst.pendingInsertion = new Insertion(line, elementIndex);
+        // Arming is only safe when a commit will follow to consume it. Nothing is posted
+        // while mutation tracking is suspended — grace-note placement inserts that way,
+        // since a lone grace note is not undoable — so an arm made here would sit unclaimed
+        // until some later, unrelated edit adopted it, long after the grace note it names
+        // may have been cancelled away.
+        if (!line.getSong().isMutationTrackingSuspended()) {
+            inst.pendingInsertion = new Insertion(line, elementIndex);
+        }
 
         // Capture the inserted element before previewElement is updated for the next insertion.
         var insertedElement = line.getElement(elementIndex);

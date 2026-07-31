@@ -1092,7 +1092,7 @@ class ScoreInputHandlerTest extends UnitTest {
         }
 
         @Test
-        void testPlainBInEditModePostsToggleBeamWithPreviousCommand() {
+        void testPlainBInEditModeConsumesTheKeyAndPostsToggleBeamWithPreviousCommand() {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getMode()).thenReturn(Mode.EDIT);
             var graceModeManager = mock(GraceModeManager.class);
@@ -1105,26 +1105,30 @@ class ScoreInputHandlerTest extends UnitTest {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
-                pressBeamKey(callback);
+                var consumed = pressBeamKey(callback);
 
+                assertThat(consumed).as("binding handled the key").isTrue();
                 mc.verify(() -> MessageCenter.post(any(ToggleBeamWithPreviousCommand.class)));
             }
         }
 
         @Test
-        void testPlainBInSelectModeDoesNotPost() {
+        void testPlainBInSelectModeLeavesTheKeyForTheToggleBeamAccelerator() {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getMode()).thenReturn(Mode.SELECT);
 
             try (MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)) {
-                pressBeamKey(callback);
+                var consumed = pressBeamKey(callback);
 
+                assertThat(consumed)
+                    .as("binding must not swallow b outside edit mode")
+                    .isFalse();
                 mc.verify(() -> MessageCenter.post(any(ToggleBeamWithPreviousCommand.class)), never());
             }
         }
 
         @Test
-        void testPlainBWhileGraceModeInProgressDoesNotPost() {
+        void testPlainBWhileGraceModeInProgressLeavesTheKeyUnconsumed() {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getMode()).thenReturn(Mode.EDIT);
             var graceModeManager = mock(GraceModeManager.class);
@@ -1138,14 +1142,15 @@ class ScoreInputHandlerTest extends UnitTest {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
-                pressBeamKey(callback);
+                var consumed = pressBeamKey(callback);
 
+                assertThat(consumed).as("binding handled the key").isFalse();
                 mc.verify(() -> MessageCenter.post(any(ToggleBeamWithPreviousCommand.class)), never());
             }
         }
 
         @Test
-        void testPlainBWhilePasteModeInProgressDoesNotPost() {
+        void testPlainBWhilePasteModeInProgressLeavesTheKeyUnconsumed() {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getMode()).thenReturn(Mode.EDIT);
             var graceModeManager = mock(GraceModeManager.class);
@@ -1159,25 +1164,41 @@ class ScoreInputHandlerTest extends UnitTest {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
-                pressBeamKey(callback);
+                var consumed = pressBeamKey(callback);
 
+                assertThat(consumed).as("binding handled the key").isFalse();
                 mc.verify(() -> MessageCenter.post(any(ToggleBeamWithPreviousCommand.class)), never());
             }
         }
 
         /**
-         * Installs key bindings on a fresh component and fires the plain-{@code b}
-         * action, exercising the beam-with-previous binding exactly as a real key
-         * press would.
+         * Installs key bindings on a fresh component and dispatches plain {@code b} the way
+         * Swing does: an enabled binding runs and the key is consumed; a disabled one is
+         * skipped without running, leaving the key to fall through to the root pane, where
+         * the toggle-beam action's own plain-{@code b} accelerator lives.
+         * <p>
+         * Calling {@code actionPerformed} unconditionally instead would hide the difference
+         * that matters — an action that runs and decides to do nothing still swallows the
+         * key, which is what would break the select-mode shortcut.
+         *
+         * @param callback The mode/state source the binding consults
+         * @return Whether the binding consumed the key
          */
-        private void pressBeamKey(InputHandlerCallback callback) {
+        private boolean pressBeamKey(InputHandlerCallback callback) {
             var handler = new ScoreInputHandler(callback);
             var component = new JPanel();
             handler.installKeyBindings(component);
 
             var action = component.getActionMap().get(
                 component.getInputMap(JPanel.WHEN_FOCUSED).get(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0)));
+
+            if (!action.isEnabled()) {
+                return false;
+            }
+
             action.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
+
+            return true;
         }
     }
 

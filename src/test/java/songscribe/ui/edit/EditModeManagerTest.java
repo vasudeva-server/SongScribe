@@ -41,6 +41,7 @@ import songscribe.dom.StaffElement;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
+import songscribe.ui.MusicEditOperations;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
@@ -758,6 +759,111 @@ class EditModeManagerTest extends UnitTest {
             assertThat(armedType.isBeamable())
                 .as("a merged repeat is not beamable, so arming it is harmless")
                 .isFalse();
+        }
+
+        /**
+         * A placement made while mutation tracking is suspended must not arm. Nothing is
+         * posted while tracking is off, so an arm made there would never be claimed by the
+         * edit that made it — it would sit in the pending slot until some later, unrelated
+         * edit's commit adopted it as that edit's own placement.
+         */
+        @Test
+        void testUntrackedPlacementDoesNotArm() {
+            var note = ElementType.QUAVER.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(note);
+                EditModeManager.previewElementDidChange(line, indexOf(note));
+            });
+
+            song.withModification(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+
+            assertThat(EditModeManager.getLastInsertion())
+                .as("an untracked placement leaves nothing for a later edit to adopt")
+                .isNull();
+        }
+
+        /**
+         * The grace-note round trip: entering grace mode places the note untracked, because
+         * a lone grace note is not undoable, and cancelling removes it the same way. Neither
+         * step posts anything. If the placement armed, the arm would outlive the note itself
+         * and the next ordinary edit would inherit an index naming an element that no longer
+         * exists — every element after it having shifted down by one.
+         */
+        @Test
+        void testCancelledUntrackedPlacementLeavesNoTargetBehind() {
+            var graceNote = ElementType.QUAVER.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(graceNote);
+                EditModeManager.previewElementDidChange(line, indexOf(graceNote));
+            });
+
+            song.withoutMutationTracking(() -> line.removeElement(indexOf(graceNote)));
+
+            song.withModification(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+
+            assertThat(EditModeManager.getLastInsertion())
+                .as("the cancelled placement must not resurface as the next edit's target")
+                .isNull();
+        }
+
+        /**
+         * A beam toggle that goes through re-arms its target, so the key stays live and the
+         * same pair can be unbeamed by pressing it again. Without the re-arm, the toggle's
+         * own commit would find an empty pending slot and clear the target on the very press
+         * that used it.
+         */
+        @Test
+        void testSuccessfulBeamToggleKeepsTheTargetArmed() {
+            var first = ElementType.QUAVER.newInstance();
+            var second = ElementType.QUAVER.newInstance();
+
+            song.withoutMutationTracking(() -> line.addElement(first));
+
+            song.withModification(() -> {
+                line.addElement(second);
+                EditModeManager.previewElementDidChange(line, indexOf(second));
+            });
+
+            var target = requireLastInsertion();
+
+            assertThat(MusicEditOperations.toggleBeamWithPredecessor(line, target.elementIndex()))
+                .as("pre-condition: two adjacent quavers can be beamed")
+                .isTrue();
+
+            assertArmedElementIs(second);
+        }
+
+        /**
+         * A beam toggle that refuses changes nothing, so it posts nothing, so it must arm
+         * nothing. An arm made ahead of a refusal would linger in the pending slot and be
+         * promoted by whatever edit came next, however unrelated — leaving the key pointed
+         * at an index the intervening edit may well have shifted out from under it.
+         */
+        @Test
+        void testRefusedBeamToggleLeavesNoStaleTargetForTheNextEdit() {
+            var rest = ElementType.CROTCHET_REST.newInstance();
+            var note = ElementType.QUAVER.newInstance();
+
+            song.withoutMutationTracking(() -> line.addElement(rest));
+
+            song.withModification(() -> {
+                line.addElement(note);
+                EditModeManager.previewElementDidChange(line, indexOf(note));
+            });
+
+            var target = requireLastInsertion();
+
+            assertThat(MusicEditOperations.toggleBeamWithPredecessor(line, target.elementIndex()))
+                .as("pre-condition: a rest cannot be beamed, so the toggle refuses")
+                .isFalse();
+
+            song.withModification(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+
+            assertThat(EditModeManager.getLastInsertion())
+                .as("the refused toggle left nothing for the unrelated edit to adopt")
+                .isNull();
         }
 
         /** Places a quaver at the end of the line and commits, the way the append path does. */

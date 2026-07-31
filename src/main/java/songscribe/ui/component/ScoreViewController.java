@@ -235,12 +235,9 @@ public final class ScoreViewController {
             return;
         }
 
-        // Re-arm before the toggle: the operation opens its own modification bracket, and
-        // the commit notification would otherwise find an empty pending slot and clear the
-        // last insertion, disarming the key the instant the toggle succeeded. Arming first
-        // makes that notification promote the same target straight back.
-        EditModeManager.armInsertion(insertion.line(), insertion.elementIndex());
-
+        // Re-arming the target is left to the operation, which does it only on the branches
+        // that actually modify the line. Arming here instead would leave the slot armed on
+        // every refusing path, with no commit coming to consume it.
         if (!MusicEditOperations.toggleBeamWithPredecessor(insertion.line(), insertion.elementIndex())) {
             UIUtils.beep();
         }

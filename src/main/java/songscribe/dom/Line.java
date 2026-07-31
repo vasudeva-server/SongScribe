@@ -1816,13 +1816,14 @@ public class Line {
     }
 
     /**
-     * Returns true if one and the same {@link Tie} covers both {@code i} and {@code j}.
+     * Returns true if one and the same {@link Tie} covers both {@code firstIndex} and
+     * {@code secondIndex}.
      */
-    public boolean sameTieAt(int i, int j) {
-        var tieAtI = findTieAt(i);
+    public boolean sameTieAt(int firstIndex, int secondIndex) {
+        var tieAtFirst = findTieAt(firstIndex);
 
         //noinspection ObjectEquality
-        return tieAtI != null && tieAtI == findTieAt(j);
+        return tieAtFirst != null && tieAtFirst == findTieAt(secondIndex);
     }
 
     /**
@@ -1930,13 +1931,37 @@ public class Line {
     }
 
     /**
-     * Returns true if one and the same {@link Beam} covers both {@code i} and {@code j}.
+     * Returns true if one and the same {@link Beam} covers both {@code firstIndex} and
+     * {@code secondIndex}.
      */
-    public boolean sameBeamAt(int i, int j) {
-        var beamAtI = findBeamAt(i);
+    public boolean sameBeamAt(int firstIndex, int secondIndex) {
+        var beamAtFirst = findBeamAt(firstIndex);
 
         //noinspection ObjectEquality
-        return beamAtI != null && beamAtI == findBeamAt(j);
+        return beamAtFirst != null && beamAtFirst == findBeamAt(secondIndex);
+    }
+
+    /**
+     * Returns the index of the nearest element to {@code fromIndex} that is not a grace
+     * note, stepping by {@code step} ({@code -1} to search backward, {@code 1} forward),
+     * or -1 if the line runs out first. {@code fromIndex} itself is not examined.
+     *
+     * <p>Grace notes are transparent to callers reasoning about a note's real neighbors:
+     * one can sit between two beamed notes without joining their beam, so the neighbor
+     * that matters is the one on its far side.
+     *
+     * @param fromIndex The index to search out from
+     * @param step The direction to search in
+     * @return The nearest non-grace index, or -1 if there is none
+     */
+    public int nearestNonGraceIndex(int fromIndex, int step) {
+        for (var i = fromIndex + step; i >= 0 && i < elementCount(); i += step) {
+            if (!getElement(i).getType().isGraceNote()) {
+                return i;
+            }
+        }
+
+        return -1;
     }
 
     /**

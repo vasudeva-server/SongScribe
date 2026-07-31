@@ -270,13 +270,9 @@ public final class BeamMath {
      * continuing to the note on the far side of it, not the grace note's own flag.
      */
     private static int neighborBeamCount(Line line, int index, int step) {
-        for (var i = index + step; i >= 0 && i < line.elementCount(); i += step) {
-            if (!line.getElement(i).getType().isGraceNote()) {
-                return beamCountInBeam(line, i);
-            }
-        }
+        var neighborIndex = line.nearestNonGraceIndex(index, step);
 
-        return 0;
+        return neighborIndex < 0 ? 0 : beamCountInBeam(line, neighborIndex);
     }
 
     // -------------------------------------------------------------------------

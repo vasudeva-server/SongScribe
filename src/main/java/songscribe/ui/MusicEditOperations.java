@@ -47,6 +47,7 @@ import songscribe.layout.LineEndingSupport;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
+import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
@@ -106,16 +107,18 @@ public final class MusicEditOperations {
         }
 
         line.withModification(() -> {
-            if (!line.sameBeamAt(beginIndex, endIndex)) {
+            // Looked up rather than asked via Line.sameBeamAt: the remove branch needs the
+            // Beam object itself, and going through the boolean would only mean finding it
+            // again afterwards.
+            var beginBeam = line.findBeamAt(beginIndex);
+
+            //noinspection ObjectEquality
+            if (beginBeam == null || beginBeam != line.findBeamAt(endIndex)) {
                 var anchorElement = line.getElement(beginIndex);
                 var endElement = line.getElement(endIndex);
                 line.addBeaming(new Beam(anchorElement, endElement));
             } else {
-                var beginBeam = line.findBeamAt(beginIndex);
-
-                if (beginBeam != null) {
-                    line.removeBeaming(beginBeam);
-                }
+                line.removeBeaming(beginBeam);
             }
         });
     }
@@ -124,11 +127,18 @@ public final class MusicEditOperations {
      * Toggles a beam between the element at {@code elementIndex} and its nearest preceding
      * non-grace neighbor, and returns whether the line was modified.
      *
-     * <p>Static and taking the line explicitly because the operation touches neither the
-     * selection coordinator nor the song — the caller looks up the state.
+     * <p>Static and taking the line explicitly because the operation does not go through the
+     * selection coordinator — the caller looks up the state.
      *
      * <p>Grace notes are transparent at both ends: the walk backward skips over them, and a
      * grace note is never itself a beam member, so a grace-note target is refused (refs #592).
+     *
+     * <p>Each branch that modifies the line re-arms {@code elementIndex} as the insertion
+     * target first, so the commit notification promotes the same target straight back rather
+     * than clearing it and disarming the key the instant the toggle succeeded. Arming has to
+     * stay inside those branches: the refusing paths open no modification bracket, so nothing
+     * would ever arrive to consume an arm made ahead of them, and the next unrelated edit
+     * would adopt it.
      *
      * <p>When one beam already covers both elements, it is broken <em>between</em> them rather
      * than removed wholesale. A single-element remainder is dropped, because a beam needs two
@@ -169,11 +179,7 @@ public final class MusicEditOperations {
             return false;
         }
 
-        var predecessorIndex = elementIndex - 1;
-
-        while (predecessorIndex >= 0 && line.getElement(predecessorIndex).getType().isGraceNote()) {
-            predecessorIndex--;
-        }
+        var predecessorIndex = line.nearestNonGraceIndex(elementIndex, -1);
 
         if (predecessorIndex < 0) {
             return false;
@@ -187,15 +193,16 @@ public final class MusicEditOperations {
         if (predecessorBeam != null && predecessorBeam == line.findBeamAt(elementIndex)) {
             var anchorIndex = predecessorBeam.getAnchorElementIndex();
             var endIndex = predecessorBeam.getEndElementIndex();
-            var finalPredecessorIndex = predecessorIndex;
+
+            EditModeManager.armInsertion(line, elementIndex);
 
             line.withModification(() -> {
                 line.removeBeaming(predecessorBeam);
 
-                if (anchorIndex < finalPredecessorIndex) {
+                if (anchorIndex < predecessorIndex) {
                     line.addBeaming(new Beam(
                         line.getElement(anchorIndex),
-                        line.getElement(finalPredecessorIndex)));
+                        line.getElement(predecessorIndex)));
                 }
 
                 if (elementIndex < endIndex) {
@@ -220,6 +227,8 @@ public final class MusicEditOperations {
 
         var anchorElement = line.getElement(predecessorIndex);
         var endElement = line.getElement(elementIndex);
+
+        EditModeManager.armInsertion(line, elementIndex);
         line.withModification(() -> line.addBeaming(new Beam(anchorElement, endElement)));
 
         return true;
