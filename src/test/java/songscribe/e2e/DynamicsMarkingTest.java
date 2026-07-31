@@ -24,7 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import org.assertj.swing.edt.GuiActionRunner;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Order;
@@ -41,13 +41,15 @@ import songscribe.dom.DynamicAttachment.DynamicType;
  * Integration tests for the dynamics markings feature.
  * Covers serialization (E6) and regression checks for coexisting features.
  *
- * <p>All tests share the selection1.musicxml fixture loaded once in {@code @BeforeAll}.
- * Each test operates on unique note indices to avoid cross-test interference.
+ * <p>Each test gets a freshly loaded selection1.musicxml fixture. A shared song would
+ * couple the tests: a hairpin left behind by one test is picked up as an adjacency
+ * candidate by the next one whose selection comes within {@code SPAN_ADJACENCY_REACH}
+ * of it, which suppresses the opposite-type hairpin the next test is trying to add.
  */
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
 class DynamicsMarkingTest extends E2ETest {
 
-    // Element indices for selection1.musicxml — each test uses a unique set
+    // Element indices for selection1.musicxml
     private enum Note {
         FERMATA_COEXIST(10),
         CRESCENDO_START(11),
@@ -63,7 +65,7 @@ class DynamicsMarkingTest extends E2ETest {
         }
     }
 
-    @BeforeAll
+    @BeforeEach
     void loadSelection1Fixture() {
         resetSong();
         loadFixture("selection1");
