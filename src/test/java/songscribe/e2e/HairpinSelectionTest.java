@@ -42,6 +42,7 @@ import songscribe.ui.action.UIAction;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.renderer.HairpinRenderer;
+import songscribe.ui.selection.SelectedDecoration;
 
 /**
  * E2E tests for selecting, deleting and extending a hairpin through the real Swing
@@ -317,7 +318,17 @@ class HairpinSelectionTest extends E2ETest {
     private @Nullable Hairpin selectedHairpin() {
         return GuiActionRunner.execute(() -> {
             var selectionState = lineComponent().getLineSelectionState();
-            return selectionState == null ? null : selectionState.getSelectedHairpin();
+
+            if (selectionState == null) {
+                return null;
+            }
+
+            if (selectionState.getSelectedDecoration()
+                    instanceof SelectedDecoration.HairpinSelection(var hairpin)) {
+                return hairpin;
+            }
+
+            return null;
         });
     }
 

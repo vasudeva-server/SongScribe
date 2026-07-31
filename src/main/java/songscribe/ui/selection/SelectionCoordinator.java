@@ -350,27 +350,21 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Returns whether any slide is selected on the active line.
+     * Returns the decoration selected on the active line, or null if none is.
      */
-    public boolean hasSlideSelection() {
+    @Nullable
+    public SelectedDecoration getSelectedDecoration() {
         var state = getActiveSelection();
-        return (state != null) && state.hasSlideSelection();
+        return state == null ? null : state.getSelectedDecoration();
     }
 
     /**
-     * Returns whether an ending is selected on the active line.
+     * Returns whether a decoration — a slide, ending, or hairpin — is selected on the
+     * active line.
      */
-    public boolean hasEndingSelection() {
+    public boolean hasDecorationSelection() {
         var state = getActiveSelection();
-        return (state != null) && state.hasEndingSelection();
-    }
-
-    /**
-     * Returns whether a hairpin is selected on the active line.
-     */
-    public boolean hasHairpinSelection() {
-        var state = getActiveSelection();
-        return (state != null) && state.hasHairpinSelection();
+        return (state != null) && state.hasDecorationSelection();
     }
 
     private int findLineIndex(Line line) {
@@ -1194,10 +1188,10 @@ public final class SelectionCoordinator {
         var selection = getSelection();
 
         if (selection == null) {
-            // Slide, ending, and hairpin selections all null out the element selection, but
-            // they are still selections — freeze the action states rather than restoring
-            // them as if the selection had been cleared.
-            if (hasSlideSelection() || hasEndingSelection() || hasHairpinSelection()) {
+            // A decoration selection nulls out the element selection, but it is still a
+            // selection — freeze the action states rather than restoring them as if the
+            // selection had been cleared.
+            if (hasDecorationSelection()) {
                 saveActionStates();
             } else {
                 restoreActionStates();
@@ -1261,15 +1255,14 @@ public final class SelectionCoordinator {
         var state = getActiveSelection();
 
         if (state != null && message.getLine() == state.getLine()
-                && (state.hasSlideSelection() || state.hasEndingSelection() || state.hasHairpinSelection())
+                && state.hasDecorationSelection()
                 && state.revalidateDecorationSelection()) {
-            // A slide/ending/hairpin selection carries no ElementSelection for getSelection()
-            // to compare below, so undo/redo of a mutation on this line — which can shift
+            // A decoration selection carries no ElementSelection for getSelection() to
+            // compare below, so undo/redo of a mutation on this line — which can shift
             // indices or remove the selected decoration outright — would otherwise go
             // unnoticed and leave the selection pointing at the wrong (or a dead) decoration.
-            // The selection was just cleared: force a fresh reflection so any slide/ending/
-            // hairpin toolbar action that was showing selected/enabled resets to its default
-            // state.
+            // The selection was just cleared: force a fresh reflection so any decoration
+            // toolbar action that was showing selected/enabled resets to its default state.
             lastReflectedSelection = null;
             triggerReflection();
         }
@@ -1325,8 +1318,9 @@ public final class SelectionCoordinator {
         if (selection == null) {
             lastReflectedSelection = null;
 
-            if (hasSlideSelection()) {
-                reflectSlideSelection();
+            if (state != null
+                && state.getSelectedDecoration() instanceof SelectedDecoration.SlideSelection(var elementIndex)) {
+                reflectSlideSelection(state, elementIndex);
             }
 
             return;
@@ -1376,14 +1370,7 @@ public final class SelectionCoordinator {
      * Reflects a standalone slide selection onto toolbar actions.
      * The matching slide action is selected and enabled; all others are disabled.
      */
-    private void reflectSlideSelection() {
-        var state = getActiveSelection();
-
-        if (state == null) {
-            return;
-        }
-
-        var elementIndex = state.getSelectedSlideElementIndex();
+    private void reflectSlideSelection(LineSelectionState state, int elementIndex) {
         var element = state.getLine().getElement(elementIndex);
 
         if (element.getSlide() == null) {

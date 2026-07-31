@@ -42,6 +42,7 @@ import songscribe.ui.MusicEditOperations.HairpinResolution;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.ReflectionTestHelper;
+import songscribe.ui.selection.SelectedDecoration;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
@@ -156,7 +157,7 @@ class HairpinActionStateTest extends UnitTest {
             // does not bounds check — reaching an element index here would throw.
             var fixture = fixtureWithNotes(NOTE_COUNT_4);
             var hairpin = fixture.addCrescendo(IDX_0, IDX_2);
-            fixture.state().selectHairpin(hairpin);
+            fixture.state().selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
 
             assertThatCode(fixture::resolve)
                 .as("a -1/-1 decoration selection must not reach an element index")

@@ -25,13 +25,11 @@ import java.util.stream.IntStream;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
-import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
-import songscribe.layout.Ending;
 import songscribe.layout.LineEndingSupport;
 
 /**
@@ -63,11 +61,10 @@ public final class LineSelectionState {
     private int selectionEnd = -1;
     private int selectionAnchor = -1;
     private boolean lineSelected = false;
-    private int selectedSlideElementIndex = -1;
+
+    /** The selected slide, ending, or hairpin, or null if no decoration is selected. */
     @Nullable
-    private Ending selectedEnding = null;
-    @Nullable
-    private Hairpin selectedHairpin = null;
+    private SelectedDecoration selectedDecoration = null;
 
     @Nullable
     private Boolean canTie = null;
@@ -96,51 +93,36 @@ public final class LineSelectionState {
         return lineSelected;
     }
 
-    /**
-     * Clears the slide, ending, and hairpin selections.
-     * <p>
-     * Slides, endings, and hairpins are decorations selected on their own, mutually
-     * exclusive with each other and with any element or line selection. Every method
-     * that establishes a different selection clears all three, so they are cleared
-     * together here.
-     */
-    private void clearDecorationSelections() {
-        selectedSlideElementIndex = -1;
-        selectedEnding = null;
-        selectedHairpin = null;
-    }
-
     public void setLineSelected(boolean lineSelected) {
         this.lineSelected = lineSelected;
 
         if (lineSelected) {
-            clearDecorationSelections();
+            selectedDecoration = null;
         }
 
         selectionChangeCallback.run();
     }
 
     /**
-     * Returns whether a slide is selected on this line.
+     * Returns the selected decoration, or null if no decoration is selected.
      */
-    public boolean hasSlideSelection() {
-        return selectedSlideElementIndex != -1;
+    @Nullable
+    public SelectedDecoration getSelectedDecoration() {
+        return selectedDecoration;
     }
 
     /**
-     * Returns the element index of the selected slide, or -1 if none.
+     * Returns whether a decoration — a slide, ending, or hairpin — is selected on this line.
      */
-    public int getSelectedSlideElementIndex() {
-        return selectedSlideElementIndex;
+    public boolean hasDecorationSelection() {
+        return selectedDecoration != null;
     }
 
     /**
-     * Selects the slide owned by the element at the given index,
-     * clearing any element or line selection.
+     * Makes the given decoration the sole selection, clearing any element or line selection.
      */
-    public void selectSlide(int elementIndex) {
-        clearDecorationSelections();
-        selectedSlideElementIndex = elementIndex;
+    public void selectDecoration(SelectedDecoration decoration) {
+        selectedDecoration = decoration;
         selectionBegin = -1;
         selectionEnd = -1;
         selectionAnchor = -1;
@@ -152,98 +134,47 @@ public final class LineSelectionState {
      * Returns whether the slide at the given element index is selected.
      */
     public boolean isSlideSelected(int elementIndex) {
-        return selectedSlideElementIndex == elementIndex;
-    }
-
-    /**
-     * Returns whether an ending is selected on this line.
-     */
-    public boolean hasEndingSelection() {
-        return selectedEnding != null;
-    }
-
-    /**
-     * Returns the selected ending, or null if none.
-     */
-    @Nullable
-    public Ending getSelectedEnding() {
-        return selectedEnding;
-    }
-
-    /**
-     * Selects the given ending, clearing any element, line, or slide selection.
-     */
-    public void selectEnding(Ending ending) {
-        clearDecorationSelections();
-        selectedEnding = ending;
-        selectionBegin = -1;
-        selectionEnd = -1;
-        selectionAnchor = -1;
-        lineSelected = false;
-        selectionChangeCallback.run();
-    }
-
-    /**
-     * Returns whether a hairpin is selected on this line.
-     */
-    public boolean hasHairpinSelection() {
-        return selectedHairpin != null;
-    }
-
-    /**
-     * Returns the selected hairpin, or null if none.
-     */
-    @Nullable
-    public Hairpin getSelectedHairpin() {
-        return selectedHairpin;
-    }
-
-    /**
-     * Selects the given hairpin, clearing any element, line, slide, or ending selection.
-     */
-    public void selectHairpin(Hairpin hairpin) {
-        clearDecorationSelections();
-        selectedHairpin = hairpin;
-        selectionBegin = -1;
-        selectionEnd = -1;
-        selectionAnchor = -1;
-        lineSelected = false;
-        selectionChangeCallback.run();
+        return selectedDecoration instanceof SelectedDecoration.SlideSelection(var selectedIndex)
+            && selectedIndex == elementIndex;
     }
 
     /**
      * Returns whether the given line element is the currently selected decoration —
-     * the selected slide, ending, or hairpin.
+     * the selected ending or hairpin. A slide is an attribute of an element rather than
+     * an element of its own, so it never answers true here; see {@link #isSlideSelected}.
      */
     public boolean isDecorationSelected(LineElement element) {
-        return element == selectedEnding || element == selectedHairpin;
+        return switch (selectedDecoration) {
+            case null -> false;
+            case SelectedDecoration.SlideSelection _ -> false;
+            case SelectedDecoration.EndingSelection(var ending) -> element == ending;
+            case SelectedDecoration.HairpinSelection(var hairpin) -> element == hairpin;
+        };
     }
 
     /**
-     * Clears the slide, ending, or hairpin selection if it no longer refers to a live
-     * decoration on this line — e.g. after an undo/redo that shifted element indices or
-     * removed the selected decoration outright. No-op if the current selection is still
-     * valid, or if there is no slide/ending/hairpin selection.
+     * Clears the decoration selection if it no longer refers to a live decoration on this
+     * line — e.g. after an undo/redo that shifted element indices or removed the selected
+     * decoration outright. No-op if the current selection is still valid, or if there is no
+     * decoration selection.
      *
      * @return whether the selection was cleared
      */
     public boolean revalidateDecorationSelection() {
-        if (selectedSlideElementIndex != -1) {
-            return clearIfStale(
-                selectedSlideElementIndex >= line.effectiveElementCount()
-                    || line.getElement(selectedSlideElementIndex).getSlide() == null
+        return switch (selectedDecoration) {
+            case null -> false;
+
+            case SelectedDecoration.SlideSelection(var elementIndex) -> clearIfStale(
+                elementIndex >= line.effectiveElementCount()
+                    || line.getElement(elementIndex).getSlide() == null
             );
-        }
 
-        if (selectedEnding != null) {
-            return clearIfStale(!LineEndingSupport.findEndings(line).contains(selectedEnding));
-        }
+            case SelectedDecoration.EndingSelection(var ending) ->
+                clearIfStale(!LineEndingSupport.findEndings(line).contains(ending));
 
-        if (selectedHairpin != null) {
-            return clearIfStale(!line.getRangeElements().contains(selectedHairpin));
-        }
-
-        return false;
+            case SelectedDecoration.HairpinSelection(var hairpin) ->
+                clearIfStale(!line.getRangeElements().contains(hairpin));
+        };
     }
 
     /**
@@ -321,7 +252,7 @@ public final class LineSelectionState {
         selectionEnd = -1;
         selectionAnchor = -1;
         lineSelected = false;
-        clearDecorationSelections();
+        selectedDecoration = null;
         selectionChangeCallback.run();
     }
 
@@ -344,7 +275,7 @@ public final class LineSelectionState {
         selectionEnd = end;
         selectionAnchor = 0;
         lineSelected = false;
-        clearDecorationSelections();
+        selectedDecoration = null;
         selectionChangeCallback.run();
     }
 
@@ -423,7 +354,7 @@ public final class LineSelectionState {
         selectionBegin = elementIndex;
         selectionEnd = elementIndex;
         selectionAnchor = elementIndex;
-        clearDecorationSelections();
+        selectedDecoration = null;
         selectionChangeCallback.run();
     }
 
@@ -452,7 +383,7 @@ public final class LineSelectionState {
 
         selectionBegin = Math.min(selectionAnchor, elementIndex);
         selectionEnd = Math.max(selectionAnchor, elementIndex);
-        clearDecorationSelections();
+        selectedDecoration = null;
         selectionChangeCallback.run();
     }
 
@@ -466,7 +397,7 @@ public final class LineSelectionState {
         }
 
         selectionEnd = elementIndex;
-        clearDecorationSelections();
+        selectedDecoration = null;
         selectionChangeCallback.run();
     }
 
@@ -479,7 +410,7 @@ public final class LineSelectionState {
         selectionBegin = begin;
         selectionEnd = end;
         selectionAnchor = begin;
-        clearDecorationSelections();
+        selectedDecoration = null;
         selectionChangeCallback.run();
     }
 

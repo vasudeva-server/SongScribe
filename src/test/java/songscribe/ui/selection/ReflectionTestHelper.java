@@ -25,7 +25,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import songscribe.UnitTest;
 import songscribe.dom.Hairpin;
@@ -163,12 +162,27 @@ public final class ReflectionTestHelper {
     }
 
     /**
+     * Returns the selection state for the coordinator's active line, failing with a
+     * message that names the problem rather than letting the caller trip over a bare
+     * NullPointerException when the coordinator was never given an active line.
+     */
+    private static LineSelectionState activeSelection(SelectionCoordinator coordinator) {
+        var state = coordinator.getActiveSelection();
+
+        if (state == null) {
+            throw new AssertionError("the test coordinator has no active line state");
+        }
+
+        return state;
+    }
+
+    /**
      * Selects notes [fromIndex..toIndex] inclusive on the coordinator's active line.
      */
     public static void selectRange(SelectionCoordinator coordinator, int fromIndex, int toIndex) {
         coordinator.saveActionStates();
 
-        var state = Objects.requireNonNull(coordinator.getActiveSelection());
+        var state = activeSelection(coordinator);
         state.setSelectionFromClick(fromIndex);
 
         if (toIndex != fromIndex) {
@@ -188,8 +202,8 @@ public final class ReflectionTestHelper {
      */
     public static void selectGlissando(SelectionCoordinator coordinator, int elementIndex) {
         coordinator.saveActionStates();
-        var state = Objects.requireNonNull(coordinator.getActiveSelection());
-        state.selectSlide(elementIndex);
+        var state = activeSelection(coordinator);
+        state.selectDecoration(new SelectedDecoration.SlideSelection(elementIndex));
     }
 
     /**
@@ -197,8 +211,8 @@ public final class ReflectionTestHelper {
      */
     public static void selectEnding(SelectionCoordinator coordinator, Ending ending) {
         coordinator.saveActionStates();
-        var state = Objects.requireNonNull(coordinator.getActiveSelection());
-        state.selectEnding(ending);
+        var state = activeSelection(coordinator);
+        state.selectDecoration(new SelectedDecoration.EndingSelection(ending));
     }
 
     /**
@@ -206,20 +220,14 @@ public final class ReflectionTestHelper {
      */
     public static void selectHairpin(SelectionCoordinator coordinator, Hairpin hairpin) {
         coordinator.saveActionStates();
-        var state = coordinator.getActiveSelection();
-
-        if (state == null) {
-            throw new AssertionError("the test coordinator has no active line state");
-        }
-
-        state.selectHairpin(hairpin);
+        activeSelection(coordinator).selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
     }
 
     /**
      * Clears the selection on the coordinator's active line.
      */
     public static void clearSelection(SelectionCoordinator coordinator) {
-        Objects.requireNonNull(coordinator.getActiveSelection()).clearSelection();
+        activeSelection(coordinator).clearSelection();
         coordinator.restoreActionStates();
     }
 }

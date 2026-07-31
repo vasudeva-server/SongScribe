@@ -40,6 +40,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import songscribe.ui.action.Actions;
+import songscribe.ui.selection.SelectedDecoration;
 
 /**
  * E2E tests for glissando interactions that require mouse clicks at pixel
@@ -96,12 +97,9 @@ class NoteConnectionTest extends E2ETest {
             clickAt(midpoint(0, Element.PAIR_B_SRC.index, Element.PAIR_B_TGT.index));
 
             var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
-            assertAll(
-                () -> assertThat(Objects.requireNonNull(lss).hasSlideSelection())
-                    .as("glissando selected by click").isTrue(),
-                () -> assertThat(Objects.requireNonNull(lss).getSelectedSlideElementIndex())
-                    .as("correct element index").isEqualTo(Element.PAIR_B_SRC.index)
-            );
+            assertThat(Objects.requireNonNull(lss).getSelectedDecoration())
+                .as("glissando on the clicked element selected by click")
+                .isEqualTo(new SelectedDecoration.SlideSelection(Element.PAIR_B_SRC.index));
         }
 
         @Test
@@ -182,7 +180,9 @@ class NoteConnectionTest extends E2ETest {
             clickAt(midpoint(0, Element.PAIR_D_SRC.index, Element.PAIR_D_TGT.index));
 
             var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
-            assertThat(Objects.requireNonNull(lss).hasSlideSelection()).as("glissando selected").isTrue();
+            assertThat(Objects.requireNonNull(lss).getSelectedDecoration())
+                .as("glissando selected")
+                .isInstanceOf(SelectedDecoration.SlideSelection.class);
 
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
             performLayout(0);

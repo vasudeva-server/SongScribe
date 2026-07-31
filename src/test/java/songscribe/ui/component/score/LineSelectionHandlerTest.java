@@ -64,6 +64,7 @@ import songscribe.ui.renderer.HairpinRenderer;
 import songscribe.ui.renderer.SlideRenderer;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.selection.LineSelectionState;
+import songscribe.ui.selection.SelectedDecoration;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
@@ -735,6 +736,43 @@ class LineSelectionHandlerTest extends UnitTest {
             .isFalse();
     }
 
+    // -------------------------------------------------------------------------
+    // handlePress — HitResult.Slide arm
+    // -------------------------------------------------------------------------
+
+    /**
+     * A slide is recorded by the index of the element that owns it, not by identity, so
+     * carrying the wrong index through would select a different note's slide. The end-to-end
+     * suite clicks a real glissando, but nothing at this level pinned down which element the
+     * press arm actually records — hitting element 1 rather than 0 is what makes that visible.
+     */
+    @Test
+    void testPressOnSlideSelectsItAndNotifiesScoreView() {
+        var song = new Song();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> {
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(ElementType.CROTCHET.newInstance());
+        });
+        var lineSelState = new LineSelectionState(line);
+        when(lc.getLine()).thenReturn(line);
+        when(lc.getLineSelectionState()).thenReturn(lineSelState);
+        when(lc.getLineIndex()).thenReturn(0);
+        when(mockScoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+
+        scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble()))
+            .thenAnswer(inv -> inv.getArgument(0));
+
+        stubSlideHit(1);
+
+        pressAt(pressEvent(0, 0));
+
+        assertThat(lineSelState.getSelectedDecoration())
+            .as("the slide owned by the element that was hit is selected")
+            .isEqualTo(new SelectedDecoration.SlideSelection(1));
+        verify(mockScoreView).selectionChanged();
+    }
+
     /**
      * A grace note's glissando cannot be selected. Pressing on one warns the user and must
      * count the press as handled, so a rubber-band drag does not start instead — which
@@ -991,9 +1029,9 @@ class LineSelectionHandlerTest extends UnitTest {
                 .as("press on a hairpin is handled")
                 .isTrue();
 
-            assertThat(lineSelectionState.getSelectedHairpin())
+            assertThat(lineSelectionState.getSelectedDecoration())
                 .as("hairpin is selected")
-                .isSameAs(hairpin);
+                .isEqualTo(new SelectedDecoration.HairpinSelection(hairpin));
             verify(mockScoreView).selectionChanged();
             verify(lc).repaint();
         }
@@ -1013,7 +1051,7 @@ class LineSelectionHandlerTest extends UnitTest {
                 .as("press is left to the insertion preview")
                 .isFalse();
 
-            assertThat(lineSelectionState.hasHairpinSelection())
+            assertThat(lineSelectionState.hasDecorationSelection())
                 .as("hairpin was not selected")
                 .isFalse();
             verify(mockScoreView, never()).selectionChanged();
@@ -1032,7 +1070,7 @@ class LineSelectionHandlerTest extends UnitTest {
                     .isFalse();
             }
 
-            assertThat(lineSelectionState.hasHairpinSelection())
+            assertThat(lineSelectionState.hasDecorationSelection())
                 .as("hairpin was not selected")
                 .isFalse();
             verify(mockScoreView, never()).selectionChanged();

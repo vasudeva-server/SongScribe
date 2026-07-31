@@ -168,16 +168,16 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // isGlissandoSelected
+    // isSlideSelected
     // -------------------------------------------------------------------------
 
     /**
-     * Row 26 (cross-line guard): isGlissandoSelected returns false when the
+     * Row 26 (cross-line guard): isSlideSelected returns false when the
      * queried lineIndex does not match the active line — even though the active
-     * line has a glissando selection.
+     * line has a slide selection.
      */
     @Test
-    void testIsGlissandoSelectedReturnsFalseForInactiveLine() {
+    void testIsSlideSelectedReturnsFalseForInactiveLine() {
         var coordinator = twoLineCoordinator();
 
         // Select the glissando on element 0 of the active line (line 0).
@@ -185,28 +185,28 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
 
         // Query against line 1, which is not active.
         assertThat(coordinator.isSlideSelected(ELEMENT_0, LINE_1))
-            .as("isGlissandoSelected(0, line 1) when line 0 is active and has glissando selection")
+            .as("isSlideSelected(0, line 1) when line 0 is active and has a slide selected")
             .isFalse();
     }
 
     /**
-     * Row 26 (delegation): isGlissandoSelected delegates to the state for the
-     * active line and returns true when that state has the glissando selected.
+     * Row 26 (delegation): isSlideSelected delegates to the state for the
+     * active line and returns true when that state has the slide selected.
      */
     @Test
-    void testIsGlissandoSelectedDelegatesToStateForActiveLine() {
+    void testIsSlideSelectedDelegatesToStateForActiveLine() {
         var coordinator = twoLineCoordinator();
 
         // Select the glissando on element 0 of the active line (line 0).
         ReflectionTestHelper.selectGlissando(coordinator, ELEMENT_0);
 
         assertThat(coordinator.isSlideSelected(ELEMENT_0, LINE_0))
-            .as("isGlissandoSelected(0, line 0) when glissando at element 0 is selected")
+            .as("isSlideSelected(0, line 0) when the slide at element 0 is selected")
             .isTrue();
     }
 
     // -------------------------------------------------------------------------
-    // isDecorationSelected / hasEndingSelection
+    // isDecorationSelected / hasDecorationSelection
     // -------------------------------------------------------------------------
 
     /**
@@ -264,17 +264,17 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
     }
 
     @Test
-    void testHasEndingSelectionReflectsActiveLineState() {
+    void testHasDecorationSelectionReflectsActiveLineState() {
         var coordinator = twoLineCoordinator();
 
-        assertThat(coordinator.hasEndingSelection())
-            .as("hasEndingSelection() before anything is selected")
+        assertThat(coordinator.hasDecorationSelection())
+            .as("hasDecorationSelection() before anything is selected")
             .isFalse();
 
         ReflectionTestHelper.selectEnding(coordinator, newEnding());
 
-        assertThat(coordinator.hasEndingSelection())
-            .as("hasEndingSelection() after selecting an ending on the active line")
+        assertThat(coordinator.hasDecorationSelection())
+            .as("hasDecorationSelection() after selecting an ending on the active line")
             .isTrue();
     }
 }

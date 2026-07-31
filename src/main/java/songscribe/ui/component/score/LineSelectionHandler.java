@@ -29,9 +29,7 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.Hairpin;
 import songscribe.dom.StaffElement;
-import songscribe.layout.Ending;
 import songscribe.dom.ViewPx;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
@@ -47,6 +45,7 @@ import songscribe.ui.playback.PlayThread;
 import songscribe.ui.renderer.EndingRenderer;
 import songscribe.ui.renderer.HairpinRenderer;
 import songscribe.ui.renderer.SlideRenderer;
+import songscribe.ui.selection.SelectedDecoration;
 
 /**
  * Handles selection, hit-testing, and drag logic for a {@link LineComponent}.
@@ -329,18 +328,14 @@ class LineSelectionHandler {
                 pressHandled = true;
             }
 
-            case HitResult.Slide(var elementIndex) -> {
-                if (lineSelectionState != null) {
-                    prepareSelection();
-                    lineSelectionState.selectSlide(elementIndex);
-                    lc.getScoreView().selectionChanged();
-                    pressHandled = true;
-                }
-            }
+            case HitResult.Slide(var elementIndex) ->
+                pressHandled = selectDecoration(new SelectedDecoration.SlideSelection(elementIndex));
 
-            case HitResult.Hairpin(var hairpin) -> pressHandled = selectHairpin(hairpin);
+            case HitResult.Hairpin(var hairpin) ->
+                pressHandled = selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
 
-            case HitResult.Ending(var ending) -> pressHandled = selectEnding(ending);
+            case HitResult.Ending(var ending) ->
+                pressHandled = selectDecoration(new SelectedDecoration.EndingSelection(ending));
 
             case HitResult.GraceGlissando() -> {
                 OptionDialogs.showWarningMessage(
@@ -404,8 +399,9 @@ class LineSelectionHandler {
 
         var selected = switch (result) {
             case HitResult.Lyric(var element, var verse) -> selectLyric(element, verse);
-            case HitResult.Ending(var ending) -> selectEnding(ending);
-            case HitResult.Hairpin(var hairpin) -> selectHairpin(hairpin);
+            case HitResult.Ending(var ending) -> selectDecoration(new SelectedDecoration.EndingSelection(ending));
+            case HitResult.Hairpin(var hairpin) ->
+                selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
             default -> false;
         };
 
@@ -541,10 +537,10 @@ class LineSelectionHandler {
     }
 
     /**
-     * Makes {@code ending} the sole selection, returning false when this line has no
+     * Makes {@code decoration} the sole selection, returning false when this line has no
      * selection state to record it in.
      */
-    private boolean selectEnding(Ending ending) {
+    private boolean selectDecoration(SelectedDecoration decoration) {
         var lineSelectionState = lc.getLineSelectionState();
 
         if (lineSelectionState == null) {
@@ -552,24 +548,7 @@ class LineSelectionHandler {
         }
 
         prepareSelection();
-        lineSelectionState.selectEnding(ending);
-        lc.getScoreView().selectionChanged();
-        return true;
-    }
-
-    /**
-     * Makes {@code hairpin} the sole selection, returning false when this line has no
-     * selection state to record it in.
-     */
-    private boolean selectHairpin(Hairpin hairpin) {
-        var lineSelectionState = lc.getLineSelectionState();
-
-        if (lineSelectionState == null) {
-            return false;
-        }
-
-        prepareSelection();
-        lineSelectionState.selectHairpin(hairpin);
+        lineSelectionState.selectDecoration(decoration);
         lc.getScoreView().selectionChanged();
         return true;
     }

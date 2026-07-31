@@ -86,33 +86,13 @@ class DeleteActionTest extends MainFrameMockTest {
         assertThat(action.isEnabled()).isTrue();
     }
 
+    /**
+     * A glissando, an ending, and a hairpin all reach the action as one decoration
+     * selection, so one test covers the branch all three take.
+     */
     @Test
-    void testDeleteEnabledForGlissandoSelection() {
-        when(mockEnv().coordinator().hasSlideSelection()).thenReturn(true);
-
-        var action = DeleteAction.createAction(mainFrame());
-        action.setEnabled(false);
-
-        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
-
-        assertThat(action.isEnabled()).isTrue();
-    }
-
-    @Test
-    void testDeleteEnabledForEndingSelection() {
-        when(mockEnv().coordinator().hasEndingSelection()).thenReturn(true);
-
-        var action = DeleteAction.createAction(mainFrame());
-        action.setEnabled(false);
-
-        action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
-
-        assertThat(action.isEnabled()).isTrue();
-    }
-
-    @Test
-    void testDeleteEnabledForHairpinSelection() {
-        when(mockEnv().coordinator().hasHairpinSelection()).thenReturn(true);
+    void testDeleteEnabledForDecorationSelection() {
+        when(mockEnv().coordinator().hasDecorationSelection()).thenReturn(true);
 
         var action = DeleteAction.createAction(mainFrame());
         action.setEnabled(false);

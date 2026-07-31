@@ -40,7 +40,7 @@ import songscribe.message.notification.SongDidChangeNotification;
  * <p>
  * {@link LineSelectionState#revalidateDecorationSelection()} is tested on its own in
  * {@link LineSelectionStateTest}, but that cannot show whether the coordinator ever calls
- * it for a hairpin. Without the {@code hasHairpinSelection()} clause in the guard, an
+ * it for a hairpin. Without the {@code hasDecorationSelection()} clause in the guard, an
  * undo that removes the selected hairpin leaves the coordinator holding a dead
  * {@link songscribe.dom.Hairpin} with the toolbar frozen in its selected state.
  */
@@ -67,7 +67,7 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
         var line = state.getLine();
         var hairpin = new Crescendo(line.getElement(0), line.getElement(1));
         line.addRangeElement(hairpin);
-        state.selectHairpin(hairpin);
+        state.selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
 
         return new Fixture(coordinator, line, hairpin);
     }
@@ -75,7 +75,8 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
     @Test
     void testSongDidChangeClearsHairpinSelectionWhenTheHairpinIsGone() {
         var fixture = selectedHairpinOnActiveLine();
-        assertThat(fixture.coordinator().hasHairpinSelection()).isTrue();
+        assertThat(fixture.coordinator().getSelectedDecoration())
+            .isEqualTo(new SelectedDecoration.HairpinSelection(fixture.hairpin()));
 
         // An undo that removed the hairpin, reported on the selected line.
         fixture.line().removeRangeElement(fixture.hairpin());
@@ -85,9 +86,9 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
             fixture.line().getSong()
         ));
 
-        assertThat(fixture.coordinator().hasHairpinSelection())
+        assertThat(fixture.coordinator().getSelectedDecoration())
             .as("the dead hairpin selection was revalidated away")
-            .isFalse();
+            .isNull();
     }
 
     /**
@@ -111,8 +112,8 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
             fixture.line().getSong()
         ));
 
-        assertThat(fixture.coordinator().hasHairpinSelection())
+        assertThat(fixture.coordinator().getSelectedDecoration())
             .as("a live hairpin selection survives revalidation")
-            .isTrue();
+            .isEqualTo(new SelectedDecoration.HairpinSelection(fixture.hairpin()));
     }
 }

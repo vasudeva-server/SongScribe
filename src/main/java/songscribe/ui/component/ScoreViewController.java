@@ -87,6 +87,7 @@ import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
+import songscribe.ui.selection.SelectedDecoration;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.dom.EndingValidationResult;
 import songscribe.ui.selection.TupletToggleInfo;
@@ -567,6 +568,7 @@ public final class ScoreViewController {
         }
 
         var state = selectionCoordinator.getActiveSelection();
+        var decoration = state == null ? null : state.getSelectedDecoration();
 
         if (state != null && state.hasElementSelection()) {
             var line = state.getLine();
@@ -599,52 +601,8 @@ public final class ScoreViewController {
             selectionCoordinator.clearSelection();
 
             deleteElementRange(line, begin, end, deleteLabel, decision);
-        } else if (state != null && state.hasSlideSelection()) {
-            var line = state.getLine();
-            var elementIndex = state.getSelectedSlideElementIndex();
-            var slideElement = line.getElement(elementIndex);
-            var slide = slideElement.getSlide();
-
-            // hasSlideSelection() guarantees the element carries a slide; guard anyway
-            // so the @Nullable getSlide() result is not passed on unchecked.
-            if (slide != null) {
-                // Capture before the removal: stripping the glissando un-pairs the grace
-                // note, so by the time the sync runs there is no pairing left to read.
-                var wasPairedGraceNote = line.isPairedGraceNote(elementIndex);
-
-                line.withModification(OpNames.deleteSlideLabel(slide), () -> {
-                    line.modifyElement(elementIndex, ElementField.SLIDE, slideElement::removeSlide);
-
-                    // Un-pairing dissolves the automatic melisma. Both elements survive, so
-                    // the syllable simply stays on the now-ordinary former grace note.
-                    if (wasPairedGraceNote) {
-                        line.syncGraceHostMelisma(elementIndex);
-                    }
-                });
-            }
-        } else if (state != null && state.hasEndingSelection()) {
-            var line = state.getLine();
-            var ending = state.getSelectedEnding();
-
-            // hasEndingSelection() guarantees an ending is present; guard anyway
-            // so the @Nullable getSelectedEnding() result is not passed on unchecked.
-            if (ending != null) {
-                line.withModification(OpNames.deleteEndingLabel(), () -> line.removeRangeElement(ending));
-            }
-        } else if (state != null && state.hasHairpinSelection()) {
-            var line = state.getLine();
-            var hairpin = state.getSelectedHairpin();
-
-            // hasHairpinSelection() guarantees a hairpin is present; guard anyway
-            // so the @Nullable getSelectedHairpin() result is not passed on unchecked.
-            if (hairpin != null) {
-                line.withModification(OpNames.deleteHairpinLabel(hairpin), () -> {
-                    switch (hairpin) {
-                        case Crescendo crescendo -> line.removeCrescendo(crescendo);
-                        case Diminuendo diminuendo -> line.removeDiminuendo(diminuendo);
-                    }
-                });
-            }
+        } else if (state != null && decoration != null) {
+            deleteDecoration(state.getLine(), decoration);
         } else if (score.canDeleteLine()) {
             song.withModification(OpNames.deleteLineLabel(),
                 () -> song.removeLine(selectionCoordinator.getSelectedLine()));
@@ -655,6 +613,48 @@ public final class ScoreViewController {
         // current context, while the user's chosen duration button survives the delete.
         selectionCoordinator.restoreSelectedActionStates();
         score.deselect();
+    }
+
+    /**
+     * Deletes the selected decoration from {@code line}, each variant in its own
+     * modification bracket so the undo step is named after what was deleted.
+     */
+    private void deleteDecoration(Line line, SelectedDecoration decoration) {
+        switch (decoration) {
+            case SelectedDecoration.SlideSelection(var elementIndex) -> {
+                var slideElement = line.getElement(elementIndex);
+                var slide = slideElement.getSlide();
+
+                // A slide selection is only ever made on an element that carries a slide;
+                // guard anyway so the @Nullable getSlide() result is not passed on unchecked.
+                if (slide != null) {
+                    // Capture before the removal: stripping the glissando un-pairs the grace
+                    // note, so by the time the sync runs there is no pairing left to read.
+                    var wasPairedGraceNote = line.isPairedGraceNote(elementIndex);
+
+                    line.withModification(OpNames.deleteSlideLabel(slide), () -> {
+                        line.modifyElement(elementIndex, ElementField.SLIDE, slideElement::removeSlide);
+
+                        // Un-pairing dissolves the automatic melisma. Both elements survive, so
+                        // the syllable simply stays on the now-ordinary former grace note.
+                        if (wasPairedGraceNote) {
+                            line.syncGraceHostMelisma(elementIndex);
+                        }
+                    });
+                }
+            }
+
+            case SelectedDecoration.EndingSelection(var ending) ->
+                line.withModification(OpNames.deleteEndingLabel(), () -> line.removeRangeElement(ending));
+
+            case SelectedDecoration.HairpinSelection(var hairpin) ->
+                line.withModification(OpNames.deleteHairpinLabel(hairpin), () -> {
+                    switch (hairpin) {
+                        case Crescendo crescendo -> line.removeCrescendo(crescendo);
+                        case Diminuendo diminuendo -> line.removeDiminuendo(diminuendo);
+                    }
+                });
+        }
     }
 
     /**

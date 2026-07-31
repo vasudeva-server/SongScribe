@@ -23,7 +23,14 @@ package songscribe.ui.selection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Stream;
+
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
@@ -68,6 +75,20 @@ class LineSelectionStateTest extends UnitTest {
         return line;
     }
 
+    /**
+     * Every decoration kind, as a factory over a line holding at least two elements, so
+     * that a test covering all of them adds no branch of its own.
+     */
+    private static final List<Named<Function<Line, SelectedDecoration>>> DECORATION_KINDS = List.of(
+        Named.of("slide", _ -> new SelectedDecoration.SlideSelection(0)),
+        Named.of("ending", line -> new SelectedDecoration.EndingSelection(makeEnding(line))),
+        Named.of("hairpin", line -> new SelectedDecoration.HairpinSelection(makeHairpin(line)))
+    );
+
+    private static Stream<Named<Function<Line, SelectedDecoration>>> decorationKinds() {
+        return DECORATION_KINDS.stream();
+    }
+
     // -- clearSelection --
 
     @Test
@@ -79,7 +100,7 @@ class LineSelectionStateTest extends UnitTest {
         state.setSelectionFromClick(0);
         state.extendSelectionTo(1);
         state.setLineSelected(true);
-        state.selectSlide(0);
+        state.selectDecoration(new SelectedDecoration.SlideSelection(0));
 
         var callbackCount = new int[]{0};
         state.setSelectionChangeCallback(() -> callbackCount[0]++);
@@ -90,19 +111,18 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.getSelectionEnd()).isEqualTo(-1);
         assertThat(state.getSelectionAnchor()).isEqualTo(-1);
         assertThat(state.isLineSelected()).isFalse();
-        assertThat(state.hasSlideSelection()).isFalse();
+        assertThat(state.getSelectedDecoration()).isNull();
         assertThat(callbackCount[0]).isEqualTo(1);
     }
 
     // -- setLineSelected --
 
     @Test
-    void testSetLineSelectedTrueClearsSlideIndexAndFiresCallback() {
+    void testSetLineSelectedTrueClearsTheDecorationAndFiresCallback() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         var state = new LineSelectionState(line);
-        state.selectSlide(0);
-        assertThat(state.hasSlideSelection()).isTrue();
+        state.selectDecoration(new SelectedDecoration.SlideSelection(0));
 
         var callbackCount = new int[]{0};
         state.setSelectionChangeCallback(() -> callbackCount[0]++);
@@ -110,7 +130,7 @@ class LineSelectionStateTest extends UnitTest {
         state.setLineSelected(true);
 
         assertThat(state.isLineSelected()).isTrue();
-        assertThat(state.hasSlideSelection()).isFalse();
+        assertThat(state.getSelectedDecoration()).isNull();
         assertThat(callbackCount[0]).isEqualTo(1);
     }
 
@@ -129,13 +149,20 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(callbackCount[0]).isEqualTo(1);
     }
 
-    // -- selectSlide --
+    // -- selectDecoration --
 
-    @Test
-    void testSelectSlideClearsSelectionAndSetsIndexAndFiresCallback() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+    /**
+     * Each decoration kind, selected over a live element and line selection. The three
+     * take the same path through {@link LineSelectionState#selectDecoration}, so what is
+     * checked per kind is that the decoration itself is what comes back out.
+     */
+    @ParameterizedTest
+    @MethodSource("decorationKinds")
+    void testSelectDecorationClearsElementAndLineSelectionAndFiresCallback(
+        Function<Line, SelectedDecoration> makeDecoration
+    ) {
+        var line = twoNoteLine();
+        var decoration = makeDecoration.apply(line);
         var state = new LineSelectionState(line);
         state.setSelectionFromClick(0);
         state.extendSelectionTo(1);
@@ -144,117 +171,192 @@ class LineSelectionStateTest extends UnitTest {
         var callbackCount = new int[]{0};
         state.setSelectionChangeCallback(() -> callbackCount[0]++);
 
-        state.selectSlide(1);
+        state.selectDecoration(decoration);
 
         assertThat(state.getSelectionBegin()).isEqualTo(-1);
         assertThat(state.getSelectionEnd()).isEqualTo(-1);
         assertThat(state.getSelectionAnchor()).isEqualTo(-1);
+        assertThat(state.hasElementSelection()).isFalse();
         assertThat(state.isLineSelected()).isFalse();
-        assertThat(state.isSlideSelected(1)).isTrue();
+        assertThat(state.getSelectedDecoration()).isEqualTo(decoration);
+        assertThat(state.hasDecorationSelection()).isTrue();
         assertThat(callbackCount[0]).isEqualTo(1);
+    }
+
+    /**
+     * One field holds the selected decoration, so selecting one replaces whatever was
+     * there. Walking every ordered pair of kinds from {@link #DECORATION_KINDS} keeps
+     * this exhaustive as decoration kinds are added: a new entry in that list extends
+     * the coverage here without touching this test.
+     */
+    @Test
+    void testSelectDecorationReplacesAnyPreviouslySelectedKind() {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+
+        for (var first : DECORATION_KINDS) {
+            for (var second : DECORATION_KINDS) {
+                state.selectDecoration(first.getPayload().apply(line));
+
+                var replacement = second.getPayload().apply(line);
+                state.selectDecoration(replacement);
+
+                assertThat(state.getSelectedDecoration())
+                    .as("selecting a %s over a %s leaves only the %s selected",
+                        second.getName(), first.getName(), second.getName())
+                    .isEqualTo(replacement);
+            }
+        }
+    }
+
+    // -- getSelectedDecoration --
+
+    @Test
+    void testGetSelectedDecorationReturnsNullUntilADecorationIsSelected() {
+        var line = twoNoteLine();
+        var ending = makeEnding(line);
+        var state = new LineSelectionState(line);
+
+        assertThat(state.getSelectedDecoration()).isNull();
+        assertThat(state.hasDecorationSelection()).isFalse();
+
+        state.selectDecoration(new SelectedDecoration.EndingSelection(ending));
+
+        assertThat(state.getSelectedDecoration())
+            .isEqualTo(new SelectedDecoration.EndingSelection(ending));
+        assertThat(state.hasDecorationSelection()).isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("decorationKinds")
+    void testSetSelectionFromClickClearsTheDecoration(Function<Line, SelectedDecoration> makeDecoration) {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+        state.selectDecoration(makeDecoration.apply(line));
+
+        state.setSelectionFromClick(1);
+
+        assertThat(state.getSelectedDecoration()).isNull();
+        assertThat(state.isElementSelected(1)).isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("decorationKinds")
+    void testSetLineSelectedTrueClearsTheDecoration(Function<Line, SelectedDecoration> makeDecoration) {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+        state.selectDecoration(makeDecoration.apply(line));
+
+        state.setLineSelected(true);
+
+        assertThat(state.getSelectedDecoration()).isNull();
+        assertThat(state.isLineSelected()).isTrue();
+    }
+
+    @ParameterizedTest
+    @MethodSource("decorationKinds")
+    void testClearSelectionClearsTheDecoration(Function<Line, SelectedDecoration> makeDecoration) {
+        var line = twoNoteLine();
+        var state = new LineSelectionState(line);
+        state.selectDecoration(makeDecoration.apply(line));
+
+        state.clearSelection();
+
+        assertThat(state.getSelectedDecoration()).isNull();
     }
 
     // -- isSlideSelected --
 
     @Test
     void testIsSlideSelectedReturnsTrueOnlyForMatchingIndex() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        var line = twoNoteLine();
         var state = new LineSelectionState(line);
-        state.selectSlide(1);
+        state.selectDecoration(new SelectedDecoration.SlideSelection(1));
 
         assertThat(state.isSlideSelected(1)).isTrue();
         assertThat(state.isSlideSelected(0)).isFalse();
     }
 
-    // -- getSelectedSlideElementIndex --
-
+    /**
+     * A selected ending covers element 0, but nothing there owns a selected slide.
+     */
     @Test
-    void testGetSelectedSlideElementIndexReturnsMinusOneInitiallyAndIndexAfterSelectSlide() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+    void testIsSlideSelectedReturnsFalseWhileAnEndingIsSelected() {
+        var line = twoNoteLine();
         var state = new LineSelectionState(line);
+        state.selectDecoration(new SelectedDecoration.EndingSelection(makeEnding(line)));
 
-        assertThat(state.getSelectedSlideElementIndex()).isEqualTo(-1);
-
-        state.selectSlide(1);
-
-        assertThat(state.getSelectedSlideElementIndex()).isEqualTo(1);
+        assertThat(state.isSlideSelected(0)).isFalse();
     }
 
-    // -- hasSlideSelection --
+    // -- isDecorationSelected --
 
     @Test
-    void testHasSlideSelectionReturnsFalseInitiallyAndTrueAfterSelectSlide() {
+    void testIsEndingSelectedReturnsTrueOnlyForMatchingEnding() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var firstEnding = makeEnding(line);
+        var secondEnding = new Ending(line.getElement(2), line.getElement(3));
         var state = new LineSelectionState(line);
+        state.selectDecoration(new SelectedDecoration.EndingSelection(firstEnding));
 
-        assertThat(state.hasSlideSelection()).isFalse();
-
-        state.selectSlide(0);
-
-        assertThat(state.hasSlideSelection()).isTrue();
+        assertThat(state.isDecorationSelected(firstEnding)).isTrue();
+        assertThat(state.isDecorationSelected(secondEnding)).isFalse();
     }
 
-    // -- selectEnding --
-
+    /**
+     * The parameter is any line element, not just an ending, so a note can be passed in.
+     * Even with the decoration slot occupied by an ending, a note must never be reported as
+     * the selected decoration — notes are selected separately, by index. Pinning this down
+     * now means the next decoration type added to this check cannot quietly start answering
+     * for notes too.
+     */
     @Test
-    void testSelectEndingClearsSelectionAndSetsEndingAndFiresCallback() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+    void testIsDecorationSelectedReturnsFalseForANoteWhileAnEndingIsSelected() {
+        var line = twoNoteLine();
         var ending = makeEnding(line);
         var state = new LineSelectionState(line);
-        state.setSelectionFromClick(0);
-        state.extendSelectionTo(1);
-        state.setLineSelected(true);
+        state.selectDecoration(new SelectedDecoration.EndingSelection(ending));
 
-        var callbackCount = new int[]{0};
-        state.setSelectionChangeCallback(() -> callbackCount[0]++);
-
-        state.selectEnding(ending);
-
-        assertThat(state.getSelectionBegin()).isEqualTo(-1);
-        assertThat(state.getSelectionEnd()).isEqualTo(-1);
-        assertThat(state.getSelectionAnchor()).isEqualTo(-1);
-        assertThat(state.isLineSelected()).isFalse();
-        assertThat(state.isDecorationSelected(ending)).isTrue();
-        assertThat(callbackCount[0]).isEqualTo(1);
+        assertThat(state.isDecorationSelected(ending))
+            .as("the ending occupies the decoration slot")
+            .isTrue();
+        assertThat(state.isDecorationSelected(line.getElement(0)))
+            .as("a note is not a selected decoration")
+            .isFalse();
     }
 
+    /**
+     * The parameter is any line element, so a note can be passed in. With a hairpin in
+     * the decoration slot, a note must still never be reported as the selected decoration.
+     */
     @Test
-    void testSelectEndingClearsSlideSelection() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        var ending = makeEnding(line);
+    void testIsDecorationSelectedDistinguishesHairpinsFromNotesAndOtherHairpins() {
+        var line = twoNoteLine();
+        var selectedHairpin = makeHairpin(line);
+        var otherHairpin = makeHairpin(line);
         var state = new LineSelectionState(line);
-        state.selectSlide(0);
-        assertThat(state.hasSlideSelection()).isTrue();
+        state.selectDecoration(new SelectedDecoration.HairpinSelection(selectedHairpin));
 
-        state.selectEnding(ending);
-
-        assertThat(state.hasSlideSelection()).isFalse();
-        assertThat(state.isDecorationSelected(ending)).isTrue();
+        assertThat(state.isDecorationSelected(selectedHairpin)).isTrue();
+        assertThat(state.isDecorationSelected(otherHairpin)).isFalse();
+        assertThat(state.isDecorationSelected(line.getElement(0))).isFalse();
     }
 
+    /**
+     * A slide belongs to an element rather than being one, so the element carrying the
+     * selected slide is not itself a selected decoration.
+     */
     @Test
-    void testSelectSlideClearsEndingSelection() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        var ending = makeEnding(line);
+    void testIsDecorationSelectedReturnsFalseWhileASlideIsSelected() {
+        var line = twoNoteLine();
         var state = new LineSelectionState(line);
-        state.selectEnding(ending);
-        assertThat(state.hasEndingSelection()).isTrue();
+        state.selectDecoration(new SelectedDecoration.SlideSelection(0));
 
-        state.selectSlide(0);
-
-        assertThat(state.hasEndingSelection()).isFalse();
-        assertThat(state.isSlideSelected(0)).isTrue();
+        assertThat(state.isDecorationSelected(line.getElement(0))).isFalse();
     }
 
     // -- revalidateDecorationSelection --
@@ -276,10 +378,11 @@ class LineSelectionStateTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.getElement(0).setGlissando();
         var state = new LineSelectionState(line);
-        state.selectSlide(0);
+        state.selectDecoration(new SelectedDecoration.SlideSelection(0));
 
         assertThat(state.revalidateDecorationSelection()).isFalse();
-        assertThat(state.hasSlideSelection()).isTrue();
+        assertThat(state.getSelectedDecoration())
+            .isEqualTo(new SelectedDecoration.SlideSelection(0));
     }
 
     @Test
@@ -288,13 +391,13 @@ class LineSelectionStateTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.getElement(0).setGlissando();
         var state = new LineSelectionState(line);
-        state.selectSlide(0);
+        state.selectDecoration(new SelectedDecoration.SlideSelection(0));
 
         // Simulates an undo/redo that removed the slide without clearing the selection.
         line.getElement(0).removeSlide();
 
         assertThat(state.revalidateDecorationSelection()).isTrue();
-        assertThat(state.hasSlideSelection()).isFalse();
+        assertThat(state.getSelectedDecoration()).isNull();
     }
 
     @Test
@@ -303,298 +406,42 @@ class LineSelectionStateTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.getElement(0).setGlissando();
         var state = new LineSelectionState(line);
-        state.selectSlide(0);
+        state.selectDecoration(new SelectedDecoration.SlideSelection(0));
 
         // Simulates an undo/redo that shrank the line so the slide's index is stale.
         line.removeElement(0);
 
         assertThat(state.revalidateDecorationSelection()).isTrue();
-        assertThat(state.hasSlideSelection()).isFalse();
+        assertThat(state.getSelectedDecoration()).isNull();
     }
 
     @Test
     void testRevalidateDecorationSelectionKeepsEndingWhenStillOnLine() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        var line = twoNoteLine();
         var ending = makeEnding(line);
         line.addRangeElement(ending);
         var state = new LineSelectionState(line);
-        state.selectEnding(ending);
+        state.selectDecoration(new SelectedDecoration.EndingSelection(ending));
 
         assertThat(state.revalidateDecorationSelection()).isFalse();
-        assertThat(state.hasEndingSelection()).isTrue();
+        assertThat(state.getSelectedDecoration())
+            .isEqualTo(new SelectedDecoration.EndingSelection(ending));
     }
 
     @Test
     void testRevalidateDecorationSelectionClearsEndingWhenNoLongerOnLine() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        var line = twoNoteLine();
         var ending = makeEnding(line);
         line.addRangeElement(ending);
         var state = new LineSelectionState(line);
-        state.selectEnding(ending);
+        state.selectDecoration(new SelectedDecoration.EndingSelection(ending));
 
         // Simulates an undo/redo that removed the ending without clearing the selection.
         line.removeRangeElement(ending);
 
         assertThat(state.revalidateDecorationSelection()).isTrue();
-        assertThat(state.hasEndingSelection()).isFalse();
+        assertThat(state.getSelectedDecoration()).isNull();
     }
-
-    // -- isDecorationSelected --
-
-    @Test
-    void testIsEndingSelectedReturnsTrueOnlyForMatchingEnding() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        var firstEnding = makeEnding(line);
-        var secondEnding = new Ending(line.getElement(2), line.getElement(3));
-        var state = new LineSelectionState(line);
-        state.selectEnding(firstEnding);
-
-        assertThat(state.isDecorationSelected(firstEnding)).isTrue();
-        assertThat(state.isDecorationSelected(secondEnding)).isFalse();
-    }
-
-    /**
-     * The parameter is any line element, not just an ending, so a note can be passed in.
-     * Even with the decoration slot occupied by an ending, a note must never be reported as
-     * the selected decoration — notes are selected separately, by index. Pinning this down
-     * now means the next decoration type added to this check cannot quietly start answering
-     * for notes too.
-     */
-    @Test
-    void testIsDecorationSelectedReturnsFalseForANoteWhileAnEndingIsSelected() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        var ending = makeEnding(line);
-        var state = new LineSelectionState(line);
-        state.selectEnding(ending);
-
-        assertThat(state.isDecorationSelected(ending))
-            .as("the ending occupies the decoration slot")
-            .isTrue();
-        assertThat(state.isDecorationSelected(line.getElement(0)))
-            .as("a note is not a selected decoration")
-            .isFalse();
-    }
-
-    // -- getSelectedEnding --
-
-    @Test
-    void testGetSelectedEndingReturnsNullInitiallyAndEndingAfterSelectEnding() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        var ending = makeEnding(line);
-        var state = new LineSelectionState(line);
-
-        assertThat(state.getSelectedEnding()).isNull();
-
-        state.selectEnding(ending);
-
-        assertThat(state.getSelectedEnding()).isSameAs(ending);
-    }
-
-    // -- hasEndingSelection --
-
-    @Test
-    void testHasEndingSelectionReturnsFalseInitiallyAndTrueAfterSelectEnding() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        var ending = makeEnding(line);
-        var state = new LineSelectionState(line);
-
-        assertThat(state.hasEndingSelection()).isFalse();
-
-        state.selectEnding(ending);
-
-        assertThat(state.hasEndingSelection()).isTrue();
-    }
-
-    @Test
-    void testSetSelectionFromClickClearsEndingSelection() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        var ending = makeEnding(line);
-        var state = new LineSelectionState(line);
-        state.selectEnding(ending);
-        assertThat(state.hasEndingSelection()).isTrue();
-
-        state.setSelectionFromClick(1);
-
-        assertThat(state.hasEndingSelection()).isFalse();
-    }
-
-    @Test
-    void testSetLineSelectedTrueClearsEndingSelection() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        var ending = makeEnding(line);
-        var state = new LineSelectionState(line);
-        state.selectEnding(ending);
-        assertThat(state.hasEndingSelection()).isTrue();
-
-        state.setLineSelected(true);
-
-        assertThat(state.hasEndingSelection()).isFalse();
-    }
-
-    // -- selectHairpin --
-    //
-    // A hairpin is mutually exclusive with every other kind of selection, and the
-    // exclusion has to hold in both directions. If only one direction were enforced,
-    // a note and a hairpin could end up selected simultaneously and Delete would
-    // remove both, so each pairing below is asserted from both sides.
-
-    @Test
-    void testSelectHairpinClearsElementAndLineSelectionAndFiresCallback() {
-        var line = twoNoteLine();
-        var hairpin = makeHairpin(line);
-        var state = new LineSelectionState(line);
-        state.setSelectionFromClick(0);
-        state.extendSelectionTo(1);
-        state.setLineSelected(true);
-
-        var callbackCount = new int[]{0};
-        state.setSelectionChangeCallback(() -> callbackCount[0]++);
-
-        state.selectHairpin(hairpin);
-
-        assertThat(state.getSelectionBegin()).isEqualTo(-1);
-        assertThat(state.getSelectionEnd()).isEqualTo(-1);
-        assertThat(state.getSelectionAnchor()).isEqualTo(-1);
-        assertThat(state.hasElementSelection()).isFalse();
-        assertThat(state.isLineSelected()).isFalse();
-        assertThat(state.hasHairpinSelection()).isTrue();
-        assertThat(state.getSelectedHairpin()).isSameAs(hairpin);
-        assertThat(state.isDecorationSelected(hairpin)).isTrue();
-        assertThat(callbackCount[0]).isEqualTo(1);
-    }
-
-    @Test
-    void testSetSelectionFromClickClearsHairpinSelection() {
-        var line = twoNoteLine();
-        var state = new LineSelectionState(line);
-        state.selectHairpin(makeHairpin(line));
-        assertThat(state.hasHairpinSelection()).isTrue();
-
-        state.setSelectionFromClick(1);
-
-        assertThat(state.hasHairpinSelection()).isFalse();
-        assertThat(state.getSelectedHairpin()).isNull();
-        assertThat(state.isElementSelected(1)).isTrue();
-    }
-
-    @Test
-    void testSetLineSelectedTrueClearsHairpinSelection() {
-        var line = twoNoteLine();
-        var state = new LineSelectionState(line);
-        state.selectHairpin(makeHairpin(line));
-        assertThat(state.hasHairpinSelection()).isTrue();
-
-        state.setLineSelected(true);
-
-        assertThat(state.hasHairpinSelection()).isFalse();
-        assertThat(state.isLineSelected()).isTrue();
-    }
-
-    @Test
-    void testSelectHairpinClearsSlideSelection() {
-        var line = twoNoteLine();
-        var hairpin = makeHairpin(line);
-        var state = new LineSelectionState(line);
-        state.selectSlide(0);
-        assertThat(state.hasSlideSelection()).isTrue();
-
-        state.selectHairpin(hairpin);
-
-        assertThat(state.hasSlideSelection()).isFalse();
-        assertThat(state.getSelectedHairpin()).isSameAs(hairpin);
-    }
-
-    @Test
-    void testSelectSlideClearsHairpinSelection() {
-        var line = twoNoteLine();
-        var state = new LineSelectionState(line);
-        state.selectHairpin(makeHairpin(line));
-        assertThat(state.hasHairpinSelection()).isTrue();
-
-        state.selectSlide(0);
-
-        assertThat(state.hasHairpinSelection()).isFalse();
-        assertThat(state.isSlideSelected(0)).isTrue();
-    }
-
-    @Test
-    void testSelectHairpinClearsEndingSelection() {
-        var line = twoNoteLine();
-        var hairpin = makeHairpin(line);
-        var state = new LineSelectionState(line);
-        state.selectEnding(makeEnding(line));
-        assertThat(state.hasEndingSelection()).isTrue();
-
-        state.selectHairpin(hairpin);
-
-        assertThat(state.hasEndingSelection()).isFalse();
-        assertThat(state.getSelectedEnding()).isNull();
-        assertThat(state.getSelectedHairpin()).isSameAs(hairpin);
-    }
-
-    @Test
-    void testSelectEndingClearsHairpinSelection() {
-        var line = twoNoteLine();
-        var ending = makeEnding(line);
-        var state = new LineSelectionState(line);
-        state.selectHairpin(makeHairpin(line));
-        assertThat(state.hasHairpinSelection()).isTrue();
-
-        state.selectEnding(ending);
-
-        assertThat(state.hasHairpinSelection()).isFalse();
-        assertThat(state.getSelectedHairpin()).isNull();
-        assertThat(state.getSelectedEnding()).isSameAs(ending);
-    }
-
-    @Test
-    void testClearSelectionClearsHairpinSelection() {
-        var line = twoNoteLine();
-        var state = new LineSelectionState(line);
-        state.selectHairpin(makeHairpin(line));
-
-        state.clearSelection();
-
-        assertThat(state.hasHairpinSelection()).isFalse();
-        assertThat(state.getSelectedHairpin()).isNull();
-    }
-
-    /**
-     * The parameter is any line element, so a note can be passed in. With a hairpin in
-     * the decoration slot, a note must still never be reported as the selected decoration.
-     */
-    @Test
-    void testIsDecorationSelectedDistinguishesHairpinsFromNotesAndOtherHairpins() {
-        var line = twoNoteLine();
-        var selectedHairpin = makeHairpin(line);
-        var otherHairpin = makeHairpin(line);
-        var state = new LineSelectionState(line);
-        state.selectHairpin(selectedHairpin);
-
-        assertThat(state.isDecorationSelected(selectedHairpin)).isTrue();
-        assertThat(state.isDecorationSelected(otherHairpin)).isFalse();
-        assertThat(state.isDecorationSelected(line.getElement(0))).isFalse();
-    }
-
-    // -- revalidateDecorationSelection with a hairpin --
 
     @Test
     void testRevalidateDecorationSelectionKeepsHairpinWhenStillOnLine() {
@@ -602,10 +449,11 @@ class LineSelectionStateTest extends UnitTest {
         var hairpin = makeHairpin(line);
         line.addRangeElement(hairpin);
         var state = new LineSelectionState(line);
-        state.selectHairpin(hairpin);
+        state.selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
 
         assertThat(state.revalidateDecorationSelection()).isFalse();
-        assertThat(state.hasHairpinSelection()).isTrue();
+        assertThat(state.getSelectedDecoration())
+            .isEqualTo(new SelectedDecoration.HairpinSelection(hairpin));
     }
 
     @Test
@@ -614,14 +462,13 @@ class LineSelectionStateTest extends UnitTest {
         var hairpin = makeHairpin(line);
         line.addRangeElement(hairpin);
         var state = new LineSelectionState(line);
-        state.selectHairpin(hairpin);
+        state.selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
 
         // Simulates an undo/redo that removed the hairpin without clearing the selection.
         line.removeRangeElement(hairpin);
 
         assertThat(state.revalidateDecorationSelection()).isTrue();
-        assertThat(state.hasHairpinSelection()).isFalse();
-        assertThat(state.getSelectedHairpin()).isNull();
+        assertThat(state.getSelectedDecoration()).isNull();
     }
 
     // -- revalidateElementSelection --
@@ -1219,8 +1066,7 @@ class LineSelectionStateTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         var state = new LineSelectionState(line);
-        state.selectSlide(0);
-        assertThat(state.hasSlideSelection()).isTrue();
+        state.selectDecoration(new SelectedDecoration.SlideSelection(0));
 
         var callbackCount = new int[]{0};
         state.setSelectionChangeCallback(() -> callbackCount[0]++);
@@ -1230,7 +1076,7 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(state.getSelectionBegin()).isEqualTo(1);
         assertThat(state.getSelectionEnd()).isEqualTo(1);
         assertThat(state.getSelectionAnchor()).isEqualTo(1);
-        assertThat(state.hasSlideSelection()).isFalse();
+        assertThat(state.getSelectedDecoration()).isNull();
         assertThat(callbackCount[0]).isEqualTo(1);
     }
 
@@ -1402,7 +1248,7 @@ class LineSelectionStateTest extends UnitTest {
         state.setLineSelected(true);
         assertThat(callbackCount[0]).isEqualTo(4);
 
-        state.selectSlide(0);
+        state.selectDecoration(new SelectedDecoration.SlideSelection(0));
         assertThat(callbackCount[0]).isEqualTo(5);
 
         state.resetElementSelection();
