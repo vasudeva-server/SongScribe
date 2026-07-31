@@ -21,11 +21,13 @@
 package songscribe.layout;
 
 import java.util.List;
+import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Lyric;
+import songscribe.dom.RangeElement;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.Staff;
 
@@ -642,4 +644,44 @@ public final class ElementColumn {
 
         return sb.toString();
     }
+
+    // ==========================================================================
+    // Span Resolution
+    // ==========================================================================
+
+    /**
+     * Resolves a {@link RangeElement} span's anchor and end elements to their columns, or {@code null}
+     * when either endpoint is unset ({@link RangeElement#getAnchorElement} /
+     * {@link RangeElement#getEndElement}) or either has no column in {@code columnsByElement}.
+     *
+     * @param span              the range element to resolve
+     * @param columnsByElement  element-to-column lookup for the line being laid out
+     * @return the resolved endpoints and their columns, or {@code null} if the span cannot be placed
+     */
+    @Nullable
+    public static SpanColumns resolveSpan(
+        RangeElement span, Map<StaffElement, ElementColumn> columnsByElement) {
+        var anchor = span.getAnchorElement();
+        var end = span.getEndElement();
+
+        if (anchor == null || end == null) {
+            return null;
+        }
+
+        var anchorColumn = columnsByElement.get(anchor);
+        var endColumn = columnsByElement.get(end);
+
+        if (anchorColumn == null || endColumn == null) {
+            return null;
+        }
+
+        return new SpanColumns(anchor, end, anchorColumn, endColumn);
+    }
+
+    /**
+     * A {@link RangeElement} span's anchor and end elements together with their resolved columns.
+     * Returned by {@link #resolveSpan}.
+     */
+    public record SpanColumns(
+        StaffElement anchor, StaffElement end, ElementColumn anchorColumn, ElementColumn endColumn) {}
 }

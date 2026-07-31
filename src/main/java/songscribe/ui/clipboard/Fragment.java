@@ -212,7 +212,7 @@ public record Fragment(
      * with an endpoint outside the captured run cannot be re-anchored and is dropped.
      */
     private static List<RangeElement> cloneSpans(
-        List<RangeElement> source, Map<StaffElement, StaffElement> originalToClone) {
+        List<? extends RangeElement> source, Map<StaffElement, ? extends StaffElement> originalToClone) {
         var clonedSpans = new ArrayList<RangeElement>();
 
         for (var span : source) {

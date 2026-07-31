@@ -145,19 +145,16 @@ public class StructuralStacker {
         LayoutResult.Builder builder) {
 
         for (var tuplet : line.findRangeElements(Tuplet.class)) {
-            var anchor = tuplet.getAnchorElement();
-            var endNote = tuplet.getEndElement();
+            var spanColumns = ElementColumn.resolveSpan(tuplet, columnsByElement);
 
-            if (anchor == null || endNote == null) {
+            if (spanColumns == null) {
                 continue;
             }
 
-            var anchorColumn = columnsByElement.get(anchor);
-            var endColumn = columnsByElement.get(endNote);
-
-            if (anchorColumn == null || endColumn == null) {
-                continue;
-            }
+            var anchor = spanColumns.anchor();
+            var endNote = spanColumns.end();
+            var anchorColumn = spanColumns.anchorColumn();
+            var endColumn = spanColumns.endColumn();
 
             var numberOnly = tuplet.isNumberOnly(line);
             var heightSs = numberOnly ? Tuplet.numberOnlyHeightSs() : Tuplet.bracketedHeightSs();
@@ -633,19 +630,15 @@ public class StructuralStacker {
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 
-        var anchor = element.getAnchorElement();
-        var endNote = element.getEndElement();
+        var spanColumns = ElementColumn.resolveSpan(element, columnsByElement);
 
-        if (anchor == null || endNote == null) {
+        if (spanColumns == null) {
             return;
         }
 
-        var anchorColumn = columnsByElement.get(anchor);
-        var endColumn = columnsByElement.get(endNote);
-
-        if (anchorColumn == null || endColumn == null) {
-            return;
-        }
+        var anchor = spanColumns.anchor();
+        var anchorColumn = spanColumns.anchorColumn();
+        var endColumn = spanColumns.endColumn();
 
         var staffPosition = anchor.getStaffPosition();
         var anchorXSs = anchorColumn.getXSs();

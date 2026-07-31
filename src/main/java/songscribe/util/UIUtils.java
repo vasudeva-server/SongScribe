@@ -156,6 +156,21 @@ public final class UIUtils {
         button.setName(action.getActionCommand());
     }
 
+    /**
+     * Reacts to a {@link PropertyChangeEvent} fired by a {@link UIAction} on a button that was
+     * configured via {@link #configureButtonFromAction}, keeping the button's icon, tooltip, and
+     * enabled state in sync with the action.
+     */
+    public static void handleActionPropertyChange(AbstractButton button, UIAction action, PropertyChangeEvent event) {
+        var prop = event.getPropertyName();
+
+        if (prop.equals(UIAction.FONT_ICON_KEY) || prop.equals(UIAction.FONT_KEY)) {
+            configureButtonFromAction(button, action);
+        } else if (prop.equals(Action.SHORT_DESCRIPTION)) {
+            setToolTipText(button, action);
+        }
+    }
+
     private static void setIcon(AbstractButton button, @Nullable UIAction action) {
         if (action == null) {
             button.setIcon(null);

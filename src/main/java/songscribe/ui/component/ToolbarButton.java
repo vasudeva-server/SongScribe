@@ -45,16 +45,6 @@ public class ToolbarButton extends JButton implements PropertyChangeListener {
 
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        var prop = evt.getPropertyName();
-        var action = (UIAction) getAction();
-
-        if (
-            prop.equals(UIAction.FONT_ICON_KEY) ||
-            prop.equals(UIAction.FONT_KEY)
-        ) {
-            UIUtils.configureButtonFromAction(this, action);
-        } else if (prop.equals(Action.SHORT_DESCRIPTION)) {
-            UIUtils.setToolTipText(this, action);
-        }
+        UIUtils.handleActionPropertyChange(this, (UIAction) getAction(), evt);
     }
 }

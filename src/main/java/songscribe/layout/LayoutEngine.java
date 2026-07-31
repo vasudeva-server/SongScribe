@@ -551,7 +551,6 @@ public class LayoutEngine {
      * Calculates beam geometry for all beamed note groups in the line.
      * Populates {@code builder} with a {@link LayoutResult.BeamLayout} for each beam span.
      */
-    @SuppressWarnings("StatementWithEmptyBody")
     private void calculateBeams(
         Line line,
         List<ElementColumn> columns,
@@ -836,19 +835,16 @@ public class LayoutEngine {
         }
 
         for (var span : ties) {
-            var startElement = span.getAnchorElement();
-            var endElement = span.getEndElement();
+            var spanColumns = ElementColumn.resolveSpan(span, elementToColumn);
 
-            if (startElement == null || endElement == null) {
+            if (spanColumns == null) {
                 continue;
             }
 
-            var startColumn = elementToColumn.get(startElement);
-            var endColumn = elementToColumn.get(endElement);
-
-            if (startColumn == null || endColumn == null) {
-                continue;
-            }
+            var startElement = spanColumns.anchor();
+            var endElement = spanColumns.end();
+            var startColumn = spanColumns.anchorColumn();
+            var endColumn = spanColumns.endColumn();
 
             // Tie arc sign from Tie.arcSign() (LilyPond's both-stem fallthrough tree, shared with
             // the skyline seeder and MusicXML export). Y increases downward, so +1 → arc bulges

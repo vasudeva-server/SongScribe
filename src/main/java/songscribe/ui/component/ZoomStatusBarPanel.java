@@ -141,14 +141,7 @@ public final class ZoomStatusBarPanel extends JPanel {
 
         @Override
         public void propertyChange(PropertyChangeEvent event) {
-            var prop = event.getPropertyName();
-            var action = (UIAction) getAction();
-
-            if (prop.equals(UIAction.FONT_ICON_KEY) || prop.equals(UIAction.FONT_KEY)) {
-                UIUtils.configureButtonFromAction(this, action);
-            } else if (prop.equals(Action.SHORT_DESCRIPTION)) {
-                UIUtils.setToolTipText(this, action);
-            }
+            UIUtils.handleActionPropertyChange(this, (UIAction) getAction(), event);
         }
     }
 }
