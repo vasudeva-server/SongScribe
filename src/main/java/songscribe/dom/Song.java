@@ -291,12 +291,13 @@ public final class Song {
     @Nullable
     private String capturedOpName;
 
-    // Wire the pane to this Song instance — runs before every constructor body.
-    {
+    // Wire the pane to this Song instance — called at the start of every constructor.
+    private void init() {
         attributionPane.setSong(this);
     }
 
     public Song() {
+        init();
         defaultKeyAccidentalCount = DEFAULT_KEY_ACCIDENTAL_COUNT;
 
         // Suspend mutation tracking so that setup changes don't post a spurious
@@ -318,6 +319,7 @@ public final class Song {
      * Avoids the wasted work of the no-arg constructor (default line initialization).
      */
     public Song(SongData data) {
+        init();
         loadFrom(data);
         MessageCenter.subscribe(this);
     }
@@ -335,6 +337,7 @@ public final class Song {
     private enum Stub { INSTANCE }
 
     private Song(Stub ignored) {
+        init();
         MessageCenter.subscribe(this);
     }
 
