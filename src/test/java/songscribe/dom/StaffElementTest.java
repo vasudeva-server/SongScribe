@@ -157,6 +157,7 @@ class StaffElementTest extends UnitTest {
     @Test
     void testGetPitchAccidentalTableAtC5() {
         // Verify each accidental ordinal maps to the correct MIDI adjustment at C5
+        //noinspection LimitedScopeInnerClass
         record Case(StaffElement.Accidental accidental, int expectedPitch) {}
         var cases = new Case[]{
             new Case(StaffElement.Accidental.NATURAL, MIDI_C5),           // +0
@@ -185,6 +186,7 @@ class StaffElementTest extends UnitTest {
     void testGetPitchIndexCoversStaffPositionsAroundOctaveBoundary() {
         // Non-positive staff positions: pitchIndex = (-sp) % 7
         // sp=0 → 0 (B), sp=-1 → 1 (C), ..., sp=-6 → 6 (A), sp=-7 wraps back to 0 (B)
+        //noinspection LimitedScopeInnerClass
         record Case(int staffPosition, int expectedIndex) {}
         var cases = new Case[]{
             new Case(0, 0),

@@ -1510,6 +1510,7 @@ class LayoutEngineTest extends UnitTest {
     //      endpoints to the notehead center.
     @Test
     void testTieSeatSsAcrossStaffPositions() {
+        //noinspection LimitedScopeInnerClass
         record SeatCase(int sp, int arcSignSs, double expectedSeatSs, boolean centerAttach) {}
 
         var onLineSeatSs = LayoutEngine.STAFF_LINE_TIE_CLEARANCE_GAP_SS;
