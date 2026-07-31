@@ -33,11 +33,11 @@ public final class XML {
     /**
      * Sets the indentation to an absolute width in spaces.
      *
-     * @deprecated Use {@link #indent()} / {@link #dedent()} instead. Retained
-     *     only for the legacy {@code .mssw} writers, which set an absolute
-     *     indent per element. Remove once those writers are replaced.
+     * <p>Used only by the legacy {@code .mssw} writers, which set an absolute
+     * indent per element instead of nesting with {@link #indent()} /
+     * {@link #dedent()}. The {@code .mssw} format is permanently supported for
+     * migrating old files, so this method is not going away.
      */
-    @Deprecated
     public static void setIndent(int newIndent) {
         indent.setIndent(newIndent);
     }

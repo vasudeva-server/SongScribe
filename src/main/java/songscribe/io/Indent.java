@@ -56,12 +56,11 @@ public final class Indent {
     /**
      * Sets the indentation to an absolute width in spaces.
      *
-     * @deprecated Retained only for the legacy {@code .mssw} writers, which set
-     *     an absolute indent per element instead of nesting with
-     *     {@link #indent()} / {@link #dedent()}. Remove once those writers are
-     *     replaced.
+     * <p>Used only by the legacy {@code .mssw} writers, which set an absolute
+     * indent per element instead of nesting with {@link #indent()} /
+     * {@link #dedent()}. The {@code .mssw} format is permanently supported for
+     * migrating old files, so this method is not going away.
      */
-    @Deprecated
     public void setIndent(int newWidth) {
         width = newWidth;
     }
