@@ -33,7 +33,6 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
 import songscribe.util.GraphicsState;

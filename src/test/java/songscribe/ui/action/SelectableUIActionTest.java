@@ -33,7 +33,6 @@ import songscribe.prefs.PrefsKey;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.when;
 
 class SelectableUIActionTest extends MainFrameMockTest {
 

@@ -48,7 +48,6 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.ReflectionTestHelper;
-import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * The undo-side mirror of {@code ScoreViewControllerTest.HandleDelete}'s

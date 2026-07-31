@@ -26,7 +26,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.dom.ScaleContext;
 
 public final class ComponentHierarchyNavigator {
 

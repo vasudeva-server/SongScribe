@@ -40,7 +40,6 @@ import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.midi.MidiSequenceBuilder;
-import songscribe.midi.PlaybackSettings;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.component.ScoreView;

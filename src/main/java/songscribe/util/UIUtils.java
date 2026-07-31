@@ -42,7 +42,6 @@ import songscribe.ui.AppearanceManager;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.ui.component.MainFrame;
 
 import songscribe.font.SourceSans3Font;
 import songscribe.ui.renderer.RenderingUtils;

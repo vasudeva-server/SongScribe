@@ -26,7 +26,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.dom.ElementType;
-import songscribe.dom.StaffElement;
 import songscribe.dom.Tuplet;
 
 /**

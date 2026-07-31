@@ -21,7 +21,6 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Answers.CALLS_REAL_METHODS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.mock;
@@ -51,18 +50,15 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
-import songscribe.ui.Mode;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.KeySignatureRenderer;
 import songscribe.ui.renderer.LineInvariants;
-import songscribe.ui.renderer.NoteRenderer;
 import songscribe.ui.renderer.RenderingUtils;
 
 /**

@@ -22,8 +22,6 @@ package songscribe.ui.playback;
 
 import module java.desktop;
 
-import java.awt.event.ActionEvent;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;

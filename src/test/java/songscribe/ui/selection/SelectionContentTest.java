@@ -26,7 +26,6 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.awt.event.ActionEvent;
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
@@ -37,7 +36,6 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.DotAction;
-import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.StickyUIAction;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;

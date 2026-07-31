@@ -24,7 +24,6 @@ import module java.desktop;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.formdev.flatlaf.FlatClientProperties;
 import com.formdev.flatlaf.ui.FlatTreeUI;
 import com.formdev.flatlaf.ui.FlatUIUtils;
 import org.jspecify.annotations.Nullable;

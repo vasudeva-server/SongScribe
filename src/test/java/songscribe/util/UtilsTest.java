@@ -25,11 +25,6 @@ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 
 import module java.desktop;
 
-import java.awt.event.InputEvent;
-import java.awt.event.KeyEvent;
-
-import javax.swing.KeyStroke;
-
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 

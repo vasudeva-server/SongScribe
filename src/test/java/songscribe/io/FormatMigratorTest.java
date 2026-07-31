@@ -29,7 +29,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
@@ -40,7 +39,6 @@ import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
-import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;

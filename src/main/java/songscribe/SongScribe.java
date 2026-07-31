@@ -39,7 +39,6 @@ import songscribe.converter.MidiConverter;
 import songscribe.converter.PDFConverter;
 import songscribe.ui.component.MainFrame;
 import songscribe.uiconverter.UIConverter;
-import songscribe.util.UIUtils;
 
 public final class SongScribe {
 

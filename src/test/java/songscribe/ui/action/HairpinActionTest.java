@@ -22,8 +22,6 @@ package songscribe.ui.action;
 
 import module java.desktop;
 
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.mockStatic;

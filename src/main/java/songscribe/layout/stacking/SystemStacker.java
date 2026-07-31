@@ -29,7 +29,6 @@ import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.ScaleContext;
 import songscribe.layout.StaffExtents;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.layout.NoteGeometry;
 
 import static songscribe.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.layout.stacking.StackingUtils.stackAboveWithRegions;

@@ -33,7 +33,6 @@ import songscribe.MainFrameMockTest;
 import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 import songscribe.dom.ElementType;
-import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.message.mutation.ElementField;

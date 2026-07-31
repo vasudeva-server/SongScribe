@@ -22,7 +22,6 @@ package songscribe.ui.edit;
 
 import module java.desktop;
 
-import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.lang.reflect.Field;
 
@@ -33,10 +32,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
-
-import javax.swing.ActionMap;
-import javax.swing.InputMap;
-import javax.swing.JRootPane;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;

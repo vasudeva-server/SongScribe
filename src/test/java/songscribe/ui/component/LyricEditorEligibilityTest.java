@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
 
 /**
  * Tests for {@link LyricTargetResolver#isLyricTargetEligible}, the gesture target resolver

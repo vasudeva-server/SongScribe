@@ -29,7 +29,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
-import songscribe.dom.StaffElement;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;

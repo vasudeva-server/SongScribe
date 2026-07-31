@@ -33,7 +33,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;

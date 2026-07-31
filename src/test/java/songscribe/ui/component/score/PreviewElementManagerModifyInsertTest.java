@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Lyric;
-import songscribe.dom.StaffElement;
 import songscribe.ui.edit.GraceModeManager;
 
 /**

@@ -41,7 +41,6 @@ import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.NoteGeometry;
 import songscribe.layout.StaffExtents;
 
 /**

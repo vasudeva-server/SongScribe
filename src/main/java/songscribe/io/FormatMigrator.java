@@ -20,7 +20,6 @@
 package songscribe.io;
 
 
-import songscribe.dom.Annotation;
 import songscribe.dom.ElementType;
 import java.util.HashMap;
 import java.util.List;

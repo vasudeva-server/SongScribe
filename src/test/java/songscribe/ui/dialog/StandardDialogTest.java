@@ -21,7 +21,6 @@ package songscribe.ui.dialog;
 
 import module java.desktop;
 
-import java.awt.event.ActionEvent;
 import java.util.Collections;
 
 import org.junit.jupiter.api.AfterEach;

@@ -22,7 +22,6 @@ package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.PrintWriter;
 import java.io.StringReader;

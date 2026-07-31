@@ -23,7 +23,6 @@ package songscribe.midi;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Stream;
 
 import javax.sound.midi.InvalidMidiDataException;
 import javax.sound.midi.MetaMessage;
@@ -34,9 +33,6 @@ import javax.sound.midi.Track;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.Articulation;
@@ -53,7 +49,6 @@ import songscribe.ui.playback.MidiMetaMessageTypes;
 import songscribe.ui.playback.PlaybackController;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.offset;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.midi.MidiSequenceBuilder.PPQ;
 

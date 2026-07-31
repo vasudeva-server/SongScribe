@@ -27,7 +27,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
-import songscribe.dom.Line;
 
 /**
  * Tests for {@link BeamMath#frenchBeamShortening} — the per-stem French-beaming

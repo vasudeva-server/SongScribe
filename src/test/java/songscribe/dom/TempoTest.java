@@ -25,7 +25,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.midi.MidiSequenceBuilder;
 
 /**
  * Tests for {@link Tempo}.

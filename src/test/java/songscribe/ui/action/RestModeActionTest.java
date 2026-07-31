@@ -24,7 +24,6 @@ import module java.desktop;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
