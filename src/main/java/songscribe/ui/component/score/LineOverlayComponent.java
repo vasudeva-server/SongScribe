@@ -247,6 +247,7 @@ public abstract class LineOverlayComponent extends JComponent {
      * until the pointer moved. The default is a no-op for overlays with no external target
      * state.
      */
+    @SuppressWarnings("NoopMethodInAbstractClass")
     public void retarget() {
         // Overridden by overlays whose target is owned by a manager.
     }
