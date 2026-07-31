@@ -71,7 +71,7 @@ import songscribe.util.LogUtils;
  * var result = SpringSpacer.solve(springs, availableSpanSs);
  * }</pre>
  */
-public class HorizontalSpacingCalculator {
+public final class HorizontalSpacingCalculator {
 
     private static final Logger LOG = LoggerFactory.getLogger(HorizontalSpacingCalculator.class);
 
