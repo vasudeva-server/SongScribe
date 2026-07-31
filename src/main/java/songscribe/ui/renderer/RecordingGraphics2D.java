@@ -385,7 +385,7 @@ public final class RecordingGraphics2D extends Graphics2D {
 
         for (var i = 0; i < pointCount; i++) {
             if (i == 0) {
-                path.moveTo(xPoints[i], yPoints[i]);
+                path.moveTo(xPoints[0], yPoints[0]);
             } else {
                 path.lineTo(xPoints[i], yPoints[i]);
             }

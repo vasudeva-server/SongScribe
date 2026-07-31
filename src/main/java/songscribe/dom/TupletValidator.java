@@ -651,7 +651,7 @@ public final class TupletValidator {
         }
 
         if (beatDotted && grade == COMPOUND_DUPLET_GRADE) {
-            return spans.higher(grade);
+            return spans.higher(COMPOUND_DUPLET_GRADE);
         }
 
         return null;

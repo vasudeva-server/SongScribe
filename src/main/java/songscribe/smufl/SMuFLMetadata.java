@@ -54,6 +54,7 @@ public final class SMuFLMetadata {
         advanceWidths = parseAdvanceWidths(root.getAsJsonObject("glyphAdvanceWidths"));
     }
 
+    @SuppressWarnings("SameReturnValue")
     private static SMuFLMetadata instance() {
         return Holder.INSTANCE;
     }

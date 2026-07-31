@@ -2029,7 +2029,7 @@ class GraceModeManagerTest extends UnitTest {
 
             var hostPreview = ElementType.CROTCHET.newInstance();
             hostPreview.setStaffPosition(NEW_HOST_STAFF_POSITION);
-            when(editModeManager.getPreviewElement()).thenReturn(hostPreview);
+            when(EditModeManager.getPreviewElement()).thenReturn(hostPreview);
 
             // The host goes in through the real insert path, which this fixture mocks out.
             // Stand in for it so the indices move exactly as they do in production.

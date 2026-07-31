@@ -154,7 +154,7 @@ public final class UndoController {
 
     // A field (not a constant) so a future preference can adjust it at runtime.
     @SuppressWarnings({ "FieldCanBeLocal", "FieldMayBeFinal" })
-    private int undoStackMaxDepth = DEFAULT_UNDO_STACK_MAX_DEPTH;
+    private final int undoStackMaxDepth = DEFAULT_UNDO_STACK_MAX_DEPTH;
 
     // Reference to the undo step on top of undoStack at last save (or BASELINE when
     // the stack was empty then). Compared with == everywhere. cleanValid goes false

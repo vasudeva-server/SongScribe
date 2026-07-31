@@ -40,6 +40,7 @@ class GraceNoteLyricRoundTripTest extends UnitTest {
      * Minimal XML with a paired grace+host pair (grace has CONNECTED glissando)
      * followed by a barline. No lyric yet — added programmatically before round-trip.
      */
+    @SuppressWarnings("SameReturnValue")
     private static String graceHostXml() {
         return """
             <?xml version="1.0" encoding="UTF-8"?>

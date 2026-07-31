@@ -219,7 +219,7 @@ final class MusicXmlNotationsWriter {
 
                 if (extend == Lyric.Extend.START) {
                     XML.writeEmptyTag(pw, MusicXmlTags.EXTEND,
-                        MusicXmlTags.ATTR_TYPE, SyllabicMapping.forExtend(extend));
+                        MusicXmlTags.ATTR_TYPE, SyllabicMapping.forExtend(Lyric.Extend.START));
                 }
             }
 

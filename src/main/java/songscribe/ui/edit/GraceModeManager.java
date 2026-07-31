@@ -261,7 +261,7 @@ public final class GraceModeManager {
             return 0;
         }
 
-        var previewElement = editModeManager.getPreviewElement();
+        var previewElement = EditModeManager.getPreviewElement();
         var hostLeftExtentSs = previewElement != null
             ? ElementColumnBuilder.calculateLeftExtentSs(previewElement)
             : 0;
@@ -385,7 +385,7 @@ public final class GraceModeManager {
             return null;
         }
 
-        var previewElement = editModeManager.getPreviewElement();
+        var previewElement = EditModeManager.getPreviewElement();
 
         if (previewElement == null) {
             return null;
@@ -420,7 +420,7 @@ public final class GraceModeManager {
             return false;
         }
 
-        var previewElement = editModeManager.getPreviewElement();
+        var previewElement = EditModeManager.getPreviewElement();
 
         if (previewElement == null || previewElement.getType() != ElementType.GRACE_QUAVER) {
             return false;
@@ -743,7 +743,7 @@ public final class GraceModeManager {
 
             hostStaffPosition = line.getElement(hostNoteIndex).getStaffPosition();
         } else {
-            var previewElement = editModeManager.getPreviewElement();
+            var previewElement = EditModeManager.getPreviewElement();
 
             if (previewElement == null) {
                 abort();
