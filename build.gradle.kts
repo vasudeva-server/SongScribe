@@ -68,7 +68,7 @@ dependencies {
 
 // -- Code generation --
 
-val generateVersion by tasks.registering {
+val generateVersion = tasks.register("generateVersion") {
     description = "Generates Version.java, which contains constants for the public version (from project.version) and build version (current date). This allows us to display version info in the UI and have it accessible at runtime without hardcoding it in the source code."
     val outDir = generatedSourcesDir.map { it.dir("songscribe") }
     outputs.dir(outDir)
@@ -89,7 +89,7 @@ val generateVersion by tasks.registering {
     }
 }
 
-val generateStrings by tasks.registering {
+val generateStrings = tasks.register("generateStrings") {
     description = "Generates Strings.java, which contains constants for all user-facing strings in SongScribe. This allows us to keep all strings in a single properties file for easier localization and maintenance, while still having compile-time constants in the codebase."
     inputs.file("src/main/resources/songscribe/strings.properties")
     val outDir = generatedSourcesDir.map { it.dir("songscribe") }
@@ -102,7 +102,7 @@ val generateStrings by tasks.registering {
     }
 }
 
-val generateFlatLafKeys by tasks.registering {
+val generateFlatLafKeys = tasks.register("generateFlatLafKeys") {
     description = "Generates FlatLafKeys.java, which contains constants for all FlatLaf UI defaults keys used in SongScribe. This allows us to avoid hardcoding string literals throughout the codebase and have a single source of truth for these keys."
     inputs.file("src/main/resources/songscribe/FlatLaf.properties")
     val outDir = generatedSourcesDir.map { it.dir("songscribe/ui") }
@@ -242,7 +242,7 @@ tasks.named<Test>("test") {
     }
 }
 
-val e2eTest by tasks.registering(Test::class) {
+val e2eTest = tasks.register<Test>("e2eTest") {
     description = "Runs e2e tests"
     group = "verification"
     applyCommonTestConfig()
@@ -268,8 +268,8 @@ val defaultPitestTargets = listOf(
 
 // Allow mutation-test.sh to narrow targets at runtime:
 //   ./gradlew pitest -PpitestTarget=songscribe.util.* -PpitestTargetTests=songscribe.util.*
-val pitestTarget: String? by project
-val pitestTargetTests: String? by project
+val pitestTarget = project.findProperty("pitestTarget") as String?
+val pitestTargetTests = project.findProperty("pitestTargetTests") as String?
 
 pitest {
     pitestVersion.set("1.24.0")
@@ -306,6 +306,7 @@ pitest {
 // -- Classpath printing for scripts --
 
 tasks.register("printClasspath") {
+    description = "Prints the runtime classpath for the main source set"
     doLast {
         print(sourceSets["main"].runtimeClasspath.asPath)
     }
@@ -315,6 +316,7 @@ tasks.register("printClasspath") {
 // and inherit its login session, so the daemon's value equals the workers' — test.sh
 // uses it to detect and restart a stale headless daemon. See scripts/test.sh.
 tasks.register("daemonHeadless") {
+    description = "Reports whether this daemon's JVM is headless"
     doLast {
         val headless = Class.forName("java.awt.GraphicsEnvironment").getMethod("isHeadless").invoke(null)
         logger.quiet(headless.toString())
