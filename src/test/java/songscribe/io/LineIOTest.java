@@ -27,6 +27,7 @@ import static org.mockito.Mockito.mockStatic;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -1348,7 +1349,7 @@ class LineIOTest extends UnitTest {
          */
         private static LineIO.LineReader buildReaderWithTrillNotes(int count, int... trillIndices) throws SAXException {
             var emptyAttrs = new AttributesImpl();
-            var trillSet = new java.util.HashSet<Integer>();
+            var trillSet = new HashSet<Integer>();
             for (var idx : trillIndices) {
                 trillSet.add(idx);
             }

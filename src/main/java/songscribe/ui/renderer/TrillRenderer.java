@@ -45,18 +45,13 @@ public final class TrillRenderer {
     // ==========================================================================
 
     // Trill glyph advance width in staff-space units, used to position the wavy line start
-    private static final double TRILL_ADVANCE_WIDTH_SS;
+    private static final double TRILL_ADVANCE_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
 
     // Wavy line segment width from the advance width of the WIGGLE_TRILL_FASTER glyph
-    static final double WIGGLE_SEGMENT_WIDTH_SS;
+    static final double WIGGLE_SEGMENT_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.WIGGLE_TRILL_FASTER);
 
     // Singleton instance
     private static final TrillRenderer INSTANCE = new TrillRenderer();
-
-    static {
-        TRILL_ADVANCE_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.ORNAMENT_TRILL);
-        WIGGLE_SEGMENT_WIDTH_SS = SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.WIGGLE_TRILL_FASTER);
-    }
 
     /**
      * Private constructor - use {@link #getInstance()}.

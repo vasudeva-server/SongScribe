@@ -24,6 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -72,7 +74,7 @@ class TrillRendererTest extends UnitTest {
     void testDrawWavyLineWithLengthEqualToSegmentWidthUsesOneSegment() {
         // length = 1 × WIGGLE_SEGMENT_WIDTH_SS → segments = round(1.0) = 1
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        final double length = TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS;
+        double length = TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS;
 
         RENDERER.drawWavyLine(g2Spy, 0.0, 0.0, length, Color.BLACK);
 
@@ -83,8 +85,8 @@ class TrillRendererTest extends UnitTest {
     void testDrawWavyLineWithLengthForThreeSegmentsDrawsThreeTimes() {
         // length = 3 × WIGGLE_SEGMENT_WIDTH_SS → segments = 3
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        final int expectedSegments = 3;
-        final double length = expectedSegments * TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS;
+        int expectedSegments = 3;
+        double length = expectedSegments * TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS;
 
         RENDERER.drawWavyLine(g2Spy, 0.0, 0.0, length, Color.BLACK);
 
@@ -101,7 +103,7 @@ class TrillRendererTest extends UnitTest {
         // A very short length (less than WIGGLE_SEGMENT_WIDTH_SS but > 0)
         // must still draw at least 1 segment due to Math.max(1, ...).
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        final double tinyLength = TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS * 0.1;
+        double tinyLength = TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS * 0.1;
 
         RENDERER.drawWavyLine(g2Spy, 0.0, 0.0, tinyLength, Color.BLACK);
 
@@ -128,7 +130,7 @@ class TrillRendererTest extends UnitTest {
             Color.BLACK, layoutResult);
 
         var glyphCaptor = ArgumentCaptor.forClass(String.class);
-        verify(g2Spy, org.mockito.Mockito.atLeastOnce())
+        verify(g2Spy, atLeastOnce())
             .drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
 
         assertThat(glyphCaptor.getAllValues())
@@ -159,7 +161,7 @@ class TrillRendererTest extends UnitTest {
             Color.BLACK, layoutResult);
 
         var glyphCaptor = ArgumentCaptor.forClass(String.class);
-        verify(g2Spy, org.mockito.Mockito.atLeastOnce())
+        verify(g2Spy, atLeastOnce())
             .drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
 
         assertThat(glyphCaptor.getAllValues())
@@ -212,10 +214,10 @@ class TrillRendererTest extends UnitTest {
             Color.BLACK, layoutResult);
 
         var scaleCaptor = ArgumentCaptor.forClass(Double.class);
-        verify(g2Spy).scale(scaleCaptor.capture(), org.mockito.ArgumentMatchers.eq(1d));
+        verify(g2Spy).scale(scaleCaptor.capture(), eq(1d));
 
         var glyphCaptor = ArgumentCaptor.forClass(String.class);
-        verify(g2Spy, org.mockito.Mockito.atLeastOnce())
+        verify(g2Spy, atLeastOnce())
             .drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
         var segments = glyphCaptor.getAllValues().stream()
             .filter(s -> s.equals(SMuFLGlyph.WIGGLE_TRILL_FASTER.asString()))
@@ -239,7 +241,7 @@ class TrillRendererTest extends UnitTest {
             Color.BLACK, layoutResult);
 
         var glyphCaptor = ArgumentCaptor.forClass(String.class);
-        verify(g2Spy, org.mockito.Mockito.atLeastOnce())
+        verify(g2Spy, atLeastOnce())
             .drawString(glyphCaptor.capture(), anyFloat(), anyFloat());
 
         assertThat(glyphCaptor.getAllValues())

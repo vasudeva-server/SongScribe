@@ -27,6 +27,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
+import songscribe.dom.Song;
+import songscribe.message.notification.DialogVisibilityDidChangeNotification;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.action.DialogOpenActionTest.StubDialog;
@@ -434,7 +436,7 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
 
     @Test
     void testDisableWhenSongEmptyFlagReturnsFalseWhenSongIsEmpty() {
-        var mockSong = mock(songscribe.dom.Song.class);
+        var mockSong = mock(Song.class);
         when(mockEnv().score().isInitialized()).thenReturn(true);
         when(mockEnv().score().getSong()).thenReturn(mockSong);
         when(mockSong.isEmpty()).thenReturn(true);
@@ -445,7 +447,7 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
 
     @Test
     void testDisableWhenSongEmptyFlagReturnsTrueWhenSongIsNotEmpty() {
-        var mockSong = mock(songscribe.dom.Song.class);
+        var mockSong = mock(Song.class);
         when(mockEnv().score().isInitialized()).thenReturn(true);
         when(mockEnv().score().getSong()).thenReturn(mockSong);
         when(mockSong.isEmpty()).thenReturn(false);
@@ -470,7 +472,7 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
 
         var action = new UIAction(mainFrame(), "Test", "test-cmd") {
             @Override
-            protected void performAction(java.awt.event.ActionEvent e) {
+            protected void performAction(ActionEvent e) {
                 capturedSource[0] = e.getSource();
             }
         };
@@ -486,7 +488,7 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
 
         var action = new UIAction(mainFrame(), "Test", "test-cmd") {
             @Override
-            protected void performAction(java.awt.event.ActionEvent e) {
+            protected void performAction(ActionEvent e) {
                 capturedSource[0] = e.getSource();
             }
         };
@@ -508,7 +510,7 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
         action.setEnabled(true);
 
         action.dialogVisibilityDidChange(
-            new songscribe.message.notification.DialogVisibilityDidChangeNotification(true));
+            new DialogVisibilityDidChangeNotification(true));
 
         // enabled state must remain true since updateEnabledState was not invoked
         assertThat(action.isEnabled()).isTrue();

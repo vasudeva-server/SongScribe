@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import java.awt.Dimension;
@@ -83,7 +84,7 @@ import songscribe.ui.selection.LineSelectionState;
  * non-mutation contract, {@link ScoreView#rebuildLyricRenderMetrics()} guard and
  * idempotency, {@link ScoreView#getSuggestedFileName()} branch logic,
  * {@link ScoreView#getNoteYPosPx(int, int)} coordinate formula, and
- * {@link ScoreView#drawWidthIfWiderLine(songscribe.dom.Line, boolean)} rescaling.
+ * {@link ScoreView#drawWidthIfWiderLine(Line, boolean)} rescaling.
  */
 class ScoreViewTest extends UnitTest {
 
@@ -126,7 +127,7 @@ class ScoreViewTest extends UnitTest {
             // Must not post any message (not an undoable user edit, no FontChange recorded).
             messageCenterMock.verify(
                 () -> MessageCenter.post(any(Message.class)),
-                org.mockito.Mockito.never()
+                never()
             );
 
             // getDocumentFonts() must return the installed instance.

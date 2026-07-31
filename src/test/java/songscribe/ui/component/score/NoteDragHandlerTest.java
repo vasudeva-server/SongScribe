@@ -61,6 +61,7 @@ import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.ui.Mode;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
@@ -481,8 +482,8 @@ class NoteDragHandlerTest extends UnitTest {
             pressOnNote(0);
             dragToPosition(DRAGGED_POSITION_SP);
 
-            try (var optionDialogs = mockStatic(songscribe.ui.OptionDialogs.class)) {
-                optionDialogs.when(() -> songscribe.ui.OptionDialogs.showConfirmDialog(
+            try (var optionDialogs = mockStatic(OptionDialogs.class)) {
+                optionDialogs.when(() -> OptionDialogs.showConfirmDialog(
                     any(), any(), any(), anyInt(), anyInt())).thenReturn(answer);
 
                 handler.handleRelease();

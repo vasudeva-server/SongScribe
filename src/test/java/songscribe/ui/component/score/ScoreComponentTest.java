@@ -22,6 +22,7 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -46,7 +47,7 @@ class ScoreComponentTest extends UnitTest {
      * Creates a real {@code Graphics2D} backed by an off-screen image.
      * Caller is responsible for disposing it.
      */
-    private static java.awt.Graphics2D createGraphics() {
+    private static Graphics2D createGraphics() {
         var img = new BufferedImage(400, 200, BufferedImage.TYPE_INT_ARGB);
         return img.createGraphics();
     }

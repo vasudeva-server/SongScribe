@@ -710,15 +710,10 @@ public class UIAction extends AbstractAction {
         // A grace note is always a single undotted pitched note, so rests and dots cannot
         // apply to it. Accidentals and articulations can, and stay enabled so the grace
         // note can be decorated before it is placed.
-        if (hasFlag(Flag.DISABLE_WHEN_GRACE_DURATION_SELECTED)
-                && (duration == Actions.GRACE_EIGHTH_NOTE_ACTION)) {
-            return false;
-        }
-
-        return (
-            (duration != Actions.GLISSANDO_ACTION) &&
-                (duration != Actions.FALL_ACTION)
-        );
+        return !(hasFlag(Flag.DISABLE_WHEN_GRACE_DURATION_SELECTED)
+                && (duration == Actions.GRACE_EIGHTH_NOTE_ACTION))
+            && (duration != Actions.GLISSANDO_ACTION)
+            && (duration != Actions.FALL_ACTION);
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

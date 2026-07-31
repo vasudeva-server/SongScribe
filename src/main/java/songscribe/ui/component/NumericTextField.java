@@ -104,11 +104,7 @@ public class NumericTextField extends MyJTextField {
     public boolean hasValidValue() {
         var text = getText().strip();
 
-        if (text.isEmpty()) {
-            return false;
-        }
-
-        return parsesInRange(text);
+        return !text.isEmpty() && parsesInRange(text);
     }
 
     private boolean isValueInRange() {

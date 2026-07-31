@@ -31,6 +31,7 @@ import javax.swing.JLabel;
 import javax.swing.JSpinner;
 import javax.swing.JTextField;
 import javax.swing.SpinnerNumberModel;
+import javax.swing.text.AbstractDocument;
 import javax.swing.text.DefaultFormatterFactory;
 
 import org.junit.jupiter.api.Nested;
@@ -99,7 +100,7 @@ class InputUtilsTest extends UnitTest {
             try (var uiUtilsMock = mockStatic(UIUtils.class)) {
                 // Drive CustomDocumentFilter.replace directly: swapping "123" → "abc"
                 // is non-matching and must be rejected, leaving the document unchanged.
-                var doc = (javax.swing.text.AbstractDocument) field.getDocument();
+                var doc = (AbstractDocument) field.getDocument();
                 doc.replace(0, doc.getLength(), "abc", null);
 
                 uiUtilsMock.verify(UIUtils::beep);
@@ -114,7 +115,7 @@ class InputUtilsTest extends UnitTest {
 
             try (var uiUtilsMock = mockStatic(UIUtils.class)) {
                 // Use AbstractDocument's replace to swap "123" → "456"
-                var doc = (javax.swing.text.AbstractDocument) field.getDocument();
+                var doc = (AbstractDocument) field.getDocument();
                 doc.replace(0, doc.getLength(), "456", null);
 
                 uiUtilsMock.verify(UIUtils::beep, never());
@@ -210,7 +211,7 @@ class InputUtilsTest extends UnitTest {
 
             try (var uiUtilsMock = mockStatic(UIUtils.class)) {
                 // Replace "1.5" with "abc" — prospective result "abc" is not decimal
-                var doc = (javax.swing.text.AbstractDocument) field.getDocument();
+                var doc = (AbstractDocument) field.getDocument();
                 doc.replace(0, doc.getLength(), "abc", null);
 
                 uiUtilsMock.verify(UIUtils::beep);
@@ -224,7 +225,7 @@ class InputUtilsTest extends UnitTest {
             InputUtils.addDecimalFilter(field);
 
             try (var uiUtilsMock = mockStatic(UIUtils.class)) {
-                var doc = (javax.swing.text.AbstractDocument) field.getDocument();
+                var doc = (AbstractDocument) field.getDocument();
                 doc.replace(0, doc.getLength(), "3.14", null);
 
                 uiUtilsMock.verify(UIUtils::beep, never());

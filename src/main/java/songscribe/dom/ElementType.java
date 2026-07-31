@@ -254,7 +254,7 @@ public enum ElementType {
      *
      * <p>This is the single source of truth for how wide an element's own glyph is. Anything that
      * needs a notehead width should call this rather than
-     * {@link songscribe.engraving.SMuFLConstants#NOTE_HEAD_WIDTH_SS}, which is the black notehead
+     * {@link SMuFLConstants#NOTE_HEAD_WIDTH_SS}, which is the black notehead
      * specifically and leaves a whole note about half a staff space short (refs #694).
      */
     public double getElementWidthSs() {

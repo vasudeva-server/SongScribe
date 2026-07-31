@@ -191,14 +191,12 @@ class SongIOTest extends UnitTest {
     @Test
     void testWriteSongArrangementEmittedWhenTrue() {
         var song = new Song();
-        {
-            var m = song.getMetadata();
-            song.setMetadata(new SongMetadata(
-                m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
-                m.composer(), m.lyricist(), m.lyricsSource(), true, m.unofficialTranslation(),
-                "", "", 0, 0
-            ));
-        }
+        var m = song.getMetadata();
+        song.setMetadata(new SongMetadata(
+            m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
+            m.composer(), m.lyricist(), m.lyricsSource(), true, m.unofficialTranslation(),
+            "", "", 0, 0
+        ));
         var xml = writeSongToString(song);
 
         assertThat(xml).contains("<arrangement>true</arrangement>");
@@ -209,14 +207,12 @@ class SongIOTest extends UnitTest {
     @Test
     void testWriteSongOptionalStringFieldsEmittedAndEscaped() {
         var song = new Song();
-        {
-            var m = song.getMetadata();
-            song.setMetadata(new SongMetadata(
-                "Heart & Soul", m.number(), "New York", "2024", m.month(), m.day(),
-                "Composer <Name>", m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
-                "", "", 0, 0
-            ));
-        }
+        var m = song.getMetadata();
+        song.setMetadata(new SongMetadata(
+            "Heart & Soul", m.number(), "New York", "2024", m.month(), m.day(),
+            "Composer <Name>", m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
+            "", "", 0, 0
+        ));
         song.setUnderLyrics("under");
         song.setBanglaLyrics("bangla");
         song.setTranslatedLyrics("translated");
@@ -248,14 +244,12 @@ class SongIOTest extends UnitTest {
     @Test
     void testWriteSongMonthDayEmittedWhenPositive() {
         var song = new Song();
-        {
-            var m = song.getMetadata();
-            song.setMetadata(new SongMetadata(
-                m.title(), m.number(), m.place(), m.year(), 3, 15,
-                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
-                "", "", 0, 0
-            ));
-        }
+        var m = song.getMetadata();
+        song.setMetadata(new SongMetadata(
+            m.title(), m.number(), m.place(), m.year(), 3, 15,
+            m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), m.unofficialTranslation(),
+            "", "", 0, 0
+        ));
         var xml = writeSongToString(song);
 
         assertThat(xml).contains("<month>3</month>");
@@ -294,14 +288,12 @@ class SongIOTest extends UnitTest {
     @Test
     void testWriteSongUnofficialTranslationPresentWhenTrue() {
         var song = new Song();
-        {
-            var m = song.getMetadata();
-            song.setMetadata(new SongMetadata(
-                m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
-                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), true,
-                "", "", 0, 0
-            ));
-        }
+        var m = song.getMetadata();
+        song.setMetadata(new SongMetadata(
+            m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
+            m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), true,
+            "", "", 0, 0
+        ));
         var xml = writeSongToString(song);
 
         assertThat(xml).contains("<unofficialTranslation>true</unofficialTranslation>");

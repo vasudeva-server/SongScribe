@@ -28,7 +28,7 @@ import module java.desktop;
  * {@link LineOverlayComponent#updateBounds()} hides its overlay unless the target line is a real
  * Swing descendant of the host ({@code SwingUtilities.isDescendingFrom}), so overlay visibility
  * tests need a real parent-child relationship rather than a Mockito mock of {@link OverlayHost} —
- * a mock's {@code add}/{@code remove} would not be backed by real {@link java.awt.Container}
+ * a mock's {@code add}/{@code remove} would not be backed by real {@link Container}
  * state.
  */
 final class FakeOverlayHost extends JPanel implements OverlayHost {

@@ -663,7 +663,7 @@ public final class SelectionCoordinator {
     }
 
     public void setManagedActions(@Nullable List<UIAction> actions) {
-        this.managedActions = actions;
+        managedActions = actions;
     }
 
     AWTEventListener getGlobalMouseReleasedListener() {
@@ -1221,7 +1221,7 @@ public final class SelectionCoordinator {
      * be reported as carrying no duration and applying to no action, leaving every
      * note-only button disabled.
      * <p>
-     * Runs ahead of {@link songscribe.ui.action.UIAction#songDidChange}, which re-derives
+     * Runs ahead of {@link UIAction#songDidChange}, which re-derives
      * each action's enabled state from these caches.
      */
     @Handler(priority = Message.HIGH_PRIORITY)

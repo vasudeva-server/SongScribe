@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 
 import java.util.List;
 
@@ -392,7 +393,7 @@ class LineTupletTest extends UnitTest {
             song.withModification(() -> line.removeOverlappingTuplets(IDX_2, IDX_2));
 
             // withModification with no mutations fires nothing
-            messageCenterMock.verify(() -> MessageCenter.post(any()), org.mockito.Mockito.never());
+            messageCenterMock.verify(() -> MessageCenter.post(any()), never());
         }
 
         // Helper: capture the single SongDidChangeNotification posted via the mock.

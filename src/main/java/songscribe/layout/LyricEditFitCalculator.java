@@ -58,11 +58,8 @@ public final class LyricEditFitCalculator {
     public static boolean lineFits(Line line, LyricRenderMetrics lyricRenderMetrics, double staffRightMarginSs) {
         var columns = new ElementColumnBuilder(lyricRenderMetrics).buildColumns(line);
 
-        if (columns.isEmpty()) {
-            return true;
-        }
-
-        return !HorizontalSpacingCalculator.solveLine(columns, line, staffRightMarginSs).isInfeasible();
+        return columns.isEmpty()
+            || !HorizontalSpacingCalculator.solveLine(columns, line, staffRightMarginSs).isInfeasible();
     }
 
     /**

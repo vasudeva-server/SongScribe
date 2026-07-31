@@ -252,10 +252,10 @@ class LineComponentTest extends UnitTest {
          */
         @Test
         void testFractionalValueRoundsToNearestInt() {
-            final double middleLineYSs = 5.1;
+            double middleLineYSs = 5.1;
             lc.setMiddleLineYSs(middleLineYSs);
             // round(8.0 * 5.1) = round(40.8) = 41
-            final int expected = (int) Math.round(ScaleContext.ssToPx(middleLineYSs));
+            int expected = (int) Math.round(ScaleContext.ssToPx(middleLineYSs));
 
             assertThat(lc.getMiddleLineYPx())
                 .as("5.1 ss × 8 px/ss = 40.8 → rounded to 41")
@@ -282,7 +282,7 @@ class LineComponentTest extends UnitTest {
          */
         @Test
         void testReturnsAboveStaffSsPlusHalfStaff() {
-            final var contentAboveStaffSs = Staff.MIN_ABOVE_STAFF_SS + CONTENT_HEADROOM_SS;
+            var contentAboveStaffSs = Staff.MIN_ABOVE_STAFF_SS + CONTENT_HEADROOM_SS;
             var layout = LayoutResult.builder()
                 .setContentAboveStaffSs(contentAboveStaffSs)
                 .build();

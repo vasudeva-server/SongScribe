@@ -517,7 +517,7 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public void setUpper(boolean upper) {
-        this.direction = upper ? Direction.UP : Direction.DOWN;
+        direction = upper ? Direction.UP : Direction.DOWN;
     }
 
     public Direction getDirection() {

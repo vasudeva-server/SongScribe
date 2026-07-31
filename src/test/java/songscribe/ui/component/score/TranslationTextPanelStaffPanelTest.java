@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics2D;
 import java.awt.Point;
 import java.awt.image.BufferedImage;
 
@@ -66,7 +67,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
      * Creates an off-screen {@link java.awt.Graphics2D} backed by a 1x1 image.
      * Caller is responsible for disposing the result.
      */
-    private static java.awt.Graphics2D createOffscreenGraphics() {
+    private static Graphics2D createOffscreenGraphics() {
         return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
     }
 
@@ -155,14 +156,12 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
                 g2.dispose();
             }
 
-            {
-                var m = song.getMetadata();
-                song.setMetadata(new SongMetadata(
-                    m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
-                    m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), true,
-                    m.subtitle(), "", 0, 0
-                ));
-            }
+            var m = song.getMetadata();
+            song.setMetadata(new SongMetadata(
+                m.title(), m.number(), m.place(), m.year(), m.month(), m.day(),
+                m.composer(), m.lyricist(), m.lyricsSource(), m.arrangement(), true,
+                m.subtitle(), "", 0, 0
+            ));
             var g2b = createOffscreenGraphics();
 
             try {
@@ -385,7 +384,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             panel.getTranslationComponent().setContentX(-1f);
 
             var img = new BufferedImage(400, 300, BufferedImage.TYPE_INT_ARGB);
-            var g2 = (java.awt.Graphics2D) img.getGraphics();
+            var g2 = (Graphics2D) img.getGraphics();
             g2.setFont(TEST_FONT);
 
             try {

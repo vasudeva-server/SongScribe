@@ -69,8 +69,6 @@ final class MusicXmlSchemaValidator {
         }
     }
 
-    MusicXmlSchemaValidator() {}
-
     /**
      * Validates {@code xml} against the MusicXML 4.0 schema.
      *

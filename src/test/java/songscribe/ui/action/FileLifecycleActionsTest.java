@@ -30,6 +30,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import com.formdev.flatlaf.util.SystemInfo;
@@ -167,7 +168,7 @@ class FileLifecycleActionsTest extends MainFrameMockTest {
                 action.actionPerformed(
                     new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "doc.mssw"));
 
-                var captor = org.mockito.ArgumentCaptor.forClass(OpenFileCommand.class);
+                var captor = ArgumentCaptor.forClass(OpenFileCommand.class);
                 messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
                 assertThat(captor.getValue().getFile().toPath().normalize())
                     .isEqualTo(tempFile.normalize());

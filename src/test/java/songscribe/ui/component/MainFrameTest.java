@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -294,7 +295,7 @@ class MainFrameTest extends UnitTest {
          */
         @Test
         void testSetCurrentFileDelegatesToSaveCurrentFile() {
-            frame.currentFile = mock(java.io.File.class);
+            frame.currentFile = mock(File.class);
             frame.scoreView = null;
 
             doCallRealMethod().when(frame).save();
@@ -1352,7 +1353,7 @@ class MainFrameTest extends UnitTest {
          * When {@code printerJob} is null (i.e., {@code handlePrint()} was never called),
          * calling {@code print(g, pf, 0)} triggers {@code RuntimeError.exit()}.
          *
-         * <p>The test handler installed by {@link songscribe.UnitTest} converts
+         * <p>The test handler installed by {@link UnitTest} converts
          * {@code System.exit} into an {@link AssertionError}, confirming the guard fires.
          */
         @Test
@@ -1448,7 +1449,7 @@ class MainFrameTest extends UnitTest {
                 .as("MODE_ACTION_GROUP must be null before Actions.initialize() is called")
                 .isNull();
 
-            when(frame.getRootPane()).thenReturn(mock(JRootPane.class, org.mockito.Mockito.RETURNS_DEEP_STUBS));
+            when(frame.getRootPane()).thenReturn(mock(JRootPane.class, RETURNS_DEEP_STUBS));
 
             // initFrame() calls Actions.initialize(this) as its first statement.
             Actions.initialize(frame);

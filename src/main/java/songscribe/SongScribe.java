@@ -216,11 +216,9 @@ public final class SongScribe {
             case "midi_converter" -> MidiConverter.main(args);
             case "pdf_converter" -> PDFConverter.main(args);
             case "ui_converter" -> UIConverter.main(args);
-            default -> {
-                // macOS system properties are already set above on the main thread.
-                // Bootstrap the UI on the EDT so the splash can appear immediately.
-                SwingUtilities.invokeLater(() -> MainFrame.main(args));
-            }
+            // macOS system properties are already set above on the main thread.
+            // Bootstrap the UI on the EDT so the splash can appear immediately.
+            default -> SwingUtilities.invokeLater(() -> MainFrame.main(args));
         }
     }
 }

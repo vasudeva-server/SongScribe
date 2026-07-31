@@ -51,9 +51,11 @@ import songscribe.ui.selection.SelectionCoordinator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -455,7 +457,7 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.setPreviewElement(previewElement);
             var line = lineWith(ElementType.CROTCHET);
             EditModeManager.previewElementDidChange(line, 0);
-            verify(scoreActions).setPreviewElement(org.mockito.ArgumentMatchers.any(StaffElement.class));
+            verify(scoreActions).setPreviewElement(any(StaffElement.class));
             verify(scoreActions).drawWidthIfWiderLine(line, false);
             verify(scoreActions).repaint();
         }
@@ -466,8 +468,8 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.setPreviewElement(null);
             var line = lineWith(ElementType.CROTCHET);
             EditModeManager.previewElementDidChange(line, 0);
-            verify(scoreActions, org.mockito.Mockito.never()).setPreviewElement(
-                org.mockito.ArgumentMatchers.any()
+            verify(scoreActions, never()).setPreviewElement(
+                any()
             );
         }
     }

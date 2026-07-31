@@ -752,11 +752,7 @@ public final class MusicEditOperations {
             return false;
         }
 
-        if (!line.canAnchorHairpin(begin, end)) {
-            return false;
-        }
-
-        return !line.spansStructuralBoundary(begin, end);
+        return line.canAnchorHairpin(begin, end) && !line.spansStructuralBoundary(begin, end);
     }
 
     // ========== First-Second Ending Operations ==========

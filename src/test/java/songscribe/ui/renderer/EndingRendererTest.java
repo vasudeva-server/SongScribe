@@ -112,8 +112,8 @@ class EndingRendererTest extends UnitTest {
         RENDERER.renderEndings(g2, line, 0, invariants);
 
         // No paint calls should reach g2: the method continues past the null-layout guard
-        verify(g2, never()).fill(org.mockito.ArgumentMatchers.any());
-        verify(g2, never()).draw(org.mockito.ArgumentMatchers.any());
+        verify(g2, never()).fill(any());
+        verify(g2, never()).draw(any());
     }
 
     // ======================================================================

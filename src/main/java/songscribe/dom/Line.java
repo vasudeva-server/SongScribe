@@ -1662,11 +1662,7 @@ public class Line {
 
         var element = elements.get(index);
 
-        if (!element.getType().isGraceNote()) {
-            return false;
-        }
-
-        return element.hasGlissando();
+        return element.getType().isGraceNote() && element.hasGlissando();
     }
 
     /** Returns true when the element at {@code index} is the host of a paired grace note. */
@@ -2050,8 +2046,8 @@ public class Line {
             span.setEndElement(elements.get(mergedEndIdx));
         }
 
-        final int finalMergedAnchor = mergedAnchorIdx;
-        final int finalMergedEnd = mergedEndIdx;
+        int finalMergedAnchor = mergedAnchorIdx;
+        int finalMergedEnd = mergedEndIdx;
         var subsumedSpans = rangeElements.stream()
             .filter(re -> type.isInstance(re)
                 && type.cast(re).getAnchorElementIndex() >= finalMergedAnchor
@@ -2382,13 +2378,10 @@ public class Line {
     private static boolean canAnchorHairpin(List<? extends StaffElement> candidates, int index, int lastIndex) {
         var type = candidates.get(index).getType();
 
-        if (type.isPitchedNote()) {
-            return true;
-        }
-
-        return type.isGraceNote()
-            && index < lastIndex
-            && candidates.get(index + 1).getType().isPitchedNote();
+        return type.isPitchedNote()
+            || (type.isGraceNote()
+                && index < lastIndex
+                && candidates.get(index + 1).getType().isPitchedNote());
     }
 
     /**

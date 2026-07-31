@@ -31,6 +31,7 @@ import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.DeselectCommand;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 
 class DeselectActionTest extends MainFrameMockTest {
@@ -55,6 +56,6 @@ class DeselectActionTest extends MainFrameMockTest {
         action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "deselect"));
 
         messageCenterMock.verify(
-            () -> MessageCenter.post(org.mockito.ArgumentMatchers.any(DeselectCommand.class)));
+            () -> MessageCenter.post(any(DeselectCommand.class)));
     }
 }

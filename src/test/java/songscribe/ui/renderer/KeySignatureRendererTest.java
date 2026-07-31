@@ -255,7 +255,7 @@ class KeySignatureRendererTest extends UnitTest {
     void testFlatStaffPositionsEncodeBeadgcfOrder() {
         // Expected staff positions for flats in BEADGCF order
         // (relative to middle line, in staff-position units)
-        final int[] expectedPositions = {0, -3, 1, -2, 2, -1, 3};
+        int[] expectedPositions = {0, -3, 1, -2, 2, -1, 3};
 
         assertThat(KeySignatureRenderer.FLAT_STAFF_POSITIONS)
             .containsExactly(expectedPositions);
@@ -264,7 +264,7 @@ class KeySignatureRendererTest extends UnitTest {
     @Test
     void testSharpStaffPositionsEncodeFcgdaebOrder() {
         // Expected staff positions for sharps in FCGDAEB order
-        final int[] expectedPositions = {-4, -1, -5, -2, 1, -3, 0};
+        int[] expectedPositions = {-4, -1, -5, -2, 1, -3, 0};
 
         assertThat(KeySignatureRenderer.SHARP_STAFF_POSITIONS)
             .containsExactly(expectedPositions);

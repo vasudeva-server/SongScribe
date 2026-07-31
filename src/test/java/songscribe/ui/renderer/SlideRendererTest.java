@@ -22,6 +22,7 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -301,8 +302,8 @@ class SlideRendererTest extends UnitTest {
         RENDERER.renderSlide(g2, line, note, 0, invariants, ElementFrame.LINE_LEVEL);
 
         // Unison guard fires before render(); no fill/draw should reach g2
-        verify(g2, never()).fill(org.mockito.ArgumentMatchers.any());
-        verify(g2, never()).draw(org.mockito.ArgumentMatchers.any());
+        verify(g2, never()).fill(any());
+        verify(g2, never()).draw(any());
     }
 
     // ======================================================================

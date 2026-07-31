@@ -117,11 +117,7 @@ public final class DocumentFonts implements DocumentFontsHolder {
             return true;
         }
 
-        if (!(obj instanceof DocumentFonts other)) {
-            return false;
-        }
-
-        return Objects.equals(fonts, other.fonts);
+        return obj instanceof DocumentFonts other && Objects.equals(fonts, other.fonts);
     }
 
     @Override

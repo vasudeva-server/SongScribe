@@ -63,11 +63,8 @@ public final class SelectAllElementsAction extends UIAction {
     protected boolean enableFromSelectionSize(ScoreView score) {
         var coordinator = score.getSelectionCoordinator();
 
-        if (coordinator.hasLineSelection() && (coordinator.getSelection() == null)) {
-            return false;
-        }
-
-        return super.enableFromSelectionSize(score);
+        return !(coordinator.hasLineSelection() && (coordinator.getSelection() == null))
+            && super.enableFromSelectionSize(score);
     }
 
     @Override

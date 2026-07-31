@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.ui.component.ScoreView;
 
 /**
@@ -108,8 +109,8 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
         var song = minimalSongMock();
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
-        var lineA = new songscribe.dom.Line(song);
-        var lineB = new songscribe.dom.Line(song);
+        var lineA = new Line(song);
+        var lineB = new Line(song);
         coordinator.registerLineState(0, new LineSelectionState(lineA));
         coordinator.registerLineState(1, new LineSelectionState(lineB));
         coordinator.activateLine(0);
@@ -146,8 +147,8 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
     void testGetActiveLineIndexReturnsCorrectIndexAfterActivation() {
         var song = minimalSongMock();
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
-        coordinator.registerLineState(0, new LineSelectionState(new songscribe.dom.Line(song)));
-        coordinator.registerLineState(1, new LineSelectionState(new songscribe.dom.Line(song)));
+        coordinator.registerLineState(0, new LineSelectionState(new Line(song)));
+        coordinator.registerLineState(1, new LineSelectionState(new Line(song)));
 
         coordinator.activateLine(1);
 
@@ -169,11 +170,11 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
         var song = minimalSongMock();
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
-        var lineA = new songscribe.dom.Line(song);
+        var lineA = new Line(song);
         lineA.addElement(ElementType.CROTCHET.newInstance());
         var stateA = new LineSelectionState(lineA);
 
-        var lineB = new songscribe.dom.Line(song);
+        var lineB = new Line(song);
         lineB.addElement(ElementType.CROTCHET.newInstance());
         var stateB = new LineSelectionState(lineB);
 

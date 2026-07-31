@@ -37,7 +37,7 @@ public class FamilyListModel extends AbstractListModel<String> {
     private final FontFamilies fontFamilies;
 
     public FamilyListModel() {
-        this.fontFamilies = FontFamilies.getInstance();
+        fontFamilies = FontFamilies.getInstance();
     }
 
     /** Package-private constructor for testing — allows injecting a custom FontFamilies. */

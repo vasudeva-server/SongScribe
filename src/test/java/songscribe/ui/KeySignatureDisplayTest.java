@@ -21,6 +21,7 @@
 package songscribe.ui;
 
 import java.awt.Font;
+import java.text.AttributedCharacterIterator;
 import java.text.AttributedString;
 import java.text.CharacterIterator;
 
@@ -71,7 +72,7 @@ class KeySignatureDisplayTest extends UnitTest {
      */
     private static Font fontAt(AttributedString attributed, int index) {
         var iter = attributed.getIterator(
-            new java.text.AttributedCharacterIterator.Attribute[]{FONT}, index, index + 1
+            new AttributedCharacterIterator.Attribute[]{FONT}, index, index + 1
         );
         iter.first();
         return (Font) iter.getAttribute(FONT);

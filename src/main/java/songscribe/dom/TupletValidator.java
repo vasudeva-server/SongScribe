@@ -583,11 +583,7 @@ public final class TupletValidator {
      * control on ordinary selections.
      */
     private static boolean isStructuralBoundary(ElementType type, int index, int endIndex) {
-        if (index == endIndex) {
-            return false;
-        }
-
-        return type.isBarLine() || type.isRepeat() || type.isBreathMark();
+        return index != endIndex && (type.isBarLine() || type.isRepeat() || type.isBreathMark());
     }
 
     /**

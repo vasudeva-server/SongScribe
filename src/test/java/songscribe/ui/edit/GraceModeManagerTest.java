@@ -64,6 +64,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -991,7 +992,7 @@ class GraceModeManagerTest extends UnitTest {
             // Drain pending invokeLater tasks (finish() posts invokeLater to re-enable
             // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
             // live action object rather than null.
-            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            SwingUtilities.invokeAndWait(() -> {});
             Actions.resetForTest();
             calcMock.close();
             editModeManagerMock.close();
@@ -1075,7 +1076,7 @@ class GraceModeManagerTest extends UnitTest {
             // Drain pending invokeLater tasks (finish() posts invokeLater to re-enable
             // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
             // live action object rather than null.
-            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            SwingUtilities.invokeAndWait(() -> {});
             Actions.resetForTest();
             messageCenterMock.close();
         }
@@ -1160,7 +1161,7 @@ class GraceModeManagerTest extends UnitTest {
             // Drain pending invokeLater tasks (finish() posts invokeLater to re-enable
             // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
             // live action object rather than null.
-            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            SwingUtilities.invokeAndWait(() -> {});
             Actions.resetForTest();
             messageCenterMock.close();
         }
@@ -1469,7 +1470,7 @@ class GraceModeManagerTest extends UnitTest {
             // Drain pending invokeLater tasks (finish() posts invokeLater to re-enable
             // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
             // live action object rather than null.
-            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            SwingUtilities.invokeAndWait(() -> {});
             Actions.resetForTest();
             editModeManagerMock.close();
             previewMock.close();
@@ -1500,7 +1501,7 @@ class GraceModeManagerTest extends UnitTest {
 
                 var captor = ArgumentCaptor.forClass(Message.class);
                 messageCenterMock.verify(() -> MessageCenter.post(captor.capture()),
-                    org.mockito.Mockito.atLeastOnce());
+                    atLeastOnce());
                 var graceModeNotification = captor.getAllValues().stream()
                     .filter(m -> m instanceof GraceModeStateDidChangeNotification)
                     .map(m -> (GraceModeStateDidChangeNotification) m)
@@ -1568,7 +1569,7 @@ class GraceModeManagerTest extends UnitTest {
             // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions so the lambda sees a
             // live action object rather than null. resetForTest() also prevents action-group
             // selection state from bleeding into subsequent tests.
-            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            SwingUtilities.invokeAndWait(() -> {});
             Actions.resetForTest();
             editModeManagerMock.close();
             previewMock.close();
@@ -1742,7 +1743,7 @@ class GraceModeManagerTest extends UnitTest {
         void tearDown() throws Exception {
             // Drain pending invokeLater tasks (commit() posts invokeLater to re-enable
             // GRACE_EIGHTH_NOTE_ACTION) before resetting Actions.
-            javax.swing.SwingUtilities.invokeAndWait(() -> {});
+            SwingUtilities.invokeAndWait(() -> {});
             Actions.resetForTest();
             messageCenterMock.close();
         }
@@ -1935,7 +1936,7 @@ class GraceModeManagerTest extends UnitTest {
             // with an error that points nowhere near the cause.
             try {
                 // Drain pending invokeLater tasks before resetting Actions (see the sibling fixtures).
-                javax.swing.SwingUtilities.invokeAndWait(() -> {});
+                SwingUtilities.invokeAndWait(() -> {});
                 Actions.resetForTest();
             } finally {
                 editModeManagerMock.close();
@@ -2272,7 +2273,7 @@ class GraceModeManagerTest extends UnitTest {
 
     private static MouseEvent mouseEvent(Object source, int id, int x, int y, int button) {
         return new MouseEvent(
-            (java.awt.Component) source,
+            (Component) source,
             id,
             System.currentTimeMillis(),
             0,

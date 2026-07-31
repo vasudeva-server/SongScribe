@@ -46,6 +46,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.jspecify.annotations.Nullable;
 import org.mockito.MockedStatic;
 
 import net.engio.mbassy.listener.Handler;
@@ -2027,7 +2028,7 @@ class ScoreViewControllerTest extends UnitTest {
         // Actions.DURATION_ACTION_GROUP is a public static field. These tests swap in a
         // mock, so the original must be restored in tearDown to avoid leaking the mock
         // into other tests that share the JVM.
-        private @org.jspecify.annotations.Nullable DurationActionGroup originalDurationActionGroup;
+        private @Nullable DurationActionGroup originalDurationActionGroup;
 
         // Entering edit mode always delegates to EditModeManager.makePreviewElement(), which
         // reads Actions constants this class does not initialize. Stub it out for the whole

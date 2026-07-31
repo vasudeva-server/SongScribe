@@ -502,11 +502,8 @@ class LineSelectionHandler {
             return false;
         }
 
-        if (MidiController.isPlaying()) {
-            return false;
-        }
-
-        return scoreView.getMode() == Mode.SELECT || e.isAltDown();
+        return !MidiController.isPlaying()
+            && (scoreView.getMode() == Mode.SELECT || e.isAltDown());
     }
 
     // ======================================================================

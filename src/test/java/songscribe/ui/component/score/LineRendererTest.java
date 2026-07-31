@@ -108,7 +108,7 @@ class LineRendererTest extends UnitTest {
     }
 
     /** Creates a real {@code Graphics2D} backed by an off-screen image, wrapped in a spy. */
-    private static java.awt.Graphics2D spyGraphics() {
+    private static Graphics2D spyGraphics() {
         var img = new BufferedImage(200, 200, BufferedImage.TYPE_INT_ARGB);
         return spy(img.createGraphics());
     }

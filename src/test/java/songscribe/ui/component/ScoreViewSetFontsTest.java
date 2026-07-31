@@ -22,6 +22,7 @@ package songscribe.ui.component;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
 import java.awt.Font;
 
@@ -89,7 +90,7 @@ class ScoreViewSetFontsTest extends UnitTest {
 
         scoreView.setFonts(copy);
 
-        messageCenterMock.verify(() -> MessageCenter.post(any()), org.mockito.Mockito.times(0));
+        messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
         assertThat(scoreView.getDocumentFonts()).isSameAs(before);
         assertThat(song.isModified()).isFalse();
     }

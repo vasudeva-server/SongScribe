@@ -61,7 +61,7 @@ import songscribe.dom.Tuplet;
  * stop/end (no pending anchor) is ignored and logged. A tuplet is not a
  * legitimate document state without both anchors and a span of at least two
  * non-rest notes (#518), so a dangling start, an orphan stop, or an
- * insufficient span is instead rejected with a {@link org.xml.sax.SAXException}.
+ * insufficient span is instead rejected with a {@link SAXException}.
  */
 final class RangeSpanResolver {
 

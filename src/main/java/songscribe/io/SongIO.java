@@ -693,11 +693,8 @@ public final class SongIO {
          * for later versions — so both are consulted.
          */
         public boolean accidentalsConverted() {
-            if (noteReader != null && noteReader.sawLegacyAccidental()) {
-                return true;
-            }
-
-            return lineReader != null && lineReader.sawLegacyAccidental();
+            return (noteReader != null && noteReader.sawLegacyAccidental())
+                || (lineReader != null && lineReader.sawLegacyAccidental());
         }
 
         public Song getSong() {

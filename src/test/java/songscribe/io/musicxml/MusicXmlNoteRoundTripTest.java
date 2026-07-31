@@ -240,7 +240,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testDotCountsRoundTrip() throws Exception {
         for (var dotCount = 0; dotCount <= NoteTypeMapping.MAX_DOT_COUNT; dotCount++) {
-            final var finalDotCount = dotCount;
+            var finalDotCount = dotCount;
             var song = buildSong(line -> {
                 var note = ElementType.MINIM.newInstance();
                 note.setDotCount(finalDotCount);

@@ -45,6 +45,7 @@ import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.KeyType;
+import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
@@ -692,7 +693,7 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
     // -------------------------------------------------------------------------
 
     /** Adds {@code count} fresh notes of {@code type} to {@code line}, returning the handles. */
-    private static List<StaffElement> addNotes(songscribe.dom.Line line, ElementType type, int count) {
+    private static List<StaffElement> addNotes(Line line, ElementType type, int count) {
         var notes = new ArrayList<StaffElement>();
 
         for (int i = 0; i < count; i++) {

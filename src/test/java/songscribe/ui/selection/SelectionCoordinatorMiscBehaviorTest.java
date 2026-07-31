@@ -26,6 +26,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.awt.Panel;
 import java.awt.Toolkit;
 import java.awt.event.MouseEvent;
 import java.util.List;
@@ -82,7 +83,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
             var listener = coordinator.getGlobalMouseReleasedListener();
 
             // Invoke the listener directly — the AWT dispatch path is not under test.
-            var fakeSource = new java.awt.Panel();
+            var fakeSource = new Panel();
             var mouseReleasedEvent = new MouseEvent(
                 fakeSource, MouseEvent.MOUSE_RELEASED, 0L, 0, 0, 0, 0, 0, 1, false, MouseEvent.BUTTON1
             );

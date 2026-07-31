@@ -23,6 +23,7 @@ package songscribe.ui.renderer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
@@ -120,7 +121,7 @@ class AnnotationRendererTest extends UnitTest {
         var xCaptor = ArgumentCaptor.forClass(Float.class);
         var yCaptor = ArgumentCaptor.forClass(Float.class);
         verify(g2Spy).drawString(
-            org.mockito.ArgumentMatchers.eq(ANNOTATION_TEXT),
+            eq(ANNOTATION_TEXT),
             xCaptor.capture(),
             yCaptor.capture()
         );

@@ -131,7 +131,7 @@ public final class ScoreViewController {
         ClipboardManager clipboardManager
     ) {
         this.score = score;
-        this.scoreActions = score;
+        scoreActions = score;
         this.operations = operations;
         this.selectionCoordinator = selectionCoordinator;
         this.clipboardManager = clipboardManager;
@@ -713,7 +713,7 @@ public final class ScoreViewController {
      * either it discards no ending, or the user confirmed discarding one. Callers
      * must run this before mutating anything — declining leaves the score untouched.
      */
-    private boolean confirmEndingInvalidatedByDeletion(Line line, java.util.List<StaffElement> elements) {
+    private boolean confirmEndingInvalidatedByDeletion(Line line, List<StaffElement> elements) {
         return !line.hasEndingInvalidatedByDeletion(elements) || EndingConfirms.confirmInvalidation(score);
     }
 

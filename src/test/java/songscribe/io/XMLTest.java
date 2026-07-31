@@ -23,6 +23,7 @@ package songscribe.io;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.PrintWriter;
+import java.io.StringReader;
 import java.io.StringWriter;
 
 import javax.xml.parsers.SAXParserFactory;
@@ -30,6 +31,7 @@ import javax.xml.parsers.SAXParserFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
 import org.xml.sax.helpers.DefaultHandler;
 
 import songscribe.UnitTest;
@@ -211,7 +213,7 @@ class XMLTest extends UnitTest {
 
         var factory = SAXParserFactory.newInstance();
         var parser = factory.newSAXParser();
-        parser.parse(new org.xml.sax.InputSource(new java.io.StringReader(xml)), handler);
+        parser.parse(new InputSource(new StringReader(xml)), handler);
 
         assertThat(parsed.toString()).isEqualTo(original);
     }

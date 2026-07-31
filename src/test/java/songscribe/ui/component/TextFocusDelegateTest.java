@@ -27,6 +27,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import java.awt.Component;
 import java.awt.event.FocusEvent;
 import java.awt.event.KeyEvent;
 
@@ -76,20 +77,20 @@ class TextFocusDelegateTest extends UnitTest {
 
     /** Creates a FocusEvent with the given source and event id. */
     private static FocusEvent focusEvent(Object source, int id) {
-        return new FocusEvent((java.awt.Component) source, id);
+        return new FocusEvent((Component) source, id);
     }
 
     /**
      * Creates a KeyEvent for a Tab press on the given source component.
      * The event is a KEY_PRESSED so {@code getKeyCode()} returns VK_TAB.
      */
-    private static KeyEvent tabKeyEvent(java.awt.Component source, boolean shiftDown) {
+    private static KeyEvent tabKeyEvent(Component source, boolean shiftDown) {
         int modifiers = shiftDown ? KeyEvent.SHIFT_DOWN_MASK : 0;
         return new KeyEvent(source, KeyEvent.KEY_PRESSED, 0L, modifiers, KeyEvent.VK_TAB, KeyEvent.CHAR_UNDEFINED);
     }
 
     /** Creates a non-Tab KeyEvent (letter 'a') on the given source. */
-    private static KeyEvent nonTabKeyEvent(java.awt.Component source) {
+    private static KeyEvent nonTabKeyEvent(Component source) {
         return new KeyEvent(source, KeyEvent.KEY_PRESSED, 0L, 0, KeyEvent.VK_A, 'a');
     }
 

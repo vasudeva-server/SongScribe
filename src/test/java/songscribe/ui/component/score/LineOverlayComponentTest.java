@@ -25,6 +25,7 @@ import static org.assertj.core.data.Offset.offset;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
@@ -78,7 +79,7 @@ class LineOverlayComponentTest extends UnitTest {
         }
 
         @Override
-        protected void renderOverlay(java.awt.Graphics2D g2) {
+        protected void renderOverlay(Graphics2D g2) {
             capturedHints = g2.getRenderingHints();
             capturedTransform = g2.getTransform();
         }

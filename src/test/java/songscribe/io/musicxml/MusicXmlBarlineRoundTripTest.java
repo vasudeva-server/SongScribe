@@ -359,7 +359,7 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
         var song2 = roundTrip(song);
         // The reader reconstructs elements in document order, so a mid-line
         // REPEAT_RIGHT is not pulled to the terminal slot: the order is preserved.
-        final var expectedBarlines = List.of(
+        var expectedBarlines = List.of(
             ElementType.REPEAT_RIGHT, ElementType.SINGLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE);
         assertThat(barlineTypesOf(song2.getLine(0)))
             .as("barline types for line 0 after round-trip")

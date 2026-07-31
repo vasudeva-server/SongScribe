@@ -146,7 +146,7 @@ public class MainFrame extends JFrame implements Printable {
     /**
      * A startup error collected before the main window is shown. Non-fatal errors are
      * displayed as warnings after the window is revealed; a fatal error triggers
-     * {@link songscribe.error.RuntimeError#exit(String)} before the window appears.
+     * {@link RuntimeError#exit(String)} before the window appears.
      */
     public record StartupError(String title, String message, boolean fatal) {}
 
@@ -275,7 +275,7 @@ public class MainFrame extends JFrame implements Printable {
      * Drains the startup error queue. Must be called on the EDT.
      * <p>
      * The splash is always hidden before any dialog is shown. If a fatal error is present,
-     * {@link songscribe.error.RuntimeError#exit(String, String)} is called and the main window
+     * {@link RuntimeError#exit(String, String)} is called and the main window
      * is not revealed. Otherwise each non-fatal error is shown as a warning dialog in queue order.
      */
     static void drainStartupErrors() {

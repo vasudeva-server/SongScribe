@@ -29,6 +29,7 @@ import java.io.StringWriter;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -176,7 +177,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         var builder = factory.newDocumentBuilder();
         var doc = builder.parse(new InputSource(new StringReader(xml)));
         var tiedElements = doc.getElementsByTagName("tied");
-        var orientations = new java.util.ArrayList<@Nullable String>();
+        var orientations = new ArrayList<@Nullable String>();
 
         for (var i = 0; i < tiedElements.getLength(); i++) {
             var tied = (Element) tiedElements.item(i);

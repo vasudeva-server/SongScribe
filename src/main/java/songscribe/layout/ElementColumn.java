@@ -127,12 +127,12 @@ public final class ElementColumn {
         this.leftExtentSs = leftExtentSs;
         this.rightExtentSs = rightExtentSs;
         this.rightExtentExcludingAugmentationSs = rightExtentExcludingAugmentationSs;
-        this.noteheadWidthSs = rightExtentExcludingAugmentationSs;
+        noteheadWidthSs = rightExtentExcludingAugmentationSs;
         this.stemTopSs = stemTopSs;
         this.stemBottomSs = stemBottomSs;
         this.lyric = lyric;
         this.syllableWidthSs = syllableWidthSs;
-        this.syllableFirstGraphemeWidthSs = syllableWidthSs;
+        syllableFirstGraphemeWidthSs = syllableWidthSs;
         this.beamed = beamed;
     }
 
@@ -365,7 +365,7 @@ public final class ElementColumn {
      * Used to horizontally anchor lyrics so neither a flag nor a dot shifts the lyric position.
      * Only valid after X position has been set by the spacing calculator.
      * <p>
-     * Agrees with {@link songscribe.layout.NoteGeometry#getNoteheadCenterXSs} for every type now
+     * Agrees with {@link NoteGeometry#getNoteheadCenterXSs} for every type now
      * that both derive from the same per-type width, {@link ElementType#getElementWidthSs()}.
      * Previously this one used the black-notehead constant, so the two drifted apart on any type
      * whose head is not a black notehead — a whole note most visibly (refs #694).

@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Rectangle2D;
@@ -38,7 +39,7 @@ import songscribe.util.GraphicsState;
 
 class GraphicsStateTest extends UnitTest {
 
-    private java.awt.Graphics2D g2;
+    private Graphics2D g2;
 
     @BeforeEach
     void setUp() {

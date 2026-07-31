@@ -26,6 +26,7 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.awt.Dimension;
 import java.awt.Font;
+import java.awt.Graphics2D;
 import java.awt.GraphicsEnvironment;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
@@ -645,7 +646,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
      * Used to test {@link LyricsComponent#getTextWidth} without a real display context.
      * Caller is responsible for disposing the returned object.
      */
-    private static java.awt.Graphics2D createOffscreenGraphics() {
+    private static Graphics2D createOffscreenGraphics() {
         return new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB).createGraphics();
     }
 
@@ -696,7 +697,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
         /**
          * When under-lyrics are non-empty, {@link LyricsComponent#getTextWidth(java.awt.Graphics2D)}
          * returns a positive value — confirming delegation to
-         * {@link songscribe.util.GraphicUtils#getTextBlockWidth}.
+         * {@link GraphicUtils#getTextBlockWidth}.
          */
         @Test
         void testNonEmptyLyricsReturnsPositiveWidth() {

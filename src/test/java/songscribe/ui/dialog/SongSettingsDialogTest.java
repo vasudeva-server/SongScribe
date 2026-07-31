@@ -47,6 +47,7 @@ import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.data.Offset.offset;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -196,7 +197,7 @@ class SongSettingsDialogTest extends UnitTest {
             var text = String.valueOf(midInches);
             assertThat(SongSettingsDialog.validateLineWidthText(text, false))
                 .as("valid inches value returned as-is")
-                .isCloseTo(midInches, org.assertj.core.data.Offset.offset(COMPARISON_TOLERANCE));
+                .isCloseTo(midInches, offset(COMPARISON_TOLERANCE));
         }
 
         @Test
@@ -205,7 +206,7 @@ class SongSettingsDialogTest extends UnitTest {
             var text = String.valueOf(cm);
             assertThat(SongSettingsDialog.validateLineWidthText(text, true))
                 .as("valid cm value is converted to inches and returned")
-                .isCloseTo(VALID_INCHES, org.assertj.core.data.Offset.offset(COMPARISON_TOLERANCE));
+                .isCloseTo(VALID_INCHES, offset(COMPARISON_TOLERANCE));
         }
 
         @Test

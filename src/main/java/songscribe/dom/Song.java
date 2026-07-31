@@ -799,7 +799,7 @@ public final class Song {
      * <p>
      * This is the single authoritative derivation of the translation flag
      * (decision 4A); rendering and IO pass this to
-     * {@link songscribe.dom.AttributionFormatter}.
+     * {@link AttributionFormatter}.
      */
     public boolean showTranslation() {
         return !metadata.unofficialTranslation() && !translatedLyrics.isEmpty();
@@ -1002,7 +1002,7 @@ public final class Song {
 
     /**
      * Trims the person name; if empty, returns {@link #SRI_CHINMOY}.
-     * Still public because {@link songscribe.io.SongIO} uses it when parsing legacy files.
+     * Still public because {@link SongIO} uses it when parsing legacy files.
      */
     public static String coercePerson(String text) {
         var trimmed = text.trim();

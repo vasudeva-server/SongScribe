@@ -198,7 +198,7 @@ class StandardDialogTest extends MainFrameMockTest {
      *   <li>tracks how many times {@link #setData()} was called</li>
      *   <li>overrides {@code setVisible(false)} to count close calls without
      *       triggering the full dialog teardown (which would NPE with a null
-     *       underlying {@link javax.swing.JDialog})</li>
+     *       underlying {@link JDialog})</li>
      * </ul>
      */
     private static class TrackingDialog extends StandardDialog {

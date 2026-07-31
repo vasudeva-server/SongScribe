@@ -64,7 +64,7 @@ public final class FirstSecondEndingAction extends UIAction {
     }
 
     public void setCachedResult(@Nullable EndingValidationResult result) {
-        this.cachedResult = result;
+        cachedResult = result;
     }
 
     @Override

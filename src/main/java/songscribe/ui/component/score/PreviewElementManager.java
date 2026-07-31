@@ -804,14 +804,11 @@ public final class PreviewElementManager {
 
         /** Returns whether the element at {@code (atLineIndex, atElementIndex)} is highlighted. */
         public boolean highlights(int atLineIndex, int atElementIndex) {
-            if (atLineIndex != lineIndex) {
-                return false;
-            }
-
             // sourceIndex/targetIndex are -1 when absent (a fall has no target; NONE has
             // neither). Guard so a negative query index never matches an absent endpoint.
-            return (sourceIndex >= 0 && atElementIndex == sourceIndex)
-                || (targetIndex >= 0 && atElementIndex == targetIndex);
+            return atLineIndex == lineIndex
+                && ((sourceIndex >= 0 && atElementIndex == sourceIndex)
+                    || (targetIndex >= 0 && atElementIndex == targetIndex));
         }
     }
 
@@ -1617,11 +1614,9 @@ public final class PreviewElementManager {
 
         // isDuration() rejects an invalid host (e.g. a grace note); hasGlissando() rejects
         // a valid host that would have its glissando to the following note broken.
-        if (!precedingType.isDuration() || precedingElement.hasGlissando()) {
-            return true;
-        }
-
-        return xIndex < line.effectiveElementCount() && line.getElement(xIndex).getType().isBreathMark();
+        return !precedingType.isDuration()
+            || precedingElement.hasGlissando()
+            || (xIndex < line.effectiveElementCount() && line.getElement(xIndex).getType().isBreathMark());
     }
 
     /**

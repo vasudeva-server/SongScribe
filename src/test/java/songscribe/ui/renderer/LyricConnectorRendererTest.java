@@ -338,7 +338,7 @@ class LyricConnectorRendererTest extends UnitTest {
         var yCap = ArgumentCaptor.forClass(Float.class);
         verify(g2, times(3)).drawGlyphVector(any(GlyphVector.class), xCap.capture(), yCap.capture());
 
-        var preferredCellWidthSs = songscribe.layout.LyricRenderMetrics.HYPHEN_WIDENING_FACTOR * HYPHEN_WIDTH_SS;
+        var preferredCellWidthSs = LyricRenderMetrics.HYPHEN_WIDENING_FACTOR * HYPHEN_WIDTH_SS;
         var gapSs = 5.0;
         var count = (int) Math.floor(gapSs / preferredCellWidthSs);
         var offsetSs = (gapSs - count * preferredCellWidthSs) / 2.0;

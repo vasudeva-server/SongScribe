@@ -35,6 +35,7 @@ import songscribe.ui.selection.ElementSelection;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
@@ -60,7 +61,7 @@ class SelectAllElementsActionTest extends MainFrameMockTest {
         action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "select-all-elements"));
 
         messageCenterMock.verify(
-            () -> MessageCenter.post(org.mockito.ArgumentMatchers.any(SelectAllElementsCommand.class)));
+            () -> MessageCenter.post(any(SelectAllElementsCommand.class)));
     }
 
     @Test

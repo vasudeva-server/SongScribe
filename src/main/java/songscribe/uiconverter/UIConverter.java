@@ -74,7 +74,7 @@ public class UIConverter extends JFrame {
     private File currentDir = null;
 
     @Nullable
-    private ScoreView scoreView;
+    private final ScoreView scoreView;
 
     public @Nullable ScoreView getScoreView() {
         return scoreView;

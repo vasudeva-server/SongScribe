@@ -170,7 +170,7 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
      * layout, where it does not exist.
      * <p>
      * The rendering hints must match the ones {@code paintComponent} replays under, because a
-     * glyph vector is bound to the {@link java.awt.font.FontRenderContext} it was created with.
+     * glyph vector is bound to the {@link FontRenderContext} it was created with.
      */
     private DisplayList recordPreviewElement(LineComponent line, StaffElement previewElement) {
         var invariants = line.previewInvariants();

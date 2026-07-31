@@ -322,7 +322,7 @@ public abstract class LineOverlayComponent extends JComponent {
      * <p>
      * The rendering hints are applied through {@link GraphicUtils#setRenderingHints} — the same
      * call used when a line paints itself and when a display list is recorded. Glyph vectors are
-     * bound to the {@link java.awt.font.FontRenderContext} they were created under, so hints
+     * bound to the {@link FontRenderContext} they were created under, so hints
      * that differ between record and replay shift glyph ink subtly. Do not substitute a
      * hand-rolled hint set here.
      */

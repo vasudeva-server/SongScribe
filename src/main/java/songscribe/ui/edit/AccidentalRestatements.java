@@ -304,11 +304,8 @@ public final class AccidentalRestatements {
     private static boolean keepsAccidental(EditedNote note) {
         var after = note.after();
 
-        if (after == null) {
-            return false;
-        }
-
-        return StaffElement.getPitchAdjustment(after) == StaffElement.getPitchAdjustment(note.before());
+        return after != null
+            && StaffElement.getPitchAdjustment(after) == StaffElement.getPitchAdjustment(note.before());
     }
 
     /**

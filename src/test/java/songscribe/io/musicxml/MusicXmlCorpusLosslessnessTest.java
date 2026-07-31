@@ -40,6 +40,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.xml.sax.InputSource;
 
 import songscribe.UnitTest;
+import songscribe.dom.Song;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongLoader;
@@ -160,7 +161,7 @@ class MusicXmlCorpusLosslessnessTest extends UnitTest {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private static String writeMusicXml(songscribe.dom.Song song, DocumentFontsHolder fonts) {
+    private static String writeMusicXml(Song song, DocumentFontsHolder fonts) {
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);
         MusicXmlWriter.writeSong(song, fonts, pw, FIXED_CLOCK);

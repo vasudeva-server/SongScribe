@@ -27,6 +27,7 @@ import java.awt.BorderLayout;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
+import java.awt.Graphics2D;
 import java.awt.LayoutManager;
 import java.awt.geom.Rectangle2D;
 import java.util.LinkedHashMap;
@@ -128,7 +129,7 @@ class ScoreViewOverlayHostingTest extends UnitTest {
         }
 
         @Override
-        protected void renderOverlay(java.awt.Graphics2D g2) {
+        protected void renderOverlay(Graphics2D g2) {
             // Not exercised by these tests.
         }
     }

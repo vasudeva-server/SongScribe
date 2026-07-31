@@ -43,6 +43,8 @@ import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Tie;
@@ -85,12 +87,12 @@ class LineTrackBuilderTest extends UnitTest {
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private static Track newTrack() throws InvalidMidiDataException {
-        var sequence = new Sequence(Sequence.PPQ, MidiSequenceBuilder.PPQ);
+        var sequence = new Sequence(Sequence.PPQ, PPQ);
         return sequence.createTrack();
     }
 
     private static Track buildTrack(
-        songscribe.dom.Line line,
+        Line line,
         Tempo tempo
     ) throws Exception {
         var track = newTrack();
@@ -131,7 +133,7 @@ class LineTrackBuilderTest extends UnitTest {
      * optionally followed by a plain crotchet whose NOTE_ON tick reveals exactly
      * where the tuplet closed.
      */
-    private static songscribe.dom.Line tupletLine(
+    private static Line tupletLine(
         int grade,
         int normalNotes,
         ElementType noteValue,
@@ -175,7 +177,7 @@ class LineTrackBuilderTest extends UnitTest {
     }
 
     /** Sums the tuplet-adjusted durations of {@code count} elements starting at 0. */
-    private static int sumDurations(songscribe.dom.Line line, int count) {
+    private static int sumDurations(Line line, int count) {
         var builder = new LineTrackBuilder(line);
         var total = 0;
 
@@ -535,7 +537,7 @@ class LineTrackBuilderTest extends UnitTest {
             assertThat(noteOns).as("no NOTE_ON for rest").hasSize(1);
             assertThat(noteOns.getFirst().getTick())
                 .as("note after rest starts at one quarter-note tick offset")
-                .isEqualTo(MidiSequenceBuilder.PPQ);
+                .isEqualTo(PPQ);
 
             assertThat(noteOffs).as("only note-off for the pitched note, none for rest").hasSize(1);
         }
@@ -564,7 +566,7 @@ class LineTrackBuilderTest extends UnitTest {
             assertThat(noteOns.getFirst().getTick()).as("anchor NOTE_ON at tick 0").isEqualTo(0);
             assertThat(noteOns.getLast().getTick())
                 .as("standalone NOTE_ON after two quarter durations")
-                .isEqualTo(2 * MidiSequenceBuilder.PPQ);
+                .isEqualTo(2 * PPQ);
         }
 
         @Test
@@ -586,7 +588,7 @@ class LineTrackBuilderTest extends UnitTest {
             // Default sounding-percent=100 → note-off at tick 2*PPQ (end of note1)
             assertThat(noteOffs.getFirst().getTick())
                 .as("note-off at end of tie-end duration")
-                .isEqualTo(2 * MidiSequenceBuilder.PPQ);
+                .isEqualTo(2 * PPQ);
         }
 
         @Test
@@ -610,7 +612,7 @@ class LineTrackBuilderTest extends UnitTest {
             assertThat(noteOffs).as("one note-off").hasSize(1);
             assertThat(noteOffs.getFirst().getTick())
                 .as("normal note-off tick at full duration")
-                .isEqualTo(MidiSequenceBuilder.PPQ);
+                .isEqualTo(PPQ);
         }
     }
 
@@ -640,7 +642,7 @@ class LineTrackBuilderTest extends UnitTest {
             var glissNoteOffTick = noteOffs.getFirst().getTick();
             assertThat(glissNoteOffTick)
                 .as("CONNECTED note-off at duration − 1")
-                .isEqualTo(MidiSequenceBuilder.PPQ - CONNECTED_NOTE_OFF_OFFSET);
+                .isEqualTo(PPQ - CONNECTED_NOTE_OFF_OFFSET);
         }
 
         @Test
@@ -660,7 +662,7 @@ class LineTrackBuilderTest extends UnitTest {
             assertThat(noteOffs).as("normal note-off emitted").hasSize(1);
             assertThat(noteOffs.getFirst().getTick())
                 .as("fallback note-off at full sounding duration")
-                .isEqualTo(MidiSequenceBuilder.PPQ);
+                .isEqualTo(PPQ);
         }
 
         @Test
@@ -681,7 +683,7 @@ class LineTrackBuilderTest extends UnitTest {
             assertThat(noteOffs).as("normal note-off emitted").hasSize(1);
             assertThat(noteOffs.getFirst().getTick())
                 .as("fallback note-off at full sounding duration")
-                .isEqualTo(MidiSequenceBuilder.PPQ);
+                .isEqualTo(PPQ);
         }
 
         @Test
@@ -697,8 +699,8 @@ class LineTrackBuilderTest extends UnitTest {
 
             // Slide starts at sustainTicks into the note (halfway through full duration).
             // Events at the note-off tick (PPQ) are the deferred reset, not the fade.
-            var noteOffTick = (long) MidiSequenceBuilder.PPQ;
-            var slideStartTick = SlideMidiHelper.calculateSustainTicks(MidiSequenceBuilder.PPQ);
+            var noteOffTick = (long) PPQ;
+            var slideStartTick = SlideMidiHelper.calculateSustainTicks(PPQ);
 
             // Expression fade events are CC 11, emitted strictly before note-off tick
             var slideExpressionEvents = ccEvents.stream()
@@ -792,7 +794,7 @@ class LineTrackBuilderTest extends UnitTest {
             var bendEvents = eventsByCommand(track, ShortMessage.PITCH_BEND);
 
             // The last pitch bend event within the slide window must be center (reset)
-            var slideDuration = Math.min(SlideMidiHelper.GRACE_SLIDE_TICKS, MidiSequenceBuilder.PPQ);
+            var slideDuration = Math.min(SlideMidiHelper.GRACE_SLIDE_TICKS, PPQ);
             var resetTick = (long) slideDuration;
 
             var resetEvent = bendEvents.stream()
@@ -819,7 +821,7 @@ class LineTrackBuilderTest extends UnitTest {
             var track = buildTrack(line, new Tempo());
             var ccEvents = eventsByCommand(track, ShortMessage.CONTROL_CHANGE);
 
-            var slideDuration = Math.min(SlideMidiHelper.GRACE_SLIDE_TICKS, MidiSequenceBuilder.PPQ);
+            var slideDuration = Math.min(SlideMidiHelper.GRACE_SLIDE_TICKS, PPQ);
             var resetTick = (long) slideDuration;
 
             // Expression reset = CC 11 = 127 at the slide-end tick
@@ -894,7 +896,7 @@ class LineTrackBuilderTest extends UnitTest {
                 0, 0, (VelocityMap) null);
 
             var ccEvents = eventsByCommand(track, ShortMessage.CONTROL_CHANGE);
-            var endTick = (long) MidiSequenceBuilder.PPQ;
+            var endTick = (long) PPQ;
 
             // After a SLIDE_OUT the pending expression reset (CC 11=127) must land at the end tick
             var expressionReset = ccEvents.stream()
@@ -924,7 +926,7 @@ class LineTrackBuilderTest extends UnitTest {
                 0, 0, helper);
 
             var ccEvents = eventsByCommand(track, ShortMessage.CONTROL_CHANGE);
-            var endTick = (long) MidiSequenceBuilder.PPQ;
+            var endTick = (long) PPQ;
 
             // Without explicit flush, no expression reset at end tick
             var expressionResetAtEnd = ccEvents.stream()
@@ -943,8 +945,8 @@ class LineTrackBuilderTest extends UnitTest {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private static songscribe.dom.Song songWithOneCrotchet() {
-        var song = new songscribe.dom.Song();
+    private static Song songWithOneCrotchet() {
+        var song = new Song();
         var line = detachedLine();
         line.addElement(crotchet());
         song.getLines().clear();

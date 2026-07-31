@@ -387,7 +387,7 @@ public final class LyricEditor extends MyJTextField {
     /**
      * Re-derives this editor's zoomed font and bounds when it is the currently active editor.
      * <p>
-     * This is an absolutely-positioned {@link javax.swing.JComponent}, not a layout-managed
+     * This is an absolutely-positioned {@link JComponent}, not a layout-managed
      * child, so a zoom change does not move or resize it on its own. Guarded on being the
      * active editor because {@link MessageCenter} holds subscribers weakly — a dismissed
      * editor stays reachable (and therefore subscribed) until GC'd, and must not react to a
@@ -1220,11 +1220,9 @@ public final class LyricEditor extends MyJTextField {
 
         var backLyric = line.getElement(backIndex).getLyricForVerse(activeVerse);
 
-        if (backLyric == null || !Lyric.syllabicContinues(backLyric.syllabic())) {
-            return false;
-        }
-
-        return line.hasFollowingTextBearingLyric(currentIndex, activeVerse);
+        return backLyric != null
+            && Lyric.syllabicContinues(backLyric.syllabic())
+            && line.hasFollowingTextBearingLyric(currentIndex, activeVerse);
     }
 
     /**

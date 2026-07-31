@@ -36,6 +36,7 @@ import songscribe.UnitTest;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -64,7 +65,7 @@ class PlayThreadTest extends UnitTest {
 
     private static List<ShortMessage> captureMessages(Receiver receiver) {
         var captor = ArgumentCaptor.forClass(MidiMessage.class);
-        verify(receiver, org.mockito.Mockito.atLeastOnce()).send(captor.capture(), anyLong());
+        verify(receiver, atLeastOnce()).send(captor.capture(), anyLong());
         return captor.getAllValues().stream()
             .map(m -> (ShortMessage) m)
             .toList();

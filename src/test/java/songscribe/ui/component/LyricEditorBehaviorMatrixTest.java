@@ -35,6 +35,7 @@ import java.awt.event.AWTEventListener;
 import java.awt.event.MouseEvent;
 
 import javax.swing.JPanel;
+import javax.swing.text.AbstractDocument;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Nested;
@@ -111,7 +112,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
         editor.setText("");
         editor.attachListeners();
 
-        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 0, "abc\ndef", null);
+        ((AbstractDocument) editor.getDocument()).replace(0, 0, "abc\ndef", null);
 
         assertThat(editor.getText()).isEqualTo("abc");
     }
@@ -126,7 +127,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
         editor.setText("");
         editor.attachListeners();
 
-        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 0, "hello world", null);
+        ((AbstractDocument) editor.getDocument()).replace(0, 0, "hello world", null);
 
         assertThat(editor.getText()).isEqualTo("hello");
     }
@@ -141,7 +142,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
         editor.setText("");
         editor.attachListeners();
 
-        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 0, "  hello world", null);
+        ((AbstractDocument) editor.getDocument()).replace(0, 0, "  hello world", null);
 
         assertThat(editor.getText()).isEqualTo("hello");
     }
@@ -156,7 +157,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
         editor.setText("");
         editor.attachListeners();
 
-        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 0, "123, 456", null);
+        ((AbstractDocument) editor.getDocument()).replace(0, 0, "123, 456", null);
 
         assertThat(editor.getText()).isEmpty();
     }
@@ -174,7 +175,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
         editor.setText("");
         editor.attachListeners();
 
-        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 0, "हिन्दी गीत", null);
+        ((AbstractDocument) editor.getDocument()).replace(0, 0, "हिन्दी गीत", null);
 
         assertThat(editor.getText()).isEqualTo("हिन्दी");
     }
@@ -191,7 +192,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
         editor.attachListeners();
 
         // Replace "hel" (positions 0..2, length 3) with "Hey" — net length stays at 5.
-        ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 3, "Hey", null);
+        ((AbstractDocument) editor.getDocument()).replace(0, 3, "Hey", null);
 
         assertThat(editor.getText()).isEqualTo("Heylo");
     }
@@ -213,7 +214,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
             toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
 
             // Replace first 2 chars with 5 chars — would push length to 33.
-            ((javax.swing.text.AbstractDocument) editor.getDocument()).replace(0, 2, "abcde", null);
+            ((AbstractDocument) editor.getDocument()).replace(0, 2, "abcde", null);
 
             verify(toolkitMock).beep();
         }

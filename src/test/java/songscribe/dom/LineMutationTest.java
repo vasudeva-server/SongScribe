@@ -2588,7 +2588,7 @@ class LineMutationTest extends UnitTest {
             // An empty line must not throw; the early-return guard must fire.
             // A fresh Line has no elements by default (before any addElement call).
             var emptyLine = new Line(song);
-            org.assertj.core.api.Assertions.assertThatNoException()
+            assertThatNoException()
                 .isThrownBy(emptyLine::attachInitialTempoIfNeeded);
         }
     }

@@ -231,11 +231,8 @@ public class Tuplet extends RangeElement {
     public boolean isNumberOnly(Line line) {
         var anchor = getAnchorElement();
 
-        if (anchor == null) {
-            return false;
-        }
-
-        return line.findBeamAt(getAnchorElementIndex()) != null
+        return anchor != null
+            && line.findBeamAt(getAnchorElementIndex()) != null
             && line.findBeamAt(getEndElementIndex()) != null
             && anchor.getDirection().isUp();
     }

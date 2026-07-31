@@ -299,11 +299,10 @@ public final class LineSelectionState {
      * saw highlighted (refs #698).
      */
     public boolean isElementSelected(int elementIndex) {
-        if (elementIndex < 0 || !hasElementSelection()) {
-            return false;
-        }
-
-        return (selectionBegin <= elementIndex) && (elementIndex <= line.effectiveDeleteEnd(selectionEnd));
+        return elementIndex >= 0
+            && hasElementSelection()
+            && (selectionBegin <= elementIndex)
+            && (elementIndex <= line.effectiveDeleteEnd(selectionEnd));
     }
 
     /**

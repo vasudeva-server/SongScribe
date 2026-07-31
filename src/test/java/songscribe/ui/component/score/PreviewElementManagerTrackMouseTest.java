@@ -40,7 +40,7 @@ import songscribe.ui.edit.GraceModeManager;
 
 /**
  * Drives {@link PreviewElementManager#trackMouse} through its pure-logic
- * suppression branches with a mocked {@link songscribe.ui.component.score.LineComponent}
+ * suppression branches with a mocked {@link LineComponent}
  * and {@link MouseEvent} (matrix §7C, "trackMouse" row). Each branch ends in an
  * early return; the test asserts on the resulting static preview state:
  * <ul>

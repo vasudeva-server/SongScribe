@@ -31,6 +31,7 @@ import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
+import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
@@ -264,7 +265,7 @@ class MutationLabelTest extends UnitTest {
     @Test
     void testMetadataTempoChangeLabelsChangeTempo() {
         var song = songWithNotes(1);
-        assertThat(undoLabelAfter(song, () -> song.setTempo(new Tempo(90, songscribe.dom.Duration.CROTCHET, "Slow", true))))
+        assertThat(undoLabelAfter(song, () -> song.setTempo(new Tempo(90, Duration.CROTCHET, "Slow", true))))
             .isEqualTo(labeled(Strings.ACTION_EDIT_OP_CHANGE_TEMPO));
     }
 

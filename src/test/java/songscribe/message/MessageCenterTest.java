@@ -22,6 +22,7 @@ package songscribe.message;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.catchThrowable;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
@@ -184,7 +185,7 @@ class MessageCenterTest extends UnitTest {
         private void invokeHandlePublicationError(PublicationError error) throws Throwable {
             try {
                 handlePublicationErrorMethod.invoke(null, error);
-            } catch (java.lang.reflect.InvocationTargetException e) {
+            } catch (InvocationTargetException e) {
                 throw e.getCause();
             }
         }
