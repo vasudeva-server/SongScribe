@@ -428,6 +428,7 @@ public class Ending extends RangeElement {
      * @param deletedElements elements about to be deleted
      * @param line            the owning line (pre-deletion state)
      */
+    @Override
     @SuppressWarnings("SlowListContainsAll")
     public boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
         // Condition 2: REPEAT_RIGHT split element is deleted
@@ -551,6 +552,7 @@ public class Ending extends RangeElement {
      * @param newElement the element that will replace it
      * @param line       the owning line
      */
+    @Override
     public boolean isInvalidatedByReplacement(
         StaffElement oldElement, StaffElement newElement, Line line
     ) {
@@ -567,6 +569,7 @@ public class Ending extends RangeElement {
      * @param insertedType  the type of the element being inserted
      * @param line          the owning line (pre-insertion state)
      */
+    @Override
     public boolean isInvalidatedByInsertion(
         int insertedIndex, ElementType insertedType, Line line
     ) {

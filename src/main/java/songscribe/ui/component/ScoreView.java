@@ -525,6 +525,7 @@ public final class ScoreView
         };
     }
 
+    @Override
     public void syncPlaybackPrefs() {
         EditModeManager.setPlayInsertedNote(Prefs.getBoolean(PrefsKey.PLAY_INSERTED_NOTE));
         // If true, the score is played with repeats
@@ -539,6 +540,7 @@ public final class ScoreView
         PlaybackController.applyPrefsDuringPlayback();
     }
 
+    @Override
     public void setKeyBindingsEnabled(boolean enabled) {
         var inputMap = getInputMap(JComponent.WHEN_FOCUSED);
 
@@ -712,6 +714,7 @@ public final class ScoreView
         repaint();
     }
 
+    @Override
     public void selectionChanged() {
         MessageCenter.post(new MusicSelectionDidChangeNotification(this));
     }
@@ -1014,6 +1017,7 @@ public final class ScoreView
         }
     }
 
+    @Override
     public SelectionCoordinator getSelectionCoordinator() {
         return selectionCoordinator;
     }
@@ -1077,6 +1081,7 @@ public final class ScoreView
      * to re-lay out the page. Pixels are still where this ends up, but only inside
      * {@link #layoutPage}, at the Swing boundary that actually needs an int.
      */
+    @Override
     public void updatePageLayout(double lineWidthSs) {
         getSong().setLineWidthSs(lineWidthSs);
         // layoutPage expects view px, so fold in the current zoom. Skipping this left the page
