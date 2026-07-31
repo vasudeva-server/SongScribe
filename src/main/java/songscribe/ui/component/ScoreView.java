@@ -1135,7 +1135,7 @@ public final class ScoreView
      * Invalidates {@code component} and every descendant.
      * <p>
      * {@link Container#invalidate} propagates <em>upward</em> only, and a still-valid
-     * container serves cached geometry: {@link Container#preferredSize} reuses its last
+     * container serves cached geometry: {@link Container#getPreferredSize} reuses its last
      * answer, and a {@code LayoutManager2} is told to discard its own cache only when the
      * container it manages is invalidated. Every other trigger for that — a mutation, a
      * resize — originates inside the tree, so the normal upward propagation suffices.
