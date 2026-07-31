@@ -131,10 +131,10 @@ public final class MusicXmlWriter {
         // emit nothing — the reader carries it forward.
         var runningFifths = KeySignatureMapping.toFifths(song.getDefaultKeyType(), song.getDefaultKeyAccidentalCount());
 
-        // The first element of the first line anchors the song base tempo (mirrors
-        // Line.attachInitialTempoIfNeeded): its emitted tempo is its own
+        // The first element of the first line anchors the song base tempo (see
+        // Line.isInitialTempoAnchor): its emitted tempo is its own
         // TempoChangeAttachment if present, else song.getTempo().
-        var firstSongElement = firstElementOfSong(song);
+        var firstSongElement = song.initialTempoAnchor();
 
         for (Line line : song.getLines()) {
             // Glissandos are intra-line — they cannot span a system break.
@@ -327,18 +327,6 @@ public final class MusicXmlWriter {
                 MusicXmlMeasureWriter.closeMeasure(pw);
             }
         }
-    }
-
-    /** Returns the first element of the song's first line, or null when empty. */
-    private static @Nullable StaffElement firstElementOfSong(Song song) {
-        var lines = song.getLines();
-
-        if (lines.isEmpty()) {
-            return null;
-        }
-
-        var firstLineElements = lines.get(0).getElements();
-        return firstLineElements.isEmpty() ? null : firstLineElements.get(0);
     }
 
     /**

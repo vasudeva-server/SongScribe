@@ -758,11 +758,25 @@ public final class Song {
      */
     public void clearTempoIfOrphaned(StaffElement element) {
         var line = element.getLine();
-        var isFirstElement = indexOfLine(line) == 0 && line.getElementIndex(element) == 0;
 
-        if (isFirstElement || !hasAnyTempoChange()) {
+        if (line.isInitialTempoAnchor(line.getElementIndex(element)) || !hasAnyTempoChange()) {
             setTempo(null);
         }
+    }
+
+    /**
+     * The element the song's initial tempo is anchored on — the first element of the first
+     * line, per {@link Line#isInitialTempoAnchor} — or null when the song has no lines or
+     * its first line is empty.
+     */
+    public @Nullable StaffElement initialTempoAnchor() {
+        if (lines.isEmpty()) {
+            return null;
+        }
+
+        var firstLineElements = lines.getFirst().getElements();
+
+        return firstLineElements.isEmpty() ? null : firstLineElements.getFirst();
     }
 
     /**

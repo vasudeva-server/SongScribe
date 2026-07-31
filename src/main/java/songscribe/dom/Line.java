@@ -278,7 +278,7 @@ public class Line {
             // removal is a tracked modification; the attachment on the incoming
             // element needs no record because the element is not yet in the document,
             // so the ElementInsertion below captures its attached state.
-            if (index == 0 && !elements.isEmpty() && song.indexOfLine(this) == 0) {
+            if (isInitialTempoAnchor(index) && !elements.isEmpty()) {
                 var displacedFirstElement = elements.getFirst();
                 var displacedTempo =
                     displacedFirstElement.findAttachment(TempoChangeAttachment.class);
@@ -1331,6 +1331,21 @@ public class Line {
         return null;
     }
 
+    /**
+     * Whether {@code elementIndex} of this line is where the song's initial tempo is
+     * anchored — the first element of the first line, the position
+     * {@link #attachInitialTempoIfNeeded} mirrors it onto.
+     *
+     * <p>A {@link TempoChangeAttachment} at that position is the song's own tempo, never
+     * an independent per-note tempo change. Nothing in the model distinguishes the two —
+     * the mirrored attachment carries no mark identifying it as such, and the tempo dialog
+     * edits it in place like any other — so every reader of that position must treat what
+     * it finds there as the song's tempo.
+     */
+    public boolean isInitialTempoAnchor(int elementIndex) {
+        return elementIndex == 0 && song.indexOfLine(this) == 0;
+    }
+
     /** Attaches the song's initial tempo to the first element of this line if not already set. */
     void attachInitialTempoIfNeeded() {
         if (elements.isEmpty()) {
@@ -1388,10 +1403,14 @@ public class Line {
             invalidated.forEach(this::removeInvalidatedRangeElement);
         }
 
+        var displacedTempo = initialTempoBeingRemoved(index);
+
         applyChange(
             new ElementDeletion(this, index, deleted),
             () -> elements.remove(index)
         );
+
+        reanchorInitialTempo(displacedTempo);
     }
 
     /**
@@ -1427,10 +1446,56 @@ public class Line {
             invalidated.forEach(this::removeInvalidatedRangeElement);
         }
 
+        var displacedTempo = initialTempoBeingRemoved(from);
+
         applyChange(
             new ElementRangeDeletion(this, from, to, deletedElements),
             () -> elements.subList(from, to + 1).clear()
         );
+
+        reanchorInitialTempo(displacedTempo);
+    }
+
+    /**
+     * The song's initial tempo when removing from {@code from} would take the anchor
+     * element with it, else null. Read before the removal, while the anchor is still in
+     * place. Suppressed during replay: the recorded batch already carries the companion
+     * modification.
+     */
+    private @Nullable TempoChangeAttachment initialTempoBeingRemoved(int from) {
+        if (song.isReplaying() || !isInitialTempoAnchor(from)) {
+            return null;
+        }
+
+        return elements.get(from).findAttachment(TempoChangeAttachment.class);
+    }
+
+    /**
+     * Moves the song's initial tempo onto the new first element after a removal took the
+     * anchor away. The tempo describes the song, not the note it happened to sit on (see
+     * {@link #isInitialTempoAnchor}), so it must not disappear along with that note — the
+     * mirror image of the displacement {@link #addElement(int, StaffElement)} performs when
+     * an insertion pushes the anchor aside.
+     *
+     * <p>Emitted after the primary deletion, since the new first element only reaches index
+     * 0 once the removal has happened. Reverse-order undo therefore strips this tempo again
+     * before re-inserting the element that owned it.
+     */
+    private void reanchorInitialTempo(@Nullable TempoChangeAttachment displacedTempo) {
+        if (displacedTempo == null || elements.isEmpty()) {
+            return;
+        }
+
+        var newFirstElement = elements.getFirst();
+
+        // A tempo already on the new first element is the song's tempo in its own right —
+        // attachInitialTempoIfNeeded defers to an existing attachment, and so does this.
+        if (newFirstElement.findAttachment(TempoChangeAttachment.class) != null) {
+            return;
+        }
+
+        modifyElement(0, ElementField.TEMPO_CHANGE,
+            () -> newFirstElement.addAttachment(displacedTempo.copy(newFirstElement)));
     }
 
     public int elementCount() {
@@ -2325,8 +2390,8 @@ public class Line {
 
     public int getFirstTempoChange() {
         // On the first line the base tempo is anchored on the first element
-        // (see attachInitialTempoIfNeeded), so the tempo marking belongs to that element.
-        if ((song.indexOfLine(this) == 0) && (elementCount() > 0)) {
+        // (see isInitialTempoAnchor), so the tempo marking belongs to that element.
+        if (isInitialTempoAnchor(0) && elementCount() > 0) {
             return 0;
         }
 

@@ -2437,6 +2437,148 @@ class LineMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // Re-anchoring the initial tempo when a removal takes the anchor away
+    // -----------------------------------------------------------------------
+
+    /**
+     * The song's initial tempo is anchored on the first element of the first line. When a
+     * deletion takes that element away, the tempo has to move onto the element that
+     * replaces it — the mirror image of the displacement addElement performs when an
+     * insertion pushes the anchor aside. Without the move the score shows no tempo at all
+     * until the file is saved and reloaded, at which point it silently reappears.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ReanchorInitialTempoOnRemoval {
+
+        private static final int ANCHOR_BPM = 132;
+        private static final int OWN_BPM = 88;
+
+        private StaffElement noteA;
+        private StaffElement noteB;
+
+        @BeforeEach
+        void addTwoNotesCarryingTheSongsInitialTempo() {
+            noteA = new StaffElement(ElementType.QUAVER);
+            noteB = new StaffElement(ElementType.QUAVER);
+
+            song.withoutMutationTracking(() -> {
+                var tempo = new Tempo();
+                tempo.setVisibleTempo(ANCHOR_BPM);
+                song.setTempo(tempo);
+                line.addElement(noteA);
+                line.addElement(noteB);
+                // Mirrors what loading a file does: the song tempo lands on the anchor.
+                line.attachInitialTempoIfNeeded();
+            });
+
+            if (line.getElement(0) != noteA) {
+                throw new AssertionError("fixture: the first note did not land at index 0");
+            }
+        }
+
+        @Test
+        void testRemovingTheAnchorMovesTheInitialTempoToTheNewFirstElement() {
+            song.withModification(() -> line.removeElement(0));
+
+            var moved = noteB.findAttachment(TempoChangeAttachment.class);
+
+            if (moved == null) {
+                throw new AssertionError("the initial tempo vanished with the deleted element");
+            }
+
+            assertThat(moved.getTempo().getVisibleTempo())
+                .as("the tempo on screen must survive a deletion of the note it sat on")
+                .isEqualTo(ANCHOR_BPM);
+        }
+
+        @Test
+        void testRemovingARangeThatStartsAtTheAnchorMovesTheInitialTempo() {
+            var noteC = new StaffElement(ElementType.QUAVER);
+            song.withoutMutationTracking(() -> line.addElement(noteC));
+
+            song.withModification(() -> line.removeRange(0, 1));
+
+            var moved = noteC.findAttachment(TempoChangeAttachment.class);
+
+            if (moved == null) {
+                throw new AssertionError("the initial tempo vanished with the deleted range");
+            }
+
+            assertThat(moved.getTempo().getVisibleTempo()).isEqualTo(ANCHOR_BPM);
+        }
+
+        @Test
+        void testATempoTheNewFirstElementAlreadyCarriesIsNotOverwritten() {
+            // A real tempo change already sitting behind the anchor becomes the song's
+            // tempo in its own right once it reaches index 0. It must not be replaced by
+            // the tempo of the element being deleted.
+            var ownTempo = new Tempo();
+            ownTempo.setVisibleTempo(OWN_BPM);
+            song.withoutMutationTracking(
+                () -> noteB.addAttachment(new TempoChangeAttachment(noteB, ownTempo)));
+
+            song.withModification(() -> line.removeElement(0));
+
+            var kept = noteB.findAttachment(TempoChangeAttachment.class);
+
+            if (kept == null) {
+                throw new AssertionError("the element's own tempo change was removed");
+            }
+
+            assertThat(kept.getTempo().getVisibleTempo())
+                .as("the element's own tempo change wins over the one being displaced")
+                .isEqualTo(OWN_BPM);
+        }
+
+        @Test
+        void testRemovingAnElementThatIsNotTheAnchorLeavesTheTempoWhereItIs() {
+            song.withModification(() -> line.removeElement(1));
+
+            assertThat(noteA.findAttachment(TempoChangeAttachment.class))
+                .as("the anchor still exists, so nothing may be re-anchored")
+                .isNotNull();
+        }
+
+        @Test
+        void testRemovingTheFirstElementOfALaterLineMovesNothing() {
+            // Index 0 of a line that is not the song's first line is not the anchor, so a
+            // deletion there has no initial tempo to move.
+            var secondLine = new Line(song);
+            var laterNoteA = new StaffElement(ElementType.QUAVER);
+            var laterNoteB = new StaffElement(ElementType.QUAVER);
+
+            song.withoutMutationTracking(() -> {
+                song.addLine(secondLine);
+                secondLine.addElement(laterNoteA);
+                secondLine.addElement(laterNoteB);
+            });
+
+            song.withModification(() -> secondLine.removeElement(0));
+
+            assertThat(laterNoteB.findAttachment(TempoChangeAttachment.class))
+                .as("no tempo may be conjured onto a later line's first element")
+                .isNull();
+        }
+
+        @Test
+        void testTheMoveIsRecordedAfterTheDeletionSoUndoRestoresItInTheRightOrder() {
+            // Undo replays the batch in reverse. Recording the tempo move after the
+            // deletion means undo strips the moved tempo first, then re-inserts the
+            // element that owned it — which still carries its own attachment.
+            song.withModification(() -> line.removeElement(0));
+
+            var mutations = captureSingleDidChange().getMutations();
+
+            assertThat(mutations).hasSize(2);
+            assertThat(mutations.get(0)).isInstanceOf(ElementDeletion.class);
+            assertThat(mutations.get(1)).isInstanceOf(ElementModification.class);
+            assertThat(((ElementModification) mutations.get(1)).fields())
+                .containsExactly(ElementField.TEMPO_CHANGE);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // LineConstructorInvariants
     // -----------------------------------------------------------------------
 

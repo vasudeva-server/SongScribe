@@ -209,6 +209,34 @@ class MutationReplayerRoundTripTest extends UnitTest {
             // new first element via a tracked companion modification; undo must move it back.
             assertRoundTrip(song, () -> line.addElement(0, UndoTestSupport.crotchet()));
         }
+
+        @Test
+        void testDeletingIndexZeroReanchorsInitialTempoAttachment() {
+            var song = songWithNotes(2);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> {
+                var first = line.getElement(0);
+                first.addAttachment(new TempoChangeAttachment(first, new Tempo()));
+            });
+
+            // The mirror image of the insertion case above: deleting the first element of
+            // the first line moves the initial-tempo attachment onto the element that takes
+            // its place, via a tracked companion modification recorded after the deletion.
+            // Undo must strip that tempo and bring back the element that owned it.
+            assertRoundTrip(song, () -> line.removeElement(0));
+        }
+
+        @Test
+        void testDeletingARangeFromIndexZeroReanchorsInitialTempoAttachment() {
+            var song = songWithNotes(3);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> {
+                var first = line.getElement(0);
+                first.addAttachment(new TempoChangeAttachment(first, new Tempo()));
+            });
+
+            assertRoundTrip(song, () -> line.removeRange(0, 1));
+        }
     }
 
     // -----------------------------------------------------------------------

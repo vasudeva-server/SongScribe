@@ -402,24 +402,24 @@ final class MusicXmlHeaderReader {
 
     /**
      * Restores the song-level base tempo after assembly. The base tempo is
-     * anchored on the first element of the first line (mirroring
-     * {@code Line.attachInitialTempoIfNeeded}), so when that element carries a
+     * anchored on the first element of the first line (see
+     * {@code Line.isInitialTempoAnchor}), so when that element carries a
      * {@link TempoChangeAttachment}, its tempo is the song's base tempo.
      */
     void applyInitialTempo() {
         var song = reader.songOrNull();
 
-        if (song == null || song.lineCount() == 0) {
+        if (song == null) {
             return;
         }
 
-        var firstLine = song.getLine(0);
+        var anchor = song.initialTempoAnchor();
 
-        if (firstLine.elementCount() == 0) {
+        if (anchor == null) {
             return;
         }
 
-        var attachment = firstLine.getElement(0).findAttachment(TempoChangeAttachment.class);
+        var attachment = anchor.findAttachment(TempoChangeAttachment.class);
 
         if (attachment != null) {
             song.setTempo(attachment.getTempo());

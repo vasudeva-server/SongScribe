@@ -22,6 +22,7 @@ package songscribe.ui.clipboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.function.BiFunction;
@@ -305,6 +306,32 @@ class FragmentTest extends UnitTest {
         }
 
         @Test
+        void testSpanMissingAnEndpointIsDroppedRatherThanCrashingTheCapture() {
+            // A span whose anchor or end is null cannot be re-anchored onto a clone —
+            // there is no original to look up in the clone map. Capture must skip it
+            // instead of dereferencing the missing endpoint.
+            var line = detachedLine();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            line.addElement(noteA);
+            line.addElement(noteB);
+
+            var tieMissingItsEnd = new Tie(noteA, noteB);
+            var tieMissingItsAnchor = new Tie(noteA, noteB);
+            line.addRangeElement(tieMissingItsEnd);
+            line.addRangeElement(tieMissingItsAnchor);
+            tieMissingItsEnd.setEndElement(null);
+            tieMissingItsAnchor.setAnchorElement(null);
+
+            var fragment = Fragment.capture(line, 0, 1);
+
+            assertThat(fragment.elements()).hasSize(2);
+            assertThat(fragment.spans())
+                .as("a span missing either endpoint cannot be re-anchored and must be dropped")
+                .isEmpty();
+        }
+
+        @Test
         void testEndingWithAnchorInsideRangeAndEndOutsideIsDropped() {
             // Same shape as the generic case above, but with an Ending — endings are
             // significant enough that the plan calls them out explicitly.
@@ -471,10 +498,9 @@ class FragmentTest extends UnitTest {
             var pasted = fragment.instantiate();
 
             var pastedAttachment = pasted.elements().getFirst().findAttachment(AnnotationAttachment.class);
-            assertThat(pastedAttachment).isNotNull();
 
             if (pastedAttachment == null) {
-                return; // unreachable — NullAway flow narrowing
+                throw new AssertionError("the pasted element lost its annotation");
             }
 
             var pastedAnnotation = pastedAttachment.getAnnotation();
@@ -489,25 +515,116 @@ class FragmentTest extends UnitTest {
         @Test
         void testMutatingPastedTempoChangeAttachmentDoesNotAffectOriginal() {
             var line = detachedLine();
+            // The tempo sits on the second element: a tempo on the song's first
+            // element is the song's initial tempo, which capture deliberately drops.
             var note = crotchet();
             var tempoAttachment = new TempoChangeAttachment(note, new Tempo());
             tempoAttachment.setUserYOffsetSs(5.0);
             note.addAttachment(tempoAttachment);
+            line.addElement(crotchet());
             line.addElement(note);
 
-            var fragment = Fragment.capture(line, 0, 0);
+            var fragment = Fragment.capture(line, 1, 1);
             var pasted = fragment.instantiate();
 
             var pastedAttachment = pasted.elements().getFirst().findAttachment(TempoChangeAttachment.class);
-            assertThat(pastedAttachment).isNotNull();
 
             if (pastedAttachment == null) {
-                return; // unreachable — NullAway flow narrowing
+                throw new AssertionError("the pasted element lost its tempo change");
             }
 
             pastedAttachment.setUserYOffsetSs(pastedAttachment.getUserYOffsetSs() + 10.0);
 
             assertThat(tempoAttachment.getUserYOffsetSs()).isEqualTo(5.0);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // The song's initial tempo is never copied
+    // -----------------------------------------------------------------------
+
+    /**
+     * A detached line's Song mock reports it as line 0, so its first element is the song's
+     * first element — the initial-tempo anchor — unless a test stubs indexOfLine otherwise.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class InitialTempoDropped {
+
+        @Test
+        void testTempoOnTheSongsFirstElementIsNotCaptured() {
+            var line = detachedLine();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            line.addElement(noteA);
+            line.addElement(noteB);
+            var initialTempo = new TempoChangeAttachment(noteA, new Tempo());
+            noteA.addAttachment(initialTempo);
+
+            var fragment = Fragment.capture(line, 0, 1);
+
+            assertThat(fragment.elements()).hasSize(2);
+            assertThat(fragment.elements().getFirst().findAttachment(TempoChangeAttachment.class))
+                .as("the song's initial tempo must not travel with the copy")
+                .isNull();
+            // Capture must not disturb the source: the song keeps its initial tempo.
+            assertThat(noteA.findAttachment(TempoChangeAttachment.class)).isSameAs(initialTempo);
+        }
+
+        @Test
+        void testTempoChangeOnALaterElementOfTheCaptureIsKept() {
+            // Both elements carry a tempo, so the strip has to discriminate: only the
+            // anchor loses its tempo, and the real tempo change behind it survives.
+            var line = detachedLine();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            line.addElement(noteA);
+            line.addElement(noteB);
+            noteA.addAttachment(new TempoChangeAttachment(noteA, new Tempo()));
+            noteB.addAttachment(new TempoChangeAttachment(noteB, new Tempo()));
+
+            var fragment = Fragment.capture(line, 0, 1);
+
+            assertThat(fragment.elements().getFirst().findAttachment(TempoChangeAttachment.class))
+                .as("the anchor's tempo is the song's and must be stripped")
+                .isNull();
+            assertThat(fragment.elements().get(1).findAttachment(TempoChangeAttachment.class))
+                .as("a tempo change behind the anchor is real content and must survive")
+                .isNotNull();
+        }
+
+        @Test
+        void testTempoOnACaptureNotStartingAtTheSongsFirstElementIsKept() {
+            var line = detachedLine();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            line.addElement(noteA);
+            line.addElement(noteB);
+            noteB.addAttachment(new TempoChangeAttachment(noteB, new Tempo()));
+
+            var fragment = Fragment.capture(line, 1, 1);
+
+            assertThat(fragment.elements().getFirst().findAttachment(TempoChangeAttachment.class))
+                .as("a capture that skips the anchor strips nothing")
+                .isNotNull();
+        }
+
+        @Test
+        void testTempoOnTheFirstElementOfALaterLineIsKept() {
+            // Index 0 of a line that is not the song's first line holds a genuine
+            // tempo change, not the song's initial tempo.
+            var song = minimalSongMock();
+            var line = new Line(song);
+            var note = crotchet();
+            line.addElement(note);
+            note.addAttachment(new TempoChangeAttachment(note, new Tempo()));
+            when(song.indexOfLine(line)).thenReturn(1);
+
+            var fragment = Fragment.capture(line, 0, 0);
+
+            assertThat(fragment.elements().getFirst().findAttachment(TempoChangeAttachment.class))
+                .as("index 0 of a later line is not the anchor, so its tempo is real content")
+                .isNotNull();
         }
     }
 

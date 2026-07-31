@@ -32,6 +32,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.RangeElement;
 import songscribe.dom.StaffElement;
+import songscribe.dom.TempoChangeAttachment;
 
 /**
  * An immutable, self-contained copy of a run of {@link StaffElement}s (and the
@@ -48,6 +49,7 @@ import songscribe.dom.StaffElement;
  *                     ├─ clone elements → IdentityHashMap&lt;orig,clone&gt;
  *                     ├─ resolve each element's effective accidental against the ORIGINAL
  *                     ├─ FINAL_DOUBLE_BARLINE → DOUBLE_BARLINE
+ *                     ├─ drop the tempo at the initial-tempo anchor (song's first element)
  *                     └─ span kept iff BOTH endpoints ∈ map keys
  *                           └─ span.copy(map[anchor], map[end])
  *
@@ -63,8 +65,10 @@ import songscribe.dom.StaffElement;
  *
  * @param elements         The captured elements, cloned from the source line
  * @param priorAccidentals The effective accidental each element had on its source line,
- *                          parallel to {@code elements}; {@code null} where the element is
- *                          unpitched or already carries an explicit accidental of its own
+ *                          parallel to {@code elements}; an element carrying an explicit
+ *                          accidental of its own records that accidental, and one that
+ *                          inherits records what it inherited. {@code null} only where the
+ *                          element is unpitched (a barline, a breath mark, and so on)
  * @param spans            The {@link RangeElement} spans fully contained within {@code elements}
  */
 public record Fragment(
@@ -98,7 +102,8 @@ public record Fragment(
      * orphan grace note ({@code begin == end}), the trim drops it entirely and
      * capture returns an empty {@code Fragment}. A captured {@code FINAL_DOUBLE_BARLINE}
      * is normalized to {@code DOUBLE_BARLINE} so pasted content can never violate
-     * the song-owned invariant. Repeats are copied verbatim, with no balance
+     * the song-owned invariant. The song's initial tempo is dropped when the capture
+     * starts at the song's first element. Repeats are copied verbatim, with no balance
      * validation.
      *
      * @param line  The line to capture from
@@ -123,31 +128,73 @@ public record Fragment(
 
         for (var i = begin; i <= effectiveEnd; i++) {
             var original = line.getElement(i);
-            var clone = original.clone();
-
-            if (clone.getType() == ElementType.FINAL_DOUBLE_BARLINE) {
-                clone = ElementType.DOUBLE_BARLINE.newInstance();
-            }
+            var clone = cloneForCapture(line, original, i);
 
             originalToClone.put(original, clone);
             elements.add(clone);
-
-            // Resolve against `original`, never against `clone`: a clone's `line` field
-            // still points at the source line, but `line.getElementIndex(clone)` returns
-            // −1 because StaffElement overrides neither equals() nor hashCode(), so
-            // `clone.findLastAccidental()` would silently skip the whole scan and return
-            // the key signature alone — a wrong answer with no error.
-            if (original.getAccidental() != null) {
-                priorAccidentals.add(original.getAccidental());
-            } else if (original.getType().isPitchedNote()) {
-                priorAccidentals.add(original.findEffectiveAccidental(line, i));
-            } else {
-                priorAccidentals.add(null);
-            }
+            priorAccidentals.add(priorAccidentalOf(line, original, i));
         }
 
         return new Fragment(
             elements, priorAccidentals, cloneSpans(line.getRangeElements(), originalToClone));
+    }
+
+    /**
+     * Clones {@code original} for capture, stripping the two things an element may not
+     * carry out of the song it belongs to.
+     *
+     * <p>A {@code FINAL_DOUBLE_BARLINE} becomes a plain {@code DOUBLE_BARLINE}, so pasted
+     * content can never violate the song-owned invariant that only the last line ends the
+     * song. (Cloning is skipped entirely in that case — the replacement is a fresh element,
+     * so nothing of the original survives to be copied.)
+     *
+     * <p>A tempo attachment at the initial-tempo anchor is dropped. That tempo is the
+     * song's, not the note's — see {@link Line#isInitialTempoAnchor}, which explains why a
+     * tempo at that one position can never be an independent per-note tempo change — so
+     * pasting it elsewhere would plant a spurious tempo change. A tempo on any other
+     * element is a real tempo change and is kept.
+     */
+    private static StaffElement cloneForCapture(Line line, StaffElement original, int index) {
+        if (original.getType() == ElementType.FINAL_DOUBLE_BARLINE) {
+            return ElementType.DOUBLE_BARLINE.newInstance();
+        }
+
+        var clone = original.clone();
+
+        if (line.isInitialTempoAnchor(index)) {
+            var initialTempo = clone.findAttachment(TempoChangeAttachment.class);
+
+            if (initialTempo != null) {
+                clone.removeAttachment(initialTempo);
+            }
+        }
+
+        return clone;
+    }
+
+    /**
+     * The accidental {@code original} sounded with at index {@code index} of its own line,
+     * or null when it is unpitched.
+     *
+     * <p>Resolved against {@code original}, never against its clone: a clone's {@code line}
+     * field still points at the source line, but {@code line.getElementIndex(clone)}
+     * returns −1 because {@link StaffElement} overrides neither {@code equals()} nor
+     * {@code hashCode()}, so {@code clone.findLastAccidental()} would silently skip the
+     * whole scan and return the key signature alone — a wrong answer with no error.
+     */
+    private static StaffElement.@Nullable Accidental priorAccidentalOf(
+        Line line, StaffElement original, int index) {
+        var ownAccidental = original.getAccidental();
+
+        if (ownAccidental != null) {
+            return ownAccidental;
+        }
+
+        if (original.getType().isPitchedNote()) {
+            return original.findEffectiveAccidental(line, index);
+        }
+
+        return null;
     }
 
     /**
