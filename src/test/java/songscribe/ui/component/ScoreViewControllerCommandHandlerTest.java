@@ -406,7 +406,11 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         controller.handleToggleBeam(new ToggleBeamCommand());
 
         var mock = messageCenterMock;
-        if (mock == null) throw new IllegalStateException("messageCenterMock not set");
+
+        if (mock == null) {
+            throw new IllegalStateException("messageCenterMock not set");
+        }
+
         mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
     }
 
@@ -425,7 +429,11 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         env.scoreMessageCoordinator().handleFirstSecondEnding(new FirstSecondEndingCommand());
 
         var mock = messageCenterMock;
-        if (mock == null) throw new IllegalStateException("messageCenterMock not set");
+
+        if (mock == null) {
+            throw new IllegalStateException("messageCenterMock not set");
+        }
+
         mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
     }
 
@@ -440,7 +448,11 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         env.scoreMessageCoordinator().handleFirstSecondEnding(new FirstSecondEndingCommand());
 
         var mock = messageCenterMock;
-        if (mock == null) throw new IllegalStateException("messageCenterMock not set");
+
+        if (mock == null) {
+            throw new IllegalStateException("messageCenterMock not set");
+        }
+
         mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
     }
 

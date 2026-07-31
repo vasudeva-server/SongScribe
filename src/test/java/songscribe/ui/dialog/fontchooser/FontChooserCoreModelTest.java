@@ -140,12 +140,20 @@ class FontChooserCoreModelTest extends UnitTest {
 
             var latoFamily = families.get("Lato");
             assertThat(latoFamily).isNotNull();
-            if (latoFamily == null) return; // unreachable — satisfies NullAway after the assertThat above
+
+            if (latoFamily == null) {
+                return; // unreachable — satisfies NullAway after the assertThat above
+            }
+
             assertThat(latoFamily.getStyles()).hasSize(2);
 
             var arialFamily = families.get("Arial");
             assertThat(arialFamily).isNotNull();
-            if (arialFamily == null) return; // unreachable — satisfies NullAway after the assertThat above
+
+            if (arialFamily == null) {
+                return; // unreachable — satisfies NullAway after the assertThat above
+            }
+
             assertThat(arialFamily.getStyles()).hasSize(1);
         }
 
@@ -160,7 +168,11 @@ class FontChooserCoreModelTest extends UnitTest {
 
             var result = families.get("Courier");
             assertThat(result).isNotNull();
-            if (result == null) return; // unreachable — satisfies NullAway after the assertThat above
+
+            if (result == null) {
+                return; // unreachable — satisfies NullAway after the assertThat above
+            }
+
             assertThat(result.getName()).isEqualTo("Courier");
         }
 
@@ -221,12 +233,20 @@ class FontChooserCoreModelTest extends UnitTest {
 
                 var latoFamily = result.get("Lato");
                 assertThat(latoFamily).isNotNull();
-                if (latoFamily == null) return; // unreachable — satisfies NullAway after the assertThat above
+
+                if (latoFamily == null) {
+                    return; // unreachable — satisfies NullAway after the assertThat above
+                }
+
                 assertThat(latoFamily.getStyles()).hasSize(2);
 
                 var helveticaFamily = result.get("Helvetica");
                 assertThat(helveticaFamily).isNotNull();
-                if (helveticaFamily == null) return; // unreachable — satisfies NullAway after the assertThat above
+
+                if (helveticaFamily == null) {
+                    return; // unreachable — satisfies NullAway after the assertThat above
+                }
+
                 assertThat(helveticaFamily.getStyles()).hasSize(1);
             }
         }

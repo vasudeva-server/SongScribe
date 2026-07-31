@@ -472,7 +472,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = parseLineTag(LineIO.XML_KEYS, String.valueOf(KEY_COUNT));
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             assertThat(parsedLine.getKeyAccidentalCount()).isEqualTo(KEY_COUNT);
         }
 
@@ -505,7 +509,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = parseLineTag(LineIO.XML_KEYTYPE, KeyType.FLATS.name());
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             assertThat(parsedLine.getKeyType()).isEqualTo(KeyType.FLATS);
         }
     }
@@ -524,7 +532,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = parseLineTag(LineIO.XML_NOTE_DIST_CHANGE, String.valueOf(SPACING_RATIO));
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             assertThat(parsedLine.getElementSpacingRatio()).isEqualTo(SPACING_RATIO);
         }
     }
@@ -543,7 +555,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = parseLineTag(LineIO.XML_LYRICS_YPOS, String.valueOf(LYRICS_YPOS));
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             assertThat(parsedLine.getLyricsYPosSs()).isEqualTo(LYRICS_YPOS);
         }
     }
@@ -562,7 +578,11 @@ class LineIOTest extends UnitTest {
             var offsets = parseLegacyOffsets(LineIO.XML_BEAT_CHANGE_YPOS, String.valueOf(YPOS_PX));
 
             assertThat(offsets).isNotNull();
-            if (offsets == null) return;
+
+            if (offsets == null) {
+                return;
+            }
+
             assertThat(offsets.beatChangeYPosPx()).isEqualTo(YPOS_PX);
         }
 
@@ -571,7 +591,11 @@ class LineIOTest extends UnitTest {
             var offsets = parseLegacyOffsets(LineIO.XML_FSENDING_YPOS, String.valueOf(YPOS_PX));
 
             assertThat(offsets).isNotNull();
-            if (offsets == null) return;
+
+            if (offsets == null) {
+                return;
+            }
+
             assertThat(offsets.firstSecondEndingYPosPx()).isEqualTo(YPOS_PX);
         }
 
@@ -580,7 +604,11 @@ class LineIOTest extends UnitTest {
             var offsets = parseLegacyOffsets(LineIO.XML_TEMPO_CHANGE_YPOS, String.valueOf(YPOS_PX));
 
             assertThat(offsets).isNotNull();
-            if (offsets == null) return;
+
+            if (offsets == null) {
+                return;
+            }
+
             assertThat(offsets.tempoChangeYPosPx()).isEqualTo(YPOS_PX);
         }
 
@@ -589,7 +617,11 @@ class LineIOTest extends UnitTest {
             var offsets = parseLegacyOffsets(LineIO.XML_TRILL_YPOS, String.valueOf(YPOS_PX));
 
             assertThat(offsets).isNotNull();
-            if (offsets == null) return;
+
+            if (offsets == null) {
+                return;
+            }
+
             assertThat(offsets.trillYPosPx()).isEqualTo(YPOS_PX);
         }
     }
@@ -632,10 +664,18 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var foundBeam = parsedLine.findBeamAt(0);
             assertThat(foundBeam).isNotNull();
-            if (foundBeam == null) return;
+
+            if (foundBeam == null) {
+                return;
+            }
+
             assertThat(foundBeam.getAnchorElementIndex()).isEqualTo(0);
             assertThat(foundBeam.getEndElementIndex()).isEqualTo(2);
         }
@@ -730,7 +770,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             assertThat(parsedLine.findRangeElements(Tie.class)).hasSize(1);
         }
     }
@@ -756,7 +800,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var tuplets = parsedLine.findRangeElements(Tuplet.class);
             assertThat(tuplets).hasSize(1);
             assertThat(tuplets.getFirst().getGrade()).isEqualTo(EXPECTED_GRADE);
@@ -786,7 +834,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var tuplets = parsedLine.findRangeElements(Tuplet.class);
             assertThat(tuplets).hasSize(1);
             assertThat(tuplets.getFirst().getGrade()).isEqualTo(QUINTUPLET_GRADE);
@@ -815,7 +867,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var tuplets = parsedLine.findRangeElements(Tuplet.class);
             assertThat(tuplets).hasSize(1);
             assertThat(tuplets.getFirst().getVerticalPositionSs()).isEqualTo(VERT_POS);
@@ -926,7 +982,11 @@ class LineIOTest extends UnitTest {
                 var parsedLine = reader.endElement11("line");
 
                 assertThat(parsedLine).isNotNull();
-                if (parsedLine == null) return;
+
+                if (parsedLine == null) {
+                    return;
+                }
+
                 var tuplets = parsedLine.findRangeElements(Tuplet.class);
                 assertThat(tuplets).hasSize(1);
                 assertThat(tuplets.getFirst().getGrade()).isEqualTo(DEFAULT_GRADE);
@@ -954,7 +1014,11 @@ class LineIOTest extends UnitTest {
                 var parsedLine = reader.endElement11("line");
 
                 assertThat(parsedLine).isNotNull();
-                if (parsedLine == null) return;
+
+                if (parsedLine == null) {
+                    return;
+                }
+
                 var tuplets = parsedLine.findRangeElements(Tuplet.class);
                 assertThat(tuplets).hasSize(1);
                 assertThat(tuplets.getFirst().getVerticalPositionSs()).isEqualTo(DEFAULT_VERT_POS);
@@ -988,7 +1052,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var crescendos = parsedLine.findRangeElements(Crescendo.class);
             assertThat(crescendos).hasSize(1);
             var c = crescendos.getFirst();
@@ -1021,7 +1089,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var crescendos = parsedLine.findRangeElements(Crescendo.class);
             assertThat(crescendos).hasSize(1);
             var c = crescendos.getFirst();
@@ -1054,7 +1126,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var diminuendos = parsedLine.findRangeElements(Diminuendo.class);
             assertThat(diminuendos).hasSize(1);
             var d = diminuendos.getFirst();
@@ -1075,7 +1151,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var diminuendos = parsedLine.findRangeElements(Diminuendo.class);
             assertThat(diminuendos).hasSize(1);
             var d = diminuendos.getFirst();
@@ -1105,7 +1185,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var crescendos = parsedLine.findRangeElements(Crescendo.class);
             assertThat(crescendos).hasSize(1);
             var c = crescendos.getFirst();
@@ -1131,7 +1215,11 @@ class LineIOTest extends UnitTest {
                 var parsedLine = reader.endElement11("line");
 
                 assertThat(parsedLine).isNotNull();
-                if (parsedLine == null) return;
+
+                if (parsedLine == null) {
+                    return;
+                }
+
                 var crescendos = parsedLine.findRangeElements(Crescendo.class);
                 assertThat(crescendos).hasSize(1);
                 var c = crescendos.getFirst();
@@ -1177,7 +1265,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var endings = parsedLine.findRangeElements(Ending.class);
             // Both batches survive — 2 endings total
             assertThat(endings).hasSize(2);
@@ -1207,7 +1299,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var trills = parsedLine.findRangeElements(Trill.class);
             assertThat(trills).hasSize(1);
             assertThat(trills.getFirst().getAnchorElementIndex()).isEqualTo(0);
@@ -1228,7 +1324,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var trills = parsedLine.findRangeElements(Trill.class);
             assertThat(trills).hasSize(1);
             assertThat(trills.getFirst().getYPositionSs()).isEqualTo(Y_POS);
@@ -1280,7 +1380,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var trills = parsedLine.findRangeElements(Trill.class);
             assertThat(trills).hasSize(1);
             assertThat(trills.getFirst().getAnchorElementIndex()).isEqualTo(2);
@@ -1295,7 +1399,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             var trills = parsedLine.findRangeElements(Trill.class);
             assertThat(trills).hasSize(2);
             assertThat(trills.get(0).getAnchorElementIndex()).isEqualTo(2);
@@ -1340,7 +1448,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             assertThat(parsedLine.elementCount()).isEqualTo(ELEMENT_COUNT);
             assertThat(parsedLine.findRangeElements(Beam.class)).hasSize(1);
             assertThat(parsedLine.findRangeElements(Tie.class)).hasSize(1);
@@ -1404,7 +1516,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             assertThat(parsedLine.findRangeElements(Ending.class)).hasSize(1);
         }
     }
@@ -1457,7 +1573,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             assertThat(parsedLine.findRangeElements(Trill.class)).hasSize(1);
         }
     }
@@ -1503,7 +1623,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             assertThat(parsedLine.findRangeElements(Crescendo.class)).hasSize(1);
         }
     }
@@ -1549,7 +1673,11 @@ class LineIOTest extends UnitTest {
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
-            if (parsedLine == null) return;
+
+            if (parsedLine == null) {
+                return;
+            }
+
             assertThat(parsedLine.findRangeElements(Diminuendo.class)).hasSize(1);
         }
     }

@@ -323,7 +323,10 @@ public final class MidiController {
 
     // Close MIDI resources so other applications can use them
     static void closeMidi() {
-        if (closed) return;
+        if (closed) {
+            return;
+        }
+
         closed = true;
 
         if (midiReceiver != null) {

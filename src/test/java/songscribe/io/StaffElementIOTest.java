@@ -222,7 +222,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("QUAVER_EQUALS_QUAVER"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.QUAVER, Duration.QUAVER));
         }
 
@@ -231,7 +235,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("QUAVEREQUALSQUAVER"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.QUAVER, Duration.QUAVER));
         }
 
@@ -240,7 +248,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("DOTTED_CROCHET_EQUALS_MINIM"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM));
         }
 
@@ -249,7 +261,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("DOTTEDCROCHETEQUALSMINIM"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM));
         }
 
@@ -258,7 +274,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("MINIM_EQUALS_DOTTED_CROCHET"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.MINIM, Duration.CROTCHET_DOTTED));
         }
 
@@ -267,7 +287,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("MINIMEQUALSDOTTEDCROCHET"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.MINIM, Duration.CROTCHET_DOTTED));
         }
 
@@ -276,7 +300,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("CROTCHET_EQUALS_DOTTED_CROCHET"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET, Duration.CROTCHET_DOTTED));
         }
 
@@ -285,7 +313,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("CROTCHETQUALSDOTTEDCROCHET"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET, Duration.CROTCHET_DOTTED));
         }
 
@@ -294,7 +326,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("DOTTED_CROCHET_EQUALS_CROCHET"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET));
         }
 
@@ -303,7 +339,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("DOTTEDCROCHETQUALSCROCHET"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET));
         }
 
@@ -313,7 +353,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChangeAttributes("CROTCHET", "QUAVER"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET, Duration.QUAVER));
         }
 
@@ -322,7 +366,11 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChangeAttributes("CROTCHET_DOTTED", "MINIM"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-            if (attachment == null) return;
+
+            if (attachment == null) {
+                return;
+            }
+
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM));
         }
     }
@@ -668,7 +716,11 @@ class StaffElementIOTest extends UnitTest {
             var note = reader.endElement11("note");
 
             assertThat(note).isNotNull();
-            if (note == null) return;
+
+            if (note == null) {
+                return;
+            }
+
             assertThat(note.lyrics).hasSize(1);
             assertThat(note.lyrics.get(0).syllabic()).isEqualTo(Lyric.Syllabic.MIDDLE);
         }
@@ -692,7 +744,11 @@ class StaffElementIOTest extends UnitTest {
             var note = reader.endElement11("note");
 
             assertThat(note).isNotNull();
-            if (note == null) return;
+
+            if (note == null) {
+                return;
+            }
+
             assertThat(note.lyrics).hasSize(1);
             assertThat(note.lyrics.get(0).syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
         }

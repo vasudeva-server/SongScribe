@@ -62,7 +62,11 @@ class LyricEditorViewTest extends LyricEditorTestSupport {
             var adjusted = new Rectangle(3, 5, 80, 20);  // x=3 < input.x=10
             var result = LyricEditor.keepAllocationAtContentOrigin(input, adjusted);
             assertThat(result).isNotNull();
-            if (result == null) return;
+
+            if (result == null) {
+                return;
+            }
+
             assertThat(result.getBounds().x).isEqualTo(10);
         }
 

@@ -1883,7 +1883,11 @@ class ScoreViewControllerTest extends UnitTest {
             var state = coordinator.getActiveSelection();
 
             assertThat(state).isNotNull();
-            if (state == null) return; // unreachable — NullAway flow narrowing
+
+            if (state == null) {
+                return; // unreachable — NullAway flow narrowing
+            }
+
             assertThat(state.getSelectionBegin()).isEqualTo(0);
             assertThat(state.getSelectionEnd()).isEqualTo(1);
             verify(scoreMock).selectionChanged();
@@ -1903,7 +1907,10 @@ class ScoreViewControllerTest extends UnitTest {
             var state = coordinator.getActiveSelection();
 
             assertThat(state).isNotNull();
-            if (state == null) return; // unreachable — NullAway flow narrowing
+
+            if (state == null) {
+                return; // unreachable — NullAway flow narrowing
+            }
 
             state.setLineSelected(true);
 
