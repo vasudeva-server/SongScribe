@@ -453,7 +453,7 @@ public class UIAction extends AbstractAction {
      * (including on exception). Subclasses override {@code performAction}, not this.
      */
     @Override
-    public final void actionPerformed(ActionEvent e) {
+    public void actionPerformed(ActionEvent e) {
         var scoreView = getScoreView();
 
         // When no initialized song exists no modification bracket can open, so there
