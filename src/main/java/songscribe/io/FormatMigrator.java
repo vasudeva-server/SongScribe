@@ -41,22 +41,15 @@ import songscribe.dom.ScaleContext;
 /**
  * Migrates song data from legacy format (version 1) to new format (version 2).
  * <p>
- * Legacy format stores:
- * <ul>
- *   <li>Range data as inline properties (ties, tuplets, crescendo, etc.)</li>
- *   <li>Note attachments as inline properties (tempoChange, fermata, etc.)</li>
- * </ul>
- * <p>
- * New format stores:
- * <ul>
- *   <li>Range data as RangeElement objects in Line.rangeElements</li>
- *   <li>Note attachments as Attachment objects in Note.attachments</li>
- * </ul>
+ * Legacy format stores range data as inline properties (ties, tuplets, crescendo, etc.);
+ * the new format stores it as RangeElement objects in Line.rangeElements. Note attachments
+ * (tempoChange, fermata, etc.) are read directly into Attachment objects by StaffElementIO
+ * and need no separate migration step.
  *
  * <h2>Migration history</h2>
  * <ul>
- *   <li><b>v1 → v2</b>: {@link #migrate} — legacy range data and inline Note properties
- *       converted to RangeElement and Attachment objects respectively.</li>
+ *   <li><b>v1 → v2</b>: {@link #migrate} — legacy range data converted to RangeElement
+ *       objects.</li>
  *   <li><b>v2.0 → v2.1</b>: {@link #migratePixelsToStaffSpace} — pixel-based position
  *       fields converted to staff-space units.</li>
  *   <li><b>v2.1 → v2.2</b>: <em>Intentional no-op.</em> {@code stemDirectionAuto}
@@ -171,10 +164,6 @@ public final class FormatMigrator {
      * @param legacyOffsets Per-line Y position offsets keyed by line identity.
      */
     private static void migrateLine(Line line, Map<Line, LegacyLineOffsets> legacyOffsets) {
-        for (var i = 0; i < line.elementCount(); i++) {
-            migrateElementAttachments(line.getElement(i));
-        }
-
         migrateLineLevelOffsets(line, legacyOffsets.getOrDefault(line, LegacyLineOffsets.DEFAULTS));
     }
 
@@ -250,18 +239,6 @@ public final class FormatMigrator {
                 }
             }
         }
-    }
-
-    /**
-     * Converts inline Note properties to Attachment objects.
-     *
-     * @param note The note to migrate
-     */
-    private static void migrateElementAttachments(StaffElement note) {
-        // Note: ForceArticulation and DurationArticulation are not migrated here
-        // as they are handled by the Articulation class system, not Attachments.
-        // Dynamic attachments are not present in the legacy Note class.
-        // Annotation: loaded directly into AnnotationAttachment by StaffElementIO.
     }
 
     /**
