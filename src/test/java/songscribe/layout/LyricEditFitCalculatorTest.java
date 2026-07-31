@@ -36,6 +36,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.font.SourceSans3Font;
 import songscribe.io.musicxml.MusicXmlReader;
+import songscribe.util.MyFontUtils;
 
 class LyricEditFitCalculatorTest extends UnitTest {
 
@@ -100,6 +101,12 @@ class LyricEditFitCalculatorTest extends UnitTest {
     static void installLyricsFont() {
         // The fixture's real geometry, produced by the actual app, is only tight enough to
         // pin the one-character/two-character boundary under the actual lyric font metrics.
+        //
+        // Reset the lazy cache before installing: an earlier test class in the same JVM may
+        // already have resolved "Source Sans 3 SongScribe" while it was unregistered and cached
+        // the substituted UI font, which the fixture's lyric-font declaration would then pick up
+        // — silently measuring the line under the wrong metrics.
+        MyFontUtils.resetFontCache();
         SourceSans3Font.install();
     }
 

@@ -19,21 +19,32 @@
  */
 package songscribe.ui.dialog;
 
+import java.awt.Font;
+
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
+import songscribe.dom.Line;
+import songscribe.dom.Lyric;
+import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
+import songscribe.font.SourceSans3Font;
+import songscribe.layout.LyricEditFitCalculator;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.util.GraphicUtils;
+import songscribe.util.MyFontUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -582,6 +593,271 @@ class SongSettingsDialogTest extends UnitTest {
                     .as("entry %d should have %d sharp(s)", sharpStart + i, i + 1)
                     .isEqualTo(i + 1);
             }
+        }
+    }
+
+    // ── pendingLineWidthSs — an unedited field must not re-quantize its own width ──
+
+    /**
+     * The field's text is rounded to two decimal places of the display unit, so re-deriving the
+     * width from it shifts a width the user never touched. Only an edited field is parsed.
+     */
+    @Nested
+    class PendingLineWidthSs {
+
+        /** Off the two-decimal grid in both inches and centimetres, so re-parsing would shift it. */
+        private static final double UNROUNDED_LOADED_SS = 74.3178;
+
+        private static final String LOADED_TEXT = "6.19";
+        private static final String EDITED_INCHES = "7.25";
+        private static final String EDITED_CM = "18.42";
+        private static final String UNPARSEABLE_TEXT = "not a number";
+
+        /** Parses cleanly but exceeds {@link PageModel#MAX_LINE_WIDTH_INCHES}. */
+        private static final String OUT_OF_RANGE_INCHES = "20";
+
+        private static final boolean IMPERIAL = false;
+        private static final boolean METRIC = true;
+
+        private static double ssForInches(double inches) {
+            return ScaleContext.pxToSs(inches * GraphicUtils.getDpi());
+        }
+
+        @Test
+        void testUneditedFieldReturnsTheLoadedWidthUnchanged() {
+            assertThat(SongSettingsDialog.pendingLineWidthSs(
+                LOADED_TEXT, LOADED_TEXT, UNROUNDED_LOADED_SS, IMPERIAL))
+                .as("an untouched field must commit the exact width it was loaded with")
+                .isEqualTo(UNROUNDED_LOADED_SS);
+        }
+
+        @Test
+        void testEditedFieldIsParsedAsInches() {
+            assertThat(SongSettingsDialog.pendingLineWidthSs(
+                EDITED_INCHES, LOADED_TEXT, UNROUNDED_LOADED_SS, IMPERIAL))
+                .as("an edited field is parsed as inches when the display unit is inches")
+                .isEqualTo(ssForInches(Double.parseDouble(EDITED_INCHES)));
+        }
+
+        @Test
+        void testEditedFieldIsParsedAsCentimetresWhenMetric() {
+            assertThat(SongSettingsDialog.pendingLineWidthSs(
+                EDITED_CM, LOADED_TEXT, UNROUNDED_LOADED_SS, METRIC))
+                .as("an edited field is parsed as centimetres when the display unit is metric")
+                .isEqualTo(ssForInches(Double.parseDouble(EDITED_CM) / GraphicUtils.CM_PER_INCH));
+        }
+
+        // validateLineWidthText collapses both rejections to -1; the caller validates before using
+        // the result, so these only have to stay unmistakably invalid. They are separate tests
+        // because they reach that -1 down different branches — one fails to parse at all, the
+        // other parses and then fails the range check.
+
+        @Test
+        void testUnparseableFieldYieldsANegativeWidth() {
+            assertThat(SongSettingsDialog.pendingLineWidthSs(
+                UNPARSEABLE_TEXT, LOADED_TEXT, UNROUNDED_LOADED_SS, IMPERIAL))
+                .as("text that is not a number cannot yield a usable width")
+                .isNegative();
+        }
+
+        @Test
+        void testOutOfRangeFieldYieldsANegativeWidth() {
+            assertThat(SongSettingsDialog.pendingLineWidthSs(
+                OUT_OF_RANGE_INCHES, LOADED_TEXT, UNROUNDED_LOADED_SS, IMPERIAL))
+                .as("a width past the legal maximum cannot yield a usable width")
+                .isNegative();
+        }
+    }
+
+    // ── lyricsFit — refusing a lyrics font / line width that cannot hold the lyrics ──
+
+    /**
+     * The candidate is solved at the pending line width, the baseline at the width in effect now,
+     * so both a widening font and a narrowing line width are caught, and a line that already
+     * overflows is left alone.
+     * <p>
+     * {@code spring-spacing-infeasible-lyric} is the tight-but-fitting fixture (one line whose
+     * last note has room for two more characters and no more), so any widening breaks it;
+     * {@code overflowing-lines} is the already-broken one.
+     */
+    @Nested
+    class LyricsFit {
+
+        /** One line whose last note has room for two more characters and no more. */
+        private static final String TIGHT_FIXTURE = "spring-spacing-infeasible-lyric";
+
+        /**
+         * Three lines. The first two already run past the width the file carries; the third is a
+         * short 8-note line with room to spare. {@code LayoutEngineTest.OverflowingLines}
+         * documents and guards that shape.
+         * <p>
+         * It carries no lyrics, so its verdict moves with the line width alone — changing the
+         * lyrics font cannot affect it either way. Only use it for width-driven cases.
+         */
+        private static final String OVERFLOWING_FIXTURE = "overflowing-lines";
+
+        /** Well past what the tight fixture line can absorb. */
+        private static final float ENLARGED_FONT_FACTOR = 2f;
+
+        /** Comfortably narrower than the fixture's font, so the tight line only gets slacker. */
+        private static final float REDUCED_FONT_FACTOR = 0.5f;
+
+        /** Well below the width the tight fixture line needs. */
+        private static final double NARROWED_WIDTH_FACTOR = 0.5;
+
+        /** A plain font, so the built two-line song does not depend on the score fonts. */
+        private static final Font PLAIN_LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
+
+        private static final String SYLLABLE = "la";
+
+        /** Few enough that this line keeps fitting even under the enlarged font. */
+        private static final int SHORT_LINE_ELEMENT_COUNT = 2;
+
+        /** Many enough that this line stops fitting under the enlarged font. */
+        private static final int TIGHT_LINE_ELEMENT_COUNT = 20;
+
+        private static final double BUILT_LINE_WIDTH_SS = 90;
+
+        @BeforeAll
+        static void installLyricsFont() {
+            // The fixtures' geometry was produced by the real app, so it only reproduces under the
+            // real lyric font metrics — the family their lyric-font declaration names.
+            // Reset the lazy cache before installing: an earlier test class may already have
+            // resolved "Source Sans 3 SongScribe" while it was unregistered and cached the
+            // substituted UI font, which the fixture's lyric-font declaration would then pick up.
+            MyFontUtils.resetFontCache();
+            SourceSans3Font.install();
+        }
+
+        private static Font lyricsFontOf(String fixtureName) throws Exception {
+            return loadFixtureResult(fixtureName).fonts().getLyricsFont();
+        }
+
+        @Test
+        void testUnchangedFontAndWidthFits() throws Exception {
+            var song = loadFixture(TIGHT_FIXTURE);
+            var font = lyricsFontOf(TIGHT_FIXTURE);
+
+            assertThat(SongSettingsDialog.lyricsFit(song, font, font, song.getLineWidthSs()))
+                .as("changing nothing must never be refused")
+                .isTrue();
+        }
+
+        @Test
+        void testLargerLyricsFontDoesNotFit() throws Exception {
+            var song = loadFixture(TIGHT_FIXTURE);
+            var font = lyricsFontOf(TIGHT_FIXTURE);
+            var largerFont = font.deriveFont(font.getSize2D() * ENLARGED_FONT_FACTOR);
+
+            assertThat(SongSettingsDialog.lyricsFit(song, font, largerFont, song.getLineWidthSs()))
+                .as("a font this much wider cannot hold the fixture's syllables")
+                .isFalse();
+        }
+
+        @Test
+        void testSmallerLyricsFontFits() throws Exception {
+            var song = loadFixture(TIGHT_FIXTURE);
+            var font = lyricsFontOf(TIGHT_FIXTURE);
+            var smallerFont = font.deriveFont(font.getSize2D() * REDUCED_FONT_FACTOR);
+
+            assertThat(SongSettingsDialog.lyricsFit(song, font, smallerFont, song.getLineWidthSs()))
+                .as("a narrower font only gives the line more slack")
+                .isTrue();
+        }
+
+        // The case the early-return short-circuit used to miss: the font is untouched, but the
+        // width the lyrics have to fit into shrank underneath them.
+        @Test
+        void testNarrowerLineWidthDoesNotFitEvenWithTheSameFont() throws Exception {
+            var song = loadFixture(TIGHT_FIXTURE);
+            var font = lyricsFontOf(TIGHT_FIXTURE);
+            var narrowerWidthSs = song.getLineWidthSs() * NARROWED_WIDTH_FACTOR;
+
+            assertThat(SongSettingsDialog.lyricsFit(song, font, font, narrowerWidthSs))
+                .as("an unchanged font still has to fit the narrowed width")
+                .isFalse();
+        }
+
+        @Test
+        void testAlreadyOverflowingLineIsNotBlocked() throws Exception {
+            var song = loadFixture(OVERFLOWING_FIXTURE);
+            var font = lyricsFontOf(OVERFLOWING_FIXTURE);
+            var narrowerWidthSs = song.getLineWidthSs() * NARROWED_WIDTH_FACTOR;
+
+            // The first two lines are excused because they already overflow. The verdict
+            // therefore rests on the short third line, which must still fit at the narrowed
+            // width — assert that directly, so a fixture regenerated with less slack on that
+            // line fails here saying so, rather than as a confusing failure below.
+            assertThat(LyricEditFitCalculator.lineFits(
+                song.getLine(song.lineCount() - 1), LyricRenderMetrics.forFont(font), narrowerWidthSs))
+                .as("the fixture's short last line must tolerate the narrowed width")
+                .isTrue();
+
+            assertThat(SongSettingsDialog.lyricsFit(song, font, font, narrowerWidthSs))
+                .as("a line that already overflows must not veto the change")
+                .isTrue();
+        }
+
+        /**
+         * Builds a song of {@code elementCounts.length} lines, line {@code i} carrying
+         * {@code elementCounts[i]} quarter notes each with a one-syllable lyric.
+         * <p>
+         * The two fixtures cannot express this case. The tight one has a single line, and the
+         * overflowing one carries no lyrics at all, so no change of lyrics font moves its verdict
+         * either way.
+         */
+        private static Song songWithLines(int... elementCounts) {
+            var song = new Song();
+
+            song.withoutMutationTracking(() -> {
+                for (var i = 0; i < elementCounts.length; i++) {
+                    // A song starts with one line already present; add the rest.
+                    var line = i == 0 ? song.getLine(0) : new Line(song);
+
+                    if (i > 0) {
+                        song.addLine(line);
+                    }
+
+                    for (var j = 0; j < elementCounts[i]; j++) {
+                        var element = ElementType.CROTCHET.newInstance();
+                        element.setLyricForVerse(
+                            Lyric.FIRST_VERSE, Lyric.Syllabic.SINGLE, false, SYLLABLE, Lyric.Extend.NONE
+                        );
+                        line.addElement(element);
+                    }
+                }
+
+                song.setLineWidthSs(BUILT_LINE_WIDTH_SS);
+            });
+
+            return song;
+        }
+
+        /**
+         * The rejection here can only come from the second line: the first is short enough to keep
+         * fitting under the enlarged font. A check that stopped after the first line, or that
+         * skipped the last, would wave this through.
+         */
+        @Test
+        void testALaterLineThatStopsFittingIsRefused() {
+            var song = songWithLines(SHORT_LINE_ELEMENT_COUNT, TIGHT_LINE_ELEMENT_COUNT);
+            var largerFont =
+                PLAIN_LYRICS_FONT.deriveFont(PLAIN_LYRICS_FONT.getSize2D() * ENLARGED_FONT_FACTOR);
+            var largerMetrics = LyricRenderMetrics.forFont(largerFont);
+            var widthSs = song.getLineWidthSs();
+
+            // Pin the premises, so a spacing-model change that invalidates either one fails here
+            // saying which, rather than as an opaque failure of the assertion below.
+            assertThat(LyricEditFitCalculator.lineFits(song.getLine(0), largerMetrics, widthSs))
+                .as("the first line must survive the enlarged font, or it could be the one refusing")
+                .isTrue();
+            assertThat(LyricEditFitCalculator.lineFits(song.getLine(1), largerMetrics, widthSs))
+                .as("the second line must break under the enlarged font, or there is nothing to refuse")
+                .isFalse();
+
+            assertThat(SongSettingsDialog.lyricsFit(song, PLAIN_LYRICS_FONT, largerFont, widthSs))
+                .as("a later line pushed past the margin must refuse the change")
+                .isFalse();
         }
     }
 }

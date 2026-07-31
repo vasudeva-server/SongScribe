@@ -76,6 +76,25 @@ public final class ScaleContext {
         return px / INSTANCE.pixelsPerStaffSpace;
     }
 
+    /**
+     * Convert a physical length in inches to staff-space units.
+     * <p>
+     * Document pixels are the intermediate step, but deliberately an unrounded one.
+     * {@link GraphicUtils#convertToPixels} rounds to a whole pixel, and that is coarse enough
+     * to shift a line width the user never edited onto a neighbouring value — which in turn
+     * can push a line that only just fits past the staff margin. Use this pair wherever the
+     * exact length matters, and {@code convertToPixels} only where a whole pixel count is
+     * genuinely what is wanted.
+     */
+    public static double inchesToSs(double inches) {
+        return pxToSs(inches * GraphicUtils.getDpi());
+    }
+
+    /** Convert a value in staff-space units to inches. The inverse of {@link #inchesToSs}. */
+    public static double ssToInches(double ss) {
+        return ssToPx(ss) / GraphicUtils.getDpi();
+    }
+
     /** Returns {@code font} scaled from pixel units to staff-space units. */
     public static Font scaleFont(Font font) {
         return font.deriveFont((float) pxToSs(font.getSize()));

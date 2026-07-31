@@ -64,8 +64,9 @@ import songscribe.dom.AttributionFormatter;
 import songscribe.dom.AttributionLine;
 import songscribe.dom.AttributionPane;
 import songscribe.dom.SongMetadata;
+import songscribe.layout.LyricEditFitCalculator;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
-import songscribe.dom.DocPx;
 import songscribe.dom.ScaleContext;
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
@@ -104,13 +105,18 @@ public class SongSettingsDialog extends StandardDialog {
     private final TitleTab textTab = new TitleTab();
     private final AttributionTab attributionTab = new AttributionTab();
 
+    // Built in the constructor rather than here, so its construction order relative to the
+    // tabbed container is unchanged; the dialog-level fit check needs a handle on it.
+    private final MusicTab musicTab;
+
     public SongSettingsDialog(MainFrame mainFrame) {
         super(mainFrame, Strings.get(Strings.DIALOG_SONG_SETTINGS_TITLE), true, DialogCategory.EXCLUSIVE);
 
         var tabbedContent = createTabbedContent();
         addTab(textTab);
         addTab(attributionTab);
-        addTab(new MusicTab());
+        musicTab = new MusicTab();
+        addTab(musicTab);
         addTab(fontTab);
 
         contentPanel.add(BorderLayout.CENTER, tabbedContent);
@@ -118,6 +124,97 @@ public class SongSettingsDialog extends StandardDialog {
         // Let Cancel bypass the range-validating fields' InputVerifiers so the
         // user can always dismiss the dialog without first fixing the value.
         cancelButton.setVerifyInputWhenFocusTarget(false);
+    }
+
+    /**
+     * The fit check spans two tabs — the lyrics font comes from the Fonts tab, the width it has
+     * to fit into from the Music tab — so it belongs here rather than in either tab's own
+     * {@code isValidData()}. Ordering matters: {@code super.isValidData()} runs the Music tab's
+     * line-width validation first, so the width read below is always parseable.
+     */
+    @Override
+    protected boolean isValidData() {
+        if (!super.isValidData()) {
+            return false;
+        }
+
+        var fits = lyricsFit(
+            getSong(),
+            requireScoreView().getDocumentFonts().getFont(FontKey.LYRICS),
+            fontTab.getLyricsFont(),
+            musicTab.getPendingLineWidthSs()
+        );
+
+        if (!fits) {
+            OptionDialogs.showErrorMessage(
+                contentPanel,
+                Strings.ALERT_TITLE_LINES_DO_NOT_FIT,
+                Strings.ALERT_FONT_CHANGE_INVALID
+            );
+        }
+
+        return fits;
+    }
+
+    /**
+     * Returns whether the song's lines still fit under the pending lyrics font and line width.
+     * A wider lyrics font widens every syllable, which widens the minimum spacing between
+     * columns; a narrower line width shrinks the budget those columns have to fit into. Either
+     * can push a line past the staff margin, and committing that anyway leaves the line laid out
+     * on its collision floors with its tail clipped in red (refs #696). Refusing the change up
+     * front keeps a fitting line fitting.
+     *
+     * <p>The two solves are deliberately asymmetric: the candidate is measured at the width the
+     * commit will apply, the baseline at the width in effect now. Measuring both at the pending
+     * width would make a width-only change compare against itself and never reject.
+     *
+     * <p>A line that already overflows is deliberately not blocked, so the user can still switch
+     * to a narrower font or a wider line to recover — the same rule
+     * {@link songscribe.ui.component.LyricEditor} applies to a widening syllable edit.
+     *
+     * @param song           the song whose lines must fit
+     * @param currentFont    the lyrics font in effect now
+     * @param newFont        the lyrics font chosen in the dialog
+     * @param newLineWidthSs the line width the commit will apply, in staff spaces
+     * @return {@code true} when the change is safe to commit
+     */
+    static boolean lyricsFit(Song song, Font currentFont, Font newFont, double newLineWidthSs) {
+        var currentLineWidthSs = song.getLineWidthSs();
+
+        // Neither input to the solve changed, so the candidate probe below would be the
+        // baseline probe: every line would agree with itself and nothing can be newly broken.
+        // Most OK presses land here — this dialog also edits the title, key, tempo, and
+        // attribution — so skip the whole-song scan rather than compute a foregone answer.
+        if (newFont.equals(currentFont) && newLineWidthSs == currentLineWidthSs) {
+            return true;
+        }
+
+        var currentMetrics = LyricRenderMetrics.forFont(currentFont);
+        var newMetrics = LyricRenderMetrics.forFont(newFont);
+
+        for (var i = 0; i < song.lineCount(); i++) {
+            var line = song.getLine(i);
+
+            // Probe the candidate first: it accepts almost every real change, and continuing
+            // here spares the baseline its own rebuild-and-solve of the line.
+            if (LyricEditFitCalculator.lineFits(line, newMetrics, newLineWidthSs)) {
+                continue;
+            }
+
+            if (LyricEditFitCalculator.lineFits(line, currentMetrics, currentLineWidthSs)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * The Music tab's line-width field. The tabs are private inner classes, so this is how a
+     * test drives the field whose text {@link #isValidData} turns into the pending width.
+     */
+    MyJTextField getLineWidthFieldForTest() {
+        return musicTab.lineWidthField;
     }
 
     /**
@@ -311,6 +408,35 @@ public class SongSettingsDialog extends StandardDialog {
         }
 
         return widthInches;
+    }
+
+    /**
+     * The line width a commit should apply, in staff spaces. Returns a negative width when
+     * {@code fieldText} is empty, unparseable, or out of range — callers validate first.
+     * <p>
+     * A field the user never edited returns {@code loadedLineWidthSs} rather than a width
+     * re-derived from its text. The text is rounded to two decimal places of the display unit
+     * for legibility, so parsing it back would quantize a width nobody changed — by up to a
+     * fraction of a pixel, which is enough to push a line that only just fits past the staff
+     * margin. Once the user types, the typed value <em>is</em> the intent and there is nothing
+     * to preserve.
+     *
+     * @param fieldText          the line-width field's current text
+     * @param loadedText         the text the field was populated with
+     * @param loadedLineWidthSs  the width the field was populated from
+     * @param isMetric           whether the field is displaying centimetres rather than inches
+     * @return the width to commit in staff spaces, or a negative value when {@code fieldText}
+     *         is empty, unparseable, or out of range
+     */
+    static double pendingLineWidthSs(
+        String fieldText, String loadedText, double loadedLineWidthSs, boolean isMetric
+    ) {
+        if (fieldText.equals(loadedText)) {
+            return loadedLineWidthSs;
+        }
+
+        var widthInches = validateLineWidthText(fieldText, isMetric);
+        return ScaleContext.inchesToSs(widthInches);
     }
 
     /**
@@ -1512,8 +1638,14 @@ public class SongSettingsDialog extends StandardDialog {
             KeyCellRenderer.SELECTIONS.toArray(new KeySelection[0])
         );
 
-        private final MyJTextField lineWidthField = new MyJTextField(6);
+        private final MyJTextField lineWidthField = new MyJTextField(LINE_WIDTH_FIELD_COLUMNS);
         private final JLabel unitLabel = new JLabel();
+
+        // The width the field was populated with, and the text that was put in it, so an
+        // unedited field can commit its exact loaded value instead of re-parsing the rounded
+        // display text. Both are set by revertLineWidthField on every show.
+        private double loadedLineWidthSs;
+        private String loadedLineWidthText = "";
 
         private MusicTab() {
             super(Strings.get(Strings.DIALOG_SONG_SETTINGS_TAB_MUSIC));
@@ -1613,17 +1745,12 @@ public class SongSettingsDialog extends StandardDialog {
                 getKeyTypeAndCountFromCombo()
             );
 
-            // The field holds physical inches; convert to document pixels, then to staff
-            // spaces, then back to pixels for updatePageLayout.
-            var widthInches = validateLineWidth();
-            var lineWidthDocPx = new DocPx(widthInches * GraphicUtils.getDpi());
-            var lineWidthSs = ScaleContext.pxToSs(lineWidthDocPx.value());
-            requireScoreView().updatePageLayout(ScaleContext.ssToRoundedPx(lineWidthSs));
+            requireScoreView().updatePageLayout(getPendingLineWidthSs());
         }
 
         @Override
         protected boolean isValidData() {
-            return validateLineWidth() >= 0;
+            return validateLineWidthOrShowError();
         }
 
         private void setKeyComboFromSong(Song song) {
@@ -1642,16 +1769,29 @@ public class SongSettingsDialog extends StandardDialog {
 
         private void revertLineWidthField() {
             var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
-            var lineWidthDocPx = new DocPx(ScaleContext.ssToPx(getSong().getLineWidthSs()));
-            var lineWidthInches = lineWidthDocPx.value() / GraphicUtils.getDpi();
+            var lineWidthSs = getSong().getLineWidthSs();
+            var lineWidthInches = ScaleContext.ssToInches(lineWidthSs);
             var displayValue = isMetric
                 ? lineWidthInches * GraphicUtils.CM_PER_INCH
                 : lineWidthInches;
-            lineWidthField.setText(
-                String.valueOf(Utils.roundToTwoDecimalPlaces(displayValue))
-            );
+            var displayText = String.valueOf(Utils.roundToTwoDecimalPlaces(displayValue));
+
+            loadedLineWidthSs = lineWidthSs;
+            loadedLineWidthText = displayText;
+
+            lineWidthField.setText(displayText);
             unitLabel.setText(
                 Strings.get(isMetric ? Strings.LABEL_UNIT_CM : Strings.LABEL_UNIT_INCHES)
+            );
+        }
+
+        /** The line width the commit will apply, in staff spaces. */
+        double getPendingLineWidthSs() {
+            return pendingLineWidthSs(
+                lineWidthField.getText(),
+                loadedLineWidthText,
+                loadedLineWidthSs,
+                Prefs.getBoolean(PrefsKey.METRIC)
             );
         }
 
@@ -1666,6 +1806,36 @@ public class SongSettingsDialog extends StandardDialog {
                 lineWidthField.getText(),
                 Prefs.getBoolean(PrefsKey.METRIC)
             );
+        }
+
+        /**
+         * Returns whether the line width field holds a usable value, showing the reason and
+         * returning false when it does not.
+         *
+         * <p>The rejection has to be reported here rather than left to
+         * {@link LineWidthVerifier}: OK only consults the verifier when the field still owns
+         * focus, so on every other path a bad width silently made OK do nothing. The two never
+         * both report — OK returns early when the verifier rejects, before validation runs.
+         */
+        private boolean validateLineWidthOrShowError() {
+            if (validateLineWidth() >= 0) {
+                return true;
+            }
+
+            // validateLineWidth collapses both failure modes to -1, so parse
+            // once more to distinguish an unparseable value from an in-range
+            // violation and show the matching message.
+            var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
+
+            try {
+                Double.parseDouble(lineWidthField.getText());
+            } catch (NumberFormatException e) {
+                showLineWidthError(Strings.ERROR_LINE_WIDTH_INVALID, isMetric);
+                return false;
+            }
+
+            showLineWidthError(Strings.ERROR_LINE_WIDTH_RANGE, isMetric);
+            return false;
         }
 
         private void showLineWidthError(String key, boolean isMetric) {
@@ -1702,24 +1872,7 @@ public class SongSettingsDialog extends StandardDialog {
 
             @Override
             public boolean shouldYieldFocus(JComponent source, JComponent target) {
-                if (validateLineWidth() >= 0) {
-                    return true;
-                }
-
-                // validateLineWidth collapses both failure modes to -1, so parse
-                // once more to distinguish an unparseable value from an in-range
-                // violation and show the matching message.
-                var isMetric = Prefs.getBoolean(PrefsKey.METRIC);
-
-                try {
-                    Double.parseDouble(lineWidthField.getText());
-                } catch (NumberFormatException e) {
-                    showLineWidthError(Strings.ERROR_LINE_WIDTH_INVALID, isMetric);
-                    return false;
-                }
-
-                showLineWidthError(Strings.ERROR_LINE_WIDTH_RANGE, isMetric);
-                return false;
+                return validateLineWidthOrShowError();
             }
         }
     }

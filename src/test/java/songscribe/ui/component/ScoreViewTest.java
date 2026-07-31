@@ -1145,4 +1145,40 @@ class ScoreViewTest extends UnitTest {
             }
         }
     }
+
+    /**
+     * {@link ScoreView#updatePageLayout} takes staff spaces, so the width it stores is the width
+     * it was handed. It used to take int document pixels and rebuild the model value from them,
+     * which snapped every width to a {@code 1/DEFAULT_PIXELS_PER_STAFF_SPACE} grid — including
+     * on file open, where the caller passes the song's own width purely to re-lay out the page.
+     */
+    @Nested
+    class PageLayoutWidthPrecision {
+
+        /** Deliberately off the pixel grid: 74.3 Ss is 594.4 px, which int pixels cannot hold. */
+        private static final double UNALIGNED_LINE_WIDTH_SS = 74.3;
+
+        @Test
+        void testStoresTheGivenWidthWithoutSnappingItToThePixelGrid() {
+            var song = new Song();
+            var scoreView = new ScoreView(null);
+            scoreView.setSong(song);
+
+            scoreView.updatePageLayout(UNALIGNED_LINE_WIDTH_SS);
+
+            assertThat(song.getLineWidthSs()).isEqualTo(UNALIGNED_LINE_WIDTH_SS);
+        }
+
+        @Test
+        void testInstallingASongPreservesItsExactWidth() {
+            var song = new Song();
+            song.setLineWidthSs(UNALIGNED_LINE_WIDTH_SS);
+
+            // setSong re-lays out the page at the song's own width; that must leave the model
+            // alone rather than quantize a width the user never touched.
+            new ScoreView(null).setSong(song);
+
+            assertThat(song.getLineWidthSs()).isEqualTo(UNALIGNED_LINE_WIDTH_SS);
+        }
+    }
 }

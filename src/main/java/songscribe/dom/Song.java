@@ -858,8 +858,10 @@ public final class Song {
     }
 
     /**
-     * Do not call this directly unless you know what you are doing.
-     * Instead, use scoreView.setLineWidth.
+     * Do not call this directly unless you know what you are doing. Instead, use
+     * {@link songscribe.ui.component.ScoreView#updatePageLayout}, which stores the width
+     * and re-lays out the page for it; writing the width here alone leaves the page laid
+     * out for the old one.
      */
     public void setLineWidthSs(double lineWidth) {
         mutateLayout(LayoutField.LINE_WIDTH_SS, lineWidthSs, lineWidth, () -> lineWidthSs = lineWidth);

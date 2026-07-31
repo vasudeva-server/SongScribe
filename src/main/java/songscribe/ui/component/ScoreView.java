@@ -86,7 +86,6 @@ import songscribe.dom.ScaleContext;
 import songscribe.engraving.Staff;
 import songscribe.util.FileUtils;
 import songscribe.util.GraphicsState;
-import songscribe.util.GraphicUtils;
 import songscribe.util.StringUtils;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.RenderContext;
@@ -295,7 +294,7 @@ public final class ScoreView
         initMainPanel();
         applyDocumentFonts();
 
-        updatePageLayout(ScaleContext.ssToRoundedPx(song.getLineWidthSs()));
+        updatePageLayout(song.getLineWidthSs());
 
         if (inputHandler != null) {
             addMouseMotionListener(inputHandler);
@@ -432,9 +431,7 @@ public final class ScoreView
         var result = SongFileLoader.load(file);
 
         if (result instanceof SongLoadResult.Success success) {
-            var lineWidthInches =
-                ScaleContext.ssToPx(success.song().getLineWidthSs()) /
-                    GraphicUtils.getDpi();
+            var lineWidthInches = ScaleContext.ssToInches(success.song().getLineWidthSs());
 
             if (lineWidthInches > PageModel.MAX_LINE_WIDTH_INCHES) {
                 result = new SongLoadResult.LineWidthTooLarge(file, lineWidthInches, PageModel.MAX_LINE_WIDTH_INCHES);
@@ -860,10 +857,9 @@ public final class ScoreView
         // Reset zoom to 100% for the new/opened song before laying out at the old zoom.
         ZoomController.resetZoom();
 
-        var lineWidthPx = ScaleContext.ssToRoundedPx(song.getLineWidthSs());
-
-        // Core setup needed for both headless and interactive modes
-        updatePageLayout(lineWidthPx);
+        // Core setup needed for both headless and interactive modes. Passing the song's own
+        // width leaves the model untouched — setLineWidthSs early-returns on an equal value.
+        updatePageLayout(song.getLineWidthSs());
 
         // The fit pass records ELEMENT_SPACING_RATIO changes through a
         // mutation-tracked setter. On load there is no open modification bracket,
@@ -1067,13 +1063,22 @@ public final class ScoreView
         this.dragDisabled = dragDisabled;
     }
 
-    public void updatePageLayout(int lineWidthDocPx) {
-        getSong().setLineWidthSs(ScaleContext.pxToSs(lineWidthDocPx));
-        // layoutPage expects view px; the width arrives in document px, so fold in the
-        // current zoom. Skipping this left the page centered for the wrong width at any
-        // zoom other than 100% (content against the left edge when zoomed out, clipped
-        // on the right when zoomed in).
-        layoutPage(viewScale.toViewPx(new DocPx(lineWidthDocPx)).roundedPx());
+    /**
+     * Stores {@code lineWidthSs} on the song and re-lays out the page for it.
+     * <p>
+     * The width is taken in staff spaces, not pixels, so the stored value is exactly the one
+     * passed in. Taking int pixels here meant the model's width was reconstructed from a
+     * quantized pixel count, which snapped it to a {@code 1/DEFAULT_PIXELS_PER_STAFF_SPACE}
+     * grid — including on file open, where the callers below pass the song's own width purely
+     * to re-lay out the page. Pixels are still where this ends up, but only inside
+     * {@link #layoutPage}, at the Swing boundary that actually needs an int.
+     */
+    public void updatePageLayout(double lineWidthSs) {
+        getSong().setLineWidthSs(lineWidthSs);
+        // layoutPage expects view px, so fold in the current zoom. Skipping this left the page
+        // centered for the wrong width at any zoom other than 100% (content against the left
+        // edge when zoomed out, clipped on the right when zoomed in).
+        layoutPage(viewScale.toViewPx(new Ss(lineWidthSs)).roundedPx());
     }
 
     /**
@@ -1281,8 +1286,8 @@ public final class ScoreView
         invalidateTree(this);
 
         // Recompute the canvas's preferred size at the new zoom before re-layout. Go through
-        // layoutPage (not updatePageLayout) so this pure view change does not write the
-        // round-tripped width back to the model and record a spurious undo entry.
+        // layoutPage (not updatePageLayout) because zooming is a view-only change with no
+        // business writing to the model at all — the width it lays out for is the model's own.
         layoutPage(viewScale.toViewPx(new Ss(getSong().getLineWidthSs())).roundedPx());
 
         // Force synchronous re-layout so the new (post-zoom) sizes are realized before

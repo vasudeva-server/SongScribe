@@ -67,9 +67,9 @@ public interface ScoreActions {
     /**
      * Updates the page layout for the given line width.
      *
-     * @param lineWidthPx line width in pixels
+     * @param lineWidthSs line width in staff spaces
      */
-    void updatePageLayout(int lineWidthPx);
+    void updatePageLayout(double lineWidthSs);
 
     /**
      * Enables or disables key bindings (disabled during lyric text editing).

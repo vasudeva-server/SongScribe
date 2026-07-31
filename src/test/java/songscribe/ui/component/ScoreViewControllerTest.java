@@ -22,6 +22,7 @@ package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -2455,7 +2456,7 @@ class ScoreViewControllerTest extends UnitTest {
         @Test
         void testPrefsDidChangeLoopPlaybackDoesNotCallUpdatePageLayout() {
             controller.prefsDidChange(new PrefsDidChangeNotification(PrefsKey.LOOP_PLAYBACK));
-            verify(scoreMock, never()).updatePageLayout(anyInt());
+            verify(scoreMock, never()).updatePageLayout(anyDouble());
         }
 
         @Test
@@ -2468,7 +2469,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             controller.prefsDidChange(new PrefsDidChangeNotification(PrefsKey.PAGE_SIZE));
 
-            verify(scoreMock).updatePageLayout(anyInt());
+            verify(scoreMock).updatePageLayout(anyDouble());
             verify(scoreMock, never()).syncPlaybackPrefs();
         }
 
@@ -2479,7 +2480,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             controller.prefsDidChange(new PrefsDidChangeNotification(PrefsKey.PAGE_SIZE));
 
-            verify(scoreMock, never()).updatePageLayout(anyInt());
+            verify(scoreMock, never()).updatePageLayout(anyDouble());
         }
 
         @Test
@@ -2492,7 +2493,7 @@ class ScoreViewControllerTest extends UnitTest {
             controller.prefsDidChange(new PrefsDidChangeNotification(PrefsKey.ALL));
 
             verify(scoreMock).syncPlaybackPrefs();
-            verify(scoreMock).updatePageLayout(anyInt());
+            verify(scoreMock).updatePageLayout(anyDouble());
         }
     }
 
