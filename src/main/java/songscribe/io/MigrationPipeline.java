@@ -30,7 +30,7 @@ import songscribe.dom.Song;
  * Ordered, two-phase migration of a parsed song from any legacy {@code .mssw} format to
  * the current one. Pre-assembly stages operate on the parsed {@link Line}s and the
  * song-level scalars carried by {@link MigrationContext}; post-assembly stages operate on
- * the assembled {@link songscribe.dom.Song} after {@code loadFrom}.
+ * the assembled {@link Song} after {@code loadFrom}.
  *
  * <p>Registration order in the two lists below <em>is</em> execution order.
  */
@@ -83,6 +83,9 @@ final class MigrationPipeline {
         new SongMigration(StageId.SYLLABIC_BACKFILL,
             ctx -> true,
             MigrationPipeline::applySyllabicBackfill));
+
+    private MigrationPipeline() {
+    }
 
     private static SongMigration versioned(StageId id, int major, int minor, Consumer<MigrationContext> apply) {
         return new SongMigration(id, ctx -> ctx.isBefore(major, minor), apply);

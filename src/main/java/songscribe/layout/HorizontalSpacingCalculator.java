@@ -112,6 +112,10 @@ public class HorizontalSpacingCalculator {
      * {@code 0.8 × 2.5 = 2.0}. Beam groups still widen if lyrics require it.
      */
     public static final double BEAM_GROUP_INTERNAL_REST_FACTOR = 0.8;
+
+    private HorizontalSpacingCalculator() {
+    }
+
     /**
      * Calculates the X position of the first note in a line, in staff-space units.
      *
