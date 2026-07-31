@@ -30,6 +30,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.*;
 
+import java.util.ArrayList;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +49,7 @@ import songscribe.message.command.AutoStemDirectionCommand;
 import songscribe.message.command.FirstSecondEndingCommand;
 import songscribe.message.command.FlipStemDirectionCommand;
 import songscribe.message.command.ToggleBeamCommand;
+import songscribe.message.command.ToggleBeamWithPreviousCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.mutation.BeamingAddition;
@@ -70,9 +73,12 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.action.FirstSecondEndingAction;
 import songscribe.ui.action.TupletAction;
 import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.layout.Ending;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
+import songscribe.util.UIUtils;
 
 /**
  * Verifies that each {@link ScoreViewController} command handler delegates
@@ -441,6 +447,104 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
 
     private static void setCachedEndingResult(@Nullable EndingValidationResult value) {
         when(Actions.MAKE_ENDING_ACTION.getCachedResult()).thenReturn(value);
+    }
+
+    // -----------------------------------------------------------------------
+    // handleToggleBeamWithPrevious
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testHandleToggleBeamWithPreviousBeepsAndDoesNothingWhilePlaying() {
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class);
+            MockedStatic<EditModeManager> editModeManager = mockStatic(EditModeManager.class);
+            MockedStatic<UIUtils> uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(true);
+
+            controller.handleToggleBeamWithPrevious(new ToggleBeamWithPreviousCommand());
+
+            uiUtils.verify(UIUtils::beep);
+            editModeManager.verify(EditModeManager::getLastInsertion, never());
+        }
+    }
+
+    @Test
+    void testHandleToggleBeamWithPreviousBeepsWhenNoLastInsertion() {
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class);
+            MockedStatic<EditModeManager> editModeManager = mockStatic(EditModeManager.class);
+            MockedStatic<UIUtils> uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(null);
+
+            controller.handleToggleBeamWithPrevious(new ToggleBeamWithPreviousCommand());
+
+            uiUtils.verify(UIUtils::beep);
+        }
+    }
+
+    /**
+     * Pins the re-arm ordering that makes the toggle reachable a second time: the
+     * handler arms {@code EditModeManager} with the current target before calling
+     * {@link MusicEditOperations#toggleBeamWithPredecessor(Line, int)}, which opens its
+     * own modification bracket. If the order were reversed, that bracket's commit
+     * notification would find an empty pending slot and clear the target the instant
+     * the toggle succeeded, disarming the key on the very press that used it.
+     */
+    @Test
+    void testHandleToggleBeamWithPreviousArmsInsertionBeforeTogglingBeam() {
+        var line = new Line(new Song());
+        var elementIndex = 2;
+        var insertion = new EditModeManager.Insertion(line, elementIndex);
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        var callOrder = new ArrayList<String>();
+
+        try (
+            MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class);
+            MockedStatic<EditModeManager> editModeManager = mockStatic(EditModeManager.class);
+            MockedStatic<MusicEditOperations> operations = mockStatic(MusicEditOperations.class);
+            MockedStatic<UIUtils> uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(insertion);
+            editModeManager.when(() -> EditModeManager.armInsertion(line, elementIndex))
+                .then(invocation -> {
+                    callOrder.add("armInsertion");
+                    return null;
+                });
+            operations.when(() -> MusicEditOperations.toggleBeamWithPredecessor(line, elementIndex))
+                .then(invocation -> {
+                    callOrder.add("toggleBeamWithPredecessor");
+                    return true;
+                });
+
+            controller.handleToggleBeamWithPrevious(new ToggleBeamWithPreviousCommand());
+
+            assertThat(callOrder).containsExactly("armInsertion", "toggleBeamWithPredecessor");
+            uiUtils.verify(UIUtils::beep, never());
+        }
     }
 
 }

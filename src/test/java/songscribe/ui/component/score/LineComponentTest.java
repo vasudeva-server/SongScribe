@@ -864,8 +864,11 @@ class LineComponentTest extends UnitTest {
          * When the grace-mode manager consumes the press ({@code mousePressed} returns true),
          * no further processing occurs.
          *
-         * <p>Observable: without early return, {@code noteDragHandler.handlePress(e)} would
-         * be called; that handler calls {@code lc.getScoreView()} (null → throws).
+         * <p>Observable: the paste-mode guard sits immediately after the grace-mode branch, so
+         * without the early return {@code pasteMock.isInProgress()} would be called.
+         *
+         * <p>A ScoreView is required even though the press is consumed: the focus grab that
+         * precedes every mode guard calls {@code getScoreView()} unconditionally.
          */
         @Test
         void testGraceModeConsumingPressCausesEarlyReturn() {
@@ -873,12 +876,40 @@ class LineComponentTest extends UnitTest {
             var graceMock = mock(GraceModeManager.class);
             when(graceMock.mousePressed(any(LineComponent.class), any(MouseEvent.class)))
                 .thenReturn(true);
+            var pasteMock = mock(PasteModeManager.class);
+            lc.setScoreView(mock(ScoreView.class));
 
             try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
                 lc.mousePressed(event);
             }
-            // Reaching here confirms grace-mode consumed the press.
+
+            verify(pasteMock, never()).isInProgress();
+        }
+
+        /**
+         * A click on the score always gives the score focus, ahead of every mode guard — so a
+         * press consumed by grace mode still grabs focus. Without this, {@code b} would be dead
+         * after a grace-mode press.
+         */
+        @Test
+        void testPressGrabsScoreViewFocusBeforeModeGuards() {
+            var event = mouseEvent(MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
+            var graceMock = mock(GraceModeManager.class);
+            when(graceMock.mousePressed(any(LineComponent.class), any(MouseEvent.class)))
+                .thenReturn(true);
+            var mockScoreView = mock(ScoreView.class);
+            lc.setScoreView(mockScoreView);
+
+            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
+                emm.when(EditModeManager::getPasteModeManager)
+                    .thenReturn(mock(PasteModeManager.class));
+                lc.mousePressed(event);
+            }
+
+            verify(mockScoreView).requestFocusInWindow();
         }
     }
 

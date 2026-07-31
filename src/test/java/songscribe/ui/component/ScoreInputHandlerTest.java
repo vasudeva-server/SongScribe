@@ -61,6 +61,7 @@ import songscribe.engraving.Staff;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.DeselectCommand;
+import songscribe.message.command.ToggleBeamWithPreviousCommand;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.notification.SongDidChangeNotification;
@@ -1047,8 +1048,9 @@ class ScoreInputHandlerTest extends UnitTest {
 
             var bindings = handler.installKeyBindings(component);
 
-            // 7 plain KEY_CODES bindings + shift-Left/Right extension bindings.
-            final int expectedBindingCount = 9;
+            // 7 plain KEY_CODES bindings + shift-Left/Right extension bindings
+            // + the plain-B beam-with-previous binding.
+            final int expectedBindingCount = 10;
             assertThat(bindings).hasSize(expectedBindingCount);
 
             var inputMap = component.getInputMap(JPanel.WHEN_FOCUSED);
@@ -1061,6 +1063,121 @@ class ScoreInputHandlerTest extends UnitTest {
                 assertThat(inputMap.get(keystroke)).isEqualTo(actionKey);
                 assertThat(actionMap.get(actionKey)).isNotNull();
             }
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Plain-B beam-with-previous binding
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class BeamKeyBinding {
+
+        @Test
+        void testInstallKeyBindingsRegistersPlainBButNotModifiedVariants() {
+            var callback = mock(InputHandlerCallback.class);
+            var handler = new ScoreInputHandler(callback);
+            var component = new JPanel();
+
+            var bindings = handler.installKeyBindings(component);
+
+            assertThat(bindings).containsKey(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
+            assertThat(bindings).doesNotContainKey(
+                KeyStroke.getKeyStroke(KeyEvent.VK_B, UIUtils.MENU_SHORTCUT_MASK));
+            assertThat(bindings).doesNotContainKey(
+                KeyStroke.getKeyStroke(KeyEvent.VK_B, InputEvent.SHIFT_DOWN_MASK));
+            assertThat(bindings).doesNotContainKey(
+                KeyStroke.getKeyStroke(KeyEvent.VK_B, InputEvent.ALT_DOWN_MASK));
+        }
+
+        @Test
+        void testPlainBInEditModePostsToggleBeamWithPreviousCommand() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                pressBeamKey(callback);
+
+                mc.verify(() -> MessageCenter.post(any(ToggleBeamWithPreviousCommand.class)));
+            }
+        }
+
+        @Test
+        void testPlainBInSelectModeDoesNotPost() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.SELECT);
+
+            try (MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)) {
+                pressBeamKey(callback);
+
+                mc.verify(() -> MessageCenter.post(any(ToggleBeamWithPreviousCommand.class)), never());
+            }
+        }
+
+        @Test
+        void testPlainBWhileGraceModeInProgressDoesNotPost() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            when(graceModeManager.isInProgress()).thenReturn(true);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                pressBeamKey(callback);
+
+                mc.verify(() -> MessageCenter.post(any(ToggleBeamWithPreviousCommand.class)), never());
+            }
+        }
+
+        @Test
+        void testPlainBWhilePasteModeInProgressDoesNotPost() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            var pasteModeManager = mock(PasteModeManager.class);
+            when(pasteModeManager.isInProgress()).thenReturn(true);
+
+            try (
+                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
+                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                pressBeamKey(callback);
+
+                mc.verify(() -> MessageCenter.post(any(ToggleBeamWithPreviousCommand.class)), never());
+            }
+        }
+
+        /**
+         * Installs key bindings on a fresh component and fires the plain-{@code b}
+         * action, exercising the beam-with-previous binding exactly as a real key
+         * press would.
+         */
+        private void pressBeamKey(InputHandlerCallback callback) {
+            var handler = new ScoreInputHandler(callback);
+            var component = new JPanel();
+            handler.installKeyBindings(component);
+
+            var action = component.getActionMap().get(
+                component.getInputMap(JPanel.WHEN_FOCUSED).get(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0)));
+            action.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
         }
     }
 

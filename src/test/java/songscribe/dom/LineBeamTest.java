@@ -372,4 +372,82 @@ class LineBeamTest extends UnitTest {
                 .isEmpty();
         }
     }
+
+    // -----------------------------------------------------------------------
+    // sameBeamAt
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SameBeamAt {
+
+        // Two separate beams: [0,1] and [3,4]; index 2 is unbeamed.
+        @BeforeEach
+        void addBeams() {
+            song.withoutMutationTracking(() -> {
+                line.addBeaming(new Beam(line.getElement(IDX_0), line.getElement(IDX_1)));
+                line.addBeaming(new Beam(line.getElement(IDX_3), line.getElement(IDX_4)));
+            });
+        }
+
+        @Test
+        void testBothIndicesInsideOneBeamReturnsTrue() {
+            assertThat(line.sameBeamAt(IDX_0, IDX_1))
+                .as("both indices are covered by the same beam [0,1]")
+                .isTrue();
+        }
+
+        @Test
+        void testIndicesInDifferentBeamsReturnsFalse() {
+            assertThat(line.sameBeamAt(IDX_0, IDX_4))
+                .as("index 0 is in beam [0,1] and index 4 is in a different beam [3,4]")
+                .isFalse();
+        }
+
+        @Test
+        void testOneIndexBeamedAndOtherNotReturnsFalse() {
+            assertThat(line.sameBeamAt(IDX_0, IDX_2))
+                .as("index 0 is beamed but index 2 is not part of any beam")
+                .isFalse();
+        }
+
+        @Test
+        void testNeitherIndexBeamedReturnsFalse() {
+            var song2 = new Song();
+            var line2 = song2.getLine(0);
+            song2.withoutMutationTracking(() -> {
+                for (var i = 0; i < NOTE_COUNT; i++) {
+                    line2.addElement(new StaffElement(ElementType.QUAVER));
+                }
+            });
+
+            assertThat(line2.sameBeamAt(IDX_0, IDX_1))
+                .as("neither index is part of any beam")
+                .isFalse();
+        }
+
+        @Test
+        void testNegativeIndexReturnsFalseRatherThanThrow() {
+            assertThat(line.sameBeamAt(-1, IDX_0))
+                .as("a negative index must not match any beam and must not throw")
+                .isFalse();
+        }
+
+        @Test
+        void testIndexPastElementCountReturnsFalseRatherThanThrow() {
+            assertThat(line.sameBeamAt(line.elementCount(), IDX_0))
+                .as("an index past the last element must not match any beam and must not throw")
+                .isFalse();
+        }
+
+        @Test
+        void testBothIndicesOnEmptyLineReturnsFalse() {
+            var emptySong = new Song();
+            var emptyLine = emptySong.getLine(0);
+
+            assertThat(emptyLine.sameBeamAt(IDX_0, IDX_1))
+                .as("an empty line has no beams to match")
+                .isFalse();
+        }
+    }
 }

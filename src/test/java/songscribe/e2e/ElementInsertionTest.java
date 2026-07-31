@@ -48,6 +48,7 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.Mode;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.component.LyricEditor;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.util.Utils;
 
@@ -563,6 +564,143 @@ class ElementInsertionTest extends E2ETest {
             deselectRestMode();
         }
 
+    }
+
+
+    /**
+     * The {@code b} key that beams the last placed note with its predecessor.
+     * <p>
+     * These are e2e tests because the risk is the integration itself: {@code b} is the
+     * accelerator of {@link Actions#TOGGLE_BEAM_ACTION}, which is registered on the main
+     * frame's root pane and stays <em>disabled</em> in edit mode. The key only reaches the
+     * score because {@code ScoreInputHandler} binds it {@code WHEN_FOCUSED} on the score
+     * view, which resolves ahead of the root-pane binding regardless of any action's enabled
+     * state. Nothing below the real Swing dispatch can demonstrate that.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    @Order(6)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class BeamKey {
+
+        /** Staff position of the notes these tests place, on the middle staff line. */
+        private static final int BEAM_NOTE_STAFF_POSITION = 0;
+
+        private static final String LYRIC_SYLLABLE = "la";
+
+        /**
+         * Reloads the fixture so each test starts from a known, non-empty line. Non-empty
+         * matters: the first note of an empty song raises the modal tempo prompt, which
+         * would swallow the clicks that follow.
+         */
+        @BeforeEach
+        void reloadFixture() {
+            resetSong();
+            loadFixture("insertion");
+        }
+
+        @Test
+        void testBeamKeyTogglesTheBeamOnTheLastTwoPlacedNotes() {
+            var firstIndex = song().getLine(0).effectiveElementCount();
+            var secondIndex = firstIndex + 1;
+
+            selectDuration(Actions.EIGHTH_NOTE_ACTION);
+            clickAt(insertionPoint(0, BEAM_NOTE_STAFF_POSITION));
+            performLayout(0);
+            clickAt(insertionPoint(0, BEAM_NOTE_STAFF_POSITION));
+            performLayout(0);
+
+            pressKey(KeyEvent.VK_B, 0);
+            performLayout(0);
+
+            assertAll(
+                () -> assertThat(isBeamed(0, firstIndex))
+                    .as("first quaver beamed").isTrue(),
+                () -> assertThat(isBeamed(0, secondIndex))
+                    .as("second quaver beamed").isTrue(),
+                // The beam action stays disabled in edit mode — which is exactly why its
+                // root-pane accelerator cannot carry the key and the WHEN_FOCUSED binding
+                // on the score view has to.
+                () -> assertThat(isActionEnabled(Actions.TOGGLE_BEAM_ACTION))
+                    .as("beam action disabled in edit mode").isFalse()
+            );
+
+            pressKey(KeyEvent.VK_B, 0);
+            performLayout(0);
+
+            assertAll(
+                () -> assertThat(isBeamed(0, firstIndex))
+                    .as("first quaver unbeamed").isFalse(),
+                () -> assertThat(isBeamed(0, secondIndex))
+                    .as("second quaver unbeamed").isFalse()
+            );
+        }
+
+        /**
+         * A click on a line takes focus back from the lyric editor, so {@code b} beams
+         * instead of being typed into the lyric.
+         * <p>
+         * This covers the {@code requestFocusInWindow()} call at the top of
+         * {@code LineComponent.mousePressed}. Without it the editor keeps focus, the score's
+         * key bindings stay disabled for the duration of the text editing, and the key press
+         * lands in the lyric — a failure with no visible symptom other than the missing beam.
+         */
+        @Test
+        void testBeamKeyWorksAfterTypingInTheLyricEditor() {
+            var firstIndex = song().getLine(0).effectiveElementCount();
+            var secondIndex = firstIndex + 1;
+
+            selectDuration(Actions.EIGHTH_NOTE_ACTION);
+            clickAt(insertionPoint(0, BEAM_NOTE_STAFF_POSITION));
+            performLayout(0);
+
+            openLyricEditorOn(firstIndex);
+            typeIntoLyricEditor();
+
+            // Placing the second note is also the click that must hand focus back.
+            clickAt(insertionPoint(0, BEAM_NOTE_STAFF_POSITION));
+            performLayout(0);
+
+            pressKey(KeyEvent.VK_B, 0);
+            performLayout(0);
+
+            var lyrics = song().getLine(0).getElement(firstIndex).getLyrics();
+
+            assertAll(
+                () -> assertThat(isBeamed(0, firstIndex))
+                    .as("first quaver beamed").isTrue(),
+                () -> assertThat(isBeamed(0, secondIndex))
+                    .as("second quaver beamed").isTrue(),
+                () -> assertThat(lyrics)
+                    .as("one syllable committed").hasSize(1),
+                () -> assertThat(lyrics.getFirst().text())
+                    .as("the b did not land in the lyric").isEqualTo(LYRIC_SYLLABLE)
+            );
+        }
+
+        private void openLyricEditorOn(int elementIndex) {
+            GuiActionRunner.execute(() ->
+                LyricEditor.deselectAndOpenOn(scoreView(), song().getLine(0), elementIndex));
+            // The editor defers its focus request, so let that run before typing.
+            pause();
+        }
+
+        /**
+         * Sets the editor's text rather than driving the robot, for the same reason
+         * {@code pressKey} dispatches synthetic events: the robot maps characters to
+         * physical keys, which types the wrong letters on a non-QWERTY layout. What the
+         * test needs from this step is only that the editor holds focus and has text in it.
+         */
+        private void typeIntoLyricEditor() {
+            var editor = GuiActionRunner.execute(() -> scoreView().getActiveLyricEditor());
+
+            if (editor == null) {
+                throw new AssertionError("the lyric editor did not open");
+            }
+
+            GuiActionRunner.execute(() -> editor.setText(LYRIC_SYLLABLE));
+            pause();
+        }
     }
 
 

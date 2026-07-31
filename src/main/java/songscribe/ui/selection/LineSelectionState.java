@@ -630,11 +630,7 @@ public final class LineSelectionState {
      * to the span already being covered by an existing beam (remove mode).
      */
     private boolean shouldConnectBeamSelection(int beginIndex, int endIndex) {
-        var beginBeam = line.findBeamAt(beginIndex);
-        var endBeam = line.findBeamAt(endIndex);
-
-        //noinspection ObjectEquality
-        return (beginBeam == null) || (beginBeam != endBeam);
+        return !line.sameBeamAt(beginIndex, endIndex);
     }
 
     /**
@@ -642,10 +638,6 @@ public final class LineSelectionState {
      * to the span already being covered by an existing tie (remove mode).
      */
     private boolean shouldConnectTieSelection(int beginIndex, int endIndex) {
-        var beginTie = line.findTieAt(beginIndex);
-        var endTie = line.findTieAt(endIndex);
-
-        //noinspection ObjectEquality
-        return (beginTie == null) || (beginTie != endTie);
+        return !line.sameTieAt(beginIndex, endIndex);
     }
 }

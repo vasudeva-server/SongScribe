@@ -40,6 +40,7 @@ import songscribe.message.command.InsertLineCommand;
 import songscribe.message.command.PasteboardOpCommand;
 import songscribe.message.command.SelectAllElementsCommand;
 import songscribe.message.command.ToggleBeamCommand;
+import songscribe.message.command.ToggleBeamWithPreviousCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.command.UpdatePreviewElementCommand;
@@ -93,6 +94,7 @@ import songscribe.dom.EndingValidationResult;
 import songscribe.ui.selection.TupletToggleInfo;
 import songscribe.undo.OpNames;
 import songscribe.util.Debounce;
+import songscribe.util.UIUtils;
 
 /**
  * Coordinates message handling for the ScoreView component.
@@ -215,6 +217,33 @@ public final class ScoreViewController {
         }
 
         operations.toggleBeaming();
+    }
+
+    @Handler
+    public void handleToggleBeamWithPrevious(ToggleBeamWithPreviousCommand message) {
+        // Stands in for the DISABLE_WHEN_PLAYING flag the toggle-beam action carries;
+        // this command arrives from a key binding that no action's enabled state gates.
+        if (PlaybackController.isPlaying()) {
+            UIUtils.beep();
+            return;
+        }
+
+        var insertion = EditModeManager.getLastInsertion();
+
+        if (insertion == null) {
+            UIUtils.beep();
+            return;
+        }
+
+        // Re-arm before the toggle: the operation opens its own modification bracket, and
+        // the commit notification would otherwise find an empty pending slot and clear the
+        // last insertion, disarming the key the instant the toggle succeeded. Arming first
+        // makes that notification promote the same target straight back.
+        EditModeManager.armInsertion(insertion.line(), insertion.elementIndex());
+
+        if (!MusicEditOperations.toggleBeamWithPredecessor(insertion.line(), insertion.elementIndex())) {
+            UIUtils.beep();
+        }
     }
 
     @Handler

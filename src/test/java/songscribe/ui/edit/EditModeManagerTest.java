@@ -35,7 +35,12 @@ import songscribe.UnitTest;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.DocumentDidLoadNotification;
+import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
@@ -78,6 +83,10 @@ class EditModeManagerTest extends UnitTest {
     // instance as a side effect — that leak must be reset here too, or a later
     // test class's PasteModeManager.isActive()/getActiveInstance() calls see a
     // zombie instance wired to this test's torn-down mocks.
+    //
+    // Discarding the EditModeManager also discards both insertion slots, since they are
+    // instance fields — no separate insertion reset is needed here, and the test has no
+    // handle on the instance to call one on anyway.
     @AfterEach
     void tearDownSingletons() {
         resetEditModeManagerInstance(null);
@@ -517,6 +526,274 @@ class EditModeManagerTest extends UnitTest {
                     .as("PlayThread should not be constructed when inserted element is a rest")
                     .isEmpty();
             }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Insertion target lifecycle (refs #668)
+    //
+    // These drive a real Song and the real message bus on purpose: the whole point of
+    // the two-slot design is *when* the SongDidChangeNotification arrives relative to
+    // the modification bracket, and a hand-built notification would not reproduce that.
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class LastInsertion {
+
+        private Song song;
+        private Line line;
+
+        @BeforeEach
+        void setUp() {
+            song = new Song();
+            line = song.getLine(0);
+            EditModeManager.init(
+                mock(ClipboardManager.class),
+                mock(SelectionCoordinator.class),
+                mock(ScoreActions.class),
+                mock(ScoreView.class)
+            );
+            // Keep a real PlayThread out of these tests; see PreviewElementDidChange.setUp.
+            EditModeManager.setPlayInsertedNote(false);
+            EditModeManager.setPreviewElement(ElementType.QUAVER.newInstance());
+        }
+
+        @Test
+        void testLastInsertionIsNullBeforeAnyPlacement() {
+            assertThat(EditModeManager.getLastInsertion())
+                .as("nothing has been placed yet")
+                .isNull();
+        }
+
+        /**
+         * The arm must stay invisible for as long as any bracket is open — grace mode
+         * nests a bracket inside the one handleClick opens, and only the outermost close
+         * posts the notification that promotes the pending slot.
+         */
+        @Test
+        void testArmBecomesVisibleOnlyWhenTheOutermostBracketCommits() {
+            var note = ElementType.QUAVER.newInstance();
+
+            song.withModification(() -> {
+                song.withModification(() -> {
+                    line.addElement(note);
+                    EditModeManager.previewElementDidChange(line, indexOf(note));
+
+                    assertThat(EditModeManager.getLastInsertion())
+                        .as("the arm must not be visible inside the nested bracket")
+                        .isNull();
+                });
+
+                assertThat(EditModeManager.getLastInsertion())
+                    .as("the arm must not be visible while the outer bracket is still open")
+                    .isNull();
+            });
+
+            assertThat(EditModeManager.getLastInsertion())
+                .as("the arm becomes visible once the outermost bracket commits")
+                .isNotNull();
+        }
+
+        /**
+         * The append path arms the element it just added, and that arm survives the
+         * notification its own bracket posts.
+         */
+        @Test
+        void testAppendPathArmsTheAppendedElement() {
+            var note = ElementType.QUAVER.newInstance();
+
+            song.withModification(() -> {
+                line.addElement(note);
+                EditModeManager.previewElementDidChange(line, indexOf(note));
+            });
+
+            assertArmedElementIs(note);
+        }
+
+        /**
+         * The insert path arms the element it inserted, not the one it displaced.
+         */
+        @Test
+        void testInsertPathArmsTheInsertedElement() {
+            var insertIndex = 1;
+            var note = ElementType.QUAVER.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(ElementType.CROTCHET.newInstance());
+            });
+
+            song.withModification(() -> {
+                line.addElement(insertIndex, note);
+                EditModeManager.previewElementDidChange(line, insertIndex);
+            });
+
+            assertArmedElementIs(note);
+        }
+
+        /**
+         * The replace path calls previewElementDidChange <em>after</em> its
+         * {@code elementIndex--} correction — the correction it applies when replacing a
+         * host note orphans the grace note ahead of it and removes it. The armed index
+         * must therefore be the post-decrement one, which is where the replacement
+         * actually ended up.
+         */
+        @Test
+        void testReplacePathArmsThePostDecrementIndex() {
+            var hostIndex = 1;
+            var replacement = ElementType.CROTCHET_REST.newInstance();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(ElementType.QUAVER.newInstance());
+                line.addElement(ElementType.CROTCHET.newInstance());
+            });
+
+            song.withModification(() -> {
+                var elementIndex = hostIndex;
+                line.setElement(elementIndex, replacement);
+                // The orphaned element ahead of the replacement goes, shifting it down one.
+                line.removeElement(elementIndex - 1);
+                elementIndex--;
+                EditModeManager.previewElementDidChange(line, elementIndex);
+            });
+
+            var insertion = requireLastInsertion();
+            assertThat(insertion.elementIndex())
+                .as("the armed index is the post-decrement one")
+                .isEqualTo(hostIndex - 1);
+            assertArmedElementIs(replacement);
+        }
+
+        @Test
+        void testUnrelatedSongChangeClearsTheTarget() {
+            placeNoteAtEnd();
+
+            song.withModification(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+
+            assertThat(EditModeManager.getLastInsertion())
+                .as("a song change that was not a placement clears the target")
+                .isNull();
+        }
+
+        @Test
+        void testModeChangeClearsTheTarget() {
+            placeNoteAtEnd();
+
+            MessageCenter.post(new ModeDidChangeNotification(Actions.SELECT_MODE_ACTION));
+
+            assertThat(EditModeManager.getLastInsertion())
+                .as("leaving edit mode invalidates the target")
+                .isNull();
+        }
+
+        @Test
+        void testDocumentLoadClearsTheTarget() {
+            placeNoteAtEnd();
+
+            MessageCenter.post(new DocumentDidLoadNotification(song));
+
+            assertThat(EditModeManager.getLastInsertion())
+                .as("a newly loaded document has no target")
+                .isNull();
+        }
+
+        /**
+         * Deleting the line the target lives in must clear it. A target that survived
+         * would name an index in a Line no longer attached to the song, and the next
+         * {@code b} would silently mutate that detached line.
+         */
+        @Test
+        void testDeletingTheArmedLineClearsTheTarget() {
+            var secondLine = new Line(song);
+            song.addLine(secondLine);
+
+            var note = ElementType.QUAVER.newInstance();
+
+            song.withModification(() -> {
+                secondLine.addElement(note);
+                EditModeManager.previewElementDidChange(secondLine, secondLine.getElements().indexOf(note));
+            });
+
+            var armed = requireLastInsertion();
+            assertThat(armed.line())
+                .as("pre-condition: the target is on the line about to be deleted")
+                .isSameAs(secondLine);
+
+            song.removeLine(song.indexOfLine(secondLine));
+
+            assertThat(EditModeManager.getLastInsertion())
+                .as("deleting the line holding the target clears it")
+                .isNull();
+        }
+
+        /**
+         * The REPEAT merge bailout: {@code elementWasModified} replaces the neighbouring
+         * REPEAT_LEFT with a merged REPEAT_LEFT_RIGHT and the caller bails out, arming
+         * that merged element instead of inserting anything. The commit still follows, so
+         * the arm survives — and what it points at is not beamable, which is why the
+         * bailout can arm freely.
+         */
+        @Test
+        void testRepeatMergeBailoutArmsANonBeamableElement() {
+            var mergeIndex = 0;
+
+            song.withoutMutationTracking(() -> line.addElement(ElementType.REPEAT_LEFT.newInstance()));
+
+            EditModeManager.setPreviewElement(ElementType.REPEAT_RIGHT.newInstance());
+
+            song.withModification(() -> {
+                assertThat(EditModeManager.elementWasModified(line, mergeIndex))
+                    .as("pre-condition: the REPEAT_RIGHT preview merges with the REPEAT_LEFT")
+                    .isTrue();
+                EditModeManager.previewElementDidChange(line, mergeIndex);
+            });
+
+            var insertion = requireLastInsertion();
+            assertThat(insertion.elementIndex()).isEqualTo(mergeIndex);
+
+            var armedType = insertion.line().getElement(insertion.elementIndex()).getType();
+            assertThat(armedType)
+                .as("the bailout arms the merged repeat")
+                .isEqualTo(ElementType.REPEAT_LEFT_RIGHT);
+            assertThat(armedType.isBeamable())
+                .as("a merged repeat is not beamable, so arming it is harmless")
+                .isFalse();
+        }
+
+        /** Places a quaver at the end of the line and commits, the way the append path does. */
+        private void placeNoteAtEnd() {
+            var note = ElementType.QUAVER.newInstance();
+
+            song.withModification(() -> {
+                line.addElement(note);
+                EditModeManager.previewElementDidChange(line, indexOf(note));
+            });
+
+            assertArmedElementIs(note);
+        }
+
+        private int indexOf(StaffElement element) {
+            return line.getElements().indexOf(element);
+        }
+
+        private EditModeManager.Insertion requireLastInsertion() {
+            var insertion = EditModeManager.getLastInsertion();
+
+            if (insertion == null) {
+                throw new AssertionError("expected a live insertion target");
+            }
+
+            return insertion;
+        }
+
+        private void assertArmedElementIs(StaffElement expected) {
+            var insertion = requireLastInsertion();
+            assertThat(insertion.line())
+                .as("the target names the line the element went into")
+                .isSameAs(line);
+            assertThat(insertion.line().getElement(insertion.elementIndex()))
+                .as("the target index resolves to the placed element")
+                .isSameAs(expected);
         }
     }
 

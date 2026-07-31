@@ -840,6 +840,14 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
+        // A click on the score always gives the score focus, with no exceptions — hence
+        // before every mode guard below. LineComponent consumes its own clicks and mouse
+        // events do not bubble, so ScoreInputHandler.mouseClicked never runs for a click on
+        // a line. Without this, a user who was typing in the lyric editor and clicks back
+        // onto a line would have score key bindings typed into the lyric instead. The lyric
+        // editor still takes focus on the double-click path, which opens later.
+        getScoreView().requestFocusInWindow();
+
         if (getGraceModeManager().mousePressed(this, e)) {
             return;
         }

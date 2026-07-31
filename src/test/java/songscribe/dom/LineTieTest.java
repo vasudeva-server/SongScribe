@@ -237,4 +237,82 @@ class LineTieTest extends UnitTest {
             );
         }
     }
+
+    // -----------------------------------------------------------------------
+    // sameTieAt
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SameTieAt {
+
+        // Two separate ties: [0,1] and [3,4]; index 2 is untied.
+        @BeforeEach
+        void addTies() {
+            song.withoutMutationTracking(() -> {
+                line.addTie(new Tie(line.getElement(IDX_0), line.getElement(IDX_1)));
+                line.addTie(new Tie(line.getElement(IDX_3), line.getElement(IDX_4)));
+            });
+        }
+
+        @Test
+        void testBothIndicesInsideOneTieReturnsTrue() {
+            assertThat(line.sameTieAt(IDX_0, IDX_1))
+                .as("both indices are covered by the same tie [0,1]")
+                .isTrue();
+        }
+
+        @Test
+        void testIndicesInDifferentTiesReturnsFalse() {
+            assertThat(line.sameTieAt(IDX_0, IDX_4))
+                .as("index 0 is in tie [0,1] and index 4 is in a different tie [3,4]")
+                .isFalse();
+        }
+
+        @Test
+        void testOneIndexTiedAndOtherNotReturnsFalse() {
+            assertThat(line.sameTieAt(IDX_0, IDX_2))
+                .as("index 0 is tied but index 2 is not part of any tie")
+                .isFalse();
+        }
+
+        @Test
+        void testNeitherIndexTiedReturnsFalse() {
+            var song2 = new Song();
+            var line2 = song2.getLine(0);
+            song2.withoutMutationTracking(() -> {
+                for (var i = 0; i < NOTE_COUNT; i++) {
+                    line2.addElement(new StaffElement(ElementType.CROTCHET));
+                }
+            });
+
+            assertThat(line2.sameTieAt(IDX_0, IDX_1))
+                .as("neither index is part of any tie")
+                .isFalse();
+        }
+
+        @Test
+        void testNegativeIndexReturnsFalseRatherThanThrow() {
+            assertThat(line.sameTieAt(-1, IDX_0))
+                .as("a negative index must not match any tie and must not throw")
+                .isFalse();
+        }
+
+        @Test
+        void testIndexPastElementCountReturnsFalseRatherThanThrow() {
+            assertThat(line.sameTieAt(line.elementCount(), IDX_0))
+                .as("an index past the last element must not match any tie and must not throw")
+                .isFalse();
+        }
+
+        @Test
+        void testBothIndicesOnEmptyLineReturnsFalse() {
+            var emptySong = new Song();
+            var emptyLine = emptySong.getLine(0);
+
+            assertThat(emptyLine.sameTieAt(IDX_0, IDX_1))
+                .as("an empty line has no ties to match")
+                .isFalse();
+        }
+    }
 }

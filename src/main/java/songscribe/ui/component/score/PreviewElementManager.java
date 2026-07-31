@@ -36,7 +36,6 @@ import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
-import songscribe.dom.Beam;
 import songscribe.dom.Song;
 import songscribe.dom.ElementLocation;
 import songscribe.dom.ElementType;
@@ -1808,10 +1807,9 @@ public final class PreviewElementManager {
         var elementCount = line.elementCount();
 
         if (EditModeManager.elementWasModified(line, elementCount)) {
-            // A stale-preview bailout, not the main insertion path: elementWasModified's
-            // REPEAT_LEFT/RIGHT merge case aside, this branch does not add the element the
-            // rest of this method would have inserted, so there is no guarantee a
-            // SongDidChangeNotification follows to drive a deferred setup — call synchronously.
+            // This branch is reached only after elementWasModified performed a setElement
+            // merging REPEAT_LEFT with REPEAT_RIGHT, so a commit always follows, and the
+            // element it arms is a REPEAT_LEFT_RIGHT, which is not beamable.
             EditModeManager.previewElementDidChange(line, elementCount - 1);
             return;
         }
@@ -1828,7 +1826,6 @@ public final class PreviewElementManager {
         line.addElement(previewElement);
 
         var newLastIndex = line.elementCount() - 1;
-        applyAutomaticBeaming(line, newLastIndex);
         EditModeManager.previewElementDidChange(line, newLastIndex);
     }
 
@@ -1841,8 +1838,10 @@ public final class PreviewElementManager {
         }
 
         if (EditModeManager.elementWasModified(line, elementIndex)) {
-            // Same reasoning as addPreviewElement's identical guard: no guaranteed
-            // SongDidChangeNotification follows this bailout, so call synchronously.
+            // Same reasoning as addPreviewElement's identical guard: this branch is reached only
+            // after elementWasModified performed a setElement merging REPEAT_LEFT with
+            // REPEAT_RIGHT, so a commit always follows, and the element it arms is a
+            // REPEAT_LEFT_RIGHT, which is not beamable.
             EditModeManager.previewElementDidChange(line, elementIndex);
             return null;
         }
@@ -1898,69 +1897,7 @@ public final class PreviewElementManager {
             element.setXOffsetPx(element.getXOffsetPx() + shift);
         }
 
-        applyAutomaticBeaming(line, xIndex);
-
         EditModeManager.previewElementDidChange(line, xIndex);
-    }
-
-    /**
-     * Applies automatic beaming for the element at the given index.
-     * Scans backward from the element to find beamable neighbors and creates
-     * a beam span if the rhythmic grouping conditions are met.
-     *
-     * @param line         The line containing the element
-     * @param elementIndex The index of the just-inserted element
-     */
-    private static void applyAutomaticBeaming(Line line, int elementIndex) {
-        var element = line.getElement(elementIndex);
-        var insertedType = element.getType();
-
-        if (
-            !insertedType.isBeamable() ||
-                (elementIndex < 1) ||
-                (line.findTupletAt(elementIndex - 1) != null)
-        ) {
-            return;
-        }
-
-        var sum = 0;
-
-        for (var i = elementIndex - 1; i >= 0; i--) {
-            var elementType = line.getElement(i).getType();
-
-            if (elementType == ElementType.QUAVER) {
-                sum += 2;
-            } else if (
-                (elementType == ElementType.SEMIQUAVER) ||
-                    (elementType == ElementType.DEMI_SEMIQUAVER)
-            ) {
-                sum += 1;
-            } else {
-                break;
-            }
-
-            var beam = line.findBeamAt(i);
-
-            if ((beam != null) && (beam.getAnchorElementIndex() == i)) {
-                break;
-            }
-        }
-
-        if (
-            ((insertedType == ElementType.QUAVER) &&
-                (sum > 0) &&
-                ((sum % 2) == 0) &&
-                ((sum % 4) != 0)) ||
-                (((insertedType == ElementType.SEMIQUAVER) ||
-                    (insertedType == ElementType.DEMI_SEMIQUAVER)) &&
-                    (sum > 0) &&
-                    ((sum % 4) != 0))
-        ) {
-            line.addBeaming(new Beam(
-                line.getElement(elementIndex - 1),
-                line.getElement(elementIndex)
-            ));
-        }
     }
 
     /**
@@ -2100,14 +2037,6 @@ public final class PreviewElementManager {
 
         // Replace the element entirely (line.setElement marks the song modified)
         line.setElement(elementIndex, replacement);
-
-        applyAutomaticBeaming(line, elementIndex);
-
-        // Also check the element after the replaced one: when elementIndex is the start of a beam,
-        // applyAutomaticBeaming only scans backward and misses the forward neighbor.
-        if (elementIndex + 1 < line.elementCount()) {
-            applyAutomaticBeaming(line, elementIndex + 1);
-        }
 
         // Grace note cleanup: if the preceding element is a paired grace note (grace + connected
         // glissando to the replaced host), and the replacement is not a pitched note, remove the

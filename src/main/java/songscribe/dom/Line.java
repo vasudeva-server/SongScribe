@@ -1816,6 +1816,16 @@ public class Line {
     }
 
     /**
+     * Returns true if one and the same {@link Tie} covers both {@code i} and {@code j}.
+     */
+    public boolean sameTieAt(int i, int j) {
+        var tieAtI = findTieAt(i);
+
+        //noinspection ObjectEquality
+        return tieAtI != null && tieAtI == findTieAt(j);
+    }
+
+    /**
      * Adds a tie range element. Tie ranges never coalesce — a chain of tied notes is
      * represented as one {@link Tie} per adjacent pair, each rendered as its own arc,
      * even when two ties share an endpoint note.
@@ -1917,6 +1927,16 @@ public class Line {
         }
 
         return null;
+    }
+
+    /**
+     * Returns true if one and the same {@link Beam} covers both {@code i} and {@code j}.
+     */
+    public boolean sameBeamAt(int i, int j) {
+        var beamAtI = findBeamAt(i);
+
+        //noinspection ObjectEquality
+        return beamAtI != null && beamAtI == findBeamAt(j);
     }
 
     /**

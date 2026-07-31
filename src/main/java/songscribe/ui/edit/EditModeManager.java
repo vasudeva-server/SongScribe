@@ -20,6 +20,8 @@
 
 package songscribe.ui.edit;
 
+import net.engio.mbassy.listener.Handler;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.error.RuntimeError;
@@ -28,7 +30,10 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.message.MessageCenter;
+import songscribe.message.notification.DocumentDidLoadNotification;
+import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.dom.Articulation;
@@ -44,6 +49,16 @@ import songscribe.ui.selection.SelectionCoordinator;
  * and modification logic.
  */
 public final class EditModeManager {
+
+    /**
+     * Identifies the element most recently placed by the user: the line it went into
+     * and its index within that line. The line is part of the identity because an index
+     * alone is meaningless once the user moves to a different line.
+     *
+     * @param line The line the element was placed in
+     * @param elementIndex The index of the placed element within that line
+     */
+    public record Insertion(Line line, int elementIndex) {}
 
     @Nullable
     private static EditModeManager INSTANCE;
@@ -95,6 +110,16 @@ public final class EditModeManager {
     // Whether to play a note sound when inserting elements
     private boolean playInsertedNote = true;
 
+    // The insertion armed by the placement code, still inside the modification bracket.
+    // It is promoted to lastInsertion when the bracket closes and the song change arrives.
+    @Nullable
+    private Insertion pendingInsertion = null;
+
+    // The most recent song change that was a placement, or null if the most recent
+    // song change was anything else.
+    @Nullable
+    private Insertion lastInsertion = null;
+
     private EditModeManager(
         ClipboardManager clipboardManager,
         SelectionCoordinator selectionCoordinator,
@@ -104,6 +129,7 @@ public final class EditModeManager {
         this.scoreActions = scoreActions;
         graceModeManager = new GraceModeManager(this, selectionCoordinator);
         pasteModeManager = new PasteModeManager(clipboardManager, scoreView);
+        MessageCenter.subscribe(this);
     }
 
     /**
@@ -172,6 +198,36 @@ public final class EditModeManager {
      */
     public static boolean hasPreviewElement() {
         return instance().previewElement != null;
+    }
+
+    // -------------------------------------------------------------------------
+    // Insertion target
+    // -------------------------------------------------------------------------
+
+    /**
+     * Returns the element placed by the most recent song change, or null if the most
+     * recent song change was not a placement.
+     */
+    @Nullable
+    public static Insertion getLastInsertion() {
+        return instance().lastInsertion;
+    }
+
+    /**
+     * Records a placement that is still inside its modification bracket. The pending
+     * insertion becomes the last insertion when the resulting song change arrives.
+     *
+     * @param line The line the element was placed in
+     * @param elementIndex The index of the placed element within that line
+     */
+    public static void armInsertion(Line line, int elementIndex) {
+        instance().pendingInsertion = new Insertion(line, elementIndex);
+    }
+
+    /** Clears both insertion slots; intended for tests only. */
+    void resetInsertions() {
+        pendingInsertion = null;
+        lastInsertion = null;
     }
 
     /**
@@ -338,6 +394,8 @@ public final class EditModeManager {
             return;
         }
 
+        inst.pendingInsertion = new Insertion(line, elementIndex);
+
         // Capture the inserted element before previewElement is updated for the next insertion.
         var insertedElement = line.getElement(elementIndex);
         var shouldPlayNote = inst.playInsertedNote && insertedElement.getType().isNote();
@@ -356,6 +414,36 @@ public final class EditModeManager {
         if (shouldPlayNote) {
             new PlayThread(insertedElement.getPitch()).start();
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Message handlers
+    //
+    // These must operate on `this` and never call instance(): a message can arrive
+    // before init() has assigned INSTANCE, which would abort the application.
+    // -------------------------------------------------------------------------
+
+    /**
+     * Promotes a placement armed inside the just-closed modification bracket to the
+     * last insertion. Any song change that was not a placement leaves the pending slot
+     * null, which clears the last insertion.
+     */
+    @Handler
+    public void songDidChange(SongDidChangeNotification message) {
+        lastInsertion = pendingInsertion;
+        pendingInsertion = null;
+    }
+
+    /** Leaving or entering a mode invalidates any insertion target. */
+    @Handler
+    public void modeDidChange(ModeDidChangeNotification message) {
+        resetInsertions();
+    }
+
+    /** A newly loaded document has no insertion target. */
+    @Handler
+    public void documentDidLoad(DocumentDidLoadNotification message) {
+        resetInsertions();
     }
 
 }

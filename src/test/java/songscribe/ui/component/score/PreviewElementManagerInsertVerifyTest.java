@@ -35,9 +35,7 @@ import songscribe.dom.StaffElement;
  *
  * <ul>
  *   <li>Row 16 ({@code InsertElementTypes.testVerifyElementTypesAndAutoBeam}):
- *       {@code insertElement} produces the correct element type/pitch, and
- *       {@code applyAutomaticBeaming} creates a beam span when two quavers are
- *       inserted in sequence.</li>
+ *       {@code insertElement} produces the correct element type/pitch.</li>
  *   <li>Row 17 ({@code InsertElementTypes.testInsertBetweenAndVerifyShift}):
  *       inserting an element before an existing element shifts subsequent elements
  *       to higher indices (insert, not replace).</li>
@@ -91,45 +89,6 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
     }
 
     // -----------------------------------------------------------------------
-    // applyAutomaticBeaming — beam created for two consecutive quavers (row 16)
-    // -----------------------------------------------------------------------
-
-    /**
-     * After inserting a second QUAVER immediately after an existing QUAVER,
-     * a beam span is created linking the two.
-     */
-    @Test
-    void testAutoBeamCreatedForTwoConsecutiveQuavers() {
-        song.setLineWidthSs(WIDE_LINE_SS);
-
-        // Existing QUAVER at effective index 0
-        song.withoutMutationTracking(() -> line.addElement(ElementType.QUAVER.newInstance()));
-
-        // No beam yet
-        assertThat(line.findRangeElements(Beam.class))
-            .as("pre-condition: no beam before insertion")
-            .isEmpty();
-
-        // Insert a second QUAVER immediately after the first (at index 1, before terminal)
-        setPreviewElement(ElementType.QUAVER.newInstance());
-        PreviewElementManager.setCurrentXIndex(1);
-        PreviewElementManager.setXPosSsMatchesElement(false);
-
-        PreviewElementManager.handleClick(lc);
-
-        var beams = line.findRangeElements(Beam.class);
-        assertThat(beams)
-            .as("auto-beam: exactly one beam span created after inserting second quaver")
-            .hasSize(1);
-        assertThat(beams.getFirst().getAnchorElementIndex())
-            .as("auto-beam: span starts at the first quaver (index 0)")
-            .isEqualTo(0);
-        assertThat(beams.getFirst().getEndElementIndex())
-            .as("auto-beam: span ends at the second quaver (index 1)")
-            .isEqualTo(1);
-    }
-
-    // -----------------------------------------------------------------------
     // insertElement — index shift after insert-before (row 17)
     // -----------------------------------------------------------------------
 
@@ -178,6 +137,39 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         assertThat(line.getElement(2).getType())
             .as("previously-at-index-1 MINIM shifted to index 2")
             .isEqualTo(ElementType.MINIM);
+    }
+
+    // -----------------------------------------------------------------------
+    // insertElement — no insertion-time beaming (refs #701)
+    // -----------------------------------------------------------------------
+
+    /**
+     * Inserting two consecutive quavers must not auto-beam them. Insertion-time
+     * beaming was removed; this pins that the {@code insertElement} path never
+     * creates a {@link Beam}.
+     */
+    @Test
+    void testNoBeamCreatedWhenTwoQuaversAreInserted() {
+        song.setLineWidthSs(WIDE_LINE_SS);
+
+        // First quaver, inserted at index 0 on an empty line.
+        setPreviewElement(ElementType.QUAVER.newInstance());
+        PreviewElementManager.setCurrentXIndex(0);
+        PreviewElementManager.setXPosSsMatchesElement(false);
+        PreviewElementManager.handleClick(lc);
+
+        // Second quaver, inserted immediately after the first at index 1.
+        setPreviewElement(ElementType.QUAVER.newInstance());
+        PreviewElementManager.setCurrentXIndex(1);
+        PreviewElementManager.setXPosSsMatchesElement(false);
+        PreviewElementManager.handleClick(lc);
+
+        assertThat(line.effectiveElementCount())
+            .as("both quavers were inserted")
+            .isEqualTo(2);
+        assertThat(line.findRangeElements(Beam.class))
+            .as("inserting two consecutive quavers must not auto-beam them")
+            .isEmpty();
     }
 
     // -----------------------------------------------------------------------
@@ -420,6 +412,33 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
             assertThat(line.getElement(0).getStaffPosition())
                 .as("pitch updated to -4")
                 .isEqualTo(-4);
+        }
+
+        /**
+         * Replacing a crotchet next to an existing quaver with a quaver must not
+         * auto-beam the pair. The replace path goes through a separate auto-beaming
+         * call site with its own forward-neighbor scan, so it needs its own case
+         * distinct from {@code testNoBeamCreatedWhenTwoQuaversAreInserted}.
+         */
+        @Test
+        void testNoBeamCreatedWhenCrotchetIsReplacedByQuaverNextToQuaver() {
+            song.withoutMutationTracking(() -> {
+                line.addElement(ElementType.CROTCHET.newInstance());  // index 0, to be replaced
+                line.addElement(ElementType.QUAVER.newInstance());  // index 1
+            });
+
+            setPreviewElement(ElementType.QUAVER.newInstance());
+            PreviewElementManager.setCurrentXIndex(0);
+            PreviewElementManager.setXPosSsMatchesElement(true);
+
+            PreviewElementManager.handleClick(lc);
+
+            assertThat(line.getElement(0).getType())
+                .as("crotchet replaced with a quaver")
+                .isEqualTo(ElementType.QUAVER);
+            assertThat(line.findRangeElements(Beam.class))
+                .as("replacing a note next to a quaver must not auto-beam them")
+                .isEmpty();
         }
     }
 }

@@ -37,6 +37,7 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.message.command.DeselectCommand;
+import songscribe.message.command.ToggleBeamWithPreviousCommand;
 import songscribe.util.UIUtils;
 
 /**
@@ -200,7 +201,42 @@ public final class ScoreInputHandler extends KeyAdapter
         registerBinding(bindings, inputMap, actionMap, KeyEvent.VK_LEFT, InputEvent.SHIFT_DOWN_MASK);
         registerBinding(bindings, inputMap, actionMap, KeyEvent.VK_RIGHT, InputEvent.SHIFT_DOWN_MASK);
 
+        registerToggleBeamWithPreviousBinding(bindings, inputMap, actionMap);
+
         return bindings;
+    }
+
+    /**
+     * Binds plain {@code b} to beaming the last inserted note with the one before it.
+     * <p>
+     * The binding lives here, on the focused score, rather than on the toggle-beam action:
+     * that action stays disabled in edit mode, and a disabled action bound to the window's
+     * input map is skipped outright, so it could never report failure. This binding resolves
+     * first regardless of any action's enabled state.
+     */
+    private void registerToggleBeamWithPreviousBinding(
+        Map<KeyStroke, Object> bindings, InputMap inputMap, ActionMap actionMap) {
+        var actionKey = new Object();
+        var keyStroke = KeyStroke.getKeyStroke(KeyEvent.VK_B, 0);
+        bindings.put(keyStroke, actionKey);
+        inputMap.put(keyStroke, actionKey);
+        actionMap.put(actionKey, new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (callback.getMode() != Mode.EDIT) {
+                    return;
+                }
+
+                // Grace mode and paste mode own the keyboard while they are in progress,
+                // matching the precedence the Escape branch establishes above.
+                if (EditModeManager.getGraceModeManager().isInProgress()
+                    || EditModeManager.getPasteModeManager().isInProgress()) {
+                    return;
+                }
+
+                MessageCenter.post(new ToggleBeamWithPreviousCommand());
+            }
+        });
     }
 
     private void registerBinding(

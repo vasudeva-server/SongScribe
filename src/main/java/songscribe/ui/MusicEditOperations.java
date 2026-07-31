@@ -106,18 +106,123 @@ public final class MusicEditOperations {
         }
 
         line.withModification(() -> {
-            var beginBeam = line.findBeamAt(beginIndex);
-            var endBeam = line.findBeamAt(endIndex);
-
-            //noinspection ObjectEquality
-            if (beginBeam == null || beginBeam != endBeam) {
+            if (!line.sameBeamAt(beginIndex, endIndex)) {
                 var anchorElement = line.getElement(beginIndex);
                 var endElement = line.getElement(endIndex);
                 line.addBeaming(new Beam(anchorElement, endElement));
             } else {
-                line.removeBeaming(beginBeam);
+                var beginBeam = line.findBeamAt(beginIndex);
+
+                if (beginBeam != null) {
+                    line.removeBeaming(beginBeam);
+                }
             }
         });
+    }
+
+    /**
+     * Toggles a beam between the element at {@code elementIndex} and its nearest preceding
+     * non-grace neighbor, and returns whether the line was modified.
+     *
+     * <p>Static and taking the line explicitly because the operation touches neither the
+     * selection coordinator nor the song — the caller looks up the state.
+     *
+     * <p>Grace notes are transparent at both ends: the walk backward skips over them, and a
+     * grace note is never itself a beam member, so a grace-note target is refused (refs #592).
+     *
+     * <p>When one beam already covers both elements, it is broken <em>between</em> them rather
+     * than removed wholesale. A single-element remainder is dropped, because a beam needs two
+     * members:
+     *
+     * <pre>
+     *    a         p   t         e
+     *    ├────────────────────────┤        before:  one beam [a,e]
+     *    ├─────────┤   ├──────────┤        after:   [a,p] and [t,e]
+     *
+     *    a=p       t             e
+     *    ├────────────────────────┤   →    ├──────────┤        only [t,e] survives
+     *    a         p           t=e
+     *    ├────────────────────────┤   →    ├─────────┤         only [a,p] survives
+     *    a=p     t=e
+     *    ├─────────┤                  →    (no beam)
+     * </pre>
+     *
+     * The break is a {@link Line#removeBeaming} followed by up to two {@link Line#addBeaming}
+     * calls so every step is a tracked mutation and undo restores the original span; mutating
+     * the beam's endpoints in place would not be recorded. The two new spans do not re-merge,
+     * since {@code addBeaming} merges overlapping spans without absorbing merely adjacent ones.
+     * Grace notes between the two elements fall in the gap and belong to neither span.
+     *
+     * <p>The add branch, by contrast, can fuse two adjacent beam groups into one: {@code
+     * addBeaming} widens at both ends, so with beams [0,1] and [2,3], beaming element 2 to its
+     * predecessor yields a single [0,3]. That matches what the select-mode toggle does from the
+     * same call, and the two must not disagree.
+     */
+    public static boolean toggleBeamWithPredecessor(Line line, int elementIndex) {
+        if (elementIndex < 0 || elementIndex >= line.elementCount()) {
+            return false;
+        }
+
+        var targetType = line.getElement(elementIndex).getType();
+
+        if (targetType.isGraceNote()) {
+            return false;
+        }
+
+        var predecessorIndex = elementIndex - 1;
+
+        while (predecessorIndex >= 0 && line.getElement(predecessorIndex).getType().isGraceNote()) {
+            predecessorIndex--;
+        }
+
+        if (predecessorIndex < 0) {
+            return false;
+        }
+
+        var predecessorBeam = line.findBeamAt(predecessorIndex);
+
+        // The break branch needs the Beam object itself, not just the identity test, so it
+        // looks both beams up rather than going through Line.sameBeamAt.
+        //noinspection ObjectEquality
+        if (predecessorBeam != null && predecessorBeam == line.findBeamAt(elementIndex)) {
+            var anchorIndex = predecessorBeam.getAnchorElementIndex();
+            var endIndex = predecessorBeam.getEndElementIndex();
+            var finalPredecessorIndex = predecessorIndex;
+
+            line.withModification(() -> {
+                line.removeBeaming(predecessorBeam);
+
+                if (anchorIndex < finalPredecessorIndex) {
+                    line.addBeaming(new Beam(
+                        line.getElement(anchorIndex),
+                        line.getElement(finalPredecessorIndex)));
+                }
+
+                if (elementIndex < endIndex) {
+                    line.addBeaming(new Beam(
+                        line.getElement(elementIndex),
+                        line.getElement(endIndex)));
+                }
+            });
+
+            return true;
+        }
+
+        if (!targetType.isBeamable() || !line.getElement(predecessorIndex).getType().isBeamable()) {
+            return false;
+        }
+
+        // Conflict: beaming may not connect what a tie already connects, the same rule
+        // LineSelectionState.canToggleBeaming applies. A break is never blocked by a tie.
+        if (line.sameTieAt(predecessorIndex, elementIndex)) {
+            return false;
+        }
+
+        var anchorElement = line.getElement(predecessorIndex);
+        var endElement = line.getElement(elementIndex);
+        line.withModification(() -> line.addBeaming(new Beam(anchorElement, endElement)));
+
+        return true;
     }
 
     // ========== Tie Operations ==========
