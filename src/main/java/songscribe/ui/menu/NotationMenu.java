@@ -140,8 +140,10 @@ public class NotationMenu extends JMenu {
     private static JMenu createTupletMenu() {
         var menu = new JMenu(Strings.get(Strings.MENU_NOTATION_TUPLET));
 
+        // Radio items with no ButtonGroup: the grade of the selected tuplet is checked via
+        // Action.SELECTED_KEY, and a selection with no tuplet leaves all of them unchecked.
         for (var action : TOGGLE_TUPLET_ACTIONS) {
-            menu.add(new JMenuItem(action));
+            menu.add(new JRadioButtonMenuItem(action));
         }
 
         menu.addSeparator();

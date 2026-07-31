@@ -62,7 +62,10 @@ import songscribe.io.LegacyAccidentals;
  *          ├─ STEM (text)                 ─► upper / stemDirectionAuto=false
  *          ├─ TIE (sound, @type)          ─► ignored (write-forward only)
  *          ├─ TIME_MODIFICATION
- *          │    └─ ACTUAL_NOTES (text)    ─► actualNotes (tuplet grade)
+ *          │    ├─ ACTUAL_NOTES (text)    ─► actualNotes (tuplet grade)
+ *          │    ├─ NORMAL_NOTES (text)    ─► normalNotes
+ *          │    ├─ NORMAL_TYPE  (text)    ─► normalTypeToken
+ *          │    └─ NORMAL_DOT (marker, repeats) ─► normalDotCount++
  *          ├─ BEAM (@number, text)        ─► beam1Type (number=1 only)
  *          ├─ NOTATIONS
  *          │    ├─ ARTICULATIONS
@@ -87,8 +90,8 @@ import songscribe.io.LegacyAccidentals;
  * </pre>
  *
  * <p>The span-marker fields ({@code beam1Type}, {@code tiedStart}/{@code
- * tiedStop}, {@code tupletStart}/{@code tupletStop} + grade + relative-y,
- * {@code trillStart}/{@code trillStop} + relative-y) are this note's raw
+ * tiedStop}, {@code tupletStart}/{@code tupletStop} + the stated {@code <time-modification>}
+ * ratio + relative-y, {@code trillStart}/{@code trillStop} + relative-y) are this note's raw
  * markers; {@link #spanMarkers()} snapshots them for {@link RangeSpanResolver}
  * to pair with the run's pending anchor and build the
  * {@code Beam}/{@code Tie}/{@code Tuplet}/{@code Trill} RangeElements.
@@ -135,6 +138,17 @@ final class NoteAccumulator {
 
     // Tuplet grade for the current note, parsed from <actual-notes> (0 if absent).
     private int actualNotes = 0;
+
+    // The rest of the current note's <time-modification>: the count of written
+    // values the group occupies, that written value's <type> token, and its dots.
+    // A null token means the file stated no <normal-type>, which is how the
+    // reader tells a stated ratio it can trust from one it must derive.
+    private int normalNotes = 0;
+
+    @Nullable
+    private String normalTypeToken = null;
+
+    private int normalDotCount = 0;
 
     // Primary-beam (number="1") value for the current note (begin/continue/end);
     // null when this note carries no number="1" <beam>. true while the <beam>
@@ -197,6 +211,9 @@ final class NoteAccumulator {
         hasBreathMark = false;
         usedLegacyAccidental = false;
         actualNotes = 0;
+        normalNotes = 0;
+        normalTypeToken = null;
+        normalDotCount = 0;
         beam1Type = null;
         beamLevelIsOne = false;
         tiedStart = false;
@@ -296,6 +313,18 @@ final class NoteAccumulator {
 
     void setActualNotes(int actualNotes) {
         this.actualNotes = actualNotes;
+    }
+
+    void setNormalNotes(int normalNotes) {
+        this.normalNotes = normalNotes;
+    }
+
+    void setNormalTypeToken(String normalTypeToken) {
+        this.normalTypeToken = normalTypeToken;
+    }
+
+    void incrementNormalDotCount() {
+        normalDotCount++;
     }
 
     void setBeamLevelIsOne(boolean beamLevelIsOne) {
@@ -465,6 +494,9 @@ final class NoteAccumulator {
             tupletStart,
             tupletStop,
             actualNotes,
+            normalNotes,
+            normalTypeToken,
+            normalDotCount,
             tupletRelativeYPresent,
             tupletRelativeYTenths,
             trillStart,
@@ -476,8 +508,9 @@ final class NoteAccumulator {
 
     /**
      * This note's raw span markers ({@code beam1Type}, {@code tiedStart}/{@code
-     * tiedStop}, {@code tupletStart}/{@code tupletStop} + grade + relative-y,
-     * {@code trillStart}/{@code trillStop} + relative-y, {@code slideType}),
+     * tiedStop}, {@code tupletStart}/{@code tupletStop} + the stated
+     * {@code <time-modification>} ratio + relative-y, {@code trillStart}/{@code
+     * trillStop} + relative-y, {@code slideType}),
      * snapshotted by {@link #spanMarkers()} for {@link RangeSpanResolver} to
      * pair with the run's pending anchor and build the
      * {@code Beam}/{@code Tie}/{@code Tuplet}/{@code Trill}/glissando RangeElements.
@@ -490,6 +523,9 @@ final class NoteAccumulator {
         boolean tupletStart,
         boolean tupletStop,
         int actualNotes,
+        int normalNotes,
+        @Nullable String normalTypeToken,
+        int normalDotCount,
         boolean tupletRelativeYPresent,
         double tupletRelativeYTenths,
         boolean trillStart,

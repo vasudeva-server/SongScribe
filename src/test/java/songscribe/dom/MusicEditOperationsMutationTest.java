@@ -251,8 +251,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     @Test
     void testToggleTupletExcludesTrailingGraceNote() {
-        var env = setupEnv(crotchet(), crotchet(), graceQuaver());
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        // Three crotchets, so the triplet's written value divides out exactly.
+        var env = setupEnv(crotchet(), crotchet(), crotchet(), graceQuaver());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 3);
         var ops = env.operations();
         ops.toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), ops.canToggleTuplet());
 
@@ -262,13 +263,14 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(addition.tuplet().getAnchorElementIndex()).isEqualTo(0);
         assertThat(addition.tuplet().getEndElementIndex())
             .as("tuplet ends at the last non-grace note")
-            .isEqualTo(1);
+            .isEqualTo(2);
     }
 
     @Test
     void testToggleTupletExcludesLeadingGraceNote() {
-        var env = setupEnv(graceQuaver(), crotchet(), crotchet());
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        // Three crotchets, so the triplet's written value divides out exactly.
+        var env = setupEnv(graceQuaver(), crotchet(), crotchet(), crotchet());
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 3);
         var ops = env.operations();
         ops.toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), ops.canToggleTuplet());
 
@@ -278,7 +280,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(addition.tuplet().getAnchorElementIndex())
             .as("tuplet starts at the first non-grace note")
             .isEqualTo(1);
-        assertThat(addition.tuplet().getEndElementIndex()).isEqualTo(2);
+        assertThat(addition.tuplet().getEndElementIndex()).isEqualTo(3);
     }
 
     // -----------------------------------------------------------------------
@@ -379,10 +381,11 @@ class MusicEditOperationsMutationTest extends UnitTest {
     @Test
     void testToggleTupletRemoveEmitsTupletRemoval() {
         var env = setupEnv(crotchet(), crotchet(), crotchet());
-        song.withoutMutationTracking(() -> env.line().addTuplet(new Tuplet(
+        song.withoutMutationTracking(() -> env.line().addTuplet(Tuplet.withUnresolvedRatio(
             env.line().getElement(0), env.line().getElement(2), TupletAction.Tuplet.TRIPLET.getSize())));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        env.operations().toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), env.operations().canToggleTuplet());
+        // The Remove action, not a matching grade — REMOVE is the only way to delete a tuplet.
+        env.operations().toggleTuplet(TupletAction.Tuplet.REMOVE.getSize(), env.operations().canToggleTuplet());
 
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
@@ -397,10 +400,11 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // different grade must remove the existing span and add the new one
         // inside a single bracket — one notification, two mutations, undo replays
         // both atomically.
-        var env = setupEnv(crotchet(), crotchet(), crotchet());
-        song.withoutMutationTracking(() -> env.line().addTuplet(new Tuplet(
-            env.line().getElement(0), env.line().getElement(2), TupletAction.Tuplet.TRIPLET.getSize())));
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        // Five crotchets, so the incoming quintuplet's written value divides out exactly.
+        var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet(), crotchet());
+        song.withoutMutationTracking(() -> env.line().addTuplet(Tuplet.withUnresolvedRatio(
+            env.line().getElement(0), env.line().getElement(4), TupletAction.Tuplet.TRIPLET.getSize())));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 4);
         env.operations().toggleTuplet(TupletAction.Tuplet.QUINTUPLET.getSize(), env.operations().canToggleTuplet());
 
         var notification = captureSingleDidChange();
@@ -413,24 +417,27 @@ class MusicEditOperationsMutationTest extends UnitTest {
         assertThat(mutations.get(1)).isInstanceOf(TupletAddition.class);
         var addition = (TupletAddition) mutations.get(1);
         assertThat(addition.tuplet().getAnchorElementIndex()).isEqualTo(0);
-        assertThat(addition.tuplet().getEndElementIndex()).isEqualTo(2);
+        assertThat(addition.tuplet().getEndElementIndex()).isEqualTo(4);
         assertThat(addition.tuplet().getGrade()).isEqualTo(TupletAction.Tuplet.QUINTUPLET.getSize());
         assertThat(addition.line()).isSameAs(env.line());
     }
 
     @Test
-    void testToggleTupletMatchingGradeRemovesOnly() {
-        // Clicking the same grade over an existing tuplet removes it (no add).
+    void testToggleTupletMatchingGradeIsNoOp() {
+        // The existing grade is shown checked, so re-picking it must confirm rather than
+        // delete: a checked radio item that removes what it reports on is a trap. Remove
+        // is the one way to delete a tuplet.
         var env = setupEnv(crotchet(), crotchet(), crotchet());
-        song.withoutMutationTracking(() -> env.line().addTuplet(new Tuplet(
-            env.line().getElement(0), env.line().getElement(2), TupletAction.Tuplet.TRIPLET.getSize())));
+        var grade = TupletAction.Tuplet.TRIPLET.getSize();
+        song.withoutMutationTracking(() -> env.line().addTuplet(Tuplet.withUnresolvedRatio(
+            env.line().getElement(0), env.line().getElement(2), grade)));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        env.operations().toggleTuplet(TupletAction.Tuplet.TRIPLET.getSize(), env.operations().canToggleTuplet());
+        env.operations().toggleTuplet(grade, env.operations().canToggleTuplet());
 
-        var notification = captureSingleDidChange();
-        var mutations = notification.getMutations();
-        assertThat(mutations).hasSize(1);
-        assertThat(mutations.getFirst()).isInstanceOf(TupletRemoval.class);
+        verifyNoDidChange();
+        var tuplets = env.line().findRangeElements(Tuplet.class);
+        assertThat(tuplets).as("the tuplet survives re-picking its own grade").hasSize(1);
+        assertThat(tuplets.getFirst().getGrade()).isEqualTo(grade);
     }
 
     @Test
@@ -439,7 +446,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // the UI disables this path, and toggleTuplet now throws IllegalStateException
         // rather than silently replacing the tuplet with a sub-range one.
         var env = setupEnv(crotchet(), crotchet(), crotchet());
-        var originalTuplet = new Tuplet(
+        var originalTuplet = Tuplet.withUnresolvedRatio(
             env.line().getElement(0), env.line().getElement(2), TupletAction.Tuplet.TRIPLET.getSize());
         song.withoutMutationTracking(() -> env.line().addTuplet(originalTuplet));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
@@ -459,7 +466,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // must remove the existing tuplet via the tupletSize == 0 branch rather than
         // the same-grade comparison path exercised by testToggleTupletMatchingGradeRemovesOnly.
         var env = setupEnv(crotchet(), crotchet(), crotchet());
-        song.withoutMutationTracking(() -> env.line().addTuplet(new Tuplet(
+        song.withoutMutationTracking(() -> env.line().addTuplet(Tuplet.withUnresolvedRatio(
             env.line().getElement(0), env.line().getElement(2), TupletAction.Tuplet.TRIPLET.getSize())));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleTuplet(TupletAction.Tuplet.REMOVE.getSize(), env.operations().canToggleTuplet());

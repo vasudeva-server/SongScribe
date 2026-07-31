@@ -204,7 +204,7 @@ class MutationLabelTest extends UnitTest {
     void testTupletAdditionLabelsTuplet() {
         var song = songWithNotes(3);
         var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () -> line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), 3))))
+        assertThat(undoLabelAfter(song, () -> line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3))))
             .isEqualTo(labeled(Strings.ACTION_EDIT_OP_TUPLET));
     }
 
@@ -342,7 +342,7 @@ class MutationLabelTest extends UnitTest {
         var song = songWithNotes(3);
         var line = song.getLine(0);
         song.withoutMutationTracking(() ->
-            line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), 3)));
+            line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3)));
 
         // Deleting a tuplet-spanned note emits the tuplet-removal companion BEFORE the
         // primary ElementDeletion, so a "first mutation" label would read "Tuplet".

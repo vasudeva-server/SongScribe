@@ -446,7 +446,9 @@ public final class LineIO {
 
                 var anchorElement = line.getElement(anchorIdx);
                 var endElement = line.getElement(endIdx);
-                var tuplet = new Tuplet(anchorElement, endElement, grade);
+                // Mid-parse: the beat may still change in a later line, so the ratio is
+                // left to the post-load pass.
+                var tuplet = Tuplet.withUnresolvedRatio(anchorElement, endElement, grade);
 
                 if (!tuplet.hasValidSpan(line)) {
                     throw DocumentValidation.corrupt(

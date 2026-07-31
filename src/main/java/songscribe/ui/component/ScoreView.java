@@ -47,6 +47,7 @@ import songscribe.export.ImageExporter;
 import songscribe.export.SVGExporter;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongFileLoader;
+import songscribe.ui.dialog.MigrationWindow;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.dom.DocPx;
@@ -447,20 +448,23 @@ public final class ScoreView
                 installDocumentFonts(success.fonts());
                 setSong(success.song());
 
-                // setSong clears the modified flag internally; a silent retired-
-                // accidental conversion must still prompt the user to save the
-                // converted version, so re-mark modified after installing the song.
-                if (success.accidentalsConverted()) {
+                var tupletReport = success.tupletReport();
+                var accidentalsConverted = success.accidentalsConverted();
+
+                if (!tupletReport.isEmpty() || accidentalsConverted) {
+                    // setSong clears the modified flag internally; a migration that
+                    // happens silently on load must still prompt the user to save the
+                    // migrated version, so re-mark modified after installing the song.
                     success.song().setModified(true);
+                    MigrationWindow.show(
+                        SwingUtilities.getWindowAncestor(this), tupletReport, accidentalsConverted);
                 }
 
                 if (updateCurrentFile && onFileOpened != null) {
                     onFileOpened.accept(FileUtils.hasExtension(file, FileExtensions.SONGWRITER) ? null : file);
                 }
 
-                var warning = success.warning();
-
-                if (warning != null) {
+                for (var warning : success.warnings()) {
                     switch (warning.type()) {
                         case INVALID_LYRICS_DATE -> OptionDialogs.showWarningMessage(
                             null,

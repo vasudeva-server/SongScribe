@@ -28,9 +28,11 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
+import org.w3c.dom.Document;
 import org.xml.sax.InputSource;
 
 import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
@@ -43,14 +45,30 @@ import songscribe.dom.Tuplet;
 class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
     /**
+     * Returns the text content of the first {@code tagName} element in the
+     * document, or {@code null} if the document has none.
+     */
+    private static @Nullable String firstElementText(String xml, String tagName) throws Exception {
+        var nodes = parseDocument(xml).getElementsByTagName(tagName);
+        return nodes.getLength() == 0 ? null : nodes.item(0).getTextContent().trim();
+    }
+
+    /** Returns the number of {@code tagName} elements in the document. */
+    private static int elementCount(String xml, String tagName) throws Exception {
+        return parseDocument(xml).getElementsByTagName(tagName).getLength();
+    }
+
+    private static Document parseDocument(String xml) throws Exception {
+        var factory = DocumentBuilderFactory.newInstance();
+        return factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
+    }
+
+    /**
      * Returns the text content of the {@code <actual-notes>} element from the
      * first {@code <time-modification>} in the document, or {@code null} if absent.
      */
     private static @Nullable String firstActualNotes(String xml) throws Exception {
-        var factory = DocumentBuilderFactory.newInstance();
-        var doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
-        var nodes = doc.getElementsByTagName("actual-notes");
-        return nodes.getLength() == 0 ? null : nodes.item(0).getTextContent().trim();
+        return firstElementText(xml, MusicXmlTags.ACTUAL_NOTES);
     }
 
     /**
@@ -58,10 +76,15 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
      * first {@code <time-modification>} in the document, or {@code null} if absent.
      */
     private static @Nullable String firstNormalNotes(String xml) throws Exception {
-        var factory = DocumentBuilderFactory.newInstance();
-        var doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
-        var nodes = doc.getElementsByTagName("normal-notes");
-        return nodes.getLength() == 0 ? null : nodes.item(0).getTextContent().trim();
+        return firstElementText(xml, MusicXmlTags.NORMAL_NOTES);
+    }
+
+    /**
+     * Returns the text content of the {@code <normal-type>} element from the
+     * first {@code <time-modification>} in the document, or {@code null} if absent.
+     */
+    private static @Nullable String firstNormalType(String xml) throws Exception {
+        return firstElementText(xml, MusicXmlTags.NORMAL_TYPE);
     }
 
     /**
@@ -69,22 +92,75 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
      * note that the writer treats as a tuplet member.
      */
     private static int timeModificationCount(String xml) throws Exception {
-        var factory = DocumentBuilderFactory.newInstance();
-        var doc = factory.newDocumentBuilder().parse(new InputSource(new StringReader(xml)));
-        return doc.getElementsByTagName("time-modification").getLength();
+        return elementCount(xml, MusicXmlTags.TIME_MOD);
+    }
+
+    /**
+     * Asserts that {@code tuplet} carries exactly the ratio {@code N} notes in the
+     * time of {@code M} notes of the given written value — the three fields the
+     * {@code <time-modification>} round-trip has to preserve.
+     */
+    private static void assertTupletRatio(
+            Tuplet tuplet, int expectedGrade, int expectedNormalNotes,
+            ElementType expectedNoteValue, int expectedNoteValueDots) {
+
+        assertThat(tuplet.getGrade()).as("tuplet: grade").isEqualTo(expectedGrade);
+        assertThat(tuplet.getNormalNotes()).as("tuplet: normalNotes").isEqualTo(expectedNormalNotes);
+        assertThat(tuplet.getNoteValue()).as("tuplet: noteValue").isEqualTo(expectedNoteValue);
+        assertThat(tuplet.getNoteValueDots()).as("tuplet: noteValueDots").isEqualTo(expectedNoteValueDots);
     }
 
     /** Grade 3 (triplet): 3 actual notes in the time of 2 normal notes. */
     private static final int TRIPLET_GRADE = 3;
 
-    /** Normal-note count for a triplet: largest power of two below 3. */
+    /** A triplet occupies the time of two notes of its written value. */
     private static final int TRIPLET_NORMAL_NOTES = 2;
 
     /** Grade 5 (quintuplet): 5 actual notes in the time of 4 normal notes. */
     private static final int QUINTUPLET_GRADE = 5;
 
-    /** Normal-note count for a quintuplet: largest power of two below 5. */
+    /** A quintuplet occupies the time of four notes of its written value. */
     private static final int QUINTUPLET_NORMAL_NOTES = 4;
+
+    /** Grade 2 (duplet) in compound time: 2 actual notes in the time of 3 normal notes. */
+    private static final int COMPOUND_DUPLET_GRADE = 2;
+
+    /** A compound duplet occupies three of its written value — the ratio 2:1 cannot express. */
+    private static final int COMPOUND_DUPLET_NORMAL_NOTES = 3;
+
+    /** Grade 7 (septuplet): 7 actual notes in the time of 4 normal notes. */
+    private static final int SEPTUPLET_GRADE = 7;
+
+    /** A septuplet occupies the time of four notes of its written value. */
+    private static final int SEPTUPLET_NORMAL_NOTES = 4;
+
+    /** Element count of the septuplet fixture — one note per actual note. */
+    private static final int SEPTUPLET_LAST_INDEX = SEPTUPLET_GRADE - 1;
+
+    /**
+     * A {@code <normal-notes>} value no derivation would ever produce for the fixture
+     * that carries it, so trusting it and deriving it cannot be confused.
+     */
+    private static final int UNTRUSTED_STATED_NORMAL_NOTES = 5;
+
+    /** No dots on the tuplets' written note value in these fixtures. */
+    private static final int NO_DOTS = 0;
+
+    /** One dot on the tuplet's written note value — the {@code <normal-dot/>} case. */
+    private static final int ONE_DOT = 1;
+
+    // Performed <duration> values: the written tick count scaled by M / N.
+    // The scaling is exact at NoteTypeMapping.DIVISIONS, which is the property
+    // these expected values pin down.
+
+    /** A crotchet in a 3:2 tuplet: 13440 × 2 / 3. */
+    private static final int TRIPLET_CROTCHET_PERFORMED_TICKS = 8960;
+
+    /** A dotted quaver in a 3:2 tuplet: 6720 × 3/2 × 2 / 3. */
+    private static final int TRIPLET_DOTTED_QUAVER_PERFORMED_TICKS = 6720;
+
+    /** A semiquaver in a 7:4 tuplet: 3360 × 4 / 7. */
+    private static final int SEPTUPLET_SEMIQUAVER_PERFORMED_TICKS = 1920;
 
     /** A non-zero vertical position (staff spaces) that survives the round-trip. */
     private static final int TUPLET_VERTICAL_POSITION_SS = 2;
@@ -147,10 +223,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     // -------------------------------------------------------------------------
     // Range-Spans Phase 6b: tuplet round-trip tests
     //
-    // Asserts that grade and verticalPositionSs survive the write→read cycle,
-    // plus writer-output assertions for <actual-notes> and <normal-notes>
-    // (normal-notes is write-forward only: the reader ignores it, so
-    // round-trip alone cannot catch a wrong value).
+    // Asserts that the whole ratio (grade, normalNotes, note value + its dots)
+    // and verticalPositionSs survive the write→read cycle, plus writer-output
+    // assertions on the <time-modification> block itself and on the performed
+    // <duration> the ratio scales.
     // -------------------------------------------------------------------------
 
     @Test
@@ -162,7 +238,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
-            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE));
+            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
         });
 
         var song2 = roundTrip(song);
@@ -171,6 +247,199 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(tuplets).as("tuplet count after triplet round-trip").hasSize(1);
         assertRangeElementEquals(tuplets.get(0), 0, 2, TRIPLET_GRADE, 0);
+        assertTupletRatio(tuplets.get(0), TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
+    }
+
+    // A dotted written value is the only thing <normal-dot/> encodes, and three
+    // corpus tuplets have one — without the element they cannot round-trip.
+    @Test
+    void testDottedNoteValueRoundTrips() throws Exception {
+        var song = buildSong(line -> {
+            var note0 = ElementType.QUAVER.newInstance();
+            var note1 = ElementType.QUAVER.newInstance();
+            var note2 = ElementType.QUAVER.newInstance();
+            note0.setDotCount(ONE_DOT);
+            note1.setDotCount(ONE_DOT);
+            note2.setDotCount(ONE_DOT);
+            line.addElement(note0);
+            line.addElement(note1);
+            line.addElement(note2);
+            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, ONE_DOT));
+        });
+
+        var xml = writeToString(song);
+
+        assertThat(firstNormalType(xml))
+            .as("<normal-type> must name the tuplet's written value")
+            .isEqualTo(NoteTypeMapping.TYPE_EIGHTH);
+        assertThat(elementCount(xml, MusicXmlTags.NORMAL_DOT))
+            .as("one <normal-dot/> per dot, on each of the %d tupleted notes", TRIPLET_GRADE)
+            .isEqualTo(TRIPLET_GRADE * ONE_DOT);
+
+        var tuplets = parse(xml).getLine(0).findRangeElements(Tuplet.class);
+
+        assertThat(tuplets).as("tuplet count after dotted-value round-trip").hasSize(1);
+        assertTupletRatio(tuplets.get(0), TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, ONE_DOT);
+    }
+
+    // 7:4 is the ratio that forces the DIVISIONS choice: it must survive both the
+    // <time-modification> round-trip and the performed-duration division exactly.
+    @Test
+    void testSeptupletRoundTripsExactly() throws Exception {
+        var song = buildSong(line -> {
+            var notes = new StaffElement[SEPTUPLET_GRADE];
+
+            for (var i = 0; i < SEPTUPLET_GRADE; i++) {
+                notes[i] = ElementType.SEMIQUAVER.newInstance();
+                line.addElement(notes[i]);
+            }
+
+            line.addTuplet(new Tuplet(notes[0], notes[SEPTUPLET_LAST_INDEX], SEPTUPLET_GRADE,
+                SEPTUPLET_NORMAL_NOTES, ElementType.SEMIQUAVER, NO_DOTS));
+        });
+
+        var xml = writeToString(song);
+
+        assertThat(firstElementText(xml, MusicXmlTags.DURATION))
+            .as("a septuplet semiquaver's performed <duration>")
+            .isEqualTo(Integer.toString(SEPTUPLET_SEMIQUAVER_PERFORMED_TICKS));
+
+        var tuplets = parse(xml).getLine(0).findRangeElements(Tuplet.class);
+
+        assertThat(tuplets).as("tuplet count after septuplet round-trip").hasSize(1);
+        assertRangeElementEquals(tuplets.get(0), 0, SEPTUPLET_LAST_INDEX, SEPTUPLET_GRADE, 0);
+        assertTupletRatio(tuplets.get(0), SEPTUPLET_GRADE, SEPTUPLET_NORMAL_NOTES,
+            ElementType.SEMIQUAVER, NO_DOTS);
+    }
+
+    // <duration> is the *performed* duration, so a tuplet member sounds shorter
+    // than its <type> says while a note outside the span is unscaled.
+    @Test
+    void testTupletMemberDurationIsPerformedAndOutsiderIsNot() throws Exception {
+        var song = buildSong(line -> {
+            var note0 = ElementType.CROTCHET.newInstance();
+            var note1 = ElementType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
+            var outsider = ElementType.CROTCHET.newInstance();
+            line.addElement(note0);
+            line.addElement(note1);
+            line.addElement(note2);
+            line.addElement(outsider);
+            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
+        });
+
+        var xml = writeToString(song);
+        var durations = parseDocument(xml).getElementsByTagName(MusicXmlTags.DURATION);
+
+        assertThat(durations.getLength()).as("<duration> count").isEqualTo(TRIPLET_GRADE + 1);
+
+        for (var i = 0; i < TRIPLET_GRADE; i++) {
+            assertThat(durations.item(i).getTextContent().trim())
+                .as("tupleted crotchet %d: performed <duration>", i)
+                .isEqualTo(Integer.toString(TRIPLET_CROTCHET_PERFORMED_TICKS));
+        }
+
+        assertThat(durations.item(TRIPLET_GRADE).getTextContent().trim())
+            .as("a crotchet outside the tuplet keeps its written <duration>")
+            .isEqualTo(Integer.toString(NoteTypeMapping.DIVISIONS));
+    }
+
+    @Test
+    void testDottedTupletMemberDurationIsPerformed() throws Exception {
+        var song = buildSong(line -> {
+            var note0 = ElementType.QUAVER.newInstance();
+            var note1 = ElementType.QUAVER.newInstance();
+            var note2 = ElementType.QUAVER.newInstance();
+            note0.setDotCount(ONE_DOT);
+            note1.setDotCount(ONE_DOT);
+            note2.setDotCount(ONE_DOT);
+            line.addElement(note0);
+            line.addElement(note1);
+            line.addElement(note2);
+            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, ONE_DOT));
+        });
+
+        assertThat(firstElementText(writeToString(song), MusicXmlTags.DURATION))
+            .as("a tripleted dotted quaver's performed <duration>")
+            .isEqualTo(Integer.toString(TRIPLET_DOTTED_QUAVER_PERFORMED_TICKS));
+    }
+
+    // A file written before <normal-type> existed states a <normal-notes> that cannot
+    // be trusted, so the reader leaves the ratio for the post-load pass to derive. The
+    // fixture states a ratio no derivation would produce, so "trusted" and "derived"
+    // cannot be confused: three quarters at a quarter beat can only derive M = 2.
+    @Test
+    void testTupletWithoutNormalTypeIsDerivedNotTrusted() throws Exception {
+        var timeModification =
+            "        <time-modification><actual-notes>" + TRIPLET_GRADE + "</actual-notes>"
+            + "<normal-notes>" + UNTRUSTED_STATED_NORMAL_NOTES + "</normal-notes></time-modification>\n";
+        var xml = scoreWithMeasureBody(
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>quarter</type>\n" +
+            timeModification +
+            "        <notations><tuplet type=\"start\" number=\"1\"/></notations>\n" +
+            "      </note>\n" +
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>quarter</type>\n" +
+            timeModification +
+            "      </note>\n" +
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>quarter</type>\n" +
+            timeModification +
+            "        <notations><tuplet type=\"stop\" number=\"1\"/></notations>\n" +
+            "      </note>\n" +
+            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+        );
+
+        var tuplets = parse(xml).getLine(0).findRangeElements(Tuplet.class);
+
+        assertThat(tuplets).as("tuplet count read from a <normal-type>-less file").hasSize(1);
+        // parse() goes through the whole read seam, so the post-load pass has already
+        // settled the ratio by the time the song comes back.
+        assertTupletRatio(tuplets.get(0), TRIPLET_GRADE, TRIPLET_NORMAL_NOTES,
+            ElementType.CROTCHET, NO_DOTS);
+    }
+
+    // The same file *with* <normal-type> states a complete ratio, so the reader takes
+    // its <normal-notes> at face value — even the non-conventional M = 3 that a duplet
+    // outside compound time would never derive. The stated V must still agree with
+    // S / N or the file contradicts itself, so the two notes are written as dotted
+    // quavers: S = 2 x 72 = 144 ticks, S / N = 72, which is the stated dotted quaver.
+    @Test
+    void testTupletWithNormalTypeIsTrustedAsStated() throws Exception {
+        var xml = scoreWithMeasureBody(
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>eighth</type>\n" +
+            "        <dot/>\n" +
+            "        <time-modification><actual-notes>2</actual-notes><normal-notes>3</normal-notes>"
+            + "<normal-type>eighth</normal-type><normal-dot/></time-modification>\n" +
+            "        <notations><tuplet type=\"start\" number=\"1\"/></notations>\n" +
+            "      </note>\n" +
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>eighth</type>\n" +
+            "        <dot/>\n" +
+            "        <time-modification><actual-notes>2</actual-notes><normal-notes>3</normal-notes>"
+            + "<normal-type>eighth</normal-type><normal-dot/></time-modification>\n" +
+            "        <notations><tuplet type=\"stop\" number=\"1\"/></notations>\n" +
+            "      </note>\n" +
+            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+        );
+
+        var tuplets = parse(xml).getLine(0).findRangeElements(Tuplet.class);
+
+        assertThat(tuplets).as("tuplet count read from a <normal-type>-carrying file").hasSize(1);
+        assertTupletRatio(tuplets.get(0), COMPOUND_DUPLET_GRADE, COMPOUND_DUPLET_NORMAL_NOTES,
+            ElementType.QUAVER, ONE_DOT);
     }
 
     @Test
@@ -182,7 +451,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
-            var tuplet = new Tuplet(note0, note2, TRIPLET_GRADE);
+            var tuplet = new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             tuplet.setVerticalPositionSs(TUPLET_VERTICAL_POSITION_SS);
             line.addTuplet(tuplet);
         });
@@ -208,7 +477,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(grace);
             line.addElement(note2);
             line.addElement(note3);
-            line.addTuplet(new Tuplet(note0, note3, TRIPLET_GRADE));
+            line.addTuplet(new Tuplet(note0, note3, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
         });
 
         var xml = writeToString(song);
@@ -241,7 +510,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note2);
             line.addElement(note3);
             line.addElement(note4);
-            line.addTuplet(new Tuplet(note0, note4, QUINTUPLET_GRADE));
+            line.addTuplet(new Tuplet(note0, note4, QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
         });
 
         var song2 = roundTrip(song);
@@ -250,6 +519,8 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(tuplets).as("tuplet count after quintuplet round-trip").hasSize(1);
         assertRangeElementEquals(tuplets.get(0), 0, 4, QUINTUPLET_GRADE, 0);
+        assertTupletRatio(tuplets.get(0), QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES,
+            ElementType.CROTCHET, NO_DOTS);
     }
 
     @Test
@@ -265,7 +536,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note2);
             line.addElement(note3);
             line.addElement(note4);
-            var tuplet = new Tuplet(note0, note4, QUINTUPLET_GRADE);
+            var tuplet = new Tuplet(note0, note4, QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             tuplet.setVerticalPositionSs(TUPLET_VERTICAL_POSITION_SS);
             line.addTuplet(tuplet);
         });
@@ -280,8 +551,6 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testTripletTimeModificationInOutput() throws Exception {
-        // <normal-notes> is write-forward only: the reader ignores it, so only
-        // a writer-output assertion can verify it is emitted correctly.
         var song = buildSong(line -> {
             var note0 = ElementType.CROTCHET.newInstance();
             var note1 = ElementType.CROTCHET.newInstance();
@@ -289,7 +558,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
-            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE));
+            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
         });
 
         var xml = writeToString(song);
@@ -298,8 +567,14 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             .as("<actual-notes> for triplet must equal the grade (%d)", TRIPLET_GRADE)
             .isEqualTo(Integer.toString(TRIPLET_GRADE));
         assertThat(firstNormalNotes(xml))
-            .as("<normal-notes> for triplet must be the largest power of two below grade (%d)", TRIPLET_NORMAL_NOTES)
+            .as("<normal-notes> for triplet must be the stored M (%d)", TRIPLET_NORMAL_NOTES)
             .isEqualTo(Integer.toString(TRIPLET_NORMAL_NOTES));
+        assertThat(firstNormalType(xml))
+            .as("<normal-type> must name the stored written value")
+            .isEqualTo(NoteTypeMapping.TYPE_QUARTER);
+        assertThat(elementCount(xml, MusicXmlTags.NORMAL_DOT))
+            .as("an undotted written value emits no <normal-dot/>")
+            .isEqualTo(NO_DOTS);
     }
 
     @Test
@@ -315,7 +590,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note2);
             line.addElement(note3);
             line.addElement(note4);
-            line.addTuplet(new Tuplet(note0, note4, QUINTUPLET_GRADE));
+            line.addTuplet(new Tuplet(note0, note4, QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
         });
 
         var xml = writeToString(song);
@@ -324,8 +599,11 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             .as("<actual-notes> for quintuplet must equal the grade (%d)", QUINTUPLET_GRADE)
             .isEqualTo(Integer.toString(QUINTUPLET_GRADE));
         assertThat(firstNormalNotes(xml))
-            .as("<normal-notes> for quintuplet must be the largest power of two below grade (%d)", QUINTUPLET_NORMAL_NOTES)
+            .as("<normal-notes> for quintuplet must be the stored M (%d)", QUINTUPLET_NORMAL_NOTES)
             .isEqualTo(Integer.toString(QUINTUPLET_NORMAL_NOTES));
+        assertThat(firstNormalType(xml))
+            .as("<normal-type> must name the stored written value")
+            .isEqualTo(NoteTypeMapping.TYPE_QUARTER);
     }
 
     // -------------------------------------------------------------------------
@@ -478,14 +756,20 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         // on both notes and the <tuplet> start/stop notations on note0 (measure 1)
         // and note1 (measure 2).  The reader must recover the grade from
         // <time-modification> and re-collapse the notations to Tuplet[0, 2].
+        // Three notes, not two: the subject here is recovering a span across a barline,
+        // but the load pass still checks the ratio, and a grade-3 tuplet over two
+        // quarters would state a written value of 192 / 3 = 64 ticks, which is not
+        // notatable — the tuplet would be dropped for a reason unrelated to the test.
         var song = buildSong(line -> {
             var note0 = ElementType.CROTCHET.newInstance();
             var barline = ElementType.SINGLE_BARLINE.newInstance();
             var note1 = ElementType.CROTCHET.newInstance();
+            var note2 = ElementType.CROTCHET.newInstance();
             line.addElement(note0);
             line.addElement(barline);
             line.addElement(note1);
-            line.addTuplet(new Tuplet(note0, note1, TRIPLET_GRADE));
+            line.addElement(note2);
+            line.addTuplet(new Tuplet(note0, note2, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
         });
 
         var song2 = roundTrip(song);
@@ -493,7 +777,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         var tuplets = line2.findRangeElements(Tuplet.class);
 
         assertThat(tuplets).as("tuplet count after measure-boundary round-trip").hasSize(1);
-        // note0 → index 0, SINGLE_BARLINE → index 1, note1 → index 2.
-        assertRangeElementEquals(tuplets.get(0), 0, 2, TRIPLET_GRADE, 0);
+        // note0 → index 0, SINGLE_BARLINE → index 1, note1 → index 2, note2 → index 3.
+        assertRangeElementEquals(tuplets.get(0), 0, 3, TRIPLET_GRADE, 0);
     }
 }

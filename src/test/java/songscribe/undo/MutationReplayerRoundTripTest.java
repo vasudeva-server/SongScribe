@@ -73,6 +73,12 @@ import songscribe.ui.selection.ReflectionTestHelper;
  */
 class MutationReplayerRoundTripTest extends UnitTest {
 
+
+    /** A triplet: three notes in the time of two of its written value. */
+    private static final int TRIPLET_GRADE = 3;
+    private static final int TRIPLET_NORMAL_NOTES = 2;
+    private static final int NO_DOTS = 0;
+
     /**
      * Serializes the pre-edit state, captures the batch a real edit posts, then asserts
      * undo restores the pre-edit serialization and redo restores the post-edit one.
@@ -595,14 +601,16 @@ class MutationReplayerRoundTripTest extends UnitTest {
         void testTupletAdditionRoundTrips() {
             var song = songWithNotes(3);
             var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), 3)));
+            assertRoundTrip(song, () -> line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS)));
         }
 
         @Test
         void testTupletRemovalRoundTrips() {
             var song = songWithNotes(3);
             var line = song.getLine(0);
-            var tuplet = new Tuplet(line.getElement(0), line.getElement(2), 3);
+            var tuplet = new Tuplet(line.getElement(0), line.getElement(2), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             song.withoutMutationTracking(() -> line.addTuplet(tuplet));
             assertRoundTrip(song, () -> line.removeTuplet(tuplet));
         }

@@ -27,6 +27,8 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static songscribe.dom.StaffElementFactory.crotchet;
 
+import java.util.Set;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -190,7 +192,7 @@ class MusicEditOperationsNullStateTest extends UnitTest {
         // canToggle=true, existing=null so the null-state guard fires before any other check.
         // (If canToggle were false the IllegalStateException guard would fire first on a real
         // state, but here state is null so the method returns early before reaching that check.)
-        var info = new TupletToggleInfo(true, null, false);
+        var info = new TupletToggleInfo(true, Set.of(), null, false);
         opsWithNullState().toggleTuplet(3, info);
         verifyNoChangeNotification();
     }
@@ -203,7 +205,7 @@ class MusicEditOperationsNullStateTest extends UnitTest {
     void testToggleTupletThrowsWhenInfoCannotToggle() {
         // An active state is required — the null guard must not fire.
         // The canToggle == false guard fires immediately after the null check.
-        var info = new TupletToggleInfo(false, null, false);
+        var info = new TupletToggleInfo(false, Set.of(), null, false);
         var ops = opsWithActiveState();
 
         assertThatThrownBy(() -> ops.toggleTuplet(3, info))

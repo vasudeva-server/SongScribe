@@ -57,6 +57,15 @@ import songscribe.dom.TempoChangeAttachment;
  *                                                             ├─ each clone's xOffset zeroed — a fragment
  *                                                             │  carries semantic content, not layout corrections
  *                                                             │
+ *                                                             ├─ PasteSpanReconciliation.reconcile — BEFORE any
+ *                                                             │  mutation: straddled destination spans removed,
+ *                                                             │  fragment spans a straddle invalidates dropped
+ *                                                             ├─ clones inserted into the destination line
+ *                                                             ├─ .dropTupletsRejectedByTarget — pasted tuplets the
+ *                                                             │  destination's beat context rejects dropped; the
+ *                                                             │  notes stay, only the bracket goes
+ *                                                             └─ surviving spans added
+ *
  *           (the stored Fragment is NEVER inserted, so paste N times ⇒ N independent results)
  * </pre>
  *

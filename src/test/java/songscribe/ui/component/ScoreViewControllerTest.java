@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
 import java.util.function.BiFunction;
 
 import org.junit.jupiter.api.AfterEach;
@@ -895,7 +896,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             when(operationsMock.canToggleTuplet()).thenAnswer(invocation -> {
                 selectionSurvivedIntoCacheWarmUp[0] = state.hasElementSelection();
-                return new TupletToggleInfo(false, null, false);
+                return new TupletToggleInfo(false, Set.of(), null, false);
             });
 
             controller.songDidChange(songDidChange());
@@ -2181,14 +2182,14 @@ class ScoreViewControllerTest extends UnitTest {
 
         @Test
         void testTupletAdditionInvalidatesLayout() {
-            var tuplet = new Tuplet(line.getElement(0), line.getElement(1), 3);
+            var tuplet = Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(1), 3);
             fireNotification(new TupletAddition(line, tuplet));
             verify(lineComponentMock).invalidateLayout();
         }
 
         @Test
         void testTupletRemovalInvalidatesLayout() {
-            var tuplet = new Tuplet(line.getElement(0), line.getElement(1), 3);
+            var tuplet = Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(1), 3);
             fireNotification(new TupletRemoval(line, tuplet));
             verify(lineComponentMock).invalidateLayout();
         }
@@ -2389,7 +2390,7 @@ class ScoreViewControllerTest extends UnitTest {
         @Test
         void testCanToggleTupletDelegatesToOperationsWhenCacheIsNull() {
             // Row 41a: with no cache populated, canToggleTuplet() must call operations
-            var expected = new TupletToggleInfo(true, null, false);
+            var expected = new TupletToggleInfo(true, Set.of(), null, false);
             when(operationsMock.canToggleTuplet()).thenReturn(expected);
 
             var result = controller.canToggleTuplet();
@@ -2401,7 +2402,7 @@ class ScoreViewControllerTest extends UnitTest {
         @Test
         void testCanToggleTupletReturnsCachedValueWithoutCallingOperations() {
             // Row 41b: once the cache is warm, canToggleTuplet() must not delegate
-            var cached = new TupletToggleInfo(true, null, false);
+            var cached = new TupletToggleInfo(true, Set.of(), null, false);
             when(operationsMock.canToggleTuplet()).thenReturn(cached);
 
             // Warm the cache via musicSelectionDidChangeCacheTupletInfo

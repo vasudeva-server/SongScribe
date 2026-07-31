@@ -140,7 +140,7 @@ class SongLoaderTest extends UnitTest {
     /**
      * Loading the lyrics-date-invalid fixture (whose {@code <lyricsDate>} is
      * {@code 1984-13}) must succeed — the load must not abort — and the
-     * {@link SongLoadResult.Success#warning()} must carry an
+     * {@link SongLoadResult.Success#warnings()} must carry an
      * {@code INVALID_LYRICS_DATE} warning whose description is the raw invalid
      * string. The {@code io} layer reports only the kind and the offending text;
      * mapping to a user-facing dialog is the UI layer's job.
@@ -154,16 +154,12 @@ class SongLoaderTest extends UnitTest {
             .isInstanceOf(SongLoadResult.Success.class);
 
         var success = (SongLoadResult.Success) result;
-        var warning = success.warning();
 
-        assertThat(warning)
-            .as("invalid lyricsDate must produce a non-null warning")
-            .isNotNull();
+        assertThat(success.warnings())
+            .as("invalid lyricsDate must produce exactly one warning")
+            .hasSize(1);
 
-        //noinspection ConstantValue -- NullAway guard after isNotNull assertion
-        if (warning == null) {
-            return;
-        }
+        var warning = success.warnings().getFirst();
 
         assertThat(warning.type())
             .as("warning type must be INVALID_LYRICS_DATE")
@@ -199,19 +195,19 @@ class SongLoaderTest extends UnitTest {
     }
 
     /**
-     * Loading a valid fixture (full-line) must produce a Success with a
-     * {@code null} warning — no spurious warning for a good file.
+     * Loading a valid fixture (full-line) must produce a Success with no
+     * warnings — no spurious warning for a good file.
      */
     @Test
-    void testLoadValidFixtureProducesNullWarning() throws Exception {
+    void testLoadValidFixtureProducesNoWarnings() throws Exception {
         var result = SongLoader.load(fixtureFile("full-line"));
 
         assertThat(result).isInstanceOf(SongLoadResult.Success.class);
 
         var success = (SongLoadResult.Success) result;
 
-        assertThat(success.warning())
+        assertThat(success.warnings())
             .as("valid fixture must not produce a warning")
-            .isNull();
+            .isEmpty();
     }
 }

@@ -21,6 +21,7 @@ package songscribe.io.musicxml;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
@@ -37,6 +38,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.TupletLoadPass;
 import songscribe.font.DocumentFonts;
 import songscribe.io.SongLoadResult;
 import songscribe.util.Utils;
@@ -266,8 +268,9 @@ public final class MusicXmlReader extends DefaultHandler {
     /**
      * Parses a MusicXML document from the given {@link InputSource} and returns
      * the resulting {@link SongLoadResult.Success} (the parsed song plus its
-     * document fonts; the warning is always {@code null}, as MusicXML parsing has
-     * no load-warning path — failure surfaces as a thrown exception).
+     * document fonts). A malformed document surfaces as a thrown exception; the
+     * warning list carries only the non-fatal conditions, of which the tuplet
+     * load pass is currently the sole producer on this path.
      * <p>
      * When the document carries no {@code <defaults>} font block, the result's
      * fonts default to {@link DocumentFonts#defaultFonts()}.
@@ -282,8 +285,19 @@ public final class MusicXmlReader extends DefaultHandler {
             var parser = PARSER_FACTORY.newSAXParser();
             var handler = new MusicXmlReader();
             parser.parse(source, handler);
+            var parsedSong = handler.getSong();
+
+            // Run here rather than in the UI: SongLoader's headless route runs it too, and a
+            // song whose tuplets were settled in only one of the two routes would export a
+            // different MIDI file than it displays.
+            var tupletReport = TupletLoadPass.run(parsedSong);
+
             return new SongLoadResult.Success(
-                handler.getSong(), handler.documentFonts, null, handler.accidentalsConverted);
+                parsedSong,
+                handler.documentFonts,
+                List.of(),
+                handler.accidentalsConverted,
+                tupletReport);
         } catch (ParserConfigurationException e) {
             throw new SAXException("Failed to create SAX parser", e);
         }

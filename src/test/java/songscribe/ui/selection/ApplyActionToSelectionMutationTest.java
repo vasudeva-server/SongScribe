@@ -345,7 +345,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        var tuplet = new Tuplet(line.getElement(0), line.getElement(4), 3);
+        var tuplet = Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(4), 3);
         line.addTuplet(tuplet);
         capturedMutations.clear();
 
@@ -493,7 +493,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
         var line = getLine(coordinator);
         line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
-        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), 3));
+        line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3));
         capturedMutations.clear();
         line.getSong().withoutMutationTracking(
             () -> line.addRangeElement(new Tie(line.getElement(0), line.getElement(1))));

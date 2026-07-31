@@ -26,13 +26,16 @@ package songscribe.io;
  * user-facing strings and dialogs to the UI layer.
  *
  * @param type        which load problem occurred
- * @param description the offending raw text (e.g. the unparseable date string)
+ * @param description text identifying the occurrence — the offending raw text
+ *                    for a malformed field, or the count for a problem that is
+ *                    reported in aggregate
  */
 public record LoadWarning(Type type, String description) {
 
     /**
-     * The kinds of non-fatal load problems. New ISO-8601 date fields (such as a
-     * future music date) add a constant here rather than a new carrier type.
+     * The kinds of non-fatal load problems. Related conditions add a constant
+     * here rather than a new carrier type — new ISO-8601 date fields (such as a
+     * future music date) alongside {@link #INVALID_LYRICS_DATE}, for instance.
      */
     public enum Type {
         INVALID_LYRICS_DATE

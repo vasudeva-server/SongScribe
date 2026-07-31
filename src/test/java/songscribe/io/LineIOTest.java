@@ -285,6 +285,11 @@ class LineIOTest extends UnitTest {
 
         private static final int TRIPLET_GRADE = 3;
 
+        /** A triplet occupies the time of two notes of its written value. */
+        private static final int TRIPLET_NORMAL_NOTES = 2;
+
+        private static final int NO_DOTS = 0;
+
         @Test
         void testZeroVertPosOmitsVertPos() throws Exception {
             var elements = lineWith(
@@ -293,7 +298,8 @@ class LineIOTest extends UnitTest {
                 ElementType.CROTCHET
             );
 
-            var tuplet = new Tuplet(elements.getElement(0), elements.getElement(2), TRIPLET_GRADE);
+            var tuplet = new Tuplet(elements.getElement(0), elements.getElement(2), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             elements.addTuplet(tuplet);
 
             var result = LineIO.rangeElementsToString(elements.findRangeElements(Tuplet.class));
@@ -310,7 +316,8 @@ class LineIOTest extends UnitTest {
                 ElementType.CROTCHET
             );
 
-            var tuplet = new Tuplet(elements.getElement(0), elements.getElement(2), TRIPLET_GRADE);
+            var tuplet = new Tuplet(elements.getElement(0), elements.getElement(2), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             final int VERT_POS = 4;
             tuplet.setVerticalPositionSs(VERT_POS);
             elements.addTuplet(tuplet);

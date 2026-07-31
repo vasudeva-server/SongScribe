@@ -20,6 +20,8 @@
 
 package songscribe.ui.selection;
 
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
@@ -30,7 +32,9 @@ import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
+import songscribe.dom.TupletValidator;
 import songscribe.layout.LineEndingSupport;
+import songscribe.ui.action.TupletAction;
 
 /**
  * Per-line selection state and query methods.
@@ -560,8 +564,14 @@ public final class LineSelectionState {
 
     /**
      * Returns a {@link TupletToggleInfo} describing whether the selection can be
-     * tupleted/untupleted, which tuplet currently covers the selection start, and
-     * whether the selection covers that tuplet's full span.
+     * tupleted/untupleted, which tuplet numbers it could actually become, which tuplet
+     * currently covers the selection start, and whether the selection covers that
+     * tuplet's full span.
+     * <p>
+     * Rests are welcome inside a new tuplet — they contribute their written duration
+     * exactly as notes do — so only grace notes are skipped. Anything else the span may
+     * contain (a barline, a breath mark, a fermata) is left for the validator to reject,
+     * which it does by leaving the grade out of {@code validGrades}.
      */
     @SuppressWarnings("ObjectEquality")
     public TupletToggleInfo canToggleTuplet() {
@@ -576,15 +586,9 @@ public final class LineSelectionState {
         Tuplet firstTuplet = null;
 
         for (var i = beginIndex; i <= endIndex; i++) {
-            var type = line.getElement(i).getType();
-
             // A grace note rides along inside the span without joining the tuplet.
-            if (type.isGraceNote()) {
+            if (line.getElement(i).getType().isGraceNote()) {
                 continue;
-            }
-
-            if (!type.isPitchedNote()) {
-                return new TupletToggleInfo(false, null, false);
             }
 
             var currentTuplet = line.findTupletAt(i);
@@ -600,7 +604,43 @@ public final class LineSelectionState {
             && (beginIndex == firstTuplet.getAnchorElementIndex())
             && (endIndex == firstTuplet.getEndElementIndex());
 
-        return new TupletToggleInfo(true, firstTuplet, coversExisting);
+        // A strict sub-range of a tuplet has no creation decision to offer: making a tuplet
+        // of it would silently destroy the tuplet it sits inside. The tuplet is still
+        // reported so removal stays available.
+        if ((firstTuplet != null) && !coversExisting) {
+            return new TupletToggleInfo(false, firstTuplet, false);
+        }
+
+        return new TupletToggleInfo(
+            true, validGradesFor(beginIndex, endIndex), firstTuplet, coversExisting);
+    }
+
+    /**
+     * Returns the tuplet numbers this span could be notated as.
+     * <p>
+     * The span is measured once and the six candidate grades are then tested against that
+     * measurement: resolving the beat walks back through the song, and this runs on every
+     * document edit, not only when the selection changes.
+     */
+    private Set<Integer> validGradesFor(int beginIndex, int endIndex) {
+        var song = line.getSong();
+        var context = TupletValidator.describeSpan(
+            song, line, song.indexOfLine(line), beginIndex, endIndex);
+        var grades = new LinkedHashSet<Integer>();
+
+        for (var candidate : TupletAction.Tuplet.values()) {
+            if (candidate == TupletAction.Tuplet.REMOVE) {
+                continue;
+            }
+
+            var grade = candidate.getSize();
+
+            if (TupletValidator.validate(context, grade, TupletValidator.Strictness.STRICT).valid()) {
+                grades.add(grade);
+            }
+        }
+
+        return grades;
     }
 
     /**

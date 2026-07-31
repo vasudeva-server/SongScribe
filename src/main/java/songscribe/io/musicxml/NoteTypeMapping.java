@@ -48,14 +48,14 @@ import songscribe.dom.ElementType;
  *
  * <p>ASCII table — single {@code ElementType → <type> token + base-tick factor}:
  * <pre>
- * ElementType                   &lt;type&gt;    base ticks (DIVISIONS = 480)
- * -----------------------------------------------------------------------
- * SEMIBREVE  / SEMIBREVE_REST   whole     4 × DIVISIONS = 1920
- * MINIM      / MINIM_REST       half      2 × DIVISIONS =  960
- * CROTCHET   / CROTCHET_REST    quarter   1 × DIVISIONS =  480
- * QUAVER     / QUAVER_REST      eighth    DIVISIONS / 2  =  240
- * SEMIQUAVER / SEMIQUAVER_REST  16th      DIVISIONS / 4  =  120
- * DEMI_SEMIQUAVER / *_REST      32nd      DIVISIONS / 8  =   60
+ * ElementType                   &lt;type&gt;    base ticks (DIVISIONS = 13440)
+ * -------------------------------------------------------------------------
+ * SEMIBREVE  / SEMIBREVE_REST   whole     4 × DIVISIONS = 53760
+ * MINIM      / MINIM_REST       half      2 × DIVISIONS = 26880
+ * CROTCHET   / CROTCHET_REST    quarter   1 × DIVISIONS = 13440
+ * QUAVER     / QUAVER_REST      eighth    DIVISIONS / 2  =  6720
+ * SEMIQUAVER / SEMIQUAVER_REST  16th      DIVISIONS / 4  =  3360
+ * DEMI_SEMIQUAVER / *_REST      32nd      DIVISIONS / 8  =  1680
  * GRACE_QUAVER                  eighth    n/a (no &lt;duration&gt; emitted)
  *
  * Dot augmentation: base × (2^(d+1) − 1) / 2^d   where d = dotCount
@@ -63,32 +63,66 @@ import songscribe.dom.ElementType;
  *   1 dot  → × 3/2    (base + base/2)
  *   2 dots → × 7/4    (base + base/2 + base/4)
  *
- * Divisibility check (DIVISIONS = 480 is exact for all cases):
- *   smallest fraction: double-dotted 32nd = 60 × 7/4 = 105 ticks  ✓
+ * Divisibility check — DIVISIONS must survive every tuplet ratio N in {2..7}
+ * as well as every dot count, not just the plain base values above:
+ *   smallest fraction: double-dotted 32nd = 1680 × 7/4 = 2940 ticks  ✓
+ *   2940 must also stay an exact integer once scaled by M/N for every
+ *   conventional tuplet — see the class-level DIVISIONS derivation below.
  * </pre>
  */
 public final class NoteTypeMapping {
 
     // -------------------------------------------------------------------------
-    // DIVISIONS: quarter-note tick resolution (global, not per-song).
+    // DIVISIONS: quarter-note tick resolution (global, not per-song, no
+    // per-song prescan — a single compile-time constant).
     //
-    // DIVISIONS = 480 is chosen so that the smallest representable note
-    // fraction — a double-dotted 32nd note — produces an exact integer:
-    //   (DIVISIONS / 8) × 7/4  =  60 × 7/4  =  105 ticks  (exact)
+    // DIVISIONS must survive more than the plain note values: it must also
+    // stay an exact integer once a tuplet scales a written duration by M/N,
+    // for every ratio N in {2..7} the validator accepts (see the Shared
+    // Reference of plans/604-invalid-tuplets.md for where M and N come from).
+    //
+    // Every written value is base × dotFactor, and every base is an integer
+    // multiple of the 32nd note, so it suffices that the 32nd works. With
+    // u = DIVISIONS / 8 (the 32nd-note tick count), the performed duration
+    // u × f × M/N must be integral for f in {1, 3/2, 7/4} (the dot factors)
+    // and N in {2..7}. M shares no guaranteed factor with N, so u × f must
+    // be divisible by lcm(2..7) = 420 in each case:
+    //
+    //   f = 1      u        divisible by 420   ->  u divisible by 420   (2^2*3*5*7)
+    //   f = 3/2    3u/2     divisible by 420   ->  u divisible by 280   (2^3*5*7)
+    //   f = 7/4    7u/4     divisible by 420   ->  u divisible by 240   (2^4*3*5)
+    //
+    //   u = lcm(420, 280, 240) = 2^4*3*5*7 = 1680
+    //   DIVISIONS = 8u                        = 13440   (2^7*3*5*7)
+    //
+    // Verification table (ticks, then ticks/N for N = 2..7):
+    //
+    //                     ticks    /2     /3     /4     /5     /6     /7
+    // 32nd                 1680    840    560    420    336    280    240
+    // dotted 32nd          2520   1260    840    630    504    420    360
+    // double-dotted 32nd   2940   1470    980    735    588    490    420
+    //
+    // 3360 (= 480 × 7) is NOT enough: u = 420, so a double-dotted 32nd is
+    // 735, which is odd, and 735 × 3/2 = 1102.5 inside a duplet. The
+    // required factor depends on the dot count as well as the ratio, which
+    // is why inspecting only the ratios present cannot find it — the old
+    // DIVISIONS = 480 already had this defect independently of septuplets.
+    //
+    // A whole note at DIVISIONS = 13440 is 53760 ticks, far inside int range.
     // -------------------------------------------------------------------------
 
-    public static final int DIVISIONS = 480;
+    public static final int DIVISIONS = 13440;
 
     // -------------------------------------------------------------------------
     // Base ticks per undotted note value (all exact divisors of DIVISIONS).
     // -------------------------------------------------------------------------
 
-    private static final int WHOLE_TICKS         = 4 * DIVISIONS; // 1920
-    private static final int HALF_TICKS          = 2 * DIVISIONS; //  960
-    private static final int QUARTER_TICKS       = DIVISIONS;     //  480
-    private static final int EIGHTH_TICKS        = DIVISIONS / 2; //  240
-    private static final int SIXTEENTH_TICKS     = DIVISIONS / 4; //  120
-    private static final int THIRTY_SECOND_TICKS = DIVISIONS / 8; //   60
+    private static final int WHOLE_TICKS         = 4 * DIVISIONS; // 53760
+    private static final int HALF_TICKS          = 2 * DIVISIONS; // 26880
+    private static final int QUARTER_TICKS       = DIVISIONS;     // 13440
+    private static final int EIGHTH_TICKS        = DIVISIONS / 2; //  6720
+    private static final int SIXTEENTH_TICKS     = DIVISIONS / 4; //  3360
+    private static final int THIRTY_SECOND_TICKS = DIVISIONS / 8; //  1680
 
     // -------------------------------------------------------------------------
     // MusicXML <type> token values
@@ -226,7 +260,7 @@ public final class NoteTypeMapping {
      * <p>The formula is {@code baseTicks × (2^(d+1) − 1) / 2^d} where {@code d}
      * is {@code dotCount} (0, 1, or 2). {@link #DIVISIONS} is chosen so that this
      * always produces an exact integer: the worst case is a double-dotted 32nd,
-     * which yields {@code 60 × 7 / 4 = 105} ticks.
+     * which yields {@code 1680 × 7 / 4 = 2940} ticks.
      *
      * <p>Do not call this for {@link ElementType#GRACE_QUAVER}; grace notes carry
      * no {@code <duration>}. Use {@link #hasDuration(ElementType)} to guard the call.

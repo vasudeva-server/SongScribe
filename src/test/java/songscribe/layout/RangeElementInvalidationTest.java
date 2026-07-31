@@ -55,7 +55,7 @@ class RangeElementInvalidationTest extends UnitTest {
         return Stream.of(
             Arguments.of("Tie",        (RangeElementFactory) Tie::new),
             Arguments.of("Trill",      (RangeElementFactory) Trill::new),
-            Arguments.of("Tuplet",     (RangeElementFactory) (a, e) -> new Tuplet(a, e, 3)),
+            Arguments.of("Tuplet",     (RangeElementFactory) (a, e) -> Tuplet.withUnresolvedRatio(a, e, 3)),
             Arguments.of("Crescendo",  (RangeElementFactory) Crescendo::new),
             Arguments.of("Diminuendo", (RangeElementFactory) Diminuendo::new),
             Arguments.of("Ending",     (RangeElementFactory) (a, e) -> new Ending(a, e))

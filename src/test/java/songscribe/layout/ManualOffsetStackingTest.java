@@ -468,7 +468,7 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line, note2);
 
             var verticalPositionSs = -2;
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             tuplet.setVerticalPositionSs(verticalPositionSs);
             setupTest(() -> line.addRangeElement(tuplet));
 
@@ -487,7 +487,7 @@ class ManualOffsetStackingTest extends UnitTest {
             populate(line2, note3);
             populate(line2, note4);
 
-            var baselineTuplet = new Tuplet(note3, note4, 3);
+            var baselineTuplet = Tuplet.withUnresolvedRatio(note3, note4, 3);
             setupTest(() -> line2.addRangeElement(baselineTuplet));
 
             var baselineResult = stackColumns(

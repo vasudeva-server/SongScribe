@@ -122,7 +122,7 @@ class TupletRendererTest extends UnitTest {
             line.addRangeElement(new Beam(anchor, end));
         }
 
-        var tuplet = new Tuplet(anchor, end, 3);
+        var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
         line.addRangeElement(tuplet);
 
         // decorLayout.xSs() = 1.0, decorLayout.widthSs() = 4.0
@@ -261,7 +261,7 @@ class TupletRendererTest extends UnitTest {
         var end = ElementType.QUAVER.newInstance();
         line.addElement(anchor);
         line.addElement(end);
-        var tuplet = new Tuplet(anchor, end, 3);
+        var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
         line.addRangeElement(tuplet);
 
         // LayoutResult has no entry for this tuplet — getDecorationLayout returns null
@@ -308,7 +308,7 @@ class TupletRendererTest extends UnitTest {
             line.addRangeElement(new Beam(anchor, end));
         }
 
-        var tuplet = new Tuplet(anchor, end, 3);
+        var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
         line.addRangeElement(tuplet);
 
         // decorLayout.xSs() = 1.0 (anchorXSs), decorLayout.widthSs() = 4.0
@@ -481,7 +481,7 @@ class TupletRendererTest extends UnitTest {
         var end = ElementType.QUAVER.newInstance();
         line.addElement(anchor);
         line.addElement(end);
-        var tuplet = new Tuplet(anchor, end, 3);
+        var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
         line.addRangeElement(tuplet);
 
         var decorLayout = new LayoutResult.DecorationLayout(1.0, -2.0, 4.0, 1.0, 0.0);
@@ -515,7 +515,7 @@ class TupletRendererTest extends UnitTest {
         var end = ElementType.QUAVER.newInstance();
         line.addElement(anchor);
         line.addElement(end);
-        var tuplet = new Tuplet(anchor, end, 3);
+        var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
         line.addRangeElement(tuplet);
 
         var decorLayout = new LayoutResult.DecorationLayout(1.0, -2.0, 4.0, 1.0, 0.0);

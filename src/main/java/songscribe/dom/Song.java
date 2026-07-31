@@ -51,6 +51,7 @@ import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.LayoutDidChangeNotification;
 import songscribe.message.notification.SongMetadataDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
+import songscribe.message.notification.TupletsWereRemovedNotification;
 import songscribe.undo.UndoController;
 import songscribe.util.StringUtils;
 
@@ -100,6 +101,10 @@ public final class Song {
 
     public static final int DEFAULT_KEY_ACCIDENTAL_COUNT = 5;
     public static final KeyType DEFAULT_KEY_TYPE = KeyType.FLATS;
+
+    /** The position the song-level tempo defines its beat at — the very start of the song. */
+    private static final int FIRST_LINE_INDEX = 0;
+    private static final int FIRST_ELEMENT_INDEX = 0;
 
     /**
      * Default line-wide rest length (delta-X Ss between adjacent column origins) from which every
@@ -251,6 +256,22 @@ public final class Song {
     // merging) is suppressed and the Line terminal guards are bypassed, because
     // the recorded batch already contains every change.
     private int replayDepth = 0;
+
+    // Nesting depth of withBeatDefiningEdit, so that an inner beat-defining write that
+    // does the removing is still reported by the outermost call, which is the one whose
+    // return value the initiating UI reads.
+    private int beatDefiningEditDepth = 0;
+
+    // Whether the outermost in-flight beat-defining edit has removed any tuplet. Reset
+    // when that outermost call unwinds.
+    private boolean beatEditRemovedTuplets = false;
+
+    // Armed by the outermost beat-defining edit that removed tuplets, and disarmed by
+    // endModification, which posts TupletsWereRemovedNotification. Deferring the post to
+    // the outermost bracket keeps a modal warning from going up while the score is still
+    // painted as it was before the removals, and collapses an edit that nests several
+    // beat-defining writes into the one report the user should see.
+    private boolean tupletsRemovedNoticePending = false;
 
     // While positive, Line mutation guards are bypassed so Song can auto-maintain
     // the terminal invariant without triggering the guards that protect against
@@ -472,6 +493,92 @@ public final class Song {
         }
 
         return getEffectiveTempo();
+    }
+
+    /**
+     * The beat in effect at a position, together with the position of the event that
+     * defined it. Callers use {@code lineIndex}/{@code elementIndex} to recognize a beat
+     * barrier — an element that redefines the beat — inside a span they are examining.
+     *
+     * <p>When the beat comes from the song's own tempo or from the quarter-note default,
+     * no element defined it and both indexes are {@link #NO_DEFINING_EVENT}.
+     */
+    public record BeatAt(Duration beat, int lineIndex, int elementIndex) {
+
+        /** Index value meaning "no element defined this beat". */
+        public static final int NO_DEFINING_EVENT = -1;
+    }
+
+    /**
+     * Returns the beat in effect at a position, found by walking backward from that
+     * position to the nearest preceding beat-defining event.
+     *
+     * <pre>
+     * resolveBeatAt(line 3, element 5)
+     *
+     *   line 0   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
+     *   line 1   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
+     *   line 2   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
+     *   line 3   [e0 e1 e2 e3 e4 e5] &lt;- scanned backward from e5 only
+     *                             ^
+     *                             anchor
+     *
+     *   first hit wins, whichever kind it is:
+     *       BeatChangeAttachment  -&gt; beatChange().beat()
+     *       TempoChangeAttachment -&gt; tempo().tempoType()
+     *   no hit -&gt; song tempo -&gt; quarter note
+     * </pre>
+     *
+     * <p>Precedence is positional, not by type: the nearest preceding beat-defining event
+     * wins regardless of which kind it is. When one element carries both, the
+     * {@link BeatChangeAttachment} wins, because a metric-modulation marking is the more
+     * specific statement about the beat than a tempo marking's note value.
+     *
+     * <p>Cost is O(elements before the anchor), with no cache.
+     * {@code Line.attachInitialTempoIfNeeded} guarantees a beat-defining event at line 0,
+     * element 0 whenever the song has a tempo, so the walk terminates quickly in practice.
+     * A maintained beat index on {@code Song} was rejected: it would trade microseconds for
+     * an invalidation invariant that every structural mutation would have to honor, and a
+     * stale index produces exactly the silent wrong-beat failure this method exists to
+     * prevent.
+     *
+     * @param lineIndex    the index of the line
+     * @param elementIndex the index of the anchor element within that line
+     * @return the beat in effect at this position and the position that defined it
+     */
+    public BeatAt resolveBeatAt(int lineIndex, int elementIndex) {
+        var lastLine = true;
+
+        for (var i = lineIndex; i >= 0; i--) {
+            var currentLine = lines.get(i);
+
+            for (
+                var index = lastLine ? elementIndex : (currentLine.elementCount() - 1);
+                index >= 0;
+                index--
+            ) {
+                var element = currentLine.getElement(index);
+                var beatChange = element.findAttachment(BeatChangeAttachment.class);
+
+                if (beatChange != null) {
+                    return new BeatAt(beatChange.getBeatChange().beat(), i, index);
+                }
+
+                var tempoChange = element.findAttachment(TempoChangeAttachment.class);
+
+                if (tempoChange != null) {
+                    return new BeatAt(tempoChange.getTempo().getTempoType(), i, index);
+                }
+            }
+
+            lastLine = false;
+        }
+
+        if (tempo == null) {
+            return new BeatAt(Duration.CROTCHET, BeatAt.NO_DEFINING_EVENT, BeatAt.NO_DEFINING_EVENT);
+        }
+
+        return new BeatAt(tempo.getTempoType(), BeatAt.NO_DEFINING_EVENT, BeatAt.NO_DEFINING_EVENT);
     }
 
     /**
@@ -740,8 +847,17 @@ public final class Song {
 
     // ========== Setters (mutate + setModified + post) ==========
 
+    /**
+     * Sets the song's initial tempo, dropping any tuplet the new beat invalidates.
+     *
+     * <p>Stays public because the undo replayer and the MusicXML header reader both
+     * legitimately drive it from outside the editing UI. Bypassing it is still not possible:
+     * the write itself is routed through {@link #withBeatDefiningEdit}, which no-ops its
+     * validation during replay and during a suspended load.
+     */
     public void setTempo(@Nullable Tempo tempo) {
-        mutateMetadata(MetadataField.TEMPO, this.tempo, tempo, () -> this.tempo = tempo);
+        mutateMetadata(MetadataField.TEMPO, this.tempo, tempo,
+            () -> withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX, () -> this.tempo = tempo));
     }
 
     /**
@@ -1387,11 +1503,19 @@ public final class Song {
      * Closes a modification bracket. When the outermost bracket closes and at least one
      * mutation was accumulated, marks the song modified and posts a single
      * {@link SongDidChangeNotification} carrying all accumulated mutations.
+     *
+     * <p>A beat-defining edit that removed tuplets also reports itself here, after the
+     * song notification — this is the only point that knows the whole edit is over, and a
+     * warning shown any earlier would sit in front of a score not yet relaid out.
      */
     public void endModification() {
         modificationDepth--;
 
-        if (modificationDepth == 0 && accumulatedMutations != null) {
+        if (modificationDepth != 0) {
+            return;
+        }
+
+        if (accumulatedMutations != null) {
             modified = true;
             // Wrap-and-transfer ownership: the notification constructor stores the
             // list directly, so we wrap once here instead of letting it defensively
@@ -1401,6 +1525,11 @@ public final class Song {
             var opName = capturedOpName;
             capturedOpName = null;
             MessageCenter.post(new SongDidChangeNotification(mutations, this, opName));
+        }
+
+        if (tupletsRemovedNoticePending) {
+            tupletsRemovedNoticePending = false;
+            MessageCenter.post(new TupletsWereRemovedNotification());
         }
     }
 
@@ -1435,6 +1564,152 @@ public final class Song {
         } finally {
             endModification();
         }
+    }
+
+    /**
+     * Applies a beat-defining state change and, inside the same modification bracket,
+     * removes every tuplet at or after the edit position that the new beat context
+     * invalidates.
+     *
+     * <p>A tuplet's validity is defined relative to the beat in effect at its anchor, so a
+     * write that defines a beat can invalidate a tuplet that nothing went near: changing the
+     * song's own tempo, or an earlier tempo change, can turn an attachment already sitting
+     * inside a span into a beat barrier. That is why this is a chokepoint rather than a
+     * hand-maintained list of call sites, and why it is not a
+     * {@code SongDidChangeNotification} subscriber — the notification fires after the
+     * outermost bracket closes, so the removals would land in a second undo step.
+     *
+     * <p>{@code edit} must perform the raw state change only, without recording its own
+     * mutation. Callers that do record one invoke this from inside their
+     * {@link #applyChange} mutator: the removals are then recorded while the mutator runs
+     * and land ahead of the primary mutation, which is the companion ordering reverse-order
+     * undo needs (see {@code .agents/guides/mutations.md}).
+     *
+     * <p>Nothing is validated during replay — the recorded batch already carries the
+     * removals — or while mutation tracking is suspended, since a file load judges its
+     * tuplets in the load pass under {@link TupletValidator.Strictness#LENIENT} instead.
+     *
+     * <p>Nested calls aggregate: an inner beat-defining write does the removing, and the
+     * outermost call still reports it, so a caller that wraps a self-routing setter gets a
+     * truthful answer.
+     *
+     * <p>When anything was removed, a single {@link TupletsWereRemovedNotification} is
+     * posted once the outermost modification bracket closes, so every route into a
+     * beat-defining edit warns the user on the same terms without {@code dom} knowing what
+     * a dialog is. The return value is for callers that need the fact locally; nobody has
+     * to read it to get the warning.
+     *
+     * @param lineIndex    the index of the line the edit sits on
+     * @param elementIndex the index of the element within that line
+     * @param edit         the raw state change
+     * @return {@code true} if at least one tuplet was removed
+     */
+    public boolean withBeatDefiningEdit(int lineIndex, int elementIndex, Runnable edit) {
+        beatDefiningEditDepth++;
+
+        try {
+            return withModificationResult(() -> {
+                edit.run();
+
+                if (!isReplaying()
+                    && !isMutationTrackingSuspended()
+                    && removeTupletsInvalidatedFrom(lineIndex, elementIndex)) {
+                    beatEditRemovedTuplets = true;
+                }
+
+                // Arm from the outermost beat-defining edit only — an inner write that did
+                // the removing is reported by its outermost caller, not on its own. Armed
+                // here rather than after the bracket closes because this call may itself be
+                // the outermost bracket, in which case endModification has already run by
+                // the time this method unwinds.
+                if (beatDefiningEditDepth == 1 && beatEditRemovedTuplets) {
+                    tupletsRemovedNoticePending = true;
+                }
+
+                return beatEditRemovedTuplets;
+            });
+        } finally {
+            beatDefiningEditDepth--;
+
+            if (beatDefiningEditDepth == 0) {
+                beatEditRemovedTuplets = false;
+            }
+        }
+    }
+
+    /**
+     * {@link #withBeatDefiningEdit} for a write that hangs on an element rather than on the
+     * song, locating the edit position from that element. An element that is not in a
+     * document — a detached attachment owner, a clipboard fragment, a dialog test double —
+     * has no position to validate forward from, so the edit simply runs.
+     *
+     * @param owner the element the edited attachment hangs on, or {@code null} if detached
+     * @param edit  the raw state change
+     * @return {@code true} if at least one tuplet was removed
+     */
+    public static boolean withBeatDefiningEditOn(@Nullable StaffElement owner, Runnable edit) {
+        var line = owner != null ? owner.getLine() : null;
+
+        //noinspection ConstantValue — the line field is unset on a detached element.
+        if (owner == null || line == null) {
+            edit.run();
+            return false;
+        }
+
+        var song = line.getSong();
+        var lineIndex = song.indexOfLine(line);
+        var elementIndex = line.getElementIndex(owner);
+
+        if (lineIndex < 0 || elementIndex < 0) {
+            edit.run();
+            return false;
+        }
+
+        return song.withBeatDefiningEdit(lineIndex, elementIndex, edit);
+    }
+
+    /**
+     * Removes every tuplet anchored at or after the given position that no longer validates
+     * under {@link TupletValidator.Strictness#STRICT}. Only positions from the edit forward
+     * are walked: a beat-defining event cannot reach backwards.
+     *
+     * @return {@code true} if at least one tuplet was removed
+     */
+    private boolean removeTupletsInvalidatedFrom(int lineIndex, int elementIndex) {
+        if (lineIndex < 0 || lineIndex >= lineCount()) {
+            return false;
+        }
+
+        var editLine = getLine(lineIndex);
+
+        // An edit position outside the line — the song tempo's nominal position in a song
+        // with no notes yet — has no beat to resolve and no span to reach.
+        if (elementIndex < 0 || elementIndex >= editLine.elementCount()) {
+            return false;
+        }
+
+        var startIndex = elementIndex;
+        var enclosingTuplet = editLine.findTupletAt(elementIndex);
+
+        // A tuplet the edit landed inside is anchored before the edit, and the forward walk
+        // only opens a span at its anchor — so back the start up to the anchor, or the one
+        // tuplet the edit is most likely to have broken would never be judged.
+        if (enclosingTuplet != null && enclosingTuplet.getAnchorElementIndex() >= 0) {
+            startIndex = Math.min(startIndex, enclosingTuplet.getAnchorElementIndex());
+        }
+
+        var removedAny = false;
+
+        for (var verdict : TupletValidator.validateFrom(
+            this, lineIndex, startIndex, TupletValidator.Strictness.STRICT)
+        ) {
+            if (!verdict.result().valid()) {
+                getLine(verdict.lineIndex()).removeTuplet(verdict.tuplet());
+                removedAny = true;
+            }
+        }
+
+        return removedAny;
     }
 
     /**
@@ -1587,7 +1862,9 @@ public final class Song {
         );
         withModification(() -> applyChange(
             new MetadataChange(MetadataField.TEMPO, oldTempo, currentTempo),
-            () -> {
+            // The tempo type is the song's beat, so this in-place update is a
+            // beat-defining write even though only a field of an existing Tempo changes.
+            () -> withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX, () -> {
                 if (update.getTempoType() != null) {
                     currentTempo.setTempoType(update.getTempoType());
                 }
@@ -1603,7 +1880,7 @@ public final class Song {
                 if (update.getShowTempo() != null) {
                     currentTempo.setShowTempo(update.getShowTempo());
                 }
-            }
+            })
         ));
     }
 

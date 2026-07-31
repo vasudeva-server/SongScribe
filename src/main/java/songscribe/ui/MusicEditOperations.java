@@ -47,6 +47,7 @@ import songscribe.layout.LineEndingSupport;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
+import songscribe.dom.TupletValidator;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -280,11 +281,10 @@ public final class MusicEditOperations {
     /**
      * Handles five cases: (1) tupletSize == 0 with existing tuplet → remove; (2) no existing
      * tuplet and tupletSize > 0 → add; (3) existing tuplet, selection spans its full span,
-     * requested grade matches → remove (toggle-off semantics); (4) existing tuplet, full
-     * coverage, different grade → remove then add in one bracket (emits TupletRemoval +
-     * TupletAddition); (5) existing tuplet, selection is a strict sub-range → rejected with
-     * {@link IllegalStateException} so a programmatic caller cannot silently replace a tuplet
-     * with a sub-range tuplet.
+     * requested grade matches → no-op; (4) existing tuplet, full coverage, different grade →
+     * remove then add in one bracket (emits TupletRemoval + TupletAddition); (5) existing
+     * tuplet, selection is a strict sub-range → rejected with {@link IllegalStateException}
+     * so a programmatic caller cannot silently replace a tuplet with a sub-range tuplet.
      *
      * <p>Callers must pass the {@link TupletToggleInfo} obtained from {@link #canToggleTuplet()}
      * so there is a single source of truth for the decision. Any branch that would have been a
@@ -298,13 +298,21 @@ public final class MusicEditOperations {
             return;
         }
 
+        var existing = info.existing();
+
+        // A sub-range selection reports canToggle == false, so this must be diagnosed before
+        // the generic guard below or the caller loses the reason it was rejected.
+        if ((existing != null) && !info.coversExisting()) {
+            throw new IllegalStateException(
+                "toggleTuplet with a strict sub-range of an existing tuplet is not allowed");
+        }
+
         if (!info.canToggle()) {
             throw new IllegalStateException(
                 "toggleTuplet called with info.canToggle() == false; caller must check canToggleTuplet() first");
         }
 
         var line = state.getLine();
-        var existing = info.existing();
 
         // The tuplet spans the selection's non-grace endpoints; a leading or trailing grace
         // note is left outside it (refs #592).
@@ -329,28 +337,54 @@ public final class MusicEditOperations {
         }
 
         if (existing == null) {
-            line.withModification(() -> line.addTuplet(new Tuplet(
-                line.getElement(beginIndex),
-                line.getElement(endIndex),
-                tupletSize)));
+            var newTuplet = createValidatedTuplet(line, beginIndex, endIndex, tupletSize);
+            line.withModification(() -> line.addTuplet(newTuplet));
             return;
         }
 
-        if (!info.coversExisting()) {
-            throw new IllegalStateException(
-                "toggleTuplet with a strict sub-range of an existing tuplet is not allowed");
+        // Re-picking the grade the tuplet already has does nothing. The grade is shown
+        // checked (Action.SELECTED_KEY), and a checked radio item that deletes what it
+        // reports on would be a trap; Remove is the one way to delete a tuplet.
+        if (existing.getGrade() == tupletSize) {
+            return;
         }
+
+        var replacement = createValidatedTuplet(line, beginIndex, endIndex, tupletSize);
 
         line.withModification(() -> {
             line.removeTuplet(existing);
-
-            if (existing.getGrade() != tupletSize) {
-                line.addTuplet(new Tuplet(
-                    line.getElement(beginIndex),
-                    line.getElement(endIndex),
-                    tupletSize));
-            }
+            line.addTuplet(replacement);
         });
+    }
+
+    /**
+     * Builds a tuplet whose ratio the validator derived for this span.
+     * <p>
+     * The UI gates tuplet creation on the same validator, so an invalid verdict here
+     * means the caller skipped that gate — the same contract as the other
+     * {@link IllegalStateException}s in {@link #toggleTuplet}.
+     */
+    private Tuplet createValidatedTuplet(Line line, int beginIndex, int endIndex, int tupletSize) {
+        var lineIndex = song.indexOfLine(line);
+        var result = TupletValidator.validateDerived(
+            song, line, lineIndex, beginIndex, endIndex, tupletSize,
+            TupletValidator.Strictness.STRICT);
+
+        var noteValue = result.noteValue();
+
+        if (!result.valid() || noteValue == null) {
+            throw new IllegalStateException(
+                "toggleTuplet called for a span that cannot carry a tuplet of " + tupletSize
+                    + ": " + result.reason());
+        }
+
+        return new Tuplet(
+            line.getElement(beginIndex),
+            line.getElement(endIndex),
+            tupletSize,
+            result.normalNotes(),
+            noteValue,
+            result.noteValueDots());
     }
 
     // ========== Dynamics Operations ==========

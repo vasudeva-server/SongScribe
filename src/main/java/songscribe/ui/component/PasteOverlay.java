@@ -22,6 +22,7 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import com.formdev.flatlaf.FlatClientProperties;
 import songscribe.Strings;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
@@ -92,13 +93,13 @@ public final class PasteOverlay extends JComponent {
             var foreground = FlatLafProps.getColor(FlatLafKey.PASTE_OVERLAY_FOREGROUND);
 
             var titleLabel = new JLabel(Strings.get(Strings.PASTE_MODE_TITLE));
-            titleLabel.putClientProperty("FlatLaf.styleClass", "medium");
+            titleLabel.putClientProperty(FlatClientProperties.STYLE_CLASS, "medium");
             titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD));
             titleLabel.setForeground(foreground);
             titleLabel.setAlignmentX(CENTER_ALIGNMENT);
 
             var hintLabel = new JLabel(Strings.get(Strings.PASTE_MODE_HINT));
-            hintLabel.putClientProperty("FlatLaf.styleClass", "small");
+            hintLabel.putClientProperty(FlatClientProperties.STYLE_CLASS, "small");
             hintLabel.setForeground(foreground);
             hintLabel.setAlignmentX(CENTER_ALIGNMENT);
 

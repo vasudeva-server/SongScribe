@@ -61,7 +61,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
         // Add directly to rangeElements via song.withoutMutationTracking to bypass
         // the modification bracket requirement.
         song.withoutMutationTracking(() -> line.addTuplet(
-            new Tuplet(line.getElement(start), line.getElement(end), TRIPLET_SIZE)));
+            Tuplet.withUnresolvedRatio(line.getElement(start), line.getElement(end), TRIPLET_SIZE)));
     }
 
     // -----------------------------------------------------------------------

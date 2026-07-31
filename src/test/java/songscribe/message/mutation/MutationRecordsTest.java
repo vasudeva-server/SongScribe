@@ -58,6 +58,13 @@ import songscribe.dom.Tie;
 
 class MutationRecordsTest extends UnitTest {
 
+    // Tuplet ratios: N in the time of M notes of the written value V.
+    private static final int TRIPLET_GRADE = 3;
+    private static final int TRIPLET_NORMAL_NOTES = 2;
+    private static final int QUINTUPLET_GRADE = 5;
+    private static final int QUINTUPLET_NORMAL_NOTES = 4;
+    private static final int NO_DOTS = 0;
+
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class ElementMutations {
@@ -132,8 +139,8 @@ class MutationRecordsTest extends UnitTest {
             var beam2 = new Beam(e0, e1);
             var tie1 = new Tie(e0, e1);
             var tie2 = new Tie(e0, e1);
-            var tuplet1 = new Tuplet(e0, e1, 3);
-            var tuplet2 = new Tuplet(e0, e1, 5);
+            var tuplet1 = new Tuplet(e0, e1, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
+            var tuplet2 = new Tuplet(e0, e1, QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             var crescendo1 = new Crescendo(e0, e1);
             var crescendo2 = new Crescendo(e0, e1);
             var diminuendo1 = new Diminuendo(e0, e1);

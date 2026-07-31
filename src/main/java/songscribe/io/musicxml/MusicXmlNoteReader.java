@@ -185,7 +185,20 @@ final class MusicXmlNoteReader {
     // Range-span mechanics — startElement (delegated from MusicXmlReader.startElement)
     // -------------------------------------------------------------------------
 
+    /**
+     * Dispatches a {@code <time-modification>} child. {@code <actual-notes>} and
+     * {@code <normal-notes>} own leaf states; {@code <normal-type>} and
+     * {@code <normal-dot/>} do not, because neither has children of its own — they
+     * are read from the {@code TIME_MODIFICATION} state itself (see
+     * {@link #handleEndTimeModification}), which keeps this element pair out of the
+     * shared {@code Where} enum.
+     */
     void handleStartTimeModification(String qName) {
+        if (qName.equals(MusicXmlTags.NORMAL_DOT)) {
+            note.incrementNormalDotCount();
+            return;
+        }
+
         reader.startTransition(qName, MusicXmlTags.ACTUAL_NOTES, Where.ACTUAL_NOTES);
         reader.startTransition(qName, MusicXmlTags.NORMAL_NOTES, Where.NORMAL_NOTES);
     }
@@ -216,16 +229,24 @@ final class MusicXmlNoteReader {
         }
     }
 
-    void handleEndNormalNotes(String qName) {
+    void handleEndNormalNotes(String qName) throws SAXException {
         if (qName.equals(MusicXmlTags.NORMAL_NOTES)) {
-            // <normal-notes> is write-forward only; grade comes from
-            // <actual-notes>, so the value is intentionally ignored.
+            note.setNormalNotes(MusicXmlUnits.parseIntOrThrow(MusicXmlTags.NORMAL_NOTES, reader.valueString()));
             reader.setWhere(Where.TIME_MODIFICATION);
         }
     }
 
+    /**
+     * Closes {@code <time-modification>} and, along the way, the two of its
+     * children that carry no leaf state of their own. The accumulated text is
+     * still {@code <normal-type>}'s own, because the orchestrator clears the value
+     * buffer at every start tag; {@code </normal-dot>} carries nothing (the dot was
+     * counted at its start tag) and falls through untouched.
+     */
     void handleEndTimeModification(String qName) {
-        if (qName.equals(MusicXmlTags.TIME_MOD)) {
+        if (qName.equals(MusicXmlTags.NORMAL_TYPE)) {
+            note.setNormalTypeToken(reader.valueString().trim());
+        } else if (qName.equals(MusicXmlTags.TIME_MOD)) {
             reader.setWhere(Where.NOTE);
         }
     }

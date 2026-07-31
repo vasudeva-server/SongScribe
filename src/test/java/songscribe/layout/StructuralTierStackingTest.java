@@ -323,7 +323,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             line.addRangeElement(tuplet);
 
             var result = stackColumns(
@@ -345,7 +345,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             line.addRangeElement(tuplet);
 
             var result = stackColumns(
@@ -373,7 +373,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             line.addRangeElement(tuplet);
 
             var result = stackColumns(
@@ -401,7 +401,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             line.addRangeElement(tuplet);
             var trill = new Trill(note1, note2);
             line.addRangeElement(trill);
@@ -433,7 +433,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
             line.addElement(note3);
 
-            var tuplet = new Tuplet(note1, note3, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note3, 3);
             line.addRangeElement(tuplet);
 
             var result = stackColumns(
@@ -487,7 +487,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             line.addRangeElement(tuplet);
 
             var result = stackColumns(
@@ -513,7 +513,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             line.addRangeElement(tuplet);
 
             var result = stackDirectly(
@@ -541,7 +541,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             line.addRangeElement(tuplet);
             tuplet.setEndElement(null);
 
@@ -559,7 +559,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             line.addRangeElement(tuplet);
 
             // note2's column is omitted, so columnsByElement.get(endNote) resolves to null.
@@ -579,7 +579,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             line.addRangeElement(tuplet);
 
             var result = stackDirectly(
@@ -601,7 +601,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
             line.addRangeElement(new Beam(note1, note2));
 
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             line.addRangeElement(tuplet);
 
             var result = stackDirectly(
@@ -625,7 +625,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
             line.addRangeElement(new Beam(note1, note2));
 
-            var tuplet = new Tuplet(note1, note2, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
             line.addRangeElement(tuplet);
 
             var result = stackDirectly(

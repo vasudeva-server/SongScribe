@@ -45,52 +45,69 @@ public class LineTrackBuilder {
     /**
      * Returns the duration of an element adjusted for tuplet membership.
      *
+     * <p>Inside a tuplet the scaled duration is derived by differencing two
+     * <em>rounded absolute offsets</em> from the tuplet's anchor, rather than by
+     * rounding each element's scaled duration on its own. Rounding each element
+     * independently lets the errors accumulate — a 7:4 of sixteenths would run
+     * long by two ticks and shift everything after it. Differencing rounded
+     * absolute offsets makes the group close exactly, because the tuplet's total
+     * written duration times {@code M / N} is an integer by construction.
+     *
      * @param elementIndex Index of the element
-     * @param referenceTempo The tempo providing the reference note duration
      * @return Duration in ticks, adjusted for tuplet if applicable
      */
-    public int getElementDurationWithTuplet(int elementIndex, Tempo referenceTempo) {
-        return Math.round(line.getElement(elementIndex).getDuration() * getTupletFactor(elementIndex, referenceTempo));
+    public int getElementDurationWithTuplet(int elementIndex) {
+        var element = line.getElement(elementIndex);
+        var writtenTicks = element.getDuration();
+        var tuplet = line.findTupletAt(elementIndex);
+
+        if ((tuplet == null) || !tuplet.isResolved()) {
+            return writtenTicks;
+        }
+
+        var normalNotes = tuplet.getNormalNotes();
+        var grade = tuplet.getGrade();
+        var writtenTicksBefore = 0L;
+
+        for (var i = tuplet.getAnchorElementIndex(); i < elementIndex; i++) {
+            writtenTicksBefore += line.getElement(i).getDuration();
+        }
+
+        var startOffset = scaledOffset(writtenTicksBefore, normalNotes, grade);
+        var endOffset = scaledOffset(writtenTicksBefore + writtenTicks, normalNotes, grade);
+
+        return (int) (endOffset - startOffset);
     }
 
     /**
-     * Calculates the tuplet scaling factor for an element.
+     * Scales a written offset measured from the tuplet's anchor into performed
+     * ticks, rounding half up. Integer arithmetic suffices because the only
+     * denominator is the grade.
+     */
+    private static long scaledOffset(long writtenTicks, int normalNotes, int grade) {
+        return ((writtenTicks * normalNotes * 2) + grade) / (grade * 2L);
+    }
+
+    /**
+     * Calculates the tuplet scaling factor for an element: {@code M / N} taken
+     * straight from the tuplet's stored ratio.
+     *
+     * <p>This is the payoff for storing {@code M} on the tuplet rather than
+     * inferring a factor from the surrounding beat: what is printed is what is
+     * heard, and editing the tempo can no longer silently re-time an existing
+     * tuplet.
      *
      * @param elementIndex Index of the element
-     * @param referenceTempo The tempo providing the reference note duration
-     * @return Scaling factor (1.0 if not in a tuplet)
+     * @return Scaling factor (1.0 if not in a resolved tuplet)
      */
-    float getTupletFactor(int elementIndex, Tempo referenceTempo) {
+    float getTupletFactor(int elementIndex) {
         var tuplet = line.findTupletAt(elementIndex);
 
-        if (tuplet == null) {
+        if ((tuplet == null) || !tuplet.isResolved()) {
             return 1;
         }
 
-        var tupletDuration = 0f;
-
-        for (var i = tuplet.getAnchorElementIndex(); i <= tuplet.getEndElementIndex(); i++) {
-            tupletDuration += line.getElement(i).getDuration();
-        }
-
-        tupletDuration /= referenceTempo.getTempoType().getNote().getDuration();
-        float newDuration;
-
-        if (tupletDuration >= 1) {
-            newDuration = (float) Math.floor(tupletDuration);
-
-            if ((newDuration == tupletDuration) && (newDuration > 1)) {
-                newDuration--;
-            }
-        } else {
-            var log2 = Math.log(2);
-            newDuration = (float) Math.pow(
-                2,
-                Math.floor(Math.log(tupletDuration) / log2)
-            );
-        }
-
-        return newDuration / tupletDuration;
+        return (float) tuplet.getNormalNotes() / tuplet.getGrade();
     }
 
     /**
@@ -251,7 +268,7 @@ public class LineTrackBuilder {
             addColorizeMetaMessage(track, lineIndex, i, ticks);
 
             // Add note on/off messages and update ticks
-            ticks = addNoteMessages(track, lineIndex, i, ticks, currentTempo, settings,
+            ticks = addNoteMessages(track, lineIndex, i, ticks, settings,
                 slideHelper, velocityMap);
         }
 
@@ -289,7 +306,6 @@ public class LineTrackBuilder {
         int lineIndex,
         int elementIndex,
         int ticks,
-        Tempo currentTempo,
         PlaybackSettings settings,
         SlideMidiHelper slideHelper,
         @Nullable VelocityMap velocityMap
@@ -303,7 +319,7 @@ public class LineTrackBuilder {
             // just store the pitch for the next note's slide-in
             slideHelper.setPendingGracePitch(element.getPitch());
         } else if (type.isNote() || type.isRest()) {
-            var duration = getElementDurationWithTuplet(elementIndex, currentTempo);
+            var duration = getElementDurationWithTuplet(elementIndex);
 
             if (type.isNote()) {
                 var tieSpan = line.findTieAt(elementIndex);

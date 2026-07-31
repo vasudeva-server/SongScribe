@@ -282,7 +282,7 @@ class FormatMigratorTest extends UnitTest {
             var end = ElementType.CROTCHET.newInstance();
             line.addElement(anchor);
             line.addElement(end);
-            var tuplet = new Tuplet(anchor, end, TUPLET_GRADE);
+            var tuplet = Tuplet.withUnresolvedRatio(anchor, end, TUPLET_GRADE);
             tuplet.setVerticalPositionSs(NON_ZERO_TUPLET_VERTICAL_POS_SS);
             line.addRangeElement(tuplet);
 
@@ -302,7 +302,7 @@ class FormatMigratorTest extends UnitTest {
             var end = ElementType.CROTCHET.newInstance();
             line.addElement(anchor);
             line.addElement(end);
-            var tuplet = new Tuplet(anchor, end, TUPLET_GRADE);
+            var tuplet = Tuplet.withUnresolvedRatio(anchor, end, TUPLET_GRADE);
             // verticalPositionSs defaults to 0 — no set needed
             line.addRangeElement(tuplet);
 

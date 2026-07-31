@@ -41,6 +41,20 @@ public class PopupButton
     extends ToolbarToggleButton
     implements ActionListener, PopupMenuListener {
 
+    /**
+     * How the actions handed to the constructor are rendered in the popup.
+     */
+    public enum ItemStyle {
+        /** A check box for a {@link UIAction.Selectable} action, a plain item otherwise. */
+        AUTO,
+
+        /**
+         * A radio button for every action, driven by {@link Action#SELECTED_KEY}. No
+         * {@link ButtonGroup} is installed, so the group keeps a none-selected state.
+         */
+        RADIO
+    }
+
     private final JPopupMenu popup;
 
     // We need to know if the popup menu was canceled by clicking the button
@@ -54,25 +68,45 @@ public class PopupButton
         List<? extends UIAction> actions,
         @Nullable UIAction defaultAction
     ) {
-        this(actions.toArray(new UIAction[0]), defaultAction);
+        this(actions.toArray(new UIAction[0]), defaultAction, ItemStyle.AUTO);
+    }
+
+    public PopupButton(
+        List<? extends UIAction> actions,
+        @Nullable UIAction defaultAction,
+        ItemStyle itemStyle
+    ) {
+        this(actions.toArray(new UIAction[0]), defaultAction, itemStyle);
     }
 
     public PopupButton(UIAction[] actions, @Nullable UIAction defaultAction) {
+        this(actions, defaultAction, ItemStyle.AUTO);
+    }
+
+    public PopupButton(UIAction[] actions, @Nullable UIAction defaultAction, ItemStyle itemStyle) {
         super(null);
         popup = new JPopupMenu();
 
         for (var action : actions) {
-            popup.add(
-                action instanceof UIAction.Selectable
-                    ? new JCheckBoxMenuItem(action)
-                    : new JMenuItem(action)
-            );
+            popup.add(makeItem(action, itemStyle));
         }
 
         currentAction = defaultAction;
         addActionListener(this);
         popup.addPopupMenuListener(this);
         setCurrentAction(defaultAction);
+    }
+
+    private static JMenuItem makeItem(UIAction action, ItemStyle itemStyle) {
+        if (itemStyle == ItemStyle.RADIO) {
+            return new JRadioButtonMenuItem(action);
+        }
+
+        if (action instanceof UIAction.Selectable) {
+            return new JCheckBoxMenuItem(action);
+        }
+
+        return new JMenuItem(action);
     }
 
     public void addSeparator() {

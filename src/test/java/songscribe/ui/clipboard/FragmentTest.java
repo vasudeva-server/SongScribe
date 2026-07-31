@@ -48,6 +48,12 @@ import songscribe.layout.Ending;
 
 class FragmentTest extends UnitTest {
 
+
+    /** A triplet: three notes in the time of two of its written value. */
+    private static final int TRIPLET_GRADE = 3;
+    private static final int TRIPLET_NORMAL_NOTES = 2;
+    private static final int NO_DOTS = 0;
+
     private static StaffElement crotchet() {
         return ElementType.CROTCHET.newInstance();
     }
@@ -122,7 +128,7 @@ class FragmentTest extends UnitTest {
 
         @Test
         void testTupletSurvivesCopyAndReanchorsToClones() {
-            assertSpanSurvivesCopyAndReanchors((anchor, end) -> new Tuplet(anchor, end, 3));
+            assertSpanSurvivesCopyAndReanchors((anchor, end) -> new Tuplet(anchor, end, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
         }
 
         @Test
@@ -221,7 +227,7 @@ class FragmentTest extends UnitTest {
 
             var tie = new Tie(noteA, noteB);
             var beam = new Beam(noteA, noteB);
-            var tuplet = new Tuplet(noteA, noteD, 3);
+            var tuplet = new Tuplet(noteA, noteD, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             line.addRangeElement(tie);
             line.addRangeElement(beam);
             line.addRangeElement(tuplet);

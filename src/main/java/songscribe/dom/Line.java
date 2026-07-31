@@ -278,6 +278,12 @@ public class Line {
             // removal is a tracked modification; the attachment on the incoming
             // element needs no record because the element is not yet in the document,
             // so the ElementInsertion below captures its attached state.
+            //
+            // Not routed through Song.withBeatDefiningEdit: the displacement is the one
+            // beat-defining write that cannot change the beat anywhere. The tempo leaves
+            // element 0 of line 0 and lands back on element 0 of line 0 — the same
+            // document position, carrying the same Tempo — so resolveBeatAt returns the
+            // same beat for every position in the song and no tuplet can be invalidated.
             if (isInitialTempoAnchor(index) && !elements.isEmpty()) {
                 var displacedFirstElement = elements.getFirst();
                 var displacedTempo =
@@ -1432,7 +1438,14 @@ public class Line {
         return elementIndex == 0 && song.indexOfLine(this) == 0;
     }
 
-    /** Attaches the song's initial tempo to the first element of this line if not already set. */
+    /**
+     * Attaches the song's initial tempo to the first element of this line if not already set.
+     *
+     * <p>Routed through {@link Song#withBeatDefiningEdit} because attaching a tempo defines a
+     * beat. In practice this runs only while mutation tracking is suspended (the load path),
+     * where the helper validates nothing and the load pass judges the tuplets instead — but
+     * the routing keeps the chokepoint whole if that ever changes.
+     */
     void attachInitialTempoIfNeeded() {
         if (elements.isEmpty()) {
             return;
@@ -1444,7 +1457,8 @@ public class Line {
             var initialTempo = song.getTempo();
 
             if (initialTempo != null) {
-                element.addAttachment(new TempoChangeAttachment(element, initialTempo));
+                Song.withBeatDefiningEditOn(element,
+                    () -> element.addAttachment(new TempoChangeAttachment(element, initialTempo)));
             }
         }
     }

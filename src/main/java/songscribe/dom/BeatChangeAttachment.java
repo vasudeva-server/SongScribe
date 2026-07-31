@@ -60,6 +60,13 @@ public class BeatChangeAttachment extends MetronomeAttachment {
         this.beatChange = beatChange;
     }
 
+    /**
+     * Copies this beat change onto a new owner. Deliberately <em>not</em> routed through
+     * {@link Song#withBeatDefiningEdit}: the new owner is not yet in the document, so there
+     * is no position to validate from. The clipboard is the only caller that copies a beat
+     * change into a different context, and paste re-validates the tuplets it carries in
+     * {@code PasteSpanReconciliation}.
+     */
     @Override
     public Attachment copy(StaffElement newOwner) {
         return new BeatChangeAttachment(newOwner, beatChange);
@@ -73,10 +80,15 @@ public class BeatChangeAttachment extends MetronomeAttachment {
     }
 
     /**
-     * Sets the beat change data.
+     * Replaces the beat change data, dropping any tuplet the new beat invalidates.
+     *
+     * <p>Stays public because the beat-change dialog lives in the UI package. The write
+     * itself is routed through {@link Song#withBeatDefiningEdit}, so there is nothing to
+     * bypass; a caller that wants to know whether tuplets were removed should wrap its own
+     * edit in that helper and read its result.
      */
     public void setBeatChange(BeatChange beatChange) {
-        this.beatChange = beatChange;
+        Song.withBeatDefiningEditOn(getOwnerElement(), () -> this.beatChange = beatChange);
     }
 
     /**

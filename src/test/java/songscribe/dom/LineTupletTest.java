@@ -92,7 +92,7 @@ class LineTupletTest extends UnitTest {
         @BeforeEach
         void addTriplet() {
             // Triplet spanning [1, 3]
-            triplet = new Tuplet(line.getElement(IDX_1), line.getElement(IDX_3), TRIPLET_GRADE);
+            triplet = Tuplet.withUnresolvedRatio(line.getElement(IDX_1), line.getElement(IDX_3), TRIPLET_GRADE);
             song.withoutMutationTracking(() -> line.addTuplet(triplet));
         }
 
@@ -207,8 +207,8 @@ class LineTupletTest extends UnitTest {
 
         @BeforeEach
         void addTuplets() {
-            tupletLeft = new Tuplet(line.getElement(IDX_0), line.getElement(IDX_1), TRIPLET_GRADE);
-            tupletRight = new Tuplet(line.getElement(IDX_3), line.getElement(IDX_4), QUINTUPLET_GRADE);
+            tupletLeft = Tuplet.withUnresolvedRatio(line.getElement(IDX_0), line.getElement(IDX_1), TRIPLET_GRADE);
+            tupletRight = Tuplet.withUnresolvedRatio(line.getElement(IDX_3), line.getElement(IDX_4), QUINTUPLET_GRADE);
             var left = tupletLeft;
             var right = tupletRight;
             song.withoutMutationTracking(() -> {
@@ -278,7 +278,7 @@ class LineTupletTest extends UnitTest {
                 for (var i = 0; i < NOTE_COUNT; i++) {
                     line2.addElement(new StaffElement(ElementType.CROTCHET));
                 }
-                line2.addTuplet(new Tuplet(line2.getElement(IDX_1), line2.getElement(IDX_2), TRIPLET_GRADE));
+                line2.addTuplet(Tuplet.withUnresolvedRatio(line2.getElement(IDX_1), line2.getElement(IDX_2), TRIPLET_GRADE));
             });
 
             // Query [3,4] — entirely to the right of [1,2].
@@ -318,8 +318,8 @@ class LineTupletTest extends UnitTest {
          */
         @Test
         void testRemoveOverlappingTupletsRemovesBothAndEmitsTwoRemovals() {
-            var tupletA = new Tuplet(line.getElement(IDX_0), line.getElement(IDX_1), TRIPLET_GRADE);
-            var tupletB = new Tuplet(line.getElement(IDX_3), line.getElement(IDX_4), QUINTUPLET_GRADE);
+            var tupletA = Tuplet.withUnresolvedRatio(line.getElement(IDX_0), line.getElement(IDX_1), TRIPLET_GRADE);
+            var tupletB = Tuplet.withUnresolvedRatio(line.getElement(IDX_3), line.getElement(IDX_4), QUINTUPLET_GRADE);
             song.withoutMutationTracking(() -> {
                 line.addTuplet(tupletA);
                 line.addTuplet(tupletB);
@@ -352,8 +352,8 @@ class LineTupletTest extends UnitTest {
          */
         @Test
         void testRemoveOverlappingTupletsRemovesOnlyOverlappedTuplet() {
-            var tupletA = new Tuplet(line.getElement(IDX_0), line.getElement(IDX_1), TRIPLET_GRADE);
-            var tupletB = new Tuplet(line.getElement(IDX_3), line.getElement(IDX_4), QUINTUPLET_GRADE);
+            var tupletA = Tuplet.withUnresolvedRatio(line.getElement(IDX_0), line.getElement(IDX_1), TRIPLET_GRADE);
+            var tupletB = Tuplet.withUnresolvedRatio(line.getElement(IDX_3), line.getElement(IDX_4), QUINTUPLET_GRADE);
             song.withoutMutationTracking(() -> {
                 line.addTuplet(tupletA);
                 line.addTuplet(tupletB);
@@ -386,7 +386,7 @@ class LineTupletTest extends UnitTest {
         @Test
         void testRemoveOverlappingTupletsWithNoOverlapEmitsNoMutations() {
             // Gap at index 2 — no tuplet there
-            var tupletA = new Tuplet(line.getElement(IDX_0), line.getElement(IDX_1), TRIPLET_GRADE);
+            var tupletA = Tuplet.withUnresolvedRatio(line.getElement(IDX_0), line.getElement(IDX_1), TRIPLET_GRADE);
             song.withoutMutationTracking(() -> line.addTuplet(tupletA));
 
             song.withModification(() -> line.removeOverlappingTuplets(IDX_2, IDX_2));

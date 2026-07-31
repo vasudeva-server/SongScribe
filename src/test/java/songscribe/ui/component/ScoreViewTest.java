@@ -37,6 +37,7 @@ import java.io.StringWriter;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.JComponent;
@@ -57,6 +58,7 @@ import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
+import songscribe.dom.TupletLoadPass;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.io.SongIO;
@@ -952,7 +954,8 @@ class ScoreViewTest extends UnitTest {
         @RequiresDisplay
         void testOpenFileMarksSongModifiedWhenAccidentalsWereConverted() throws URISyntaxException {
             var fixture = loadFixtureResult("full-line");
-            var converted = new SongLoadResult.Success(fixture.song(), fixture.fonts(), null, true);
+            var converted = new SongLoadResult.Success(
+                fixture.song(), fixture.fonts(), List.of(), true, TupletLoadPass.Report.empty());
 
             try (var mock = mockStatic(SongLoader.class)) {
                 mock.when(() -> SongLoader.load(STUB_FILE)).thenReturn(converted);

@@ -47,6 +47,13 @@ public class TempoChangeAttachment extends MetronomeAttachment {
         this.tempo = tempo;
     }
 
+    /**
+     * Copies this tempo change onto a new owner. Deliberately <em>not</em> routed through
+     * {@link Song#withBeatDefiningEdit}: the new owner is not yet in the document, so there
+     * is no position to validate from. The clipboard is the only caller that copies a tempo
+     * into a different beat context, and paste re-validates the tuplets it carries in
+     * {@code PasteSpanReconciliation}.
+     */
     @Override
     public Attachment copy(StaffElement newOwner) {
         return new TempoChangeAttachment(newOwner, tempo.copy());
@@ -56,8 +63,17 @@ public class TempoChangeAttachment extends MetronomeAttachment {
         return tempo;
     }
 
+    /**
+     * Replaces the tempo this attachment marks, dropping any tuplet the new beat
+     * invalidates.
+     *
+     * <p>Stays public because the tempo dialog lives in the UI package. The write itself is
+     * routed through {@link Song#withBeatDefiningEdit}, so there is nothing to bypass; a
+     * caller that wants to know whether tuplets were removed should wrap its own edit in
+     * that helper and read its result.
+     */
     public void setTempo(Tempo tempo) {
-        this.tempo = tempo;
+        Song.withBeatDefiningEditOn(getOwnerElement(), () -> this.tempo = tempo);
     }
 
     @Override

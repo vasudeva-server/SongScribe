@@ -286,8 +286,8 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var firstTuplet = new Tuplet(line.getElement(0), line.getElement(1), 3);
-        var secondTuplet = new Tuplet(line.getElement(3), line.getElement(4), 3);
+        var firstTuplet = Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(1), 3);
+        var secondTuplet = Tuplet.withUnresolvedRatio(line.getElement(3), line.getElement(4), 3);
         line.addTuplet(firstTuplet);
         line.addTuplet(secondTuplet);
         // Clear setup mutations so only the action's mutations are captured.
@@ -315,7 +315,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        line.addTuplet(new Tuplet(line.getElement(3), line.getElement(4), 3));
+        line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(3), line.getElement(4), 3));
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 0);
@@ -338,7 +338,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         );
         var coordinator = createCoordinator(notes, List.of(dotAction));
         var line = Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
-        var tuplet = new Tuplet(line.getElement(0), line.getElement(2), 3);
+        var tuplet = Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3);
         line.addTuplet(tuplet);
         capturedMutations.clear();
 

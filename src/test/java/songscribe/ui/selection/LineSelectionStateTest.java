@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -34,6 +35,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
+import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
@@ -68,6 +70,16 @@ class LineSelectionStateTest extends UnitTest {
      * Builds a detached line holding two crotchets — enough for an ending or a hairpin
      * to span.
      */
+    /**
+     * Stubs the mock song behind a detached fixture so tuplet validation can resolve a beat.
+     * An unstubbed mock resolves to no beat at all, which no real song ever does.
+     */
+    private static Line withQuarterBeat(Line line) {
+        when(line.getSong().resolveBeatAt(anyInt(), anyInt()))
+            .thenReturn(new Song.BeatAt(Duration.CROTCHET, 0, 0));
+        return line;
+    }
+
     private Line twoNoteLine() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
@@ -560,7 +572,7 @@ class LineSelectionStateTest extends UnitTest {
      * Builds a detached line from {@code types} and returns a state with all of it selected.
      */
     private static LineSelectionState selectAllOf(ElementType... types) {
-        var line = detachedLine();
+        var line = withQuarterBeat(detachedLine());
 
         for (var type : types) {
             line.addElement(type.newInstance());
@@ -633,11 +645,11 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testTupletCoverageIgnoresTrailingGraceNote() {
-        var line = detachedLine();
+        var line = withQuarterBeat(detachedLine());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.GRACE_QUAVER.newInstance());
-        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(1), TupletAction.Tuplet.TRIPLET.getSize()));
+        line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(1), TupletAction.Tuplet.TRIPLET.getSize()));
         var state = new LineSelectionState(line);
         state.setSelectionFromClick(0);
         state.extendSelectionTo(2);
@@ -668,7 +680,7 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testTwoPitchedNotesNoTupletCanToggle() {
-        var line = detachedLine();
+        var line = withQuarterBeat(detachedLine());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         var state = new LineSelectionState(line);
@@ -684,11 +696,11 @@ class LineSelectionStateTest extends UnitTest {
 
     @Test
     void testFullCoverageOfTripletReportsCoversExisting() {
-        var line = detachedLine();
+        var line = withQuarterBeat(detachedLine());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), TupletAction.Tuplet.TRIPLET.getSize()));
+        line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), TupletAction.Tuplet.TRIPLET.getSize()));
         var state = new LineSelectionState(line);
         state.setSelectionFromClick(0);
         state.extendSelectionTo(2);
@@ -704,19 +716,22 @@ class LineSelectionStateTest extends UnitTest {
     }
 
     @Test
-    void testPartialCoverageOfTripletDoesNotCoverExisting() {
-        var line = detachedLine();
+    void testPartialCoverageOfTripletCannotToggleButStillReportsTheTuplet() {
+        var line = withQuarterBeat(detachedLine());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), TupletAction.Tuplet.TRIPLET.getSize()));
+        line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), TupletAction.Tuplet.TRIPLET.getSize()));
         var state = new LineSelectionState(line);
         state.setSelectionFromClick(0);
         state.extendSelectionTo(1);
 
         var info = state.canToggleTuplet();
 
-        assertThat(info.canToggle()).isTrue();
+        assertThat(info.canToggle())
+            .as("a strict sub-range offers no creation decision")
+            .isFalse();
+        assertThat(info.validGrades()).isEmpty();
         assertThat(info.existing())
             .isNotNull()
             .extracting(tuplet -> tuplet != null ? tuplet.getGrade() : 0)
@@ -731,8 +746,8 @@ class LineSelectionStateTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(1), TupletAction.Tuplet.DUPLET.getSize()));
-        line.addTuplet(new Tuplet(line.getElement(2), line.getElement(3), TupletAction.Tuplet.TRIPLET.getSize()));
+        line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(1), TupletAction.Tuplet.DUPLET.getSize()));
+        line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(2), line.getElement(3), TupletAction.Tuplet.TRIPLET.getSize()));
         var state = new LineSelectionState(line);
         state.setSelectionFromClick(0);
         state.extendSelectionTo(3);
@@ -1259,8 +1274,8 @@ class LineSelectionStateTest extends UnitTest {
     }
 
     @Test
-    void testSelectionContainingNonPitchedElementCannotToggle() {
-        var line = detachedLine();
+    void testSelectionContainingRestCanToggle() {
+        var line = withQuarterBeat(detachedLine());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET_REST.newInstance());
         var state = new LineSelectionState(line);
@@ -1269,7 +1284,9 @@ class LineSelectionStateTest extends UnitTest {
 
         var info = state.canToggleTuplet();
 
-        assertThat(info.canToggle()).isFalse();
+        assertThat(info.canToggle())
+            .as("a rest carries written duration, so it belongs inside a new tuplet")
+            .isTrue();
         assertThat(info.existing()).isNull();
         assertThat(info.coversExisting()).isFalse();
     }

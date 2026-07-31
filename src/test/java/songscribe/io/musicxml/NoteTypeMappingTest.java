@@ -37,7 +37,7 @@ import songscribe.dom.ElementType;
 class NoteTypeMappingTest extends UnitTest {
 
     // -------------------------------------------------------------------------
-    // Constants derived from DIVISIONS (480 quarter-note ticks).
+    // Constants derived from DIVISIONS (13440 quarter-note ticks).
     //
     // Whole-note base:     QUARTERS_PER_WHOLE × DIVISIONS
     // Half-note base:      2 × DIVISIONS           (2 is a rule exception)
@@ -68,12 +68,12 @@ class NoteTypeMappingTest extends UnitTest {
     // Base (undotted) tick counts
     // -------------------------------------------------------------------------
 
-    private static final int BASE_WHOLE         = QUARTERS_PER_WHOLE * NoteTypeMapping.DIVISIONS;        // 1920
-    private static final int BASE_HALF          = 2 * NoteTypeMapping.DIVISIONS;                          //  960
-    private static final int BASE_QUARTER       = NoteTypeMapping.DIVISIONS;                              //  480
-    private static final int BASE_EIGHTH        = NoteTypeMapping.DIVISIONS / 2;                          //  240
-    private static final int BASE_SIXTEENTH     = NoteTypeMapping.DIVISIONS / SIXTEENTHS_PER_QUARTER;    //  120
-    private static final int BASE_THIRTY_SECOND = NoteTypeMapping.DIVISIONS / THIRTY_SECONDS_PER_QUARTER;//   60
+    private static final int BASE_WHOLE         = QUARTERS_PER_WHOLE * NoteTypeMapping.DIVISIONS;        // 53760
+    private static final int BASE_HALF          = 2 * NoteTypeMapping.DIVISIONS;                          // 26880
+    private static final int BASE_QUARTER       = NoteTypeMapping.DIVISIONS;                              // 13440
+    private static final int BASE_EIGHTH        = NoteTypeMapping.DIVISIONS / 2;                          //  6720
+    private static final int BASE_SIXTEENTH     = NoteTypeMapping.DIVISIONS / SIXTEENTHS_PER_QUARTER;    //  3360
+    private static final int BASE_THIRTY_SECOND = NoteTypeMapping.DIVISIONS / THIRTY_SECONDS_PER_QUARTER;//  1680
 
     // -------------------------------------------------------------------------
     // Expected dotted tick counts (computed from base values)
@@ -81,23 +81,24 @@ class NoteTypeMappingTest extends UnitTest {
 
     // Absolute tick invariants pinned to raw literals, NOT derived from DIVISIONS:
     // the derived constants above move with DIVISIONS, so they cannot catch a
-    // regression in DIVISIONS itself. These can. 105 is the entire justification
-    // for DIVISIONS = 480 (the smallest fraction stays an exact integer).
-    private static final int WHOLE_NOTE_TICKS_LITERAL            = 1920;
-    private static final int DOUBLE_DOTTED_THIRTY_SECOND_LITERAL = 105;
+    // regression in DIVISIONS itself. These can. 2940 is the entire justification
+    // for DIVISIONS = 13440 (the smallest fraction stays an exact integer even
+    // after a tuplet scales it by M/N for every N in {2..7}).
+    private static final int WHOLE_NOTE_TICKS_LITERAL            = 53760;
+    private static final int DOUBLE_DOTTED_THIRTY_SECOND_LITERAL = 2940;
 
-    private static final int WHOLE_1DOT         = BASE_WHOLE         * ONE_DOT_NUMERATOR / 2;            // 2880
-    private static final int WHOLE_2DOT         = BASE_WHOLE         * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; // 3360
-    private static final int HALF_1DOT          = BASE_HALF          * ONE_DOT_NUMERATOR / 2;            // 1440
-    private static final int HALF_2DOT          = BASE_HALF          * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; // 1680
-    private static final int QUARTER_1DOT       = BASE_QUARTER       * ONE_DOT_NUMERATOR / 2;            //  720
-    private static final int QUARTER_2DOT       = BASE_QUARTER       * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; //  840
-    private static final int EIGHTH_1DOT        = BASE_EIGHTH        * ONE_DOT_NUMERATOR / 2;            //  360
-    private static final int EIGHTH_2DOT        = BASE_EIGHTH        * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; //  420
-    private static final int SIXTEENTH_1DOT     = BASE_SIXTEENTH     * ONE_DOT_NUMERATOR / 2;            //  180
-    private static final int SIXTEENTH_2DOT     = BASE_SIXTEENTH     * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; //  210
-    private static final int THIRTY_SECOND_1DOT = BASE_THIRTY_SECOND * ONE_DOT_NUMERATOR / 2;            //   90
-    private static final int THIRTY_SECOND_2DOT = BASE_THIRTY_SECOND * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; //  105
+    private static final int WHOLE_1DOT         = BASE_WHOLE         * ONE_DOT_NUMERATOR / 2;            // 80640
+    private static final int WHOLE_2DOT         = BASE_WHOLE         * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; // 94080
+    private static final int HALF_1DOT          = BASE_HALF          * ONE_DOT_NUMERATOR / 2;            // 40320
+    private static final int HALF_2DOT          = BASE_HALF          * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; // 47040
+    private static final int QUARTER_1DOT       = BASE_QUARTER       * ONE_DOT_NUMERATOR / 2;            // 20160
+    private static final int QUARTER_2DOT       = BASE_QUARTER       * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; // 23520
+    private static final int EIGHTH_1DOT        = BASE_EIGHTH        * ONE_DOT_NUMERATOR / 2;            // 10080
+    private static final int EIGHTH_2DOT        = BASE_EIGHTH        * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; // 11760
+    private static final int SIXTEENTH_1DOT     = BASE_SIXTEENTH     * ONE_DOT_NUMERATOR / 2;            //  5040
+    private static final int SIXTEENTH_2DOT     = BASE_SIXTEENTH     * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; //  5880
+    private static final int THIRTY_SECOND_1DOT = BASE_THIRTY_SECOND * ONE_DOT_NUMERATOR / 2;            //  2520
+    private static final int THIRTY_SECOND_2DOT = BASE_THIRTY_SECOND * TWO_DOT_NUMERATOR / TWO_DOT_DENOMINATOR; //  2940
 
     // -------------------------------------------------------------------------
     // Tests: all 6 note types × 3 dot counts, undotted and rests
@@ -184,11 +185,11 @@ class NoteTypeMappingTest extends UnitTest {
     @Test
     void testAbsoluteTickInvariantsArePinnedToLiterals() {
         assertThat(NoteTypeMapping.ticks(ElementType.SEMIBREVE, 0))
-            .as("a whole note must be exactly 1920 ticks at DIVISIONS=480")
+            .as("a whole note must be exactly %d ticks at DIVISIONS=%d", WHOLE_NOTE_TICKS_LITERAL, NoteTypeMapping.DIVISIONS)
             .isEqualTo(WHOLE_NOTE_TICKS_LITERAL);
         // The double-dotted 32nd is the smallest representable fraction.
         assertThat(NoteTypeMapping.ticks(ElementType.DEMI_SEMIQUAVER, 2))
-            .as("a double-dotted 32nd must be exactly 105 ticks (exact integer)")
+            .as("a double-dotted 32nd must be exactly %d ticks (exact integer)", DOUBLE_DOTTED_THIRTY_SECOND_LITERAL)
             .isEqualTo(DOUBLE_DOTTED_THIRTY_SECOND_LITERAL);
     }
 
@@ -240,5 +241,54 @@ class NoteTypeMappingTest extends UnitTest {
         assertThat(NoteTypeMapping.hasDuration(ElementType.GRACE_QUAVER))
             .as("grace notes emit no <duration>")
             .isFalse();
+    }
+
+    // -------------------------------------------------------------------------
+    // DIVISIONS must survive every tuplet ratio, not just the plain note values.
+    //
+    // A tuplet scales a written duration by M/N (M normal-notes, N actual-notes).
+    // Every ElementType with a tick mapping, at every supported dot count, must
+    // stay an exact integer once scaled by M/N for every ratio the validator can
+    // accept. M is not known to this class, so this asserts the stronger,
+    // sufficient property: for every M in {MIN_TUPLET_RATIO..MAX_TUPLET_RATIO}
+    // with M != N, ticks(type, dots) * M is divisible by N.
+    // -------------------------------------------------------------------------
+
+    // The validator's ratio bounds (Shared Reference, constraint 1): N and M
+    // are positive integers, N != M, N <= 7. 1 is a rule exception (MIN_TUPLET_RATIO).
+    private static final int MIN_TUPLET_RATIO = 1;
+    private static final int MAX_TUPLET_RATIO = 7;
+
+    private static final ElementType[] NOTE_TYPES_WITH_TICK_MAPPING = {
+        ElementType.SEMIBREVE,
+        ElementType.MINIM,
+        ElementType.CROTCHET,
+        ElementType.QUAVER,
+        ElementType.SEMIQUAVER,
+        ElementType.DEMI_SEMIQUAVER,
+    };
+
+    @Test
+    void testTicksScaleExactlyForEveryTupletRatioAndDotCount() {
+        for (var type : NOTE_TYPES_WITH_TICK_MAPPING) {
+            for (var dotCount = 0; dotCount <= NoteTypeMapping.MAX_DOT_COUNT; dotCount++) {
+                var ticks = NoteTypeMapping.ticks(type, dotCount);
+
+                for (var actualNotes = MIN_TUPLET_RATIO; actualNotes <= MAX_TUPLET_RATIO; actualNotes++) {
+                    for (var normalNotes = MIN_TUPLET_RATIO; normalNotes <= MAX_TUPLET_RATIO; normalNotes++) {
+                        if (normalNotes == actualNotes) {
+                            continue;
+                        }
+
+                        assertThat(ticks * normalNotes % actualNotes)
+                            .as(
+                                "ticks(%s, dots=%d)=%d scaled by M=%d/N=%d must be an exact integer",
+                                type, dotCount, ticks, normalNotes, actualNotes
+                            )
+                            .isZero();
+                    }
+                }
+            }
+        }
     }
 }

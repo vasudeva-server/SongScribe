@@ -96,6 +96,8 @@ final class MusicXmlTags {
     static final String TIME_MOD       = "time-modification";
     static final String ACTUAL_NOTES   = "actual-notes";
     static final String NORMAL_NOTES   = "normal-notes";
+    static final String NORMAL_TYPE    = "normal-type";
+    static final String NORMAL_DOT     = "normal-dot";
     static final String TUPLET         = "tuplet";
     static final String DIRECTION      = "direction";
     static final String DIRECTION_TYPE = "direction-type";

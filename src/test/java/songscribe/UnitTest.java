@@ -59,6 +59,7 @@ import org.xml.sax.SAXException;
 import songscribe.error.RuntimeErrorTestHelper;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -236,9 +237,14 @@ public abstract class UnitTest {
 
     /**
      * Creates a minimal Song mock with mutation tracking suspended and both
-     * {@code withModification} overloads (plain and labeled) delegating directly to
-     * the runnable. Shared by {@link #detachedLine()} and
+     * {@code withModification} overloads (plain and labeled) plus
+     * {@code withBeatDefiningEdit} delegating directly to the runnable. Shared by
+     * {@link #detachedLine()} and
      * {@link songscribe.ui.selection.ReflectionTestHelper}.
+     *
+     * <p>Every one of these is a chokepoint that wraps the caller's real work, so an
+     * unstubbed mock would swallow the runnable entirely and the edit under test would
+     * simply never happen — a silent no-op rather than a failure that names itself.
      */
     @SuppressWarnings("ReturnOfNull")
     public static Song minimalSongMock() {
@@ -253,6 +259,10 @@ public abstract class UnitTest {
             .when(songMock).withModification(any(Runnable.class));
         doAnswer(inv -> { ((Runnable) inv.getArgument(1)).run(); return null; })
             .when(songMock).withModification(any(String.class), any(Runnable.class));
+        // Reports no tuplets removed: a mock has no tuplets to invalidate, and a test that
+        // cares about the removal path builds a real Song.
+        doAnswer(inv -> { ((Runnable) inv.getArgument(2)).run(); return false; })
+            .when(songMock).withBeatDefiningEdit(anyInt(), anyInt(), any(Runnable.class));
         return songMock;
     }
 

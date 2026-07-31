@@ -20,6 +20,8 @@
 
 package songscribe.ui.selection;
 
+import java.util.Set;
+
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Tuplet;
@@ -27,14 +29,23 @@ import songscribe.dom.Tuplet;
 /**
  * Result of {@link LineSelectionState#canToggleTuplet()}.
  *
- * @param canToggle      true if the selection is uniform (all pitched, all in the same tuplet or none)
- * @param existing       the tuplet at the selection start, or {@code null} if there is none
+ * @param canToggle      true if the selection can carry a tuplet decision at all: it holds at
+ *                       least two non-grace elements, they all belong to the same tuplet (or to
+ *                       none), and the selection is not a strict sub-range of a tuplet
+ * @param validGrades    the tuplet numbers the span could actually be turned into, as judged by
+ *                       {@link songscribe.dom.TupletValidator} under
+ *                       {@link songscribe.dom.TupletValidator.Strictness#STRICT}. Empty whenever
+ *                       {@code canToggle} is false.
+ * @param existing       the tuplet at the selection start, or {@code null} if there is none.
+ *                       Reported even when {@code canToggle} is false, because removal stays
+ *                       available for a sub-range selection.
  * @param coversExisting true iff {@code existing != null} and the selection exactly spans
  *                       {@code [existing.anchorIndex, existing.endIndex]}. Always {@code false} when
  *                       {@code existing} is {@code null}.
  */
 public record TupletToggleInfo(
     boolean canToggle,
+    Set<Integer> validGrades,
     @Nullable Tuplet existing,
     boolean coversExisting
 ) {
@@ -42,5 +53,15 @@ public record TupletToggleInfo(
         if (coversExisting && (existing == null)) {
             throw new IllegalArgumentException("coversExisting cannot be true when existing is null");
         }
+
+        validGrades = Set.copyOf(validGrades);
+    }
+
+    /**
+     * Convenience for a span that offers no creatable grade, which is every span whose
+     * decision is already settled by {@code canToggle} and {@code existing} alone.
+     */
+    public TupletToggleInfo(boolean canToggle, @Nullable Tuplet existing, boolean coversExisting) {
+        this(canToggle, Set.of(), existing, coversExisting);
     }
 }

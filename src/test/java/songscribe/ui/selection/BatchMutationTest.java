@@ -484,7 +484,7 @@ class BatchMutationTest extends MainFrameMockTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(2), 3));
+        line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
@@ -503,7 +503,7 @@ class BatchMutationTest extends MainFrameMockTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(4), 3));
+        line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(4), 3));
 
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
@@ -522,7 +522,7 @@ class BatchMutationTest extends MainFrameMockTest {
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
-        line.addTuplet(new Tuplet(line.getElement(0), line.getElement(1), 3));
+        line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(1), 3));
 
         ReflectionTestHelper.selectRange(coordinator, 3, 4);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);

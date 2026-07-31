@@ -32,10 +32,12 @@ final class MusicXmlUnits {
 
     private static final Logger LOG = LoggerFactory.getLogger(MusicXmlUnits.class);
 
-    // DIVISIONS is defined in NoteTypeMapping (which owns the tick math).
-    // DIVISIONS = 480 ensures that the smallest representable note fraction
-    // — a double-dotted 32nd — produces an exact integer tick count:
-    //   (480 / 8) × 7/4  =  60 × 7/4  =  105 ticks  (exact)
+    // DIVISIONS is defined in NoteTypeMapping (which owns the tick math and
+    // the full derivation). It must survive not just the plain note values
+    // but a tuplet's M/N scaling for every ratio N in {2..7}, which is why
+    // it is 13440 rather than the smaller value that satisfies the note
+    // values alone: (13440 / 8) × 7/4 = 1680 × 7/4 = 2940 ticks (exact),
+    // and 2940 stays exact when further scaled by any conventional M/N.
     static final int DIVISIONS = NoteTypeMapping.DIVISIONS;
 
     // Measure numbering starts at 1 (MusicXML spec requires positive integers).

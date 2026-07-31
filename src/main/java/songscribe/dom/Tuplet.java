@@ -22,6 +22,8 @@ package songscribe.dom;
 
 import module java.desktop;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.util.GraphicUtils;
 import songscribe.util.MyFontUtils;
 
@@ -72,32 +74,77 @@ public class Tuplet extends RangeElement {
         return inkHeightSs;
     }
 
+    /**
+     * The {@code normalNotes} of a tuplet whose ratio has not been resolved yet.
+     * A resolved tuplet always has a positive {@code normalNotes}.
+     */
+    public static final int UNRESOLVED_NORMAL_NOTES = 0;
+
     private int grade;
+    private int normalNotes;
+    private @Nullable ElementType noteValue;
+    private int noteValueDots;
     private int verticalPositionSs = 0;
 
     /**
-     * Creates a tuplet grouping.
+     * Creates a fully specified tuplet grouping: {@code grade} notes played in the
+     * time normally occupied by {@code normalNotes} notes of the written value
+     * {@code noteValue} carrying {@code noteValueDots} dots.
+     * <p>
+     * The written value is stored as a base type plus a dot count rather than as a
+     * tick duration, so that it is notatable by construction and needs no
+     * decomposition on the way out to MusicXML.
      *
      * @param anchorElement The first note in the tuplet
      * @param endElement    The last note in the tuplet
-     * @param grade      The tuplet number (3 for triplet, 5 for quintuplet, etc.)
+     * @param grade         The tuplet number (3 for triplet, 5 for quintuplet, etc.)
+     * @param normalNotes   The count of {@code noteValue} notes whose time the group occupies
+     * @param noteValue     The tuplet's written note value, as a base element type
+     * @param noteValueDots The dot count of the written note value
      */
-    public Tuplet(StaffElement anchorElement, StaffElement endElement, int grade) {
+    public Tuplet(StaffElement anchorElement, StaffElement endElement,
+        int grade, int normalNotes, ElementType noteValue, int noteValueDots) {
         super(anchorElement, endElement);
         this.grade = grade;
+        this.normalNotes = normalNotes;
+        this.noteValue = noteValue;
+        this.noteValueDots = noteValueDots;
+    }
+
+    /** Shared by the canonical constructor's peers; leaves the ratio unresolved. */
+    private Tuplet(StaffElement anchorElement, StaffElement endElement, int grade) {
+        super(anchorElement, endElement);
+        this.grade = grade;
+        normalNotes = UNRESOLVED_NORMAL_NOTES;
+        noteValue = null;
+        noteValueDots = 0;
+    }
+
+    /**
+     * Creates a tuplet read from a file that did not state its ratio. M and V are
+     * pending until the load pass either resolves or drops it — see
+     * {@code TupletLoadPass}. This is the only way to obtain a half-built tuplet,
+     * and only same-package code can complete it via {@link #resolveRatio}.
+     */
+    public static Tuplet withUnresolvedRatio(
+        StaffElement anchorElement, StaffElement endElement, int grade) {
+        return new Tuplet(anchorElement, endElement, grade);
     }
 
     @Override
     protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
-        var copy = new Tuplet(newAnchor, newEnd, grade);
+        // Undo/redo round-trips through here, so every field must be carried over —
+        // including the unresolved state, which must copy as unresolved.
+        Tuplet copy;
+
+        if (noteValue == null) {
+            copy = withUnresolvedRatio(newAnchor, newEnd, grade);
+        } else {
+            copy = new Tuplet(newAnchor, newEnd, grade, normalNotes, noteValue, noteValueDots);
+        }
+
         copy.setVerticalPositionSs(verticalPositionSs);
         return copy;
-    }
-
-    @Override
-    public int getElementCount() {
-        // For tuplets, the note count is the grade (e.g., 3 for triplet)
-        return grade;
     }
 
     /**
@@ -243,6 +290,49 @@ public class Tuplet extends RangeElement {
      */
     public void setGrade(int grade) {
         this.grade = grade;
+    }
+
+    /**
+     * Returns M — the count of {@link #getNoteValue()} notes whose time this group
+     * occupies, or {@link #UNRESOLVED_NORMAL_NOTES} while the ratio is unresolved.
+     */
+    public int getNormalNotes() {
+        return normalNotes;
+    }
+
+    /**
+     * Returns V's base element type, or null while the ratio is unresolved.
+     */
+    public @Nullable ElementType getNoteValue() {
+        return noteValue;
+    }
+
+    /**
+     * Returns the dot count of V, this tuplet's written note value.
+     */
+    public int getNoteValueDots() {
+        return noteValueDots;
+    }
+
+    /**
+     * Returns whether M and V are known. Only a tuplet built by
+     * {@link #withUnresolvedRatio} can be unresolved, and only until the
+     * dom-package load pass resolves or drops it.
+     */
+    public boolean isResolved() {
+        return noteValue != null && normalNotes > 0;
+    }
+
+    /**
+     * Completes the ratio of a tuplet built by {@link #withUnresolvedRatio}.
+     * <p>
+     * Package-private on purpose: the dom-package load pass is the only caller, so
+     * that no outside code can retroactively re-time a tuplet the user already sees.
+     */
+    void resolveRatio(int normalNotes, ElementType noteValue, int noteValueDots) {
+        this.normalNotes = normalNotes;
+        this.noteValue = noteValue;
+        this.noteValueDots = noteValueDots;
     }
 
     /**

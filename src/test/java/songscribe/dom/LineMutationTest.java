@@ -174,7 +174,7 @@ class LineMutationTest extends UnitTest {
             });
 
             var tripletGrade = 3;
-            var tuplet = new Tuplet(e0, e2, tripletGrade);
+            var tuplet = Tuplet.withUnresolvedRatio(e0, e2, tripletGrade);
             song.withoutMutationTracking(() -> line.addTuplet(tuplet));
 
             // Modify e1 (index 1) using a DURATION_AFFECTING field (DOT_COUNT).
@@ -205,7 +205,7 @@ class LineMutationTest extends UnitTest {
             });
 
             var tripletGrade = 3;
-            var tuplet = new Tuplet(e0, e2, tripletGrade);
+            var tuplet = Tuplet.withUnresolvedRatio(e0, e2, tripletGrade);
             song.withoutMutationTracking(() -> line.addTuplet(tuplet));
 
             // Modify e1 using a non-DURATION_AFFECTING field (UPPER is a simple boolean flip).
@@ -472,7 +472,7 @@ class LineMutationTest extends UnitTest {
 
             // Grade 3 = triplet.
             var tripletGrade = 3;
-            var tuplet = new Tuplet(e0, e2, tripletGrade);
+            var tuplet = Tuplet.withUnresolvedRatio(e0, e2, tripletGrade);
             song.withoutMutationTracking(() -> line.addTuplet(tuplet));
 
             // Insert at index 1 — inside the tuplet's span (anchor=0, end=2).
@@ -500,7 +500,7 @@ class LineMutationTest extends UnitTest {
             });
 
             var dupletGrade = 2;
-            var tuplet = new Tuplet(e0, e1, dupletGrade);
+            var tuplet = Tuplet.withUnresolvedRatio(e0, e1, dupletGrade);
             song.withoutMutationTracking(() -> line.addTuplet(tuplet));
 
             var inserted = new StaffElement(ElementType.QUAVER);
@@ -2111,7 +2111,7 @@ class LineMutationTest extends UnitTest {
 
             // Grade 3 = triplet spanning e0..e2.
             var tripletGrade = 3;
-            var tuplet = new Tuplet(e0, e2, tripletGrade);
+            var tuplet = Tuplet.withUnresolvedRatio(e0, e2, tripletGrade);
             song.withoutMutationTracking(() -> line.addTuplet(tuplet));
 
             assertThat(line.hasEndingInvalidatedByDeletion(List.of(e0)))

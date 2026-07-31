@@ -61,6 +61,7 @@ import songscribe.message.notification.PrefsDidChangeNotification;
 import songscribe.message.notification.PreviewElementDidChangeNotification;
 import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
+import songscribe.message.notification.TupletsWereRemovedNotification;
 import songscribe.prefs.PrefsKey;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
@@ -252,6 +253,21 @@ public final class ScoreViewController {
     public void handleToggleTuplet(ToggleTupletCommand message) {
         operations.toggleTuplet(message.getTupletSize(), operations.canToggleTuplet());
         score.selectionChanged();
+    }
+
+    /**
+     * Warns that a beat-defining edit forced tuplets out of the song. Every route into such
+     * an edit — either attachment dialog's Add, Modify or Remove button, and the song's own
+     * tempo note value — reports through this one handler, so the wording is uniform and the
+     * warning appears exactly once per edit no matter how many tuplets went.
+     */
+    @Handler
+    public void tupletsWereRemoved(TupletsWereRemovedNotification message) {
+        OptionDialogs.showWarningMessage(
+            null,
+            Strings.ALERT_TITLE_TUPLETS_REMOVED,
+            Strings.ALERT_TUPLETS_REMOVED
+        );
     }
 
     @Handler
@@ -1091,6 +1107,12 @@ public final class ScoreViewController {
                 element.setXOffsetPx(element.getXOffsetPx() + tailShiftPx);
             }
         }
+
+        // A pasted tuplet the destination's beat context rejects is dropped here
+        // (#604): after the clones are in, so every index resolves against the final
+        // line, and before any span is added, so the bracket is never created and
+        // needs no undo of its own.
+        reconciliation = reconciliation.dropTupletsRejectedByTarget(line);
 
         // A pasted hairpin flush against a same-type hairpin already on the line is
         // merged into it by addPastedRangeElement, the same rule that applies when

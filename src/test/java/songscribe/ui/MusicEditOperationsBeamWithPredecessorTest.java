@@ -69,6 +69,11 @@ class MusicEditOperationsBeamWithPredecessorTest extends UnitTest {
     /** Index of the fourth element of the fixtures built by {@link #lineOf}. */
     private static final int FOURTH_INDEX = 3;
 
+    /** A triplet occupies the time of two notes of its written value. */
+    private static final int TRIPLET_NORMAL_NOTES = 2;
+
+    private static final int NO_DOTS = 0;
+
     private Song song;
 
     @Nullable private MockedStatic<MessageCenter> messageCenterMock;
@@ -425,7 +430,10 @@ class MusicEditOperationsBeamWithPredecessorTest extends UnitTest {
             song.withoutMutationTracking(() -> line.addTuplet(new Tuplet(
                 line.getElement(0),
                 line.getElement(THIRD_INDEX),
-                TupletAction.Tuplet.TRIPLET.getSize()
+                TupletAction.Tuplet.TRIPLET.getSize(),
+                TRIPLET_NORMAL_NOTES,
+                ElementType.QUAVER,
+                NO_DOTS
             )));
 
             assertThat(MusicEditOperations.toggleBeamWithPredecessor(line, 1))

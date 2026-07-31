@@ -21,8 +21,12 @@ package songscribe.io.musicxml;
 
 import java.io.PrintWriter;
 
+import org.jspecify.annotations.Nullable;
+
+import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Tuplet;
 import songscribe.io.XML;
 
 final class MusicXmlNoteWriter {
@@ -77,9 +81,11 @@ final class MusicXmlNoteWriter {
             writePitch(pw, note);
         }
 
-        // 3. <duration> — omitted for grace notes (zero playback time).
+        // 3. <duration> — the *performed* duration, which is what MusicXML means
+        //    by <duration>: a tuplet member sounds shorter than its <type> says.
+        //    Omitted for grace notes (zero playback time).
         if (NoteTypeMapping.hasDuration(type)) {
-            var ticks = NoteTypeMapping.ticks(type, note.getDotCount());
+            var ticks = performedTicks(type, note.getDotCount(), spanMarkers.tuplet());
             XML.writeValue(pw, MusicXmlTags.DURATION, Integer.toString(ticks));
         }
 
@@ -116,7 +122,7 @@ final class MusicXmlNoteWriter {
         var tupletForTimeMod = spanMarkers.tuplet();
 
         if (tupletForTimeMod != null) {
-            writeTimeModification(pw, tupletForTimeMod.getGrade());
+            writeTimeModification(pw, tupletForTimeMod);
         }
 
         // 7. <stem>
@@ -214,31 +220,86 @@ final class MusicXmlNoteWriter {
     }
 
     /**
-     * Emits a {@code <time-modification>} element with {@code <actual-notes>}
-     * set to {@code grade} (the tuplet numerator) and {@code <normal-notes>}
-     * set to the largest power of two strictly less than {@code grade}
-     * (3→2, 5→4, 6→4, 7→4).
+     * The performed tick count for one note: its written duration, scaled by
+     * {@code normalNotes / grade} when the note belongs to a resolved tuplet.
+     *
+     * <p>{@link NoteTypeMapping#DIVISIONS} is chosen so that this scaling is
+     * exact for every note value, dot count and tuplet ratio the validator
+     * accepts, so an inexact result means {@code DIVISIONS} itself is wrong.
+     * That throws rather than rounding, mirroring {@link NoteTypeMapping#ticks}.
+     *
+     * @param tuplet the tuplet this note belongs to, or {@code null} if none
+     */
+    private static int performedTicks(ElementType type, int dotCount, @Nullable Tuplet tuplet) {
+        var writtenTicks = NoteTypeMapping.ticks(type, dotCount);
+
+        // An unresolved tuplet states no ratio to scale by — the post-load pass
+        // derives one, so until then the written duration is all there is.
+        if (tuplet == null || !tuplet.isResolved()) {
+            return writtenTicks;
+        }
+
+        var grade = tuplet.getGrade();
+        var product = writtenTicks * tuplet.getNormalNotes();
+
+        if (product % grade != 0) {
+            throw new ArithmeticException(
+                "Performed duration is not an integer for " + type + " dotCount=" + dotCount
+                + " in a " + grade + ":" + tuplet.getNormalNotes() + " tuplet"
+                + " (DIVISIONS=" + NoteTypeMapping.DIVISIONS + " is wrong)"
+            );
+        }
+
+        return product / grade;
+    }
+
+    /**
+     * Emits the {@code <time-modification>} element for a note belonging to
+     * {@code tuplet}: {@code <actual-notes>} is the tuplet's grade, and — once
+     * the tuplet's ratio is known — {@code <normal-notes>}, {@code <normal-type>}
+     * and one {@code <normal-dot/>} per dot describe the written value whose time
+     * the group occupies. Child order follows the MusicXML schema.
+     *
+     * <p>{@code <normal-type>} is the discriminator the reader trusts: a file
+     * carrying it states its own ratio, so the reader takes {@code <normal-notes>}
+     * at face value. A tuplet whose ratio is still unresolved therefore emits
+     * neither, and falls back to the conventional power-of-two
+     * {@code <normal-notes>} so the document stays schema-valid; the reader will
+     * hand such a tuplet to the post-load pass to have its ratio derived.
      *
      * <p>Emitted on every note in a tuplet span (including rests), after
      * {@code <accidental>} and before {@code <stem>} per the MusicXML schema.
-     * {@code <normal-notes>} is write-forward only — the reader recovers the
-     * grade from {@code <actual-notes>} and ignores {@code <normal-notes>}.
      */
-    private static void writeTimeModification(PrintWriter pw, int grade) {
-        var normalNotes = largestPowerOfTwoBelowGrade(grade);
+    private static void writeTimeModification(PrintWriter pw, Tuplet tuplet) {
+        var grade = tuplet.getGrade();
+        var noteValue = tuplet.getNoteValue();
+        var normalTypeToken = noteValue == null ? null : NoteTypeMapping.typeToken(noteValue);
+
         XML.writeBeginTag(pw, MusicXmlTags.TIME_MOD);
         XML.indent();
         XML.writeValue(pw, MusicXmlTags.ACTUAL_NOTES, Integer.toString(grade));
-        XML.writeValue(pw, MusicXmlTags.NORMAL_NOTES, Integer.toString(normalNotes));
+
+        if (normalTypeToken == null) {
+            XML.writeValue(pw, MusicXmlTags.NORMAL_NOTES,
+                Integer.toString(largestPowerOfTwoBelowGrade(grade)));
+        } else {
+            XML.writeValue(pw, MusicXmlTags.NORMAL_NOTES, Integer.toString(tuplet.getNormalNotes()));
+            XML.writeValue(pw, MusicXmlTags.NORMAL_TYPE, normalTypeToken);
+
+            for (var i = 0; i < tuplet.getNoteValueDots(); i++) {
+                XML.writeEmptyTag(pw, MusicXmlTags.NORMAL_DOT);
+            }
+        }
+
         XML.dedent();
         XML.writeEndTag(pw, MusicXmlTags.TIME_MOD);
     }
 
     /**
-     * Returns the largest power of two strictly less than {@code grade}.
-     *
-     * <p>Examples: 3→2, 5→4, 6→4, 7→4.
-     * This is the MusicXML convention for {@code <normal-notes>} in a tuplet.
+     * Returns the largest power of two strictly less than {@code grade}
+     * (3→2, 5→4, 6→4, 7→4) — the placeholder {@code <normal-notes>} for a
+     * tuplet whose real ratio is not yet resolved. The schema requires the
+     * element, and no better value exists before the post-load pass has run.
      */
     private static int largestPowerOfTwoBelowGrade(int grade) {
         var result = 1;

@@ -251,13 +251,14 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
 
     @Test
     void testHandleToggleTupletEmitsRemovalAndAdditionForGradeChange() {
-        // Existing triplet over [0..2] with the full span selected, handler invoked with
+        // Existing triplet over [0..4] with the full span selected, handler invoked with
         // quintuplet — emits [TupletRemoval, TupletAddition] inside one modification bracket
         // so the grade change replays atomically under undo.
-        var env = setupTest(crotchet(), crotchet(), crotchet());
-        song.withoutMutationTracking(() -> env.line().addTuplet(new Tuplet(
-            env.line().getElement(0), env.line().getElement(2), TupletAction.Tuplet.TRIPLET.getSize())));
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
+        // Five crotchets, so the incoming quintuplet's written value divides out exactly.
+        var env = setupTest(crotchet(), crotchet(), crotchet(), crotchet(), crotchet());
+        song.withoutMutationTracking(() -> env.line().addTuplet(Tuplet.withUnresolvedRatio(
+            env.line().getElement(0), env.line().getElement(4), TupletAction.Tuplet.TRIPLET.getSize())));
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 4);
 
         env.scoreMessageCoordinator().handleToggleTuplet(tupletCommand(TupletAction.Tuplet.QUINTUPLET));
 

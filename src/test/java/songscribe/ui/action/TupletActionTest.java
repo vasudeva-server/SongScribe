@@ -26,7 +26,10 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import module java.desktop;
 
@@ -56,6 +59,12 @@ class TupletActionTest extends MainFrameMockTest {
 
     // > 1 so REQUIRES_MULTIPLE_SELECTION passes, letting updateEnabledState() return true.
     private static final int SELECTION_SIZE = 3;
+
+    /** Every creatable grade, for spans whose validity is not what a test is about. */
+    private static final Set<Integer> ALL_GRADES = Arrays.stream(TupletAction.Tuplet.values())
+        .filter(candidate -> candidate != TupletAction.Tuplet.REMOVE)
+        .map(TupletAction.Tuplet::getSize)
+        .collect(Collectors.toUnmodifiableSet());
 
     private TupletAction removeAction;
     private TupletAction dupletAction;
@@ -95,29 +104,33 @@ class TupletActionTest extends MainFrameMockTest {
     // -----------------------------------------------------------------------
 
     @Test
-    void testFullCoverageOfQuintupletDisablesQuintupletEnablesOthersAndRemove() {
-        fireAll(new TupletToggleInfo(true, makeTuplet(TupletAction.Tuplet.QUINTUPLET.getSize()), true));
+    void testFullCoverageOfQuintupletChecksQuintupletAndEnablesTheValidGrades() {
+        fireAll(new TupletToggleInfo(
+            true, ALL_GRADES, makeTuplet(TupletAction.Tuplet.QUINTUPLET.getSize()), true));
 
         assertThat(removeAction.isEnabled()).isTrue();
-        assertThat(dupletAction.isEnabled()).isTrue();
-        assertThat(tripletAction.isEnabled()).isTrue();
-        assertThat(quadrupletAction.isEnabled()).isTrue();
-        assertThat(quintupletAction.isEnabled()).isFalse();  // matching grade → no-op
-        assertThat(sextupletAction.isEnabled()).isTrue();
-        assertThat(septupletAction.isEnabled()).isTrue();
+
+        for (var action : addActions()) {
+            assertThat(action.isEnabled()).isTrue();
+        }
+
+        assertThat(isSelected(quintupletAction)).isTrue();
+        assertThat(isSelected(tripletAction)).isFalse();
     }
 
     @Test
-    void testFullCoverageOfTripletDisablesTripletEnablesOthersAndRemove() {
-        fireAll(new TupletToggleInfo(true, makeTuplet(TupletAction.Tuplet.TRIPLET.getSize()), true));
+    void testFullCoverageOfTripletChecksTripletEnablesOthersAndRemove() {
+        fireAll(new TupletToggleInfo(
+            true, ALL_GRADES, makeTuplet(TupletAction.Tuplet.TRIPLET.getSize()), true));
 
         assertThat(removeAction.isEnabled()).isTrue();
-        assertThat(dupletAction.isEnabled()).isTrue();
-        assertThat(tripletAction.isEnabled()).isFalse();  // matching grade → no-op
-        assertThat(quadrupletAction.isEnabled()).isTrue();
-        assertThat(quintupletAction.isEnabled()).isTrue();
-        assertThat(sextupletAction.isEnabled()).isTrue();
-        assertThat(septupletAction.isEnabled()).isTrue();
+
+        for (var action : addActions()) {
+            assertThat(action.isEnabled()).isTrue();
+        }
+
+        assertThat(isSelected(tripletAction)).isTrue();
+        assertThat(isSelected(quintupletAction)).isFalse();
     }
 
     @Test
@@ -133,7 +146,7 @@ class TupletActionTest extends MainFrameMockTest {
 
     @Test
     void testPartialCoverageOfTripletEnablesRemoveDisablesAllAddActions() {
-        fireAll(new TupletToggleInfo(true, makeTuplet(TupletAction.Tuplet.TRIPLET.getSize()), false));
+        fireAll(new TupletToggleInfo(false, makeTuplet(TupletAction.Tuplet.TRIPLET.getSize()), false));
 
         assertThat(removeAction.isEnabled()).isTrue();
 
@@ -143,20 +156,22 @@ class TupletActionTest extends MainFrameMockTest {
     }
 
     @Test
-    void testUniformNoTupletEnablesAddActionsDisablesRemove() {
-        fireAll(new TupletToggleInfo(true, null, false));
+    void testUniformNoTupletEnablesValidGradesDisablesRemove() {
+        fireAll(new TupletToggleInfo(true, ALL_GRADES, null, false));
 
         assertThat(removeAction.isEnabled()).isFalse();
 
         for (var action : addActions()) {
             assertThat(action.isEnabled()).isTrue();
+            assertThat(isSelected(action)).isFalse();
         }
     }
 
     // Row 45: songDidChange delegates to the same handleChange path
     @Test
     void testSongDidChangeUpdatesEnabledState() {
-        when(mockEnv().ctrl().canToggleTuplet()).thenReturn(new TupletToggleInfo(true, null, false));
+        when(mockEnv().ctrl().canToggleTuplet())
+            .thenReturn(new TupletToggleInfo(true, ALL_GRADES, null, false));
         tripletAction.songDidChange(new SongDidChangeNotification(List.of(), mock(Song.class)));
         assertThat(tripletAction.isEnabled()).isTrue();
     }
@@ -164,7 +179,8 @@ class TupletActionTest extends MainFrameMockTest {
     // Row 45: documentDidLoad delegates to the same handleChange path
     @Test
     void testDocumentDidLoadUpdatesEnabledState() {
-        when(mockEnv().ctrl().canToggleTuplet()).thenReturn(new TupletToggleInfo(true, null, false));
+        when(mockEnv().ctrl().canToggleTuplet())
+            .thenReturn(new TupletToggleInfo(true, ALL_GRADES, null, false));
         tripletAction.documentDidLoad(new DocumentDidLoadNotification(mock(Song.class)));
         assertThat(tripletAction.isEnabled()).isTrue();
     }
@@ -221,9 +237,14 @@ class TupletActionTest extends MainFrameMockTest {
         );
     }
 
+    /** Reads the action's {@code Action.SELECTED_KEY}, which the radio menu items mirror. */
+    private static boolean isSelected(TupletAction action) {
+        return Boolean.TRUE.equals(action.getValue(Action.SELECTED_KEY));
+    }
+
     private static Tuplet makeTuplet(int grade) {
         var anchor = ElementType.CROTCHET.newInstance();
         var end = ElementType.CROTCHET.newInstance();
-        return new Tuplet(anchor, end, grade);
+        return Tuplet.withUnresolvedRatio(anchor, end, grade);
     }
 }

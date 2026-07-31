@@ -21,7 +21,10 @@
 package songscribe.ui.clipboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.mockStatic;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiFunction;
@@ -33,24 +36,39 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
+import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.RangeElement;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Tempo;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.layout.Ending;
 import songscribe.layout.InsertionSpacingCalculator;
+import songscribe.message.Message;
+import songscribe.message.MessageCenter;
+import songscribe.message.mutation.ElementInsertion;
+import songscribe.message.mutation.TupletAddition;
+import songscribe.message.mutation.TupletRemoval;
+import songscribe.message.notification.SongDidChangeNotification;
 
 class PasteSpanReconciliationTest extends UnitTest {
 
     private static final int TRIPLET_GRADE = 3;
+
+    /** A triplet occupies the time of two notes of its written value. */
+    private static final int TRIPLET_NORMAL_NOTES = 2;
+
+    private static final int NO_DOTS = 0;
 
     /** Index of the element the six-note fixture's spans anchor to. */
     private static final int SPAN_ANCHOR_INDEX = 1;
@@ -80,7 +98,8 @@ class PasteSpanReconciliationTest extends UnitTest {
 
     private static Tuplet tupletOver(Line line) {
         return new Tuplet(
-            line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX), TRIPLET_GRADE);
+            line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX), TRIPLET_GRADE,
+            TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
     }
 
     /** A two-note fragment carrying exactly the spans built by {@code spans}. */
@@ -103,7 +122,8 @@ class PasteSpanReconciliationTest extends UnitTest {
             line.addRangeElement(tuplet);
 
             var notes = fragmentNotes();
-            var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE);
+            var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
 
             var result = PasteSpanReconciliation.reconcile(
                 line, INTERIOR_INDEX, null, List.of(fragmentTuplet));
@@ -189,7 +209,8 @@ class PasteSpanReconciliationTest extends UnitTest {
             line.addRangeElement(beam);
 
             var notes = fragmentNotes();
-            var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE);
+            var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
 
             var result = PasteSpanReconciliation.reconcile(
                 line, INTERIOR_INDEX, null, List.of(fragmentTuplet));
@@ -250,7 +271,8 @@ class PasteSpanReconciliationTest extends UnitTest {
             line.addRangeElement(tuplet);
 
             var notes = fragmentNotes();
-            var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE);
+            var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
 
             // The selection covers the target tuplet exactly: its endpoints are deleted,
             // so Line.removeRange's own sweep drops it and the pasted tuplet replaces it.
@@ -271,7 +293,8 @@ class PasteSpanReconciliationTest extends UnitTest {
             line.addRangeElement(tuplet);
 
             var notes = fragmentNotes();
-            var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE);
+            var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
 
             // Replacing only the tuplet's interior leaves both endpoints alive, so the
             // deletion sweep won't touch it — this is the case only the straddle test catches.
@@ -348,7 +371,7 @@ class PasteSpanReconciliationTest extends UnitTest {
 
         @Test
         void testTupletsCannotBothSurvive() {
-            assertAtMostOneSurvives((anchor, end) -> new Tuplet(anchor, end, TRIPLET_GRADE));
+            assertAtMostOneSurvives((anchor, end) -> new Tuplet(anchor, end, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS));
         }
 
         @Test
@@ -383,7 +406,7 @@ class PasteSpanReconciliationTest extends UnitTest {
 
     /** The span kinds the reconciler switches on, with their straddle policy. */
     private enum SpanKind {
-        TUPLET((anchor, end) -> new Tuplet(anchor, end, TRIPLET_GRADE), true, false),
+        TUPLET((anchor, end) -> new Tuplet(anchor, end, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS), true, false),
         BEAM(Beam::new, true, false),
         TIE(Tie::new, true, true),
         TRILL(Trill::new, true, true),
@@ -524,7 +547,8 @@ class PasteSpanReconciliationTest extends UnitTest {
             line.addRangeElement(destinationBeam);
 
             var notes = fragmentNotes();
-            var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE);
+            var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             var fragmentBeam = new Beam(notes.get(0), notes.get(1));
 
             var result = PasteSpanReconciliation.reconcile(
@@ -647,6 +671,206 @@ class PasteSpanReconciliationTest extends UnitTest {
 
             assertThat(result.targetSpansToRemove()).containsExactly(destinationBeam);
             assertThat(result.fragmentSpans()).isEmpty();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Pasted tuplets the destination's beat context rejects (#604)
+    // -----------------------------------------------------------------------
+
+    /**
+     * Three quavers under a 3 are a triplet at a quarter beat — 3:2 eighths — and mean
+     * nothing at a dotted-quarter beat, where three eighths already fill the beat and no
+     * conventional span lies below the printed 3. Copying the group from the first
+     * context into the second is exactly the paste this rule exists for.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TupletsRejectedByTheTarget {
+
+        /** Three notes under a 3 — the fragment every test here pastes. */
+        private static final int TRIPLET_NOTE_COUNT = TRIPLET_GRADE;
+
+        /** Where the fragment lands on an otherwise empty destination line. */
+        private static final int EMPTY_LINE_PASTE_INDEX = 0;
+
+        /** A song whose initial tempo puts {@code beat} in effect throughout. */
+        private Song songWithBeat(Duration beat) {
+            var song = new Song();
+
+            song.withoutMutationTracking(() -> song.setTempo(new Tempo(
+                Tempo.DEFAULT_BPM, beat, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO)));
+
+            return song;
+        }
+
+        private List<StaffElement> tripletQuavers() {
+            var notes = new ArrayList<StaffElement>(TRIPLET_NOTE_COUNT);
+
+            for (var i = 0; i < TRIPLET_NOTE_COUNT; i++) {
+                notes.add(ElementType.QUAVER.newInstance());
+            }
+
+            return notes;
+        }
+
+        private Tuplet tripletOver(List<StaffElement> notes) {
+            return new Tuplet(notes.getFirst(), notes.getLast(), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
+        }
+
+        /**
+         * Pastes in the order production does: reconcile against the pre-mutation line,
+         * insert the fragment's elements, then apply the target-context rule to what the
+         * straddle rule left.
+         */
+        private PasteSpanReconciliation paste(
+            Line line, int insertIndex, List<StaffElement> notes, List<RangeElement> spans
+        ) {
+            var reconciliation = PasteSpanReconciliation.reconcile(line, insertIndex, null, spans);
+
+            for (var i = 0; i < notes.size(); i++) {
+                line.addElement(insertIndex + i, notes.get(i));
+            }
+
+            return reconciliation.dropTupletsRejectedByTarget(line);
+        }
+
+        @Test
+        void testATripletCopiedFromAQuarterBeatIsDroppedUnderADottedQuarterBeat() {
+            var song = songWithBeat(Duration.CROTCHET_DOTTED);
+            var line = song.getLine(0);
+            var notes = tripletQuavers();
+            var tuplet = tripletOver(notes);
+
+            var result = song.withModificationResult(
+                () -> paste(line, EMPTY_LINE_PASTE_INDEX, notes, List.of(tuplet)));
+
+            assertThat(result.fragmentSpans())
+                .as("the destination beat leaves the printed 3 with nothing to say")
+                .isEmpty();
+            assertThat(result.tupletsRejectedByTarget()).containsExactly(tuplet);
+            assertThat(line.getElements(EMPTY_LINE_PASTE_INDEX, TRIPLET_NOTE_COUNT - 1))
+                .as("the notes survive — only the bracket goes")
+                .containsExactlyElementsOf(notes);
+        }
+
+        @Test
+        void testTheSameTripletIsKeptUnderACompatibleBeat() {
+            var song = songWithBeat(Duration.CROTCHET);
+            var line = song.getLine(0);
+            var notes = tripletQuavers();
+            var tuplet = tripletOver(notes);
+
+            var result = song.withModificationResult(
+                () -> paste(line, EMPTY_LINE_PASTE_INDEX, notes, List.of(tuplet)));
+
+            assertThat(result.fragmentSpans()).containsExactly(tuplet);
+            assertThat(result.tupletsRejectedByTarget()).isEmpty();
+        }
+
+        @Test
+        void testOnlyTheTupletIsJudged() {
+            // A beam over the same three quavers says nothing about timing, so the beat
+            // context that rejects the tuplet has no opinion about it.
+            var song = songWithBeat(Duration.CROTCHET_DOTTED);
+            var line = song.getLine(0);
+            var notes = tripletQuavers();
+            var tuplet = tripletOver(notes);
+            var beam = new Beam(notes.getFirst(), notes.getLast());
+
+            var result = song.withModificationResult(
+                () -> paste(line, EMPTY_LINE_PASTE_INDEX, notes, List.of(tuplet, beam)));
+
+            assertThat(result.fragmentSpans()).containsExactly(beam);
+            assertThat(result.tupletsRejectedByTarget()).containsExactly(tuplet);
+        }
+
+        @Test
+        void testATupletTheStraddleRuleAlreadyDroppedIsNotCountedAsRejectedByTheTarget() {
+            // The two drop reasons stay tellable apart: this triplet would pass the
+            // target-context test outright — it is three crotchets at a quarter beat —
+            // and is gone purely because it landed inside a straddled destination tuplet.
+            var song = songWithBeat(Duration.CROTCHET);
+            var line = song.getLine(0);
+
+            song.withoutMutationTracking(() -> {
+                for (var i = 0; i < FIXTURE_NOTE_COUNT; i++) {
+                    line.addElement(crotchet());
+                }
+
+                line.addRangeElement(tupletOver(line));
+            });
+
+            var notes = List.of(crotchet(), crotchet(), crotchet());
+            var fragmentTuplet = new Tuplet(notes.getFirst(), notes.getLast(), TRIPLET_GRADE,
+                TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
+
+            var result = song.withModificationResult(
+                () -> paste(line, INTERIOR_INDEX, notes, List.of(fragmentTuplet)));
+
+            assertThat(result.fragmentSpans()).isEmpty();
+            assertThat(result.tupletsRejectedByTarget())
+                .as("dropped by the straddle rule, not by the destination's beat")
+                .isEmpty();
+        }
+
+        @Test
+        void testNothingIsRejectedDuringReplay() {
+            // Undo and redo re-apply a recorded batch that already reflects every drop
+            // the paste made, so the rule must stay out of the replay entirely.
+            var song = songWithBeat(Duration.CROTCHET_DOTTED);
+            var line = song.getLine(0);
+            var notes = tripletQuavers();
+            var tuplet = tripletOver(notes);
+
+            var result = song.withModificationResult(() -> {
+                var holder = new PasteSpanReconciliation[1];
+                song.withReplay(
+                    () -> holder[0] = paste(line, EMPTY_LINE_PASTE_INDEX, notes, List.of(tuplet)));
+
+                return holder[0];
+            });
+
+            assertThat(result.fragmentSpans()).containsExactly(tuplet);
+            assertThat(result.tupletsRejectedByTarget()).isEmpty();
+        }
+
+        /**
+         * A rejected bracket is never added, so it records no mutation of its own: the
+         * paste's single bracket holds the paste and nothing else, and one undo of that
+         * bracket therefore restores the pre-paste line — pasted notes gone, dropped
+         * bracket still absent — with no second step to reach for. The undo engine itself
+         * is driven from {@code songscribe.undo}, whose test-only reset is package-private
+         * there; what is checkable here is the batch that engine would replay.
+         */
+        @Test
+        void testARejectedTupletAddsNothingToThePastesUndoStep() {
+            var song = songWithBeat(Duration.CROTCHET_DOTTED);
+            var line = song.getLine(0);
+            var notes = tripletQuavers();
+            var tuplet = tripletOver(notes);
+
+            try (var messageCenterMock = mockStatic(MessageCenter.class)) {
+                song.withModification(
+                    () -> paste(line, EMPTY_LINE_PASTE_INDEX, notes, List.of(tuplet)));
+
+                var captor = ArgumentCaptor.forClass(Message.class);
+                messageCenterMock.verify(() -> MessageCenter.post(captor.capture()), atLeastOnce());
+
+                var mutations = captor.getAllValues().stream()
+                    .filter(SongDidChangeNotification.class::isInstance)
+                    .map(SongDidChangeNotification.class::cast)
+                    .flatMap(notification -> notification.getMutations().stream())
+                    .toList();
+
+                assertThat(mutations)
+                    .as("the paste's own insertions are recorded")
+                    .hasAtLeastOneElementOfType(ElementInsertion.class);
+                assertThat(mutations)
+                    .as("the rejected bracket was never added, so there is nothing to undo")
+                    .doesNotHaveAnyElementsOfTypes(TupletAddition.class, TupletRemoval.class);
+            }
         }
     }
 }

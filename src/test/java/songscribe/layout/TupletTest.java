@@ -44,10 +44,16 @@ class TupletTest extends UnitTest {
     // Minimum span width enforced by getSpanWidthSs (documented clamp value).
     private static final double MIN_SPAN_WIDTH_SS = 1.0;
 
+    // Grade value for a triplet.
+    private static final int TRIPLET_GRADE = 3;
+
+    // Grade value for a quintuplet.
+    private static final int QUINTUPLET_GRADE = 5;
+
     private static Tuplet createTuplet() {
         var anchor = ElementType.QUAVER.newInstance();
         var end = ElementType.QUAVER.newInstance();
-        return new Tuplet(anchor, end, 3);
+        return Tuplet.withUnresolvedRatio(anchor, end, TRIPLET_GRADE);
     }
 
     @Test
@@ -79,34 +85,6 @@ class TupletTest extends UnitTest {
     void testBracketLineOffsetSsIsHalfInkHeight() {
         assertThat(Tuplet.bracketLineOffsetSs())
             .isCloseTo(Tuplet.TUPLET_NUMBER_INK_HEIGHT_SS / 2.0, within(EPSILON));
-    }
-
-    // -------------------------------------------------------------------------
-    // Row 20 — getElementCount() returns the grade (triplet=3, quintuplet=5)
-    // -------------------------------------------------------------------------
-
-    // Grade value for a triplet.
-    private static final int TRIPLET_GRADE = 3;
-
-    // Grade value for a quintuplet.
-    private static final int QUINTUPLET_GRADE = 5;
-
-    @Test
-    void testGetElementCountReturnsTripletGrade() {
-        var anchor = ElementType.QUAVER.newInstance();
-        var end = ElementType.QUAVER.newInstance();
-        var tuplet = new Tuplet(anchor, end, TRIPLET_GRADE);
-
-        assertThat(tuplet.getElementCount()).isEqualTo(TRIPLET_GRADE);
-    }
-
-    @Test
-    void testGetElementCountReturnsQuintupletGrade() {
-        var anchor = ElementType.QUAVER.newInstance();
-        var end = ElementType.QUAVER.newInstance();
-        var tuplet = new Tuplet(anchor, end, QUINTUPLET_GRADE);
-
-        assertThat(tuplet.getElementCount()).isEqualTo(QUINTUPLET_GRADE);
     }
 
     // -------------------------------------------------------------------------
@@ -264,7 +242,7 @@ class TupletTest extends UnitTest {
             line.addElement(note2);
             line.addRangeElement(new Beam(note1, note2));
 
-            var tuplet = new Tuplet(note1, note2, TRIPLET_GRADE);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, TRIPLET_GRADE);
             line.addRangeElement(tuplet);
             return tuplet;
         }
@@ -293,7 +271,7 @@ class TupletTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
 
-            var tuplet = new Tuplet(note1, note2, TRIPLET_GRADE);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note2, TRIPLET_GRADE);
             line.addRangeElement(tuplet);
 
             assertThat(tuplet.isNumberOnly(line)).isFalse();
@@ -312,7 +290,7 @@ class TupletTest extends UnitTest {
             // Beam covers the anchor (index 0) but not the tuplet end (index 2).
             line.addRangeElement(new Beam(note1, note2));
 
-            var tuplet = new Tuplet(note1, note3, TRIPLET_GRADE);
+            var tuplet = Tuplet.withUnresolvedRatio(note1, note3, TRIPLET_GRADE);
             line.addRangeElement(tuplet);
 
             assertThat(tuplet.isNumberOnly(line)).isFalse();
@@ -320,9 +298,62 @@ class TupletTest extends UnitTest {
 
         @Test
         void testFalseWhenAnchorMissing() {
-            var tuplet = new Tuplet(null, null, TRIPLET_GRADE);
+            var tuplet = Tuplet.withUnresolvedRatio(null, null, TRIPLET_GRADE);
 
             assertThat(tuplet.isNumberOnly(detachedLine())).isFalse();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // createCopy() must carry every field — undo/redo round-trips through it,
+    // so a missed field is silent data loss.
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class CreateCopy {
+
+        // A non-default ratio with a dotted written value, so no field can be
+        // mistaken for another field's default.
+        private static final int COPIED_NORMAL_NOTES = 4;
+        private static final int COPIED_NOTE_VALUE_DOTS = 1;
+        private static final int COPIED_VERTICAL_POSITION_SS = 3;
+
+        @Test
+        void testCopyCarriesEveryField() {
+            var original = new Tuplet(
+                ElementType.QUAVER.newInstance(),
+                ElementType.QUAVER.newInstance(),
+                QUINTUPLET_GRADE,
+                COPIED_NORMAL_NOTES,
+                ElementType.CROTCHET,
+                COPIED_NOTE_VALUE_DOTS);
+            original.setVerticalPositionSs(COPIED_VERTICAL_POSITION_SS);
+
+            var copy = (Tuplet) original.copy(
+                ElementType.QUAVER.newInstance(), ElementType.QUAVER.newInstance());
+
+            assertThat(copy.getGrade()).isEqualTo(QUINTUPLET_GRADE);
+            assertThat(copy.getNormalNotes()).isEqualTo(COPIED_NORMAL_NOTES);
+            assertThat(copy.getNoteValue()).isEqualTo(ElementType.CROTCHET);
+            assertThat(copy.getNoteValueDots()).isEqualTo(COPIED_NOTE_VALUE_DOTS);
+            assertThat(copy.getVerticalPositionSs()).isEqualTo(COPIED_VERTICAL_POSITION_SS);
+        }
+
+        @Test
+        void testCopyOfUnresolvedTupletIsUnresolved() {
+            var original = Tuplet.withUnresolvedRatio(
+                ElementType.QUAVER.newInstance(),
+                ElementType.QUAVER.newInstance(),
+                TRIPLET_GRADE);
+
+            var copy = (Tuplet) original.copy(
+                ElementType.QUAVER.newInstance(), ElementType.QUAVER.newInstance());
+
+            assertThat(copy.isResolved()).isFalse();
+            assertThat(copy.getNormalNotes()).isEqualTo(Tuplet.UNRESOLVED_NORMAL_NOTES);
+            assertThat(copy.getNoteValue()).isNull();
+            assertThat(copy.getGrade()).isEqualTo(TRIPLET_GRADE);
         }
     }
 }

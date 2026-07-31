@@ -333,7 +333,16 @@ public final class OptionDialogs {
         return args.length == 0 ? Strings.get(key) : Strings.get(key, args);
     }
 
-    private static boolean isSuppressed() {
+    /**
+     * Whether a window that blocks for the user would go unanswered — either the
+     * environment has no display, or a test asked for suppression.
+     * <p>
+     * Public so that windows outside this class (which are not built from
+     * {@code JOptionPane} and so cannot route through the methods above) honor the
+     * same flag rather than declaring a second one that tests would have to know
+     * about separately.
+     */
+    public static boolean isSuppressed() {
         return GraphicsEnvironment.isHeadless() || suppressDialogs;
     }
 }

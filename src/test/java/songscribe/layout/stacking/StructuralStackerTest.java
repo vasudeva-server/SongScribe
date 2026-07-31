@@ -365,7 +365,7 @@ class StructuralStackerTest extends UnitTest {
             line.addElement(noteB);
             line.addElement(trailingRest);
 
-            var tuplet = new Tuplet(leadingRest, trailingRest, 3);
+            var tuplet = Tuplet.withUnresolvedRatio(leadingRest, trailingRest, 3);
             line.addRangeElement(tuplet);
 
             var restColumn = mock(ElementColumn.class);

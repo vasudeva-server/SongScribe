@@ -21,11 +21,14 @@ package songscribe.io;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 
 import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.parsers.SAXParserFactory;
 
 import org.xml.sax.SAXException;
+
+import songscribe.dom.TupletLoadPass;
 
 /**
  * Loads a {@link songscribe.dom.Song} from a file without requiring a {@code ScoreView}.
@@ -53,14 +56,26 @@ public final class SongLoader {
             var reader = new SongIO.DocumentReader();
             parser.parse(file, reader);
             var invalidLyricsDate = reader.getInvalidLyricsDate();
-            LoadWarning warning = null;
+            var warnings = new ArrayList<LoadWarning>();
 
             if (invalidLyricsDate != null) {
-                warning = new LoadWarning(LoadWarning.Type.INVALID_LYRICS_DATE, invalidLyricsDate);
+                warnings.add(new LoadWarning(LoadWarning.Type.INVALID_LYRICS_DATE, invalidLyricsDate));
             }
 
+            var song = reader.getSong();
+
+            // Both readers own the pass rather than the UI: the headless MIDI-export route
+            // comes through here, and leaving it to ScoreView would have it play tuplets the
+            // UI had dropped — two different MIDI files from one document, with no error on
+            // either.
+            var tupletReport = TupletLoadPass.run(song);
+
             return new SongLoadResult.Success(
-                reader.getSong(), reader.getDocumentFonts(), warning, reader.accidentalsConverted());
+                song,
+                reader.getDocumentFonts(),
+                warnings,
+                reader.accidentalsConverted(),
+                tupletReport);
         } catch (SongIO.NewerVersionException e) {
             return new SongLoadResult.NewerVersion(file, e);
         } catch (SAXException e) {

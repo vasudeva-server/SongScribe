@@ -250,7 +250,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         var line = detachedLine();
         line.addElement(anchor);
         line.addElement(end);
-        var tuplet = new Tuplet(anchor, end, 3);
+        var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
         line.addRangeElement(tuplet);
         tuplet.setVerticalPositionSs(dragOffsetSs);
 

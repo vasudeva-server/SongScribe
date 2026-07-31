@@ -30,15 +30,37 @@ import songscribe.dom.Beam;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.RangeElement;
+import songscribe.dom.Song;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.dom.TupletValidator;
 import songscribe.layout.Ending;
 import songscribe.layout.InsertionSpacingCalculator;
 
 /**
- * Decides which spans survive a paste that lands <em>inside</em> an existing span
- * on the destination line (#614).
+ * Decides which spans survive a paste: the ones the paste lands <em>inside</em> of on
+ * the destination line (#614), and the pasted tuplets the destination's beat context
+ * rejects (#604).
+ *
+ * <p>The two rules are independent and run in that order, at two different moments of
+ * the paste — see {@link #reconcile} and {@link #dropTupletsRejectedByTarget}.
+ *
+ * <table border="1">
+ *   <caption>The two drop rules</caption>
+ *   <tr><th>Rule</th><th>Runs</th><th>Drops</th></tr>
+ *   <tr>
+ *     <td>straddle (#614)</td>
+ *     <td>before the paste mutates anything</td>
+ *     <td>straddled destination spans, and the fragment spans of a kind that a
+ *         straddle invalidates</td>
+ *   </tr>
+ *   <tr>
+ *     <td>target beat context (#604)</td>
+ *     <td>after the fragment's elements are in, before its spans are added</td>
+ *     <td>pasted tuplets {@link TupletValidator} rejects where they landed</td>
+ *   </tr>
+ * </table>
  *
  * <p>{@link Fragment#capture} already guarantees the source side is internally
  * consistent — a span is captured only when both its endpoints are inside the copied
@@ -110,16 +132,23 @@ import songscribe.layout.InsertionSpacingCalculator;
  * necessarily carries that ending's own barlines, so in practice that rule usually
  * removes the destination ending too, and the paste is confirmed on those terms.
  *
- * @param targetSpansToRemove Spans on the destination line to remove before inserting
- * @param fragmentSpans       The fragment's spans that should still be added
+ * @param targetSpansToRemove     Spans on the destination line to remove before inserting
+ * @param fragmentSpans           The fragment's spans that should still be added
+ * @param tupletsRejectedByTarget The pasted tuplets the destination's beat context
+ *                                rejected, named separately so the two drop rules stay
+ *                                tellable apart; empty until
+ *                                {@link #dropTupletsRejectedByTarget} has run
  */
 public record PasteSpanReconciliation(
     List<RangeElement> targetSpansToRemove,
-    List<RangeElement> fragmentSpans
+    List<RangeElement> fragmentSpans,
+    List<Tuplet> tupletsRejectedByTarget
 ) {
 
     /**
-     * Reconciles {@code fragmentSpans} against the spans already on {@code line}.
+     * Reconciles {@code fragmentSpans} against the spans already on {@code line} — the
+     * straddle rule. The returned reconciliation carries no rejected tuplets yet; that
+     * is {@link #dropTupletsRejectedByTarget}'s job, later in the same paste.
      *
      * <p>Must be called on the <em>pre-mutation</em> line: every index below is a
      * live index into the line as it stands before the paste's delete and insert.
@@ -198,7 +227,89 @@ public record PasteSpanReconciliation(
             }
         }
 
-        return new PasteSpanReconciliation(toRemove, keptFragmentSpans);
+        return new PasteSpanReconciliation(toRemove, keptFragmentSpans, List.of());
+    }
+
+    /**
+     * Drops the pasted tuplets the destination rejects (#604) — the second drop rule,
+     * independent of the straddle rule above and applied after it.
+     *
+     * <p>A tuplet travels through the clipboard with the notes it brackets, but what a
+     * tuplet <em>means</em> is fixed by the beat in effect where it lands: three eighths
+     * under a 3 are a triplet at a quarter beat and say nothing at all at a
+     * dotted-quarter beat, where three eighths already fill the beat. The paste is the
+     * only moment that mismatch is knowable, and nothing else fires for it — left alone,
+     * the tuplet would render and play until the next save-and-reopen dropped it, with
+     * no explanation the user could connect to the paste. Only the bracket goes; the
+     * pasted notes are untouched.
+     *
+     * <p><b>Call this after the fragment's elements have been inserted into
+     * {@code line} and before its spans are added.</b> Every index the validator reads
+     * resolves through the anchor element's own line, so the elements must already sit
+     * where they will finally sit. Dropping a bracket that was never added is also what
+     * keeps this rule free of any mutation of its own: there is nothing for the paste's
+     * bracket to record, so the paste's single undo step covers the drop by construction,
+     * and the companion-ordering rule in {@code .agents/guides/mutations.md} is satisfied
+     * without ordering anything.
+     *
+     * <p>The straddle rule's accounting is left alone: the fragment tuplets it dropped
+     * are already absent from {@link #fragmentSpans()}, and the ones dropped here are
+     * named in {@link #tupletsRejectedByTarget()}.
+     *
+     * @param line The destination line, with the fragment's elements already inserted
+     * @return This reconciliation when nothing is rejected, otherwise one without the
+     *         rejected tuplets among its fragment spans
+     */
+    public PasteSpanReconciliation dropTupletsRejectedByTarget(Line line) {
+        var song = line.getSong();
+        var lineIndex = song.indexOfLine(line);
+
+        // A line outside its song offers no beat context to validate against. Replay
+        // re-applies a recorded batch that already reflects every drop this rule made
+        // when the paste first ran, so re-deriving them there could only double-apply.
+        if (lineIndex < 0 || song.isReplaying()) {
+            return this;
+        }
+
+        var keptSpans = new ArrayList<RangeElement>(fragmentSpans.size());
+        var rejectedTuplets = new ArrayList<Tuplet>();
+
+        for (var span : fragmentSpans) {
+            if (span instanceof Tuplet tuplet && isRejectedByTarget(song, line, lineIndex, tuplet)) {
+                rejectedTuplets.add(tuplet);
+            } else {
+                keptSpans.add(span);
+            }
+        }
+
+        if (rejectedTuplets.isEmpty()) {
+            return this;
+        }
+
+        return new PasteSpanReconciliation(targetSpansToRemove, keptSpans, rejectedTuplets);
+    }
+
+    /**
+     * Whether the beat context at the destination refuses the tuplet now spanning
+     * {@code line}. Pasting chooses what gets written, so it validates strictly, exactly
+     * as creating the tuplet by hand there would.
+     */
+    private static boolean isRejectedByTarget(Song song, Line line, int lineIndex, Tuplet tuplet) {
+        var beginIndex = tuplet.getAnchorElementIndex();
+        var endIndex = tuplet.getEndElementIndex();
+
+        // Endpoints that do not resolve mean a malformed span, which is out of scope
+        // here: there is nothing for the validator to measure and nothing this rule
+        // could say about it that would be better than saying nothing.
+        if (beginIndex < 0 || endIndex < beginIndex) {
+            return false;
+        }
+
+        var result = TupletValidator.validateDerived(
+            song, line, lineIndex, beginIndex, endIndex,
+            tuplet.getGrade(), TupletValidator.Strictness.STRICT);
+
+        return !result.valid();
     }
 
     /**

@@ -20,24 +20,47 @@
 package songscribe.io;
 
 import songscribe.dom.Song;
+import songscribe.dom.TupletLoadPass;
 import songscribe.font.DocumentFonts;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.xml.sax.SAXException;
 
 public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadResult.Failure {
 
-    record Success(Song song, DocumentFonts fonts, @Nullable LoadWarning warning, boolean accidentalsConverted)
+    /**
+     * A successfully loaded song, plus everything the loader wants to tell the
+     * caller about how it got there.
+     *
+     * @param song                 the loaded song
+     * @param fonts                the document's fonts
+     * @param warnings             every non-fatal problem detected during the load,
+     *                             in the order it was detected; empty when the file
+     *                             was clean
+     * @param accidentalsConverted whether retired accidentals were converted
+     * @param tupletReport         every tuplet the post-parse pass removed or
+     *                             completed, in document order; empty when the
+     *                             file's tuplets were taken as they stood
+     */
+    record Success(Song song, DocumentFonts fonts, List<LoadWarning> warnings,
+                   boolean accidentalsConverted, TupletLoadPass.Report tupletReport)
             implements SongLoadResult {
 
+        // Defensive copy — the record's contract is immutability, and both readers
+        // build the warning list incrementally before handing it over.
+        public Success {
+            warnings = List.copyOf(warnings);
+        }
+
         /**
-         * Convenience factory for the common case: no warning, no retired
-         * accidental conversion.
+         * Convenience factory for the common case: no warnings, no retired
+         * accidental conversion, no tuplet migration.
          */
         public static Success of(Song song, DocumentFonts fonts) {
-            return new Success(song, fonts, null, false);
+            return new Success(song, fonts, List.of(), false, TupletLoadPass.Report.empty());
         }
     }
 

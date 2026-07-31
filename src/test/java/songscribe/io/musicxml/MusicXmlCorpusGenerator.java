@@ -110,6 +110,14 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
 
     // -- Span offsets (staff spaces; integer-valued for exact ss↔tenths) --
     private static final int    TUPLET_VERTICAL_SS = 2;
+
+    /** A triplet occupies the time of two notes of its written value. */
+    private static final int TRIPLET_NORMAL_NOTES = 2;
+
+    /** A quintuplet occupies the time of four notes of its written value. */
+    private static final int QUINTUPLET_NORMAL_NOTES = 4;
+
+    private static final int NO_DOTS = 0;
     private static final int    TRILL_Y_SS         = 3;
     private static final double HAIRPIN_X1_SS      = 2.0;
     private static final double HAIRPIN_X2_SS      = -1.0;
@@ -407,12 +415,14 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
             // A triplet with a vertical offset and a quintuplet.
             line -> {
                 var triplet = addNotes(line, ElementType.QUAVER, TRIPLET);
-                var tupletSpan = new Tuplet(triplet.get(0), triplet.get(TRIPLET - 1), TRIPLET);
+                var tupletSpan = new Tuplet(triplet.get(0), triplet.get(TRIPLET - 1), TRIPLET,
+                    TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
                 tupletSpan.setVerticalPositionSs(TUPLET_VERTICAL_SS);
                 line.addTuplet(tupletSpan);
 
                 var quintuplet = addNotes(line, ElementType.SEMIQUAVER, QUINTUPLET);
-                line.addTuplet(new Tuplet(quintuplet.get(0), quintuplet.get(QUINTUPLET - 1), QUINTUPLET));
+                line.addTuplet(new Tuplet(quintuplet.get(0), quintuplet.get(QUINTUPLET - 1), QUINTUPLET,
+                    QUINTUPLET_NORMAL_NOTES, ElementType.SEMIQUAVER, NO_DOTS));
             },
             // Crescendo and diminuendo with user offsets.
             line -> {

@@ -21,6 +21,7 @@
 package songscribe.midi;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -67,6 +68,20 @@ class LineTrackBuilderTest extends UnitTest {
     // Note-off tick for a CONNECTED glissando is duration − 1
     private static final int CONNECTED_NOTE_OFF_OFFSET = 1;
 
+    // Tuplet ratios: N in the time of M notes of the written value V.
+    private static final int DUPLET_GRADE = 2;
+    private static final int DUPLET_NORMAL_NOTES = 3;
+    private static final int TRIPLET_GRADE = 3;
+    private static final int TRIPLET_NORMAL_NOTES = 2;
+    private static final int QUINTUPLET_GRADE = 5;
+    private static final int QUINTUPLET_NORMAL_NOTES = 4;
+    private static final int SEPTUPLET_GRADE = 7;
+    private static final int SEPTUPLET_NORMAL_NOTES = 4;
+    private static final int NO_DOTS = 0;
+
+    // Staff position of a pitched note used in tuplet fixtures (any pitch will do)
+    private static final int TEST_STAFF_POSITION = -2;
+
     // ── helpers ──────────────────────────────────────────────────────────────
 
     private static Track newTrack() throws InvalidMidiDataException {
@@ -111,6 +126,66 @@ class LineTrackBuilderTest extends UnitTest {
         return list;
     }
 
+    /**
+     * Builds a line whose leading elements form one tuplet of the given ratio,
+     * optionally followed by a plain crotchet whose NOTE_ON tick reveals exactly
+     * where the tuplet closed.
+     */
+    private static songscribe.dom.Line tupletLine(
+        int grade,
+        int normalNotes,
+        ElementType noteValue,
+        boolean appendTrailingCrotchet,
+        ElementType... memberTypes
+    ) {
+        var line = detachedLine();
+
+        for (var type : memberTypes) {
+            var element = type.newInstance();
+
+            if (!type.isRest()) {
+                element.setStaffPosition(TEST_STAFF_POSITION);
+            }
+
+            line.addElement(element);
+        }
+
+        line.addRangeElement(new Tuplet(
+            line.getElement(0),
+            line.getElement(memberTypes.length - 1),
+            grade,
+            normalNotes,
+            noteValue,
+            NO_DOTS
+        ));
+
+        if (appendTrailingCrotchet) {
+            var trailing = ElementType.CROTCHET.newInstance();
+            trailing.setStaffPosition(TEST_STAFF_POSITION);
+            line.addElement(trailing);
+        }
+
+        return line;
+    }
+
+    private static ElementType[] repeated(ElementType type, int count) {
+        var types = new ElementType[count];
+        Arrays.fill(types, type);
+        return types;
+    }
+
+    /** Sums the tuplet-adjusted durations of {@code count} elements starting at 0. */
+    private static int sumDurations(songscribe.dom.Line line, int count) {
+        var builder = new LineTrackBuilder(line);
+        var total = 0;
+
+        for (var i = 0; i < count; i++) {
+            total += builder.getElementDurationWithTuplet(i);
+        }
+
+        return total;
+    }
+
     private static int bendValue(MidiEvent event) {
         var sm = (ShortMessage) event.getMessage();
         return sm.getData1() | (sm.getData2() << 7);
@@ -124,6 +199,25 @@ class LineTrackBuilderTest extends UnitTest {
     @Nested
     class GetElementDurationWithTuplet {
 
+        // A triplet quaver: a quaver (PPQ / 2) re-timed by 2/3
+        private static final int TRIPLET_QUAVER_TICKS =
+            (PPQ / 2) * TRIPLET_NORMAL_NOTES / TRIPLET_GRADE;
+
+        // A triplet crotchet: a crotchet re-timed by 2/3
+        private static final int TRIPLET_CROTCHET_TICKS =
+            PPQ * TRIPLET_NORMAL_NOTES / TRIPLET_GRADE;
+
+        // A compound duplet crotchet: a crotchet re-timed by 3/2
+        private static final int DUPLET_CROTCHET_TICKS =
+            PPQ * DUPLET_NORMAL_NOTES / DUPLET_GRADE;
+
+        // 7 semiquavers in the time of 4 → exactly one crotchet
+        private static final int SEPTUPLET_MEMBER_COUNT = SEPTUPLET_GRADE;
+        private static final int SEPTUPLET_TOTAL_TICKS = PPQ;
+
+        private static final int TRIPLET_MEMBER_COUNT = TRIPLET_GRADE;
+        private static final int DUPLET_MEMBER_COUNT = DUPLET_GRADE;
+
         @Test
         void testNonTupletElementReturnsRawDuration() {
             // A crotchet (PPQ ticks) with no tuplet → raw duration returned unchanged.
@@ -131,127 +225,171 @@ class LineTrackBuilderTest extends UnitTest {
             line.addElement(crotchet());
             var builder = new LineTrackBuilder(line);
 
-            var result = builder.getElementDurationWithTuplet(0, CROTCHET_TEMPO);
+            var result = builder.getElementDurationWithTuplet(0);
 
             assertThat(result).isEqualTo(PPQ);
         }
 
         @Test
         void testTripletElementDurationIsScaledDown() {
-            // 3 quavers as a triplet over a crotchet reference (3-in-2 feel):
-            //   tupletDuration = (3 × PPQ/2) / PPQ = 1.5 → ≥1 branch
-            //   factor = floor(1.5) / 1.5 = 1/1.5 ≈ 0.6667
-            //   rounded duration of one quaver (PPQ/2) × 0.6667 ≈ PPQ/3
-            var line = detachedLine();
-            var q1 = ElementType.QUAVER.newInstance();
-            var q2 = ElementType.QUAVER.newInstance();
-            var q3 = ElementType.QUAVER.newInstance();
-            line.addElement(q1);
-            line.addElement(q2);
-            line.addElement(q3);
-            line.addRangeElement(new Tuplet(q1, q3, 3));
+            // 3 quavers written as 3:2 → each sounds for 2/3 of a quaver.
+            var line = tupletLine(
+                TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, false,
+                repeated(ElementType.QUAVER, TRIPLET_MEMBER_COUNT)
+            );
+
+            var result = new LineTrackBuilder(line).getElementDurationWithTuplet(0);
+
+            assertThat(result).isEqualTo(TRIPLET_QUAVER_TICKS);
+        }
+
+        @Test
+        void testTripletOfCrotchetsClosesExactly() {
+            // 3 crotchets as 3:2 occupy exactly two crotchets.
+            var line = tupletLine(
+                TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, true,
+                repeated(ElementType.CROTCHET, TRIPLET_MEMBER_COUNT)
+            );
+
+            var total = sumDurations(line, TRIPLET_MEMBER_COUNT);
+
+            assertThat(total)
+                .as("3:2 of crotchets occupies two crotchets exactly")
+                .isEqualTo(TRIPLET_CROTCHET_TICKS * TRIPLET_MEMBER_COUNT);
+            assertThat(total).isEqualTo(PPQ * TRIPLET_NORMAL_NOTES);
+        }
+
+        @Test
+        void testCompoundDupletClosesExactly() {
+            // 2 crotchets as 2:3 occupy exactly three crotchets — a compound-beat duplet.
+            var line = tupletLine(
+                DUPLET_GRADE, DUPLET_NORMAL_NOTES, ElementType.CROTCHET, true,
+                repeated(ElementType.CROTCHET, DUPLET_MEMBER_COUNT)
+            );
 
             var builder = new LineTrackBuilder(line);
-            var result = builder.getElementDurationWithTuplet(0, CROTCHET_TEMPO);
 
-            // Expected: Math.round((PPQ/2) × (2/3)) = Math.round(PPQ/3)
-            var expected = Math.round((PPQ / 2f) * (2f / 3f));
-            assertThat(result).isEqualTo(expected);
+            assertThat(builder.getElementDurationWithTuplet(0))
+                .as("each duplet crotchet stretches by 3/2")
+                .isEqualTo(DUPLET_CROTCHET_TICKS);
+            assertThat(sumDurations(line, DUPLET_MEMBER_COUNT))
+                .as("2:3 of crotchets occupies three crotchets exactly")
+                .isEqualTo(PPQ * DUPLET_NORMAL_NOTES);
+        }
+
+        @Test
+        void testSeptupletOfSemiquaversClosesOnExactlyOneCrotchet() {
+            // 7 semiquavers as 7:4. Rounding each element on its own gives
+            // 7 × round(96/7) = 98 ticks; rounding absolute positions gives 96.
+            var line = tupletLine(
+                SEPTUPLET_GRADE, SEPTUPLET_NORMAL_NOTES, ElementType.SEMIQUAVER, true,
+                repeated(ElementType.SEMIQUAVER, SEPTUPLET_MEMBER_COUNT)
+            );
+
+            assertThat(sumDurations(line, SEPTUPLET_MEMBER_COUNT))
+                .as("7:4 of semiquavers occupies exactly one crotchet")
+                .isEqualTo(SEPTUPLET_TOTAL_TICKS);
+        }
+
+        @Test
+        void testElementAfterSeptupletStartsWhereTupletCloses() throws Exception {
+            var line = tupletLine(
+                SEPTUPLET_GRADE, SEPTUPLET_NORMAL_NOTES, ElementType.SEMIQUAVER, true,
+                repeated(ElementType.SEMIQUAVER, SEPTUPLET_MEMBER_COUNT)
+            );
+
+            var track = buildTrack(line, CROTCHET_TEMPO);
+            var noteOns = eventsByCommand(track, ShortMessage.NOTE_ON);
+
+            assertThat(noteOns)
+                .as("seven tuplet members plus the trailing crotchet")
+                .hasSize(SEPTUPLET_MEMBER_COUNT + 1);
+            assertThat(noteOns.getLast().getTick())
+                .as("the note after the septuplet starts exactly one crotchet in")
+                .isEqualTo(SEPTUPLET_TOTAL_TICKS);
+        }
+
+        @Test
+        void testRestInTupletConsumesItsScaledShare() throws Exception {
+            // Triplet quaver / quaver rest / triplet quaver: the rest must eat its
+            // third, so the last member sounds two triplet quavers in.
+            var line = tupletLine(
+                TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, true,
+                ElementType.QUAVER, ElementType.QUAVER_REST, ElementType.QUAVER
+            );
+
+            var builder = new LineTrackBuilder(line);
+
+            assertThat(builder.getElementDurationWithTuplet(1))
+                .as("the rest is scaled like a note")
+                .isEqualTo(TRIPLET_QUAVER_TICKS);
+
+            var track = buildTrack(line, CROTCHET_TEMPO);
+            var noteOns = eventsByCommand(track, ShortMessage.NOTE_ON);
+            var soundingMembers = TRIPLET_MEMBER_COUNT - 1;
+
+            assertThat(noteOns)
+                .as("the sounding tuplet members plus the trailing crotchet")
+                .hasSize(soundingMembers + 1)
+                .extracting(MidiEvent::getTick)
+                .containsExactly(
+                    0L,
+                    (long) (2 * TRIPLET_QUAVER_TICKS),
+                    (long) (TRIPLET_MEMBER_COUNT * TRIPLET_QUAVER_TICKS)
+                );
         }
     }
 
     // -------------------------------------------------------------------------
-    // Row 24 — getTupletFactor  (all five branches)
+    // Row 24 — getTupletFactor
     // -------------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class GetTupletFactor {
 
+        private static final float FACTOR_TOLERANCE = 0.0001f;
+
         @ParameterizedTest(name = "{0}")
         @MethodSource("tupletFactorCases")
         void testTupletFactor(String description, float expected, float actual) {
-            assertThat(actual).isCloseTo(expected, offset(0.0001f));
+            assertThat(actual).isCloseTo(expected, offset(FACTOR_TOLERANCE));
         }
 
         static Stream<Arguments> tupletFactorCases() {
-            // Case 1: no tuplet → factor must be 1.0
-            var line1 = detachedLine();
-            line1.addElement(crotchet());
-            var builder1 = new LineTrackBuilder(line1);
-            var noTupletFactor = builder1.getTupletFactor(0, CROTCHET_TEMPO);
+            // No tuplet → the element plays at its written value.
+            var plainLine = detachedLine();
+            plainLine.addElement(crotchet());
+            var noTupletFactor = new LineTrackBuilder(plainLine).getTupletFactor(0);
 
-            // Case 2: tupletDuration < 1 — three semiquavers over a crotchet reference
-            //   tupletDuration = (3 × PPQ/4) / PPQ = 3/4 = 0.75 → <1 branch
-            //   log2(0.75) → floor = -1 → newDuration = 2^(-1) = 0.5
-            //   factor = 0.5 / 0.75 = 2/3
-            var line2 = detachedLine();
-            var sq1 = ElementType.SEMIQUAVER.newInstance();
-            var sq2 = ElementType.SEMIQUAVER.newInstance();
-            var sq3 = ElementType.SEMIQUAVER.newInstance();
-            line2.addElement(sq1);
-            line2.addElement(sq2);
-            line2.addElement(sq3);
-            line2.addRangeElement(new Tuplet(sq1, sq3, 3));
-            var builder2 = new LineTrackBuilder(line2);
-            var smallTripletFactor = builder2.getTupletFactor(0, CROTCHET_TEMPO);
+            var tripletLine = tupletLine(
+                TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, false,
+                repeated(ElementType.QUAVER, TRIPLET_GRADE)
+            );
+            var tripletFactor = new LineTrackBuilder(tripletLine).getTupletFactor(0);
 
-            // Case 3: tupletDuration = 1.0 (floor(1)=1, not >1 so no decrement) → factor = 1.0
-            //   Two crotchets over a minim reference: (2 × PPQ) / (PPQ×2) = 1.0
-            var mimTempo = new Tempo(120, Duration.MINIM, "", false);
-            var line3 = detachedLine();
-            var c3a = crotchet();
-            var c3b = crotchet();
-            line3.addElement(c3a);
-            line3.addElement(c3b);
-            line3.addRangeElement(new Tuplet(c3a, c3b, 2));
-            var builder3 = new LineTrackBuilder(line3);
-            var unitDurationFactor = builder3.getTupletFactor(0, mimTempo);
+            var dupletLine = tupletLine(
+                DUPLET_GRADE, DUPLET_NORMAL_NOTES, ElementType.CROTCHET, false,
+                repeated(ElementType.CROTCHET, DUPLET_GRADE)
+            );
+            var dupletFactor = new LineTrackBuilder(dupletLine).getTupletFactor(0);
 
-            // Case 4: tupletDuration > 1 — quintuplet: 5 quavers over crotchet reference
-            //   tupletDuration = (5 × PPQ/2) / PPQ = 2.5 → ≥1 branch
-            //   floor(2.5)=2, 2 ≠ 2.5 so no decrement → factor = 2/2.5 = 0.8
-            var line4 = detachedLine();
-            var qv1 = ElementType.QUAVER.newInstance();
-            var qv2 = ElementType.QUAVER.newInstance();
-            var qv3 = ElementType.QUAVER.newInstance();
-            var qv4 = ElementType.QUAVER.newInstance();
-            var qv5 = ElementType.QUAVER.newInstance();
-            line4.addElement(qv1);
-            line4.addElement(qv2);
-            line4.addElement(qv3);
-            line4.addElement(qv4);
-            line4.addElement(qv5);
-            line4.addRangeElement(new Tuplet(qv1, qv5, 5));
-            var builder4 = new LineTrackBuilder(line4);
-            var quintupletFactor = builder4.getTupletFactor(0, CROTCHET_TEMPO);
+            var quintupletLine = tupletLine(
+                QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES, ElementType.QUAVER, false,
+                repeated(ElementType.QUAVER, QUINTUPLET_GRADE)
+            );
+            var quintupletFactor = new LineTrackBuilder(quintupletLine).getTupletFactor(0);
 
-            // Case 5: newDuration == tupletDuration && newDuration > 1 → newDuration--
-            //   4 quavers over crotchet: tupletDuration = (4 × PPQ/2)/PPQ = 2.0 (exact integer > 1)
-            //   floor(2.0)=2.0; 2.0==2.0 && 2.0>1 → newDuration=1.0 → factor = 1.0/2.0 = 0.5
-            var line5 = detachedLine();
-            var ev1 = ElementType.QUAVER.newInstance();
-            var ev2 = ElementType.QUAVER.newInstance();
-            var ev3 = ElementType.QUAVER.newInstance();
-            var ev4 = ElementType.QUAVER.newInstance();
-            line5.addElement(ev1);
-            line5.addElement(ev2);
-            line5.addElement(ev3);
-            line5.addElement(ev4);
-            line5.addRangeElement(new Tuplet(ev1, ev4, 4));
-            var builder5 = new LineTrackBuilder(line5);
-            var decrementBranchFactor = builder5.getTupletFactor(0, CROTCHET_TEMPO);
-
+            // The quintuplet's members are quavers, but the factor must ignore the
+            // surrounding beat and come only from the stored 5:4 ratio.
             return Stream.of(
-                Arguments.of("noTuplet returns 1.0", 1.0f, noTupletFactor),
-                Arguments.of("tupletDuration<1 (3 semiquavers / crotchet ref) returns 2/3",
-                    2f / 3f, smallTripletFactor),
-                Arguments.of("tupletDuration=1.0 (2 crotchets / minim ref) returns 1.0",
-                    1.0f, unitDurationFactor),
-                Arguments.of("tupletDuration>1 (quintuplet) returns 0.8",
-                    0.8f, quintupletFactor),
-                Arguments.of("newDuration==tupletDuration>1 triggers newDuration-- returning 0.5",
-                    0.5f, decrementBranchFactor)
+                Arguments.of("no tuplet returns 1.0", 1.0f, noTupletFactor),
+                Arguments.of("3:2 returns 2/3",
+                    (float) TRIPLET_NORMAL_NOTES / TRIPLET_GRADE, tripletFactor),
+                Arguments.of("2:3 returns 3/2",
+                    (float) DUPLET_NORMAL_NOTES / DUPLET_GRADE, dupletFactor),
+                Arguments.of("5:4 returns 4/5",
+                    (float) QUINTUPLET_NORMAL_NOTES / QUINTUPLET_GRADE, quintupletFactor)
             );
         }
     }

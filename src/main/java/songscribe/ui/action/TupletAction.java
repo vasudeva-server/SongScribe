@@ -157,29 +157,19 @@ public final class TupletAction extends UIAction {
         }
 
         var info = ctrl.canToggleTuplet();
-
-        if (!info.canToggle()) {
-            setEnabled(false);
-            return;
-        }
-
         var existing = info.existing();
 
         if (tuplet == Tuplet.REMOVE) {
             setEnabled(existing != null);
-        } else if (existing == null) {
-            setEnabled(true);
-        } else if (!info.coversExisting()) {
-            // Strict sub-range of an existing tuplet: creating or changing
-            // grade would silently destroy the existing tuplet and replace
-            // it with a sub-range tuplet, so only REMOVE is meaningful.
-            setEnabled(false);
-        } else {
-            // Full coverage: disable the action matching the existing grade
-            // (clicking it would be a no-op); other add-actions perform a
-            // grade change via remove + add.
-            setEnabled(existing.getGrade() != tuplet.getSize());
+            return;
         }
+
+        // Availability and selection are separate properties of the same shared action, so
+        // the menu and the toolbar popup both pick them up with no rebuild. The existing
+        // grade stays checked even when the span could not be turned into that grade again
+        // — otherwise a selection that visibly is a tuplet would show nothing checked.
+        putValue(SELECTED_KEY, (existing != null) && (existing.getGrade() == tuplet.getSize()));
+        setEnabled(info.validGrades().contains(tuplet.getSize()));
     }
 
     /**

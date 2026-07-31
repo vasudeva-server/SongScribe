@@ -90,6 +90,11 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     /** Grade of the triplet tuplet in the all-span schema case. */
     private static final int ALL_SPAN_TUPLET_GRADE = 3;
 
+    /** A triplet occupies the time of two notes of its written value, here undotted crotchets. */
+    private static final int ALL_SPAN_TUPLET_NORMAL_NOTES = 2;
+
+    private static final int NO_DOTS = 0;
+
     // -- Phase 7: credit-matrix song fields, shared by the credit shape tests
     //    and the schema-valid gate --
     private static final String CREDIT_TEST_NUMBER      = "5";
@@ -698,7 +703,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
             line.addCrescendo(new Crescendo(quaver0, quaver1));
             line.addTie(new Tie(crotchet0, crotchet1));
             line.addRangeElement(new Trill(crotchet0, crotchet1));
-            line.addTuplet(new Tuplet(triplet0, triplet2, ALL_SPAN_TUPLET_GRADE));
+            line.addTuplet(new Tuplet(triplet0, triplet2, ALL_SPAN_TUPLET_GRADE, ALL_SPAN_TUPLET_NORMAL_NOTES,
+                ElementType.CROTCHET, NO_DOTS));
             line.addDiminuendo(new Diminuendo(triplet0, triplet2));
             line.addRangeElement(new Ending(endingAnchor, endingEnd));
         });

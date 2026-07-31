@@ -27,6 +27,7 @@ import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Duration;
 import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
@@ -90,21 +91,35 @@ public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
         );
         var existing = element.findAttachment(TempoChangeAttachment.class);
 
-        if (existing != null) {
-            existing.setTempo(tempo);
-        } else {
-            element.addAttachment(new TempoChangeAttachment(element, tempo));
-        }
+        // A tempo change carries the beat, so both branches redefine it from here on. The
+        // change branch routes itself from inside TempoChangeAttachment; wrapping both gives
+        // the add branch — a raw addAttachment — its routing, and collapses the pair into
+        // one edit. Any tuplets the new beat forces out are reported by the chokepoint's
+        // own notification.
+        Song.withBeatDefiningEditOn(element, () -> {
+            if (existing != null) {
+                existing.setTempo(tempo);
+            } else {
+                element.addAttachment(new TempoChangeAttachment(element, tempo));
+            }
+        });
     }
 
+    /**
+     * Removing a tempo change redefines the beat from that point on just as adding one does,
+     * so it goes through the same chokepoint — which is also what warns the user when the
+     * removal costs a tuplet, on the Remove button's path as on the commit path.
+     */
     @Override
     protected void clearChange(StaffElement element) {
         var attachment = element.findAttachment(TempoChangeAttachment.class);
 
-        if (attachment != null) {
-            element.removeAttachment(attachment);
-        }
+        Song.withBeatDefiningEditOn(element, () -> {
+            if (attachment != null) {
+                element.removeAttachment(attachment);
+            }
 
-        element.getLine().getSong().clearTempoIfOrphaned(element);
+            element.getLine().getSong().clearTempoIfOrphaned(element);
+        });
     }
 }

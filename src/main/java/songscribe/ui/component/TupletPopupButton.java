@@ -24,6 +24,8 @@ import module java.desktop;
 
 import net.engio.mbassy.listener.Handler;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.ui.action.Actions;
@@ -35,7 +37,8 @@ public class TupletPopupButton extends PopupButton {
     public TupletPopupButton() {
         super(
             Actions.TOGGLE_TUPLET_ACTIONS,
-            Actions.TOGGLE_TUPLET_ACTIONS.get(1)
+            Actions.TOGGLE_TUPLET_ACTIONS.get(1),
+            ItemStyle.RADIO
         );
         addSeparator();
         addItem(new JMenuItem(Actions.REMOVE_TUPLET_ACTION));
@@ -56,5 +59,35 @@ public class TupletPopupButton extends PopupButton {
         setEnabled(
             Actions.TOGGLE_TUPLET_ACTIONS.stream().anyMatch(UIAction::isEnabled)
         );
+
+        updateDefaultAction(message.getScoreViewController());
+    }
+
+    /**
+     * Points the button's direct click at whatever the selection most likely wants:
+     * removal when the selection is exactly an existing tuplet, otherwise the lowest
+     * grade the span could actually become. Press-and-hold still opens the popup.
+     * <p>
+     * When neither applies the previous default is kept, because the whole button is
+     * disabled in that case and swapping its action would only be noise.
+     */
+    private void updateDefaultAction(@Nullable ScoreViewController ctrl) {
+        if (ctrl == null) {
+            return;
+        }
+
+        var info = ctrl.canToggleTuplet();
+
+        if (info.coversExisting()) {
+            setCurrentAction(Actions.REMOVE_TUPLET_ACTION);
+            return;
+        }
+
+        for (var action : Actions.TOGGLE_TUPLET_ACTIONS) {
+            if (info.validGrades().contains(action.getTuplet().getSize())) {
+                setCurrentAction(action);
+                return;
+            }
+        }
     }
 }

@@ -28,6 +28,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.BeatChange;
 import songscribe.dom.Duration;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
@@ -98,19 +99,33 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
 
         var existing = element.findAttachment(BeatChangeAttachment.class);
 
-        if (existing != null) {
-            existing.setBeatChange(new BeatChange(duration, beat));
-        } else {
-            element.addAttachment(new BeatChangeAttachment(element, new BeatChange(duration, beat)));
-        }
+        // The change branch routes itself through the chokepoint from inside
+        // BeatChangeAttachment; wrapping both branches gives the add branch — a raw
+        // addAttachment — its routing, and collapses the pair into one edit. Any tuplets
+        // the new beat forces out are reported by the chokepoint's own notification.
+        Song.withBeatDefiningEditOn(element, () -> {
+            if (existing != null) {
+                existing.setBeatChange(new BeatChange(duration, beat));
+            } else {
+                element.addAttachment(
+                    new BeatChangeAttachment(element, new BeatChange(duration, beat)));
+            }
+        });
     }
 
+    /**
+     * Removing a beat change redefines the beat from that point on just as adding one does,
+     * so it goes through the same chokepoint — which is also what warns the user when the
+     * removal costs a tuplet, on the Remove button's path as on the commit path.
+     */
     @Override
     protected void clearChange(StaffElement element) {
         var attachment = element.findAttachment(BeatChangeAttachment.class);
 
-        if (attachment != null) {
-            element.removeAttachment(attachment);
+        if (attachment == null) {
+            return;
         }
+
+        Song.withBeatDefiningEditOn(element, () -> element.removeAttachment(attachment));
     }
 }
