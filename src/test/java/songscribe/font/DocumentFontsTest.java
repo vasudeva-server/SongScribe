@@ -190,6 +190,7 @@ class DocumentFontsTest extends UnitTest {
         @Test
         void testNotEqualToDifferentType() {
             // equals() must return false for an object of a different class.
+            //noinspection AssertBetweenInconvertibleTypes
             assertThat(fullyPopulated()).isNotEqualTo("not a DocumentFonts");
         }
 
