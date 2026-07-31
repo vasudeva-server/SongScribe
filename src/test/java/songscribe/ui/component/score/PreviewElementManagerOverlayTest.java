@@ -113,7 +113,6 @@ class PreviewElementManagerOverlayTest extends UnitTest {
     private MockedStatic<EditModeManager> editModeManagerMock;
     private MockedStatic<PlaybackController> playbackMock;
     private MockedStatic<MessageCenter> messageCenterMock;
-    private GraceModeManager graceModeManagerMock;
 
     @BeforeEach
     void setUp() {
@@ -152,7 +151,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         messageCenterMock = mockStatic(MessageCenter.class);
         playbackMock.when(PlaybackController::isPlaying).thenReturn(false);
 
-        graceModeManagerMock = mock(GraceModeManager.class);
+        var graceModeManagerMock = mock(GraceModeManager.class);
         // -1 means "no host preview on this line". An unstubbed mock would answer 0, which is a
         // valid grace-note index, and would switch the connecting glissando on for every test here.
         when(graceModeManagerMock.hostPreviewGraceIndexOn(any())).thenReturn(-1);

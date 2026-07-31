@@ -93,7 +93,6 @@ public final class PasteModeManager {
     private static PasteModeManager instance = null;
 
     // Dependencies
-    private final ClipboardManager clipboardManager;
     private final ScoreView scoreView;
 
     // State
@@ -120,7 +119,6 @@ public final class PasteModeManager {
     private final InsertionMarkerOverlay insertionMarkerOverlay;
 
     public PasteModeManager(ClipboardManager clipboardManager, ScoreView scoreView) {
-        this.clipboardManager = clipboardManager;
         this.scoreView = scoreView;
         insertionMarkerOverlay = new InsertionMarkerOverlay(scoreView);
         instance = this;

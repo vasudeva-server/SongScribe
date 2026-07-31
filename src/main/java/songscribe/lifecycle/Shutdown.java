@@ -75,8 +75,6 @@ public final class Shutdown {
     private final CopyOnWriteArrayList<CleanupTask> edtTasks = new CopyOnWriteArrayList<>();
     private final CopyOnWriteArrayList<CleanupTask> jvmTasks = new CopyOnWriteArrayList<>();
 
-    private final Thread jvmHook;
-
     private volatile boolean inProgress = false;
     private volatile boolean completed = false;
 
@@ -93,7 +91,7 @@ public final class Shutdown {
     }
 
     private Shutdown() {
-        jvmHook = new Thread(Shutdown::runJVMTasksFromHook, "ShutdownJVMHook");
+        var jvmHook = new Thread(Shutdown::runJVMTasksFromHook, "ShutdownJVMHook");
         Runtime.getRuntime().addShutdownHook(jvmHook);
     }
 

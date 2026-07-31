@@ -126,7 +126,6 @@ public class Ending extends RangeElement {
     }
 
     private int yPositionSs = 0;
-    private int repeatSplitIndex = -1;
     private List<BracketRange> bracketRanges = List.of();
 
     /**
@@ -228,7 +227,7 @@ public class Ending extends RangeElement {
         }
 
         // Find the repeat element (REPEAT_RIGHT or REPEAT_LEFT_RIGHT) that separates first and second endings
-        repeatSplitIndex = IntStream.rangeClosed(start, end)
+        var repeatSplitIndex = IntStream.rangeClosed(start, end)
             .filter(i -> {
                 var t = line.getElement(i).getType();
                 return t == ElementType.REPEAT_RIGHT || t == ElementType.REPEAT_LEFT_RIGHT;

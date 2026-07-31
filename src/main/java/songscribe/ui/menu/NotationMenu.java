@@ -46,12 +46,8 @@ public class NotationMenu extends JMenu {
 
     public static final String NAME = Strings.get(Strings.MENU_NOTATION);
 
-    private final MainFrame mainFrame;
-
     public NotationMenu(MainFrame mainFrame) {
         super(NAME);
-
-        this.mainFrame = mainFrame;
 
         // Group 1: Pitch & Rhythm
         add(new DurationMenu());

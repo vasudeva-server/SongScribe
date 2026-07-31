@@ -68,7 +68,6 @@ class PreviewElementOverlayTest extends UnitTest {
     /** An arbitrary locked grace-mode X, distinct from the calculated insertion X below. */
     private static final double GRACE_LOCKED_X_SS = 42.0;
 
-    private FakeOverlayHost host;
     private LineComponent lc;
     private PreviewElementOverlay overlay;
     private MockedStatic<EditModeManager> editModeManagerMock;
@@ -76,7 +75,7 @@ class PreviewElementOverlayTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        host = new FakeOverlayHost();
+        var host = new FakeOverlayHost();
         lc = new LineComponent();
         host.add(lc);
 

@@ -298,7 +298,6 @@ public final class SongIO {
         private String invalidLyricsDate = null;
         private int defaultKeyAccidentalCount = Song.DEFAULT_KEY_ACCIDENTAL_COUNT;
         private KeyType defaultKeyType = Song.DEFAULT_KEY_TYPE;
-        private double attributionStartYSs = 0;
         private double attributionUserYOffsetSs = 0;
         private double rowHeightAdjustmentSs = 0;
         private double lineWidthSs = PageModel.getDefaultLineWidthSs();
@@ -631,8 +630,7 @@ public final class SongIO {
                         case XML_INFO -> attribution = str;
                         // Still read XML_INFO_STARTY from older files for the pixel→ss migration;
                         // new files (≥ 2.8) do not write it.
-                        case XML_INFO_STARTY -> attributionStartYSs =
-                            parseVersionedDouble(str);
+                        case XML_INFO_STARTY -> parseVersionedDouble(str);
                         case XML_ROW_HEIGHT -> rowHeightAdjustmentSs =
                             parseVersionedDouble(str);
                         case XML_LINE_WIDTH -> lineWidthSs =

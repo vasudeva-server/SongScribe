@@ -55,7 +55,6 @@ class UndoControllerTest extends UnitTest {
 
     private Song song;
     private Line line;
-    private ScoreView scoreView;
     private MockedStatic<MainFrame> mainFrameMock;
 
     @BeforeEach
@@ -65,7 +64,7 @@ class UndoControllerTest extends UnitTest {
         song = new Song();
         line = song.getLine(0);
 
-        scoreView = mock(ScoreView.class);
+        var scoreView = mock(ScoreView.class);
         when(scoreView.getSong()).thenReturn(song);
 
         var mainFrame = mock(MainFrame.class);

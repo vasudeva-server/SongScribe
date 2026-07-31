@@ -2015,7 +2015,6 @@ class ScoreViewControllerTest extends UnitTest {
     class ModeDidChange {
 
         private ScoreView scoreMock;
-        private SelectionCoordinator coordinatorMock;
         private ScoreViewController controller;
 
         // Actions.DURATION_ACTION_GROUP is a public static field. These tests swap in a
@@ -2032,7 +2031,7 @@ class ScoreViewControllerTest extends UnitTest {
         @BeforeEach
         void setUp() {
             scoreMock = mock(ScoreView.class);
-            coordinatorMock = mock(SelectionCoordinator.class);
+            var coordinatorMock = mock(SelectionCoordinator.class);
             originalDurationActionGroup = Actions.DURATION_ACTION_GROUP;
             Actions.DURATION_ACTION_GROUP = mock(DurationActionGroup.class);
 
@@ -2271,7 +2270,6 @@ class ScoreViewControllerTest extends UnitTest {
 
         private ScoreView scoreMock;
         private Line targetLine;
-        private Line otherLine;
         private LineComponent targetLineComponentMock;
         private LineComponent otherLineComponentMock;
         private ScoreViewController controller;
@@ -2284,7 +2282,7 @@ class ScoreViewControllerTest extends UnitTest {
             targetLine.addElement(ElementType.CROTCHET.newInstance());
             targetLine.addElement(ElementType.CROTCHET.newInstance());
 
-            otherLine = detachedLine();
+            var otherLine = detachedLine();
             otherLine.addElement(ElementType.CROTCHET.newInstance());
             otherLine.addElement(ElementType.CROTCHET.newInstance());
 

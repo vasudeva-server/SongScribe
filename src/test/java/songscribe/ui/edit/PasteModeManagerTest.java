@@ -86,7 +86,6 @@ class PasteModeManagerTest extends UnitTest {
 
     private MockedStatic<MainFrame> mainFrameMock;
     private JLayeredPane layeredPane;
-    private ClipboardManager clipboardManager;
     private ScoreView scoreView;
     private PasteModeManager pasteModeManager;
 
@@ -110,7 +109,7 @@ class PasteModeManagerTest extends UnitTest {
         mainFrameMock = mockStatic(MainFrame.class);
         mainFrameMock.when(MainFrame::getInstance).thenReturn(mockFrame);
 
-        clipboardManager = mock(ClipboardManager.class);
+        var clipboardManager = mock(ClipboardManager.class);
         scoreView = mock(ScoreView.class);
         overlayHost = new JPanel();
         when(scoreView.getHostComponent()).thenReturn(overlayHost);
@@ -257,12 +256,11 @@ class PasteModeManagerTest extends UnitTest {
     @Nested
     class TargetTracking {
 
-        private Line line;
         private LineComponent lineComponent;
 
         @BeforeEach
         void setUp() {
-            line = lineStub();
+            var line = lineStub();
             var layoutResult = mock(LayoutResult.class);
             when(layoutResult.findInsertionIndex(anyDouble(), eq(line))).thenReturn(FIRST_INSERTION_INDEX);
             lineComponent = lineComponentFor(line, layoutResult);
