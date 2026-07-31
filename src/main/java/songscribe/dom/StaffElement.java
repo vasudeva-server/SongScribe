@@ -944,7 +944,7 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     // Marker base for a thing attached to a note (connecting glissando or trailing fall)
-    public abstract static sealed class Slide permits Glissando, Fall {
+    public sealed interface Slide permits Glissando, Fall {
 
         /**
          * Returns a fresh instance of this slide's concrete subtype, with none of its
@@ -953,10 +953,10 @@ public class StaffElement extends LineElement implements Cloneable {
          * corrupt hit-testing once both are on-screen and each render pass overwrites the
          * other's cached geometry.
          */
-        public abstract Slide copy();
+        Slide copy();
     }
 
-    public static final class Glissando extends Slide {
+    public static final class Glissando implements Slide {
 
         // Transient cached geometry populated during the render pass, used for hit-testing
         public transient double cachedStartX;
@@ -974,7 +974,7 @@ public class StaffElement extends LineElement implements Cloneable {
 
     }
 
-    public static final class Fall extends Slide {
+    public static final class Fall implements Slide {
 
         // A fall is independently clickable, so it caches the glyph's drawn rect for hit-testing
         public transient @Nullable Rectangle2D cachedHitBounds;
