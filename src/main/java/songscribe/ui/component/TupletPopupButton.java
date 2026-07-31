@@ -30,6 +30,7 @@ import songscribe.Strings;
 import songscribe.message.MessageCenter;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.menu.TupletMenuItems;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 
 public class TupletPopupButton extends PopupButton {
@@ -51,6 +52,16 @@ public class TupletPopupButton extends PopupButton {
 
         // Used a fixed tooltip for the button
         setToolTipText(Strings.get(Strings.TOOLTIP_TUPLET));
+    }
+
+    /**
+     * The popup only offers the grades the selection could actually become, so its items
+     * are rebuilt from the current selection every time it opens.
+     */
+    @Override
+    public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
+        TupletMenuItems.rebuild(getPopup());
+        super.popupMenuWillBecomeVisible(e);
     }
 
     @Handler

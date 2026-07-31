@@ -109,6 +109,10 @@ public class PopupButton
         return new JMenuItem(action);
     }
 
+    protected JPopupMenu getPopup() {
+        return popup;
+    }
+
     public void addSeparator() {
         popup.addSeparator();
     }

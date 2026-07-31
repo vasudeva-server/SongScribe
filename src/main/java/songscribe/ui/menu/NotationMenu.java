@@ -148,6 +148,25 @@ public class NotationMenu extends JMenu {
 
         menu.addSeparator();
         menu.add(REMOVE_TUPLET_ACTION);
+
+        // Which grades the selection could become is only known when the menu opens, so the
+        // items above are thrown away and rebuilt then. They are still built here so that
+        // disableWhenLineSelected() below finds the actions and tags them.
+        menu.addMenuListener(new MenuListener() {
+            @Override
+            public void menuSelected(MenuEvent e) {
+                TupletMenuItems.rebuild(menu);
+            }
+
+            @Override
+            public void menuDeselected(MenuEvent e) {
+            }
+
+            @Override
+            public void menuCanceled(MenuEvent e) {
+            }
+        });
+
         return menu;
     }
 
