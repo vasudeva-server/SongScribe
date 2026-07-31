@@ -87,7 +87,7 @@ public class PaperSizeStep extends Step {
     final JLabel rightOuterLabel = new JLabel();
     final JCheckBox mirroredCheck = new JCheckBox(Strings.get(Strings.DIALOG_PAPER_SIZE_MIRRORED));
     GraphicUtils.Unit currentUnit = GraphicUtils.Unit.INCH;
-    JComboBox<TemplateObject> templateCombo;
+    final JComboBox<TemplateObject> templateCombo;
 
     public PaperSizeStep(PageLayoutData pageLayoutData) {
         super(pageLayoutData);

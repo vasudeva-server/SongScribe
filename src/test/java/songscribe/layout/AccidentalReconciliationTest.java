@@ -117,7 +117,6 @@ class AccidentalReconciliationTest extends UnitTest {
      * A prior-accidental list that may contain nulls — {@code List.of} rejects them, and null is
      * meaningful here ("sounded unaltered in the source context").
      */
-    @SafeVarargs
     private static List<StaffElement.@Nullable Accidental> priors(
         StaffElement.@Nullable Accidental... accidentals) {
 
