@@ -45,7 +45,12 @@ import songscribe.ui.selection.ElementSelection;
 // The playback action constants are @NonNull but populated lazily by initialize() (which
 // needs the MainFrame, unavailable at class-load), mirroring the Actions holder. NullAway.Init
 // suppresses the "uninitialized field" check; keeping them non-null avoids poisoning call sites.
-@SuppressWarnings("NullAway.Init")
+@SuppressWarnings({
+    "NullAway.Init",
+    "StaticVariableUsedBeforeInitialization",
+    "StaticVariableMayNotBeInitialized",
+    "StaticNonFinalField"
+})
 public final class PlaybackController {
 
     public enum PlaybackState {

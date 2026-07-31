@@ -65,7 +65,12 @@ import songscribe.util.UIUtils;
 // the MainFrame, unavailable at class-load), not at declaration. NullAway.Init suppresses
 // the "uninitialized field" check for them; keeping them non-null avoids poisoning the
 // ~70 call sites across the codebase with nullability.
-@SuppressWarnings("NullAway.Init")
+@SuppressWarnings({
+    "NullAway.Init",
+    "StaticVariableMayNotBeInitialized",
+    "StaticNonFinalField",
+    "StaticVariableUsedBeforeInitialization"
+})
 public final class Actions {
 
     // Injected by initialize() before any constant is referenced.
