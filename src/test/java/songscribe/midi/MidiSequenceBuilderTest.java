@@ -46,7 +46,6 @@ import songscribe.ui.playback.MidiMetaMessageTypes;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.midi.MidiSequenceBuilder.PPQ;
 
-@SuppressWarnings("OverlyBroadThrowsClause")
 class MidiSequenceBuilderTest extends UnitTest {
 
     private static final int INSTRUMENT_PIANO = 0;

@@ -55,7 +55,7 @@ import static org.assertj.core.api.Assertions.offset;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.midi.MidiSequenceBuilder.PPQ;
 
-@SuppressWarnings({ "OverlyBroadThrowsClause", "StaticVariableMayNotBeInitialized" })
+@SuppressWarnings({ "OverlyBroadThrowsClause" })
 class LineTrackBuilderTest extends UnitTest {
 
     // Quarter-note tempo — reference note duration == PPQ

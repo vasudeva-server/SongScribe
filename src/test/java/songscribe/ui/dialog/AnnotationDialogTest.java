@@ -171,7 +171,6 @@ class AnnotationDialogTest extends MainFrameMockTest {
     // ── Row 4: applyChange — builds Annotation with correct alignment float and placement ──
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
     void testApplyChangeCenterRadioSelectedWritesCenterAlignment() {
         var element = ElementType.CROTCHET.newInstance();
 
@@ -193,7 +192,6 @@ class AnnotationDialogTest extends MainFrameMockTest {
     }
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
     void testApplyChangeRightRadioSelectedWritesRightAlignment() {
         var element = ElementType.CROTCHET.newInstance();
 
@@ -215,7 +213,6 @@ class AnnotationDialogTest extends MainFrameMockTest {
     }
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
     void testApplyChangeLeftRadioSelectedWritesLeftAlignment() {
         var element = ElementType.CROTCHET.newInstance();
 
@@ -239,7 +236,6 @@ class AnnotationDialogTest extends MainFrameMockTest {
     // ── Row 5: applyChange — updates existing attachment vs adds new one ──
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
     void testApplyChangeUpdatesExistingAttachment() {
         var element = ElementType.CROTCHET.newInstance();
         var original = new AnnotationAttachment(element, new Annotation("old"));
@@ -262,7 +258,6 @@ class AnnotationDialogTest extends MainFrameMockTest {
     }
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
     void testApplyChangeAddsNewAttachmentWhenNoneExists() {
         var element = ElementType.CROTCHET.newInstance();
         // no pre-existing attachment

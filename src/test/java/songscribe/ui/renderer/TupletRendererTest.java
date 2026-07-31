@@ -58,7 +58,6 @@ class TupletRendererTest extends UnitTest {
      * Configures a mock Graphics2D so font-related calls in drawTupletNumber and
      * measureNumberAdvanceSs don't throw.
      */
-    @SuppressWarnings("unchecked")
     private static Graphics2D mockG2() {
         var g2 = mock(Graphics2D.class);
         var frc = new FontRenderContext(null, false, false);

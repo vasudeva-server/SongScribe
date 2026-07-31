@@ -797,7 +797,7 @@ class StructuralTierStackingTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
+    @SuppressWarnings({ "PackageVisibleInnerClass" })
     @Nested
     class SpanElementGuards {
 

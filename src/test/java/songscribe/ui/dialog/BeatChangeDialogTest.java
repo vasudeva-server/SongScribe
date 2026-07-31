@@ -126,7 +126,6 @@ class BeatChangeDialogTest extends MainFrameMockTest {
     // ── Row 4: applyChange — updates existing attachment vs adds new one ──
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
     void testApplyChangeUpdatesExistingAttachment() {
         var element = ElementType.CROTCHET.newInstance();
         var original = new BeatChangeAttachment(element, new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
@@ -147,7 +146,6 @@ class BeatChangeDialogTest extends MainFrameMockTest {
     }
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
     void testApplyChangeAddsNewAttachmentWhenNoneExists() {
         var element = ElementType.CROTCHET.newInstance();
 

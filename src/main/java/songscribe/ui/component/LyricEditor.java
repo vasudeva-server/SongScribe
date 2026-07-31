@@ -557,7 +557,6 @@ public final class LyricEditor extends MyJTextField {
      * @return {@code adjusted} if its x is at or to the right of {@code input.x};
      *         otherwise {@code adjusted} with x clamped to {@code input.x}
      */
-    @SuppressWarnings("ConstantValue")
     static @Nullable Shape keepAllocationAtContentOrigin(@Nullable Shape input, @Nullable Shape adjusted) {
         if (input == null || adjusted == null) {
             return adjusted;

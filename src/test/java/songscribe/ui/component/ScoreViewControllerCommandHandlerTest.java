@@ -87,7 +87,6 @@ import songscribe.util.UIUtils;
  * already covered by {@code MusicEditOperationsMutationTest} — this suite focuses
  * on the wiring between the coordinator and the operations layer.
  */
-@SuppressWarnings("OverlyBroadThrowsClause")
 class ScoreViewControllerCommandHandlerTest extends UnitTest {
 
     /** Notes in the stem-direction fixtures, all of which are selected. */

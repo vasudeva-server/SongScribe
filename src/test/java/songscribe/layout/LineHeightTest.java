@@ -50,7 +50,6 @@ import songscribe.engraving.Staff;
  * ledger-line floors. Neither carries an inter-line gap — that belongs to the layout manager
  * that stacks the lines.
  */
-@SuppressWarnings("DataFlowIssue")
 class LineHeightTest extends UnitTest {
 
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;

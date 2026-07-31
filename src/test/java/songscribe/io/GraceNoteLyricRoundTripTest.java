@@ -34,7 +34,6 @@ import songscribe.dom.Lyric;
  * double as coverage that the repair reaches the legacy reader (via
  * {@code MigrationPipeline}'s post-assembly stage) and not only the MusicXML one.
  */
-@SuppressWarnings("OverlyBroadThrowsClause")
 class GraceNoteLyricRoundTripTest extends UnitTest {
 
     /**

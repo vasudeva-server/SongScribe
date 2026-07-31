@@ -317,7 +317,6 @@ class SongLoadingTest extends UnitTest {
      * lyrics have ă→a applied (stripShortA=true), while translation and footnotes do not.
      */
     @Test
-    @SuppressWarnings("OverlyLongMethod")
     void testTypographicSubstitutionAppliedOnLoad() throws Exception {
         var xml = """
             <?xml version="1.0" encoding="UTF-8"?>

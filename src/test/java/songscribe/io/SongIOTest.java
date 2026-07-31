@@ -1755,7 +1755,7 @@ class SongIOTest extends UnitTest {
      * Tests for the {@code lyricsDate} tag: round-trip fidelity, ISO precision
      * variants, zero-padding, old-file absence, and malformed-value handling.
      */
-    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
+    @SuppressWarnings({ "PackageVisibleInnerClass" })
     @Nested
     class LyricsDateIO {
 
@@ -2006,7 +2006,7 @@ class SongIOTest extends UnitTest {
         }
     }
 
-    @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })
+    @SuppressWarnings({ "PackageVisibleInnerClass" })
     @Nested
     class SubtitleRoundTrip {
 

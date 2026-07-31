@@ -119,7 +119,6 @@ class TempoChangeDialogTest extends MainFrameMockTest {
     // ── Row 27: applyChange — Tempo built from section getters; showTempo = !isShowOnlyDescription() ──
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
     void testApplyChangeBuildsTempoCombiningShowFlagInversion() {
         var element = ElementType.CROTCHET.newInstance();
 
@@ -150,7 +149,6 @@ class TempoChangeDialogTest extends MainFrameMockTest {
     }
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
     void testApplyChangeShowTempoFalseWhenShowOnlyDescriptionTrue() {
         var element = ElementType.CROTCHET.newInstance();
 
@@ -169,7 +167,6 @@ class TempoChangeDialogTest extends MainFrameMockTest {
     // ── Row 28: applyChange — updates existing attachment vs adds new one ──
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
     void testApplyChangeUpdatesExistingAttachmentInPlace() {
         var element = ElementType.CROTCHET.newInstance();
         var original = new TempoChangeAttachment(element, new Tempo(60, Duration.CROTCHET, "Largo", true));
@@ -193,7 +190,6 @@ class TempoChangeDialogTest extends MainFrameMockTest {
     }
 
     @Test
-    @SuppressWarnings("DataFlowIssue")
     void testApplyChangeAddsNewAttachmentWhenNoneExists() {
         var element = ElementType.CROTCHET.newInstance();
 
