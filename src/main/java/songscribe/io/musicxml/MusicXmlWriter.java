@@ -244,7 +244,8 @@ public final class MusicXmlWriter {
                         }
                     }
 
-                } else if (type.isBreathMark()) {
+                } else //noinspection StatementWithEmptyBody
+                    if (type.isBreathMark()) {
                     // Already serialized inside the preceding note's <notations>.
                     // Skip here so the breath mark is not emitted a second time.
                     // A breath mark cannot anchor or end an ending, so it never

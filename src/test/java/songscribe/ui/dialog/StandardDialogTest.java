@@ -253,10 +253,9 @@ class StandardDialogTest extends MainFrameMockTest {
 
         @Override
         public void setVisible(boolean visible) {
-            if (!visible) {
-                // Skip super to avoid NPE on the disposed JDialog
-            } else {
-                super.setVisible(visible);
+            // If not visible, skip super to avoid NPE on the disposed JDialog
+            if (visible) {
+                super.setVisible(true);
             }
         }
     }
@@ -282,10 +281,9 @@ class StandardDialogTest extends MainFrameMockTest {
 
         @Override
         public void setVisible(boolean visible) {
-            if (!visible) {
-                // Skip super to avoid NPE on the uninitialized JDialog field
-            } else {
-                super.setVisible(visible);
+            // If not visible, skip super to avoid NPE on the disposed JDialog
+            if (visible) {
+                super.setVisible(true);
             }
         }
 
