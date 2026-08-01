@@ -304,7 +304,7 @@ public final class MyFontUtils {
     // will return a pair of strings, the first being the family name and the second being
     // the style name. If the style name contains hyphens, they will be removed.
     // If no style name is found, the second string will be empty.
-    public static ParsedFontName parsePSName(String psName) {
+    static ParsedFontName parsePSName(String psName) {
         // First split on "_". Everthing before the first "_" is the family name,
         // and everything after is the style name.
         var parts = Arrays.asList(psName.split("_"));

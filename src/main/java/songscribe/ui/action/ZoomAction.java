@@ -107,10 +107,10 @@ public final class ZoomAction extends UIAction {
      */
     @Override
     public boolean updateEnabledState() {
-        var enabled = super.updateEnabledState()
+        var enabledState = super.updateEnabledState()
             && enabledAtPercent.test(ZoomController.getZoomPercent());
-        setEnabled(enabled);
-        return enabled;
+        setEnabled(enabledState);
+        return enabledState;
     }
 
     @Handler

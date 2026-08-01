@@ -49,7 +49,7 @@ class GlissandoPersistenceTest extends UnitTest {
         var originalNote = song.getLine(0).getElement(PAIR_B_SRC);
         assertThat(originalNote.hasGlissando()).as("fixture has glissando").isTrue();
 
-        var reloaded = roundTrip(song);
+        var reloaded = legacyRoundTrip(song);
         var reloadedNote = reloaded.getLine(0).getElement(PAIR_B_SRC);
 
         assertThat(reloadedNote.hasGlissando())

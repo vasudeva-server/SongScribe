@@ -257,7 +257,7 @@ public final class LineIO {
             legacyTrillYPosPx = LegacyLineOffsets.DEFAULTS.trillYPosPx();
         }
 
-        public LegacyLineOffsets getLegacyOffsets() {
+        LegacyLineOffsets getLegacyOffsets() {
             return new LegacyLineOffsets(legacyTempoChangeYPosPx, legacyBeatChangeYPosPx, legacyFsEndingYPosPx, legacyTrillYPosPx);
         }
 

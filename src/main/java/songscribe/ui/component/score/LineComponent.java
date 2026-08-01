@@ -804,12 +804,12 @@ public class LineComponent extends ScoreComponent
      * discard the selection the user was building.
      */
     private boolean editLyricOnDoubleClickedElement(MouseEvent e) {
-        var scoreView = getScoreView();
+        var view = getScoreView();
 
         if (e.getClickCount() != DOUBLE_CLICK_COUNT
             || e.isShiftDown()
             || line == null
-            || scoreView.getActiveLyricEditor() != null
+            || view.getActiveLyricEditor() != null
             || !selectionHandler.isSelectionActive(e)) {
             return false;
         }
@@ -830,7 +830,7 @@ public class LineComponent extends ScoreComponent
             return false;
         }
 
-        LyricEditor.deselectAndOpenOn(scoreView, line, targetIndex);
+        LyricEditor.deselectAndOpenOn(view, line, targetIndex);
         return true;
     }
 

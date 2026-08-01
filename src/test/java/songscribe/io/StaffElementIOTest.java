@@ -393,7 +393,7 @@ class StaffElementIOTest extends UnitTest {
         @EnumSource(value = DynamicType.class, names = {"PIANISSIMO", "PIANO", "MEZZO_PIANO", "MEZZO_FORTE", "FORTE", "FORTISSIMO", "SFORZANDO", "FORTEPIANO"})
         void testRoundTripPreservesDynamicType(DynamicType dynamicType) throws Exception {
             var comp1 = parseXml(buildXmlWithDynamic(dynamicType.name()));
-            var comp2 = roundTrip(comp1);
+            var comp2 = legacyRoundTrip(comp1);
             var dynamic = comp2.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
             assertThat(dynamic).isNotNull();

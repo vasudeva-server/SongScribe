@@ -144,7 +144,7 @@ class SongIOTest extends UnitTest {
         // Line 1: 3 crotchets + final-double-barline (4 elements).
         var song = parseXml(twoLineXml());
 
-        var reloaded = roundTrip(song);
+        var reloaded = legacyRoundTrip(song);
 
         assertThat(reloaded.lineCount())
             .as("round-trip must preserve line count")
@@ -560,7 +560,7 @@ class SongIOTest extends UnitTest {
                 new Lyric(1, "garden", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)
             );
 
-            var reloaded = roundTrip(song);
+            var reloaded = legacyRoundTrip(song);
             var reloadedLine = reloaded.getLine(0);
 
             assertThat(reloadedLine.getElement(0).lyrics)
@@ -684,7 +684,7 @@ class SongIOTest extends UnitTest {
                 new Lyric(1, "", Lyric.Extend.STOP, null, false)
             );
 
-            var reloaded = roundTrip(song);
+            var reloaded = legacyRoundTrip(song);
             var reloadedLine = reloaded.getLine(0);
 
             assertThat(reloadedLine.getElement(0).lyrics)
@@ -762,7 +762,7 @@ class SongIOTest extends UnitTest {
             song.setTranslatedLyrics("translated");
             song.setFootnotes("Note");
 
-            var reloaded = roundTrip(song);
+            var reloaded = legacyRoundTrip(song);
 
             assertThat(reloaded.getDefaultKeyAccidentalCount())
                 .as("keys round-trip")
@@ -1753,7 +1753,7 @@ class SongIOTest extends UnitTest {
         void testYearOnlyIsoDateRoundTrips() throws Exception {
             var song = songWithWordsDate(WORDS_YEAR, 0, 0);
 
-            var reloaded = roundTrip(song);
+            var reloaded = legacyRoundTrip(song);
 
             assertThat(reloaded.getWordsYear()).isEqualTo(WORDS_YEAR);
             assertThat(reloaded.getWordsMonth()).isZero();
@@ -1765,7 +1765,7 @@ class SongIOTest extends UnitTest {
         void testYearMonthIsoDateRoundTrips() throws Exception {
             var song = songWithWordsDate(WORDS_YEAR, WORDS_MONTH, 0);
 
-            var reloaded = roundTrip(song);
+            var reloaded = legacyRoundTrip(song);
 
             assertThat(reloaded.getWordsYear()).isEqualTo(WORDS_YEAR);
             assertThat(reloaded.getWordsMonth()).isEqualTo(WORDS_MONTH);
@@ -1777,7 +1777,7 @@ class SongIOTest extends UnitTest {
         void testYearMonthDayIsoDateRoundTrips() throws Exception {
             var song = songWithWordsDate(WORDS_YEAR, WORDS_MONTH, WORDS_DAY);
 
-            var reloaded = roundTrip(song);
+            var reloaded = legacyRoundTrip(song);
 
             assertThat(reloaded.getWordsYear()).isEqualTo(WORDS_YEAR);
             assertThat(reloaded.getWordsMonth()).isEqualTo(WORDS_MONTH);
@@ -2011,7 +2011,7 @@ class SongIOTest extends UnitTest {
                 "My Subtitle", "", 0, 0
             ));
 
-            var reloaded = roundTrip(song);
+            var reloaded = legacyRoundTrip(song);
 
             assertThat(reloaded.getTitle())
                 .as("title must survive round-trip and not be confused with subtitle")

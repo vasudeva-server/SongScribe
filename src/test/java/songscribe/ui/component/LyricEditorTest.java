@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -33,8 +32,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.awt.BorderLayout;
-import java.awt.Font;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.FocusEvent;
@@ -47,32 +44,18 @@ import javax.swing.KeyStroke;
 import javax.swing.text.AbstractDocument;
 
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import songscribe.font.DocumentFonts;
-import songscribe.font.FontKey;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.dom.Lyric;
-import songscribe.dom.Song;
-import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.ViewScale;
 import songscribe.ui.component.score.LineComponent;
 
 @SuppressWarnings({ "OverlyBroadThrowsClause", "DataFlowIssue" })
 class LyricEditorTest extends LyricEditorTestSupport {
-
-    private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, 12);
-    /**
-     * The staff-to-lyrics gap is 0 because nothing here asserts a verse baseline or a
-     * lyrics band height; only syllable text handling is under test.
-     */
-    private static final LyricRenderMetrics LYRIC_METRICS =
-        new LyricRenderMetrics(LYRICS_FONT, LYRICS_FONT, 0.0, 0.0, 0.0);
 
     /** Narrow enough that a wide lyric overflows it but the bare notes still fit. */
     private static final double NARROW_LINE_WIDTH_SS = 40;
@@ -82,23 +65,6 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
     /** The second language a song's lyrics can be written in. */
     private static final int SECOND_VERSE = 2;
-
-    private Song song;
-    private ScoreView score;
-
-    @BeforeEach
-    void setUp() {
-        song = new Song();
-        score = mock(ScoreView.class);
-        when(score.getLyricRenderMetrics()).thenReturn(LYRIC_METRICS);
-        var documentFonts = new DocumentFonts();
-        documentFonts.setFont(FontKey.LYRICS, LYRICS_FONT);
-        when(score.getDocumentFonts()).thenReturn(documentFonts);
-        when(score.getViewScale()).thenReturn(new ViewScale());
-        when(score.getSong()).thenReturn(song);
-        when(score.getLineComponent(anyInt())).thenReturn(null);
-        when(score.getLayout()).thenReturn(new BorderLayout());
-    }
 
     // -----------------------------------------------------------------------
     // T10–T13: commit() semantics

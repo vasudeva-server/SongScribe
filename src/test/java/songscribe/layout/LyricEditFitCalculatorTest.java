@@ -87,7 +87,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
     }
 
     /** Resolves a {@code .musicxml} fixture on the classpath, unlike {@link #fixtureFile} which is {@code .mssw}-only. */
-    private static File musicXmlFixtureFile(String name) throws URISyntaxException {
+    private static File requireMusicXmlFixtureFile(String name) throws URISyntaxException {
         var url = LyricEditFitCalculatorTest.class.getClassLoader().getResource("fixtures/" + name + ".musicxml");
 
         if (url == null) {
@@ -228,7 +228,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
      */
     @Test
     void testLastNoteRejectsAThreeCharacterLyricOnTightLine() throws Exception {
-        var result = MusicXmlReader.read(musicXmlFixtureFile("spring-spacing-infeasible-lyric"));
+        var result = MusicXmlReader.read(requireMusicXmlFixtureFile("spring-spacing-infeasible-lyric"));
         var song = result.song();
         var lyricsFont = result.fonts().getLyricsFont();
         var lyricRenderMetrics = LyricRenderMetrics.forFont(lyricsFont);

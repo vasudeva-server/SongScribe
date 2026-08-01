@@ -171,13 +171,13 @@ public abstract class RangeElement extends LineElement {
     @Override
     public double getContentWidthSs() {
         var anchor = anchorElement;
-        var endElement = this.endElement;
+        var end = endElement;
 
-        if (anchor == null || endElement == null) {
+        if (anchor == null || end == null) {
             return 0;
         }
 
-        return Math.abs(endElement.getXSs() - anchor.getXSs()) + endElement.getContentWidthSs();
+        return Math.abs(end.getXSs() - anchor.getXSs()) + end.getContentWidthSs();
     }
 
     @Override
@@ -208,13 +208,13 @@ public abstract class RangeElement extends LineElement {
      * the same reservation such a range got before the width became per-type.
      */
     protected double getEndElementWidthSs() {
-        var endElement = this.endElement;
+        var end = endElement;
 
-        if (endElement == null) {
+        if (end == null) {
             return SMuFLConstants.NOTE_HEAD_WIDTH_SS;
         }
 
-        return endElement.getType().getElementWidthSs();
+        return end.getType().getElementWidthSs();
     }
 
     /**

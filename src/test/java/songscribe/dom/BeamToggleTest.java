@@ -123,7 +123,7 @@ class BeamToggleTest extends UnitTest {
                 .as("isUpper changed").isNotEqualTo(upperBefore);
 
             var flippedUpper = note.isUpper();
-            var reloaded = roundTrip(song);
+            var reloaded = legacyRoundTrip(song);
             var reloadedNote = reloaded.getLine(0).getElement(EIGHTH_1);
 
             assertAll(

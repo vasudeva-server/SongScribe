@@ -381,7 +381,7 @@ class ViewIOTest extends UnitTest {
             var offsetSs = -3.5;
             song.getAttributionElement().setUserYOffsetSs(offsetSs);
 
-            var restored = roundTrip(song);
+            var restored = legacyRoundTrip(song);
 
             assertThat(restored.getAttributionElement().getUserYOffsetSs())
                 .describedAs("attribution userYOffsetSs must survive a save → load roundtrip")
@@ -397,7 +397,7 @@ class ViewIOTest extends UnitTest {
             var song = new Song();
             addNote(song);
 
-            var restored = roundTrip(song);
+            var restored = legacyRoundTrip(song);
 
             assertThat(restored.getAttributionElement().getUserYOffsetSs())
                 .describedAs("default zero userYOffsetSs must survive roundtrip as zero")
@@ -416,7 +416,7 @@ class ViewIOTest extends UnitTest {
             var offsetSs = 2.0;
             song.getAttributionElement().setUserYOffsetSs(offsetSs);
 
-            var restored = roundTrip(song);
+            var restored = legacyRoundTrip(song);
 
             assertThat(restored.getAttributionElement().getUserYOffsetSs())
                 .describedAs("positive userYOffsetSs must survive roundtrip")

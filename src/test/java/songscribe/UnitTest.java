@@ -211,9 +211,11 @@ public abstract class UnitTest {
     }
 
     /**
-     * Serializes a song to XML and parses it back, verifying round-trip fidelity.
+     * Serializes a song through the legacy {@link SongIO} writer and parses it back, verifying
+     * round-trip fidelity of the read-only migration path. Tests of the current storage format
+     * use {@code MusicXmlRoundTripSupport.roundTrip} instead.
      */
-    public static Song roundTrip(Song original) throws Exception {
+    public static Song legacyRoundTrip(Song original) throws Exception {
         var fonts = DocumentFonts.defaultFonts();
         var sw = new StringWriter();
         var pw = new PrintWriter(sw);

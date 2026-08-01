@@ -81,7 +81,7 @@ public final class FormatMigrator {
      *                      Lines absent from the map use {@link LegacyLineOffsets#DEFAULTS}.
      * @param formatVersion The current format version (migration is skipped if >= 2)
      */
-    public static void migrate(List<? extends Line> lines, Map<Line, LegacyLineOffsets> legacyOffsets, int formatVersion) {
+    static void migrate(List<? extends Line> lines, Map<Line, LegacyLineOffsets> legacyOffsets, int formatVersion) {
         if (formatVersion >= 2) {
             return;
         }

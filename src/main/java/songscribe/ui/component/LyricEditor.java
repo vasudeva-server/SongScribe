@@ -165,8 +165,8 @@ public final class LyricEditor extends MyJTextField {
         Pattern.compile("^\\s*([\\p{L}\\p{Mn}\\p{Mc}]+)");
 
     // The text of each Placeholder. Only this editor uses them, so they live here.
-    private static final String HYPHEN = "-";
-    private static final String UNDERSCORE = "_";
+    private static final String HYPHEN_TEXT = "-";
+    private static final String UNDERSCORE_TEXT = "_";
 
     // The long a Alt-A inserts and the capital Alt-Shift-A inserts. Transliterated Sanskrit
     // lyrics need them constantly and no keyboard layout in common use types them directly.
@@ -232,9 +232,9 @@ public final class LyricEditor extends MyJTextField {
      */
     private enum Placeholder {
         /** The hyphen of a word that continues across this element. */
-        HYPHEN(LyricEditor.HYPHEN),
+        HYPHEN(LyricEditor.HYPHEN_TEXT),
         /** The extender of a melisma this element carries. */
-        MELISMA(LyricEditor.UNDERSCORE);
+        MELISMA(LyricEditor.UNDERSCORE_TEXT);
 
         private final String text;
 

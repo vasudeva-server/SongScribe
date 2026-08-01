@@ -158,8 +158,8 @@ class StandardDialogTest extends MainFrameMockTest {
 
         fireOkAction(dialog);
 
-        assertThat(tab0.setDataCallCount).as("tab[0].setData called").isEqualTo(1);
-        assertThat(tab1.setDataCallCount).as("tab[1].setData called").isEqualTo(1);
+        assertThat(tab0.tabSetDataCallCount).as("tab[0].setData called").isEqualTo(1);
+        assertThat(tab1.tabSetDataCallCount).as("tab[1].setData called").isEqualTo(1);
     }
 
     // -- repaintScore null-safe when scoreView is null --
@@ -295,7 +295,7 @@ class StandardDialogTest extends MainFrameMockTest {
 
             final boolean valid;
             int isValidDataCallCount = 0;
-            int setDataCallCount = 0;
+            int tabSetDataCallCount = 0;
 
             ValidationTab(boolean valid) {
                 super("Validation Tab", FlatLafKey.DIALOG_STD_PADDING);
@@ -313,7 +313,7 @@ class StandardDialogTest extends MainFrameMockTest {
 
             @Override
             protected void setData() {
-                setDataCallCount++;
+                tabSetDataCallCount++;
             }
         }
     }

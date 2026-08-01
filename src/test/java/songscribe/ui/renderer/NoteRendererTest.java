@@ -397,8 +397,6 @@ class NoteRendererTest extends UnitTest {
     @Nested
     class RenderStemForcedShortening {
 
-        private static final double TOLERANCE = 1e-9;
-
         private static LineInvariants buildInvariantsWithStemLayout(
             StaffElement note, LayoutResult.StemLayout stemLayout
         ) {

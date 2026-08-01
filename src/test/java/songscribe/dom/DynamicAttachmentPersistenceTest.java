@@ -42,7 +42,7 @@ class DynamicAttachmentPersistenceTest extends UnitTest {
     void testRoundTripPreservesDynamicAttachments() throws Exception {
         var song = getSong();
 
-        var reloaded = roundTrip(song);
+        var reloaded = legacyRoundTrip(song);
         var reloadedLine = reloaded.getLine(0);
 
         var reloadedForte = reloadedLine.getElement(FORTE_INDEX).findAttachment(DynamicAttachment.class);

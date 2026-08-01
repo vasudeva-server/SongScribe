@@ -36,7 +36,7 @@ class DialogOpenActionTest extends MainFrameMockTest {
     // Minimal concrete BaseDialog for testing the happy-path getDialog() caching.
     static class StubDialog extends BaseDialog {
 
-        public StubDialog(MainFrame mainFrame) {
+        StubDialog(MainFrame mainFrame) {
             super(mainFrame, "Stub");
         }
     }

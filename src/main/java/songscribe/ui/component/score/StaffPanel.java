@@ -184,12 +184,12 @@ public class StaffPanel extends JPanel {
      * the full ScoreView dependency.
      */
     void ensureAllLineLayouts() {
-        var scoreView = linePanels.getFirst().getLineComponent().getScoreView();
+        var firstLineView = linePanels.getFirst().getLineComponent().getScoreView();
 
         // Ensure LyricRenderMetrics on ScoreView is up-to-date before any line layout runs.
         // Line layouts read hyphenWidthSs and spaceWidthSs from these metrics to reserve
         // column spacing for syllable gaps.
-        scoreView.rebuildLyricRenderMetrics();
+        firstLineView.rebuildLyricRenderMetrics();
 
         layOutLines();
     }

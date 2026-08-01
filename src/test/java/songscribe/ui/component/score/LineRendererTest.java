@@ -356,12 +356,12 @@ class LineRendererTest extends UnitTest {
     class GetElementColor {
 
         private LineComponent lc;
-        private LineRenderer renderer;
+        private LineRenderer lcRenderer;
 
         @BeforeEach
         void setUp() {
             lc = mock(LineComponent.class);
-            renderer = new LineRenderer(lc);
+            lcRenderer = new LineRenderer(lc);
         }
 
         /**
@@ -375,7 +375,7 @@ class LineRendererTest extends UnitTest {
                 .setPlayingNoteIndex(0)
                 .build();
 
-            var color = renderer.getElementColor(0, invariants);
+            var color = lcRenderer.getElementColor(0, invariants);
 
             var playingColor = ScoreView.getPlayingNoteColor();
             assertThat(color)
@@ -402,7 +402,7 @@ class LineRendererTest extends UnitTest {
             when(lc.getLine()).thenReturn(line);
             when(lc.isPendingCancelElement(element)).thenReturn(true);
 
-            var color = renderer.getElementColor(0, invariants);
+            var color = lcRenderer.getElementColor(0, invariants);
 
             assertThat(color)
                 .as("pending-cancel element should be colored RED")
@@ -426,7 +426,7 @@ class LineRendererTest extends UnitTest {
             when(lc.getLine()).thenReturn(line);
             when(lc.isPendingCancelElement(element)).thenReturn(false);
 
-            var color = renderer.getElementColor(0, invariants);
+            var color = lcRenderer.getElementColor(0, invariants);
 
             assertThat(color)
                 .as("non-pending-cancel element with BLACK invariant should remain BLACK")
@@ -447,7 +447,7 @@ class LineRendererTest extends UnitTest {
                 var invariants = seededBuilder()
                     .build();
 
-                var color = renderer.getElementColor(0, invariants);
+                var color = lcRenderer.getElementColor(0, invariants);
 
                 assertThat(color)
                     .as("glissando-preview note glyph should use the preview color")
@@ -477,7 +477,7 @@ class LineRendererTest extends UnitTest {
                     .setCurrentLine(line)
                     .build();
 
-                var color = renderer.getElementColor(0, invariants);
+                var color = lcRenderer.getElementColor(0, invariants);
 
                 assertThat(color)
                     .as("glissando-preview highlight should win over the grace-cancel RED override")

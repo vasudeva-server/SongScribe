@@ -447,9 +447,9 @@ class LineSelectionHandlerTest extends UnitTest {
 
         @Test
         void testSelectionStatePresentButNoLineReturnsNothing() {
-            var line = givenLine();
+            var selectedLine = givenLine();
             when(lc.getLine()).thenReturn(null);
-            when(lc.getLineSelectionState()).thenReturn(new LineSelectionState(line));
+            when(lc.getLineSelectionState()).thenReturn(new LineSelectionState(selectedLine));
             stubEveryTesterToHit();
 
             assertCascadeDidNotRun();

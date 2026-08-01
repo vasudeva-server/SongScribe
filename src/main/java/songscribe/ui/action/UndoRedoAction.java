@@ -60,9 +60,9 @@ abstract class UndoRedoAction extends UIAction {
      */
     @Override
     public final boolean updateEnabledState() {
-        var enabled = super.updateEnabledState() && stackHasStep();
-        setEnabled(enabled);
-        return enabled;
+        var enabledState = super.updateEnabledState() && stackHasStep();
+        setEnabled(enabledState);
+        return enabledState;
     }
 
     @Handler

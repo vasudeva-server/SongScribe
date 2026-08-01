@@ -133,7 +133,7 @@ class TieToggleTest extends UnitTest {
         var tie = line.findTieAt(TIED_1);
         assertThat(tie).as("pre-tied pair exists").isNotNull();
 
-        var reloaded = roundTrip(song);
+        var reloaded = legacyRoundTrip(song);
         var reloadedLine = reloaded.getLine(0);
         var reloadedTie = reloadedLine.findTieAt(TIED_1);
 

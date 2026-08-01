@@ -50,11 +50,11 @@ public final class RevertToSavedAction extends UIAction {
     // and the document has unsaved changes to discard.
     @Override
     public boolean updateEnabledState() {
-        var enabled = super.updateEnabledState() &&
+        var enabledState = super.updateEnabledState() &&
             getMainFrame().getCurrentFile() != null &&
             requireScoreView().getSong().isModified();
-        setEnabled(enabled);
-        return enabled;
+        setEnabled(enabledState);
+        return enabledState;
     }
 
     // Saving clears the modified flag but posts no SongDidChangeNotification, so the

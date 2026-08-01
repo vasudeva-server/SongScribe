@@ -79,7 +79,7 @@ class GraceNoteLyricRoundTripTest extends UnitTest {
             new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false)
         );
 
-        var reloaded = roundTrip(song);
+        var reloaded = legacyRoundTrip(song);
         var reloadedLine = reloaded.getLine(0);
 
         assertThat(reloadedLine.getElement(0).lyrics)
