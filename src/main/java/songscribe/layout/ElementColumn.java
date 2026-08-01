@@ -371,7 +371,7 @@ public final class ElementColumn {
      * whose head is not a black notehead — a whole note most visibly (refs #694).
      */
     public double getNoteheadCenterXSs() {
-        return xSs + getNoteheadWidthSs() / 2.0;
+        return xSs + noteheadWidthSs / 2.0;
     }
 
     /**
@@ -381,7 +381,7 @@ public final class ElementColumn {
      * Only valid after X position has been set by the spacing calculator.
      */
     public double getNoteheadRightEdgeXSs() {
-        return xSs + getNoteheadWidthSs();
+        return xSs + noteheadWidthSs;
     }
 
     // ==========================================================================
@@ -411,7 +411,7 @@ public final class ElementColumn {
      * spacing corrections.
      */
     public double getPositionSs() {
-        return Staff.spToSs(getElement().getStaffPosition());
+        return Staff.spToSs(element.getStaffPosition());
     }
 
     /**
@@ -420,7 +420,7 @@ public final class ElementColumn {
      * when building skyline contours.
      */
     public double getAbsoluteTopYSs() {
-        return getPositionSs() + getStemTopSs();
+        return getPositionSs() + stemTopSs;
     }
 
     /**
@@ -460,7 +460,7 @@ public final class ElementColumn {
      * numerically larger (lower) of the column's two vertical extremes.
      */
     public double getAbsoluteBottomYSs() {
-        return getPositionSs() + getStemBottomSs();
+        return getPositionSs() + stemBottomSs;
     }
 
     // ==========================================================================

@@ -85,8 +85,8 @@ public class Annotation {
      */
     public Annotation copy() {
         var copy = new Annotation(annotation, xAlignment);
-        copy.setPlacement(placement);
-        copy.setUserYOffsetSs(userYOffsetSs);
+        copy.placement = placement;
+        copy.userYOffsetSs = userYOffsetSs;
         return copy;
     }
 }

@@ -141,7 +141,7 @@ public class Ending extends RangeElement {
     @Override
     protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
         var copy = new Ending(newAnchor, newEnd);
-        copy.setYPositionSs(yPositionSs);
+        copy.yPositionSs = yPositionSs;
         return copy;
     }
 

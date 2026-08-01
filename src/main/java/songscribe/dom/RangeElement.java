@@ -208,7 +208,7 @@ public abstract class RangeElement extends LineElement {
      * the same reservation such a range got before the width became per-type.
      */
     protected double getEndElementWidthSs() {
-        var endElement = getEndElement();
+        var endElement = this.endElement;
 
         if (endElement == null) {
             return SMuFLConstants.NOTE_HEAD_WIDTH_SS;

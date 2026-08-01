@@ -64,9 +64,9 @@ public abstract sealed class Hairpin extends RangeElement
     @Override
     protected final RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
         var copy = createHairpin(newAnchor, newEnd);
-        copy.setX1ShiftSs(x1ShiftSs);
-        copy.setX2ShiftSs(x2ShiftSs);
-        copy.setYShiftSs(yShiftSs);
+        copy.x1ShiftSs = x1ShiftSs;
+        copy.x2ShiftSs = x2ShiftSs;
+        copy.yShiftSs = yShiftSs;
         return copy;
     }
 

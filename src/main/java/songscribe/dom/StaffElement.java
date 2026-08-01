@@ -232,7 +232,7 @@ public class StaffElement extends LineElement implements Cloneable {
 
     @Override
     public double getContentHeightPx() {
-        return ScaleContext.ssToPx(getType().getElementHeightSs(getDirection()));
+        return ScaleContext.ssToPx(getType().getElementHeightSs(direction));
     }
 
     // ========================================================================

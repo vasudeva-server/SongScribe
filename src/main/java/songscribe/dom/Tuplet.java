@@ -146,7 +146,7 @@ public class Tuplet extends RangeElement {
             copy = new Tuplet(newAnchor, newEnd, grade, normalNotes, noteValue, noteValueDots);
         }
 
-        copy.setVerticalPositionSs(verticalPositionSs);
+        copy.verticalPositionSs = verticalPositionSs;
         return copy;
     }
 

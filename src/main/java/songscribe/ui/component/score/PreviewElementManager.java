@@ -620,7 +620,7 @@ public final class PreviewElementManager {
 
         var previewElement = EditModeManager.getPreviewElement();
 
-        if (!isSlidePlaceholder(previewElement) || !shouldShowSlidePreview() || getSlideZone() != zone) {
+        if (!isSlidePlaceholder(previewElement) || !shouldShowSlidePreview() || currentSlideZone != zone) {
             return false;
         }
 

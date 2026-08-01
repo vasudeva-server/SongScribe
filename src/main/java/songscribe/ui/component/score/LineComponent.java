@@ -1059,7 +1059,7 @@ public class LineComponent extends ScoreComponent
      */
     @Nullable
     LineInvariants previewInvariants() {
-        if (getLayoutResult() == null) {
+        if (layoutResult == null) {
             return null;
         }
 

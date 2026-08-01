@@ -140,7 +140,7 @@ public final class PasteModeManager {
      * Used by UIAction.enableFromPasteMode() to check paste-mode status.
      */
     public static boolean isActive() {
-        return instance != null && instance.isInProgress();
+        return instance != null && instance.active;
     }
 
     public boolean isInProgress() {
@@ -153,7 +153,7 @@ public final class PasteModeManager {
      */
     @Nullable
     public static PasteModeManager getActiveInstance() {
-        return instance != null && instance.isInProgress() ? instance : null;
+        return instance != null && instance.active ? instance : null;
     }
 
     /** Returns the line component currently tracked as the insertion target, or null. */

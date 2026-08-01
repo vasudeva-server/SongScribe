@@ -66,7 +66,7 @@ public class Trill extends RangeElement {
     @Override
     protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
         var copy = new Trill(newAnchor, newEnd);
-        copy.setYPositionSs(yPositionSs);
+        copy.yPositionSs = yPositionSs;
         return copy;
     }
 
