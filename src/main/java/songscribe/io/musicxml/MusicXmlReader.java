@@ -109,6 +109,7 @@ import songscribe.util.Utils;
  * {@code NOTE} start/end, and {@code <print new-system>}) and the convergence
  * methods remain inline in this orchestrator (decision 6).
  */
+@SuppressWarnings("NestedSwitchStatement")
 public final class MusicXmlReader extends DefaultHandler {
 
     // Element names, attribute names, and shared values are in MusicXmlTags.
