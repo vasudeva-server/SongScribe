@@ -27,32 +27,52 @@ import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.ElementType;
+import songscribe.hit.HitTarget;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.SelectionCoordinator;
 
 class MusicSelectionDidChangeNotificationTest extends UnitTest {
 
-    private ScoreView mockScoreView(@Nullable SelectionCoordinator.LyricSelection lyricSelection) {
+    /** The verse a selected lyric is on; any verse answers the same way. */
+    private static final int VERSE = 1;
+
+    private ScoreView mockScoreView(@Nullable HitTarget selectedTarget) {
         var scoreView = mock(ScoreView.class);
         var coordinator = mock(SelectionCoordinator.class);
         when(scoreView.getSelectionCoordinator()).thenReturn(coordinator);
-        when(coordinator.getLyricSelection()).thenReturn(lyricSelection);
+        when(coordinator.getSelectedTarget()).thenReturn(selectedTarget);
         return scoreView;
     }
 
     @Test
-    void testHasLyricSelectionReturnsTrueWhenLyricSelectionIsPresent() {
-        var lyricSelection = mock(SelectionCoordinator.LyricSelection.class);
-        var scoreView = mockScoreView(lyricSelection);
+    void testHasLyricSelectionReturnsTrueWhenALyricIsTheSelectedTarget() {
+        var lyric = new HitTarget.Lyric(ElementType.CROTCHET.newInstance(), VERSE);
+        var scoreView = mockScoreView(lyric);
 
         var notification = new MusicSelectionDidChangeNotification(scoreView);
 
         assertThat(notification.hasLyricSelection()).isTrue();
+        assertThat(notification.getSelectedTarget()).isEqualTo(lyric);
     }
 
     @Test
-    void testHasLyricSelectionReturnsFalseWhenLyricSelectionIsAbsent() {
+    void testHasLyricSelectionReturnsFalseWhenNothingIsSelected() {
         var scoreView = mockScoreView(null);
+
+        var notification = new MusicSelectionDidChangeNotification(scoreView);
+
+        assertThat(notification.hasLyricSelection()).isFalse();
+        assertThat(notification.getSelectedTarget()).isNull();
+    }
+
+    /**
+     * The target field holds every kind of selection now, so the lyric query has to name the
+     * kind it means rather than answering true for whatever happens to be there.
+     */
+    @Test
+    void testHasLyricSelectionReturnsFalseForANonLyricTarget() {
+        var scoreView = mockScoreView(new HitTarget.StaffLine());
 
         var notification = new MusicSelectionDidChangeNotification(scoreView);
 

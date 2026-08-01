@@ -76,11 +76,10 @@ class SelectionCoordinatorStaleCacheTest extends MainFrameMockTest {
             .as("precondition: a barline cannot carry a sharp")
             .isFalse();
 
-        var state = coordinator.getActiveSelection();
+        var line = coordinator.getActiveLine();
 
-        assertThat(state).as("the test coordinator has no active line state").isNotNull();
+        assertThat(line).as("the test coordinator has no active line").isNotNull();
 
-        var line = state.getLine();
         var barline = line.getElement(0);
         line.removeElement(0);
 

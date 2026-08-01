@@ -21,6 +21,7 @@ package songscribe.io.musicxml;
 
 import org.jspecify.annotations.Nullable;
 import songscribe.dom.StaffElement;
+import songscribe.layout.LayoutResult;
 
 /**
  * Bundles all per-note inputs for {@link MusicXmlWriter}'s {@code writeNote}
@@ -29,11 +30,24 @@ import songscribe.dom.StaffElement;
  * <p>Grouping these inputs into a context record prevents parameter-list
  * growth as subsequent phases thread span markers and additional per-note
  * data through, keeping both call sites stable.
+ *
+ * @param note                     the note being written
+ * @param typeToken                the note's MusicXML {@code <type>} token
+ * @param nextIsBreathMark         whether a breath mark follows, to be folded into this note's
+ *                                 {@code <notations>}
+ * @param pendingStopGlissandoNote the note owning the glissando that stops on this one, or null
+ *                                 when no glissando stops here. Addressed by its owning note
+ *                                 rather than by the {@code Glissando} object because the
+ *                                 geometry is keyed by note.
+ * @param spanMarkers              this note's span start/end markers
+ * @param layoutResult             the owning line's layout, source of the emitted glissando
+ *                                 coordinates, or null when no layout is available
  */
 record NoteWriteContext(
     StaffElement note,
     String typeToken,
     boolean nextIsBreathMark,
-    StaffElement.@Nullable Glissando pendingStopGlissando,
-    NoteSpanMarkers spanMarkers
+    @Nullable StaffElement pendingStopGlissandoNote,
+    NoteSpanMarkers spanMarkers,
+    @Nullable LayoutResult layoutResult
 ) {}

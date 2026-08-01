@@ -43,7 +43,7 @@ import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 
 class FormatMigratorTest extends UnitTest {
 

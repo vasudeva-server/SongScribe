@@ -43,6 +43,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
@@ -358,7 +359,7 @@ class HairpinRendererTest extends UnitTest {
             .setMiddleLineYSs(MIDDLE_LINE_Y_SS);
 
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isDecorationSelected(hairpin, 0)).thenReturn(selected);
+        when(selectionProvider.isSelected(new HitTarget.Hairpin(hairpin), 0)).thenReturn(selected);
         builder.setSelectionProvider(selectionProvider);
 
         var g2 = spy(RenderContextTestHelper.realG2());

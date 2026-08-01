@@ -381,6 +381,7 @@ public abstract class LineElement {
     public void removeChild(LineElement child) {
         if (children.remove(child)) {
             child.parentElement = null;
+            child.parentLine = null;
         }
     }
 

@@ -291,7 +291,7 @@ class LyricConnectorRendererTest extends UnitTest {
     void testSelectedSourceElementRendersConnectorInSelectionColor() {
         var connector = new LyricConnectorLayout(5.0, 20.0, 1, Kind.EXTENDER, 0);
         var builder = builderWith(List.of(connector), NARROW_STAFF_TO_LYRICS_GAP_SS);
-        RenderContextTestHelper.enableSelection(builder, 0);
+        RenderContextTestHelper.enableSelection(builder, lineWith(ElementType.CROTCHET), 0);
         var invariants = builder.build();
         var g2 = mock(Graphics2D.class);
 

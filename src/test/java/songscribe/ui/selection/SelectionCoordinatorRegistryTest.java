@@ -34,73 +34,70 @@ import songscribe.ui.component.ScoreView;
 
 /**
  * Unit tests for {@link SelectionCoordinator} line-state registry and active-line
- * lifecycle: registerLineState, unregisterLineState, clearLineStates,
+ * lifecycle: registerLine, unregisterLine, clearLines,
  * getActiveLineIndex, and activateLine.
  */
 class SelectionCoordinatorRegistryTest extends UnitTest {
 
     // -------------------------------------------------------------------------
-    // registerLineState
+    // registerLine
     // -------------------------------------------------------------------------
 
     /**
-     * Row 1: registerLineState wires the selection-change callback so that when
-     * the state fires it (via setSelectionFromClick), the coordinator's lyric
-     * selection is cleared.
+     * Row 1: selecting a range displaces a target with no callback in the picture. The two
+     * shapes are one field, so the assignment is the whole of the exclusion — this is what
+     * the range-change callback used to have to arrange across an object boundary.
      */
     @Test
-    void testRegisterLineStateWiresSelectionChangeCallbackToClearLyricSelection() {
+    void testSelectingARangeDisplacesTheTargetSelection() {
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(ElementType.CROTCHET.newInstance()),
             List.of()
         );
 
-        // Establish a lyric selection before triggering the callback.
-        var state = coordinator.getActiveSelection();
-        assertThat(state).isNotNull();
-        var element = state.getLine().getElement(0);
-        coordinator.selectLyric(element, 1);
-        assertThat(coordinator.hasLyricSelection()).as("lyric selection before callback").isTrue();
+        var line = coordinator.getActiveLine();
+        assertThat(line).isNotNull();
+        coordinator.selectLyric(line.getElement(0), 1);
+        assertThat(coordinator.getSelectedTarget()).as("target before the range is set").isNotNull();
 
-        // Firing the state's selection-change callback should clear the lyric selection.
-        state.setSelectionFromClick(0);
+        coordinator.selectSingleElement(0, 0);
 
-        assertThat(coordinator.hasLyricSelection())
-            .as("lyric selection cleared by selection-change callback")
-            .isFalse();
+        assertThat(coordinator.getSelectedTarget())
+            .as("target displaced by the range")
+            .isNull();
     }
 
     // -------------------------------------------------------------------------
-    // unregisterLineState
+    // unregisterLine
     // -------------------------------------------------------------------------
 
     /**
-     * Row 2: unregisterLineState removes the state so getLineState returns null.
+     * Row 2: unregisterLine removes the registration so getLine returns null.
      */
     @Test
-    void testUnregisterLineStateRemovesStateFromRegistry() {
+    void testUnregisterLineRemovesItFromTheRegistry() {
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(ElementType.CROTCHET.newInstance()),
             List.of()
         );
 
-        assertThat(coordinator.getLineState(0))
+        assertThat(coordinator.getLine(0))
             .as("state present before unregister")
             .isNotNull();
 
-        coordinator.unregisterLineState(0);
+        coordinator.unregisterLine(0);
 
-        assertThat(coordinator.getLineState(0))
+        assertThat(coordinator.getLine(0))
             .as("state absent after unregister")
             .isNull();
     }
 
     // -------------------------------------------------------------------------
-    // clearLineStates
+    // clearLines
     // -------------------------------------------------------------------------
 
     /**
-     * Row 3: clearLineStates removes all registered states and resets
+     * Row 3: clearLines removes all registrations and resets
      * activeLineIndex to -1.
      */
     @Test
@@ -111,14 +108,14 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
 
         var lineA = new Line(song);
         var lineB = new Line(song);
-        coordinator.registerLineState(0, new LineSelectionState(lineA));
-        coordinator.registerLineState(1, new LineSelectionState(lineB));
+        coordinator.registerLine(0, lineA);
+        coordinator.registerLine(1, lineB);
         coordinator.activateLine(0);
 
-        coordinator.clearLineStates();
+        coordinator.clearLines();
 
-        assertThat(coordinator.getLineState(0)).as("line 0 absent after clearLineStates").isNull();
-        assertThat(coordinator.getLineState(1)).as("line 1 absent after clearLineStates").isNull();
+        assertThat(coordinator.getLine(0)).as("line 0 absent after clearLines").isNull();
+        assertThat(coordinator.getLine(1)).as("line 1 absent after clearLines").isNull();
         assertThat(coordinator.getActiveLineIndex())
             .as("activeLineIndex reset to -1")
             .isEqualTo(-1);
@@ -147,8 +144,8 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
     void testGetActiveLineIndexReturnsCorrectIndexAfterActivation() {
         var song = minimalSongMock();
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
-        coordinator.registerLineState(0, new LineSelectionState(new Line(song)));
-        coordinator.registerLineState(1, new LineSelectionState(new Line(song)));
+        coordinator.registerLine(0, new Line(song));
+        coordinator.registerLine(1, new Line(song));
 
         coordinator.activateLine(1);
 
@@ -172,19 +169,16 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
 
         var lineA = new Line(song);
         lineA.addElement(ElementType.CROTCHET.newInstance());
-        var stateA = new LineSelectionState(lineA);
 
         var lineB = new Line(song);
         lineB.addElement(ElementType.CROTCHET.newInstance());
-        var stateB = new LineSelectionState(lineB);
 
-        coordinator.registerLineState(0, stateA);
-        coordinator.registerLineState(1, stateB);
+        coordinator.registerLine(0, lineA);
+        coordinator.registerLine(1, lineB);
 
         // Activate line 0 and select its element.
-        coordinator.activateLine(0);
-        stateA.setSelectionFromClick(0);
-        assertThat(stateA.hasElementSelection())
+        coordinator.selectSingleElement(0, 0);
+        assertThat(coordinator.isElementSelected(0, 0))
             .as("line 0 has a selection before activating line 1")
             .isTrue();
 
@@ -194,8 +188,8 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
         assertThat(coordinator.getActiveLineIndex())
             .as("activeLineIndex is 1 after activateLine(1)")
             .isEqualTo(1);
-        assertThat(stateA.hasElementSelection())
+        assertThat(coordinator.getRange())
             .as("line 0 selection cleared after activating line 1")
-            .isFalse();
+            .isNull();
     }
 }

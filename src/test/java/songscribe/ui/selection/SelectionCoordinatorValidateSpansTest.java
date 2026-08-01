@@ -114,10 +114,10 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(SIXTEENTH_ACTION));
-        var selection = coordinator.getActiveSelection();
+        var selection = coordinator.getActiveLine();
         assertThat(selection).isNotNull();
 
-        var line = selection.getLine();
+        var line = selection;
         line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
         capturedMutations.clear();
 
@@ -139,10 +139,10 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        var selection = coordinator.getActiveSelection();
+        var selection = coordinator.getActiveLine();
         assertThat(selection).isNotNull();
 
-        var line = selection.getLine();
+        var line = selection;
         line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
         capturedMutations.clear();
 
@@ -170,10 +170,10 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        var selection = coordinator.getActiveSelection();
+        var selection = coordinator.getActiveLine();
         assertThat(selection).isNotNull();
 
-        var line = selection.getLine();
+        var line = selection;
         line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
         capturedMutations.clear();
 
@@ -203,10 +203,10 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        var selection = coordinator.getActiveSelection();
+        var selection = coordinator.getActiveLine();
         assertThat(selection).isNotNull();
 
-        var line = selection.getLine();
+        var line = selection;
         line.addBeaming(new Beam(line.getElement(0), line.getElement(4)));
         capturedMutations.clear();
 
@@ -234,10 +234,10 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(SIXTEENTH_ACTION));
-        var selection = coordinator.getActiveSelection();
+        var selection = coordinator.getActiveLine();
         assertThat(selection).isNotNull();
 
-        var line = selection.getLine();
+        var line = selection;
         line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
         capturedMutations.clear();
 
@@ -260,10 +260,10 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        var selection = coordinator.getActiveSelection();
+        var selection = coordinator.getActiveLine();
         assertThat(selection).isNotNull();
 
-        var line = selection.getLine();
+        var line = selection;
         line.addBeaming(new Beam(line.getElement(0), line.getElement(1)));
         capturedMutations.clear();
 
@@ -296,10 +296,10 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        var selection = coordinator.getActiveSelection();
+        var selection = coordinator.getActiveLine();
         assertThat(selection).isNotNull();
 
-        var line = selection.getLine();
+        var line = selection;
         var firstTuplet = Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(1), 3);
         var secondTuplet = Tuplet.withUnresolvedRatio(line.getElement(3), line.getElement(4), 3);
         line.addTuplet(firstTuplet);
@@ -328,10 +328,10 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
-        var selection = coordinator.getActiveSelection();
+        var selection = coordinator.getActiveLine();
         assertThat(selection).isNotNull();
 
-        var line = selection.getLine();
+        var line = selection;
         line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(3), line.getElement(4), 3));
         capturedMutations.clear();
 
@@ -354,10 +354,10 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
             ElementType.QUAVER.newInstance()
         );
         var coordinator = createCoordinator(notes, List.of(dotAction));
-        var selection = coordinator.getActiveSelection();
+        var selection = coordinator.getActiveLine();
         assertThat(selection).isNotNull();
 
-        var line = selection.getLine();
+        var line = selection;
         var tuplet = Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3);
         line.addTuplet(tuplet);
         capturedMutations.clear();

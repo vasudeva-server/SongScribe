@@ -27,6 +27,7 @@ import com.formdev.flatlaf.util.SystemInfo;
 import java.io.File;
 import java.util.LinkedHashMap;
 import songscribe.error.RuntimeError;
+import songscribe.hit.HitTarget;
 import java.util.Map;
 import java.util.function.Consumer;
 
@@ -55,7 +56,6 @@ import songscribe.dom.DocPx;
 import songscribe.dom.Song;
 import songscribe.dom.Ss;
 import songscribe.dom.Line;
-import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.ui.MusicEditOperations;
@@ -82,6 +82,8 @@ import songscribe.ui.component.score.ScorePanel;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.layout.HorizontalSpacingCalculator;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LineLayoutProvider;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
 import songscribe.dom.ScaleContext;
@@ -125,6 +127,7 @@ public final class ScoreView
     DocumentFontsHolder,
     InputHandlerCallback,
     LineComponent.SelectionProvider,
+    LineLayoutProvider,
     OverlayHost,
     RenderContext,
     ScoreActions {
@@ -425,6 +428,27 @@ public final class ScoreView
         return hierarchyNavigator != null ? hierarchyNavigator.getLineComponent(lineIndex) : null;
     }
 
+    /**
+     * Returns the line's live layout — the very one it is painted from — so a saved file's
+     * coordinates match the score on screen by construction rather than by re-derivation.
+     * <p>
+     * Nearly free: a line whose layout is clean is returned as is, and only the few dirty lines
+     * are laid out. Saving is user-initiated and there is no autosave timer, so even a full pass
+     * costs nothing the user would notice.
+     */
+    @Override
+    public @Nullable LayoutResult layoutFor(Line line, int lineIndex) {
+        var lineComponent = getLineComponent(lineIndex);
+
+        if (lineComponent == null) {
+            return null;
+        }
+
+        lineComponent.ensureLayout();
+
+        return lineComponent.getLayoutResult();
+    }
+
     void initView() {
         viewChanged();
     }
@@ -593,29 +617,18 @@ public final class ScoreView
         return scrollPane;
     }
 
+    /**
+     * Implements {@link songscribe.ui.renderer.RenderContext}, which still asks the question by
+     * index. Renderers ask {@link #isSelected(HitTarget, int)} instead.
+     */
     @Override
     public boolean isElementSelected(int elementIndex, int lineIndex) {
         return selectionCoordinator.isElementSelected(elementIndex, lineIndex);
     }
 
     @Override
-    public boolean isLineSelected(int lineIndex) {
-        return selectionCoordinator.isLineSelected(lineIndex);
-    }
-
-    @Override
-    public boolean isSlideSelected(int elementIndex, int lineIndex) {
-        return selectionCoordinator.isSlideSelected(elementIndex, lineIndex);
-    }
-
-    @Override
-    public boolean isDecorationSelected(LineElement element, int lineIndex) {
-        return selectionCoordinator.isDecorationSelected(element, lineIndex);
-    }
-
-    @Override
-    public boolean isLyricSelected(StaffElement element, int verse, int lineIndex) {
-        return selectionCoordinator.isLyricSelected(element, verse, lineIndex);
+    public boolean isSelected(HitTarget target, int lineIndex) {
+        return selectionCoordinator.isSelected(target, lineIndex);
     }
 
     @Override
@@ -716,14 +729,8 @@ public final class ScoreView
 
     @Override
     public void extendSelectionTo(int targetIndex) {
-        var state = selectionCoordinator.getActiveSelection();
-
-        if (state == null) {
-            return;
-        }
-
-        // A missing anchor is a no-op inside LineSelectionState.extendSelectionTo.
-        state.extendSelectionTo(targetIndex);
+        // A target selection has no anchor to extend from, and extendSelectionTo no-ops on it.
+        selectionCoordinator.extendSelectionTo(targetIndex);
         selectionChanged();
         repaint();
     }

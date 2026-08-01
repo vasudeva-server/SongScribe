@@ -26,11 +26,14 @@ import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
 
 import module java.desktop;
 
@@ -39,8 +42,13 @@ import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Song;
+import songscribe.dom.Trill;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.smufl.SMuFLGlyph;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 class TrillRendererTest extends UnitTest {
 
@@ -54,6 +62,65 @@ class TrillRendererTest extends UnitTest {
     // The wavy length is reconstructed from a scale factor and a segment count, so it carries a
     // little floating-point rounding rather than being exact.
     private static final double WAVY_LENGTH_TOLERANCE_SS = 1e-9;
+
+    // The trill's own reserved box; the values are arbitrary because the color path never
+    // reads them back.
+    private static final double DECO_Y_SS = -4.0;
+    private static final double DECO_WIDTH_SS = 4.0;
+    private static final double DECO_HEIGHT_SS = 2.0;
+    private static final double NO_MARGIN_SS = 0.0;
+
+    // ==========================================================================
+    // Selection color
+    // ==========================================================================
+
+    /**
+     * Renders a single-note trill with the trill reported as selected or not, and returns the
+     * color in force when the {@code tr} glyph was drawn.
+     */
+    private static Color renderedTrillColor(boolean selected) {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        var anchor = line.getElement(0);
+        var trill = new Trill(anchor, anchor);
+        line.addTrill(trill);
+
+        var layoutResult = LayoutResult.builder()
+            .putDecorationLayout(trill, new LayoutResult.DecorationLayout(
+                ANCHOR_LAYOUT_X_SS, DECO_Y_SS, DECO_WIDTH_SS, DECO_HEIGHT_SS, NO_MARGIN_SS))
+            .build();
+
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(new HitTarget.Trill(trill), 0)).thenReturn(selected);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setCurrentLine(line)
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var g2Spy = spy(RenderContextTestHelper.realG2());
+        var drawnColors = new ArrayList<Color>();
+        doAnswer(invocation -> {
+            drawnColors.add(g2Spy.getColor());
+            return null;
+        }).when(g2Spy).drawString(eq(SMuFLGlyph.ORNAMENT_TRILL.asString()), anyFloat(), anyFloat());
+
+        RENDERER.renderTrillsFromLine(g2Spy, invariants, ElementFrame.LINE_LEVEL);
+
+        assertThat(drawnColors).hasSize(1);
+        return drawnColors.getFirst();
+    }
+
+    @Test
+    void testSelectedTrillDrawsInTheSelectionColor() {
+        assertThat(renderedTrillColor(true)).isEqualTo(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testUnselectedTrillDrawsInTheElementColor() {
+        assertThat(renderedTrillColor(false)).isEqualTo(RenderingUtils.ELEMENT_COLOR);
+    }
 
     // ==========================================================================
     // drawWavyLine — segment count (row 29)

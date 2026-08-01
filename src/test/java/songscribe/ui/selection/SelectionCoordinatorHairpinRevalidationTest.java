@@ -30,6 +30,7 @@ import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.hit.HitTarget;
 import songscribe.message.mutation.CrescendoAddition;
 import songscribe.message.mutation.CrescendoRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
@@ -38,8 +39,8 @@ import songscribe.message.notification.SongDidChangeNotification;
  * Covers the hairpin clause of the {@code songDidChange} guard in
  * {@link SelectionCoordinator}.
  * <p>
- * {@link LineSelectionState#revalidateDecorationSelection()} is tested on its own in
- * {@link LineSelectionStateTest}, but that cannot show whether the coordinator ever calls
+ * {@link SelectionCoordinator#revalidateDecorationSelection()} is tested on its own in
+ * {@link SelectionCoordinatorTargetSelectionTest}, but that cannot show whether the coordinator calls
  * it for a hairpin. Without the {@code hasDecorationSelection()} clause in the guard, an
  * undo that removes the selected hairpin leaves the coordinator holding a dead
  * {@link songscribe.dom.Hairpin} with the toolbar frozen in its selected state.
@@ -58,14 +59,14 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
             List.of()
         );
 
-        var state = coordinator.getActiveSelection();
+        var state = coordinator.getActiveLine();
 
         assertThat(state).as("the test coordinator has no active line state").isNotNull();
 
-        var line = state.getLine();
+        var line = state;
         var hairpin = new Crescendo(line.getElement(0), line.getElement(1));
         line.addRangeElement(hairpin);
-        state.selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
+        coordinator.select(new HitTarget.Hairpin(hairpin));
 
         return new Fixture(coordinator, line, hairpin);
     }
@@ -73,8 +74,8 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
     @Test
     void testSongDidChangeClearsHairpinSelectionWhenTheHairpinIsGone() {
         var fixture = selectedHairpinOnActiveLine();
-        assertThat(fixture.coordinator().getSelectedDecoration())
-            .isEqualTo(new SelectedDecoration.HairpinSelection(fixture.hairpin()));
+        assertThat(fixture.coordinator().getSelectedTarget())
+            .isEqualTo(new HitTarget.Hairpin(fixture.hairpin()));
 
         // An undo that removed the hairpin, reported on the selected line.
         fixture.line().removeRangeElement(fixture.hairpin());
@@ -84,7 +85,7 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
             fixture.line().getSong()
         ));
 
-        assertThat(fixture.coordinator().getSelectedDecoration())
+        assertThat(fixture.coordinator().getSelectedTarget())
             .as("the dead hairpin selection was revalidated away")
             .isNull();
     }
@@ -97,7 +98,7 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
      * guard only acts when revalidation reports a stale selection, and revalidation
      * reports nothing when the hairpin is alive, so removing the clause would leave this
      * outcome unchanged. What the clause does in this case is covered directly by
-     * {@code LineSelectionStateTest.testRevalidateDecorationSelectionKeepsHairpinWhenStillOnLine}.
+     * {@code SelectionCoordinatorTargetSelectionTest.testRevalidateDecorationSelectionKeepsHairpinWhenStillOnLine}.
      */
     @Test
     void testSongDidChangeKeepsHairpinSelectionWhenTheHairpinSurvives() {
@@ -110,8 +111,8 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
             fixture.line().getSong()
         ));
 
-        assertThat(fixture.coordinator().getSelectedDecoration())
+        assertThat(fixture.coordinator().getSelectedTarget())
             .as("a live hairpin selection survives revalidation")
-            .isEqualTo(new SelectedDecoration.HairpinSelection(fixture.hairpin()));
+            .isEqualTo(new HitTarget.Hairpin(fixture.hairpin()));
     }
 }

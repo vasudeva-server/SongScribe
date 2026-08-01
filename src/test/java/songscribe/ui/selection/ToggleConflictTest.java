@@ -39,7 +39,7 @@ import songscribe.dom.Tie;
 class ToggleConflictTest extends UnitTest {
 
     private Line line;
-    private LineSelectionState state;
+    private Selection.Range range;
 
     @BeforeEach
     void setUp() {
@@ -47,23 +47,21 @@ class ToggleConflictTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
 
-        state = new LineSelectionState(line);
-        state.setSelectionFromClick(0);
-        state.extendSelectionTo(1);
+        range = new Selection.Range(line, 0, 1, 0);
     }
 
     @Test
     void testQuarterNotesBeamingDisabledTieEnabled() {
-        assertThat(state.canToggleBeaming()).as("beam").isFalse();
-        assertThat(state.canToggleTie()).as("tie").isTrue();
+        assertThat(RangeQueries.canToggleBeaming(range)).as("beam").isFalse();
+        assertThat(RangeQueries.canToggleTie(range)).as("tie").isTrue();
     }
 
     @Test
     void testChangeDurationToEighthBothEnabled() {
         changeDuration(ElementType.QUAVER);
 
-        assertThat(state.canToggleBeaming()).as("beam").isTrue();
-        assertThat(state.canToggleTie()).as("tie").isTrue();
+        assertThat(RangeQueries.canToggleBeaming(range)).as("beam").isTrue();
+        assertThat(RangeQueries.canToggleTie(range)).as("tie").isTrue();
     }
 
     @Test
@@ -71,7 +69,7 @@ class ToggleConflictTest extends UnitTest {
         changeDuration(ElementType.QUAVER);
         toggleBeam();
 
-        assertThat(state.canToggleTie()).as("tie after beam on").isFalse();
+        assertThat(RangeQueries.canToggleTie(range)).as("tie after beam on").isFalse();
     }
 
     @Test
@@ -80,7 +78,7 @@ class ToggleConflictTest extends UnitTest {
         toggleBeam();
         toggleBeam();
 
-        assertThat(state.canToggleTie()).as("tie after beam off").isTrue();
+        assertThat(RangeQueries.canToggleTie(range)).as("tie after beam off").isTrue();
     }
 
     @Test
@@ -88,7 +86,7 @@ class ToggleConflictTest extends UnitTest {
         changeDuration(ElementType.QUAVER);
         toggleTie();
 
-        assertThat(state.canToggleBeaming()).as("beam after tie on").isFalse();
+        assertThat(RangeQueries.canToggleBeaming(range)).as("beam after tie on").isFalse();
     }
 
     @Test
@@ -97,7 +95,7 @@ class ToggleConflictTest extends UnitTest {
         toggleTie();
         toggleTie();
 
-        assertThat(state.canToggleBeaming()).as("beam after tie off").isTrue();
+        assertThat(RangeQueries.canToggleBeaming(range)).as("beam after tie off").isTrue();
     }
 
     @Test
@@ -105,7 +103,7 @@ class ToggleConflictTest extends UnitTest {
         changeDuration(ElementType.QUAVER);
         changeDuration(ElementType.CROTCHET);
 
-        assertThat(state.canToggleBeaming()).as("beam after quarter").isFalse();
+        assertThat(RangeQueries.canToggleBeaming(range)).as("beam after quarter").isFalse();
     }
 
     // -------------------------------------------------------------------------
@@ -119,8 +117,8 @@ class ToggleConflictTest extends UnitTest {
     }
 
     private void toggleBeam() {
-        var begin = state.getSelectionBegin();
-        var end = state.getSelectionEnd();
+        var begin = range.begin();
+        var end = range.end();
         var beginBeam = line.findBeamAt(begin);
         var endBeam = line.findBeamAt(end);
 
@@ -132,20 +130,21 @@ class ToggleConflictTest extends UnitTest {
         }
     }
 
+    /**
+     * Mirrors {@code MusicEditOperations.toggleTie}: the tie to remove is looked up from the
+     * line, not cached by the preceding {@code canToggleTie} call. An earlier version of this
+     * helper read a cache the production toggle never touched, so it exercised a path the app
+     * does not have.
+     */
     private void toggleTie() {
-        // Ensure canToggleTie was evaluated so existingTie is set
-        state.canToggleTie();
+        var begin = range.begin();
+        var end = range.end();
+        var exactTie = line.findExactTie(begin, end);
 
-        var existingTie = state.getExistingTie();
-
-        if (existingTie != null) {
-            line.removeTie(existingTie);
+        if (exactTie != null) {
+            line.removeTie(exactTie);
         } else {
-            var anchorElement = line.getElement(state.getSelectionBegin());
-            var endElement = line.getElement(state.getSelectionEnd());
-            line.addTie(new Tie(anchorElement, endElement));
+            line.addTie(new Tie(line.getElement(begin), line.getElement(end)));
         }
-
-        state.resetTieState();
     }
 }

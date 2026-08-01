@@ -24,8 +24,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import module java.desktop;
 
@@ -36,9 +42,12 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Song;
+import songscribe.hit.HitTarget;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 class FermataRendererTest extends UnitTest {
 
@@ -89,5 +98,48 @@ class FermataRendererTest extends UnitTest {
         assertThat(drawnGlyphCenterSs)
             .describedAs("the drawn fermata glyph must be visually centerd on the notehead")
             .isCloseTo(noteheadCenterSs, within(FLOAT_TOLERANCE_SS));
+    }
+
+    // ==========================================================================
+    // render() — the fermata's own selection color
+    // ==========================================================================
+
+    /**
+     * Renders a note's fermata, with the selection provider reporting that fermata as
+     * {@code selected}, and returns the colors installed on the graphics context at each
+     * glyph draw.
+     */
+    private static List<Color> drawColorsFor(boolean selected) {
+        var note = ElementType.CROTCHET.newInstance();
+        var fermata = new FermataAttachment(note);
+        note.addAttachment(fermata);
+
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(new HitTarget.Attachment(fermata), 0)).thenReturn(selected);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var g2Spy = spy(RenderContextTestHelper.realG2());
+        var colors = new ArrayList<Color>();
+        doAnswer(invocation -> {
+            colors.add(g2Spy.getColor());
+            return null;
+        }).when(g2Spy).drawString(anyString(), anyFloat(), anyFloat());
+
+        RENDERER.render(invariants, ElementFrame.LINE_LEVEL.withElement(0, ELEMENT_X_SS), note, g2Spy);
+
+        return colors;
+    }
+
+    @Test
+    void testRenderDrawsSelectedFermataInSelectionColor() {
+        assertThat(drawColorsFor(true)).containsOnly(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testRenderDrawsUnselectedFermataInTheElementColor() {
+        assertThat(drawColorsFor(false)).containsOnly(Color.BLACK);
     }
 }

@@ -28,20 +28,22 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
+import songscribe.hit.HitTarget;
 import songscribe.ui.component.ScoreView;
 
 /**
- * Unit tests for the cross-line guard logic and per-state delegation in
- * {@link SelectionCoordinator#isElementSelected}, {@link SelectionCoordinator#isLineSelected},
- * and {@link SelectionCoordinator#isSlideSelected}.
+ * Unit tests for the cross-line guard logic in {@link SelectionCoordinator#isElementSelected},
+ * {@link SelectionCoordinator#isLineSelected} and {@link SelectionCoordinator#isSelected}.
  *
  * <p>These methods all share the same shape:
  * <ol>
  *   <li>Return false immediately when {@code lineIndex != activeLineIndex}.</li>
- *   <li>Otherwise delegate to the {@link LineSelectionState} for the active line.</li>
+ *   <li>Otherwise answer from the selected {@link Selection.Range}, or
+ *       from the coordinator's own single selected target.</li>
  * </ol>
- * Both branches are exercised for each method.
+ * Both branches are exercised for each method. The guard is what it always was; what changed
+ * is that the target half of the answer is now one field here rather than one per line.
  */
 class SelectionCoordinatorQueryGuardsTest extends UnitTest {
 
@@ -64,11 +66,11 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
 
         var lineA = new Line(song);
         lineA.addElement(ElementType.CROTCHET.newInstance());
-        coordinator.registerLineState(LINE_0, new LineSelectionState(lineA));
+        coordinator.registerLine(LINE_0, lineA);
 
         var lineB = new Line(song);
         lineB.addElement(ElementType.CROTCHET.newInstance());
-        coordinator.registerLineState(LINE_1, new LineSelectionState(lineB));
+        coordinator.registerLine(LINE_1, lineB);
 
         coordinator.activateLine(LINE_0);
         return coordinator;
@@ -87,10 +89,7 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
         var coordinator = twoLineCoordinator();
 
         // Select element 0 on the active line (line 0).
-        var selection = coordinator.getActiveSelection();
-        assertThat(selection).isNotNull();
-
-        selection.setSelectionFromClick(ELEMENT_0);
+        coordinator.selectSingleElement(LINE_0, ELEMENT_0);
 
         // Query against line 1, which is not active.
         assertThat(coordinator.isElementSelected(ELEMENT_0, LINE_1))
@@ -99,10 +98,9 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
     }
 
     /**
-     * Row 22: isElementSelected returns false when the active line has no element
-     * selection. The coordinator does not check for that itself — it delegates, and
-     * {@link LineSelectionState#isElementSelected} answers false for every index once
-     * the selection range is empty.
+     * Row 22: isElementSelected returns false when nothing is selected on the active line.
+     * Since an empty range can no longer be stored, "no selection" is a null selection and
+     * the query answers false for every index.
      */
     @Test
     void testIsElementSelectedReturnsFalseWhenNoElementSelection() {
@@ -115,19 +113,15 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
     }
 
     /**
-     * Row 23: isElementSelected delegates to the state when lineIndex matches the
-     * active line and the state has a selection — returns true for the selected
-     * element.
+     * Row 23: isElementSelected answers from the range when lineIndex matches the active
+     * line and a range is selected — true for the selected element.
      */
     @Test
-    void testIsElementSelectedDelegatesToStateForActiveLineWithSelection() {
+    void testIsElementSelectedAnswersFromTheRangeOnTheActiveLine() {
         var coordinator = twoLineCoordinator();
 
         // Select element 0 on the active line (line 0).
-        var selection = coordinator.getActiveSelection();
-        assertThat(selection).isNotNull();
-
-        selection.setSelectionFromClick(ELEMENT_0);
+        coordinator.selectSingleElement(LINE_0, ELEMENT_0);
 
         assertThat(coordinator.isElementSelected(ELEMENT_0, LINE_0))
             .as("isElementSelected(0, line 0) when element 0 is selected on active line")
@@ -146,11 +140,7 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
     void testIsLineSelectedReturnsFalseForInactiveLine() {
         var coordinator = twoLineCoordinator();
 
-        // Activate line 0 and mark it as line-selected.
-        var lineState = coordinator.getLineState(LINE_0);
-        assertThat(lineState).isNotNull();
-
-        lineState.setLineSelected(true);
+        coordinator.select(new HitTarget.StaffLine());
 
         // Query against line 1, which is not active.
         assertThat(coordinator.isLineSelected(LINE_1))
@@ -159,32 +149,27 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
     }
 
     /**
-     * Row 25: isLineSelected delegates to state.isLineSelected for the active line
-     * and returns true when that state has been line-selected.
+     * Row 25: isLineSelected answers from the coordinator's own target for the active line
+     * and returns true when that target is the staff line.
      */
     @Test
-    void testIsLineSelectedDelegatesToStateForActiveLine() {
+    void testIsLineSelectedAnswersForTheActiveLine() {
         var coordinator = twoLineCoordinator();
 
-        // Mark line 0 as line-selected via the state's own setter.
-        var lineState = coordinator.getLineState(LINE_0);
-        assertThat(lineState).isNotNull();
-
-        lineState.setLineSelected(true);
+        coordinator.select(new HitTarget.StaffLine());
 
         assertThat(coordinator.isLineSelected(LINE_0))
-            .as("isLineSelected(line 0) when state has lineSelected=true")
+            .as("isLineSelected(line 0) when the staff line is the selected target")
             .isTrue();
     }
 
     // -------------------------------------------------------------------------
-    // isSlideSelected
+    // isSelected: a slide
     // -------------------------------------------------------------------------
 
     /**
-     * Row 26 (cross-line guard): isSlideSelected returns false when the
-     * queried lineIndex does not match the active line — even though the active
-     * line has a slide selection.
+     * Row 26 (cross-line guard): a selected slide is not reported on a line other than the
+     * active one, even though it is the score's one selected target.
      */
     @Test
     void testIsSlideSelectedReturnsFalseForInactiveLine() {
@@ -193,30 +178,41 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
         // Select the glissando on element 0 of the active line (line 0).
         ReflectionTestHelper.selectGlissando(coordinator, ELEMENT_0);
 
+        var slide = selectedSlide(coordinator);
+
         // Query against line 1, which is not active.
-        assertThat(coordinator.isSlideSelected(ELEMENT_0, LINE_1))
-            .as("isSlideSelected(0, line 1) when line 0 is active and has a slide selected")
+        assertThat(coordinator.isSelected(slide, LINE_1))
+            .as("isSelected(slide, line 1) when line 0 is active and has that slide selected")
             .isFalse();
     }
 
     /**
-     * Row 26 (delegation): isSlideSelected delegates to the state for the
-     * active line and returns true when that state has the slide selected.
+     * Row 26 (answer): the selected slide is reported on the active line.
      */
     @Test
-    void testIsSlideSelectedDelegatesToStateForActiveLine() {
+    void testIsSlideSelectedAnswersForTheActiveLine() {
         var coordinator = twoLineCoordinator();
 
         // Select the glissando on element 0 of the active line (line 0).
         ReflectionTestHelper.selectGlissando(coordinator, ELEMENT_0);
 
-        assertThat(coordinator.isSlideSelected(ELEMENT_0, LINE_0))
-            .as("isSlideSelected(0, line 0) when the slide at element 0 is selected")
+        assertThat(coordinator.isSelected(selectedSlide(coordinator), LINE_0))
+            .as("isSelected(slide, line 0) when the slide at element 0 is selected")
             .isTrue();
     }
 
+    /**
+     * Returns the slide target the coordinator currently holds, so a query can name the same
+     * thing the helper selected without the test rebuilding it from the line.
+     */
+    private static HitTarget selectedSlide(SelectionCoordinator coordinator) {
+        var target = coordinator.getSelectedTarget();
+        assertThat(target).as("the selected target").isInstanceOf(HitTarget.Slide.class);
+        return target;
+    }
+
     // -------------------------------------------------------------------------
-    // isDecorationSelected / hasDecorationSelection
+    // isSelected: an ending / hasDecorationSelection
     // -------------------------------------------------------------------------
 
     /**
@@ -228,8 +224,7 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
     }
 
     /**
-     * Cross-line guard: isDecorationSelected returns false when the queried lineIndex
-     * does not match the active line — even though the active line has an ending selected.
+     * Cross-line guard: a selected ending is not reported on a line other than the active one.
      */
     @Test
     void testIsEndingSelectedReturnsFalseForInactiveLine() {
@@ -238,24 +233,23 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
 
         ReflectionTestHelper.selectEnding(coordinator, ending);
 
-        assertThat(coordinator.isDecorationSelected(ending, LINE_1))
-            .as("isDecorationSelected(ending, line 1) when line 0 is active and has that ending selected")
+        assertThat(coordinator.isSelected(new HitTarget.Ending(ending), LINE_1))
+            .as("isSelected(ending, line 1) when line 0 is active and has that ending selected")
             .isFalse();
     }
 
     /**
-     * Delegation: isDecorationSelected delegates to the state for the active line and
-     * returns true when that state has the ending selected.
+     * The selected ending is reported on the active line.
      */
     @Test
-    void testIsEndingSelectedDelegatesToStateForActiveLine() {
+    void testIsEndingSelectedAnswersForTheActiveLine() {
         var coordinator = twoLineCoordinator();
         var ending = newEnding();
 
         ReflectionTestHelper.selectEnding(coordinator, ending);
 
-        assertThat(coordinator.isDecorationSelected(ending, LINE_0))
-            .as("isDecorationSelected(ending, line 0) when that ending is selected")
+        assertThat(coordinator.isSelected(new HitTarget.Ending(ending), LINE_0))
+            .as("isSelected(ending, line 0) when that ending is selected")
             .isTrue();
     }
 
@@ -268,8 +262,8 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
 
         ReflectionTestHelper.selectEnding(coordinator, newEnding());
 
-        assertThat(coordinator.isDecorationSelected(newEnding(), LINE_0))
-            .as("isDecorationSelected(other ending, line 0) when a different ending is selected")
+        assertThat(coordinator.isSelected(new HitTarget.Ending(newEnding()), LINE_0))
+            .as("isSelected(other ending, line 0) when a different ending is selected")
             .isFalse();
     }
 

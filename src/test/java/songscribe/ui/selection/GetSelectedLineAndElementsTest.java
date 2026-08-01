@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.hit.HitTarget;
 
 /**
  * Unit tests for {@link SelectionCoordinator#getSelectedLine} and
@@ -56,10 +57,7 @@ class GetSelectedLineAndElementsTest extends UnitTest {
             List.of(ElementType.CROTCHET.newInstance()),
             List.of()
         );
-        var lineState = coordinator.getLineState(LINE_0);
-        assertThat(lineState).isNotNull();
-
-        lineState.setLineSelected(true);
+        coordinator.select(new HitTarget.StaffLine());
 
         assertThat(coordinator.getSelectedLine())
             .as("getSelectedLine when active line has line-selection")

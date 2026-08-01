@@ -40,7 +40,7 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
 import static org.assertj.core.api.Assertions.assertThat;

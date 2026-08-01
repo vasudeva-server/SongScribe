@@ -25,9 +25,12 @@ import static org.assertj.core.api.Assertions.within;
 import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyFloat;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -44,12 +47,15 @@ import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 class NoteRendererTest extends UnitTest {
 
@@ -731,6 +737,91 @@ class NoteRendererTest extends UnitTest {
                 .isCloseTo(
                     OUTER_BEAM_LENGTH_SS - LineThickness.beamTranslationSs(THICKENING_SS),
                     within(TOLERANCE));
+        }
+    }
+
+    // ==========================================================================
+    // renderAccidental — selection color
+    // ==========================================================================
+
+    /**
+     * An accidental is the one part of a note that can be selected on its own, so it is the one
+     * part that may carry a color the rest of the note does not. These tests pin both halves of
+     * that: the accidental picks up the selection color, and nothing else does.
+     */
+    @Nested
+    class AccidentalSelectionColor {
+
+        /** Stands in for the color {@code LineRenderer} installs before drawing a note. */
+        private static final Color AMBIENT_COLOR = Color.MAGENTA;
+
+        /** A glyph drawn by the note renderer, with the color in force at the time. */
+        private record DrawnGlyph(String glyph, Color color) {}
+
+        private List<DrawnGlyph> renderSharpenedNote(boolean accidentalSelected) {
+            NoteGeometry.initializeAccidentalWidths();
+
+            var line = detachedLine();
+            var note = ElementType.CROTCHET.newInstance();
+            note.setAccidental(StaffElement.Accidental.SHARP);
+            line.addElement(note);
+
+            var selectionProvider = mock(LineComponent.SelectionProvider.class);
+            when(selectionProvider.isSelected(new HitTarget.Accidental(note), 0))
+                .thenReturn(accidentalSelected);
+
+            var invariants = RenderContextTestHelper.newContext(new Song())
+                .setCurrentLine(line)
+                .setSelectionProvider(selectionProvider)
+                .build();
+
+            var g2 = spy(RenderContextTestHelper.realG2());
+            g2.setColor(AMBIENT_COLOR);
+
+            var drawn = new ArrayList<DrawnGlyph>();
+            doAnswer(invocation -> {
+                drawn.add(new DrawnGlyph(invocation.getArgument(0), g2.getColor()));
+                return null;
+            }).when(g2).drawString(anyString(), anyFloat(), anyFloat());
+
+            NoteRenderer.getInstance().render(
+                invariants, ElementFrame.LINE_LEVEL.withElement(0, 0.0), note, g2);
+
+            return drawn;
+        }
+
+        private static List<Color> colorsOf(List<DrawnGlyph> drawn, SMuFLGlyph glyph) {
+            return drawn.stream()
+                .filter(entry -> entry.glyph().equals(glyph.asString()))
+                .map(DrawnGlyph::color)
+                .toList();
+        }
+
+        @Test
+        void testSelectedAccidentalDrawsInTheSelectionColor() {
+            var drawn = renderSharpenedNote(true);
+
+            assertThat(colorsOf(drawn, SMuFLGlyph.ACCIDENTAL_SHARP))
+                .as("the selected accidental")
+                .containsOnly(ScoreView.getSelectionColor());
+        }
+
+        @Test
+        void testSelectedAccidentalLeavesTheRestOfTheNoteInTheCallersColor() {
+            var drawn = renderSharpenedNote(true);
+
+            assertThat(colorsOf(drawn, SMuFLGlyph.NOTEHEAD_BLACK))
+                .as("the note head the caller already colored")
+                .containsOnly(AMBIENT_COLOR);
+        }
+
+        @Test
+        void testUnselectedAccidentalKeepsTheCallersColor() {
+            var drawn = renderSharpenedNote(false);
+
+            assertThat(colorsOf(drawn, SMuFLGlyph.ACCIDENTAL_SHARP))
+                .as("an unselected accidental")
+                .containsOnly(AMBIENT_COLOR);
         }
     }
 

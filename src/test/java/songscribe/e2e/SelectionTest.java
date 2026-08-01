@@ -43,6 +43,7 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.dom.ScaleContext;
+import songscribe.hit.HitTarget;
 
 /**
  * Consolidated E2E test for selection mechanics, toolbar reflection,
@@ -191,7 +192,10 @@ class SelectionTest extends E2ETest {
             enterSelectMode();
             var note1Pos = noteScreenPosition(0, Sel1.WHOLE.index);
             var note3Pos = noteScreenPosition(0, Sel1.QUARTER.index);
-            var dragStart = new Point(note1Pos.x - 20, note1Pos.y - 20);
+            // Only 5px, not 20: QUARTER_TEMPO's tempo marking sits above and just left of this
+            // note, and is now independently clickable. A press that lands on it selects the
+            // marking instead of starting a rubber-band drag, so the drag never begins.
+            var dragStart = new Point(note1Pos.x - 5, note1Pos.y - 5);
             var dragEnd = new Point(note3Pos.x + 20, note3Pos.y + 20);
             robot.pressMouse(dragStart, LEFT_BUTTON);
             pause();
@@ -231,7 +235,7 @@ class SelectionTest extends E2ETest {
             });
             assertThat(lineClickPoint).isNotNull();
             clickAt(lineClickPoint);
-            assertThat(scoreView().isLineSelected(0)).as("line selected").isTrue();
+            assertThat(scoreView().isSelected(new HitTarget.StaffLine(), 0)).as("line selected").isTrue();
         }
 
         @Test
@@ -252,7 +256,7 @@ class SelectionTest extends E2ETest {
             });
             assertThat(lineClickPoint).isNotNull();
             clickAt(lineClickPoint);
-            assertThat(scoreView().isLineSelected(0)).as("line not selected past music").isFalse();
+            assertThat(scoreView().isSelected(new HitTarget.StaffLine(), 0)).as("line not selected past music").isFalse();
         }
     }
 
@@ -277,16 +281,7 @@ class SelectionTest extends E2ETest {
         @Test
         void testBreathMarkDisablesDurationsAndBarlines() {
             enterSelectMode();
-            // Breath marks are very small — use drag-select to reliably select
-            var bmPos = noteScreenPosition(0, Sel2.BREATH_MARK.index);
-            var dragStart = new Point(bmPos.x - 10, bmPos.y - 10);
-            var dragEnd = new Point(bmPos.x + 10, bmPos.y + 10);
-            robot.pressMouse(dragStart, LEFT_BUTTON);
-            pause();
-            robot.moveMouse(dragEnd);
-            pause();
-            robot.releaseMouseButtons();
-            pause();
+            clickAt(noteScreenPosition(0, Sel2.BREATH_MARK.index));
             assertAll(
                 () -> verifyDurationsDisabled("breath mark"),
                 () -> assertActionEnabled(Actions.BARLINE_ACTIONS[0], false, "barline disabled"),

@@ -30,7 +30,7 @@ import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Tempo;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.layout.LineEndingSupport;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 

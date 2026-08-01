@@ -35,15 +35,17 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.NoteColumnGeometry;
 import songscribe.layout.NoteGeometry;
+import songscribe.layout.SlideGeometry;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * Verifies the new fall-specific rendering: a {@link StaffElement.Fall} draws the
+ * Verifies the fall-specific rendering: a {@link StaffElement.Fall} draws the
  * {@code brassFallLipShort} glyph one {@link NoteGeometry#FALL_GAP_SS} past the host
- * note's column-right edge, at the note's notehead-center Y, caches the glyph's drawn rect, and is
- * selected when that rect is clicked.
+ * note's column-right edge, at the note's notehead-center Y, and is selected when the rect the
+ * layout computed for that glyph is clicked.
  */
 class FallRendererTest extends UnitTest {
 
@@ -51,11 +53,11 @@ class FallRendererTest extends UnitTest {
 
     private static final double TOLERANCE_SS = 0.001;
 
-    // A synthetic hit rect for the click-to-select tests, decoupled from font metrics.
-    private static final double HIT_RECT_X_SS = 5.0;
-    private static final double HIT_RECT_Y_SS = 3.0;
-    private static final double HIT_RECT_WIDTH_SS = 1.5;
-    private static final double HIT_RECT_HEIGHT_SS = 2.0;
+    /**
+     * A deliberately non-zero middle line, so geometry that is not converted between layout space
+     * (Y measured from the staff midline) and component space lands visibly off target.
+     */
+    private static final double MIDDLE_LINE_Y_SS = 4.0;
 
     @BeforeAll
     static void initializeNoteGeometry() {
@@ -69,48 +71,57 @@ class FallRendererTest extends UnitTest {
         return note;
     }
 
+    /** The layout the engine would produce for {@code note}'s fall, in layout space. */
+    private static LayoutResult fallLayout(StaffElement note) {
+        var boundsSs = SlideGeometry.computeFallBoundsSs(
+            SlideGeometry.noteContextAt(note, 0.0, false, 0.0));
+
+        return LayoutResult.builder()
+            .putSlideLayout(note, LayoutResult.SlideLayout.ofFall(boundsSs))
+            .build();
+    }
+
+    private static LineInvariants fallInvariants(Line line, LayoutResult layoutResult) {
+        return RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setCurrentLine(line)
+            .setMiddleLineYSs(MIDDLE_LINE_Y_SS)
+            .build();
+    }
+
     @Test
-    void testRenderFallCachesGlyphRectAtNotePitchToTheRight() {
+    void testRenderFallDrawsTheLayoutGlyphRectAtNotePitchToTheRight() {
         var note = fallNote();
         var line = detachedLine();
         line.addElement(note);
 
-        var invariants = RenderContextTestHelper.newContext(new Song())
-            .setLayoutResult(LayoutResult.builder().build())
-            .setCurrentLine(line)
-            .build();
+        var invariants = fallInvariants(line, fallLayout(note));
+        var recorder = new RecordingGraphics2D();
+        recorder.setColor(Color.BLACK);
 
-        var slide = note.getSlide();
-        assertThat(slide).isNotNull();
-
-        var fall = (StaffElement.Fall) slide;
-        assertThat(fall.cachedHitBounds).as("hit bounds unset before render").isNull();
-
-        RENDERER.renderSlide(
-            mock(Graphics2D.class), line, note, 0, invariants, ElementFrame.LINE_LEVEL);
+        RENDERER.renderSlide(recorder, line, note, 0, invariants, ElementFrame.LINE_LEVEL);
 
         // The glyph hangs one gap past the note's column-right edge (elementX is 0 for an unmapped
-        // note), at the note's notehead-center Y; its drawn rect is the glyph bbox translated there.
+        // note), at the note's notehead-center Y in component space; its ink is the glyph bbox
+        // translated there.
         var columnRightXSs = NoteColumnGeometry.extentSs(note, false).rightSs();
         var glyphXSs = columnRightXSs + NoteGeometry.FALL_GAP_SS;
-        var glyphYSs = RenderingUtils.noteStaffPositionToCoordinateSs(
-            note.getStaffPosition(), invariants.getMiddleLineYSs());
+        var glyphYSs = NoteGeometry.noteStaffPositionToCoordinateSs(
+            note.getStaffPosition(), MIDDLE_LINE_Y_SS);
         var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
 
-        var bounds = fall.cachedHitBounds;
-        assertThat(bounds).isNotNull();
-        assertThat(bounds.getX())
+        var inkSs = recorder.displayList().inkBoundsSs();
+        assertThat(inkSs).as("expected the fall glyph to draw").isNotNull();
+        assertThat(inkSs.getMinX())
             .as("glyph left edge is one gap right of the note column")
             .isCloseTo(glyphXSs + bbox.left(), within(TOLERANCE_SS));
-        assertThat(bounds.getY())
-            .as("glyph sits at the host note's pitch")
+        assertThat(inkSs.getMinY())
+            .as("glyph sits at the host note's pitch, converted into component space")
             .isCloseTo(glyphYSs + bbox.top(), within(TOLERANCE_SS));
-        assertThat(bounds.getWidth()).isCloseTo(bbox.width(), within(TOLERANCE_SS));
-        assertThat(bounds.getHeight()).isCloseTo(bbox.height(), within(TOLERANCE_SS));
     }
 
     @Test
-    void testRenderFallBeforeBarlineDoesNotResolveTargetAndCachesRect() {
+    void testRenderFallBeforeBarlineDoesNotResolveTarget() {
         // Regression: a fall is a standalone trailing glyph with no target note. When a
         // non-renderable element (a final double barline) follows it, resolving a target
         // context used to call NoteColumnGeometry.extentSs on the barline and crash the paint.
@@ -119,21 +130,14 @@ class FallRendererTest extends UnitTest {
         line.addElement(note);
         line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());
 
-        var invariants = RenderContextTestHelper.newContext(new Song())
-            .setLayoutResult(LayoutResult.builder().build())
-            .setCurrentLine(line)
-            .build();
+        var invariants = fallInvariants(line, fallLayout(note));
+        var recorder = new RecordingGraphics2D();
+        recorder.setColor(Color.BLACK);
 
-        var slide = note.getSlide();
-        assertThat(slide).isNotNull();
+        RENDERER.renderSlide(recorder, line, note, 0, invariants, ElementFrame.LINE_LEVEL);
 
-        var fall = (StaffElement.Fall) slide;
-
-        RENDERER.renderSlide(
-            mock(Graphics2D.class), line, note, 0, invariants, ElementFrame.LINE_LEVEL);
-
-        assertThat(fall.cachedHitBounds)
-            .as("the fall still renders and caches its hit rect when a barline follows")
+        assertThat(recorder.displayList().inkBoundsSs())
+            .as("the fall still renders when a barline follows")
             .isNotNull();
     }
 
@@ -147,10 +151,7 @@ class FallRendererTest extends UnitTest {
         line.addElement(note);
         line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());
 
-        var invariants = RenderContextTestHelper.newContext(new Song())
-            .setLayoutResult(LayoutResult.builder().build())
-            .setCurrentLine(line)
-            .build();
+        var invariants = fallInvariants(line, LayoutResult.builder().build());
 
         RENDERER.renderPreviewFall(mock(Graphics2D.class), 0, line, invariants);
 
@@ -159,56 +160,4 @@ class FallRendererTest extends UnitTest {
             .isNull();
     }
 
-    /**
-     * Builds a hit-test context for a slide hit test, which reads only the point and the line.
-     */
-    private static int hitTestSlide(double xSs, double ySs, Line line) {
-        return RENDERER.hitTestSlide(xSs, ySs, line);
-    }
-
-    @Test
-    void testClickInsideFallRectSelectsOwnerNote() {
-        var note = fallNote();
-        var line = detachedLine();
-        line.addElement(note);
-
-        var slide = note.getSlide();
-        assertThat(slide).isNotNull();
-
-        var fall = (StaffElement.Fall) slide;
-        fall.cachedHitBounds = new Rectangle2D.Double(
-            HIT_RECT_X_SS, HIT_RECT_Y_SS, HIT_RECT_WIDTH_SS, HIT_RECT_HEIGHT_SS);
-
-        var clickXSs = HIT_RECT_X_SS + HIT_RECT_WIDTH_SS / 2.0;
-        var clickYSs = HIT_RECT_Y_SS + HIT_RECT_HEIGHT_SS / 2.0;
-
-        assertThat(hitTestSlide(clickXSs, clickYSs, line)).isEqualTo(0);
-    }
-
-    @Test
-    void testClickOutsideFallRectIsNotAHit() {
-        var note = fallNote();
-        var line = detachedLine();
-        line.addElement(note);
-
-        var slide = note.getSlide();
-        assertThat(slide).isNotNull();
-
-        var fall = (StaffElement.Fall) slide;
-        fall.cachedHitBounds = new Rectangle2D.Double(
-            HIT_RECT_X_SS, HIT_RECT_Y_SS, HIT_RECT_WIDTH_SS, HIT_RECT_HEIGHT_SS);
-
-        // Origin is well clear of the rect.
-        assertThat(hitTestSlide(0.0, 0.0, line)).isEqualTo(-1);
-    }
-
-    @Test
-    void testFallWithoutCachedBoundsIsNotHit() {
-        var note = fallNote();
-        var line = detachedLine();
-        line.addElement(note);
-
-        // No render pass occurred, so cachedHitBounds is null and nothing can be hit.
-        assertThat(hitTestSlide(HIT_RECT_X_SS, HIT_RECT_Y_SS, line)).isEqualTo(-1);
-    }
 }

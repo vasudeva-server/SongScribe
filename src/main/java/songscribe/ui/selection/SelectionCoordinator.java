@@ -44,9 +44,10 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
+import songscribe.hit.HitTarget;
 import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LineEndingSupport;
 import songscribe.ui.EndingConfirms;
@@ -60,26 +61,41 @@ import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.dom.Beam;
 
 /**
- * Lightweight score-level coordinator that tracks which line (if any) has
- * the active selection, and handles cross-line queries.
+ * Score-level coordinator that owns the score's one selection, tracks which line it sits on,
+ * and answers the cross-line queries built on it.
  * <p>
- * Replaces SelectionManager as the score-level selection object.
+ * <b>There is one selection in the score, and it has two shapes.</b> Both live in one field,
+ * so they exclude each other structurally: assigning either is the whole of dropping the
+ * other. See {@link Selection} for what the shapes are and why neither can express the other.
+ * <p>
+ * That one field is also the one place the selection can change, which is what lets repaint,
+ * notification and cache invalidation all hang off assignment. Nothing hands out a mutable
+ * selection object for a caller to change behind this class's back.
+ * <p>
+ * {@link #lines} is the second half of the picture: it maps a line index to the {@link Line}
+ * at that index, so {@code activeLineIndex} can name a line without holding one. That
+ * registration is what a {@code LineComponent} does when it takes on a line, and it is
+ * deliberately all a {@code LineComponent} contributes — the selection itself outlives any
+ * number of {@code LineComponent.setLine} rebuilds because it never lived on one.
  */
 public final class SelectionCoordinator {
-
-    public record LyricSelection(StaffElement element, int verse) {}
 
     /** The score this coordinator selects within. Its mode is the source of truth for
      *  {@link #isInSelectMode()}. */
     private final ScoreView scoreView;
 
-    /** Registry of per-line selection states, keyed by line index. */
-    private final Map<Integer, LineSelectionState> lineStates = new HashMap<>();
+    /** The line at each line index, registered by that index's {@link LineComponent}. */
+    private final Map<Integer, Line> lines = new HashMap<>();
 
-    /** Which line currently has the active selection, or -1 if none. */
+    /** Which line currently has the selection, or -1 if none. */
     private int activeLineIndex = -1;
+
+    /**
+     * The one thing selected in the score, on the line at {@code activeLineIndex}, or null if
+     * nothing is selected.
+     */
     @Nullable
-    private LyricSelection lyricSelection = null;
+    private Selection selected = null;
 
     /**
      * The LineComponent that currently has an active rubber-band drag, or null.
@@ -142,39 +158,38 @@ public final class SelectionCoordinator {
     }
 
     // -------------------------------------------------------------------------
-    // Line state registry
+    // Line registry
     // -------------------------------------------------------------------------
 
     /**
-     * Registers a LineSelectionState for the given line index.
-     * Called by LineComponent when it is set up.
+     * Registers the line at the given index. Called by {@link LineComponent} when it takes
+     * on a line, and again if its score is set afterwards.
      */
-    public void registerLineState(int lineIndex, LineSelectionState state) {
-        state.setSelectionChangeCallback(this::clearLyricSelection);
-        lineStates.put(lineIndex, state);
+    public void registerLine(int lineIndex, Line line) {
+        lines.put(lineIndex, line);
     }
 
     /**
-     * Removes a LineSelectionState registration.
+     * Removes a line registration.
      */
-    public void unregisterLineState(int lineIndex) {
-        lineStates.remove(lineIndex);
+    public void unregisterLine(int lineIndex) {
+        lines.remove(lineIndex);
     }
 
     /**
-     * Clears all registered line states.
+     * Forgets every registered line and deactivates.
      */
-    public void clearLineStates() {
-        lineStates.clear();
+    public void clearLines() {
+        lines.clear();
         activeLineIndex = -1;
     }
 
     /**
-     * Returns the LineSelectionState for the given line index, or null if not registered.
+     * Returns the line registered at the given index, or null if none is.
      */
     @Nullable
-    public LineSelectionState getLineState(int lineIndex) {
-        return lineStates.get(lineIndex);
+    public Line getLine(int lineIndex) {
+        return lines.get(lineIndex);
     }
 
     // -------------------------------------------------------------------------
@@ -182,96 +197,173 @@ public final class SelectionCoordinator {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the index of the line that currently has the active selection,
-     * or -1 if no line has an active selection.
+     * Returns the index of the line that currently has the selection,
+     * or -1 if no line does.
      */
     public int getActiveLineIndex() {
         return activeLineIndex;
     }
 
     /**
-     * Returns the active LineSelectionState, or null if no line is active.
+     * Returns the line the selection sits on, or null if no line is active.
+     * <p>
+     * Answers whatever shape the selection has, including none — a decoration target and a
+     * whole-line selection both sit on a line without carrying an index range, and the
+     * active line is how they are cleared, revalidated and reflected. Callers that
+     * specifically want an index range ask {@link #getRange} instead.
      */
     @Nullable
-    public LineSelectionState getActiveSelection() {
-        if (activeLineIndex == -1) {
-            return null;
-        }
+    public Line getActiveLine() {
+        return lines.get(activeLineIndex);
+    }
 
-        return lineStates.get(activeLineIndex);
+    /**
+     * Returns the selected index range, or null if the selection is a target or there is
+     * none. A range is never empty: nothing selected is null, not a zero-width range.
+     */
+    public Selection.@Nullable Range getRange() {
+        return (selected instanceof Selection.Range range) ? range : null;
     }
 
     /**
      * Collapses the selection to a single element at {@code elementIndex} on the line
-     * at {@code lineIndex}: clears any prior selection, activates the target line, and
-     * sets the single-element selection. Returns the now-active state, or null if the
-     * target line has no registered selection state. Shared by the mouse click-to-select
-     * path and arrow-key navigation; each caller handles its own notification and repaint.
+     * at {@code lineIndex}. Returns whether a line was registered at that index to select on.
+     * Shared by the mouse click-to-select path and arrow-key navigation; each caller handles
+     * its own notification and repaint.
      */
-    @Nullable
-    public LineSelectionState selectSingleElement(int lineIndex, int elementIndex) {
+    public boolean selectSingleElement(int lineIndex, int elementIndex) {
         clearSelection();
         activateLine(lineIndex);
 
-        var state = getActiveSelection();
+        var line = getActiveLine();
 
-        if (state != null) {
-            state.setSelectionFromClick(elementIndex);
+        if (line == null) {
+            return false;
         }
 
-        return state;
+        selected = Selection.Range.single(line, elementIndex);
+        return true;
     }
 
     /**
-     * Activates the given line for selection. Clears the previous line's selection.
+     * Activates the given line for selection, dropping whatever was selected.
+     * <p>
+     * Clears unconditionally, including when the line is already active: activating a line is
+     * the start of selecting on it, and every caller assigns a selection immediately after or
+     * has just cleared one. Keeping a range alive across it would mean the shape of what was
+     * selected decided whether it survived, which is the distinction this class no longer draws.
      */
     public void activateLine(int lineIndex) {
-        clearLyricSelection();
-
-        if (activeLineIndex != -1 && activeLineIndex != lineIndex) {
-            var previousState = lineStates.get(activeLineIndex);
-
-            if (previousState != null) {
-                previousState.clearSelection();
-            }
-        }
-
+        selected = null;
         activeLineIndex = lineIndex;
     }
 
     /**
-     * Clears the active line's selection and resets activeLineIndex to -1.
+     * Clears the selection and deactivates the line it was on.
      */
     public void clearSelection() {
-        clearLyricSelection();
-
-        if (activeLineIndex != -1) {
-            var state = lineStates.get(activeLineIndex);
-
-            if (state != null) {
-                state.clearSelection();
-            }
-        }
-
+        selected = null;
         activeLineIndex = -1;
     }
 
+    /**
+     * Clears what is selected while leaving its line active, so the next selection lands on
+     * the same line without being reactivated. What a rubber band that caught nothing, and a
+     * selection that a mutation invalidated, both leave behind.
+     */
+    public void clearActiveSelection() {
+        selected = null;
+    }
+
+    /**
+     * Makes the given target the sole selection on the active line.
+     * <p>
+     * Whatever was selected before — an index range, another target, the staff line — is
+     * dropped by the assignment itself: one field holds one selection, so there is nothing
+     * further to clear. The caller is responsible for having activated the target's line
+     * first.
+     */
+    public void select(HitTarget target) {
+        selected = new Selection.Target(target);
+    }
+
+    /**
+     * Selects {@code begin..end} on the active line, anchored at {@code anchor}, or clears the
+     * selection if {@code begin} is -1. The line stays active either way.
+     * <p>
+     * The one entry point for setting a range: a click, a drag, an arrow-key extension and a
+     * post-mutation re-derivation all land here, so a range replaces a target by the same
+     * assignment that sets it.
+     */
+    public void selectRange(int begin, int end, int anchor) {
+        var line = getActiveLine();
+
+        if (line == null) {
+            return;
+        }
+
+        selected = (begin == -1) ? null : new Selection.Range(line, begin, end, anchor);
+    }
+
+    /**
+     * Selects {@code begin..end} on the active line, anchored at {@code begin}.
+     */
+    public void selectRange(int begin, int end) {
+        selectRange(begin, end, begin);
+    }
+
+    /**
+     * Extends the selection from its anchor to {@code elementIndex}, leaving the anchor where
+     * it is. No-op when the selection is not a range, since there is no anchor to extend from.
+     */
+    public void extendSelectionTo(int elementIndex) {
+        var range = getRange();
+
+        if (range == null) {
+            return;
+        }
+
+        var anchor = range.anchor();
+        selected = new Selection.Range(
+            range.line(),
+            Math.min(anchor, elementIndex),
+            Math.max(anchor, elementIndex),
+            anchor);
+    }
+
+    /**
+     * Selects every element on the active line, excluding the song's auto-maintained terminal.
+     * <p>
+     * A whole-line selection is swapped for its elements in the process, because both are the
+     * same field. An empty line has nothing to swap to, so its selection stands.
+     */
+    public void selectAll() {
+        var line = getActiveLine();
+
+        if (line == null) {
+            return;
+        }
+
+        var end = line.effectiveElementCount() - 1;
+
+        if (end < 0) {
+            return;
+        }
+
+        selected = new Selection.Range(line, 0, end, 0);
+    }
+
+    /**
+     * Makes the lyric on {@code element} in verse {@code verse} the sole selection, activating
+     * the line the element sits on.
+     * <p>
+     * Unlike every other target, a lyric names the line it belongs to, so this resolves and
+     * activates that line itself rather than requiring the caller to have done it.
+     */
     public void selectLyric(StaffElement element, int verse) {
         clearSelection();
         activeLineIndex = findLineIndex(element.getLine());
-        lyricSelection = new LyricSelection(element, verse);
-    }
-
-    public void clearLyricSelection() {
-        lyricSelection = null;
-    }
-
-    public @Nullable LyricSelection getLyricSelection() {
-        return lyricSelection;
-    }
-
-    public boolean hasLyricSelection() {
-        return lyricSelection != null;
+        select(new HitTarget.Lyric(element, verse));
     }
 
     // -------------------------------------------------------------------------
@@ -292,84 +384,187 @@ public final class SelectionCoordinator {
 
     /**
      * Returns whether the element at the given index on the given line is selected.
-     * Delegates to the correct LineSelectionState.
      */
     public boolean isElementSelected(int elementIndex, int lineIndex) {
-        if (activeLineIndex != lineIndex) {
+        if (activeLineIndex != lineIndex || elementIndex < 0) {
             return false;
         }
 
-        var state = getActiveSelection();
-        return (state != null) && state.isElementSelected(elementIndex);
+        var range = getRange();
+        return (range != null) && range.contains(elementIndex);
     }
 
     /**
-     * Returns whether the staff line itself is selected (for deletion).
+     * Returns whether the staff line itself is the current selection. The readable name for
+     * a {@link HitTarget.StaffLine} target, which is how a line selection is held.
+     */
+    public boolean isLineSelected() {
+        return selected instanceof Selection.Target(HitTarget.StaffLine _);
+    }
+
+    /**
+     * Returns whether the staff line at the given index is selected (for deletion).
      */
     public boolean isLineSelected(int lineIndex) {
-        if (activeLineIndex != lineIndex) {
-            return false;
-        }
-
-        var state = getActiveSelection();
-        return (state != null) && state.isLineSelected();
+        return activeLineIndex == lineIndex && isLineSelected();
     }
 
     /**
-     * Returns whether the slide owned by the element at the given index
-     * on the given line is selected.
-     */
-    public boolean isSlideSelected(int elementIndex, int lineIndex) {
-        if (activeLineIndex != lineIndex) {
-            return false;
-        }
-
-        var state = getActiveSelection();
-        return (state != null) && state.isSlideSelected(elementIndex);
-    }
-
-    /**
-     * Returns whether the given line element on the given line is selected.
-     */
-    public boolean isDecorationSelected(LineElement element, int lineIndex) {
-        if (activeLineIndex != lineIndex) {
-            return false;
-        }
-
-        var state = getActiveSelection();
-        return (state != null) && state.isDecorationSelected(element);
-    }
-
-    public boolean isLyricSelected(StaffElement element, int verse, int lineIndex) {
-        //noinspection SimplifiableIfStatement
-        if (activeLineIndex != lineIndex || lyricSelection == null) {
-            return false;
-        }
-
-        return lyricSelection.element() == element && lyricSelection.verse() == verse;
-    }
-
-    /**
-     * Returns the decoration selected on the active line, or null if none is.
+     * Returns the selected target, or null if the selection is an index range or there is none.
+     * <p>
+     * A whole-line selection reads as {@link HitTarget.StaffLine} here rather than as null.
+     * Callers that mean "a decoration is selected" want {@link #hasDecorationSelection}.
      */
     @Nullable
-    public SelectedDecoration getSelectedDecoration() {
-        var state = getActiveSelection();
-        return state == null ? null : state.getSelectedDecoration();
+    public HitTarget getSelectedTarget() {
+        return (selected instanceof Selection.Target(var target)) ? target : null;
     }
 
     /**
-     * Returns whether a decoration — a slide, ending, or hairpin — is selected on the
-     * active line.
+     * Returns whether the given target is the current selection on the given line.
+     * <p>
+     * Every {@link HitTarget} is a record over object references, so the general case compares
+     * what the target names rather than where it sits on the line.
+     * <p>
+     * One kind is answered from the other selection shape, so that callers need only this one
+     * query: a note is selected through the index range (clicking one collapses the range onto
+     * it). That predates {@link HitTarget} and stays as it is — see {@link Selection}.
+     * <p>
+     * The switch is exhaustive on purpose. A {@code default} arm would silently answer
+     * {@code false} for a variant added later, which is exactly how the staff line went
+     * unanswered before it was folded in.
      */
-    public boolean hasDecorationSelection() {
-        var state = getActiveSelection();
-        return (state != null) && state.hasDecorationSelection();
+    public boolean isSelected(HitTarget target, int lineIndex) {
+        if (activeLineIndex != lineIndex) {
+            return false;
+        }
+
+        return switch (target) {
+            case HitTarget.Element(var element) -> {
+                var range = getRange();
+                yield range != null && range.contains(range.line().getElementIndex(element));
+            }
+            case HitTarget.Lyric _ -> isSelectedTarget(target);
+            case HitTarget.Slide _ -> isSelectedTarget(target);
+            case HitTarget.GraceGlissando _ -> isSelectedTarget(target);
+            case HitTarget.Hairpin _ -> isSelectedTarget(target);
+            case HitTarget.Ending _ -> isSelectedTarget(target);
+            case HitTarget.StaffLine _ -> isSelectedTarget(target);
+            case HitTarget.Articulation _ -> isSelectedTarget(target);
+            case HitTarget.Attachment _ -> isSelectedTarget(target);
+            case HitTarget.Accidental _ -> isSelectedTarget(target);
+            case HitTarget.Tie _ -> isSelectedTarget(target);
+            case HitTarget.Beam _ -> isSelectedTarget(target);
+            case HitTarget.Trill _ -> isSelectedTarget(target);
+            case HitTarget.Tuplet _ -> isSelectedTarget(target);
+        };
     }
 
+    private boolean isSelectedTarget(HitTarget target) {
+        return selected instanceof Selection.Target(var selectedTarget)
+            && target.equals(selectedTarget);
+    }
+
+    /**
+     * Returns whether a decoration — a slide, ending, hairpin, articulation and so on — is
+     * selected.
+     * <p>
+     * An index range is not a decoration, and neither are two of the targets. A
+     * {@link HitTarget.StaffLine} selects the line as a whole: this predicate decides whether
+     * Delete removes one notation or the entire line, so answering true for it would delete a
+     * notation instead of the line. A {@link HitTarget.Lyric} selects text rather than
+     * notation, and Delete reaches it through its own branch; it has never counted here, and
+     * the callers that want it ask for it by name.
+     */
+    public boolean hasDecorationSelection() {
+        var target = getSelectedTarget();
+
+        return target != null
+            && !(target instanceof HitTarget.StaffLine)
+            && !(target instanceof HitTarget.Lyric);
+    }
+
+    /**
+     * Clears the selection if its target no longer refers to something live on its line —
+     * e.g. after an undo/redo that removed the selected notation outright. No-op if the
+     * current selection is still valid, or if it is not a target.
+     * <p>
+     * One rule covers every {@link HitTarget} variant, rather than one arm per variant.
+     * {@link HitTarget#owner()} names the element the target hangs off, and an element that
+     * has been removed from the line has its {@code parentLine} cleared, so walking to the
+     * root of the parent chain and asking which line it belongs to answers for an
+     * articulation on a note, a tie, a hairpin and a note itself alike.
+     *
+     * @return whether the selection was cleared
+     */
+    public boolean revalidateDecorationSelection() {
+        var line = getActiveLine();
+        var target = getSelectedTarget();
+
+        // A null owner means the target is the staff line itself, which cannot go stale.
+        var owner = (target == null) ? null : target.owner();
+
+        if (line == null || owner == null || isOnLine(owner, line)) {
+            return false;
+        }
+
+        // The line stays active: only what was selected on it went stale.
+        clearActiveSelection();
+        return true;
+    }
+
+    /**
+     * Clears the selection if it is a range that no longer fits its line — e.g. after an undo
+     * that removed an element the range covered. No-op for a target selection, which
+     * {@link #revalidateDecorationSelection} answers for instead.
+     * <p>
+     * The line stays active, as it does for a stale target: only what was selected on it
+     * became unusable.
+     *
+     * @return whether the selection was cleared
+     */
+    public boolean revalidateElementSelection() {
+        var range = getRange();
+
+        if (range == null || range.fitsLine()) {
+            return false;
+        }
+
+        clearActiveSelection();
+        return true;
+    }
+
+    /**
+     * Returns whether {@code element} still hangs off {@code line}.
+     * <p>
+     * Sub-elements — an articulation, a fermata — carry no line of their own, so the walk
+     * climbs to the root of the parent chain and asks about that element instead.
+     * <p>
+     * The root is asked in whichever way actually answers for its kind. A span — a tie, a
+     * beam, a hairpin, an ending — has its {@code parentLine} cleared when the line drops it
+     * ({@link Line#removeRangeElement}), so reading the field is enough. A staff element does
+     * <b>not</b>: {@link Line#removeElement} takes it out of the element list and leaves
+     * {@code parentLine} pointing at the line it used to be on, so a removed note would
+     * report itself as live. Its membership in the list is the only honest answer.
+     */
+    private static boolean isOnLine(LineElement element, Line line) {
+        var root = element;
+
+        for (var parent = root.getParentElement(); parent != null; parent = root.getParentElement()) {
+            root = parent;
+        }
+
+        if (root instanceof StaffElement staffElement) {
+            return line.getElementIndex(staffElement) >= 0;
+        }
+
+        return root.getParentLine() == line;
+    }
+
+    @SuppressWarnings("ObjectEquality")
     private int findLineIndex(Line line) {
-        for (var entry : lineStates.entrySet()) {
-            if (entry.getValue().getLine() == line) {
+        for (var entry : lines.entrySet()) {
+            if (entry.getValue() == line) {
                 return entry.getKey();
             }
         }
@@ -387,48 +582,55 @@ public final class SelectionCoordinator {
      * with a fresh empty line so the song always has at least one line.
      */
     public boolean canDeleteLine() {
-        if (activeLineIndex == -1) {
-            return false;
-        }
-
-        var state = lineStates.get(activeLineIndex);
-        return state != null && state.isLineSelected();
+        return getSelectedLine() != -1;
     }
 
     /**
      * Returns whether tempo can be changed.
      */
     public boolean canChangeTempo() {
-        var state = getActiveSelection();
-
-        if (state == null) {
-            return false;
-        }
-
-        var selectedElement = state.getSingleSelectedElement();
-
-        return selectedElement != null;
+        return getSingleSelectedElement() != null;
     }
 
     // -------------------------------------------------------------------------
-    // Convenience accessors that delegate to active LineSelectionState
+    // Selection shape queries
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the number of elements in the active selection.
+     * Returns the number of elements in the selection, or 0 if it is not a range.
      */
     public int getSelectionSize() {
-        var state = getActiveSelection();
-        return (state != null) ? state.getSelectionSize() : 0;
+        var range = getRange();
+        return (range != null) ? range.size() : 0;
     }
 
     /**
-     * Returns the current selection, or null if nothing is selected.
+     * Returns the current selection as an index span, or null if nothing spanning is selected.
+     * <p>
+     * A whole-line selection carries no index range of its own, so it is reported as a span
+     * over every element on the line. An empty line has nothing to span and reads as no
+     * selection at all.
      */
     @Nullable
     public ElementSelection getSelection() {
-        var state = getActiveSelection();
-        return (state != null) ? state.getSelection() : null;
+        if (isLineSelected()) {
+            var line = getActiveLine();
+
+            if (line == null) {
+                return null;
+            }
+
+            var elementCount = line.effectiveElementCount();
+
+            if (elementCount == 0) {
+                return null;
+            }
+
+            return new ElementSelection(line, 0, elementCount - 1);
+        }
+
+        var range = getRange();
+        return (range != null) ? range.toElementSelection() : null;
     }
 
     /**
@@ -437,8 +639,8 @@ public final class SelectionCoordinator {
      */
     @Nullable
     public StaffElement getSingleSelectedElement() {
-        var state = getActiveSelection();
-        return (state != null) ? state.getSingleSelectedElement() : null;
+        var range = getRange();
+        return (range != null) ? range.singleElement() : null;
     }
 
     /**
@@ -446,15 +648,7 @@ public final class SelectionCoordinator {
      * or -1 if no line is selected.
      */
     public int getSelectedLine() {
-        if (activeLineIndex != -1) {
-            var state = lineStates.get(activeLineIndex);
-
-            if (state != null && state.isLineSelected()) {
-                return activeLineIndex;
-            }
-        }
-
-        return -1;
+        return isLineSelected() ? activeLineIndex : -1;
     }
 
     /**
@@ -1252,11 +1446,11 @@ public final class SelectionCoordinator {
      */
     @Handler
     public void songDidChangeReflectSelection(SongDidChangeNotification message) {
-        var state = getActiveSelection();
+        var line = getActiveLine();
 
-        if (state != null && message.getLine() == state.getLine()
-                && state.hasDecorationSelection()
-                && state.revalidateDecorationSelection()) {
+        if (line != null && message.getLine() == line
+                && hasDecorationSelection()
+                && revalidateDecorationSelection()) {
             // A decoration selection carries no ElementSelection for getSelection() to
             // compare below, so undo/redo of a mutation on this line — which can shift
             // indices or remove the selected decoration outright — would otherwise go
@@ -1294,12 +1488,11 @@ public final class SelectionCoordinator {
      */
     void triggerReflection() {
         var actions = getReflectableActions();
-        var state = getActiveSelection();
 
         // A line selection selects the line as a whole, not its content, so no action
         // applies. getSelection() synthesizes a full-line span for it, which would
         // otherwise reflect as if the user had selected every element on the line.
-        if (state != null && state.isLineSelected()) {
+        if (isLineSelected()) {
             // Null so the next content selection always re-reflects, even when its span
             // happens to equal the synthesized full-line span.
             lastReflectedSelection = null;
@@ -1318,9 +1511,8 @@ public final class SelectionCoordinator {
         if (selection == null) {
             lastReflectedSelection = null;
 
-            if (state != null
-                && state.getSelectedDecoration() instanceof SelectedDecoration.SlideSelection(var elementIndex)) {
-                reflectSlideSelection(state, elementIndex);
+            if (getSelectedTarget() instanceof HitTarget.Slide(var owner)) {
+                reflectSlideSelection(owner);
             }
 
             return;
@@ -1370,9 +1562,7 @@ public final class SelectionCoordinator {
      * Reflects a standalone slide selection onto toolbar actions.
      * The matching slide action is selected and enabled; all others are disabled.
      */
-    private void reflectSlideSelection(LineSelectionState state, int elementIndex) {
-        var element = state.getLine().getElement(elementIndex);
-
+    private void reflectSlideSelection(StaffElement element) {
         if (element.getSlide() == null) {
             return;
         }

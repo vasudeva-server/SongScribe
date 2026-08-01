@@ -30,23 +30,21 @@ import org.junit.jupiter.api.Test;
 import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.selection.LineSelectionState;
+import songscribe.ui.selection.Selection;
 import songscribe.ui.selection.SelectionCoordinator;
 
 class EditLyricActionGraceNoteTest extends MainFrameMockTest {
 
     private ScoreView mockScore;
-    private LineSelectionState mockLineState;
+    private SelectionCoordinator mockCoordinator;
     private EditLyricAction action;
 
     @BeforeEach
     void setUp() {
         mockScore = mock(ScoreView.class);
-        var mockCoordinator = mock(SelectionCoordinator.class);
-        mockLineState = mock(LineSelectionState.class);
+        mockCoordinator = mock(SelectionCoordinator.class);
 
         when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
-        when(mockCoordinator.getActiveSelection()).thenReturn(mockLineState);
 
         action = EditLyricAction.createAction(mainFrame());
     }
@@ -63,9 +61,8 @@ class EditLyricActionGraceNoteTest extends MainFrameMockTest {
         line.addElement(grace);
         line.addElement(ElementType.CROTCHET.newInstance());
 
-        when(mockLineState.getSingleSelectedElement()).thenReturn(grace);
-        when(mockLineState.getLine()).thenReturn(line);
-        when(mockLineState.getSelectionBegin()).thenReturn(graceIndex);
+        when(mockCoordinator.getRange())
+            .thenReturn(Selection.Range.single(line, graceIndex));
     }
 
     private void hostOfPairedGraceAt(int hostIndex) {
@@ -81,9 +78,8 @@ class EditLyricActionGraceNoteTest extends MainFrameMockTest {
         var host = ElementType.CROTCHET.newInstance();
         line.addElement(host);
 
-        when(mockLineState.getSingleSelectedElement()).thenReturn(host);
-        when(mockLineState.getLine()).thenReturn(line);
-        when(mockLineState.getSelectionBegin()).thenReturn(hostIndex);
+        when(mockCoordinator.getRange())
+            .thenReturn(Selection.Range.single(line, hostIndex));
     }
 
     @Test
@@ -108,16 +104,26 @@ class EditLyricActionGraceNoteTest extends MainFrameMockTest {
         line.addElement(grace);
         line.addElement(ElementType.CROTCHET.newInstance());
 
-        when(mockLineState.getSingleSelectedElement()).thenReturn(grace);
-        when(mockLineState.getLine()).thenReturn(line);
-        when(mockLineState.getSelectionBegin()).thenReturn(0);
+        when(mockCoordinator.getRange())
+            .thenReturn(Selection.Range.single(line, 0));
 
         assertThat(action.enableFromSelection(true, mockScore)).isTrue();
     }
 
     @Test
     void testDisabledWhenNoElementSelected() {
-        when(mockLineState.getSingleSelectedElement()).thenReturn(null);
+        when(mockCoordinator.getRange()).thenReturn(null);
+        assertThat(action.enableFromSelection(true, mockScore)).isFalse();
+    }
+
+    @Test
+    void testDisabledWhenMoreThanOneElementSelected() {
+        var line = detachedLine();
+        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(ElementType.CROTCHET.newInstance());
+
+        when(mockCoordinator.getRange()).thenReturn(new Selection.Range(line, 0, 1, 0));
+
         assertThat(action.enableFromSelection(true, mockScore)).isFalse();
     }
 }

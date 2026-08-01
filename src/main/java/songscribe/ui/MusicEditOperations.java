@@ -42,14 +42,15 @@ import songscribe.dom.Line;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.layout.LineEndingSupport;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.ui.selection.LineSelectionState;
+import songscribe.ui.selection.RangeQueries;
+import songscribe.ui.selection.Selection;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
 
@@ -85,23 +86,23 @@ public final class MusicEditOperations {
     // ========== Beaming Operations ==========
 
     public boolean canToggleBeaming() {
-        var state = coordinator.getActiveSelection();
-        return (state != null) && state.canToggleBeaming();
+        var range = coordinator.getRange();
+        return (range != null) && RangeQueries.canToggleBeaming(range);
     }
 
     public void toggleBeaming() {
-        var state = coordinator.getActiveSelection();
+        var range = coordinator.getRange();
 
-        if (state == null) {
+        if (range == null) {
             return;
         }
 
-        var line = state.getLine();
+        var line = range.line();
 
         // The beam spans the selection's non-grace endpoints; a leading or trailing grace
         // note is left outside it (refs #592).
-        var beginIndex = state.getNonGraceSelectionBegin();
-        var endIndex = state.getNonGraceSelectionEnd();
+        var beginIndex = RangeQueries.nonGraceBegin(range);
+        var endIndex = RangeQueries.nonGraceEnd(range);
 
         if (beginIndex < 0 || beginIndex == endIndex) {
             return;
@@ -221,7 +222,7 @@ public final class MusicEditOperations {
         }
 
         // Conflict: beaming may not connect what a tie already connects, the same rule
-        // LineSelectionState.canToggleBeaming applies. A break is never blocked by a tie.
+        // RangeQueries.canToggleBeaming applies. A break is never blocked by a tie.
         if (line.sameTieAt(predecessorIndex, elementIndex)) {
             return false;
         }
@@ -238,23 +239,23 @@ public final class MusicEditOperations {
     // ========== Tie Operations ==========
 
     public boolean canToggleTie() {
-        var state = coordinator.getActiveSelection();
-        return (state != null) && state.canToggleTie();
+        var range = coordinator.getRange();
+        return (range != null) && RangeQueries.canToggleTie(range);
     }
 
     public void toggleTie() {
-        var state = coordinator.getActiveSelection();
+        var range = coordinator.getRange();
 
-        if (state == null) {
+        if (range == null) {
             return;
         }
 
-        var line = state.getLine();
+        var line = range.line();
 
         // A tie spans the selection itself: its endpoints are the two notes, and any
         // separator between them stays outside the tie (refs #527).
-        var beginIndex = state.getSelectionBegin();
-        var endIndex = state.getSelectionEnd();
+        var beginIndex = range.begin();
+        var endIndex = range.end();
 
         line.withModification(() -> {
             var exactTie = line.findExactTie(beginIndex, endIndex);
@@ -267,15 +268,15 @@ public final class MusicEditOperations {
                 line.removeTie(exactTie);
             }
         });
-
-        state.resetTieState();
     }
 
     // ========== Tuplet Operations ==========
 
     public TupletToggleInfo canToggleTuplet() {
-        var state = coordinator.getActiveSelection();
-        return (state != null) ? state.canToggleTuplet() : new TupletToggleInfo(false, null, false);
+        var range = coordinator.getRange();
+        return (range != null)
+            ? RangeQueries.canToggleTuplet(range)
+            : new TupletToggleInfo(false, null, false);
     }
 
     /**
@@ -292,9 +293,9 @@ public final class MusicEditOperations {
      * via action enable state, so reaching them indicates a caller bug.
      */
     public void toggleTuplet(int tupletSize, TupletToggleInfo info) {
-        var state = coordinator.getActiveSelection();
+        var range = coordinator.getRange();
 
-        if (state == null) {
+        if (range == null) {
             return;
         }
 
@@ -312,12 +313,12 @@ public final class MusicEditOperations {
                 "toggleTuplet called with info.canToggle() == false; caller must check canToggleTuplet() first");
         }
 
-        var line = state.getLine();
+        var line = range.line();
 
         // The tuplet spans the selection's non-grace endpoints; a leading or trailing grace
         // note is left outside it (refs #592).
-        var beginIndex = state.getNonGraceSelectionBegin();
-        var endIndex = state.getNonGraceSelectionEnd();
+        var beginIndex = RangeQueries.nonGraceBegin(range);
+        var endIndex = RangeQueries.nonGraceEnd(range);
 
         // canToggleTuplet() rejects a selection without two non-grace elements, so reaching
         // this with no usable span means the caller passed stale info.
@@ -399,9 +400,9 @@ public final class MusicEditOperations {
      * click into a second stray crescendo under a mislabeled undo entry.
      */
     public void addHairpinToSelection(boolean crescendo) {
-        var state = coordinator.getActiveSelection();
+        var range = coordinator.getRange();
 
-        if (state == null) {
+        if (range == null) {
             return;
         }
 
@@ -434,7 +435,7 @@ public final class MusicEditOperations {
                 : Strings.ACTION_HAIRPIN_DIMINUENDO_EXTEND;
         }
 
-        var line = state.getLine();
+        var line = range.line();
 
         // The span is always the resolved one, never a degenerate single element left
         // for the merge to absorb: a one-element hairpin is a shape the model never
@@ -501,10 +502,10 @@ public final class MusicEditOperations {
      * each one relates to the selection. Callers derive that from the hairpin's own
      * anchor and end indices.
      */
-    private HairpinScan findHairpinsNearSelection(LineSelectionState state) {
-        var line = state.getLine();
-        var scanBegin = state.getSelectionBegin() - Line.SPAN_ADJACENCY_REACH;
-        var scanEnd = state.getSelectionEnd() + Line.SPAN_ADJACENCY_REACH;
+    private HairpinScan findHairpinsNearSelection(Selection.Range range) {
+        var line = range.line();
+        var scanBegin = range.begin() - Line.SPAN_ADJACENCY_REACH;
+        var scanEnd = range.end() + Line.SPAN_ADJACENCY_REACH;
 
         return new HairpinScan(
             nearbySpans(line.getCrescendos(), scanBegin, scanEnd),
@@ -561,9 +562,8 @@ public final class MusicEditOperations {
     /**
      * Resolves what the hairpin menu items should do for the current selection.
      * <p>
-     * <b>Step 0 — input guard.</b> No selection, or a selection that is not an
-     * element selection (a slide, ending or hairpin selection leaves the element
-     * indices at -1) → {@code INELIGIBLE}. This has to come first: nothing below
+     * <b>Step 0 — input guard.</b> No selection, or a selection that is a target rather
+     * than an index range (a slide, ending or hairpin selection) → {@code INELIGIBLE}. This has to come first: nothing below
      * may touch an element index before it passes.
      * <p>
      * <b>Step 1 — structural eligibility</b> of the selection's {@code begin} and
@@ -641,24 +641,24 @@ public final class MusicEditOperations {
      * </pre>
      */
     public HairpinResolution resolveHairpinAction() {
-        var state = coordinator.getActiveSelection();
+        var range = coordinator.getRange();
 
-        // A slide, ending or hairpin selection leaves the element selection unset
-        // (-1), and Line.getElement does not bounds check, so this guard has to
-        // come before anything that touches an element index.
-        if (state == null || !state.hasElementSelection()) {
+        // A slide, ending or hairpin selection is a target rather than a range, and
+        // Line.getElement does not bounds check, so this guard has to come before
+        // anything that touches an element index.
+        if (range == null) {
             return ineligibleHairpinResolution();
         }
 
-        var line = state.getLine();
-        var begin = state.getSelectionBegin();
-        var end = state.getSelectionEnd();
+        var line = range.line();
+        var begin = range.begin();
+        var end = range.end();
 
         if (!isHairpinEligibleSpan(line, begin, end)) {
             return ineligibleHairpinResolution();
         }
 
-        var candidates = findHairpinsNearSelection(state);
+        var candidates = findHairpinsNearSelection(range);
         var crescendos = candidates.crescendos();
         var diminuendos = candidates.diminuendos();
 
@@ -759,15 +759,15 @@ public final class MusicEditOperations {
     // ========== First-Second Ending Operations ==========
 
     public EndingValidationResult canMakeFirstSecondEnding() {
-        var state = coordinator.getActiveSelection();
+        var range = coordinator.getRange();
 
-        if (state == null || !state.hasElementSelection()) {
+        if (range == null) {
             return EndingValidationResult.invalid();
         }
 
-        var line = state.getLine();
-        var begin = state.getSelectionBegin();
-        var end = state.getSelectionEnd();
+        var line = range.line();
+        var begin = range.begin();
+        var end = range.end();
 
         // The auto-maintained terminal is never selectable, so if the selection ends
         // just before it, extend end to include it so an ending at the song's
@@ -1003,13 +1003,13 @@ public final class MusicEditOperations {
     }
 
     public void makeFirstSecondEnding(EndingValidationResult result) {
-        var state = coordinator.getActiveSelection();
+        var range = coordinator.getRange();
 
-        if (state == null) {
+        if (range == null) {
             return;
         }
 
-        var line = state.getLine();
+        var line = range.line();
 
         line.withModification(() -> {
             var start = result.getSpanStart();
@@ -1032,8 +1032,8 @@ public final class MusicEditOperations {
     }
 
     public boolean canModifyStemDirection() {
-        var state = coordinator.getActiveSelection();
-        return (state != null) && state.canModifyStemDirection();
+        var range = coordinator.getRange();
+        return (range != null) && RangeQueries.canModifyStemDirection(range);
     }
 
     public void flipStemDirection() {
@@ -1081,20 +1081,20 @@ public final class MusicEditOperations {
     }
 
     private void modifyStemDirection(StemDirectionChange change) {
-        var state = coordinator.getActiveSelection();
+        var range = coordinator.getRange();
 
-        if (state == null) {
+        if (range == null) {
             return;
         }
 
-        var line = state.getLine();
+        var line = range.line();
         var stemFields = EnumSet.of(ElementField.UPPER, ElementField.STEM_DIRECTION_AUTO);
 
         line.withModification(() -> {
             // Track which beam groups have already been processed to avoid modifying one twice.
             var processedBeams = new HashSet<Beam>();
 
-            for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
+            for (var i = range.begin(); i <= range.end(); i++) {
                 var note = line.getElement(i);
 
                 // applyStemChange already ignores stemless elements. Stopping here as well
@@ -1133,7 +1133,7 @@ public final class MusicEditOperations {
             // immediate partner of a selected note.
             var visited = new TreeSet<Integer>();
 
-            for (var i = state.getSelectionBegin(); i <= state.getSelectionEnd(); i++) {
+            for (var i = range.begin(); i <= range.end(); i++) {
                 visited.add(i);
             }
 
@@ -1155,7 +1155,7 @@ public final class MusicEditOperations {
                     if (visited.add(j)) {
                         pending.add(j);
 
-                        if ((j < state.getSelectionBegin()) || (j > state.getSelectionEnd())) {
+                        if ((j < range.begin()) || (j > range.end())) {
                             tiePartnersToModify.add(j);
                         }
                     }

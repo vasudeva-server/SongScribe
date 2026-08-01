@@ -38,6 +38,7 @@ import org.mockito.ArgumentCaptor;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
+import songscribe.hit.HitTarget;
 import songscribe.engraving.Staff;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricBoxLayout;
@@ -217,7 +218,7 @@ class LyricTextRendererTest extends UnitTest {
             .setSelectionProvider(selectionProvider)
             .build();
 
-        when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(true);
+        when(selectionProvider.isSelected(new HitTarget.Lyric(element, 1), 0)).thenReturn(true);
 
         var g2 = mock(Graphics2D.class);
 
@@ -230,13 +231,15 @@ class LyricTextRendererTest extends UnitTest {
     @Test
     void testSelectedElementPaintsLyricInSelectionColor() {
         var element = ElementType.CROTCHET.newInstance();
+        var line = detachedLine();
+        line.addElement(element);
         var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");
         var layoutResult = layoutBuilder().addLyricBox(element, box).build();
 
         var builder = RenderContextTestHelper.newContext(new Song())
             .setLayoutResult(layoutResult)
             .setLyricRenderMetrics(lyricRenderMetrics());
-        RenderContextTestHelper.enableSelection(builder, 0);
+        RenderContextTestHelper.enableSelection(builder, line, 0);
         var invariants = builder.build();
         var frame = new ElementFrame(0, Double.NaN, -1, 0.0);
 

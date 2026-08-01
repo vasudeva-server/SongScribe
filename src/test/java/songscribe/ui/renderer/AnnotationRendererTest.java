@@ -23,9 +23,15 @@ package songscribe.ui.renderer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+
+import java.util.ArrayList;
 
 import module java.desktop;
 
@@ -39,7 +45,10 @@ import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 /**
  * Tests for {@link AnnotationRenderer#render}: verifies baseline-Y computation
@@ -162,5 +171,60 @@ class AnnotationRendererTest extends UnitTest {
 
         assertThatThrownBy(() -> RENDERER.render(invariants, frame, note, g2))
             .isInstanceOf(IllegalStateException.class);
+    }
+
+    // ======================================================================
+    // Selection color
+    // ======================================================================
+
+    /**
+     * Renders an annotation with the attachment reported as selected or not, and returns the
+     * color in force when the text was drawn.
+     */
+    private static Color renderedTextColor(boolean selected) {
+        var line = detachedLine();
+        var note = ElementType.CROTCHET.newInstance();
+        line.addElement(note);
+
+        var attachment = new AnnotationAttachment(ANNOTATION_TEXT);
+        note.addAttachment(attachment);
+
+        var layout = new LayoutResult.DecorationLayout(
+            DECORATION_X_SS, DECORATION_Y_SS, DECORATION_WIDTH_SS, DECORATION_HEIGHT_SS, 0.0);
+        var layoutResult = LayoutResult.builder()
+            .putDecorationLayout(attachment, layout)
+            .build();
+
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(new HitTarget.Attachment(attachment), 0))
+            .thenReturn(selected);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setCurrentLine(line)
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var g2Spy = spy(realG2());
+        var drawnColors = new ArrayList<Color>();
+        doAnswer(invocation -> {
+            drawnColors.add(g2Spy.getColor());
+            return null;
+        }).when(g2Spy).drawString(eq(ANNOTATION_TEXT), anyFloat(), anyFloat());
+
+        RENDERER.render(invariants, ElementFrame.LINE_LEVEL.withElement(0, Double.NaN), note, g2Spy);
+
+        assertThat(drawnColors).hasSize(1);
+        return drawnColors.getFirst();
+    }
+
+    @Test
+    void testRender_selectedAnnotationDrawsInTheSelectionColor() {
+        assertThat(renderedTextColor(true)).isEqualTo(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testRender_unselectedAnnotationDrawsInTheElementColor() {
+        assertThat(renderedTextColor(false)).isEqualTo(RenderingUtils.ELEMENT_COLOR);
     }
 }

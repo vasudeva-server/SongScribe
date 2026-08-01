@@ -35,7 +35,6 @@ import songscribe.layout.StaffExtents;
 import songscribe.shape.AccentShape;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
-import songscribe.smufl.SMuFLMetadata;
 import songscribe.engraving.Staff;
 import songscribe.dom.Trill;
 
@@ -139,12 +138,6 @@ public class NoteAttachedStacker {
     // the flourish overlap a tie arc the box's flat bottom never reaches.
     private static final StaffExtents.Profile TRILL_PROFILE_ABOVE =
         ShapeProfile.innerEdge(BravuraFont.glyphOutline(SMuFLGlyph.ORNAMENT_TRILL), true);
-
-    // The tr glyph's ink width, used to center its footprint on the notehead exactly as TrillRenderer
-    // draws it. Bravura gives ornamentTrill a left bearing of zero, so its box width equals its advance
-    // width, which is the quantity TrillRenderer centers by.
-    private static final double TRILL_GLYPH_WIDTH_SS =
-        SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL).width();
 
     /**
      * Flattening tolerance for the staccato dot's reserved outline: four chords across a dot 0.336 ss
@@ -847,9 +840,9 @@ public class NoteAttachedStacker {
 
             if (index == anchorIndex) {
                 // The first note seats the tr glyph as a script: it clears the tie/notehead by the
-                // glyph's real inner edge, centerd on the notehead exactly as TrillRenderer draws it.
-                footprintXSs = column.getXSs()
-                    + NoteGeometry.getNoteheadCenterXSs(note) - TRILL_GLYPH_WIDTH_SS / 2.0;
+                // glyph's real inner edge, centered on the notehead exactly as TrillRenderer draws it.
+                footprintXSs = Trill.glyphLeftXSs(
+                    column.getXSs(), NoteGeometry.getNoteheadCenterXSs(note));
                 profile = TRILL_PROFILE_ABOVE;
                 paddingSs = TRILL_SCRIPT_PADDING_SS;
             } else {

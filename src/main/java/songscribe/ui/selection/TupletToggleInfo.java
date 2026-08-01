@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Tuplet;
 
 /**
- * Result of {@link LineSelectionState#canToggleTuplet()}.
+ * Result of {@link RangeQueries#canToggleTuplet}.
  *
  * @param canToggle      true if the selection can carry a tuplet decision at all: it holds at
  *                       least two non-grace elements, they all belong to the same tuplet (or to

@@ -29,14 +29,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import songscribe.UnitTest;
-import songscribe.dom.Crescendo;
-import songscribe.dom.Diminuendo;
-import songscribe.dom.ElementType;
-import songscribe.dom.RangeElement;
-import songscribe.dom.StaffElement;
-import songscribe.dom.Tie;
-import songscribe.dom.Trill;
-import songscribe.dom.Tuplet;
+import songscribe.dom.*;
 
 class RangeElementInvalidationTest extends UnitTest {
 

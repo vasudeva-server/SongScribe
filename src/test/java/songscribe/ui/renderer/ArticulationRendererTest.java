@@ -24,9 +24,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import module java.desktop;
 
@@ -38,7 +44,10 @@ import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
+import songscribe.hit.HitTarget;
 import songscribe.smufl.SMuFLGlyph;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 class ArticulationRendererTest extends UnitTest {
 
@@ -175,5 +184,75 @@ class ArticulationRendererTest extends UnitTest {
         verify(g2Spy).fill(any(Shape.class));
 
         assertThat(glyphCaptor.getValue()).isEqualTo(SMuFLGlyph.ARTIC_STACCATO_BELOW.asString());
+    }
+
+    // ==========================================================================
+    // render() — per-articulation selection color
+    // ==========================================================================
+
+    /**
+     * Renders a note carrying both a staccato and an accent, with {@code selected} reported as
+     * the selected target, and returns the color installed on the graphics context at each of
+     * the two draw calls: the staccato reaches {@code drawString}, the accent {@code fill}.
+     */
+    private record ArticulationColors(List<Color> staccato, List<Color> accent) {}
+
+    private static ArticulationColors renderColorsWithSelected(
+        Articulation staccato,
+        Articulation accent,
+        Articulation selected
+    ) {
+        var note = ElementType.CROTCHET.newInstance();
+        note.addArticulation(staccato);
+        note.addArticulation(accent);
+
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(new HitTarget.Articulation(selected), 0)).thenReturn(true);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var g2Spy = spy(RenderContextTestHelper.realG2());
+        var staccatoColors = new ArrayList<Color>();
+        var accentColors = new ArrayList<Color>();
+        doAnswer(invocation -> {
+            staccatoColors.add(g2Spy.getColor());
+            return null;
+        }).when(g2Spy).drawString(anyString(), anyFloat(), anyFloat());
+        doAnswer(invocation -> {
+            accentColors.add(g2Spy.getColor());
+            return null;
+        }).when(g2Spy).fill(any(Shape.class));
+
+        RENDERER.render(invariants, ElementFrame.LINE_LEVEL.withElement(0, ELEMENT_X_SS), note, g2Spy);
+
+        return new ArticulationColors(staccatoColors, accentColors);
+    }
+
+    @Test
+    void testRenderColorsOnlyTheSelectedArticulation() {
+        var staccato = new Articulation(ArticulationType.STACCATO);
+        var accent = new Articulation(ArticulationType.ACCENT);
+
+        var colors = renderColorsWithSelected(staccato, accent, staccato);
+
+        assertThat(colors.staccato())
+            .as("the selected staccato draws in the selection color")
+            .containsOnly(ScoreView.getSelectionColor());
+        assertThat(colors.accent())
+            .as("its unselected neighbour keeps the element color")
+            .containsOnly(Color.BLACK);
+    }
+
+    @Test
+    void testRenderColorsTheOtherArticulationWhenItIsTheSelectedOne() {
+        var staccato = new Articulation(ArticulationType.STACCATO);
+        var accent = new Articulation(ArticulationType.ACCENT);
+
+        var colors = renderColorsWithSelected(staccato, accent, accent);
+
+        assertThat(colors.accent()).containsOnly(ScoreView.getSelectionColor());
+        assertThat(colors.staccato()).containsOnly(Color.BLACK);
     }
 }

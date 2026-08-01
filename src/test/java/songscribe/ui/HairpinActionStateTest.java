@@ -40,9 +40,8 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.MusicEditOperations.HairpinActionState;
 import songscribe.ui.MusicEditOperations.HairpinResolution;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.ReflectionTestHelper;
-import songscribe.ui.selection.SelectedDecoration;
+import songscribe.hit.HitTarget;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
@@ -98,14 +97,6 @@ class HairpinActionStateTest extends UnitTest {
         HairpinResolution resolve() {
             return ops.resolveHairpinAction();
         }
-
-        LineSelectionState state() {
-            var state = coordinator.getActiveSelection();
-
-            assertThat(state).as("the fixture's line must have an active selection state").isNotNull();
-
-            return state;
-        }
     }
 
     /** Builds a fixture whose line holds exactly the given elements, in order. */
@@ -142,7 +133,7 @@ class HairpinActionStateTest extends UnitTest {
 
         @Test
         void testNoActiveSelectionStateIsIneligible() {
-            // A coordinator with no registered line returns null from getActiveSelection().
+            // A coordinator with no registered line returns null from getRange().
             var ops = new MusicEditOperations(minimalSongMock(), new SelectionCoordinator(mock(ScoreView.class)));
 
             assertThat(ops.resolveHairpinAction().state())
@@ -156,7 +147,7 @@ class HairpinActionStateTest extends UnitTest {
             // does not bounds check — reaching an element index here would throw.
             var fixture = fixtureWithNotes(NOTE_COUNT_4);
             var hairpin = fixture.addCrescendo(IDX_0, IDX_2);
-            fixture.state().selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
+            fixture.coordinator().select(new HitTarget.Hairpin(hairpin));
 
             assertThatCode(fixture::resolve)
                 .as("a -1/-1 decoration selection must not reach an element index")

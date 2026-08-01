@@ -22,6 +22,7 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.mock;
 
 import java.io.PrintWriter;
 import java.io.StringReader;
@@ -57,8 +58,11 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
+import songscribe.layout.LayoutResult;
+import songscribe.layout.LineLayoutProvider;
+import songscribe.layout.SlideGeometry;
 import songscribe.font.FontKey;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.util.DateUtils;
 import songscribe.Constants;
 
@@ -75,18 +79,16 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     /** The lattice origin: B4 lives at staffPosition 0. */
     private static final int B4_STAFF_POSITION = 0;
 
-    // Glissando cached geometry used by the slide-endpoint output test.
-    // A horizontal slide: starts at (5, −2) staff-space units, runs 10 ss at 0°.
-    private static final double SLIDE_START_X_SS = 5.0;
-    private static final double SLIDE_START_Y_SS = -2.0;
-    private static final double SLIDE_LENGTH_SS  = 10.0;
-    private static final double SLIDE_COS        = 1.0;
-    private static final double SLIDE_SIN        = 0.0;
-
-    // A diagonal slide (3-4-5 triangle) so the endpoint test exercises BOTH the
-    // cos (X) and sin (Y) terms — the horizontal case above zeroes the Y term.
-    private static final double DIAGONAL_SLIDE_COS = 0.6;
-    private static final double DIAGONAL_SLIDE_SIN = 0.8;
+    // Staff positions for the slide-endpoint output tests. Equal positions give a horizontal
+    // glissando (a zero Y term); unequal ones give a diagonal, so both the X and the Y term of
+    // the emitted endpoint are exercised.
+    //
+    // The level fixture puts an accidental on its target so the two notes differ in pitch while
+    // sharing a staff position: geometry keys off the staff position, so the line stays level,
+    // but a same-pitch glissando is not a state the model may hold and would carry no geometry.
+    private static final int LEVEL_GLISSANDO_STAFF_POSITION = 0;
+    private static final int DIAGONAL_GLISSANDO_SOURCE_STAFF_POSITION = 4;
+    private static final int DIAGONAL_GLISSANDO_TARGET_STAFF_POSITION = -4;
 
     /** Grade of the triplet tuplet in the all-span schema case. */
     private static final int ALL_SPAN_TUPLET_GRADE = 3;
@@ -424,62 +426,29 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     }
 
     /**
-     * Task 1c — Slide-endpoint writer output: when a glissando has cached render
-     * geometry, the emitted {@code <slide>} elements carry {@code default-x} /
-     * {@code default-y} matching the computed start and end points. Round-trip
+     * Slide-endpoint writer output: the emitted {@code <slide>} elements carry
+     * {@code default-x} / {@code default-y} taken from the glissando's laid-out endpoints —
+     * the start of the drawn line on the start slide, its end on the stop slide. Round-trip
      * cannot catch this: the reader ignores slide coordinate attributes.
+     * <p>
+     * Nothing renders the song here, so this also pins the writer's own layout fallback: before
+     * this path existed the coordinates were dropped whenever the line had not been painted.
      */
     @Test
     void testGlissandoSlideEndpointsInOutput() throws Exception {
-        var song = buildSong(line -> {
-            var startNote = ElementType.CROTCHET.newInstance();
-            startNote.setGlissando();
-
-            // Populate the transient cached geometry the writer uses for default-x/y.
-            var glissando = startNote.getGlissando();
-            assertThat(glissando).as("setGlissando attaches a glissando").isNotNull();
-
-            glissando.cachedStartX      = SLIDE_START_X_SS;
-            glissando.cachedStartY      = SLIDE_START_Y_SS;
-            glissando.cachedLength      = SLIDE_LENGTH_SS;
-            glissando.cachedCos         = SLIDE_COS;
-            glissando.cachedSin         = SLIDE_SIN;
-            glissando.hasCachedGeometry = true;
-
-            line.addElement(startNote);
-            line.addElement(ElementType.CROTCHET.newInstance());
-        });
-
+        var song = buildGlissandoSong(
+            LEVEL_GLISSANDO_STAFF_POSITION,
+            LEVEL_GLISSANDO_STAFF_POSITION,
+            StaffElement.Accidental.SHARP);
         var xml = writeToString(song);
+        var endpoints = laidOutGlissandoEndpoints(song);
 
-        var expectedStartXTenths = SLIDE_START_X_SS * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
-        var expectedStartYTenths = SLIDE_START_Y_SS * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
-        var expectedStopXTenths  = (SLIDE_START_X_SS + SLIDE_LENGTH_SS * SLIDE_COS) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
-        var expectedStopYTenths  = (SLIDE_START_Y_SS + SLIDE_LENGTH_SS * SLIDE_SIN) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
+        assertThat(endpoints.endYSs())
+            .as("the fixture must be level, so the zero Y term is genuinely under test")
+            .isEqualTo(endpoints.startYSs());
 
-        // Start slide: default-x/y at the beginning of the glissando line.
-        var startDefaultX = slideAttribute(xml, "start", "default-x");
-        var startDefaultY = slideAttribute(xml, "start", "default-y");
-        assertThat(startDefaultX).as("slide[start] must carry default-x").isNotNull();
-        assertThat(startDefaultY).as("slide[start] must carry default-y").isNotNull();
-        assertThat(Double.parseDouble(startDefaultX))
-            .as("slide[start] default-x must match the computed start X")
-            .isCloseTo(expectedStartXTenths, Offset.offset(0.01));
-        assertThat(Double.parseDouble(startDefaultY))
-            .as("slide[start] default-y must match the computed start Y")
-            .isCloseTo(expectedStartYTenths, Offset.offset(0.01));
-
-        // Stop slide: default-x/y at the end of the glissando line.
-        var stopDefaultX = slideAttribute(xml, "stop", "default-x");
-        var stopDefaultY = slideAttribute(xml, "stop", "default-y");
-        assertThat(stopDefaultX).as("slide[stop] must carry default-x").isNotNull();
-        assertThat(stopDefaultY).as("slide[stop] must carry default-y").isNotNull();
-        assertThat(Double.parseDouble(stopDefaultX))
-            .as("slide[stop] default-x must match the computed end X")
-            .isCloseTo(expectedStopXTenths, Offset.offset(0.01));
-        assertThat(Double.parseDouble(stopDefaultY))
-            .as("slide[stop] default-y must match the computed end Y")
-            .isCloseTo(expectedStopYTenths, Offset.offset(0.01));
+        assertSlideEndpoint(xml, "start", endpoints.startXSs(), endpoints.startYSs());
+        assertSlideEndpoint(xml, "stop", endpoints.endXSs(), endpoints.endYSs());
     }
 
     /**
@@ -505,6 +474,44 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         assertThat(slideAttribute(xml, "stop", "type"))
             .as("host note must emit <slide type=\"stop\">")
             .isNotNull();
+    }
+
+    /**
+     * A glissando too short to draw ({@link SlideGeometry#computeEndpoints} rejected it) must
+     * still be emitted, just without {@code default-x}/{@code default-y} — the fallback branch
+     * {@code MusicXmlNotationsWriter.writeSlide} kept for exactly this case.
+     * <p>
+     * The real spacing engine reserves at least {@code NoteGeometry.MIN_GLISSANDO_RESERVATION_SS}
+     * between any two glissando-connected notes (refs #443), so a too-short glissando cannot be
+     * reproduced by laying a song out normally — that reservation exists precisely to prevent it.
+     * A {@link LayoutResult} that stores no geometry for the glissando note is exactly the state
+     * {@code LayoutEngine.calculateSlides} leaves behind when {@code computeEndpoints} rejects it
+     * (see the {@code SlideLayout} javadoc), so a bare mock reproduces that state directly.
+     */
+    @Test
+    void testTooShortGlissandoEmitsNoCoordinatesFallback() throws Exception {
+        var song = buildGlissandoSong(
+            LEVEL_GLISSANDO_STAFF_POSITION,
+            LEVEL_GLISSANDO_STAFF_POSITION,
+            StaffElement.Accidental.SHARP);
+        var noGlissandoGeometry = mock(LayoutResult.class);
+        var stringWriter = new StringWriter();
+        var printWriter = new PrintWriter(stringWriter);
+
+        MusicXmlWriter.writeSong(
+            song, DocumentFonts.defaultFonts(), (line, lineIndex) -> noGlissandoGeometry, printWriter);
+        printWriter.flush();
+        var xml = stringWriter.toString();
+
+        assertThat(slideAttribute(xml, "start", "type"))
+            .as("a too-short glissando is still emitted")
+            .isNotNull();
+        assertThat(slideAttribute(xml, "start", "default-x"))
+            .as("no default-x for a glissando too short to draw")
+            .isNull();
+        assertThat(slideAttribute(xml, "start", "default-y"))
+            .as("no default-y for a glissando too short to draw")
+            .isNull();
     }
 
     // Phase 4 spot-check: a crotchet (quarter note) on B4 produces schema-valid output.
@@ -611,43 +618,90 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         assertThat(firstElementText(xml, "octave")).as("<octave> for C4").isEqualTo("4");
     }
 
-    // -- Diagonal glissando: exercises BOTH the cos (X) and sin (Y) endpoint terms --
+    // -- Diagonal glissando: exercises BOTH the X and Y endpoint terms --
 
     @Test
     void testDiagonalGlissandoSlideEndpointsInOutput() throws Exception {
-        var song = buildSong(line -> {
+        var song = buildGlissandoSong(
+            DIAGONAL_GLISSANDO_SOURCE_STAFF_POSITION,
+            DIAGONAL_GLISSANDO_TARGET_STAFF_POSITION,
+            null);
+        var xml = writeToString(song);
+        var endpoints = laidOutGlissandoEndpoints(song);
+
+        assertThat(endpoints.endYSs())
+            .as("the fixture must be diagonal, so the Y term is genuinely under test")
+            .isNotEqualTo(endpoints.startYSs());
+
+        assertSlideEndpoint(xml, "start", endpoints.startXSs(), endpoints.startYSs());
+        assertSlideEndpoint(xml, "stop", endpoints.endXSs(), endpoints.endYSs());
+    }
+
+    /**
+     * A one-line song whose first note carries a glissando to the second.
+     *
+     * @param targetAccidental accidental for the target note, or null for none — the level
+     *                         fixture needs one to keep the two notes at different pitches
+     *                         while they share a staff position
+     */
+    private static Song buildGlissandoSong(
+        int sourceStaffPosition,
+        int targetStaffPosition,
+        StaffElement.@Nullable Accidental targetAccidental) {
+
+        return buildSong(line -> {
             var startNote = ElementType.CROTCHET.newInstance();
+            startNote.setStaffPosition(sourceStaffPosition);
             startNote.setGlissando();
 
-            var glissando = startNote.getGlissando();
-            assertThat(glissando).as("setGlissando attaches a glissando").isNotNull();
-
-            glissando.cachedStartX      = SLIDE_START_X_SS;
-            glissando.cachedStartY      = SLIDE_START_Y_SS;
-            glissando.cachedLength      = SLIDE_LENGTH_SS;
-            glissando.cachedCos         = DIAGONAL_SLIDE_COS;
-            glissando.cachedSin         = DIAGONAL_SLIDE_SIN;
-            glissando.hasCachedGeometry = true;
+            var endNote = ElementType.CROTCHET.newInstance();
+            endNote.setStaffPosition(targetStaffPosition);
+            endNote.setAccidental(targetAccidental);
 
             line.addElement(startNote);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(endNote);
         });
+    }
 
-        var xml = writeToString(song);
+    /**
+     * Lays {@code song}'s only line out the same way the writer does and returns the glissando
+     * endpoints the writer therefore had to emit. Deriving them independently of the writer keeps
+     * the assertions about the emitted coordinates honest — only the writer's own mapping
+     * (which endpoint goes on which slide, staff spaces to tenths) is under test here.
+     */
+    private static SlideGeometry.Endpoints laidOutGlissandoEndpoints(Song song) {
+        var line = song.getLines().getFirst();
+        var layoutResult = LineLayoutProvider
+            .headless(song, DocumentFonts.defaultFonts())
+            .layoutFor(line, 0);
+        assertThat(layoutResult).as("the writer's layout fallback must produce a layout").isNotNull();
 
-        var expectedStopXTenths = (SLIDE_START_X_SS + SLIDE_LENGTH_SS * DIAGONAL_SLIDE_COS) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
-        var expectedStopYTenths = (SLIDE_START_Y_SS + SLIDE_LENGTH_SS * DIAGONAL_SLIDE_SIN) * MusicXmlTags.TENTHS_PER_STAFF_SPACE;
+        var slideLayout = layoutResult.getSlideLayout(line.getElement(0));
+        assertThat(slideLayout).as("the laid-out line must carry the glissando's geometry").isNotNull();
 
-        var stopDefaultX = slideAttribute(xml, "stop", "default-x");
-        var stopDefaultY = slideAttribute(xml, "stop", "default-y");
-        assertThat(stopDefaultX).as("diagonal slide[stop] must carry default-x").isNotNull();
-        assertThat(stopDefaultY).as("diagonal slide[stop] must carry default-y").isNotNull();
-        assertThat(Double.parseDouble(stopDefaultX))
-            .as("diagonal slide[stop] default-x must include the cos term")
-            .isCloseTo(expectedStopXTenths, Offset.offset(0.01));
-        assertThat(Double.parseDouble(stopDefaultY))
-            .as("diagonal slide[stop] default-y must include the sin term (non-zero here)")
-            .isCloseTo(expectedStopYTenths, Offset.offset(0.01));
+        var endpoints = slideLayout.glissando();
+        assertThat(endpoints).as("the glissando must be long enough to draw").isNotNull();
+
+        return endpoints;
+    }
+
+    /**
+     * Asserts that the {@code <slide>} of the given type carries {@code default-x}/{@code default-y}
+     * equal to the expected staff-space point, converted to tenths.
+     */
+    private static void assertSlideEndpoint(
+        String xml, String slideType, double expectedXSs, double expectedYSs) throws Exception {
+        var defaultX = slideAttribute(xml, slideType, "default-x");
+        var defaultY = slideAttribute(xml, slideType, "default-y");
+
+        assertThat(defaultX).as("slide[%s] must carry default-x", slideType).isNotNull();
+        assertThat(defaultY).as("slide[%s] must carry default-y", slideType).isNotNull();
+        assertThat(Double.parseDouble(defaultX))
+            .as("slide[%s] default-x must match the laid-out X", slideType)
+            .isCloseTo(expectedXSs * MusicXmlTags.TENTHS_PER_STAFF_SPACE, Offset.offset(0.01));
+        assertThat(Double.parseDouble(defaultY))
+            .as("slide[%s] default-y must match the laid-out Y", slideType)
+            .isCloseTo(expectedYSs * MusicXmlTags.TENTHS_PER_STAFF_SPACE, Offset.offset(0.01));
     }
 
     // -- Phase 7c: all-span schema validation --

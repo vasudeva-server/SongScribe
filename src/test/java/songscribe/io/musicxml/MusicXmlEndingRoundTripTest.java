@@ -26,7 +26,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import org.junit.jupiter.api.Test;
 
 import songscribe.dom.ElementType;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.layout.LineEndingSupport;
 
 // -------------------------------------------------------------------------

@@ -32,7 +32,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.ElementType;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.action.AccidentalAction;

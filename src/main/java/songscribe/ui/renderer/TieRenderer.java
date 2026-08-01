@@ -27,6 +27,7 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
 import module java.desktop;
 
 
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.Tie;
@@ -116,9 +117,11 @@ public final class TieRenderer {
     }
 
     /**
-     * Determines the tie color by checking both endpoints.
+     * Determines the tie color by checking both endpoints, then the tie itself.
      * <p>
-     * A tie is colored if either its start or end note is playing or selected.
+     * A tie is colored if either its start or end note is playing or selected — the
+     * endpoint checks are what carries an index-range selection onto the ties inside it —
+     * and, failing that, if the tie is itself the selected target.
      */
     Color determineTieColor(Tie tie, LineInvariants invariants) {
         var startColor = invariants.getElementColor(tie.getAnchorElementIndex());
@@ -131,6 +134,12 @@ public final class TieRenderer {
 
         if (endColor != Color.BLACK) {
             return endColor;
+        }
+
+        var tieColor = invariants.colorFor(new HitTarget.Tie(tie), LineInvariants.NO_ELEMENT_INDEX);
+
+        if (tieColor != Color.BLACK) {
+            return tieColor;
         }
 
         return RenderingUtils.ELEMENT_COLOR;

@@ -25,8 +25,10 @@ import static org.mockito.Mockito.when;
 
 import module java.desktop;
 
+import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
+import songscribe.hit.HitTarget;
 import songscribe.font.FontKey;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
@@ -64,12 +66,18 @@ final class RenderContextTestHelper {
     }
 
     /**
-     * Installs a mock {@link LineComponent.SelectionProvider} that reports
-     * {@code selectedElementIndex} on line 0 as selected.
+     * Installs a mock {@link LineComponent.SelectionProvider} reporting the element at
+     * {@code selectedElementIndex} of {@code line} as selected on line 0, and makes
+     * {@code line} the builder's current line.
+     * <p>
+     * The line is required because an element's color is resolved by naming the element as a
+     * {@link songscribe.hit.HitTarget}, so the index has to be mapped back to the element
+     * sitting at it.
      */
-    static void enableSelection(LineInvariants.Builder builder, int selectedElementIndex) {
+    static void enableSelection(LineInvariants.Builder builder, Line line, int selectedElementIndex) {
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isElementSelected(selectedElementIndex, 0)).thenReturn(true);
-        builder.setSelectionProvider(selectionProvider);
+        when(selectionProvider.isSelected(
+            new HitTarget.Element(line.getElement(selectedElementIndex)), 0)).thenReturn(true);
+        builder.setCurrentLine(line).setSelectionProvider(selectionProvider);
     }
 }

@@ -57,7 +57,7 @@ import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.layout.LineEndingSupport;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LayoutResult;
@@ -1094,8 +1094,8 @@ public final class PreviewElementManager {
                 return null;
             }
 
-            // Same-pitch connected glissando is musically meaningless
-            if (sourceElement.getPitch() == targetElement.getPitch()) {
+            // A glissando between two notes at one pitch has nothing to traverse
+            if (line.isSamePitchAsFollower(xIndex - 1)) {
                 return null;
             }
         }

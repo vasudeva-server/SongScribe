@@ -38,7 +38,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import songscribe.ui.action.Actions;
-import songscribe.ui.selection.SelectedDecoration;
+import songscribe.hit.HitTarget;
 
 /**
  * E2E tests for glissando interactions that require mouse clicks at pixel
@@ -97,12 +97,12 @@ class NoteConnectionTest extends E2ETest {
             var lineComponent = scoreView().getLineComponent(0);
             assertThat(lineComponent).isNotNull();
 
-            var lss = lineComponent.getLineSelectionState();
-            assertThat(lss).isNotNull();
+            var line = lineComponent.getLine();
+            assertThat(line).isNotNull();
 
-            assertThat(lss.getSelectedDecoration())
+            assertThat(scoreView().getSelectionCoordinator().getSelectedTarget())
                 .as("glissando on the clicked element selected by click")
-                .isEqualTo(new SelectedDecoration.SlideSelection(Element.PAIR_B_SRC.index));
+                .isEqualTo(new HitTarget.Slide(line.getElement(Element.PAIR_B_SRC.index)));
         }
 
         @Test
@@ -110,13 +110,8 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Element.PAIR_B_SRC.index));
 
-            var lineComponent = scoreView().getLineComponent(0);
-            assertThat(lineComponent).isNotNull();
-
-            var lss = lineComponent.getLineSelectionState();
-            assertThat(lss).isNotNull();
-
-            assertThat(lss.isElementSelected(Element.PAIR_B_SRC.index))
+            assertThat(scoreView().getSelectionCoordinator()
+                    .isElementSelected(Element.PAIR_B_SRC.index, 0))
                 .as("source note selected").isTrue();
 
             var note = song().getLine(0).getElement(Element.PAIR_B_SRC.index);
@@ -128,13 +123,8 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Element.PAIR_B_TGT.index));
 
-            var lineComponent = scoreView().getLineComponent(0);
-            assertThat(lineComponent).isNotNull();
-
-            var lss = lineComponent.getLineSelectionState();
-            assertThat(lss).isNotNull();
-
-            assertThat(lss.isElementSelected(Element.PAIR_B_TGT.index))
+            assertThat(scoreView().getSelectionCoordinator()
+                    .isElementSelected(Element.PAIR_B_TGT.index, 0))
                 .as("target note selected").isTrue();
 
             var sourceNote = song().getLine(0).getElement(Element.PAIR_B_SRC.index);
@@ -192,15 +182,9 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(midpoint(0, Element.PAIR_D_SRC.index, Element.PAIR_D_TGT.index));
 
-            var lineComponent = scoreView().getLineComponent(0);
-            assertThat(lineComponent).isNotNull();
-
-            var lss = lineComponent.getLineSelectionState();
-            assertThat(lss).isNotNull();
-
-            assertThat(lss.getSelectedDecoration())
+            assertThat(scoreView().getSelectionCoordinator().getSelectedTarget())
                 .as("glissando selected")
-                .isInstanceOf(SelectedDecoration.SlideSelection.class);
+                .isInstanceOf(HitTarget.Slide.class);
 
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
             performLayout(0);

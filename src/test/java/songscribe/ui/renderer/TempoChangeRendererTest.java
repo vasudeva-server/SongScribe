@@ -22,10 +22,15 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyFloat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import module java.desktop;
@@ -39,7 +44,10 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 class TempoChangeRendererTest extends UnitTest {
 
@@ -52,12 +60,13 @@ class TempoChangeRendererTest extends UnitTest {
     private static final double DECO_HEIGHT_SS = 2.0;
 
     /**
-     * Calls renderInitialTempo, captures all drawString calls on a spy g2, and returns the
+     * Renders {@code tempo}, captures all drawString calls on a spy g2, and returns the
      * list of strings drawn. The last entry is always the tempoBuilder content.
      */
     private List<String> renderAndCaptureStrings(Tempo tempo) {
         var note = ElementType.CROTCHET.newInstance();
         var attachment = new TempoChangeAttachment(note, tempo);
+        note.addAttachment(attachment);
 
         var decorationLayout = new LayoutResult.DecorationLayout(
             DECO_X_SS, DECO_Y_SS, DECO_WIDTH_SS, DECO_HEIGHT_SS, 0.0);
@@ -72,7 +81,7 @@ class TempoChangeRendererTest extends UnitTest {
         var frame = ElementFrame.LINE_LEVEL.withElement(0, Double.NaN);
 
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        RENDERER.renderInitialTempo(g2Spy, note, tempo, invariants, frame);
+        RENDERER.render(invariants, frame, note, g2Spy);
 
         var captor = ArgumentCaptor.forClass(String.class);
         verify(g2Spy, atLeastOnce()).drawString(captor.capture(), anyFloat(), anyFloat());
@@ -113,6 +122,65 @@ class TempoChangeRendererTest extends UnitTest {
 
         assertThat(drawn).hasSize(1);
         assertThat(drawn.getFirst()).isEqualTo(description);
+    }
+
+
+    // ==========================================================================
+    // Selection color
+    // ==========================================================================
+
+    /**
+     * Renders a tempo change with the attachment reported as selected or not, and returns the
+     * color in force when its description was drawn. {@code showTempo} is off so exactly one
+     * string is drawn and there is no ambiguity about which color is being read.
+     */
+    private static Color renderedTempoColor(boolean selected) {
+        final var description = "Andante";
+        var line = detachedLine();
+        var note = ElementType.CROTCHET.newInstance();
+        line.addElement(note);
+
+        var tempo = new Tempo(0, Duration.CROTCHET, description, false);
+        var attachment = new TempoChangeAttachment(note, tempo);
+        note.addAttachment(attachment);
+
+        var decorationLayout = new LayoutResult.DecorationLayout(
+            DECO_X_SS, DECO_Y_SS, DECO_WIDTH_SS, DECO_HEIGHT_SS, 0.0);
+        var layoutResult = LayoutResult.builder()
+            .putDecorationLayout(attachment, decorationLayout)
+            .build();
+
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(new HitTarget.Attachment(attachment), 0))
+            .thenReturn(selected);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setCurrentLine(line)
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var g2Spy = spy(RenderContextTestHelper.realG2());
+        var drawnColors = new ArrayList<Color>();
+        doAnswer(invocation -> {
+            drawnColors.add(g2Spy.getColor());
+            return null;
+        }).when(g2Spy).drawString(eq(description), anyFloat(), anyFloat());
+
+        RENDERER.render(invariants, ElementFrame.LINE_LEVEL.withElement(0, Double.NaN), note, g2Spy);
+
+        assertThat(drawnColors).hasSize(1);
+        return drawnColors.getFirst();
+    }
+
+    @Test
+    void testRenderTempoChangeSelectedDrawsInTheSelectionColor() {
+        assertThat(renderedTempoColor(true)).isEqualTo(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testRenderTempoChangeUnselectedDrawsInTheElementColor() {
+        assertThat(renderedTempoColor(false)).isEqualTo(RenderingUtils.ELEMENT_COLOR);
     }
 
 }

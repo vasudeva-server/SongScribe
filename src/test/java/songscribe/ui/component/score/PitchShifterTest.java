@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 
 import javax.swing.JOptionPane;
 
@@ -168,6 +169,112 @@ class PitchShifterTest extends UnitTest {
                 .isEqualTo(ORIGINAL_POSITION_SP + RAISE_ONE_POSITION);
             assertThat(line.getElement(1).getAccidental())
                 .isEqualTo(StaffElement.Accidental.SHARP);
+        }
+    }
+
+    /**
+     * A same-pitch glissando is not a state the document may hold: the slide tool refuses to
+     * create one, and a pitch shift that produces one removes it from the model rather than
+     * leaving it for the renderer to hide.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SamePitchGlissandoRemoval {
+
+        private static final int SOURCE_POSITION_SP = 4;
+        private static final int ADJACENT_POSITION_SP = 5;
+        private static final int DISTANT_POSITION_SP = 6;
+        private static final int RAISE_ONE_POSITION = -1;
+
+        private Line line = detachedLine();
+
+        /** Builds {@code [crotchet@first (glissando), crotchet@second]} on a tracked song line. */
+        private void setUpGlissandoFrom(int firstPositionSp, int secondPositionSp) {
+            var song = new Song();
+            line = song.getLine(0);
+
+            song.withoutMutationTracking(() -> {
+                var source = noteAt(firstPositionSp);
+                source.setGlissando();
+                line.addElement(source);
+                line.addElement(noteAt(secondPositionSp));
+            });
+        }
+
+        private static StaffElement noteAt(int staffPositionSp) {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(staffPositionSp);
+            return note;
+        }
+
+        private void shift(int begin, int end) {
+            // Prefs is mocked only to silence the audio feedback the shift plays, which is
+            // irrelevant here and would reach for a MIDI device.
+            try (var optionDialogs = mockStatic(OptionDialogs.class);
+                 var prefs = mockStatic(Prefs.class)) {
+
+                prefs.when(() -> Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)).thenReturn(false);
+                optionDialogs.when(() -> OptionDialogs.showConfirmDialog(
+                    any(), any(), any(), anyInt(), anyInt())).thenReturn(JOptionPane.NO_OPTION);
+
+                PitchShifter.shiftPitch(null, line, begin, end, RAISE_ONE_POSITION);
+
+                optionDialogs.verify(() -> OptionDialogs.showWarningMessage(any(), any(), any()),
+                    never());
+            }
+        }
+
+        @Test
+        void testMovingTheSourceOntoItsTargetRemovesTheGlissando() {
+            // [4 (gliss), 5] — raising the source one position lands it on its target's pitch.
+            setUpGlissandoFrom(ADJACENT_POSITION_SP, SOURCE_POSITION_SP);
+
+            shift(0, 0);
+
+            assertThat(line.getElement(0).getStaffPosition())
+                .as("the shift itself still happened")
+                .isEqualTo(SOURCE_POSITION_SP);
+            assertThat(line.getElement(0).hasGlissando())
+                .as("the glissando is gone from the model, not merely hidden")
+                .isFalse();
+        }
+
+        @Test
+        void testMovingTheTargetOntoItsSourceRemovesTheGlissando() {
+            // [4 (gliss), 5] — raising the *target* one position lands it on the source's pitch.
+            setUpGlissandoFrom(SOURCE_POSITION_SP, ADJACENT_POSITION_SP);
+
+            shift(1, 1);
+
+            assertThat(line.getElement(1).getStaffPosition())
+                .isEqualTo(SOURCE_POSITION_SP);
+            assertThat(line.getElement(0).hasGlissando())
+                .as("the shifted note is the glissando's target, so the owner is the one repaired")
+                .isFalse();
+        }
+
+        @Test
+        void testShiftThatKeepsThePitchesApartLeavesTheGlissandoAlone() {
+            // [4 (gliss), 6] — raising the source lands it on 3, still clear of the target.
+            setUpGlissandoFrom(SOURCE_POSITION_SP, DISTANT_POSITION_SP);
+
+            shift(0, 0);
+
+            assertThat(line.getElement(0).hasGlissando()).isTrue();
+        }
+
+        @Test
+        void testShiftingBothNotesTogetherLeavesTheGlissandoAlone() {
+            // A group moves as a whole, so its internal interval survives the shift.
+            setUpGlissandoFrom(SOURCE_POSITION_SP, ADJACENT_POSITION_SP);
+
+            shift(0, 1);
+
+            assertThat(line.getElement(0).getStaffPosition())
+                .isEqualTo(SOURCE_POSITION_SP + RAISE_ONE_POSITION);
+            assertThat(line.getElement(1).getStaffPosition())
+                .isEqualTo(ADJACENT_POSITION_SP + RAISE_ONE_POSITION);
+            assertThat(line.getElement(0).hasGlissando()).isTrue();
         }
     }
 }

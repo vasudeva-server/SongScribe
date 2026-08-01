@@ -20,7 +20,6 @@
 
 package songscribe.dom;
 
-import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -169,8 +168,8 @@ public class StaffElement extends LineElement implements Cloneable {
         isAccidentalInParentheses = source.isAccidentalInParentheses;
         line = source.line;
         direction = source.direction;
-        // Deep-copy the slide so an original and its clone never share a Slide instance,
-        // whose transient render/hit-test caches would otherwise corrupt each other.
+        // Give the copy its own Slide instance, so the two elements stay independently
+        // identifiable even though a slide carries no state of its own.
         slide = source.slide == null ? null : source.slide.copy();
         stemDirectionAuto = source.stemDirectionAuto;
 
@@ -947,25 +946,14 @@ public class StaffElement extends LineElement implements Cloneable {
     public sealed interface Slide permits Glissando, Fall {
 
         /**
-         * Returns a fresh instance of this slide's concrete subtype, with none of its
-         * transient render/hit-test caches populated. Slides carry no persistent state
-         * beyond their type, so a shared instance between an original and its clone would
-         * corrupt hit-testing once both are on-screen and each render pass overwrites the
-         * other's cached geometry.
+         * Returns a fresh instance of this slide's concrete subtype. A slide carries no state
+         * beyond its type — its geometry lives on the line's layout result, keyed by the owning
+         * note — so the copy is simply a new instance.
          */
         Slide copy();
     }
 
     public static final class Glissando implements Slide {
-
-        // Transient cached geometry populated during the render pass, used for hit-testing
-        public transient double cachedStartX;
-        public transient double cachedStartY;
-        public transient double cachedAngle;
-        public transient double cachedCos;
-        public transient double cachedSin;
-        public transient double cachedLength;
-        public transient boolean hasCachedGeometry;
 
         @Override
         public Slide copy() {
@@ -975,9 +963,6 @@ public class StaffElement extends LineElement implements Cloneable {
     }
 
     public static final class Fall implements Slide {
-
-        // A fall is independently clickable, so it caches the glyph's drawn rect for hit-testing
-        public transient @Nullable Rectangle2D cachedHitBounds;
 
         @Override
         public Slide copy() {

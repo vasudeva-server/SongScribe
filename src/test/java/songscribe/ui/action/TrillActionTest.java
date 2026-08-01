@@ -44,14 +44,16 @@ import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.selection.LineSelectionState;
+import org.jspecify.annotations.Nullable;
+
+import songscribe.ui.selection.Selection;
 import songscribe.ui.selection.SelectionCoordinator;
 
 import java.util.Arrays;
 
 /**
  * Unit tests for {@link TrillAction}: checked-state overlap detection, G1
- * enablement (reusing {@link LineSelectionState#canToggleTrill()}), and the
+ * enablement (reusing {@link songscribe.ui.selection.RangeQueries#canToggleTrill}), and the
  * check/uncheck {@code actionPerformed} paths (spanning-trill addition,
  * outermost-pitched-note clamping, and multi-range removal batched into a
  * single {@link SongDidChangeNotification}).
@@ -90,27 +92,19 @@ class TrillActionTest extends UnitTest {
         return line;
     }
 
-    /** Wires the coordinator/score mocks so the given selection state is "active". */
-    private void wireSelection(LineSelectionState state, boolean hasActiveSelection) {
-        when(mockCoordinator.getActiveSelection()).thenReturn(state);
+    /** Wires the coordinator/score mocks so the given range is the selection. */
+    private void wireSelection(Selection.@Nullable Range range, boolean hasActiveSelection) {
+        when(mockCoordinator.getRange()).thenReturn(range);
         when(mockCoordinator.hasActiveSelection()).thenReturn(hasActiveSelection);
-        when(mockScore.getSelectionSize()).thenReturn(state.getSelectionSize());
+        when(mockScore.getSelectionSize()).thenReturn((range == null) ? 0 : range.size());
     }
 
-    @SuppressWarnings("UnusedReturnValue")
-    private LineSelectionState selectRange(Line line, int begin, int end) {
-        var state = new LineSelectionState(line);
-        state.setSelectionFromClick(begin);
-        state.extendSelectionTo(end);
-        wireSelection(state, true);
-        return state;
+    private void selectRange(Line line, int begin, int end) {
+        wireSelection(new Selection.Range(line, begin, end, begin), true);
     }
 
-    @SuppressWarnings("UnusedReturnValue")
-    private LineSelectionState noActiveSelection(Line line) {
-        var state = new LineSelectionState(line);
-        wireSelection(state, false);
-        return state;
+    private void noActiveSelection() {
+        wireSelection(null, false);
     }
 
     private void fireSelectionChange() {
@@ -281,7 +275,7 @@ class TrillActionTest extends UnitTest {
         @Test
         void testNoSelectionIsDisabledAndUnchecked() {
             var line = lineOf(ElementType.CROTCHET);
-            noActiveSelection(line);
+            noActiveSelection();
 
             fireSelectionChange();
 
@@ -321,7 +315,7 @@ class TrillActionTest extends UnitTest {
             fireSelectionChange();
             action.setSelected(true);
 
-            when(mockCoordinator.getActiveSelection()).thenReturn(null);
+            when(mockCoordinator.getRange()).thenReturn(null);
             fireSelectionChange();
 
             assertThat(action.isSelected()).isFalse();
@@ -406,10 +400,7 @@ class TrillActionTest extends UnitTest {
                 }
             });
 
-            var state = new LineSelectionState(line);
-            state.setSelectionFromClick(selectionBeginIndex);
-            state.extendSelectionTo(selectionEndIndex);
-            wireSelection(state, true);
+            selectRange(line, selectionBeginIndex, selectionEndIndex);
             action.setSelected(true);
 
             try (var messageCenterMock = mockStatic(MessageCenter.class)) {
@@ -516,10 +507,7 @@ class TrillActionTest extends UnitTest {
                 );
             });
 
-            var state = new LineSelectionState(line);
-            state.setSelectionFromClick(selectionBeginIndex);
-            state.extendSelectionTo(selectionEndIndex);
-            wireSelection(state, true);
+            selectRange(line, selectionBeginIndex, selectionEndIndex);
             action.setSelected(false);
 
             try (var messageCenterMock = mockStatic(MessageCenter.class)) {

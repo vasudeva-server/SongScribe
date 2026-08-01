@@ -73,7 +73,7 @@ import songscribe.ui.action.TupletAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.util.UIUtils;
@@ -385,13 +385,13 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
 
     @Test
     void testHandleToggleBeamIsNoOpWhenNoActiveSelection() {
-        // Row 48: when getActiveSelection() returns null, the handler must return
-        // immediately without posting any SongDidChangeNotification.
+        // Row 48: when no range is selected, the handler must return immediately without
+        // posting any SongDidChangeNotification.
         //
-        // Uses a mocked SelectionCoordinator that returns null for getActiveSelection()
-        // rather than the real coordinator (which always has an active line state).
+        // Uses a mocked SelectionCoordinator that returns null for getRange() rather than the
+        // real coordinator (which always has an active line).
         var coordinatorMock = mock(SelectionCoordinator.class);
-        when(coordinatorMock.getActiveSelection()).thenReturn(null);
+        when(coordinatorMock.getRange()).thenReturn(null);
 
         messageCenterMock = mockStatic(MessageCenter.class);
 

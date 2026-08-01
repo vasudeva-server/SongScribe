@@ -37,8 +37,8 @@ import songscribe.message.MessageCenter;
 import songscribe.message.command.PasteboardOpCommand;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.dom.ElementType;
+import songscribe.hit.HitTarget;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.ui.selection.SelectionCoordinator;
 
 class DeleteActionTest extends MainFrameMockTest {
 
@@ -62,9 +62,8 @@ class DeleteActionTest extends MainFrameMockTest {
     @Test
     void testDeleteEnabledForLyricSelection() {
         var element = ElementType.CROTCHET.newInstance();
-        when(mockEnv().coordinator().hasLyricSelection()).thenReturn(true);
-        when(mockEnv().coordinator().getLyricSelection()).thenReturn(
-            new SelectionCoordinator.LyricSelection(element, 1));
+        when(mockEnv().coordinator().getSelectedTarget()).thenReturn(
+            new HitTarget.Lyric(element, 1));
 
         var action = DeleteAction.createAction(mainFrame());
         action.setEnabled(false);

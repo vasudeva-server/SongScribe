@@ -33,7 +33,8 @@ import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
-import songscribe.ui.selection.LineSelectionState;
+import songscribe.ui.selection.RangeQueries;
+import songscribe.ui.selection.Selection;
 
 /**
  * Checkable action that toggles a {@link Trill} over the current selection.
@@ -76,9 +77,9 @@ public final class TrillAction extends SelectableUIAction {
             return true;
         }
 
-        var state = activeSelectionOf(scoreView);
+        var range = selectedRangeOf(scoreView);
 
-        return state != null && state.canToggleTrill();
+        return range != null && RangeQueries.canToggleTrill(range);
     }
 
     @Override
@@ -108,37 +109,29 @@ public final class TrillAction extends SelectableUIAction {
      */
     private void refreshSelectedState() {
         var scoreView = getScoreView();
-        var state = (scoreView != null) ? activeSelectionOf(scoreView) : null;
+        var range = (scoreView != null) ? selectedRangeOf(scoreView) : null;
 
-        if (state == null) {
+        if (range == null) {
             setSelected(false);
             return;
         }
 
-        var begin = state.getSelectionBegin();
-        var end = state.getSelectionEnd();
-
-        if (begin == -1) {
-            setSelected(false);
-            return;
-        }
-
-        setSelected(state.getLine().hasTrillOverlapping(begin, end));
+        setSelected(range.line().hasTrillOverlapping(range.begin(), range.end()));
     }
 
     @Override
     protected void performAction(ActionEvent e) {
         toggleOnKeyboardShortcut(e);
 
-        var state = activeSelectionOf(requireScoreView());
+        var range = selectedRangeOf(requireScoreView());
 
-        if (state == null) {
+        if (range == null) {
             return;
         }
 
-        var line = state.getLine();
-        var begin = state.getSelectionBegin();
-        var end = state.getSelectionEnd();
+        var line = range.line();
+        var begin = range.begin();
+        var end = range.end();
 
         line.withModification(() -> {
             if (isSelected()) {
@@ -149,9 +142,8 @@ public final class TrillAction extends SelectableUIAction {
         });
     }
 
-    @Nullable
-    private LineSelectionState activeSelectionOf(ScoreView scoreView) {
-        return scoreView.getSelectionCoordinator().getActiveSelection();
+    private static Selection.@Nullable Range selectedRangeOf(ScoreView scoreView) {
+        return scoreView.getSelectionCoordinator().getRange();
     }
 
     private void addTrillSpanningSelection(Line line, int begin, int end) {

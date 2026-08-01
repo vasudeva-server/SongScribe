@@ -28,6 +28,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
+import songscribe.hit.HitTarget;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.Line;
@@ -63,6 +64,13 @@ public final class LineInvariants {
 
     /** Verse reported by {@link #getActivelyEditedVerse()} when no lyric editor is open. */
     public static final int NO_VERSE = -1;
+
+    /**
+     * Element index to pass to {@link #colorFor(HitTarget, int)} for the target variants that
+     * ignore it. Only {@link HitTarget.Element} and {@link HitTarget.Accidental} consult the
+     * index; naming the absence keeps a bare {@code -1} out of the call sites.
+     */
+    public static final int NO_ELEMENT_INDEX = -1;
 
     // ==========================================================================
     // Instance Fields
@@ -274,7 +282,7 @@ public final class LineInvariants {
             elementIndex,
             () -> isLyricSpanPlaying(elementIndex, element, verseIndex),
             () -> selectionProvider != null
-                    && selectionProvider.isLyricSelected(element, verseIndex, lineIndex)
+                    && selectionProvider.isSelected(new HitTarget.Lyric(element, verseIndex), lineIndex)
         );
     }
 
@@ -301,6 +309,48 @@ public final class LineInvariants {
         );
     }
 
+    /**
+     * Returns the rendering color for {@code target}, the target-keyed counterpart of
+     * {@link #getElementColor(int)}.
+     * <p>
+     * Follows the same cascade — playback, then selection, then the hovered
+     * replaced-element highlight — but asks the selection provider about this exact target
+     * rather than about an element index, so a kind that is selectable in its own right
+     * (an articulation, a tie, a beam) highlights on its own.
+     * <p>
+     * {@code elementIndex} is <b>not</b> derived here: it is only ever fed to the three
+     * index-keyed predicates ({@link #isElementPlaying}, {@link #isElementInPlayingTie},
+     * {@link #isElementHovered}), and only {@link HitTarget.Element} and
+     * {@link HitTarget.Accidental} consult them. Every other variant ignores the argument —
+     * pass {@link #NO_ELEMENT_INDEX}. Every call site that draws the two variants that do
+     * use it already has the index from its own loop, so deriving it here would cost a
+     * linear scan per drawn element for nothing.
+     *
+     * @param target       the thing being drawn, as a click would address it
+     * @param elementIndex the owning element's index, or {@link #NO_ELEMENT_INDEX}
+     */
+    public Color colorFor(HitTarget target, int elementIndex) {
+        // Playback and the hover highlight are properties of a note, not of the things
+        // hanging off it, so they apply to exactly these two variants.
+        var indexedChecksApply = target instanceof HitTarget.Element
+                || target instanceof HitTarget.Accidental;
+
+        if (indexedChecksApply
+                && (isElementPlaying(elementIndex) || isElementInPlayingTie(elementIndex))) {
+            return ScoreView.getPlayingNoteColor();
+        }
+
+        if (selectionProvider != null && selectionProvider.isSelected(target, lineIndex)) {
+            return selectionColor;
+        }
+
+        if (indexedChecksApply && isElementHovered(elementIndex)) {
+            return REPLACED_ELEMENT_COLOR;
+        }
+
+        return Color.BLACK;
+    }
+
     private Color colorFor(
         int elementIndex,
         BooleanSupplier playingCheck,
@@ -314,8 +364,7 @@ public final class LineInvariants {
             return selectionColor;
         }
 
-        if (selectionProvider != null
-                && selectionProvider.isElementSelected(elementIndex, lineIndex)) {
+        if (isElementRangeSelected(elementIndex)) {
             return selectionColor;
         }
 
@@ -324,6 +373,26 @@ public final class LineInvariants {
         }
 
         return Color.BLACK;
+    }
+
+    /**
+     * Returns whether the element at {@code elementIndex} on this line reads as selected.
+     * <p>
+     * The index is resolved to the element it names so the question can be asked as a
+     * {@link HitTarget}, which is the only selection query the provider exposes. Selecting a
+     * single note collapses the index range onto it, so this answers for both a click on one
+     * note and a drag across several.
+     */
+    private boolean isElementRangeSelected(int elementIndex) {
+        if (selectionProvider == null
+                || currentLine == null
+                || elementIndex < 0
+                || elementIndex >= currentLine.elementCount()) {
+            return false;
+        }
+
+        return selectionProvider.isSelected(
+            new HitTarget.Element(currentLine.getElement(elementIndex)), lineIndex);
     }
 
     /**

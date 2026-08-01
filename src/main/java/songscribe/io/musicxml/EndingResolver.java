@@ -26,7 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import songscribe.dom.StaffElement;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 
 /**
  * Resolves the {@code <ending>} (volta) markers collected on barlines into

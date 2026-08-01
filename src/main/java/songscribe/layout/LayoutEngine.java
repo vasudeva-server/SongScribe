@@ -279,6 +279,9 @@ public class LayoutEngine {
         // Step 6: Calculate tie geometry for all tie spans
         calculateTies(line, columns, builder);
 
+        // Step 6b: Calculate slide geometry for every note carrying a glissando or a fall
+        calculateSlides(line, columns, builder);
+
         // Step 7: Calculate vertical positions (requires stem layouts from steps 5/5b)
         // Use the song's staff width for consistent StaffExtents clamping,
         // not the content width which varies with column count.
@@ -428,6 +431,12 @@ public class LayoutEngine {
      * then returns the built result. Vertical stacking results (decoration layouts,
      * line height, lyrics baseline) are already in the builder from the
      * {@link VerticalStackingCalculator#calculate} call.
+     * <p>
+     * The hit registry is the last thing layout computes, because it reads every other layout
+     * map — columns, lyric boxes, decorations, slides — and so needs them all finished. It reads
+     * them from a built result rather than from the builder, which keeps the geometry formulas
+     * (the lyric row's midline offset above all) in the one place that already owns them.
+     * Building twice is safe and cheap: {@code build()} is a pure snapshot of the builder.
      */
     private LayoutResult buildLayoutResult(
         List<ElementColumn> columns,
@@ -438,6 +447,9 @@ public class LayoutEngine {
         for (var column : columns) {
             builder.putElementColumn(column.getElement(), column);
         }
+
+        var geometry = builder.build();
+        builder.setHitRegistry(HitRegionBuilder.build(line, geometry, lyricRenderMetrics));
 
         return builder.build();
     }
@@ -918,6 +930,110 @@ public class LayoutEngine {
                 cp2XSs, innerCpYSs
             ));
         }
+    }
+
+    /**
+     * Calculates slide geometry for every note in the line carrying a
+     * {@link StaffElement.Glissando} or a {@link StaffElement.Fall}, and populates {@code builder}
+     * with a {@link LayoutResult.SlideLayout} for each one that has drawable geometry.
+     * <p>
+     * Everything is computed in layout space — X line-local, Y relative to the staff midline — by
+     * building each note context with {@code middleLineYSs = 0}. A connecting glissando that is
+     * too short to draw, or that spans two notes at the same pitch, yields no entry at all; a
+     * fall always yields one.
+     */
+    private void calculateSlides(
+        Line line,
+        List<ElementColumn> columns,
+        LayoutResult.Builder builder) {
+
+        // Build an element → column map for fast X lookups, as calculateTies does.
+        var elementToColumn = new HashMap<StaffElement, ElementColumn>(columns.size() * 2);
+
+        for (var column : columns) {
+            elementToColumn.put(column.getElement(), column);
+        }
+
+        // The auto-maintained terminal barline can own no slide, so the effective count is enough.
+        var elementCount = line.effectiveElementCount();
+
+        for (var i = 0; i < elementCount; i++) {
+            var note = line.getElement(i);
+            var slide = note.getSlide();
+
+            if (slide == null) {
+                continue;
+            }
+
+            var src = slideNoteContext(note, i, line, elementToColumn);
+
+            // A fall is a standalone trailing glyph with no target note, so it never resolves the
+            // following element.
+            if (slide instanceof StaffElement.Fall) {
+                builder.putSlideLayout(note, LayoutResult.SlideLayout.ofFall(
+                    SlideGeometry.computeFallBoundsSs(src)));
+                continue;
+            }
+
+            // The slide tool refuses to create a glissando between two notes at one pitch and a
+            // pitch move strips one that becomes so, leaving import as the only way one can get
+            // here. Storing no geometry keeps hit-testing and the MusicXML writer agreeing with
+            // the renderer, which draws nothing for it.
+            if (line.isSamePitchAsFollower(i)) {
+                continue;
+            }
+
+            var endpoints = SlideGeometry.computeEndpoints(
+                src, slideTargetContext(i, line, elementToColumn));
+
+            if (endpoints == null) {
+                continue;
+            }
+
+            builder.putSlideLayout(note, LayoutResult.SlideLayout.ofGlissando(endpoints));
+        }
+    }
+
+    /**
+     * Builds the slide geometry context for the note at {@code noteIndex}, in layout space.
+     */
+    private static SlideGeometry.NoteContext slideNoteContext(
+        StaffElement note,
+        int noteIndex,
+        Line line,
+        Map<StaffElement, ElementColumn> elementToColumn) {
+
+        var column = elementToColumn.get(note);
+        var elementXSs = column != null ? column.getXSs() : 0;
+
+        return SlideGeometry.noteContextAt(
+            note, elementXSs, line.findBeamAt(noteIndex) != null, 0);
+    }
+
+    /**
+     * Builds the target context for a connecting glissando — the element after {@code sourceIndex} —
+     * or returns null when there is nothing to connect to.
+     * <p>
+     * A non-note follower (a barline at the line end, say) has no notehead geometry to attach to, so
+     * it is treated the same as no follower at all: {@link SlideGeometry#computeEndpoints} then
+     * rejects the glissando instead of the column geometry failing on a glyph-less element type.
+     */
+    private static SlideGeometry.@Nullable NoteContext slideTargetContext(
+        int sourceIndex,
+        Line line,
+        Map<StaffElement, ElementColumn> elementToColumn) {
+
+        if (sourceIndex + 1 >= line.elementCount()) {
+            return null;
+        }
+
+        var nextElement = line.getElement(sourceIndex + 1);
+
+        if (!nextElement.getType().isNote()) {
+            return null;
+        }
+
+        return slideNoteContext(nextElement, sourceIndex + 1, line, elementToColumn);
     }
 
     /**

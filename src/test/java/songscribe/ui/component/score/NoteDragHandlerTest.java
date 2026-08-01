@@ -65,10 +65,11 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.ScaleContext;
 import songscribe.engraving.Staff;
-import songscribe.ui.hit.HitResult;
+import songscribe.hit.HitTarget;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
-import songscribe.ui.selection.LineSelectionState;
+import songscribe.ui.selection.Selection;
+import songscribe.ui.selection.SelectionCoordinator;
 
 class NoteDragHandlerTest extends UnitTest {
 
@@ -83,7 +84,7 @@ class NoteDragHandlerTest extends UnitTest {
 
     // Instance mocks
     private LineComponent lc;
-    private LineSelectionState mockSelectionState;
+    private SelectionCoordinator mockCoordinator;
 
     // Subject under test
     private NoteDragHandler handler;
@@ -113,12 +114,12 @@ class NoteDragHandlerTest extends UnitTest {
         lc = mock(LineComponent.class);
         var mockScore = mock(ScoreView.class);
         var mockSelectionHandler = mock(LineSelectionHandler.class);
-        mockSelectionState = mock(LineSelectionState.class);
+        mockCoordinator = mock(SelectionCoordinator.class);
 
         when(lc.getScoreView()).thenReturn(mockScore);
         when(lc.getViewScale()).thenReturn(ViewScale.IDENTITY);
         when(lc.getSelectionHandler()).thenReturn(mockSelectionHandler);
-        when(lc.getLineSelectionState()).thenReturn(mockSelectionState);
+        when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
         when(lc.getSong()).thenReturn(mock(Song.class));
         when(mockScore.getMode()).thenReturn(Mode.SELECT);
 
@@ -262,18 +263,22 @@ class NoteDragHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Glissando Unison Retention
+    // Glissando Same-Pitch Removal
     // -------------------------------------------------------------------------
 
+    /**
+     * A glissando whose two notes land on the same pitch is removed from the model. A drag
+     * commits only on release, so what matters is where the note comes to rest — passing
+     * through the target's pitch on the way somewhere else costs nothing.
+     */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class GlissandoUnisonRetention {
+    class GlissandoSamePitchRemoval {
 
         @Test
-        void testRetainsBackwardGlissandoWhenUnisonAfterDrag() {
+        void testRemovesBackwardGlissandoWhenPitchesMatchAfterDrag() {
             // [crotchet@0 (connected gliss), crotchet@4]
-            // Drag index 1 by -4 → unison. The glissando is left intact; the renderer
-            // hides it while the notes share a pitch and shows it again when they diverge.
+            // Drag index 1 by -4 onto the source's pitch, so the glissando it owns goes.
             var line = createLine(0, 4);
             line.getElement(0).setGlissando();
             when(lc.getLine()).thenReturn(line);
@@ -284,14 +289,13 @@ class NoteDragHandlerTest extends UnitTest {
             handler.handleRelease();
 
             assertThat(line.getElement(0).hasGlissando())
-                .isTrue();
+                .isFalse();
         }
 
         @Test
-        void testRetainsForwardGlissandoWhenUnisonAfterDrag() {
+        void testRemovesForwardGlissandoWhenPitchesMatchAfterDrag() {
             // [crotchet@4 (connected gliss), crotchet@0]
-            // Drag index 0 by -4 → position becomes 0, matches index 1 → unison. The
-            // glissando is left intact; the renderer hides it only while the pitches match.
+            // Drag index 0 by -4 → position becomes 0, matching index 1.
             var line = createLine(4, 0);
             line.getElement(0).setGlissando();
             when(lc.getLine()).thenReturn(line);
@@ -301,6 +305,26 @@ class NoteDragHandlerTest extends UnitTest {
             dragToPosition(0); // delta = 0 - 4 = -4
             handler.handleRelease();
 
+            assertThat(line.getElement(0).hasGlissando())
+                .isFalse();
+        }
+
+        @Test
+        void testKeepsGlissandoWhenTheDragOnlyPassesThroughTheTargetPitch() {
+            // [crotchet@4 (connected gliss), crotchet@0]
+            // The drag visits 0 — the target's pitch — then carries on to -4 before release. Only
+            // resting position is committed, so the glissando survives the trip.
+            var line = createLine(4, 0);
+            line.getElement(0).setGlissando();
+            when(lc.getLine()).thenReturn(line);
+
+            setupSingleSelection(0);
+            pressOnNote(0);
+            dragToPosition(0);
+            dragToPosition(-4);
+            handler.handleRelease();
+
+            assertThat(line.getElement(0).getStaffPosition()).isEqualTo(-4);
             assertThat(line.getElement(0).hasGlissando())
                 .isTrue();
         }
@@ -594,11 +618,13 @@ class NoteDragHandlerTest extends UnitTest {
         }
 
         /**
-         * The cascade result a press on the line's first note produces, so each guard test below
+         * The target a press on the line's first note resolves to, so each guard test below
          * proves its own guard refused rather than the press having missed every element.
          */
-        private HitResult noteHeadHit() {
-            return new HitResult.ElementHead(0);
+        private HitTarget noteHeadHit() {
+            // A standalone note: every guard below refuses before the target's element is
+            // ever resolved against a line, so it needs no line to sit on.
+            return new HitTarget.Element(ElementType.CROTCHET.newInstance());
         }
 
         @Test
@@ -629,19 +655,19 @@ class NoteDragHandlerTest extends UnitTest {
 
         @Test
         void testHitMissReturnsFalse() {
-            var result = handler.handlePress(pressEvent(), new HitResult.Nothing());
+            var result = handler.handlePress(pressEvent(), null);
 
             assertThat(result).isFalse();
         }
 
         /**
-         * A lyric outranks a note head in the hit-test cascade, so lyric text drawn over an
+         * A lyric outranks a note head in the hit registry, so lyric text drawn over an
          * element's rectangle arrives here as a lyric. Dragging it would change the pitch of a
          * note the user was aiming past.
          */
         @Test
         void testLyricHitReturnsFalse() {
-            var lyricHit = new HitResult.Lyric(ElementType.CROTCHET.newInstance(), Lyric.FIRST_VERSE);
+            var lyricHit = new HitTarget.Lyric(ElementType.CROTCHET.newInstance(), Lyric.FIRST_VERSE);
 
             var result = handler.handlePress(pressEvent(), lyricHit);
 
@@ -700,7 +726,8 @@ class NoteDragHandlerTest extends UnitTest {
         }
 
         var event = mouseEvent(lc, MouseEvent.MOUSE_PRESSED, MOUSE_X, PRESS_SCREEN_Y, MouseEvent.BUTTON1);
-        handler.handlePress(event, new HitResult.ElementHead(hitIndex));
+        assertThat(line).isNotNull();
+        handler.handlePress(event, new HitTarget.Element(line.getElement(hitIndex)));
     }
 
     /**
@@ -708,10 +735,12 @@ class NoteDragHandlerTest extends UnitTest {
      * hit note is already part of the selection.
      */
     private void setupMultiSelection(int begin, int end, int hitIndex) {
-        when(mockSelectionState.isElementSelected(hitIndex)).thenReturn(true);
-        when(mockSelectionState.hasElementSelection()).thenReturn(true);
-        when(mockSelectionState.getSelectionBegin()).thenReturn(begin);
-        when(mockSelectionState.getSelectionEnd()).thenReturn(end);
+        // Resolved before the when(), since stubbing cannot nest inside another stubbing call.
+        var range = new Selection.Range(stubbedLine(), begin, end, begin);
+        var lineIndex = lc.getLineIndex();
+
+        when(mockCoordinator.getRange()).thenReturn(range);
+        when(mockCoordinator.isElementSelected(hitIndex, lineIndex)).thenReturn(true);
     }
 
     /**
@@ -719,9 +748,20 @@ class NoteDragHandlerTest extends UnitTest {
      * The note is not yet selected, so selectAndPlayElement will be called.
      */
     private void setupSingleSelection(int hitIndex) {
-        when(mockSelectionState.isElementSelected(hitIndex)).thenReturn(false);
-        when(mockSelectionState.hasElementSelection()).thenReturn(true);
-        when(mockSelectionState.getSelectionBegin()).thenReturn(hitIndex);
-        when(mockSelectionState.getSelectionEnd()).thenReturn(hitIndex);
+        // Resolved before the when(), since stubbing cannot nest inside another stubbing call.
+        var range = Selection.Range.single(stubbedLine(), hitIndex);
+        var lineIndex = lc.getLineIndex();
+
+        when(mockCoordinator.getRange()).thenReturn(range);
+        when(mockCoordinator.isElementSelected(hitIndex, lineIndex)).thenReturn(false);
+    }
+
+    /** The line the test stubbed onto the component, which every selection here is on. */
+    private Line stubbedLine() {
+        var line = lc.getLine();
+
+        assertThat(line).as("the test must stub lc.getLine() before selecting on it").isNotNull();
+
+        return line;
     }
 }

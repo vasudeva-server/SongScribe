@@ -52,7 +52,7 @@ import songscribe.dom.Tempo;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;

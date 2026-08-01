@@ -36,7 +36,7 @@ import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.ScaleContext;
 import songscribe.engraving.Staff;
-import songscribe.ui.hit.HitResult;
+import songscribe.hit.HitTarget;
 import songscribe.ui.playback.MidiController;
 
 /**
@@ -96,13 +96,13 @@ class NoteDragHandler {
      * Handles a mouse press. Returns {@code true} if a pitch-drag was initiated
      * and the event should not be processed further.
      * <p>
-     * Takes the cascade result the caller already computed for this press rather than
-     * hit-testing the point again. Reading the cascade is also what keeps a lyric out of this
-     * path: the lyric tester outranks the note-head tester, so a press on lyric text arrives
-     * here as a lyric hit and is declined, and text drawn over an element's rectangle cannot
-     * start a pitch drag.
+     * Takes the hit target the caller already resolved for this press rather than
+     * hit-testing the point again. Reading the resolved target is also what keeps a lyric out
+     * of this path: a lyric outranks an element, so a press on lyric text arrives here as a
+     * lyric target and is declined, and text drawn over an element's rectangle cannot start a
+     * pitch drag.
      */
-    boolean handlePress(MouseEvent e, HitResult hitResult) {
+    boolean handlePress(MouseEvent e, @Nullable HitTarget hitTarget) {
         var scoreView = lc.getScoreView();
 
         if (scoreView.getMode() != Mode.SELECT) {
@@ -120,7 +120,7 @@ class NoteDragHandler {
 
         dragMoved = false;
 
-        if (!(hitResult instanceof HitResult.ElementHead(var hitIndex))) {
+        if (!(hitTarget instanceof HitTarget.Element(var hitElement))) {
             return false;
         }
 
@@ -130,23 +130,30 @@ class NoteDragHandler {
             return false;
         }
 
+        var hitIndex = line.getElementIndex(hitElement);
+
+        if (hitIndex < 0) {
+            return false;
+        }
+
         var note = line.getElement(hitIndex);
 
         if (!note.getType().isNote()) {
             return false;
         }
 
-        var selectionState = lc.getLineSelectionState();
+        var coordinator = lc.getScoreView().getSelectionCoordinator();
+        var range = coordinator.getRange();
 
         int dragBegin;
         int dragEnd;
 
-        if (selectionState != null && selectionState.isElementSelected(hitIndex)) {
+        if (range != null && coordinator.isElementSelected(hitIndex, lc.getLineIndex())) {
             // Note is already part of the selection — preserve it for a potential drag.
             // Capture the existing selection range so the drag group spans all
             // originally-selected notes even after a collapse on release.
-            dragBegin = selectionState.getSelectionBegin();
-            dragEnd = selectionState.getSelectionEnd();
+            dragBegin = range.begin();
+            dragEnd = range.end();
             lc.getSelectionHandler().playNoteIfPitched(hitIndex);
             pressPreservedMultiSelection = true;
         } else {

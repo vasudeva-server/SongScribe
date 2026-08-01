@@ -29,14 +29,17 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.hit.HitTarget;
 import songscribe.ui.component.ScoreView;
 
 /**
- * Unit tests for {@link SelectionCoordinator#isLyricSelected}.
+ * Unit tests for {@link SelectionCoordinator#isSelected} asked about a
+ * {@link HitTarget.Lyric} — the one target that names its own line, and the one whose store
+ * moved onto the coordinator rather than having always lived there.
  *
  * <p>Rows 27 and 28 of the selection coordinator test matrix.
  */
-class IsLyricSelectedTest extends UnitTest {
+class IsSelectedForLyricTest extends UnitTest {
 
     // Named verse indices used across tests.
     private static final int VERSE_1 = 1;
@@ -60,11 +63,11 @@ class IsLyricSelectedTest extends UnitTest {
 
         var lineA = new Line(song);
         lineA.addElement(ElementType.CROTCHET.newInstance());
-        coordinator.registerLineState(LINE_0, new LineSelectionState(lineA));
+        coordinator.registerLine(LINE_0, lineA);
 
         var lineB = new Line(song);
         lineB.addElement(ElementType.CROTCHET.newInstance());
-        coordinator.registerLineState(LINE_1, new LineSelectionState(lineB));
+        coordinator.registerLine(LINE_1, lineB);
 
         coordinator.activateLine(LINE_0);
         return coordinator;
@@ -75,46 +78,46 @@ class IsLyricSelectedTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     /**
-     * Row 27a: isLyricSelected returns false when activeLineIndex != lineIndex,
-     * even when a lyric is selected on a different line.
+     * Row 27a: a selected lyric is not reported when activeLineIndex != lineIndex,
+     * even though it is the score's one selected target.
      */
     @Test
-    void testIsLyricSelectedReturnsFalseWhenLineIndexDoesNotMatchActiveLine() {
+    void testLyricIsNotSelectedWhenLineIndexDoesNotMatchActiveLine() {
         var song = minimalSongMock();
         var coordinator = twoLineCoordinator(song);
 
         // Select a lyric on line 0 (the active line).
-        var lineState = coordinator.getLineState(LINE_0);
-        assertThat(lineState).isNotNull();
+        var line = coordinator.getLine(LINE_0);
+        assertThat(line).isNotNull();
 
-        var element = lineState.getLine().getElement(0);
+        var element = line.getElement(0);
         coordinator.selectLyric(element, VERSE_1);
         assertThat(coordinator.getActiveLineIndex()).as("active line after selectLyric").isEqualTo(LINE_0);
 
         // Query against line 1 — activeLineIndex(0) != lineIndex(1) => early return false.
-        assertThat(coordinator.isLyricSelected(element, VERSE_1, LINE_1))
-            .as("isLyricSelected when queried line does not match active line")
+        assertThat(coordinator.isSelected(new HitTarget.Lyric(element, VERSE_1), LINE_1))
+            .as("isSelected(lyric) when queried line does not match active line")
             .isFalse();
     }
 
     /**
-     * Row 27b: isLyricSelected returns false when the active line matches but
-     * lyricSelection is null (no lyric has been selected).
+     * Row 27b: no lyric is reported when the active line matches but nothing is
+     * selected at all.
      */
     @Test
-    void testIsLyricSelectedReturnsFalseWhenNoLyricSelected() {
+    void testLyricIsNotSelectedWhenNothingIsSelected() {
         var song = minimalSongMock();
         var coordinator = twoLineCoordinator(song);
         // Line 0 is active; no lyric selected yet.
-        assertThat(coordinator.hasLyricSelection()).as("lyricSelection before any selectLyric").isFalse();
+        assertThat(coordinator.getSelectedTarget()).as("selected target before any selectLyric").isNull();
 
-        var lineState = coordinator.getLineState(LINE_0);
-        assertThat(lineState).isNotNull();
+        var line = coordinator.getLine(LINE_0);
+        assertThat(line).isNotNull();
 
-        var element = lineState.getLine().getElement(0);
+        var element = line.getElement(0);
 
-        assertThat(coordinator.isLyricSelected(element, VERSE_1, LINE_0))
-            .as("isLyricSelected with no lyric selection on active line")
+        assertThat(coordinator.isSelected(new HitTarget.Lyric(element, VERSE_1), LINE_0))
+            .as("isSelected(lyric) with no lyric selection on active line")
             .isFalse();
     }
 
@@ -123,57 +126,56 @@ class IsLyricSelectedTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     /**
-     * Row 28a: isLyricSelected returns true when the element reference and verse
-     * both match the stored lyric selection.
+     * Row 28a: the lyric is reported when the element reference and verse both match
+     * the selected target.
      */
     @Test
-    void testIsLyricSelectedReturnsTrueForMatchingElementAndVerse() {
+    void testLyricIsSelectedForMatchingElementAndVerse() {
         var song = minimalSongMock();
         var coordinator = twoLineCoordinator(song);
-        var lineState = coordinator.getLineState(LINE_0);
-        assertThat(lineState).isNotNull();
+        var line = coordinator.getLine(LINE_0);
+        assertThat(line).isNotNull();
 
-        var element = lineState.getLine().getElement(0);
+        var element = line.getElement(0);
 
         coordinator.selectLyric(element, VERSE_2);
 
-        assertThat(coordinator.isLyricSelected(element, VERSE_2, LINE_0))
-            .as("isLyricSelected for same element and same verse")
+        assertThat(coordinator.isSelected(new HitTarget.Lyric(element, VERSE_2), LINE_0))
+            .as("isSelected(lyric) for same element and same verse")
             .isTrue();
     }
 
     /**
-     * Row 28b: isLyricSelected returns false when the element matches but the
-     * verse is different.
+     * Row 28b: no lyric is reported when the element matches but the verse is different.
      */
     @Test
-    void testIsLyricSelectedReturnsFalseForWrongVerse() {
+    void testLyricIsNotSelectedForWrongVerse() {
         var song = minimalSongMock();
         var coordinator = twoLineCoordinator(song);
-        var lineState = coordinator.getLineState(LINE_0);
-        assertThat(lineState).isNotNull();
+        var line = coordinator.getLine(LINE_0);
+        assertThat(line).isNotNull();
 
-        var element = lineState.getLine().getElement(0);
+        var element = line.getElement(0);
 
         coordinator.selectLyric(element, VERSE_2);
 
-        assertThat(coordinator.isLyricSelected(element, VERSE_3, LINE_0))
-            .as("isLyricSelected with correct element but wrong verse")
+        assertThat(coordinator.isSelected(new HitTarget.Lyric(element, VERSE_3), LINE_0))
+            .as("isSelected(lyric) with correct element but wrong verse")
             .isFalse();
     }
 
     /**
-     * Row 28c: isLyricSelected returns false when the verse matches but the
-     * element reference is a different object.
+     * Row 28c: no lyric is reported when the verse matches but the element reference is a
+     * different object.
      */
     @Test
-    void testIsLyricSelectedReturnsFalseForDifferentElement() {
+    void testLyricIsNotSelectedForDifferentElement() {
         var song = minimalSongMock();
         var coordinator = twoLineCoordinator(song);
-        var lineState = coordinator.getLineState(LINE_0);
-        assertThat(lineState).isNotNull();
+        var line = coordinator.getLine(LINE_0);
+        assertThat(line).isNotNull();
 
-        var lineA = lineState.getLine();
+        var lineA = line;
         var elementA = lineA.getElement(0);
         // Add a second element to line A so we have a distinct reference.
         lineA.addElement(ElementType.CROTCHET.newInstance());
@@ -181,8 +183,8 @@ class IsLyricSelectedTest extends UnitTest {
 
         coordinator.selectLyric(elementA, VERSE_2);
 
-        assertThat(coordinator.isLyricSelected(elementB, VERSE_2, LINE_0))
-            .as("isLyricSelected with correct verse but a different element reference")
+        assertThat(coordinator.isSelected(new HitTarget.Lyric(elementB, VERSE_2), LINE_0))
+            .as("isSelected(lyric) with correct verse but a different element reference")
             .isFalse();
     }
 }

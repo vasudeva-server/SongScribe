@@ -29,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
+import songscribe.layout.NoteColumnGeometry;
 import songscribe.layout.NoteGeometry;
 import songscribe.smufl.SMuFLMetadata;
 

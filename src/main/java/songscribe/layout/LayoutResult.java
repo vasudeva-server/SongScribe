@@ -43,6 +43,7 @@ import songscribe.dom.RangeElement;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
+import songscribe.hit.HitRegistry;
 
 /**
  * Immutable result of the layout engine containing all positioned elements for rendering.
@@ -68,7 +69,6 @@ public final class LayoutResult {
     private static final double PREVIEW_BEFORE_FIRST_OFFSET_SS = 1.875;  // 15px
 
     private final Map<StaffElement, ElementColumn> elementColumns;
-    private final Map<LineElement, ElementBoundsSs> elementBounds;
     private final Map<Beam, BeamLayout> beamLayouts;
     /**
      * Flat lookup keyed by element for every stem in the line — beamed stems
@@ -79,6 +79,7 @@ public final class LayoutResult {
     private final Map<StaffElement, StemLayout> allStemLayouts;
     private final Map<Tie, TieLayout> tieLayouts;
     private final Map<LineElement, DecorationLayout> decorationLayouts;
+    private final Map<StaffElement, SlideLayout> slideLayouts;
     @Nullable
     private final Clef clef;
     @Nullable
@@ -89,6 +90,7 @@ public final class LayoutResult {
     private final List<LyricConnectorLayout> lyricConnectors;
     private final boolean hasTrailingLyricContinuation;
     private final boolean overflowsStaffWidth;
+    private final HitRegistry hitRegistry;
 
     /**
      * Creates a layout result with the given data.
@@ -96,10 +98,10 @@ public final class LayoutResult {
      * Use {@link Builder} rather than calling this constructor directly.
      *
      * @param elementColumns   Map of elements to their columns with positions
-     * @param elementBounds    Map of line elements to their bounds
      * @param beamLayouts      Map of beam spans to their computed beam geometry
      * @param stemLayouts      Map of unbeamed notes to their computed stem geometry
      * @param tieLayouts       Map of tie spans to their computed tie geometry
+     * @param slideLayouts     Map of slide-owning notes to their computed slide geometry
      * @param contentAboveStaffSs True extent of this line's content above the staff top, in staff
      *                           spaces, and also the staff top's Y position within the line's local
      *                           coordinate frame
@@ -108,14 +110,15 @@ public final class LayoutResult {
      * @param overflowsStaffWidth True when the line's content could not fit the staff width even at
      *                           its collision floors, so the columns were placed on those floors and
      *                           the tail of the line runs past the staff and is clipped
+     * @param hitRegistry        Every clickable area of the line, in layout space
      */
     private LayoutResult(
         Map<StaffElement, ElementColumn> elementColumns,
-        Map<LineElement, ElementBoundsSs> elementBounds,
         Map<Beam, BeamLayout> beamLayouts,
         Map<StaffElement, StemLayout> stemLayouts,
         Map<Tie, TieLayout> tieLayouts,
         Map<LineElement, DecorationLayout> decorationLayouts,
+        Map<StaffElement, SlideLayout> slideLayouts,
         @Nullable Clef clef,
         @Nullable KeySignature keySignature,
         double contentAboveStaffSs,
@@ -123,9 +126,9 @@ public final class LayoutResult {
         Map<StaffElement, List<LyricBoxLayout>> lyricBoxes,
         List<LyricConnectorLayout> lyricConnectors,
         boolean hasTrailingLyricContinuation,
-        boolean overflowsStaffWidth) {
+        boolean overflowsStaffWidth,
+        HitRegistry hitRegistry) {
         this.elementColumns = Map.copyOf(elementColumns);
-        this.elementBounds = Map.copyOf(elementBounds);
         this.beamLayouts = Map.copyOf(beamLayouts);
         var stemLayouts1 = Map.copyOf(stemLayouts);
 
@@ -138,6 +141,7 @@ public final class LayoutResult {
         allStemLayouts = Map.copyOf(mergedStems);
         this.tieLayouts = Map.copyOf(tieLayouts);
         this.decorationLayouts = Map.copyOf(decorationLayouts);
+        this.slideLayouts = Map.copyOf(slideLayouts);
         this.clef = clef;
         this.keySignature = keySignature;
         this.contentAboveStaffSs = contentAboveStaffSs;
@@ -152,6 +156,7 @@ public final class LayoutResult {
         this.lyricConnectors = List.copyOf(lyricConnectors);
         this.hasTrailingLyricContinuation = hasTrailingLyricContinuation;
         this.overflowsStaffWidth = overflowsStaffWidth;
+        this.hitRegistry = hitRegistry;
     }
 
     // ==========================================================================
@@ -242,6 +247,24 @@ public final class LayoutResult {
     @Nullable
     public TieLayout getTieLayout(Tie tie) {
         return tieLayouts.get(tie);
+    }
+
+    // ==========================================================================
+    // Slide Layout Access
+    // ==========================================================================
+
+    /**
+     * Returns the slide geometry for a slide-owning note, if it was computed during layout.
+     * <p>
+     * Returns null when the note owns no slide, or when the slide has no drawable geometry — a
+     * connecting glissando too short to render. Callers should skip rendering and hit-testing
+     * if the result is null.
+     *
+     * @param note The note owning the slide
+     * @return the slide layout, or null if not computed
+     */
+    public @Nullable SlideLayout getSlideLayout(StaffElement note) {
+        return slideLayouts.get(note);
     }
 
     // ==========================================================================
@@ -338,52 +361,20 @@ public final class LayoutResult {
     }
 
     // ==========================================================================
-    // Line Element Access
+    // Hit Testing
     // ==========================================================================
 
     /**
-     * Returns the bounds for a specific line element.
+     * Returns every clickable area of this line, resolved by priority rather than by a cascade
+     * of per-kind hit testers.
+     * <p>
+     * Built at layout time, so it answers from the moment the line is laid out — before any
+     * paint, and unaffected by repaints.
      *
-     * @param element The element to look up
-     * @return The bounds, or null if the element was not laid out
+     * @return the line's hit registry; {@link HitRegistry#EMPTY} if nothing on it is clickable
      */
-    public @Nullable ElementBoundsSs getElementBounds(LineElement element) {
-        return elementBounds.get(element);
-    }
-
-    /**
-     * Returns the position (top-left corner) of a specific line element.
-     *
-     * @param element The element to look up
-     * @return The position, or null if the element was not laid out
-     */
-    public @Nullable Point2D getElementPosition(LineElement element) {
-        var bounds = elementBounds.get(element);
-
-        if (bounds == null) {
-            return null;
-        }
-
-        return new Point2D.Double(bounds.getLeftSs(), bounds.getTopSs());
-    }
-
-    /**
-     * Returns an unmodifiable view of all element bounds.
-     *
-     * @return Map of line elements to their bounds
-     */
-    public Map<LineElement, ElementBoundsSs> getElementBounds() {
-        return elementBounds;
-    }
-
-    /**
-     * Returns whether a line element was laid out.
-     *
-     * @param element The element to check
-     * @return true if the element has bounds
-     */
-    public boolean hasElement(LineElement element) {
-        return elementBounds.containsKey(element);
+    public HitRegistry getHitRegistry() {
+        return hitRegistry;
     }
 
     // ==========================================================================
@@ -408,72 +399,6 @@ public final class LayoutResult {
         return keySignature;
     }
 
-    // ==========================================================================
-    // Compatibility Methods (for renderers expecting LineElementLayoutResult interface)
-    // ==========================================================================
-
-    /**
-     * Returns the bounds for a specific element.
-     * <p>
-     * This method provides compatibility with code expecting LineElementLayoutResult.
-     * Accepts Object for flexibility but element should be a LineElement.
-     *
-     * @param element The element to look up
-     * @return The bounds, or null if the element was not laid out
-     */
-    public @Nullable ElementBoundsSs getBounds(Object element) {
-        if (element instanceof LineElement) {
-            return elementBounds.get((LineElement) element);
-        }
-
-        return null;
-    }
-
-    /**
-     * Finds bounds for an attachment with the given parent element and type.
-     * <p>
-     * Used by renderers that need to look up layout results for attachments
-     * but don't have direct access to the attachment object created during layout.
-     *
-     * @param parentElement  The element the attachment is attached to
-     * @param attachmentType The type of attachment to find
-     * @return The bounds if found, null otherwise
-     */
-    public @Nullable ElementBoundsSs findAttachmentBounds(
-        StaffElement parentElement,
-        Class<? extends Attachment> attachmentType) {
-
-        return findByAttachment(elementBounds, parentElement, attachmentType);
-    }
-
-    /**
-     * Finds the attachment object with the given parent element and type.
-     * <p>
-     * Used by renderers that need access to the attachment object created during layout.
-     *
-     * @param parentElement  The element the attachment is attached to
-     * @param attachmentType The type of attachment to find
-     * @param <A>            The attachment type
-     * @return The attachment if found, null otherwise
-     */
-    @SuppressWarnings("unchecked")
-    public @Nullable <A extends Attachment> A findAttachment(
-        StaffElement parentElement,
-        Class<A> attachmentType) {
-
-        for (var element : elementBounds.keySet()) {
-            if (attachmentType.isInstance(element)) {
-                var attachment = (Attachment) element;
-
-                if (attachment.getOwnerElement() == parentElement) {
-                    return (A) attachment;
-                }
-            }
-        }
-
-        return null;
-    }
-
     private <T> @Nullable T findByAttachment(
         Map<LineElement, T> map,
         StaffElement ownerElement,
@@ -492,50 +417,6 @@ public final class LayoutResult {
         }
 
         return null;
-    }
-
-    /**
-     * Finds bounds for a range element with the given anchor and end elements.
-     * <p>
-     * Used by renderers that need to look up layout results for range elements
-     * but don't have direct access to the range element object created during layout.
-     *
-     * @param anchorElement    The anchor (start) element of the range
-     * @param endElement       The end element of the range
-     * @param rangeElementType The type of range element to find
-     * @return The bounds if found, null otherwise
-     */
-    public @Nullable ElementBoundsSs findRangeElementBounds(
-        StaffElement anchorElement,
-        StaffElement endElement,
-        Class<? extends RangeElement> rangeElementType) {
-
-        for (var entry : elementBounds.entrySet()) {
-            var element = entry.getKey();
-
-            if (rangeElementType.isInstance(element)) {
-                var rangeElement = (RangeElement) element;
-
-                if (rangeElement.getAnchorElement() == anchorElement &&
-                    rangeElement.getEndElement() == endElement) {
-                    return entry.getValue();
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Returns whether the result contains bounds for the given element.
-     * <p>
-     * This method provides compatibility with code expecting LineElementLayoutResult.
-     *
-     * @param element The element to check
-     * @return true if bounds exist for this element
-     */
-    public boolean contains(Object element) {
-        return element instanceof LineElement && elementBounds.containsKey((LineElement) element);
     }
 
     // ==========================================================================
@@ -1104,13 +985,6 @@ public final class LayoutResult {
         return elementColumns.size();
     }
 
-    /**
-     * Returns the number of line elements in this result.
-     */
-    public int getElementCount() {
-        return elementBounds.size();
-    }
-
     // ==========================================================================
     // Builder
     // ==========================================================================
@@ -1121,11 +995,11 @@ public final class LayoutResult {
     public static class Builder {
 
         private final Map<StaffElement, ElementColumn> elementColumns;
-        private final Map<LineElement, ElementBoundsSs> elementBounds;
         private final Map<Beam, BeamLayout> beamLayouts;
         private final Map<StaffElement, StemLayout> stemLayouts;
         private final Map<Tie, TieLayout> tieLayouts;
         private final Map<LineElement, DecorationLayout> decorationLayouts;
+        private final Map<StaffElement, SlideLayout> slideLayouts;
         @Nullable
         private Clef clef;
         @Nullable
@@ -1136,14 +1010,15 @@ public final class LayoutResult {
         private final List<LyricConnectorLayout> lyricConnectors;
         private boolean hasTrailingLyricContinuation = false;
         private boolean overflowsStaffWidth = false;
+        private HitRegistry hitRegistry = HitRegistry.EMPTY;
 
         public Builder() {
             elementColumns = new HashMap<>();
-            elementBounds = new HashMap<>();
             beamLayouts = new HashMap<>();
             stemLayouts = new HashMap<>();
             tieLayouts = new HashMap<>();
             decorationLayouts = new HashMap<>();
+            slideLayouts = new HashMap<>();
             lyricBoxes = new HashMap<>();
             lyricConnectors = new ArrayList<>();
         }
@@ -1183,14 +1058,13 @@ public final class LayoutResult {
         }
 
         /**
-         * Adds a line element with its bounds to the result.
+         * Sets the line's hit registry.
          *
-         * @param element The element
-         * @param bounds  The element's bounds
+         * @param hitRegistry Every clickable area of the line, in layout space
          * @return This builder for chaining
          */
-        public Builder putElementBounds(LineElement element, ElementBoundsSs bounds) {
-            elementBounds.put(element, bounds);
+        public Builder setHitRegistry(HitRegistry hitRegistry) {
+            this.hitRegistry = hitRegistry;
             return this;
         }
 
@@ -1302,6 +1176,18 @@ public final class LayoutResult {
         }
 
         /**
+         * Adds computed slide geometry for a slide-owning note.
+         *
+         * @param note        The note owning the slide
+         * @param slideLayout The computed slide geometry
+         * @return This builder for chaining
+         */
+        public Builder putSlideLayout(StaffElement note, SlideLayout slideLayout) {
+            slideLayouts.put(note, slideLayout);
+            return this;
+        }
+
+        /**
          * Adds computed decoration layout for an above-staff decoration element.
          *
          * @param element          The decoration element
@@ -1375,11 +1261,11 @@ public final class LayoutResult {
         public LayoutResult build() {
             return new LayoutResult(
                 elementColumns,
-                elementBounds,
                 beamLayouts,
                 stemLayouts,
                 tieLayouts,
                 decorationLayouts,
+                slideLayouts,
                 clef,
                 keySignature,
                 contentAboveStaffSs,
@@ -1387,7 +1273,8 @@ public final class LayoutResult {
                 lyricBoxes,
                 lyricConnectors,
                 hasTrailingLyricContinuation,
-                overflowsStaffWidth
+                overflowsStaffWidth,
+                hitRegistry
             );
         }
     }
@@ -1404,10 +1291,10 @@ public final class LayoutResult {
     @Override
     public String toString() {
         return String.format(
-            "LayoutResult{columns=%d, elements=%d, decorations=%d, contentAbove=%.1f, contentBelow=%.1f}",
+            "LayoutResult{columns=%d, decorations=%d, hitRegions=%d, contentAbove=%.1f, contentBelow=%.1f}",
             elementColumns.size(),
-            elementBounds.size(),
             decorationLayouts.size(),
+            hitRegistry.regions().size(),
             contentAboveStaffSs,
             contentBelowStaffSs
         );
@@ -1514,6 +1401,38 @@ public final class LayoutResult {
                 cp2XSs, cp2YSs + delta,
                 innerCp1XSs, innerCp1YSs + delta,
                 innerCp2XSs, innerCp2YSs + delta);
+        }
+    }
+
+    /**
+     * Immutable slide geometry for one slide-owning note, computed during layout.
+     * <p>
+     * All values are in layout space: X in line-local staff spaces, Y in staff spaces relative to
+     * the staff midline.
+     * <p>
+     * Exactly one component is ever populated. {@link StaffElement.Slide} is a sealed interface
+     * permitting only {@link StaffElement.Glissando} and {@link StaffElement.Fall}, and a note owns
+     * at most one slide, so the two are mutually exclusive. Both are nullable because only one
+     * applies at a time, not because either computation can fail — although
+     * {@link SlideGeometry#computeEndpoints} does reject a glissando too short to draw, in which
+     * case no {@code SlideLayout} is stored at all.
+     *
+     * @param glissando  the connecting glissando's endpoints, or null when the note owns a fall
+     * @param fallBounds the fall glyph's axis-aligned drawn rect, or null when the note owns a
+     *                   glissando
+     */
+    public record SlideLayout(
+        SlideGeometry.@Nullable Endpoints glissando,
+        Rectangle2D.@Nullable Double fallBounds) {
+
+        /** Creates a layout for a connecting glissando. */
+        public static SlideLayout ofGlissando(SlideGeometry.Endpoints endpoints) {
+            return new SlideLayout(endpoints, null);
+        }
+
+        /** Creates a layout for a trailing fall. */
+        public static SlideLayout ofFall(Rectangle2D.Double bounds) {
+            return new SlideLayout(null, bounds);
         }
     }
 

@@ -52,6 +52,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.FlatLafKey;
@@ -165,7 +166,7 @@ class LineRendererTest extends UnitTest {
         void testSelectedLineUsesSelectionColor() {
             final var lineIndex = 0;
             var selectionProvider = mock(LineComponent.SelectionProvider.class);
-            when(selectionProvider.isLineSelected(lineIndex)).thenReturn(true);
+            when(selectionProvider.isSelected(new HitTarget.StaffLine(), lineIndex)).thenReturn(true);
 
             var invariants = seededBuilder()
                 .setLineIndex(lineIndex)
@@ -208,7 +209,7 @@ class LineRendererTest extends UnitTest {
         void testSelectedOverflowingLineUsesSelectionColor() {
             final var lineIndex = 0;
             var selectionProvider = mock(LineComponent.SelectionProvider.class);
-            when(selectionProvider.isLineSelected(lineIndex)).thenReturn(true);
+            when(selectionProvider.isSelected(new HitTarget.StaffLine(), lineIndex)).thenReturn(true);
 
             var invariants = overflowingBuilder()
                 .setLineIndex(lineIndex)

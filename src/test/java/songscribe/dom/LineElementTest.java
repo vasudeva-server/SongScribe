@@ -173,15 +173,20 @@ class LineElementTest extends UnitTest {
      */
     @Test
     void testRemoveChildClearsParentElement() {
+        var song = new Song();
+        var line = song.getLine(0);
         var parent = StaffElementFactory.crotchet();
         var child = StaffElementFactory.quaver();
+        song.withoutMutationTracking(() -> line.addElement(parent));
         parent.addChild(child);
 
         assertThat(child.getParentElement()).isSameAs(parent);
+        assertThat(child.getParentLine()).isSameAs(line);
 
         parent.removeChild(child);
 
         assertThat(child.getParentElement()).isNull();
+        assertThat(child.getParentLine()).isNull();
         assertThat(parent.getChildCount()).isEqualTo(0);
     }
 

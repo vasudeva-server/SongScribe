@@ -113,6 +113,20 @@ public class Trill extends RangeElement {
     }
 
     /**
+     * The left edge of the drawn "tr" glyph, in staff-space units.
+     * <p>
+     * The glyph is centered on the notehead rather than on the note column, so it starts a little
+     * left of the column. Written once here and used by everything that has to agree on where the
+     * glyph lands: the stacker's reservation, the renderer's ink, and the hit region.
+     *
+     * @param columnXSs         X of the anchor note's column
+     * @param noteheadCenterXSs the notehead's center, measured from the column's left edge
+     */
+    public static double glyphLeftXSs(double columnXSs, double noteheadCenterXSs) {
+        return columnXSs + noteheadCenterXSs - TRILL_GLYPH_WIDTH_SS / 2.0;
+    }
+
+    /**
      * Returns the full horizontal span of the trill in staff-space units,
      * from the anchor note X to the end note right edge.
      * <p>

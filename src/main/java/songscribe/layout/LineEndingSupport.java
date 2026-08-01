@@ -24,6 +24,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 

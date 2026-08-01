@@ -23,66 +23,51 @@ package songscribe.ui.component.score;
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
 import java.awt.event.MouseEvent;
-// Disambiguates from java.awt.List (java.desktop module)
-import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
+import songscribe.hit.HitRegistry;
+import songscribe.hit.HitTarget;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
+import songscribe.layout.ElementHitGeometry;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.dom.ScaleContext;
-import songscribe.ui.hit.HitResult;
-import songscribe.ui.hit.HitTestContext;
-import songscribe.ui.hit.HitTester;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
-import songscribe.ui.renderer.EndingRenderer;
-import songscribe.ui.renderer.HairpinRenderer;
-import songscribe.ui.renderer.SlideRenderer;
-import songscribe.ui.selection.SelectedDecoration;
 
 /**
  * Handles selection, hit-testing, and drag logic for a {@link LineComponent}.
  * <p>
  * Each {@code LineComponent} owns one instance. Drag state (rectangle, start point)
  * lives here; mouse event handlers in {@code LineComponent} delegate to this class.
+ * <p>
+ * Hit testing itself lives in the line's {@link HitRegistry}, built at layout time. This
+ * class only converts the click point into the registry's coordinate space and acts on the
+ * answer; adding a newly selectable kind of notation is a registration at layout time, not
+ * another tester here.
  */
 class LineSelectionHandler {
 
-    /** Half-height of the staff hit zone for line selection, in staff spaces. */
-    private static final double STAFF_HIT_RADIUS_SS = 2.0;
-
     private final LineComponent lc;
-
-    /**
-     * The hit-test cascade, in priority order: the first tester to report a hit wins.
-     * Adding a newly selectable element means adding a tester here, not another branch
-     * in {@link #hitTest(Point)}.
-     */
-    private final List<HitTester> hitTesters;
 
     private boolean dragging = false;
     private boolean pressHandled = false;
-    private HitResult pressHitResult = new HitResult.Nothing();
+
+    /** What the press landed on, or null if it landed on nothing. */
+    private @Nullable HitTarget pressTarget = null;
+
     private final Point dragStart = new Point();
     private final Rectangle dragRectangle = new Rectangle();
 
     LineSelectionHandler(LineComponent lc) {
         this.lc = lc;
-        hitTesters = List.of(
-            this::hitTestLyric,
-            context -> ElementHitTest.hit(lc, context),
-            this::hitTestSlide,
-            this::hitTestHairpin,
-            this::hitTestEnding,
-            this::hitTestStaffLine
-        );
     }
 
     // ======================================================================
@@ -102,148 +87,54 @@ class LineSelectionHandler {
     // ======================================================================
 
     /**
-     * Hit-tests the given point against all selectable elements in this line, running
-     * {@link #hitTesters} in order and returning the first hit, or
-     * {@link HitResult.Nothing} if nothing is hit.
+     * Hit-tests the given point against everything clickable on this line, or {@code null}
+     * if the point lands on nothing.
      * <p>
      * The point must already be in document pixels. This differs from the
-     * {@code is…} helpers below, which take view pixels and convert internally.
+     * {@code …ViewPoint} helpers below, which take view pixels and convert internally.
      */
-    HitResult hitTest(Point point) {
-        var context = buildContext(point);
+    @Nullable HitTarget hitTest(Point point) {
+        var registry = readyRegistry();
 
-        if (context == null) {
-            return new HitResult.Nothing();
-        }
-
-        for (var tester : hitTesters) {
-            var result = tester.hitTest(context);
-
-            if (result != null) {
-                return result;
-            }
-        }
-
-        return new HitResult.Nothing();
-    }
-
-    /**
-     * Gathers the inputs every {@link HitTester} needs, or {@code null} if this component
-     * has no line to hit-test.
-     * <p>
-     * {@link LineComponent#setLine} is the only place either {@code line} or
-     * {@code lineSelectionState} is assigned, and it always assigns both, so in practice
-     * they are present or absent together. Should that invariant ever break — a line
-     * without a selection state, or the reverse — note-head and staff-line hit-testing,
-     * which need no selection state at all, would silently stop reporting hits instead of
-     * failing loudly. Whoever breaks the invariant has to revisit this guard.
-     * <p>
-     * The layout is ensured here, so every tester reads a current layout rather than a stale
-     * one.
-     */
-    private @Nullable HitTestContext buildContext(Point point) {
-        var line = lc.getLine();
-
-        if (line == null || lc.getLineSelectionState() == null) {
+        if (registry == null) {
             return null;
         }
 
-        // The lyric boxes come from the layout, so the layout has to be current before the
-        // cascade reads it.
+        return registry.hitTest(layoutXSs(point), layoutYSs(point));
+    }
+
+    /**
+     * Returns this line's hit registry with its layout brought up to date, or {@code null}
+     * if this component has no line to hit-test.
+     * <p>
+     * The layout is ensured here, since the registry is built as part of it: without this a
+     * query could answer from the regions of a stale layout.
+     */
+    private @Nullable HitRegistry readyRegistry() {
+        if (lc.getLine() == null) {
+            return null;
+        }
+
         var ready = lc.readyLayout();
 
-        return new HitTestContext(
-            point,
-            line,
-            ready == null ? null : ready.layoutResult(),
-            lc.getMiddleLineYSs(),
-            lc.findLyricRenderMetrics()
-        );
-    }
-
-    /**
-     * Asks the layout which lyric box contains the point, and wraps the answer as a hit result.
-     * Returns null when the line has no layout or no lyric metrics yet — neither the boxes nor
-     * the row height can be known then.
-     */
-    private HitResult.@Nullable Lyric hitTestLyric(HitTestContext context) {
-        var layoutResult = context.layoutResult();
-        var lyricRenderMetrics = context.lyricRenderMetrics();
-
-        if (layoutResult == null || lyricRenderMetrics == null) {
+        if (ready == null) {
             return null;
         }
 
-        var lyricHit = layoutResult.hitTestLyric(lyricRenderMetrics, context.line(), context.pointPx());
+        return ready.layoutResult().getHitRegistry();
+    }
 
-        if (lyricHit == null) {
-            return null;
-        }
-
-        return new HitResult.Lyric(lyricHit.element(), lyricHit.verse());
+    /** The X of a document-pixel point in the registry's line-local staff spaces. */
+    private static double layoutXSs(Point pointPx) {
+        return ScaleContext.pxToSs(pointPx.getX());
     }
 
     /**
-     * Asks {@link SlideRenderer} whether any slide's drawn geometry contains the point, then
-     * applies the rule the renderer deliberately does not: a slide owned by a grace note is
-     * not selectable, so it is reported as {@link HitResult.GraceGlissando} instead.
+     * The Y of a document-pixel point in the registry's layout space, whose origin is the
+     * staff midline rather than the top of this component.
      */
-    private @Nullable HitResult hitTestSlide(HitTestContext context) {
-        var line = context.line();
-        var elementIndex = SlideRenderer.getInstance().hitTestSlide(context.xSs(), context.ySs(), line);
-
-        if (elementIndex == -1) {
-            return null;
-        }
-
-        if (line.getElement(elementIndex).getType().isGraceNote()) {
-            return new HitResult.GraceGlissando();
-        }
-
-        return new HitResult.Slide(elementIndex);
-    }
-
-    /**
-     * Asks {@link HairpinRenderer} which hairpin's drawn box contains the point, and wraps
-     * the answer as a hit result.
-     */
-    private @Nullable HitResult hitTestHairpin(HitTestContext context) {
-        var hairpin = HairpinRenderer.getInstance().hitTestHairpin(
-            context.xSs(), context.ySs(), context.line(), context.layoutResult(), context.middleLineYSs());
-
-        if (hairpin == null) {
-            return null;
-        }
-
-        return new HitResult.Hairpin(hairpin);
-    }
-
-    /**
-     * Asks {@link EndingRenderer} which ending's drawn box contains the point, and wraps the
-     * answer as a hit result.
-     */
-    private @Nullable HitResult hitTestEnding(HitTestContext context) {
-        var ending = EndingRenderer.getInstance().hitTestEnding(
-            context.xSs(), context.ySs(), context.line(), context.layoutResult(), context.middleLineYSs());
-
-        if (ending == null) {
-            return null;
-        }
-
-        return new HitResult.Ending(ending);
-    }
-
-    /**
-     * Hit-tests the staff lines: a point within {@link #STAFF_HIT_RADIUS_SS} of the middle
-     * staff line and horizontally inside the staff header selects the whole line.
-     */
-    private @Nullable HitResult hitTestStaffLine(HitTestContext context) {
-        if (Math.abs(context.ySs() - context.middleLineYSs()) <= STAFF_HIT_RADIUS_SS
-            && isWithinHeaderXSs(context.xSs())) {
-            return new HitResult.StaffLine();
-        }
-
-        return null;
+    private double layoutYSs(Point pointPx) {
+        return ScaleContext.pxToSs(pointPx.getY()) - lc.getMiddleLineYSs();
     }
 
     /**
@@ -251,37 +142,58 @@ class LineSelectionHandler {
      * <p>
      * A single press needs more than one answer about the same point — whether it landed on
      * the staff lines, and whether it landed on an ending. Callers should run this once and
-     * examine the result rather than calling several {@code is…} helpers, each of which
-     * walks every element in the line all over again.
+     * examine the result rather than asking several times about the same point.
      */
-    HitResult hitTestViewPoint(Point viewPoint) {
+    @Nullable HitTarget hitTestViewPoint(Point viewPoint) {
         return hitTest(lc.getViewScale().toDocumentPoint(viewPoint));
     }
 
     /**
      * Hit-tests a point, in view pixels, against the lyric row alone.
      * <p>
-     * Answers the same question as looking for a {@link HitResult.Lyric} in
-     * {@link #hitTestViewPoint}'s result — the lyric tester runs first, so nothing else in the
-     * cascade can outrank it — without running the five testers whose answers such a caller
-     * discards. {@code mouseMoved} asks this on every pixel of pointer motion, and the other
-     * testers between them walk the line's elements twice and build two throwaway lists per
-     * call.
+     * Answers the same question as looking for a {@link HitTarget.Lyric} in
+     * {@link #hitTestViewPoint}'s result — a lyric outranks everything else, so nothing can
+     * take a point away from it — while testing only the regions marked hover-testable.
+     * {@code mouseMoved} asks this on every pixel of pointer motion, which is the whole
+     * reason the registry offers a hover query rather than leaving callers to filter a full
+     * resolution afterwards.
      */
-    HitResult.@Nullable Lyric hitTestLyricViewPoint(Point viewPoint) {
-        var context = buildContext(lc.getViewScale().toDocumentPoint(viewPoint));
+    HitTarget.@Nullable Lyric hitTestLyricViewPoint(Point viewPoint) {
+        var registry = readyRegistry();
 
-        if (context == null) {
+        if (registry == null) {
             return null;
         }
 
-        return hitTestLyric(context);
+        var docPoint = lc.getViewScale().toDocumentPoint(viewPoint);
+        var hover = registry.hitTestHover(layoutXSs(docPoint), layoutYSs(docPoint));
+
+        if (hover instanceof HitTarget.Lyric lyric) {
+            return lyric;
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns the index of the element hit by the given view-pixel point, or -1 if the point
+     * resolves to something other than an element.
+     */
+    int hitTestElementIndex(Point viewPoint) {
+        var line = lc.getLine();
+
+        if (line == null || !(hitTestViewPoint(viewPoint) instanceof HitTarget.Element(var element))) {
+            return -1;
+        }
+
+        return line.getElementIndex(element);
     }
 
     /**
      * Returns whether the given point, in view pixels, is horizontally within the staff
-     * header, regardless of its Y. Unlike {@link #isStaffLineHit}, this covers the whole
-     * header column, since no element can be inserted anywhere in it.
+     * header, regardless of its Y. Unlike the registry's staff-line region, which is bounded
+     * vertically too, this covers the whole header column, since no element can be inserted
+     * anywhere in it.
      */
     boolean isWithinHeaderX(Point viewPoint) {
         var docPoint = lc.getViewScale().toDocumentPoint(viewPoint);
@@ -292,7 +204,7 @@ class LineSelectionHandler {
     // Public delegation entry points
     // ======================================================================
 
-    void handlePress(MouseEvent e, HitResult hitResult) {
+    void handlePress(MouseEvent e, @Nullable HitTarget hitTarget) {
         dragging = false;
         pressHandled = false;
         dragStart.setLocation(e.getPoint());
@@ -300,12 +212,12 @@ class LineSelectionHandler {
 
         // The caller hit-tests in document pixels; the drag rectangle stays in view pixels
         // (below) because it is a pixel-space overlay rendered outside the staff-space transform.
-        pressHitResult = hitResult;
+        pressTarget = hitTarget;
 
-        var lineSelectionState = lc.getLineSelectionState();
+        var range = lc.getScoreView().getSelectionCoordinator().getRange();
 
         // Don't clear selection on shift+click (preserve for extend)
-        if (!e.isShiftDown() || lineSelectionState == null || lineSelectionState.getSelectionAnchor() == -1) {
+        if (!e.isShiftDown() || range == null) {
             lc.getScoreView().clearSelection();
 
             if (MidiController.sequencer != null) {
@@ -316,47 +228,44 @@ class LineSelectionHandler {
         // Select the hit element immediately on press.
         // This prevents rubber-band drag from starting on selectable elements.
         // Shift+click on a note head is handled in handleClick for extend-selection.
-        if (e.isShiftDown() && pressHitResult instanceof HitResult.ElementHead) {
+        if (e.isShiftDown() && hitTarget instanceof HitTarget.Element) {
             return;
         }
 
-        switch (pressHitResult) {
-            case HitResult.Lyric(var element, var verse) -> pressHandled = selectLyric(element, verse);
-
-            case HitResult.ElementHead(var index) -> {
-                selectAndPlayElement(index);
-                pressHandled = true;
+        // Every variant is spelled out rather than defaulted: what a click does to a newly
+        // selectable kind of notation is a decision, and a default arm would make it silently.
+        pressHandled = switch (hitTarget) {
+            case null -> {
+                lc.repaint();
+                yield false;
             }
 
-            case HitResult.Slide(var elementIndex) ->
-                pressHandled = selectDecoration(new SelectedDecoration.SlideSelection(elementIndex));
+            case HitTarget.Lyric(var element, var verse) -> selectLyric(element, verse);
 
-            case HitResult.Hairpin(var hairpin) ->
-                pressHandled = selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
+            case HitTarget.Element(var element) -> selectAndPlayElement(element);
 
-            case HitResult.Ending(var ending) ->
-                pressHandled = selectDecoration(new SelectedDecoration.EndingSelection(ending));
-
-            case HitResult.GraceGlissando() -> {
+            case HitTarget.GraceGlissando _ -> {
                 OptionDialogs.showWarningMessage(
                     null,
                     Strings.ALERT_TITLE_GRACE_NOTE_WARNING,
                     Strings.WARNING_GRACE_GLISSANDO_NOT_SELECTABLE
                 );
-                pressHandled = true;
+                yield true;
             }
 
-            case HitResult.StaffLine() -> {
-                if (lineSelectionState != null) {
-                    prepareSelection();
-                    lineSelectionState.setLineSelected(true);
-                    lc.getScoreView().selectionChanged();
-                    pressHandled = true;
-                }
-            }
+            case HitTarget.StaffLine staffLine -> selectTarget(staffLine);
 
-            case HitResult.Nothing() -> lc.repaint();
-        }
+            case HitTarget.Slide slide -> selectTarget(slide);
+            case HitTarget.Hairpin hairpin -> selectTarget(hairpin);
+            case HitTarget.Ending ending -> selectTarget(ending);
+            case HitTarget.Articulation articulation -> selectTarget(articulation);
+            case HitTarget.Attachment attachment -> selectTarget(attachment);
+            case HitTarget.Accidental accidental -> selectTarget(accidental);
+            case HitTarget.Tie tie -> selectTarget(tie);
+            case HitTarget.Beam beam -> selectTarget(beam);
+            case HitTarget.Trill trill -> selectTarget(trill);
+            case HitTarget.Tuplet tuplet -> selectTarget(tuplet);
+        };
 
         if (pressHandled) {
             lc.repaint();
@@ -364,31 +273,26 @@ class LineSelectionHandler {
     }
 
     /**
-     * Selects a lyric, ending or hairpin hit by a press in EDIT mode, returning whether one
-     * was selected.
+     * Selects a lyric hit by a press in EDIT mode, returning whether one was selected.
      * <p>
-     * EDIT mode otherwise routes presses to element insertion, and reaching the selection
-     * handler at all requires SELECT mode (see {@link #isSelectionActive}), so without this
-     * none of them could be selected until something else had switched modes.
+     * A lyric is the <b>only</b> thing selectable in EDIT mode. Everything else — every
+     * decoration, every note — needs SELECT mode or an alt+click. That is one rule for the whole
+     * hit vocabulary rather than a per-kind exception list, and it keeps EDIT mode's own rule
+     * simple: a press inserts.
      * <p>
-     * Takes the already-computed cascade result for this press, so an element head over the
-     * decoration still wins and falls through to normal EDIT-mode handling.
+     * A lyric is the exception because it is the one kind that insertion cannot reach anyway.
+     * {@code mouseMoved} clears the insertion preview over a lyric box, so the staff positions a
+     * lyric covers cannot be clicked to insert a note whatever this method does. Selecting there
+     * takes nothing away from EDIT mode.
      * <p>
-     * For a decoration, insertion must win wherever the preview is showing. A decoration is
-     * drawn above or below the staff but spans a range of staff positions, and if selecting
-     * it beat inserting, every position it covers would become unreachable for new notes —
-     * the user would have to move or delete the decoration to type there. Selecting a
-     * decoration is always available in SELECT mode, so nothing is lost by yielding here,
-     * whereas an unreachable insertion position has no workaround at all.
+     * The {@link LineComponent#hasPreviewElement()} guard is therefore a fallback rather than the
+     * rule — it only bites if a preview appears over lyric text with no mouse movement to clear
+     * it, and insertion winning is the safe answer in that case.
      * <p>
-     * A lyric follows the opposite rule and wins over insertion, because the preview really
-     * can reach the lyric row: {@code mouseMoved} clears the preview over a lyric box before
-     * a press can ever arrive there. The {@link LineComponent#hasPreviewElement()} guard is
-     * therefore a fallback for a lyric rather than the rule — it only bites if a preview
-     * appears over lyric text with no mouse movement to clear it, and insertion winning is
-     * the safe answer in that case.
+     * Takes the already-computed cascade result for this press, so an element head over the lyric
+     * still wins and falls through to normal EDIT-mode handling.
      */
-    boolean handleEditModePress(HitResult result) {
+    boolean handleEditModePress(@Nullable HitTarget target) {
         if (MidiController.isPlaying()) {
             return false;
         }
@@ -397,13 +301,8 @@ class LineSelectionHandler {
             return false;
         }
 
-        var selected = switch (result) {
-            case HitResult.Lyric(var element, var verse) -> selectLyric(element, verse);
-            case HitResult.Ending(var ending) -> selectDecoration(new SelectedDecoration.EndingSelection(ending));
-            case HitResult.Hairpin(var hairpin) ->
-                selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
-            default -> false;
-        };
+        var selected = target instanceof HitTarget.Lyric(var element, var verse)
+            && selectLyric(element, verse);
 
         if (selected) {
             lc.repaint();
@@ -455,14 +354,18 @@ class LineSelectionHandler {
         }
 
         // Shift+click on a note head: extend selection from anchor
-        var lineSelectionState = lc.getLineSelectionState();
+        var line = lc.getLine();
 
         if (e.isShiftDown()
-            && pressHitResult instanceof HitResult.ElementHead(var index)
-            && lineSelectionState != null
-            && lineSelectionState.getSelectionAnchor() != -1) {
-            lc.getScoreView().extendSelectionTo(index);
-            playNoteIfPitched(index);
+            && pressTarget instanceof HitTarget.Element(var element)
+            && line != null
+            && lc.getScoreView().getSelectionCoordinator().getRange() != null) {
+            var elementIndex = line.getElementIndex(element);
+
+            if (elementIndex >= 0) {
+                lc.getScoreView().extendSelectionTo(elementIndex);
+                playNoteIfPitched(elementIndex);
+            }
         }
 
         return true;
@@ -519,10 +422,9 @@ class LineSelectionHandler {
     /**
      * Makes the lyric on {@code element} in verse {@code verse} the sole selection.
      * <p>
-     * A lyric selection lives on the selection coordinator rather than in this line's
-     * {@link LineSelectionState}, which clears any prior selection and activates the owning
-     * line itself, so unlike an ending or a hairpin there is no state that can be missing:
-     * this always succeeds.
+     * Unlike every other target, a lyric names the line it belongs to, so the coordinator
+     * resolves and activates that line itself: there is no registration this can find missing,
+     * and it always succeeds.
      */
     @SuppressWarnings("SameReturnValue")
     private boolean selectLyric(StaffElement element, int verse) {
@@ -533,19 +435,24 @@ class LineSelectionHandler {
     }
 
     /**
-     * Makes {@code decoration} the sole selection, returning false when this line has no
-     * selection state to record it in.
+     * Makes {@code target} — a decoration, a note's accidental, or the staff line itself —
+     * the sole selection, returning false when this line is not registered with the
+     * coordinator.
+     * <p>
+     * The registration is what makes the selected line resolvable: activating an unregistered
+     * index would leave the selection pointing at a line nothing can answer for.
      */
-    private boolean selectDecoration(SelectedDecoration decoration) {
-        var lineSelectionState = lc.getLineSelectionState();
+    private boolean selectTarget(HitTarget target) {
+        var scoreView = lc.getScoreView();
+        var coordinator = scoreView.getSelectionCoordinator();
 
-        if (lineSelectionState == null) {
+        if (coordinator.getLine(lc.getLineIndex()) == null) {
             return false;
         }
 
         prepareSelection();
-        lineSelectionState.selectDecoration(decoration);
-        lc.getScoreView().selectionChanged();
+        coordinator.select(target);
+        scoreView.selectionChanged();
         return true;
     }
 
@@ -558,16 +465,14 @@ class LineSelectionHandler {
         var coordinator = scoreView.getSelectionCoordinator();
 
         // Repaint the previously active line, since its selection highlight would
-        // otherwise stay on screen even though selectSingleElement clears its state.
+        // otherwise stay on screen even though selectSingleElement clears its selection.
         // This is for the NoteDragHandler path, which selects a pressed note without
         // clearing first, so the outgoing line is still active here. On the handlePress
         // path there is nothing to do — it calls ScoreView.clearSelection() up front,
         // which repaints the outgoing line itself and leaves no active line behind.
         var deselectedLine = scoreView.getLineComponent(coordinator.getActiveLineIndex());
 
-        var state = coordinator.selectSingleElement(lc.getLineIndex(), elementIndex);
-
-        if (state != null) {
+        if (coordinator.selectSingleElement(lc.getLineIndex(), elementIndex)) {
             scoreView.selectionChanged();
         }
 
@@ -582,6 +487,28 @@ class LineSelectionHandler {
     void selectAndPlayElement(int elementIndex) {
         selectElementAtIndex(elementIndex);
         playNoteIfPitched(elementIndex);
+    }
+
+    /**
+     * Selects {@code element} and plays it if it is a pitched note, returning false when it
+     * is not on this component's line. Targets name elements by identity; the index the
+     * selection range is built from is derived here, at the point of use.
+     */
+    private boolean selectAndPlayElement(StaffElement element) {
+        var line = lc.getLine();
+
+        if (line == null) {
+            return false;
+        }
+
+        var elementIndex = line.getElementIndex(element);
+
+        if (elementIndex < 0) {
+            return false;
+        }
+
+        selectAndPlayElement(elementIndex);
+        return true;
     }
 
     /**
@@ -618,34 +545,40 @@ class LineSelectionHandler {
         return HorizontalSpacingCalculator.isWithinHeaderXSs(xSs, lc.getLine());
     }
 
-    private void buildElementHitRect(StaffElement element, Rectangle2D.Double out) {
-        ElementHitTest.buildElementHitRect(lc, element, out, false);
-    }
-
+    /**
+     * Replaces the selection with the elements the rubber band covers, anchored at the end
+     * nearest where the drag started.
+     * <p>
+     * The whole range is computed before anything is selected, so a drag event assigns the
+     * selection exactly once no matter how many elements it sweeps.
+     */
     private void calculateLineSelectionFromDrag(Rectangle dragRect) {
         var scoreView = lc.getScoreView();
         var line = lc.getLine();
-        var lineSelectionState = lc.getLineSelectionState();
+        var layoutResult = lc.getLayoutResult();
 
-        if (line == null || lineSelectionState == null) {
+        if (line == null || layoutResult == null) {
             return;
         }
 
         var coordinator = scoreView.getSelectionCoordinator();
         coordinator.activateLine(lc.getLineIndex());
-        lineSelectionState.clearSelection();
 
         // Convert the view-pixel drag rect to document pixels (honoring the current zoom),
-        // then to staff spaces on the fixed document scale for intersection with the
-        // document-space element hit rects.
+        // then to staff spaces on the fixed document scale, and finally to layout space by
+        // moving the Y origin from the top of this component to the staff midline — the space
+        // the element hit rects are built in.
         var viewScale = lc.getViewScale();
         var dragRectSs = new Rectangle2D.Double(
             ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.x)).value()),
-            ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.y)).value()),
+            ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.y)).value()) - lc.getMiddleLineYSs(),
             ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.width)).value()),
             ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.height)).value())
         );
         var helper = new Rectangle2D.Double();
+        var begin = -1;
+        var end = -1;
+
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
             var element = line.getElement(elementIndex);
 
@@ -654,28 +587,43 @@ class LineSelectionHandler {
                 continue;
             }
 
-            buildElementHitRect(element, helper);
+            // Unexpanded, unlike the registry's click rects: a rubber band should catch
+            // exactly the elements it visually covers.
+            ElementHitGeometry.elementHitRectSs(
+                layoutResult.getElementXSs(element), element, helper, false);
 
             if (dragRectSs.intersects(helper)) {
-                lineSelectionState.extendSelection(elementIndex);
+                if (begin == -1) {
+                    begin = elementIndex;
+                }
+
+                end = elementIndex;
             }
         }
 
-        // Set anchor to the selection end nearest the drag start point
-        if (lineSelectionState.hasElementSelection()) {
-            var anchorIndex = ElementHitTest.hitTestElement(lc, dragStart);
-
-            if (anchorIndex != -1) {
-                lineSelectionState.setSelectionAnchor(anchorIndex);
-            } else {
-                var begin = lineSelectionState.getSelectionBegin();
-                var end = lineSelectionState.getSelectionEnd();
-                var beginElement = line.getElement(begin);
-                var endElement = line.getElement(end);
-                var distToBegin = Math.abs(dragStart.x - beginElement.getXOffsetPx());
-                var distToEnd = Math.abs(dragStart.x - endElement.getXOffsetPx());
-                lineSelectionState.setSelectionAnchor(distToBegin <= distToEnd ? begin : end);
-            }
+        if (begin == -1) {
+            coordinator.clearActiveSelection();
+            return;
         }
+
+        coordinator.selectRange(begin, end, dragAnchor(line, begin, end));
+    }
+
+    /**
+     * The end of {@code begin..end} the drag started from, which stays put while the other
+     * end follows the pointer. The element under the drag start point when there is one,
+     * otherwise whichever end is horizontally nearer to it.
+     */
+    private int dragAnchor(Line line, int begin, int end) {
+        var anchorIndex = hitTestElementIndex(dragStart);
+
+        if (anchorIndex != -1) {
+            return anchorIndex;
+        }
+
+        var distToBegin = Math.abs(dragStart.x - line.getElement(begin).getXOffsetPx());
+        var distToEnd = Math.abs(dragStart.x - line.getElement(end).getXOffsetPx());
+
+        return (distToBegin <= distToEnd) ? begin : end;
     }
 }

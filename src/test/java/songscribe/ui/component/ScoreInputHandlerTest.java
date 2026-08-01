@@ -68,7 +68,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.selection.LineSelectionState;
+import songscribe.ui.selection.Selection;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.edit.EditModeManager;
@@ -535,10 +535,10 @@ class ScoreInputHandlerTest extends UnitTest {
 
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_LEFT);
 
-            var state = activeSelectionOrFail(coordinator);
+            var range = selectedRangeOrFail(coordinator);
             assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
-            assertThat(state.getSelectionBegin()).isEqualTo(0);
-            assertThat(state.getSelectionEnd()).isEqualTo(0);
+            assertThat(range.begin()).isEqualTo(0);
+            assertThat(range.end()).isEqualTo(0);
         }
 
         @Test
@@ -548,10 +548,10 @@ class ScoreInputHandlerTest extends UnitTest {
 
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_RIGHT);
 
-            var state = activeSelectionOrFail(coordinator);
+            var range = selectedRangeOrFail(coordinator);
             assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
-            assertThat(state.getSelectionBegin()).isEqualTo(1);
-            assertThat(state.getSelectionEnd()).isEqualTo(1);
+            assertThat(range.begin()).isEqualTo(1);
+            assertThat(range.end()).isEqualTo(1);
         }
 
         @Test
@@ -561,9 +561,9 @@ class ScoreInputHandlerTest extends UnitTest {
 
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_LEFT);
 
-            var state = activeSelectionOrFail(coordinator);
-            assertThat(state.getSelectionBegin()).isEqualTo(1);
-            assertThat(state.getSelectionEnd()).isEqualTo(1);
+            var range = selectedRangeOrFail(coordinator);
+            assertThat(range.begin()).isEqualTo(1);
+            assertThat(range.end()).isEqualTo(1);
         }
 
         @Test
@@ -573,9 +573,9 @@ class ScoreInputHandlerTest extends UnitTest {
 
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_RIGHT);
 
-            var state = activeSelectionOrFail(coordinator);
-            assertThat(state.getSelectionBegin()).isEqualTo(1);
-            assertThat(state.getSelectionEnd()).isEqualTo(1);
+            var range = selectedRangeOrFail(coordinator);
+            assertThat(range.begin()).isEqualTo(1);
+            assertThat(range.end()).isEqualTo(1);
         }
 
         @Test
@@ -585,10 +585,10 @@ class ScoreInputHandlerTest extends UnitTest {
 
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_LEFT);
 
-            var state = activeSelectionOrFail(coordinator);
+            var range = selectedRangeOrFail(coordinator);
             assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
-            assertThat(state.getSelectionBegin()).isEqualTo(0);
-            assertThat(state.getSelectionEnd()).isEqualTo(0);
+            assertThat(range.begin()).isEqualTo(0);
+            assertThat(range.end()).isEqualTo(0);
         }
 
         @Test
@@ -598,10 +598,10 @@ class ScoreInputHandlerTest extends UnitTest {
 
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_RIGHT);
 
-            var state = activeSelectionOrFail(coordinator);
+            var range = selectedRangeOrFail(coordinator);
             assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
-            assertThat(state.getSelectionBegin()).isEqualTo(2);
-            assertThat(state.getSelectionEnd()).isEqualTo(2);
+            assertThat(range.begin()).isEqualTo(2);
+            assertThat(range.end()).isEqualTo(2);
         }
 
         @Test
@@ -612,10 +612,10 @@ class ScoreInputHandlerTest extends UnitTest {
 
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_LEFT);
 
-            var state = activeSelectionOrFail(coordinator);
+            var range = selectedRangeOrFail(coordinator);
             assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
-            assertThat(state.getSelectionBegin()).isEqualTo(1);
-            assertThat(state.getSelectionEnd()).isEqualTo(1);
+            assertThat(range.begin()).isEqualTo(1);
+            assertThat(range.end()).isEqualTo(1);
         }
 
         @Test
@@ -626,10 +626,10 @@ class ScoreInputHandlerTest extends UnitTest {
 
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_RIGHT);
 
-            var state = activeSelectionOrFail(coordinator);
+            var range = selectedRangeOrFail(coordinator);
             assertThat(coordinator.getActiveLineIndex()).isEqualTo(1);
-            assertThat(state.getSelectionBegin()).isEqualTo(0);
-            assertThat(state.getSelectionEnd()).isEqualTo(0);
+            assertThat(range.begin()).isEqualTo(0);
+            assertThat(range.end()).isEqualTo(0);
         }
 
         @Test
@@ -641,10 +641,10 @@ class ScoreInputHandlerTest extends UnitTest {
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_RIGHT);
 
             // The next line has no elements, so the selection stays put on line 0.
-            var state = activeSelectionOrFail(coordinator);
+            var range = selectedRangeOrFail(coordinator);
             assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
-            assertThat(state.getSelectionBegin()).isEqualTo(1);
-            assertThat(state.getSelectionEnd()).isEqualTo(1);
+            assertThat(range.begin()).isEqualTo(1);
+            assertThat(range.end()).isEqualTo(1);
         }
 
         @Test
@@ -656,10 +656,10 @@ class ScoreInputHandlerTest extends UnitTest {
             pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_LEFT);
 
             // The previous line has no elements, so the selection stays put on line 1.
-            var state = activeSelectionOrFail(coordinator);
+            var range = selectedRangeOrFail(coordinator);
             assertThat(coordinator.getActiveLineIndex()).isEqualTo(1);
-            assertThat(state.getSelectionBegin()).isEqualTo(0);
-            assertThat(state.getSelectionEnd()).isEqualTo(0);
+            assertThat(range.begin()).isEqualTo(0);
+            assertThat(range.end()).isEqualTo(0);
         }
 
         private List<StaffElement> threeCrotchets() {
@@ -900,9 +900,9 @@ class ScoreInputHandlerTest extends UnitTest {
             // one; the surviving selection must track the same two notes (now at 0 and 1),
             // not the stale pre-removal indices (1 and 2).
             assertThat(line.effectiveElementCount()).isEqualTo(2);
-            var state = activeSelectionOrFail(coordinator);
-            assertThat(state.getSelectionBegin()).isEqualTo(0);
-            assertThat(state.getSelectionEnd()).isEqualTo(1);
+            var range = selectedRangeOrFail(coordinator);
+            assertThat(range.begin()).isEqualTo(0);
+            assertThat(range.end()).isEqualTo(1);
         }
 
         /**
@@ -1260,13 +1260,13 @@ class ScoreInputHandlerTest extends UnitTest {
         return callback;
     }
 
-    /** Returns {@code coordinator}'s active selection state, failing the test if none exists. */
-    private LineSelectionState activeSelectionOrFail(SelectionCoordinator coordinator) {
-        var state = coordinator.getActiveSelection();
+    /** Returns {@code coordinator}'s selected range, failing the test if there is none. */
+    private Selection.Range selectedRangeOrFail(SelectionCoordinator coordinator) {
+        var range = coordinator.getRange();
 
-        assertThat(state).as("Expected an active selection").isNotNull();
+        assertThat(range).as("Expected a selected range").isNotNull();
 
-        return state;
+        return range;
     }
 
     /**
@@ -1296,8 +1296,8 @@ class ScoreInputHandlerTest extends UnitTest {
         song.addLine(secondLine);
 
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
-        coordinator.registerLineState(0, new LineSelectionState(firstLine));
-        coordinator.registerLineState(1, new LineSelectionState(secondLine));
+        coordinator.registerLine(0, firstLine);
+        coordinator.registerLine(1, secondLine);
         return coordinator;
     }
 }

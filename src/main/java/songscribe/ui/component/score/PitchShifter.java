@@ -352,9 +352,12 @@ public final class PitchShifter {
      * the accidentals it forces on or takes away from other notes are one undo step. The staff
      * positions must already have been mutated before this is called.
      * <p>
-     * A connected glissando that becomes unison is left intact: the renderer hides
-     * it while the two notes share a pitch and shows it again when they diverge, so
-     * moving a note through unison — by drag or arrow key — never destroys it.
+     * A connected glissando whose two notes land on the same pitch is removed from the model,
+     * not merely hidden — a same-pitch glissando is not a state the document may hold. The
+     * removal is silent and joins this bracket, so one undo brings both the shift and the
+     * glissando back. A drag commits only on release, so passing through the target's pitch
+     * mid-drag costs nothing; an arrow press commits on every press, so landing on it does
+     * remove the glissando.
      * <p>
      * Returns the indices (in the pre-removal element list) of every element removed
      * by a grace-note/host collapse, so a caller tracking a selection range can adjust
@@ -385,6 +388,16 @@ public final class PitchShifter {
 
             // Accepted restatements on later lines join the same step.
             AccidentalRestatements.commitOtherLines(decision, line);
+
+            // Runs before the grace-note cleanup, while every group index is still the one the
+            // group was built with — the removals below shift them. A shifted note can be either
+            // end of a glissando, so both the one it owns and the one pointing at it are checked.
+            // A group moving as a whole keeps its internal intervals, so only its edges can come
+            // together with an outside note; the two checks cover exactly those.
+            for (var entry : group) {
+                removeSamePitchGlissando(line, entry.index());
+                removeSamePitchGlissando(line, entry.index() - 1);
+            }
 
             // Grace note validity checks — iterate in reverse index order to avoid index shifting from removals
             var sortedEntries = group.stream()
@@ -425,5 +438,31 @@ public final class PitchShifter {
         });
 
         return removedIndices;
+    }
+
+    /**
+     * Removes the glissando owned by the element at {@code ownerIndex} when the shift has left it
+     * {@linkplain Line#isSamePitchAsFollower spanning two notes at one pitch}, so it has nothing
+     * to traverse.
+     * <p>
+     * Recorded through {@link Line#modifyElement} like every other slide strip, so undo restores
+     * it. Only the same-pitch case is handled here: a glissando left pointing at something that
+     * is not a note at all is a structural problem, and its repair belongs to {@link Line}.
+     *
+     * @param line       the line holding both notes
+     * @param ownerIndex index of the note that owns the glissando; out-of-range is a no-op
+     */
+    private static void removeSamePitchGlissando(Line line, int ownerIndex) {
+        if (ownerIndex < 0 || !line.isSamePitchAsFollower(ownerIndex)) {
+            return;
+        }
+
+        var owner = line.getElement(ownerIndex);
+
+        if (!owner.hasGlissando()) {
+            return;
+        }
+
+        line.modifyElement(ownerIndex, ElementField.SLIDE, owner::removeSlide);
     }
 }

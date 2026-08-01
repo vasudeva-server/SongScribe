@@ -35,7 +35,7 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.layout.InsertionSpacingCalculator;
 
 /**

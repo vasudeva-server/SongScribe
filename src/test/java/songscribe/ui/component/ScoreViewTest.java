@@ -64,6 +64,7 @@ import songscribe.dom.TupletLoadPass;
 import songscribe.dom.TupletValidator;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
+import songscribe.hit.HitTarget;
 import songscribe.io.LoadWarning;
 import songscribe.io.SongIO;
 import songscribe.io.SongLoadResult;
@@ -77,7 +78,6 @@ import songscribe.message.MessageCenter;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.ui.selection.LineSelectionState;
 
 /**
  * Unit tests for {@link ScoreView} behaviors not covered by {@link ScoreViewSetFontsTest}:
@@ -1085,7 +1085,6 @@ class ScoreViewTest extends UnitTest {
 
         private ScoreView scoreView;
         private Line line;
-        private LineSelectionState selectionState;
 
         @BeforeEach
         void setUp() {
@@ -1105,16 +1104,12 @@ class ScoreViewTest extends UnitTest {
                 line.addElement(ElementType.CROTCHET_REST.newInstance());
             });
 
-            selectionState = new LineSelectionState(line);
-
-            var coordinator = scoreView.getSelectionCoordinator();
-            coordinator.registerLineState(0, selectionState);
-            coordinator.activateLine(0);
+            scoreView.getSelectionCoordinator().registerLine(0, line);
         }
 
         /** Selects exactly one element, the shape the menu command also requires. */
         private void selectSingle(int index) {
-            selectionState.setSelectionFromClick(index);
+            scoreView.getSelectionCoordinator().selectSingleElement(0, index);
         }
 
         @Test
@@ -1168,7 +1163,7 @@ class ScoreViewTest extends UnitTest {
         void testDoesNothingWithAMultiElementSelection() {
             // The menu command is disabled unless exactly one element is selected; Return
             // must not silently pick one note out of a range the user never singled out.
-            selectionState.setSelectionRange(INDEX_NORMAL, INDEX_HOST);
+            scoreView.getSelectionCoordinator().selectRange(INDEX_NORMAL, INDEX_HOST);
 
             try (var lyricEditor = mockStatic(LyricEditor.class)) {
                 scoreView.editLyricOnSelection();
@@ -1181,7 +1176,7 @@ class ScoreViewTest extends UnitTest {
         void testDoesNothingWithAWholeLineSelected() {
             // A selected staff line reports itself as a selection spanning every element,
             // so this is the multi-element guard seen through the other gesture that hits it.
-            selectionState.setLineSelected(true);
+            scoreView.getSelectionCoordinator().select(new HitTarget.StaffLine());
 
             try (var lyricEditor = mockStatic(LyricEditor.class)) {
                 scoreView.editLyricOnSelection();

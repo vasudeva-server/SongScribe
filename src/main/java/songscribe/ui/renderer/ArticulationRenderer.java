@@ -26,6 +26,7 @@ import module java.desktop;
 
 import songscribe.shape.AccentShape;
 import songscribe.dom.StaffElement;
+import songscribe.hit.HitTarget;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.LayoutResult;
@@ -102,8 +103,6 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
         }
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            RenderingUtils.applyDecorationColor(g2, element, invariants, frame);
-
             var above = NoteAttachedStacker.articulationDirection(element).isUp();
 
             for (var articulation : element.getArticulations()) {
@@ -112,6 +111,12 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
                 if (layout == null) {
                     continue;
                 }
+
+                // Each articulation is selectable on its own, so the color is decided per
+                // articulation rather than once for the note. Neither glyph helper sets a
+                // color, so this is the only place it can be set.
+                RenderingUtils.applyDecorationColor(
+                    g2, new HitTarget.Articulation(articulation), element, invariants, frame);
 
                 if (articulation.isStaccato()) {
                     var glyph = above ? SMuFLGlyph.ARTIC_STACCATO_ABOVE : SMuFLGlyph.ARTIC_STACCATO_BELOW;

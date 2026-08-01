@@ -31,11 +31,13 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Beam;
 import songscribe.dom.ElementLocation;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.Staff;
 import songscribe.engraving.SMuFLConstants;
@@ -305,7 +307,7 @@ class BeamGroupRendererTest extends UnitTest {
         var line = lineWith(ElementType.QUAVER, ElementType.QUAVER);
         var builder = RenderContextTestHelper.newContext(new Song())
             .setCurrentLine(line);
-        RenderContextTestHelper.enableSelection(builder, 0);
+        RenderContextTestHelper.enableSelection(builder, line, 0);
         var invariants = builder.build();
 
         assertThat(RENDERER.getBeamHighlightColor(invariants, 0, 1))
@@ -317,7 +319,8 @@ class BeamGroupRendererTest extends UnitTest {
         // Element 0 selected, element 1 hovered — selection must win over hover
         var line = lineWith(ElementType.QUAVER, ElementType.QUAVER);
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isElementSelected(0, 0)).thenReturn(true);
+        when(selectionProvider.isSelected(new HitTarget.Element(line.getElement(0)), 0))
+            .thenReturn(true);
         var invariants = RenderContextTestHelper.newContext(new Song())
             .setCurrentLine(line)
             .setSelectionProvider(selectionProvider)
@@ -361,6 +364,46 @@ class BeamGroupRendererTest extends UnitTest {
 
             assertThat(result).isEqualTo(LineInvariants.REPLACED_ELEMENT_COLOR);
         }
+    }
+
+    @Test
+    void testGetBeamHighlightColor_beamItselfSelected_returnsSelectionColor() {
+        // Two beamable notes remain, so the note-driven rule would return null: only the
+        // beam's own selection can highlight it here.
+        var line = lineWith(ElementType.QUAVER, ElementType.QUAVER);
+        var beam = new Beam(line.getElement(0), line.getElement(1));
+        line.addRangeElement(beam);
+
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(new HitTarget.Beam(beam), 0)).thenReturn(true);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setCurrentLine(line)
+            .setSelectionProvider(selectionProvider)
+            .setSelectionColor(Color.BLUE)
+            .build();
+
+        assertThat(RENDERER.getBeamHighlightColor(invariants, 0, 1)).isEqualTo(Color.BLUE);
+    }
+
+    @Test
+    void testGetBeamHighlightColor_anotherBeamSelected_returnsNull() {
+        var line = lineWith(ElementType.QUAVER, ElementType.QUAVER);
+        var beam = new Beam(line.getElement(0), line.getElement(1));
+        line.addRangeElement(beam);
+
+        var otherLine = lineWith(ElementType.QUAVER, ElementType.QUAVER);
+        var otherBeam = new Beam(otherLine.getElement(0), otherLine.getElement(1));
+
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(new HitTarget.Beam(otherBeam), 0)).thenReturn(true);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setCurrentLine(line)
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        assertThat(RENDERER.getBeamHighlightColor(invariants, 0, 1)).isNull();
     }
 
     @Test

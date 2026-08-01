@@ -37,7 +37,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.layout.Ending;
 import songscribe.layout.EndingLineFixture;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;

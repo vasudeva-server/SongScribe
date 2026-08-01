@@ -58,7 +58,7 @@ import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.io.SongIO;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 
 /**
  * One-shot generator for the synthetic half of the MusicXML losslessness corpus.

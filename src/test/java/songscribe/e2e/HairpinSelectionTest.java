@@ -42,7 +42,7 @@ import songscribe.ui.action.UIAction;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.renderer.HairpinRenderer;
-import songscribe.ui.selection.SelectedDecoration;
+import songscribe.hit.HitTarget;
 
 /**
  * E2E tests for selecting, deleting and extending a hairpin through the real Swing
@@ -126,11 +126,15 @@ class HairpinSelectionTest extends E2ETest {
         );
     }
 
+    /**
+     * A lyric is the only thing selectable in EDIT mode. A hairpin is not, even where no
+     * insertion preview is in the way — the click simply does nothing, and selecting the hairpin
+     * needs SELECT mode or an alt+click.
+     */
     @Test
-    void testEditModeClickSelectsHairpinWhenNoPreviewShows() {
+    void testEditModeClickDoesNotSelectHairpinEvenWithNoPreviewShowing() {
         addCrescendoOverFirstTwoNotes();
-        var hairpin = soleHairpin();
-        var hairpinPoint = hairpinScreenPosition(hairpin);
+        var hairpinPoint = hairpinScreenPosition(soleHairpin());
 
         enterEditMode();
         selectDuration(Actions.QUARTER_NOTE_ACTION);
@@ -147,8 +151,30 @@ class HairpinSelectionTest extends E2ETest {
         performLayout(0);
 
         assertAll(
-            () -> assertThat(selectedHairpin()).as("hairpin selected in place").isSameAs(hairpin),
+            () -> assertThat(selectedHairpin()).as("no hairpin selected in EDIT mode").isNull(),
             () -> assertThat(scoreView().getMode()).as("mode unchanged").isEqualTo(Mode.EDIT),
+            () -> assertThat(elementCount()).as("nothing inserted").isEqualTo(elementCountBefore)
+        );
+    }
+
+    /**
+     * The alt+click escape hatch: it switches the score to SELECT mode and selects in the same
+     * press, which is how a hairpin is reached without leaving EDIT mode by hand.
+     */
+    @Test
+    void testAltClickInEditModeSelectsHairpin() {
+        addCrescendoOverFirstTwoNotes();
+        var hairpin = soleHairpin();
+
+        enterEditMode();
+        selectDuration(Actions.QUARTER_NOTE_ACTION);
+
+        var elementCountBefore = elementCount();
+        altClickAt(hairpinScreenPosition(hairpin));
+        performLayout(0);
+
+        assertAll(
+            () -> assertThat(selectedHairpin()).as("alt+click selected the hairpin").isSameAs(hairpin),
             () -> assertThat(elementCount()).as("nothing inserted").isEqualTo(elementCountBefore)
         );
     }
@@ -313,14 +339,8 @@ class HairpinSelectionTest extends E2ETest {
 
     private @Nullable Hairpin selectedHairpin() {
         return GuiActionRunner.execute(() -> {
-            var selectionState = lineComponent().getLineSelectionState();
-
-            if (selectionState == null) {
-                return null;
-            }
-
-            if (selectionState.getSelectedDecoration()
-                    instanceof SelectedDecoration.HairpinSelection(var hairpin)) {
+            if (scoreView().getSelectionCoordinator().getSelectedTarget()
+                    instanceof HitTarget.Hairpin(var hairpin)) {
                 return hairpin;
             }
 

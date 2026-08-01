@@ -38,6 +38,7 @@ import java.awt.Font;
 import java.awt.Point;
 import java.awt.event.InputEvent;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -57,6 +58,9 @@ import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.hit.HitPriority;
+import songscribe.hit.HitRegistry;
+import songscribe.hit.HitTarget;
 import songscribe.layout.InsertionSpacingCalculator.InsertionResult;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LineSpacing;
@@ -654,12 +658,11 @@ class LineComponentTest extends UnitTest {
     class SetLine {
 
         /**
-         * After {@link LineComponent#setLine}, {@code layoutDirty} is true, {@code layoutResult}
-         * is null, and a new {@link songscribe.ui.selection.LineSelectionState} for the
-         * supplied line is created.
+         * After {@link LineComponent#setLine}, {@code layoutDirty} is true and
+         * {@code layoutResult} is null.
          */
         @Test
-        void testSetLineSetsLayoutDirtyAndNullsResultAndCreatesSelectionState() {
+        void testSetLineSetsLayoutDirtyAndNullsResult() {
             var song = new Song();
             var line = song.getLine(0);
 
@@ -677,23 +680,17 @@ class LineComponentTest extends UnitTest {
                 .as("setLine nulls the cached layout result")
                 .isNull();
 
-            var selectionState = lc.getLineSelectionState();
-            assertThat(selectionState)
-                .as("setLine creates a non-null LineSelectionState")
-                .isNotNull();
-
-            assertThat(selectionState.getLine())
-                .as("LineSelectionState wraps the supplied line")
+            assertThat(lc.getLine())
+                .as("setLine keeps the supplied line")
                 .isSameAs(line);
         }
 
         /**
          * When a {@link ScoreView} is already set and {@link LineComponent#setLine} is called,
-         * the new {@link songscribe.ui.selection.LineSelectionState} is registered with
-         * the selection coordinator.
+         * the line is registered with the selection coordinator at its index.
          */
         @Test
-        void testSetLineRegistersSelectionStateWithCoordinatorWhenScoreViewIsSet() {
+        void testSetLineRegistersTheLineWithCoordinatorWhenScoreViewIsSet() {
             var song = new Song();
             var line = song.getLine(0);
 
@@ -701,19 +698,13 @@ class LineComponentTest extends UnitTest {
             var mockCoordinator = mock(SelectionCoordinator.class);
             when(mockScoreView.getSelectionCoordinator()).thenReturn(mockCoordinator);
 
-            // scoreView is set before line; setScoreView() only registers if lineSelectionState
-            // is already set (it isn't yet), so no premature coordinator call.
+            // scoreView is set before line; setScoreView() only registers if a line is
+            // already set (it isn't yet), so no premature coordinator call.
             lc.setScoreView(mockScoreView);
 
             lc.setLine(line, 0);
 
-            var lineSelectionState = lc.getLineSelectionState();
-            assertThat(lineSelectionState)
-                .as("setLine creates a non-null LineSelectionState")
-                .isNotNull();
-
-            verify(mockCoordinator)
-                .registerLineState(0, lineSelectionState);
+            verify(mockCoordinator).registerLine(0, line);
         }
     }
 
@@ -1059,6 +1050,32 @@ class LineComponentTest extends UnitTest {
         }
     }
 
+    /**
+     * Half-extent of a test hit region, in staff spaces. Large enough that a region built
+     * around the origin with it contains every click point these tests produce, so a test
+     * says "this click resolves to that target" without also pinning down geometry that
+     * {@code HitRegionBuilderTest} owns.
+     */
+    private static final double TEST_REGION_HALF_EXTENT_SS = 10_000;
+
+    /**
+     * A registry whose one region covers the whole plane, so any point resolves to
+     * {@code target}.
+     */
+    private static HitRegistry registryHitting(HitTarget target, int priority, boolean hoverTestable) {
+        return HitRegistry.builder()
+            .add(
+                new Rectangle2D.Double(
+                    -TEST_REGION_HALF_EXTENT_SS,
+                    -TEST_REGION_HALF_EXTENT_SS,
+                    2 * TEST_REGION_HALF_EXTENT_SS,
+                    2 * TEST_REGION_HALF_EXTENT_SS),
+                target,
+                priority,
+                hoverTestable)
+            .build();
+    }
+
     // -------------------------------------------------------------------------
     // Double-click on an element opens the lyric editor
     // -------------------------------------------------------------------------
@@ -1067,8 +1084,8 @@ class LineComponentTest extends UnitTest {
      * These tests drive the real {@code mouseClicked} routing and assert on whether the lyric
      * editor was asked to open. Two collaborators are stubbed so the tests isolate the routing
      * rather than re-testing logic covered elsewhere: which element lies under the cursor
-     * (covered by {@link ElementHitTestTest}) and which element a gesture resolves to (covered
-     * by {@code LyricEditorEligibilityTest}). Opening is observed by stubbing
+     * (covered by {@code HitRegionBuilderTest}) and which element a gesture resolves to
+     * (covered by {@code LyricEditorEligibilityTest}). Opening is observed by stubbing
      * {@link LyricEditor} statically, since the call to {@code deselectAndOpenOn} is the
      * method's only observable effect.
      */
@@ -1076,11 +1093,12 @@ class LineComponentTest extends UnitTest {
     @Nested
     class DoubleClickLyricEditing {
 
-        /** Index the stubbed hit test reports as lying under the cursor. */
+        /** Index the stubbed hit registry reports as lying under the cursor. */
         private static final int HIT_INDEX = 0;
 
         private ScoreView mockScoreView;
         private Line line;
+        private LayoutResult mockLayout;
 
         @BeforeEach
         void setUp() {
@@ -1097,16 +1115,20 @@ class LineComponentTest extends UnitTest {
             song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
             lc.song = song;
             lc.setLine(line, 0);
-            // Inject a clean layout so the heavyweight layout engine never runs. The stub
-            // reports no lyric under the cursor, so the click falls through to the element
+            // Inject a clean layout so the heavyweight layout engine never runs. Its registry
+            // reports the element and no lyric, so the click falls through to the element
             // branch under test rather than the double-click-on-lyric-text branch above it.
-            lc.layoutResult = mock(LayoutResult.class);
+            mockLayout = mock(LayoutResult.class);
+            when(mockLayout.getHitRegistry()).thenReturn(
+                registryHitting(
+                    new HitTarget.Element(line.getElement(HIT_INDEX)), HitPriority.ELEMENT, false));
+            lc.layoutResult = mockLayout;
             lc.layoutDirty = false;
         }
 
         /**
-         * Runs {@code mouseClicked} with the edit-mode managers and the element hit test
-         * stubbed, and hands the test the static LyricEditor stub to assert against.
+         * Runs {@code mouseClicked} with the edit-mode managers stubbed, and hands the test the
+         * static LyricEditor stub to assert against.
          */
         private void clickWith(MouseEvent event, Consumer<? super MockedStatic<LyricEditor>> assertions) {
             var graceMock = mock(GraceModeManager.class);
@@ -1114,13 +1136,10 @@ class LineComponentTest extends UnitTest {
 
             try (
                 var emm = mockStatic(EditModeManager.class);
-                var hitTest = mockStatic(ElementHitTest.class);
                 var lyricEditor = mockStatic(LyricEditor.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
-                hitTest.when(() -> ElementHitTest.hitTestElement(any(LineComponent.class), any(Point.class)))
-                    .thenReturn(HIT_INDEX);
 
                 lc.mouseClicked(event);
 
@@ -1179,34 +1198,20 @@ class LineComponentTest extends UnitTest {
         @Test
         void testDoubleClickThatHitsNoElementDoesNotOpenTheEditor() {
             // Without the miss guard the editor would be asked to open on element -1.
-            var graceMock = mock(GraceModeManager.class);
-            var pasteMock = mock(PasteModeManager.class);
+            when(mockLayout.getHitRegistry()).thenReturn(HitRegistry.EMPTY);
 
-            try (
-                var emm = mockStatic(EditModeManager.class);
-                var hitTest = mockStatic(ElementHitTest.class);
-                var lyricEditor = mockStatic(LyricEditor.class)) {
-
-                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
-                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
-                hitTest.when(() -> ElementHitTest.hitTestElement(any(LineComponent.class), any(Point.class)))
-                    .thenReturn(NO_HIT);
-
-                lc.mouseClicked(clickEvent(DOUBLE_CLICK, NO_MODIFIERS));
-
-                lyricEditor.verifyNoInteractions();
-            }
+            clickWith(clickEvent(DOUBLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
         }
     }
 
     // -------------------------------------------------------------------------
-    // Click on a lyric — cascade-reported HitResult.Lyric
+    // Click on a lyric — a registry-reported HitTarget.Lyric
     // -------------------------------------------------------------------------
 
     /**
-     * These tests drive the real {@code mouseClicked} with the hit-test cascade reporting a
-     * lyric under the cursor, the way {@link LineSelectionHandlerTest} stubs the same tester:
-     * a mocked {@link LayoutResult#hitTestLyric} stands in for real layout geometry.
+     * These tests drive the real {@code mouseClicked} with the line's hit registry reporting a
+     * lyric under the cursor. A one-region registry stands in for real layout geometry, which
+     * {@code HitRegionBuilderTest} owns.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -1239,24 +1244,25 @@ class LineComponentTest extends UnitTest {
             song.withoutMutationTracking(() -> line.addElement(element));
             lc.song = song;
             lc.setLine(line, 0);
-            // Inject a clean layout so the heavyweight layout engine never runs; its lyric
-            // hit test is stubbed per-test below.
+            // Inject a clean layout so the heavyweight layout engine never runs; its registry
+            // is stubbed per-test below, and reports nothing until then.
             mockLayout = mock(LayoutResult.class);
+            when(mockLayout.getHitRegistry()).thenReturn(HitRegistry.EMPTY);
             lc.layoutResult = mockLayout;
             lc.layoutDirty = false;
         }
 
-        /** Stubs the layout's lyric hit test to report {@code element}/{@code VERSE} as hit. */
+        /** Stubs the layout's registry to report {@code element}/{@code VERSE} as hit. */
         private void stubLyricHit() {
-            when(mockLayout.hitTestLyric(any(), any(), any()))
-                .thenReturn(new LayoutResult.LyricHit(element, VERSE));
+            when(mockLayout.getHitRegistry()).thenReturn(
+                registryHitting(new HitTarget.Lyric(element, VERSE), HitPriority.LYRIC, true));
         }
 
         /**
          * Runs {@code mouseClicked} with the edit-mode managers stubbed to decline the click, and
          * hands the test the static {@link LyricEditor} stub to assert against. Unlike
-         * {@code DoubleClickLyricEditing.clickWith} this leaves the element hit test real: the
-         * lyric test runs first and consumes the click, so nothing below it is reached.
+         * {@code DoubleClickLyricEditing.clickWith} nothing here reports an element: the lyric
+         * consumes the click, so nothing below it is reached.
          */
         private void clickWith(MouseEvent event, Consumer<? super MockedStatic<LyricEditor>> assertions) {
             var graceMock = mock(GraceModeManager.class);
@@ -1363,11 +1369,12 @@ class LineComponentTest extends UnitTest {
             lc.song = song;
             lc.setLine(line, 0);
 
-            // Inject a clean layout reporting the lyric under the pointer, so the cascade — if it
-            // is reached at all — resolves the press to that lyric.
+            // Inject a clean layout reporting the lyric under the pointer, so the hit test — if
+            // it is reached at all — resolves the press to that lyric.
             var mockLayout = mock(LayoutResult.class);
-            when(mockLayout.hitTestLyric(any(), any(), any()))
-                .thenReturn(new LayoutResult.LyricHit(element, Lyric.FIRST_VERSE));
+            when(mockLayout.getHitRegistry()).thenReturn(
+                registryHitting(
+                    new HitTarget.Lyric(element, Lyric.FIRST_VERSE), HitPriority.LYRIC, true));
             lc.layoutResult = mockLayout;
             lc.layoutDirty = false;
         }
@@ -1495,8 +1502,9 @@ class LineComponentTest extends UnitTest {
 
         @Test
         void testMoveOverALyricClearsThePreviewInsteadOfTrackingTheMouse() {
-            when(mockLayout.hitTestLyric(any(), any(), any()))
-                .thenReturn(new LayoutResult.LyricHit(element, Lyric.FIRST_VERSE));
+            when(mockLayout.getHitRegistry()).thenReturn(
+                registryHitting(
+                    new HitTarget.Lyric(element, Lyric.FIRST_VERSE), HitPriority.LYRIC, true));
 
             moveWith(preview -> {
                 preview.verify(PreviewElementManager::clearPreviewElement);
@@ -1506,7 +1514,7 @@ class LineComponentTest extends UnitTest {
 
         @Test
         void testMoveWithNoLyricUnderThePointerTracksTheMouse() {
-            when(mockLayout.hitTestLyric(any(), any(), any())).thenReturn(null);
+            when(mockLayout.getHitRegistry()).thenReturn(HitRegistry.EMPTY);
 
             moveWith(preview -> {
                 preview.verify(() -> PreviewElementManager.trackMouse(any(), any()));
@@ -1527,9 +1535,6 @@ class LineComponentTest extends UnitTest {
 
     /** Empty modifier mask, for a click with no modifier key held. */
     private static final int NO_MODIFIERS = 0;
-
-    /** Sentinel returned by the element hit test when the point hit no element. */
-    private static final int NO_HIT = -1;
 
     /** Creates a left-button click event with the given click count and modifier mask. */
     private static MouseEvent clickEvent(int clickCount, int modifiers) {

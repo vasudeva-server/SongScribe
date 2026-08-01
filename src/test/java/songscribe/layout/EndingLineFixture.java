@@ -20,10 +20,7 @@
 package songscribe.layout;
 
 import songscribe.UnitTest;
-import songscribe.dom.Song;
-import songscribe.dom.ElementType;
-import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
+import songscribe.dom.*;
 
 /**
  * Shared test fixture for the canonical 7-element ending line layouts used across

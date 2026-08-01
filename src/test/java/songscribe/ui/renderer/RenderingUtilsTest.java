@@ -33,10 +33,14 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Articulation;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.hit.HitTarget;
 import songscribe.layout.NoteGeometry;
 import songscribe.engraving.Staff;
 import songscribe.engraving.SMuFLConstants;
@@ -214,7 +218,7 @@ class RenderingUtilsTest extends UnitTest {
     }
 
     // ======================================================================
-    // decorationSelectionColor
+    // decorationColor — with no owner note
     // ======================================================================
 
     private LineInvariants invariantsFor(LineComponent.@Nullable SelectionProvider selectionProvider) {
@@ -223,33 +227,113 @@ class RenderingUtilsTest extends UnitTest {
             .build();
     }
 
-    @Test
-    void testDecorationSelectionColorSelectedReturnsSelectionColor() {
-        var element = new StaffElement(ElementType.CROTCHET);
-        var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isDecorationSelected(element, 0)).thenReturn(true);
+    private static HitTarget.Hairpin newHairpinTarget() {
+        return new HitTarget.Hairpin(new Crescendo(
+            new StaffElement(ElementType.CROTCHET),
+            new StaffElement(ElementType.CROTCHET)
+        ));
+    }
 
-        var color = RenderingUtils.decorationSelectionColor(element, invariantsFor(selectionProvider));
+    @Test
+    void testDecorationColorWithNoOwnerSelectedReturnsSelectionColor() {
+        var target = newHairpinTarget();
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(target, 0)).thenReturn(true);
+
+        var color = RenderingUtils.decorationColor(
+            target, null, invariantsFor(selectionProvider), ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(ScoreView.getSelectionColor());
     }
 
     @Test
-    void testDecorationSelectionColorNotSelectedReturnsElementColor() {
-        var element = new StaffElement(ElementType.CROTCHET);
+    void testDecorationColorWithNoOwnerNotSelectedReturnsElementColor() {
+        var target = newHairpinTarget();
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isDecorationSelected(element, 0)).thenReturn(false);
+        when(selectionProvider.isSelected(target, 0)).thenReturn(false);
 
-        var color = RenderingUtils.decorationSelectionColor(element, invariantsFor(selectionProvider));
+        var color = RenderingUtils.decorationColor(
+            target, null, invariantsFor(selectionProvider), ElementFrame.LINE_LEVEL);
 
         assertThat(color).isEqualTo(Color.BLACK);
     }
 
     @Test
-    void testDecorationSelectionColorNoSelectionProviderReturnsElementColor() {
-        var element = new StaffElement(ElementType.CROTCHET);
+    void testDecorationColorWithNoOwnerAndNoSelectionProviderReturnsElementColor() {
+        var color = RenderingUtils.decorationColor(
+            newHairpinTarget(), null, invariantsFor(null), ElementFrame.LINE_LEVEL);
 
-        var color = RenderingUtils.decorationSelectionColor(element, invariantsFor(null));
+        assertThat(color).isEqualTo(Color.BLACK);
+    }
+
+    // ======================================================================
+    // decorationColor — selection wins, else the owner note's color
+    // ======================================================================
+
+    // The selection is what the next Delete removes, so it has to stay visible while its note is
+    // playing. Before the two decoration-color helpers were merged, the owner note's color was
+    // consulted first and the playing color swallowed the selection.
+    @Test
+    void testDecorationColorSelectionWinsOverAPlayingOwner() {
+        var owner = new StaffElement(ElementType.CROTCHET);
+        var target = new HitTarget.Articulation(new Articulation(ArticulationType.STACCATO));
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(target, 0)).thenReturn(true);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setSelectionProvider(selectionProvider)
+            .setPlayingNoteIndex(0)
+            .build();
+
+        var color = RenderingUtils.decorationColor(
+            target, owner, invariants, ElementFrame.LINE_LEVEL.withElement(0, Double.NaN));
+
+        assertThat(color).isEqualTo(ScoreView.getSelectionColor());
+    }
+
+    // An unselected decoration still follows its note, so playback colors the whole note.
+    @Test
+    void testDecorationColorUnselectedTakesAPlayingOwnersColor() {
+        var owner = new StaffElement(ElementType.CROTCHET);
+        var target = new HitTarget.Articulation(new Articulation(ArticulationType.STACCATO));
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setSelectionProvider(mock(LineComponent.SelectionProvider.class))
+            .setPlayingNoteIndex(0)
+            .build();
+
+        var color = RenderingUtils.decorationColor(
+            target, owner, invariants, ElementFrame.LINE_LEVEL.withElement(0, Double.NaN));
+
+        assertThat(color).isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    @Test
+    void testDecorationColorFallsThroughToTargetSelection() {
+        var owner = new StaffElement(ElementType.CROTCHET);
+        var target = new HitTarget.Articulation(new Articulation(ArticulationType.STACCATO));
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(target, 0)).thenReturn(true);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var color = RenderingUtils.decorationColor(
+            target, owner, invariants, ElementFrame.LINE_LEVEL.withElement(0, Double.NaN));
+
+        assertThat(color).isEqualTo(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testDecorationColorUnselectedIsElementColor() {
+        var owner = new StaffElement(ElementType.CROTCHET);
+        var target = new HitTarget.Articulation(new Articulation(ArticulationType.STACCATO));
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setSelectionProvider(mock(LineComponent.SelectionProvider.class))
+            .build();
+
+        var color = RenderingUtils.decorationColor(
+            target, owner, invariants, ElementFrame.LINE_LEVEL.withElement(0, Double.NaN));
 
         assertThat(color).isEqualTo(Color.BLACK);
     }

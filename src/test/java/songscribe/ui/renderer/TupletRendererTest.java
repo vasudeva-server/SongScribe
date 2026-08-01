@@ -45,14 +45,27 @@ import songscribe.dom.Beam;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.dom.Tuplet;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 class TupletRendererTest extends UnitTest {
 
     private static final double TOLERANCE = 1e-6;
     private static final TupletRenderer RENDERER = TupletRenderer.getInstance();
+
+    /** Three notes in the time of two — the grade the color fixture uses. */
+    private static final int TRIPLET_GRADE = 3;
+
+    // The tuplet's reserved box in the color fixture; the color path never reads the values back.
+    private static final double DECO_X_SS = 1.0;
+    private static final double DECO_Y_SS = -2.0;
+    private static final double DECO_WIDTH_SS = 4.0;
+    private static final double DECO_HEIGHT_SS = 1.0;
+    private static final double NO_MARGIN_SS = 0.0;
 
     /**
      * Configures a mock Graphics2D so font-related calls in drawTupletNumber and
@@ -121,6 +134,60 @@ class TupletRendererTest extends UnitTest {
             .setCurrentLine(line)
             .setLayoutResult(layoutResult)
             .build();
+    }
+
+    // ======================================================================
+    // Selection color
+    // ======================================================================
+
+    /**
+     * Renders a bracketed tuplet with it reported as selected or not, and returns the color the
+     * renderer set before drawing. A tuplet spans notes rather than hanging off one, so it takes
+     * no color from an owning note: the only two answers are plain black and the selection color.
+     */
+    private static Color renderedTupletColor(boolean selected) {
+        var line = detachedLine();
+        var anchor = ElementType.QUAVER.newInstance();
+        anchor.setUpper(true);
+        var end = ElementType.QUAVER.newInstance();
+        end.setUpper(true);
+        line.addElement(anchor);
+        line.addElement(end);
+
+        var tuplet = Tuplet.withUnresolvedRatio(anchor, end, TRIPLET_GRADE);
+        line.addRangeElement(tuplet);
+
+        var layoutResult = LayoutResult.builder()
+            .putDecorationLayout(tuplet, new LayoutResult.DecorationLayout(
+                DECO_X_SS, DECO_Y_SS, DECO_WIDTH_SS, DECO_HEIGHT_SS, NO_MARGIN_SS))
+            .build();
+
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(new HitTarget.Tuplet(tuplet), 0)).thenReturn(selected);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setCurrentLine(line)
+            .setLayoutResult(layoutResult)
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var g2 = mockG2();
+        RENDERER.renderTupletsFromLine(g2, line, invariants, ElementFrame.LINE_LEVEL);
+
+        var colorCaptor = ArgumentCaptor.forClass(Color.class);
+        verify(g2).setColor(colorCaptor.capture());
+
+        return colorCaptor.getValue();
+    }
+
+    @Test
+    void testSelectedTupletDrawsInTheSelectionColor() {
+        assertThat(renderedTupletColor(true)).isEqualTo(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testUnselectedTupletDrawsInTheElementColor() {
+        assertThat(renderedTupletColor(false)).isEqualTo(RenderingUtils.ELEMENT_COLOR);
     }
 
     // ======================================================================

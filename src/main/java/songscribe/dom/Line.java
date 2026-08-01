@@ -1669,6 +1669,37 @@ public class Line {
     }
 
     /**
+     * Returns whether the element at {@code index} and the one following it are both notes at the
+     * same pitch — the span a connecting glissando may never cover, since there is no distance for
+     * it to traverse.
+     * <p>
+     * This is the one definition of that condition. The slide tool asks it before attaching a
+     * glissando, a pitch shift asks it to strip one whose two notes have come together, and the
+     * layout and render passes ask it so that neither draws nor registers geometry for one that
+     * reached the model through an import. Each caller keeps its own further rules — which
+     * elements may anchor a glissando at all is a separate question from whether these two
+     * share a pitch.
+     * <p>
+     * Grace notes count on either side, since they carry a pitch like any other note.
+     *
+     * @param index index of the leading element; out of range, or last in the line, yields false
+     */
+    public boolean isSamePitchAsFollower(int index) {
+        if (index < 0 || index + 1 >= elements.size()) {
+            return false;
+        }
+
+        var element = elements.get(index);
+        var follower = elements.get(index + 1);
+
+        if (!element.getType().isNote() || !follower.getType().isNote()) {
+            return false;
+        }
+
+        return element.getPitch() == follower.getPitch();
+    }
+
+    /**
      * A breath mark immediately after {@code end} is positionally attached to the
      * last selected element, so it must be included in a deletion or copy range that
      * ends at {@code end}. Returns {@code end} extended past that trailing breath

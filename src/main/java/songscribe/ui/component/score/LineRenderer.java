@@ -26,6 +26,7 @@ import module java.desktop;
 import songscribe.error.RuntimeError;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
@@ -195,7 +196,8 @@ class LineRenderer {
     void drawStaffLines(Graphics2D g2, LineInvariants invariants) {
         var selectionProvider = invariants.getSelectionProvider();
         var lineIndex = invariants.getLineIndex();
-        var staffSelected = selectionProvider != null && selectionProvider.isLineSelected(lineIndex);
+        var staffSelected = selectionProvider != null
+            && selectionProvider.isSelected(new HitTarget.StaffLine(), lineIndex);
         var layoutResult = invariants.getLayoutResult();
 
         try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {

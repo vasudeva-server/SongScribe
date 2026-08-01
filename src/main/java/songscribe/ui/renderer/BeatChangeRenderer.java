@@ -25,6 +25,7 @@ import module java.desktop;
 import songscribe.dom.BeatChange;
 import songscribe.dom.StaffElement;
 import songscribe.dom.BeatChangeAttachment;
+import songscribe.hit.HitTarget;
 
 /**
  * Renders beat change indicators (note = note format).
@@ -60,7 +61,14 @@ public final class BeatChangeRenderer extends MetronomeRenderer {
         var setup = buildRenderSetup(element, BeatChangeAttachment.class, invariants, frame);
         var xSs = setup.decorationLayout().xSs();
 
-        drawBeatChange(g2, attachment.getBeatChange(), xSs, setup.ySs(), setup.attrFont(), setup.color());
+        // A beat change is selectable on its own, so its selection is folded into the color the
+        // setup resolved from the owner note rather than applied over it. Both draw helpers take
+        // the color as an argument and scope it with their own GraphicsState block, so nothing
+        // has to be set on g2 here.
+        var color = RenderingUtils.decorationColor(
+            new HitTarget.Attachment(attachment), element, invariants, frame);
+
+        drawBeatChange(g2, attachment.getBeatChange(), xSs, setup.ySs(), setup.attrFont(), color);
     }
 
     private void drawBeatChange(

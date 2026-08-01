@@ -28,30 +28,29 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.layout.LayoutResult;
 import songscribe.engraving.LineThickness;
+import songscribe.hit.HitTarget;
+import songscribe.layout.LayoutResult;
 import songscribe.layout.NoteGeometry;
-import songscribe.dom.ScaleContext;
+import songscribe.layout.SlideGeometry;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
 
 /**
- * Renders the two {@link StaffElement.Slide} subtypes attached to a note: a connecting
+ * Draws the two {@link StaffElement.Slide} subtypes attached to a note: a connecting
  * {@link StaffElement.Glissando} (a filled rectangle between two notes) and a trailing
  * {@link StaffElement.Fall} (the {@code brassFallLipShort} glyph hanging off the note's right).
  * <p>
- * A connecting glissando attaches at the stem-free extents of the two notes — the leading note's
- * right edge and the trailing note's left edge (notehead, augmentation dots, and accidental, but
- * not the stem or flag) — each at its own notehead-center Y. The drawn line is a sub-segment of
- * that attach-to-attach ray, trimmed by {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS} along the line
- * direction at each end, so it stays collinear with the ray and clears the noteheads by a constant
- * distance regardless of slope.
+ * The geometry itself is computed at layout time by {@link SlideGeometry} and stored on the line's
+ * {@link LayoutResult} as a {@link LayoutResult.SlideLayout}, so this class only reads it and
+ * converts from layout space (Y relative to the staff midline) to component space (Y relative to
+ * the line component's top edge) as it draws.
  * <p>
- * A fall's glyph is drawn {@link NoteGeometry#FALL_GAP_SS} past the host note's column edge, at the
- * note's notehead-center Y, and its drawn rect is cached on the {@link StaffElement.Fall} for
- * hit-testing.
+ * The preview renders are the exception: they draw a slide for a note that does not own one yet, so
+ * the layout has nothing stored for them and they compute their geometry through
+ * {@link SlideGeometry} directly.
  * <p>
  * Slide data is stored on the source note via {@link StaffElement#getSlide()}.
  */
@@ -62,14 +61,13 @@ public final class SlideRenderer {
     // ==========================================================================
 
     /**
-     * Minimum rendered glissando length in staff spaces. Glissandos shorter than this are not drawn.
-     * 0.75 ss stays clearly visible at tight spacing (notably a target carrying an accidental)
-     * (refs #443).
+     * Layout space puts the staff midline at Y = 0, so a note context built for it takes 0 as its
+     * middle-line Y.
      */
-    private static final double MIN_RECT_LENGTH_SS = 0.75;
+    private static final double LAYOUT_MIDLINE_Y_SS = 0.0;
 
-    /** Hit-test tolerance in pixels (wider than visual thickness for easier clicking). */
-    private static final double HIT_THICKNESS_PX = 8.0;
+    /** No displacement: the note sits where the layout put it. */
+    private static final double NO_SHIFT_SS = 0.0;
 
     // ==========================================================================
     // Singleton
@@ -141,118 +139,57 @@ public final class SlideRenderer {
 
         var layoutResult = invariants.getLayoutResult();
         var middleLineYSs = invariants.getMiddleLineYSs();
-        var src = resolveNoteContext(note, noteIndex, line, layoutResult, middleLineYSs);
-        var isGlissando = slide instanceof StaffElement.Glissando;
-        var color = determineSlideColor(noteIndex, isGlissando, invariants);
+        var color = determineSlideColor(note, noteIndex, invariants);
 
-        var hasPreviewShift = frame.hasPreviewShift();
-        var shiftFromIndex = frame.previewShiftFromIndex();
-        var shiftSs = frame.previewShiftSs();
+        // A fall is a standalone trailing glyph with no target note, so it never looks at the
+        // following element — which would crash on a non-renderable type such as a barline at
+        // the line end.
+        if (slide instanceof StaffElement.Fall) {
+            var fallBoundsSs = fallBoundsSs(note, noteIndex, layoutResult, frame);
 
-        // Apply preview shift so the source slide tracks its note during grace-note insert preview
-        if (hasPreviewShift && noteIndex >= shiftFromIndex) {
-            src = src.shiftedX(shiftSs);
-        }
+            if (fallBoundsSs != null) {
+                drawFallGlyph(g2, fallBoundsSs, middleLineYSs, color);
+            }
 
-        // A fall is a standalone trailing glyph with no target note. Resolving the next element
-        // would crash when it is a non-renderable type (e.g. a barline at the line end), so the
-        // fall must render before any target resolution.
-        if (slide instanceof StaffElement.Fall fall) {
-            renderFall(g2, fall, src, color);
             return;
         }
 
-        var tgt = resolveTargetContext(noteIndex, line, layoutResult, middleLineYSs);
-
-        if (tgt != null && hasPreviewShift && noteIndex + 1 >= shiftFromIndex) {
-            tgt = tgt.shiftedX(shiftSs);
-        }
-
-        // A connected glissando between notes at the same pitch is musically meaningless — hide it
-        if (tgt != null && src.note().getPitch() == tgt.note().getPitch()) {
+        // The layout already withholds geometry for a glissando between two notes at one pitch,
+        // but the grace-note insert preview below recomputes endpoints rather than reading the
+        // layout, so the check is needed here to cover that branch too.
+        if (line.isSamePitchAsFollower(noteIndex)) {
             return;
         }
 
-        render(g2, src, tgt, (StaffElement.Glissando) slide, color);
-    }
+        var endpoints = glissandoEndpointsSs(note, noteIndex, line, layoutResult, frame);
 
-    /**
-     * Renders a fall's {@code brassFallLipShort} glyph trailing the host note and caches the glyph's
-     * drawn rect on the {@link StaffElement.Fall} for hit-testing.
-     */
-    private void renderFall(Graphics2D g2, StaffElement.Fall fall, NoteContext src, Color color) {
-        fall.cachedHitBounds = drawFallGlyph(g2, src, color);
-    }
-
-    /**
-     * Draws the {@code brassFallLipShort} glyph one {@link NoteGeometry#FALL_GAP_SS} past
-     * the host note's column right edge, at the note's notehead-center Y, and returns the glyph's
-     * axis-aligned drawn rect in layout space.
-     */
-    private Rectangle2D drawFallGlyph(Graphics2D g2, NoteContext src, Color color) {
-        var glyphXSs = src.columnRightXSs() + NoteGeometry.FALL_GAP_SS;
-        var glyphYSs = src.cySs();
-
-        try (var ignored = GraphicsState.save(g2, COLOR)) {
-            g2.setColor(color);
-            RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.BRASS_FALL_LIP_SHORT, glyphXSs, glyphYSs, true);
+        if (endpoints != null) {
+            drawGlissando(g2, endpoints, middleLineYSs, color);
         }
-
-        // The glyph bbox is in staff spaces with the renderer's Y-down convention, relative to the
-        // glyph origin (the drawString baseline anchor), so translating it by the draw point gives
-        // the axis-aligned drawn rect directly.
-        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
-
-        return new Rectangle2D.Double(
-            glyphXSs + bbox.left(),
-            glyphYSs + bbox.top(),
-            bbox.width(),
-            bbox.height()
-        );
     }
 
     /**
      * Determines the color for a slide based on playback and selection state.
      * <p>
-     * Delegates to {@link LineInvariants#getElementColor(int)} for the
-     * common edit-mode / playback / selection checks, then adds
-     * slide-specific selection rules on top (standalone slide selection,
-     * implied target-note selection for a connecting glissando).
+     * Delegates to {@link LineInvariants#getElementColor(int)} for the common edit-mode /
+     * playback / selection checks on the owner note, and only when the note contributes no
+     * color of its own does the slide's own selection state show through.
      *
-     * @param isGlissando whether the slide is a {@link StaffElement.Glissando}; a glissando
-     *               has a target note, so the implied target-note rule must only
-     *               apply to it (otherwise selecting the element after a fall's host note would
-     *               wrongly highlight the fall).
+     * @param note      the note the slide hangs off, which is what a click on the slide selects
+     * @param noteIndex that note's index on the line
      */
     Color determineSlideColor(
+        StaffElement note,
         int noteIndex,
-        boolean isGlissando,
         LineInvariants invariants
     ) {
-        var lineIndex = invariants.getLineIndex();
         var color = invariants.getElementColor(noteIndex);
 
         if (color != Color.BLACK) {
             return color;
         }
 
-        var selectionProvider = invariants.getSelectionProvider();
-
-        if (selectionProvider == null) {
-            return Color.BLACK;
-        }
-
-        // Standalone slide selection
-        if (selectionProvider.isSlideSelected(noteIndex, lineIndex)) {
-            return invariants.getSelectionColor();
-        }
-
-        // Implied by target note selection — only a connecting glissando has a target note.
-        if (isGlissando && selectionProvider.isElementSelected(noteIndex + 1, lineIndex)) {
-            return invariants.getSelectionColor();
-        }
-
-        return Color.BLACK;
+        return invariants.colorFor(new HitTarget.Slide(note), noteIndex);
     }
 
     /**
@@ -276,13 +213,11 @@ public final class SlideRenderer {
             return;
         }
 
-        var note = line.getElement(sourceIndex);
         var layoutResult = invariants.getLayoutResult();
-        var middleLineYSs = invariants.getMiddleLineYSs();
-        var src = resolveNoteContext(note, sourceIndex, line, layoutResult, middleLineYSs);
-        var tgt = resolveTargetContext(sourceIndex, line, layoutResult, middleLineYSs);
+        var src = noteContextSs(line.getElement(sourceIndex), sourceIndex, line, layoutResult, NO_SHIFT_SS);
+        var tgt = targetContextSs(sourceIndex, line, layoutResult, NO_SHIFT_SS);
 
-        render(g2, src, tgt, null, g2.getColor());
+        drawGlissandoIfDrawable(g2, src, tgt, invariants.getMiddleLineYSs());
     }
 
     /**
@@ -313,23 +248,22 @@ public final class SlideRenderer {
             return;
         }
 
-        var middleLineYSs = invariants.getMiddleLineYSs();
-        var src = resolveNoteContext(
+        var src = noteContextSs(
             line.getElement(sourceIndex), sourceIndex, line,
-            invariants.getLayoutResult(), middleLineYSs
+            invariants.getLayoutResult(), NO_SHIFT_SS
         );
 
         // A preview element is not on the line, so no beam can span it.
-        var tgt = noteContextAt(previewElement, previewElementXSs, false, middleLineYSs);
+        var tgt = SlideGeometry.noteContextAt(previewElement, previewElementXSs, false, LAYOUT_MIDLINE_Y_SS);
 
-        render(g2, src, tgt, null, g2.getColor());
+        drawGlissandoIfDrawable(g2, src, tgt, invariants.getMiddleLineYSs());
     }
 
     /**
      * Renders a preview fall glyph trailing the source note.
      * <p>
      * Used when the slide tool is active and the mouse hovers over the fall zone. No notehead is
-     * shown and nothing is cached — only the glyph preview. A fall has no target note, so unlike
+     * shown and nothing is stored — only the glyph preview. A fall has no target note, so unlike
      * {@link #renderPreviewGlissando} this never resolves the following element.
      *
      * @param g2          Graphics context (staff-space coordinate system)
@@ -347,264 +281,199 @@ public final class SlideRenderer {
             return;
         }
 
-        var note = line.getElement(sourceIndex);
-        var src = resolveNoteContext(
-            note, sourceIndex, line, invariants.getLayoutResult(), invariants.getMiddleLineYSs());
+        var src = noteContextSs(
+            line.getElement(sourceIndex), sourceIndex, line,
+            invariants.getLayoutResult(), NO_SHIFT_SS
+        );
 
-        drawFallGlyph(g2, src, g2.getColor());
+        drawFallGlyph(
+            g2, SlideGeometry.computeFallBoundsSs(src), invariants.getMiddleLineYSs(), g2.getColor());
+    }
+
+    // ==========================================================================
+    // Geometry Lookup
+    // ==========================================================================
+
+    /**
+     * Returns the fall glyph's drawn rect in layout space, or null when the layout holds none for
+     * this note.
+     */
+    private static Rectangle2D.@Nullable Double fallBoundsSs(
+        StaffElement note, int noteIndex, LayoutResult layoutResult, ElementFrame frame
+    ) {
+        var slideLayout = layoutResult.getSlideLayout(note);
+
+        if (slideLayout == null) {
+            return null;
+        }
+
+        var boundsSs = slideLayout.fallBounds();
+
+        if (boundsSs == null) {
+            return null;
+        }
+
+        var shiftSs = previewShiftSs(noteIndex, frame);
+
+        if (shiftSs == NO_SHIFT_SS) {
+            return boundsSs;
+        }
+
+        // The grace-note insert preview displaces the host note without relaying the line out,
+        // so the fall travels with it.
+        return new Rectangle2D.Double(
+            boundsSs.x + shiftSs, boundsSs.y, boundsSs.width, boundsSs.height);
     }
 
     /**
-     * Hit-tests all slides in a line against a click point in staff-space coordinates.
-     * Uses cached geometry from the most recent render pass: a fall is tested against its
-     * axis-aligned glyph rect, a connecting glissando against its rotated drawn line.
+     * Returns the glissando's drawn endpoints in layout space, or null when it is too short to
+     * draw or has no following note.
      * <p>
-     * This answers only the geometric question. Whether a hit slide is selectable — grace
-     * slides are not — is the selection layer's call, so this reports the owner either way.
-     *
-     * @param clickXSs click X in staff spaces
-     * @param clickYSs click Y in staff spaces
-     * @param line     the line to test
-     * @return the note index of the hit slide's owner, or -1 if no hit
+     * Normally these come straight from the layout. During the grace-note insert preview they are
+     * recomputed instead: the preview displaces elements from its insertion index onward without
+     * relaying the line out, and that index can fall between a glissando's two notes, which
+     * stretches the line rather than translating it.
      */
-    public int hitTestSlide(double clickXSs, double clickYSs, Line line) {
-        var halfHitSs = ScaleContext.pxToSs(HIT_THICKNESS_PX) / 2.0;
-
-        for (var i = 0; i < line.effectiveElementCount(); i++) {
-            var slide = line.getElement(i).getSlide();
-
-            if (slide instanceof StaffElement.Fall fall) {
-                var bounds = fall.cachedHitBounds;
-
-                if (bounds != null && bounds.contains(clickXSs, clickYSs)) {
-                    return i;
-                }
-
-                continue;
-            }
-
-            if (!(slide instanceof StaffElement.Glissando glissando) || !glissando.hasCachedGeometry) {
-                continue;
-            }
-
-            var dx = clickXSs - glissando.cachedStartX;
-            var dy = clickYSs - glissando.cachedStartY;
-            var localX = dx * glissando.cachedCos + dy * glissando.cachedSin;
-            var localY = -dx * glissando.cachedSin + dy * glissando.cachedCos;
-
-            if (localX >= 0 && localX <= glissando.cachedLength && Math.abs(localY) <= halfHitSs) {
-                return i;
-            }
+    private static SlideGeometry.@Nullable Endpoints glissandoEndpointsSs(
+        StaffElement note, int noteIndex, Line line, LayoutResult layoutResult, ElementFrame frame
+    ) {
+        if (!frame.hasPreviewShift()) {
+            var slideLayout = layoutResult.getSlideLayout(note);
+            return slideLayout != null ? slideLayout.glissando() : null;
         }
 
-        return -1;
+        return SlideGeometry.computeEndpoints(
+            noteContextSs(note, noteIndex, line, layoutResult, previewShiftSs(noteIndex, frame)),
+            targetContextSs(noteIndex, line, layoutResult, previewShiftSs(noteIndex + 1, frame))
+        );
     }
 
-    // ==========================================================================
-    // Endpoint Computation and Rendering
-    // ==========================================================================
-
-    /**
-     * Resolved geometry for a single note in layout space: notehead-center Y, the stem-full
-     * column right edge (the fall anchor), and the stem-free glissando attachment extents.
-     */
-    record NoteContext(
-        StaffElement note,
-        double cySs,
-        double columnRightXSs,
-        double glissLeftXSs,
-        double glissRightXSs
-    ) {
-
-        /**
-         * Returns a copy shifted right by {@code shiftSs} along X: the fall anchor and both
-         * glissando attach extents are translated, leaving Y intact.
-         */
-        NoteContext shiftedX(double shiftSs) {
-            return new NoteContext(
-                note,
-                cySs,
-                columnRightXSs + shiftSs,
-                glissLeftXSs + shiftSs,
-                glissRightXSs + shiftSs
-            );
-        }
+    /** Returns the grace-note insert preview's displacement for the element at {@code index}. */
+    private static double previewShiftSs(int index, ElementFrame frame) {
+        return frame.hasPreviewShift() && index >= frame.previewShiftFromIndex()
+            ? frame.previewShiftSs()
+            : NO_SHIFT_SS;
     }
 
     /**
-     * Immutable record holding the computed slide endpoint positions in layout space,
-     * plus the derived angle and length so callers need not recompute them.
+     * Builds the geometry context, in layout space, for the element at {@code elementIndex},
+     * displaced by {@code shiftSs} from where the layout put it.
      */
-    record Endpoints(
-        double startXSs, double startYSs, double endXSs, double endYSs,
-        double angle, double length
-    ) {}
-
-    /**
-     * Resolves the geometry context for a note at the given index: notehead-center Y, the
-     * stem-full column right edge (fall anchor), and the stem-free glissando attach extents,
-     * all translated into layout space.
-     */
-    static NoteContext resolveNoteContext(
-        StaffElement note, int noteIndex, Line line,
-        LayoutResult layoutResult, double middleLineYSs
+    private static SlideGeometry.NoteContext noteContextSs(
+        StaffElement element, int elementIndex, Line line, LayoutResult layoutResult, double shiftSs
     ) {
-        return noteContextAt(
-            note,
-            layoutResult.getElementXSs(note),
-            line.findBeamAt(noteIndex) != null,
-            middleLineYSs
+        return SlideGeometry.noteContextAt(
+            element,
+            layoutResult.getElementXSs(element) + shiftSs,
+            line.findBeamAt(elementIndex) != null,
+            LAYOUT_MIDLINE_Y_SS
         );
     }
 
     /**
-     * Resolves the geometry context for a note at an explicitly given origin X, for a note the
-     * layout cannot be asked about because it is not on the line — the hover preview element.
+     * Builds the target context for a connecting glissando — the element after
+     * {@code sourceIndex} — or returns null when there is nothing to connect to.
+     * <p>
+     * A non-note follower (a barline at the line end, say) has no notehead geometry to attach to,
+     * so it counts as no follower at all, the same rule the layout pass applies.
      */
-    static NoteContext noteContextAt(
-        StaffElement note, double elementXSs, boolean beamed, double middleLineYSs
+    private static SlideGeometry.@Nullable NoteContext targetContextSs(
+        int sourceIndex, Line line, LayoutResult layoutResult, double shiftSs
     ) {
-        var cy = RenderingUtils.noteStaffPositionToCoordinateSs(note.getStaffPosition(), middleLineYSs);
+        var targetIndex = sourceIndex + 1;
 
-        // Compute the stem-free attach extent once and widen it to the stem-full extent for the
-        // fall anchor, rather than recomputing the notehead/dots/accidental geometry twice.
-        var attachExtent = NoteColumnGeometry.glissandoAttachExtentSs(note, beamed);
-        var columnRightXSs = elementXSs + NoteColumnGeometry.extentSs(note, attachExtent).rightSs();
-        var glissLeftXSs = elementXSs + attachExtent.leftSs();
-        var glissRightXSs = elementXSs + attachExtent.rightSs();
+        if (targetIndex >= line.elementCount()) {
+            return null;
+        }
 
-        return new NoteContext(note, cy, columnRightXSs, glissLeftXSs, glissRightXSs);
+        var target = line.getElement(targetIndex);
+
+        if (!target.getType().isNote()) {
+            return null;
+        }
+
+        return noteContextSs(target, targetIndex, line, layoutResult, shiftSs);
     }
 
-    /**
-     * Resolves the target note context for a connecting glissando, or returns null
-     * if no next note exists.
-     */
-    @Nullable
-    private NoteContext resolveTargetContext(
-        int sourceIndex, Line line,
-        LayoutResult layoutResult, double middleLineYSs
-    ) {
-        if (sourceIndex + 1 >= line.elementCount()) {
-            return null;
-        }
-
-        var nextElement = line.getElement(sourceIndex + 1);
-
-        return resolveNoteContext(nextElement, sourceIndex + 1, line, layoutResult, middleLineYSs);
-    }
+    // ==========================================================================
+    // Drawing
+    // ==========================================================================
 
     /**
-     * Computes the slide start/end positions in layout space (staff-space coordinates).
-     * Returns null if the slide is too short to render.
-     * <p>
-     * Both render() and the public endpoint methods delegate to this.
-     * <p>
-     * The attachment points are the stem-free column extents — the leading note's right
-     * ({@link NoteContext#glissRightXSs}) and the trailing note's left
-     * ({@link NoteContext#glissLeftXSs}) — each at its own notehead-center Y. The drawn line
-     * is a sub-segment of the attach-to-attach ray, trimmed by
-     * {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS} <em>along the line direction</em> at each
-     * end. Because the gap is measured along the line, its horizontal component is
-     * {@code gap·cosθ}, so the line clears the noteheads by a constant distance regardless of
-     * slope. The slide is rejected when the attach length leaves no room for both gaps
-     * ({@code len ≤ 2·gap}) or when the drawn length falls below {@link #MIN_RECT_LENGTH_SS}.
-     *
-     * @param src Source note context
-     * @param tgt Target note context, or null when there is no following note to connect to
-     * @return the slide endpoints, or null if the slide cannot render
+     * Draws the glissando between {@code src} and {@code tgt}, or nothing when the two are too
+     * close together to leave a drawable line. Used by the preview renders, which have no stored
+     * geometry to read.
      */
-    static SlideRenderer.@Nullable Endpoints computeEndpoints(
-        NoteContext src, @Nullable NoteContext tgt
-    ) {
-        // A connecting glissando requires a target note; without one there is nothing to draw.
-        if (tgt == null) {
-            return null;
-        }
-
-        // Attachment points: stem-free extents, each at its own notehead-center Y.
-        var attachStartX = src.glissRightXSs();
-        var attachStartY = src.cySs();
-        var attachEndX = tgt.glissLeftXSs();
-        var attachEndY = tgt.cySs();
-
-        var dx = attachEndX - attachStartX;
-        var dy = attachEndY - attachStartY;
-        var attachLength = Math.hypot(dx, dy);
-
-        // Trim a constant gap off each end along the line direction; both gaps together must
-        // leave drawable length.
-        var gap = NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
-
-        if (attachLength <= 2 * gap) {
-            return null;
-        }
-
-        var unitX = dx / attachLength;
-        var unitY = dy / attachLength;
-
-        var startX = attachStartX + unitX * gap;
-        var startY = attachStartY + unitY * gap;
-        var endX = attachEndX - unitX * gap;
-        var endY = attachEndY - unitY * gap;
-
-        var length = attachLength - 2 * gap;
-
-        if (length < MIN_RECT_LENGTH_SS) {
-            return null;
-        }
-
-        var angle = Math.atan2(dy, dx);
-
-        return new Endpoints(startX, startY, endX, endY, angle, length);
-    }
-
-    /**
-     * Renders a filled rectangle between two note columns.
-     * <p>
-     * For connecting glissandos, the shape spans the stem-free attach extents of the two notes
-     * (source right, target left), trimmed by {@link NoteGeometry#GLISSANDO_DRAWN_GAP_SS} along the
-     * line direction at each end. See {@link #computeEndpoints} for the endpoint geometry.
-     *
-     * @param g2           Graphics context (staff-space coordinate system)
-     * @param src          Source note context
-     * @param tgt          Target note context, or null when there is no following note
-     * @param glissando    Glissando whose cached geometry is populated for
-     *                     hit-testing; null for preview renders
-     * @param color        Fill color for the glissando rectangle
-     */
-    private void render(
+    private void drawGlissandoIfDrawable(
         Graphics2D g2,
-        NoteContext src, @Nullable NoteContext tgt,
-        StaffElement.@Nullable Glissando glissando,
+        SlideGeometry.NoteContext src,
+        SlideGeometry.@Nullable NoteContext tgt,
+        double middleLineYSs
+    ) {
+        var endpoints = SlideGeometry.computeEndpoints(src, tgt);
+
+        if (endpoints != null) {
+            drawGlissando(g2, endpoints, middleLineYSs, g2.getColor());
+        }
+    }
+
+    /**
+     * Draws a rounded line between the glissando's endpoints.
+     * <p>
+     * The endpoints arrive in layout space (Y relative to the staff midline) and are drawn in
+     * component space, so every Y crosses through
+     * {@link RenderingUtils#layoutYToComponentYSs(double, double)}.
+     *
+     * @param g2            Graphics context (staff-space coordinate system)
+     * @param endpoints     the drawn segment's endpoints in layout space
+     * @param middleLineYSs the line's middle-staff-line Y in component space
+     * @param color         Fill color for the glissando rectangle
+     */
+    private void drawGlissando(
+        Graphics2D g2,
+        SlideGeometry.Endpoints endpoints,
+        double middleLineYSs,
         Color color
     ) {
-        var endpoints = computeEndpoints(src, tgt);
-
-        if (endpoints == null) {
-            return;
-        }
-
-        var length = endpoints.length();
-
-        if (glissando != null) {
-            glissando.cachedStartX = endpoints.startXSs();
-            glissando.cachedStartY = endpoints.startYSs();
-            glissando.cachedAngle = endpoints.angle();
-            glissando.cachedCos = Math.cos(endpoints.angle());
-            glissando.cachedSin = Math.sin(endpoints.angle());
-            glissando.cachedLength = length;
-            glissando.hasCachedGeometry = true;
-        }
-
-        var thicknessSs = LineThickness.GLISSANDO_SS;
-
         try (var ignored = GraphicsState.save(g2, COLOR)) {
             g2.setColor(color);
             GraphicUtils.drawRoundedLine(g2,
-                endpoints.startXSs(), endpoints.startYSs(),
-                endpoints.endXSs(), endpoints.endYSs(),
-                thicknessSs);
+                endpoints.startXSs(),
+                RenderingUtils.layoutYToComponentYSs(endpoints.startYSs(), middleLineYSs),
+                endpoints.endXSs(),
+                RenderingUtils.layoutYToComponentYSs(endpoints.endYSs(), middleLineYSs),
+                LineThickness.GLISSANDO_SS);
+        }
+    }
+
+    /**
+     * Draws the {@code brassFallLipShort} glyph so that its ink lands on {@code boundsSs}, which
+     * sits {@link NoteGeometry#FALL_GAP_SS} past the host note's column right edge at the note's
+     * notehead-center Y.
+     * <p>
+     * {@code boundsSs} is the glyph's bounding box translated by the {@code drawString} anchor, so
+     * subtracting the box's own offsets recovers that anchor exactly — the drawn glyph and the
+     * rect the hit test uses cannot drift apart.
+     *
+     * @param g2            Graphics context (staff-space coordinate system)
+     * @param boundsSs      the glyph's drawn rect in layout space
+     * @param middleLineYSs the line's middle-staff-line Y in component space
+     * @param color         the glyph color
+     */
+    private void drawFallGlyph(
+        Graphics2D g2,
+        Rectangle2D boundsSs,
+        double middleLineYSs,
+        Color color
+    ) {
+        var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
+        var glyphXSs = boundsSs.getX() - bbox.left();
+        var glyphYSs = RenderingUtils.layoutYToComponentYSs(
+            boundsSs.getY() - bbox.top(), middleLineYSs);
+
+        try (var ignored = GraphicsState.save(g2, COLOR)) {
+            g2.setColor(color);
+            RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.BRASS_FALL_LIP_SHORT, glyphXSs, glyphYSs, true);
         }
     }
 

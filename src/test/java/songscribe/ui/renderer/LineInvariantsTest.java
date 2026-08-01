@@ -26,18 +26,29 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
 import module java.desktop;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Articulation;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.Beam;
+import songscribe.dom.Crescendo;
 import songscribe.dom.ElementLocation;
 import songscribe.dom.ElementType;
+import songscribe.dom.Ending;
+import songscribe.dom.FermataAttachment;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.Tie;
+import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.component.ScoreView;
@@ -50,6 +61,11 @@ class LineInvariantsTest extends UnitTest {
     private static final Font LYRICS_FONT = new Font(Font.MONOSPACED, Font.PLAIN, FONT_SIZE);
     private static final String BUILD_VALIDATION_MESSAGE =
         "LineInvariants requires layoutResult and lyricRenderMetrics to be set";
+
+    /** Three notes in the time of two, undotted — the tuplet in the variant table. */
+    private static final int TRIPLET_GRADE = 3;
+    private static final int TRIPLET_NORMAL_NOTES = 2;
+    private static final int NO_DOTS = 0;
 
     /**
      * A builder seeded with the required layout fields (set to minimal values that the
@@ -127,10 +143,13 @@ class LineInvariantsTest extends UnitTest {
     // Element is selected → selectionColor
     @Test
     void testSelectedElementReturnsSelectionColor() {
+        var line = lineWith(ElementType.CROTCHET);
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isElementSelected(0, 0)).thenReturn(true);
+        when(selectionProvider.isSelected(new HitTarget.Element(line.getElement(0)), 0))
+            .thenReturn(true);
 
         var invariants = seededBuilder()
+            .setCurrentLine(line)
             .setSelectionProvider(selectionProvider)
             .setSelectionColor(Color.RED)
             .build();
@@ -173,6 +192,168 @@ class LineInvariantsTest extends UnitTest {
             assertThat(invariants.getElementColor(0))
                 .isEqualTo(LineInvariants.REPLACED_ELEMENT_COLOR);
         }
+    }
+
+    // ======================================================================
+    // colorFor(HitTarget, int) — the target-keyed cascade
+    // ======================================================================
+
+    /**
+     * One instance of every {@link HitTarget} variant, all hanging off the same two-note line.
+     * The list is exhaustive by construction: adding a variant to the sealed interface without
+     * adding it here leaves the new kind untested, which is the failure this table guards.
+     */
+    private static List<HitTarget> everyTargetVariant() {
+        var line = detachedLine();
+        line.addElement(ElementType.QUAVER.newInstance());
+        line.addElement(ElementType.QUAVER.newInstance());
+        var first = line.getElement(0);
+        var second = line.getElement(1);
+
+        var articulation = new Articulation(ArticulationType.STACCATO);
+        first.addArticulation(articulation);
+        var fermata = new FermataAttachment(first);
+        first.addAttachment(fermata);
+
+        return List.of(
+            new HitTarget.Element(first),
+            new HitTarget.Lyric(first, 0),
+            new HitTarget.Slide(first),
+            new HitTarget.GraceGlissando(first),
+            new HitTarget.Hairpin(new Crescendo(first, second)),
+            new HitTarget.Ending(new Ending(first, second)),
+            new HitTarget.StaffLine(),
+            new HitTarget.Articulation(articulation),
+            new HitTarget.Attachment(fermata),
+            new HitTarget.Accidental(first),
+            new HitTarget.Tie(new Tie(first, second)),
+            new HitTarget.Beam(new Beam(first, second)),
+            new HitTarget.Trill(new Trill(first, second)),
+            new HitTarget.Tuplet(new Tuplet(first, second, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES,
+                ElementType.CROTCHET, NO_DOTS))
+        );
+    }
+
+    @Test
+    void testColorForReturnsSelectionColorForEverySelectedVariant() {
+        for (var target : everyTargetVariant()) {
+            var selectionProvider = mock(LineComponent.SelectionProvider.class);
+            when(selectionProvider.isSelected(target, 0)).thenReturn(true);
+
+            var invariants = seededBuilder()
+                .setSelectionProvider(selectionProvider)
+                .build();
+
+            assertThat(invariants.colorFor(target, LineInvariants.NO_ELEMENT_INDEX))
+                .as("selected %s", target.getClass().getSimpleName())
+                .isEqualTo(ScoreView.getSelectionColor());
+        }
+    }
+
+    @Test
+    void testColorForReturnsBlackForEveryUnselectedVariant() {
+        var invariants = seededBuilder()
+            .setSelectionProvider(mock(LineComponent.SelectionProvider.class))
+            .build();
+
+        for (var target : everyTargetVariant()) {
+            assertThat(invariants.colorFor(target, LineInvariants.NO_ELEMENT_INDEX))
+                .as("unselected %s", target.getClass().getSimpleName())
+                .isEqualTo(Color.BLACK);
+        }
+    }
+
+    @Test
+    void testColorForWithoutSelectionProviderReturnsBlackForEveryVariant() {
+        var invariants = seededBuilder().build();
+
+        for (var target : everyTargetVariant()) {
+            assertThat(invariants.colorFor(target, LineInvariants.NO_ELEMENT_INDEX))
+                .as("%s with no selection provider", target.getClass().getSimpleName())
+                .isEqualTo(Color.BLACK);
+        }
+    }
+
+    // Precedence, spelled out for Element: playing beats selected.
+    @Test
+    void testColorForElementPlayingBeatsSelected() {
+        var line = tiedLine();
+        var target = new HitTarget.Element(line.getElement(0));
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(target, 0)).thenReturn(true);
+
+        var invariants = seededBuilder()
+            .setCurrentLine(line)
+            .setSelectionProvider(selectionProvider)
+            .setPlayingNoteIndex(0)
+            .build();
+
+        assertThat(invariants.colorFor(target, 0)).isEqualTo(ScoreView.getPlayingNoteColor());
+    }
+
+    // Precedence, spelled out for Element: selected beats hovered.
+    @Test
+    void testColorForElementSelectedBeatsHovered() {
+        var line = tiedLine();
+        var target = new HitTarget.Element(line.getElement(0));
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(target, 0)).thenReturn(true);
+
+        try (var previewMock = mockStatic(PreviewElementManager.class)) {
+            previewMock.when(PreviewElementManager::getHoveredElementLocation)
+                .thenReturn(new ElementLocation(0, 0));
+
+            var invariants = seededBuilder()
+                .setCurrentLine(line)
+                .setSelectionProvider(selectionProvider)
+                .build();
+
+            assertThat(invariants.colorFor(target, 0)).isEqualTo(ScoreView.getSelectionColor());
+        }
+    }
+
+    // The hovered highlight reaches Element and stops there.
+    @Test
+    void testColorForHoverAppliesToElementButNotToItsDecorations() {
+        var line = tiedLine();
+        var note = line.getElement(0);
+        var articulation = new Articulation(ArticulationType.STACCATO);
+        note.addArticulation(articulation);
+
+        try (var previewMock = mockStatic(PreviewElementManager.class)) {
+            previewMock.when(PreviewElementManager::getHoveredElementLocation)
+                .thenReturn(new ElementLocation(0, 0));
+
+            var invariants = seededBuilder()
+                .setCurrentLine(line)
+                .build();
+
+            assertThat(invariants.colorFor(new HitTarget.Element(note), 0))
+                .isEqualTo(LineInvariants.REPLACED_ELEMENT_COLOR);
+            assertThat(invariants.colorFor(new HitTarget.Articulation(articulation), 0))
+                .as("hover is a property of the note, not of what hangs off it")
+                .isEqualTo(Color.BLACK);
+        }
+    }
+
+    // Playback reaches Element and Accidental and stops there.
+    @Test
+    void testColorForPlaybackAppliesToTheNoteAndItsAccidentalOnly() {
+        var line = tiedLine();
+        var note = line.getElement(0);
+
+        var invariants = seededBuilder()
+            .setCurrentLine(line)
+            .setPlayingNoteIndex(0)
+            .build();
+
+        assertThat(invariants.colorFor(new HitTarget.Element(note), 0))
+            .isEqualTo(ScoreView.getPlayingNoteColor());
+        assertThat(invariants.colorFor(new HitTarget.Accidental(note), 0))
+            .isEqualTo(ScoreView.getPlayingNoteColor());
+        assertThat(invariants.colorFor(new HitTarget.Slide(note), 0))
+            .as("a slide does not take the playing note's color from colorFor")
+            .isEqualTo(Color.BLACK);
     }
 
     // Builder.build() — throws IllegalStateException when layoutResult is null
@@ -373,7 +554,7 @@ class LineInvariantsTest extends UnitTest {
         var element = line.getElement(0);
 
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(true);
+        when(selectionProvider.isSelected(new HitTarget.Lyric(element, 1), 0)).thenReturn(true);
 
         var invariants = seededBuilder()
             .setCurrentLine(line)
@@ -482,7 +663,7 @@ class LineInvariantsTest extends UnitTest {
         var element = line.getElement(0);
 
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(false);
+        when(selectionProvider.isSelected(new HitTarget.Lyric(element, 1), 0)).thenReturn(false);
 
         var invariants = seededBuilder()
             .setCurrentLine(line)

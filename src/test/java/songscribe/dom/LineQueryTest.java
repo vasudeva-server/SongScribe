@@ -346,4 +346,103 @@ class LineQueryTest extends UnitTest {
                 .isFalse();
         }
     }
+
+    // -----------------------------------------------------------------------
+    // isSamePitchAsFollower — the one definition of the span a glissando may not cover
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class IsSamePitchAsFollower {
+
+        private static final int A_STAFF_POSITION = 2;
+        private static final int ANOTHER_STAFF_POSITION = 5;
+
+        /** Builds a line from the given element types, each at the paired staff position. */
+        private static Line lineOf(ElementType[] types, int[] staffPositions) {
+            var song = new Song();
+            var line = song.getLine(0);
+
+            song.withoutMutationTracking(() -> {
+                for (var i = 0; i < types.length; i++) {
+                    var element = types[i].newInstance();
+                    element.setStaffPosition(staffPositions[i]);
+                    line.addElement(element);
+                }
+            });
+
+            return line;
+        }
+
+        @Test
+        void testTwoNotesAtTheSameStaffPositionMatch() {
+            var line = lineOf(
+                new ElementType[] {ElementType.CROTCHET, ElementType.CROTCHET},
+                new int[] {A_STAFF_POSITION, A_STAFF_POSITION});
+
+            assertThat(line.isSamePitchAsFollower(0)).isTrue();
+        }
+
+        @Test
+        void testTwoNotesAtDifferentStaffPositionsDoNot() {
+            var line = lineOf(
+                new ElementType[] {ElementType.CROTCHET, ElementType.CROTCHET},
+                new int[] {A_STAFF_POSITION, ANOTHER_STAFF_POSITION});
+
+            assertThat(line.isSamePitchAsFollower(0)).isFalse();
+        }
+
+        @Test
+        void testSameStaffPositionButDifferentAccidentalDoesNotMatch() {
+            // Pitch, not staff position, is the question — an accidental separates the two.
+            var line = lineOf(
+                new ElementType[] {ElementType.CROTCHET, ElementType.CROTCHET},
+                new int[] {A_STAFF_POSITION, A_STAFF_POSITION});
+            line.getElement(1).setAccidental(StaffElement.Accidental.SHARP);
+
+            assertThat(line.isSamePitchAsFollower(0))
+                .as("the sharp puts the two notes a semitone apart")
+                .isFalse();
+        }
+
+        @Test
+        void testAGraceNoteCountsAsANote() {
+            var line = lineOf(
+                new ElementType[] {ElementType.GRACE_QUAVER, ElementType.CROTCHET},
+                new int[] {A_STAFF_POSITION, A_STAFF_POSITION});
+
+            assertThat(line.isSamePitchAsFollower(0))
+                .as("a grace note carries a pitch like any other note")
+                .isTrue();
+        }
+
+        @Test
+        void testANonNoteFollowerNeverMatches() {
+            var line = lineOf(
+                new ElementType[] {ElementType.CROTCHET, ElementType.BREATH_MARK},
+                new int[] {A_STAFF_POSITION, A_STAFF_POSITION});
+
+            assertThat(line.isSamePitchAsFollower(0))
+                .as("a breath mark sounds no pitch, so there is nothing to match")
+                .isFalse();
+        }
+
+        @Test
+        void testTheLastElementHasNoFollower() {
+            var line = lineOf(
+                new ElementType[] {ElementType.CROTCHET, ElementType.CROTCHET},
+                new int[] {A_STAFF_POSITION, A_STAFF_POSITION});
+
+            assertThat(line.isSamePitchAsFollower(line.elementCount() - 1)).isFalse();
+        }
+
+        @Test
+        void testANegativeIndexDoesNotMatch() {
+            var line = lineOf(
+                new ElementType[] {ElementType.CROTCHET, ElementType.CROTCHET},
+                new int[] {A_STAFF_POSITION, A_STAFF_POSITION});
+
+            assertThat(line.isSamePitchAsFollower(-1)).isFalse();
+        }
+    }
 }

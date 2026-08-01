@@ -89,7 +89,7 @@ import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.ui.selection.SelectedDecoration;
+import songscribe.hit.HitTarget;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.dom.EndingValidationResult;
 import songscribe.ui.selection.TupletToggleInfo;
@@ -211,9 +211,7 @@ public final class ScoreViewController {
 
     @Handler
     public void handleToggleBeam(ToggleBeamCommand message) {
-        var selection = selectionCoordinator.getActiveSelection();
-
-        if (selection == null) {
+        if (selectionCoordinator.getRange() == null) {
             return;
         }
 
@@ -381,11 +379,7 @@ public final class ScoreViewController {
         // program order rather than by another priority constant keeps the two from
         // drifting apart. The forward delete path has no need of this — it clears the
         // selection itself before shrinking the line.
-        var selectionState = selectionCoordinator.getActiveSelection();
-
-        if (selectionState != null) {
-            selectionState.revalidateElementSelection();
-        }
+        selectionCoordinator.revalidateElementSelection();
 
         warmTupletCache();
 
@@ -536,15 +530,15 @@ public final class ScoreViewController {
     }
 
     private void handleCut() {
-        var state = selectionCoordinator.getActiveSelection();
+        var range = selectionCoordinator.getRange();
 
-        if (state == null || !state.hasElementSelection()) {
+        if (range == null) {
             return;
         }
 
-        var line = state.getLine();
-        var begin = state.getSelectionBegin();
-        var end = state.getSelectionEnd();
+        var line = range.line();
+        var begin = range.begin();
+        var end = range.end();
 
         // Confirm before discarding an ending invalidated by the deletion, and do
         // it first: declining must leave both the clipboard and the score untouched.
@@ -582,12 +576,11 @@ public final class ScoreViewController {
     }
 
     void handleCopy() {
-        var state = selectionCoordinator.getActiveSelection();
+        var range = selectionCoordinator.getRange();
 
-        if (state != null && state.hasElementSelection()) {
-            var line = state.getLine();
+        if (range != null) {
             clipboardManager.setFragment(
-                Fragment.capture(line, state.getSelectionBegin(), state.getSelectionEnd())
+                Fragment.capture(range.line(), range.begin(), range.end())
             );
             score.deselect();
         }
@@ -595,13 +588,10 @@ public final class ScoreViewController {
 
     void handleDelete() {
         var song = score.getSong();
-        var lyricSelection = selectionCoordinator.getLyricSelection();
 
-        if (lyricSelection != null) {
-            var element = lyricSelection.element();
+        if (selectionCoordinator.getSelectedTarget() instanceof HitTarget.Lyric(var element, var verse)) {
             var line = element.getLine();
             var index = line.getElementIndex(element);
-            var verse = lyricSelection.verse();
 
             if (index >= 0) {
                 song.withModification(Strings.get(Strings.ACTION_EDIT_OP_DELETE_LYRIC), () -> {
@@ -612,19 +602,26 @@ public final class ScoreViewController {
             }
 
             selectionCoordinator.restoreSelectedActionStates();
-            selectionCoordinator.clearLyricSelection();
+            selectionCoordinator.clearSelection();
             score.selectionChanged();
             score.repaint();
             return;
         }
 
-        var state = selectionCoordinator.getActiveSelection();
-        var decoration = state == null ? null : state.getSelectedDecoration();
+        var range = selectionCoordinator.getRange();
 
-        if (state != null && state.hasElementSelection()) {
-            var line = state.getLine();
-            var begin = state.getSelectionBegin();
-            var end = state.getSelectionEnd();
+        // hasDecorationSelection() rather than a null check on the target: a whole-line
+        // selection is also a target now, and it is deleted by the canDeleteLine branch
+        // below rather than by deleteSelectedTarget.
+        var selectedTarget = selectionCoordinator.hasDecorationSelection()
+            ? selectionCoordinator.getSelectedTarget()
+            : null;
+        var targetLine = selectionCoordinator.getActiveLine();
+
+        if (range != null) {
+            var line = range.line();
+            var begin = range.begin();
+            var end = range.end();
 
             if (line.hasEndingInvalidatedByDeletion(line.getElements(begin, end))) {
                 if (!EndingConfirms.confirmInvalidation(score)) {
@@ -652,8 +649,8 @@ public final class ScoreViewController {
             selectionCoordinator.clearSelection();
 
             deleteElementRange(line, begin, end, deleteLabel, decision);
-        } else if (state != null && decoration != null) {
-            deleteDecoration(state.getLine(), decoration);
+        } else if (selectedTarget != null && targetLine != null) {
+            deleteSelectedTarget(targetLine, selectedTarget);
         } else if (score.canDeleteLine()) {
             song.withModification(OpNames.deleteLineLabel(),
                 () -> song.removeLine(selectionCoordinator.getSelectedLine()));
@@ -667,18 +664,25 @@ public final class ScoreViewController {
     }
 
     /**
-     * Deletes the selected decoration from {@code line}, each variant in its own
+     * Deletes the selected target from {@code line}, each variant in its own
      * modification bracket so the undo step is named after what was deleted.
+     * <p>
+     * Only a slide, an ending and a hairpin can be deleted this way. The other
+     * {@link HitTarget} variants are selectable but have no delete behavior of their own —
+     * a note is deleted through the index range, and an articulation, tie, beam, trill or
+     * tuplet is removed by toggling it off — so they are deliberately a no-op rather than
+     * falling through to the whole-line delete.
      */
-    private void deleteDecoration(Line line, SelectedDecoration decoration) {
-        switch (decoration) {
-            case SelectedDecoration.SlideSelection(var elementIndex) -> {
-                var slideElement = line.getElement(elementIndex);
+    private void deleteSelectedTarget(Line line, HitTarget target) {
+        switch (target) {
+            case HitTarget.Slide(var slideElement) -> {
+                var elementIndex = line.getElementIndex(slideElement);
                 var slide = slideElement.getSlide();
 
-                // A slide selection is only ever made on an element that carries a slide;
-                // guard anyway so the @Nullable getSlide() result is not passed on unchecked.
-                if (slide != null) {
+                // A slide selection is only ever made on an element that carries a slide and
+                // is still on this line; guard anyway so neither the @Nullable getSlide()
+                // result nor a -1 index is passed on unchecked.
+                if (slide != null && elementIndex >= 0) {
                     // Capture before the removal: stripping the glissando un-pairs the grace
                     // note, so by the time the sync runs there is no pairing left to read.
                     var wasPairedGraceNote = line.isPairedGraceNote(elementIndex);
@@ -695,16 +699,20 @@ public final class ScoreViewController {
                 }
             }
 
-            case SelectedDecoration.EndingSelection(var ending) ->
+            case HitTarget.Ending(var ending) ->
                 line.withModification(OpNames.deleteEndingLabel(), () -> line.removeRangeElement(ending));
 
-            case SelectedDecoration.HairpinSelection(var hairpin) ->
+            case HitTarget.Hairpin(var hairpin) ->
                 line.withModification(OpNames.deleteHairpinLabel(hairpin), () -> {
                     switch (hairpin) {
                         case Crescendo crescendo -> line.removeCrescendo(crescendo);
                         case Diminuendo diminuendo -> line.removeDiminuendo(diminuendo);
                     }
                 });
+
+            default -> {
+                // Nothing to delete; see the method documentation.
+            }
         }
     }
 
@@ -1150,9 +1158,9 @@ public final class ScoreViewController {
             return;
         }
 
-        var state = selectionCoordinator.getActiveSelection();
+        var range = selectionCoordinator.getRange();
 
-        if (state == null || !state.hasElementSelection()) {
+        if (range == null) {
             // No selection: enter paste mode to place the fragment by clicking an
             // insertion point. The score already has focus (handlePasteboardOp
             // requires it) and the fragment is already known non-empty above.
@@ -1160,10 +1168,10 @@ public final class ScoreViewController {
             return;
         }
 
-        var line = state.getLine();
-        var begin = state.getSelectionBegin();
+        var line = range.line();
+        var begin = range.begin();
         var deleteRange = new InsertionSpacingCalculator.DeletedRange(
-            begin, line.effectiveDeleteEnd(state.getSelectionEnd()));
+            begin, line.effectiveDeleteEnd(range.end()));
 
         // A paste-replace deletes before it inserts, so it can discard an ending the
         // same way Delete and Cut can — confirm on the same terms. Declining leaves
@@ -1212,10 +1220,8 @@ public final class ScoreViewController {
      */
     @Handler
     public void handleSelectAllElements(SelectAllElementsCommand message) {
-        var state = selectionCoordinator.getActiveSelection();
-
-        if (state != null) {
-            state.selectAll();
+        if (selectionCoordinator.getActiveLine() != null) {
+            selectionCoordinator.selectAll();
             score.selectionChanged();
             score.repaint();
         }

@@ -1042,7 +1042,9 @@ public class MainFrame extends JFrame implements Printable {
         var song = scoreView.getSong();
 
         try {
-            if (SongFileWriter.write(song, scoreView, currentFile)) {
+            // scoreView is both the document fonts holder and the line layout provider: saved
+            // coordinates come from the live layouts the score is painted from.
+            if (SongFileWriter.write(song, scoreView, scoreView, currentFile)) {
                 song.setModified(false);
                 LOG.info("Saved: {}", currentFile.getName());
                 MessageCenter.post(new DocumentWasSavedNotification());

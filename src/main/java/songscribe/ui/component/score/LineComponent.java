@@ -37,7 +37,7 @@ import songscribe.ui.component.LyricTargetResolver;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.PasteModeManager;
-import songscribe.ui.hit.HitResult;
+import songscribe.hit.HitTarget;
 import songscribe.ui.component.ScoreView;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
@@ -47,7 +47,6 @@ import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.renderer.LineInvariants;
 import songscribe.util.GraphicsState;
 import songscribe.ui.playback.PlaybackController;
-import songscribe.ui.selection.LineSelectionState;
 import songscribe.error.RuntimeError;
 
 /**
@@ -72,43 +71,19 @@ public class LineComponent extends ScoreComponent
      * Allows LineComponent to check selection without coupling to ScoreView.
      */
     public interface SelectionProvider {
-        /**
-         * Returns whether the specified element is selected.
-         *
-         * @param elementIndex The element index within the line
-         * @param lineIndex    The line index
-         * @return true if the element is selected
-         */
-        boolean isElementSelected(int elementIndex, int lineIndex);
 
         /**
-         * Returns whether the staff line itself is selected (for deletion).
+         * Returns whether the given hit target is the current selection.
+         * <p>
+         * This is the whole interface: every kind a click can address asks the same
+         * question, in the same vocabulary, whether it is a note, a lyric syllable, an
+         * articulation or the staff line itself.
          *
+         * @param target    The thing a click would have selected
          * @param lineIndex The line index
-         * @return true if the staff line is selected
+         * @return true if that exact target is selected
          */
-        boolean isLineSelected(int lineIndex);
-
-        /**
-         * Returns whether the slide owned by the element at the given index
-         * is selected.
-         *
-         * @param elementIndex The element index within the line
-         * @param lineIndex    The line index
-         * @return true if the slide is selected
-         */
-        boolean isSlideSelected(int elementIndex, int lineIndex);
-
-        /**
-         * Returns whether the given line element is selected.
-         *
-         * @param element   The line element
-         * @param lineIndex The line index
-         * @return true if the element is selected
-         */
-        boolean isDecorationSelected(LineElement element, int lineIndex);
-
-        boolean isLyricSelected(StaffElement element, int verse, int lineIndex);
+        boolean isSelected(HitTarget target, int lineIndex);
     }
 
     // ==========================================================================
@@ -121,10 +96,6 @@ public class LineComponent extends ScoreComponent
 
     /** Index of this line within the song. */
     private int lineIndex;
-
-    /** Per-line selection state. */
-    @Nullable
-    private LineSelectionState lineSelectionState;
 
     /** Y coordinate of the middle staff line (B line) in staff-space units. */
     private double middleLineYSs;
@@ -211,15 +182,15 @@ public class LineComponent extends ScoreComponent
         this.line = line;
         this.lineIndex = lineIndex;
         setName(ComponentNames.line(lineIndex));
-        lineSelectionState = new LineSelectionState(line);
         layoutDirty = true;
         layoutResult = null;
         middleLineYSsValid = false;
 
-        // Register with coordinator if score is available
+        // Register with coordinator if score is available. The selection itself is the
+        // coordinator's and is untouched by this rebuild — all that is registered here is
+        // which line this index now holds.
         if (scoreView != null) {
-            var coordinator = scoreView.getSelectionCoordinator();
-            coordinator.registerLineState(lineIndex, lineSelectionState);
+            scoreView.getSelectionCoordinator().registerLine(lineIndex, line);
         }
 
         revalidate();
@@ -238,14 +209,6 @@ public class LineComponent extends ScoreComponent
      */
     public int getLineIndex() {
         return lineIndex;
-    }
-
-    /**
-     * Returns the per-line selection state.
-     */
-    @Nullable
-    public LineSelectionState getLineSelectionState() {
-        return lineSelectionState;
     }
 
     /**
@@ -323,10 +286,9 @@ public class LineComponent extends ScoreComponent
     public void setScoreView(ScoreView scoreView) {
         super.setScoreView(scoreView);
 
-        // Register LineSelectionState with coordinator when score is set
-        if (lineSelectionState != null) {
-            var coordinator = scoreView.getSelectionCoordinator();
-            coordinator.registerLineState(lineIndex, lineSelectionState);
+        // Register the line with the coordinator when the score arrives after setLine.
+        if (line != null) {
+            scoreView.getSelectionCoordinator().registerLine(lineIndex, line);
         }
     }
 
@@ -697,7 +659,8 @@ public class LineComponent extends ScoreComponent
         // so on a line whose content stays high, a preview for a low note would be drawn right on top
         // of the lyric text. Clearing it here means the staff positions a lyric box covers cannot be
         // clicked to insert a note — the accepted price of leaving lyric text clickable wherever it
-        // is drawn. Note that endings and hairpins take the opposite deal (see handleEditModePress).
+        // is drawn, and the reason a lyric is the one kind selectable in EDIT mode at all (see
+        // handleEditModePress).
         if (getScoreView().getMode() == Mode.EDIT
             && (selectionHandler.isWithinHeaderX(e.getPoint())
                 || selectionHandler.hitTestLyricViewPoint(e.getPoint()) != null)) {
@@ -818,7 +781,7 @@ public class LineComponent extends ScoreComponent
         // admits; only the cases it declines (a rest, say) still need the scan.
         var hitIndex = pressHitIndex >= 0
             ? pressHitIndex
-            : ElementHitTest.hitTestElement(this, getViewScale().toDocumentPoint(e.getPoint()));
+            : selectionHandler.hitTestElementIndex(e.getPoint());
 
         if (hitIndex == -1) {
             return false;
@@ -895,13 +858,13 @@ public class LineComponent extends ScoreComponent
 
         if (scoreView != null
             && scoreView.getMode() == Mode.EDIT
-            && (e.isAltDown() || pressHit instanceof HitResult.StaffLine)) {
+            && (e.isAltDown() || pressHit instanceof HitTarget.StaffLine)) {
             Actions.SELECT_MODE_ACTION.perform(this);
         }
 
-        // A lyric, ending or hairpin is selectable in EDIT mode too, in place and without switching
-        // modes. The mode is re-checked because an alt+click or a staff-line hit above may have just
-        // switched us to SELECT, where the selection handler below handles all of them along with
+        // A lyric is selectable in EDIT mode too, in place and without switching modes; nothing else
+        // is. The mode is re-checked because an alt+click or a staff-line hit above may have just
+        // switched us to SELECT, where the selection handler below handles lyrics along with
         // everything else.
         if (scoreView != null
             && scoreView.getMode() == Mode.EDIT

@@ -26,10 +26,10 @@ import static songscribe.util.GraphicsState.Property.FONT;
 import module java.desktop;
 
 import songscribe.dom.StaffElement;
-import songscribe.dom.Tempo;
 import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.hit.HitTarget;
 import songscribe.util.GraphicsState;
 
 /** Renders tempo change indicators (note = number format, e.g. "♩ = 120"). */
@@ -57,28 +57,34 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
             return;
         }
 
-        renderTempoChange(g2, attachment.getTempo(), element, invariants, frame);
+        renderTempoChange(g2, attachment, element, invariants, frame);
     }
 
-    /** Renders the song's initial tempo, stored separately from per-note tempo changes. */
-    public void renderInitialTempo(
-        Graphics2D g2,
-        StaffElement note,
-        Tempo tempo,
-        LineInvariants invariants,
-        ElementFrame frame
-    ) {
-        renderTempoChange(g2, tempo, note, invariants, frame);
-    }
-
+    /**
+     * Renders one tempo mark.
+     * <p>
+     * Every tempo mark on the page is a {@link TempoChangeAttachment}, including the song's
+     * initial tempo: {@code Line.attachInitialTempoIfNeeded} mirrors the song-level tempo onto
+     * the first element of the first line, and the tempo the user is offered when the first note
+     * is inserted is attached there the same way. So there is no unattached tempo to draw, and
+     * every tempo mark is addressable as a hit target.
+     */
     private void renderTempoChange(
         Graphics2D g2,
-        Tempo tempo,
+        TempoChangeAttachment attachment,
         StaffElement note,
         LineInvariants invariants,
         ElementFrame frame
     ) {
+        var tempo = attachment.getTempo();
         var setup = buildRenderSetup(note, TempoChangeAttachment.class, invariants, frame);
+
+        // A tempo change is selectable on its own. Its selection is folded into the color the
+        // setup already resolved rather than applied over it, so an unselected tempo mark still
+        // follows its owner note through playback, hover and range selection.
+        var color = RenderingUtils.decorationColor(
+            new HitTarget.Attachment(attachment), note, invariants, frame);
+
         var xSs = setup.decorationLayout().xSs();
         var textBaselineYSs = setup.ySs() + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
         var tempoBuilder = new StringBuilder(25);
@@ -92,12 +98,12 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
         tempoBuilder.append(tempo.getTempoDescription());
 
         if (showTempo) {
-            xSs = drawDurationEquals(g2, tempo.getTempoType(), xSs, setup.ySs(), setup.attrFont(), setup.color());
+            xSs = drawDurationEquals(g2, tempo.getTempoType(), xSs, setup.ySs(), setup.attrFont(), color);
         }
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(ScaleContext.scaleFont(setup.attrFont()));
-            g2.setColor(setup.color());
+            g2.setColor(color);
             g2.drawString(tempoBuilder.toString(), (float) xSs, (float) textBaselineYSs);
         }
     }

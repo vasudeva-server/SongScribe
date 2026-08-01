@@ -30,6 +30,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.hit.HitTarget;
 import songscribe.layout.BeamMath;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
@@ -112,7 +113,9 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
 
     /**
      * Returns the color to use for beam highlighting, or null if the beam should not be highlighted.
-     * A beam is highlighted when removing the highlighted note(s) would eliminate the beam
+     * <p>
+     * A directly selected beam always highlights. Failing that, the note-driven rule applies:
+     * the beam is highlighted when removing the highlighted note(s) would eliminate it
      * (fewer than 2 beamable notes remain). Selected notes use the selection color;
      * hovered notes use the replaced-element color (matching the hovered note itself).
      */
@@ -125,12 +128,24 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         var selectionProvider = invariants.getSelectionProvider();
         var line = invariants.requireCurrentLine();
         var lineIndex = invariants.getLineIndex();
+        var beam = line.findBeamAt(beginIndex);
+
+        if (beam != null) {
+            var beamColor = invariants.colorFor(
+                new HitTarget.Beam(beam), LineInvariants.NO_ELEMENT_INDEX);
+
+            if (beamColor != Color.BLACK) {
+                return beamColor;
+            }
+        }
+
         var anySelected = false;
         var anyHovered = false;
         var remainingBeamableNotes = 0;
 
         for (var i = beginIndex; i <= endIndex; i++) {
-            var isSelected = selectionProvider != null && selectionProvider.isElementSelected(i, lineIndex);
+            var isSelected = selectionProvider != null
+                && selectionProvider.isSelected(new HitTarget.Element(line.getElement(i)), lineIndex);
 
             if (isSelected) {
                 anySelected = true;

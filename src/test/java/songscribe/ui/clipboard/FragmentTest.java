@@ -44,7 +44,7 @@ import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 
 class FragmentTest extends UnitTest {
 

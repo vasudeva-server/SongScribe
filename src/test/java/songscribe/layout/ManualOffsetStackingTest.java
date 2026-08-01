@@ -33,18 +33,9 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.AnnotationAttachment;
-import songscribe.dom.Crescendo;
-import songscribe.dom.FermataAttachment;
-import songscribe.dom.TempoChangeAttachment;
-import songscribe.dom.Trill;
-import songscribe.dom.Tuplet;
+import songscribe.dom.*;
 import songscribe.font.DocumentFonts;
-import songscribe.dom.Song;
 
-import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
-import songscribe.dom.Tempo;
 import songscribe.layout.stacking.VerticalStackingCalculator;
 
 /**

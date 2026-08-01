@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.io.musicxml.MusicXmlWriter;
+import songscribe.layout.LineLayoutProvider;
 
 /**
  * Writes a {@link Song} to disk without requiring a {@code ScoreView}.
@@ -49,7 +50,24 @@ public final class SongFileWriter {
      * @return true on success, false if {@code pw} recorded an error
      */
     public static boolean write(Song song, DocumentFontsHolder fonts, PrintWriter pw) {
-        MusicXmlWriter.writeSong(song, fonts, pw);
+        return write(song, fonts, LineLayoutProvider.headless(song, fonts), pw);
+    }
+
+    /**
+     * Writes {@code song} through {@code pw}, taking its line geometry from
+     * {@code layoutProvider}, and reports whether the write succeeded. Does not
+     * close {@code pw} — the caller owns its lifecycle.
+     *
+     * @param song the song to write
+     * @param fonts the document fonts to write alongside the song
+     * @param layoutProvider supplies each line's layout, the source of the written
+     *        glissando coordinates
+     * @param pw the writer to write through
+     * @return true on success, false if {@code pw} recorded an error
+     */
+    public static boolean write(
+        Song song, DocumentFontsHolder fonts, LineLayoutProvider layoutProvider, PrintWriter pw) {
+        MusicXmlWriter.writeSong(song, fonts, layoutProvider, pw);
         pw.flush();
         return !pw.checkError();
     }
@@ -65,8 +83,28 @@ public final class SongFileWriter {
      * @throws IOException if the file cannot be opened for writing
      */
     public static boolean write(Song song, DocumentFontsHolder fonts, File file) throws IOException {
+        return write(song, fonts, LineLayoutProvider.headless(song, fonts), file);
+    }
+
+    /**
+     * Writes {@code song} to {@code file}, taking its line geometry from
+     * {@code layoutProvider} and opening and closing the underlying
+     * {@code PrintWriter}.
+     *
+     * @param song the song to write
+     * @param fonts the document fonts to write alongside the song
+     * @param layoutProvider supplies each line's layout, the source of the written
+     *        glissando coordinates
+     * @param file the file to write to
+     * @return true on success, false if the write recorded an error
+     * @throws IOException if the file cannot be opened for writing
+     */
+    public static boolean write(
+        Song song, DocumentFontsHolder fonts, LineLayoutProvider layoutProvider, File file)
+        throws IOException {
+
         try (var pw = new PrintWriter(file, StandardCharsets.UTF_8)) {
-            return write(song, fonts, pw);
+            return write(song, fonts, layoutProvider, pw);
         }
     }
 }

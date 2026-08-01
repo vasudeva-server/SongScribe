@@ -22,21 +22,21 @@ package songscribe.message.notification;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.hit.HitTarget;
 import songscribe.message.Message;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
-import songscribe.ui.selection.SelectionCoordinator.LyricSelection;
 
 public class MusicSelectionDidChangeNotification extends Message {
 
     private final int selectionSize;
     @Nullable
-    private final LyricSelection lyricSelection;
+    private final HitTarget selectedTarget;
     private final ScoreView scoreView;
 
     public MusicSelectionDidChangeNotification(ScoreView scoreView) {
         selectionSize = scoreView.getSelectionSize();
-        lyricSelection = scoreView.getSelectionCoordinator().getLyricSelection();
+        selectedTarget = scoreView.getSelectionCoordinator().getSelectedTarget();
         this.scoreView = scoreView;
     }
 
@@ -45,11 +45,15 @@ public class MusicSelectionDidChangeNotification extends Message {
     }
 
     public boolean hasLyricSelection() {
-        return lyricSelection != null;
+        return selectedTarget instanceof HitTarget.Lyric;
     }
 
-    public @Nullable LyricSelection getLyricSelection() {
-        return lyricSelection;
+    /**
+     * Returns the score's single selected target when the message was posted, or null if
+     * nothing was selected by identity.
+     */
+    public @Nullable HitTarget getSelectedTarget() {
+        return selectedTarget;
     }
 
     public ScoreView getScoreView() {

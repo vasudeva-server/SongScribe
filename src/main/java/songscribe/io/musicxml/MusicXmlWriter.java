@@ -35,6 +35,7 @@ import songscribe.dom.TempoChangeAttachment;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.io.XML;
 import songscribe.io.musicxml.MusicXmlSpanIndex.EndingMarker;
+import songscribe.layout.LineLayoutProvider;
 
 public final class MusicXmlWriter {
 
@@ -43,20 +44,22 @@ public final class MusicXmlWriter {
     /**
      * Writes {@code song} to {@code pw} as MusicXML, using {@code fonts} for the
      * document-level font roles. Uses the system-default {@link Clock} for the
-     * write-forward {@code <rights>} year and {@code <encoding-date>}.
+     * write-forward {@code <rights>} year and {@code <encoding-date>}, and lays the
+     * song out from scratch for the geometry the glissando coordinates come from.
      *
      * @param song  the song to serialize
      * @param fonts the document fonts to emit under {@code <defaults>}/{@code <credit>}
      * @param pw    the writer to emit the MusicXML document to
      */
     public static void writeSong(Song song, DocumentFontsHolder fonts, PrintWriter pw) {
-        writeSong(song, fonts, pw, Clock.systemDefaultZone());
+        writeSong(song, fonts, LineLayoutProvider.headless(song, fonts), pw, Clock.systemDefaultZone());
     }
 
     /**
      * Writes {@code song} to {@code pw} as MusicXML. The {@code clock} is
      * injectable so the write-forward {@code <rights>} year and
-     * {@code <encoding-date>} are deterministic under test.
+     * {@code <encoding-date>} are deterministic under test. Lays the song out from
+     * scratch for the geometry the glissando coordinates come from.
      *
      * @param song  the song to serialize
      * @param fonts the document fonts to emit under {@code <defaults>}/{@code <credit>}
@@ -64,6 +67,42 @@ public final class MusicXmlWriter {
      * @param clock the clock supplying the current date for write-forward fields
      */
     public static void writeSong(Song song, DocumentFontsHolder fonts, PrintWriter pw, Clock clock) {
+        writeSong(song, fonts, LineLayoutProvider.headless(song, fonts), pw, clock);
+    }
+
+    /**
+     * Writes {@code song} to {@code pw} as MusicXML, taking its line geometry from
+     * {@code layoutProvider}. Uses the system-default {@link Clock}.
+     *
+     * @param song           the song to serialize
+     * @param fonts          the document fonts to emit under {@code <defaults>}/{@code <credit>}
+     * @param layoutProvider supplies each line's layout, the source of the emitted glissando
+     *                       coordinates
+     * @param pw             the writer to emit the MusicXML document to
+     */
+    public static void writeSong(
+        Song song, DocumentFontsHolder fonts, LineLayoutProvider layoutProvider, PrintWriter pw) {
+        writeSong(song, fonts, layoutProvider, pw, Clock.systemDefaultZone());
+    }
+
+    /**
+     * Writes {@code song} to {@code pw} as MusicXML, taking its line geometry from
+     * {@code layoutProvider}. The {@code clock} is injectable so the write-forward
+     * {@code <rights>} year and {@code <encoding-date>} are deterministic under test.
+     *
+     * @param song           the song to serialize
+     * @param fonts          the document fonts to emit under {@code <defaults>}/{@code <credit>}
+     * @param layoutProvider supplies each line's layout, the source of the emitted glissando
+     *                       coordinates
+     * @param pw             the writer to emit the MusicXML document to
+     * @param clock          the clock supplying the current date for write-forward fields
+     */
+    public static void writeSong(
+        Song song,
+        DocumentFontsHolder fonts,
+        LineLayoutProvider layoutProvider,
+        PrintWriter pw,
+        Clock clock) {
         pw.println("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
 
         XML.resetIndent();
@@ -96,7 +135,7 @@ public final class MusicXmlWriter {
         if (song.lineCount() == 0) {
             writeEmptySongMeasure(song, pw);
         } else {
-            writeLineDrivenMeasures(song, pw);
+            writeLineDrivenMeasures(song, layoutProvider, pw);
         }
 
         XML.dedent();
@@ -121,8 +160,10 @@ public final class MusicXmlWriter {
      * {@code <measure>}s, segmented at every barline/repeat element and at
      * every line break.
      */
-    private static void writeLineDrivenMeasures(Song song, PrintWriter pw) {
+    private static void writeLineDrivenMeasures(
+        Song song, LineLayoutProvider layoutProvider, PrintWriter pw) {
         var measureNumber = 0;
+        var lineIndex = -1;
 
         // The key signature currently in effect. Measure 1 emits the song default
         // (see writeAttributes); each later line whose effective key differs from
@@ -137,10 +178,17 @@ public final class MusicXmlWriter {
         var firstSongElement = song.initialTempoAnchor();
 
         for (var line : song.getLines()) {
+            lineIndex++;
+
             // Glissandos are intra-line — they cannot span a system break.
             // Reset the pending-stop state at the start of each line so a
             // dangling glissando from a malformed song does not bleed across.
-            StaffElement.@Nullable Glissando pendingGlissando = null;
+            @Nullable StaffElement pendingGlissandoNote = null;
+
+            // Slide endpoints are the only geometry this writer emits, so a line with no
+            // glissando is never laid out — a layout costs real work and resolves the line's
+            // automatic stem directions as a side effect.
+            var lineLayout = hasGlissando(line) ? layoutProvider.layoutFor(line, lineIndex) : null;
 
             // Open the line-starting measure. Every such measure carries a system-
             // break marker so the reader has one uniform rule:
@@ -301,11 +349,11 @@ public final class MusicXmlWriter {
                         var nextIsBreathMark = nextElement != null && nextElement.getType().isBreathMark();
                         var ctx = new NoteWriteContext(
                             element, typeToken, nextIsBreathMark,
-                            pendingGlissando, markers.noteMarkers()
+                            pendingGlissandoNote, markers.noteMarkers(), lineLayout
                         );
                         MusicXmlNoteWriter.writeNote(pw, ctx);
                         // getGlissando() is null unless this note starts a glissando.
-                        pendingGlissando = element.getGlissando();
+                        pendingGlissandoNote = element.getGlissando() != null ? element : null;
 
                         // A note-terminated ending end (issue #306) has no barline
                         // element to host its <ending ... type="discontinue">. When
@@ -328,6 +376,17 @@ public final class MusicXmlWriter {
                 MusicXmlMeasureWriter.closeMeasure(pw);
             }
         }
+    }
+
+    /** Returns whether any element on {@code line} owns a connecting glissando. */
+    private static boolean hasGlissando(Line line) {
+        for (var element : line.getElements()) {
+            if (element.getGlissando() != null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

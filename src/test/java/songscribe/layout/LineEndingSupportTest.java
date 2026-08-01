@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Ending;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 

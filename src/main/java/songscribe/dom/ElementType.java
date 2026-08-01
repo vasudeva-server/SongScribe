@@ -63,7 +63,10 @@ public enum ElementType {
     REPEAT_LEFT("Repeat left", KeyEvent.VK_L, 0, 0, 0),
     REPEAT_RIGHT("Repeat right", KeyEvent.VK_R, 0, 0, 0),
     REPEAT_LEFT_RIGHT("Repeat left/right", 0, 0),
-    BREATH_MARK("Breath mark", 0, -7),
+    // The staff position must match where NoteRenderer.renderBreathMark() draws the glyph
+    // (half a staff space above the top staff line), since the click hit rect is derived
+    // from the staff position while the renderer places the glyph itself.
+    BREATH_MARK("Breath mark", 0, -5),
     SINGLE_BARLINE("Single barline", 0, 0),
     DOUBLE_BARLINE("Double barline", 0, 0),
     FINAL_DOUBLE_BARLINE("Final double barline", 0, 0),

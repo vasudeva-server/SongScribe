@@ -30,7 +30,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.BeatChangeAttachment;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Trill;

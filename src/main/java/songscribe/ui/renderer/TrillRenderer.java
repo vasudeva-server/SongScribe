@@ -32,7 +32,9 @@ import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.NoteGeometry;
 import songscribe.dom.Trill;
+import songscribe.hit.HitTarget;
 import songscribe.util.GraphicsState;
 
 /**
@@ -83,7 +85,7 @@ public final class TrillRenderer {
         Color color,
         LayoutResult layoutResult
     ) {
-        var trillXSs = RenderingUtils.centeredGlyphX(layoutXSs, anchor, 0, TRILL_ADVANCE_WIDTH_SS);
+        var trillXSs = Trill.glyphLeftXSs(layoutXSs, NoteGeometry.getNoteheadCenterXSs(anchor));
 
         if (endNote != null && endNote != anchor) {
             var endXSs = layoutResult.getElementXSs(endNote) + endNote.getType().getElementWidthSs();
@@ -147,7 +149,8 @@ public final class TrillRenderer {
                 continue;
             }
 
-            var color = RenderingUtils.getDecorationColor(anchor, invariants, frame);
+            var color = RenderingUtils.decorationColor(
+                new HitTarget.Trill(trill), anchor, invariants, frame);
             var layoutXSs = layout.xSs();
             var trillTopYSs = RenderingUtils.layoutYToComponentYSs(layout.ySs(), invariants);
 

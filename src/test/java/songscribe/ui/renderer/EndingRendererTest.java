@@ -25,9 +25,11 @@ import static org.assertj.core.api.Assertions.within;
 import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,9 +44,13 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.engraving.SMuFLConstants;
+import songscribe.hit.HitTarget;
 import songscribe.layout.ElementColumn;
-import songscribe.layout.Ending;
+import songscribe.layout.EndingBracketGeometry;
+import songscribe.dom.Ending;
 import songscribe.layout.LayoutResult;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineComponent;
 
 /**
  * Tests for {@link EndingRenderer#renderEndings} (the skip path when no DecorationLayout is
@@ -87,7 +93,7 @@ class EndingRendererTest extends UnitTest {
         line.addRangeElement(ending);
         // Exact geometry does not matter for these tests (only Y-translation is asserted),
         // so every element maps to an identical stub column with a note-head-width extent.
-        ending.computeBracketRanges(line, e -> new ElementColumn(
+        EndingBracketGeometry.computeBracketRanges(ending, line, e -> new ElementColumn(
             e, List.of(), 0.0, SMuFLConstants.NOTE_HEAD_WIDTH_SS,
             SMuFLConstants.NOTE_HEAD_WIDTH_SS, 0, 0, null, 0, false));
         return new LineWithEnding(line, ending);
@@ -157,6 +163,56 @@ class EndingRendererTest extends UnitTest {
         assertThat(placedShapes).isNotEmpty();
         var bracketBounds = placedShapes.getFirst().getBounds2D();
         assertThat(bracketBounds.getMinY()).isCloseTo(expectedTopYSs, within(TOLERANCE));
+    }
+
+    // ======================================================================
+    // renderEndings — selection color
+    // ======================================================================
+
+    /**
+     * Renders {@code ending} and returns the colors installed on the graphics context at each
+     * {@code draw} call — the color the bracket is painted in.
+     */
+    private static List<Color> drawColorsFor(Line line, Ending ending, boolean selected) {
+        var layoutResult = LayoutResult.builder()
+            .putDecorationLayout(ending, new LayoutResult.DecorationLayout(
+                0.0, 0.0, 10.0, Ending.VOLTA_TICK_HEIGHT_SS, 0.0))
+            .build();
+
+        var selectionProvider = mock(LineComponent.SelectionProvider.class);
+        when(selectionProvider.isSelected(new HitTarget.Ending(ending), 0)).thenReturn(selected);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setLayoutResult(layoutResult)
+            .setCurrentLine(line)
+            .setSelectionProvider(selectionProvider)
+            .build();
+
+        var g2 = spy(realG2());
+        var drawColors = new ArrayList<Color>();
+        doAnswer(answerVoid((Shape shape) -> drawColors.add(g2.getColor()))).when(g2).draw(any(Shape.class));
+
+        RENDERER.renderEndings(g2, line, 0, invariants);
+
+        return drawColors;
+    }
+
+    @Test
+    void testRenderEndingsDrawsSelectedEndingInSelectionColor() {
+        var pair = makeLineWithEnding();
+        var colors = drawColorsFor(pair.line(), pair.ending(), true);
+
+        assertThat(colors).isNotEmpty();
+        assertThat(colors).containsOnly(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testRenderEndingsDrawsUnselectedEndingInTheElementColor() {
+        var pair = makeLineWithEnding();
+        var colors = drawColorsFor(pair.line(), pair.ending(), false);
+
+        assertThat(colors).isNotEmpty();
+        assertThat(colors).containsOnly(Color.BLACK);
     }
 
     // ======================================================================

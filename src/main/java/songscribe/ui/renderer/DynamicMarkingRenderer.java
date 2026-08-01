@@ -27,6 +27,7 @@ import module java.desktop;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.dom.DynamicAttachment;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.util.GraphicsState;
@@ -104,7 +105,10 @@ public final class DynamicMarkingRenderer implements ElementRenderer<StaffElemen
         var y = RenderingUtils.glyphOriginYFromLayoutTop(dynamicTopYSs, glyph);
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            RenderingUtils.applyDecorationColor(g2, element, invariants, frame);
+            // The dynamic is selectable on its own, so the color is keyed on the attachment
+            // rather than on the note it hangs off.
+            RenderingUtils.applyDecorationColor(
+                g2, new HitTarget.Attachment(attachment), element, invariants, frame);
             RenderingUtils.drawBravuraGlyph(g2, glyph, x, y, true);
         }
     }

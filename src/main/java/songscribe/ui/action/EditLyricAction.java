@@ -59,15 +59,14 @@ public final class EditLyricAction extends UIAction {
 
     @Override
     protected boolean enableFromSelection(boolean activeSelection, ScoreView scoreView) {
-        var activeLineState = scoreView.getSelectionCoordinator().getActiveSelection();
+        var range = scoreView.getSelectionCoordinator().getRange();
 
         //noinspection SimplifiableIfStatement
-        if (activeLineState == null || activeLineState.getSingleSelectedElement() == null) {
+        if (range == null || range.singleElement() == null) {
             return false;
         }
 
-        return LyricTargetResolver.resolveLyricTarget(
-            activeLineState.getLine(), activeLineState.getSelectionBegin()) >= 0;
+        return LyricTargetResolver.resolveLyricTarget(range.line(), range.begin()) >= 0;
     }
 
     @Override

@@ -30,7 +30,7 @@ import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.Line;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.layout.ElementColumn;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.StaffExtents;

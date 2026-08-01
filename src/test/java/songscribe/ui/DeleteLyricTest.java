@@ -129,7 +129,7 @@ class DeleteLyricTest extends MainFrameMockTest {
                     new PasteboardOpCommand(PasteboardAction.Operation.DELETE));
             }
 
-            assertThat(coordinator.getLyricSelection()).isNull();
+            assertThat(coordinator.getSelectedTarget()).isNull();
         }
 
         @Test
@@ -166,7 +166,7 @@ class DeleteLyricTest extends MainFrameMockTest {
                     new PasteboardOpCommand(PasteboardAction.Operation.DELETE));
             }
 
-            assertThat(coordinator.getLyricSelection()).isNull();
+            assertThat(coordinator.getSelectedTarget()).isNull();
         }
 
         @Test

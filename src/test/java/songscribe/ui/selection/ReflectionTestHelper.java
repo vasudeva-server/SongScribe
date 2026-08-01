@@ -32,7 +32,8 @@ import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
+import songscribe.hit.HitTarget;
 import songscribe.ui.Mode;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.ScoreView;
@@ -65,8 +66,7 @@ public final class ReflectionTestHelper {
      */
     public static SelectionCoordinator createCoordinatorForLine(Line line) {
         var coordinator = new SelectionCoordinator(editModeScoreView());
-        var state = new LineSelectionState(line);
-        coordinator.registerLineState(0, state);
+        coordinator.registerLine(0, line);
         coordinator.activateLine(0);
         return createCoordinator(coordinator, List.of(), List.of());
     }
@@ -135,8 +135,7 @@ public final class ReflectionTestHelper {
         }
 
         var coordinator = new SelectionCoordinator(editModeScoreView());
-        var state = new LineSelectionState(line);
-        coordinator.registerLineState(0, state);
+        coordinator.registerLine(0, line);
         coordinator.activateLine(0);
 
         return createCoordinator(coordinator, actions, managedActions);
@@ -163,16 +162,24 @@ public final class ReflectionTestHelper {
     }
 
     /**
-     * Returns the selection state for the coordinator's active line, failing with a
-     * message that names the problem rather than letting the caller trip over a bare
-     * NullPointerException when the coordinator was never given an active line.
+     * Returns the coordinator's active line, failing with a message that names the problem
+     * rather than letting the caller trip over a bare NullPointerException when the
+     * coordinator was never given an active line.
      */
-    private static LineSelectionState activeSelection(SelectionCoordinator coordinator) {
-        var state = coordinator.getActiveSelection();
+    private static Line activeLine(SelectionCoordinator coordinator) {
+        var line = coordinator.getActiveLine();
 
-        assertThat(state).as("the test coordinator has no active line state").isNotNull();
+        assertThat(line).as("the test coordinator has no active line").isNotNull();
 
-        return state;
+        return line;
+    }
+
+    /**
+     * Fails unless the coordinator has an active line, so that a target selected below has a
+     * line to belong to.
+     */
+    private static void requireActiveLine(SelectionCoordinator coordinator) {
+        activeLine(coordinator);
     }
 
     /**
@@ -180,13 +187,11 @@ public final class ReflectionTestHelper {
      */
     public static void selectRange(SelectionCoordinator coordinator, int fromIndex, int toIndex) {
         coordinator.saveActionStates();
+        requireActiveLine(coordinator);
 
-        var state = activeSelection(coordinator);
-        state.setSelectionFromClick(fromIndex);
-
-        if (toIndex != fromIndex) {
-            state.extendSelectionTo(toIndex);
-        }
+        // Anchored at fromIndex, so a backwards range reads as a drag that started at its end.
+        coordinator.selectRange(
+            Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex), fromIndex);
     }
 
     /**
@@ -201,8 +206,7 @@ public final class ReflectionTestHelper {
      */
     public static void selectGlissando(SelectionCoordinator coordinator, int elementIndex) {
         coordinator.saveActionStates();
-        var state = activeSelection(coordinator);
-        state.selectDecoration(new SelectedDecoration.SlideSelection(elementIndex));
+        coordinator.select(new HitTarget.Slide(activeLine(coordinator).getElement(elementIndex)));
     }
 
     /**
@@ -210,8 +214,8 @@ public final class ReflectionTestHelper {
      */
     public static void selectEnding(SelectionCoordinator coordinator, Ending ending) {
         coordinator.saveActionStates();
-        var state = activeSelection(coordinator);
-        state.selectDecoration(new SelectedDecoration.EndingSelection(ending));
+        requireActiveLine(coordinator);
+        coordinator.select(new HitTarget.Ending(ending));
     }
 
     /**
@@ -219,14 +223,16 @@ public final class ReflectionTestHelper {
      */
     public static void selectHairpin(SelectionCoordinator coordinator, Hairpin hairpin) {
         coordinator.saveActionStates();
-        activeSelection(coordinator).selectDecoration(new SelectedDecoration.HairpinSelection(hairpin));
+        requireActiveLine(coordinator);
+        coordinator.select(new HitTarget.Hairpin(hairpin));
     }
 
     /**
      * Clears the selection on the coordinator's active line.
      */
     public static void clearSelection(SelectionCoordinator coordinator) {
-        activeSelection(coordinator).clearSelection();
+        requireActiveLine(coordinator);
+        coordinator.clearActiveSelection();
         coordinator.restoreActionStates();
     }
 }

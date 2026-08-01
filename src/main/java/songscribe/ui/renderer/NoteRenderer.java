@@ -32,6 +32,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
+import songscribe.hit.HitTarget;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
@@ -181,7 +182,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             var isBeamed = isNoteBeamed(element, invariants);
             renderNoteHead(g2, element, isBeamed, invariants);
             renderLedgerLines(g2, element, invariants);
-            renderAccidental(g2, element);
+            renderAccidental(g2, element, invariants, frame);
         }
     }
 
@@ -439,9 +440,24 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     // Accidental Rendering
     // ==========================================================================
 
+    /**
+     * Draws {@code note}'s accidental, if it has one.
+     * <p>
+     * An accidental is selectable in its own right, so it is the one part of a note that can
+     * carry a color the rest of the note does not. The {@link GraphicsState} block keeps that
+     * scoped: the color set here is restored before the caller draws anything else.
+     * <p>
+     * The ambient color the caller set is left alone unless the accidental itself resolves to
+     * something other than plain black. That ambient color is what carries the insertion
+     * preview, the grace-cancel red and the slide-preview highlight — a preview note is not on
+     * the line and can never be selected, so overwriting its color unconditionally would draw
+     * its accidental black while the rest of it is blue.
+     */
     private void renderAccidental(
         Graphics2D g2,
-        StaffElement note
+        StaffElement note,
+        LineInvariants invariants,
+        ElementFrame frame
     ) {
         var accidental = note.getAccidental();
 
@@ -452,6 +468,13 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         var accidentalGlyph = accidental.glyph();
 
         try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+            var accidentalColor = invariants.colorFor(
+                new HitTarget.Accidental(note), frame.currentElementIndex());
+
+            if (!accidentalColor.equals(Color.BLACK)) {
+                g2.setColor(accidentalColor);
+            }
+
             // Grace-note accidentals are drawn at grace scale, matching the clearance reserved
             // by NoteColumnGeometry via getAccidentalStartXSs (the two must agree or the glissando
             // gap is computed against the wrong glyph size). The same scale feeds walkAccidentalGlyphs so

@@ -33,23 +33,14 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Crescendo;
-import songscribe.dom.Diminuendo;
-import songscribe.dom.DynamicAttachment;
-import songscribe.dom.FermataAttachment;
-import songscribe.dom.Beam;
-import songscribe.dom.Trill;
-import songscribe.dom.Tuplet;
+import songscribe.dom.*;
 import songscribe.font.DocumentFonts;
 
-import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
 import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.layout.stacking.StackingContext;
 import songscribe.layout.stacking.StackingUtils;
 import songscribe.layout.stacking.StructuralStacker;
 import songscribe.layout.stacking.VerticalStackingCalculator;
-import songscribe.layout.NoteGeometry;
 
 class StructuralTierStackingTest extends UnitTest {
 

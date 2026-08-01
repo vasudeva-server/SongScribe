@@ -28,6 +28,7 @@ import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.io.XML;
+import songscribe.layout.LayoutResult;
 
 final class MusicXmlNotationsWriter {
 
@@ -36,7 +37,7 @@ final class MusicXmlNotationsWriter {
     static void writeNotations(PrintWriter pw, NoteWriteContext ctx) {
         var note = ctx.note();
         var nextIsBreathMark = ctx.nextIsBreathMark();
-        var pendingStopGlissando = ctx.pendingStopGlissando();
+        var pendingStopGlissandoNote = ctx.pendingStopGlissandoNote();
         var type = note.getType();
         var isGrace = type.isGraceNote();
         var isRest = type.isRest();
@@ -45,7 +46,7 @@ final class MusicXmlNotationsWriter {
         // A grace note's glissando must target its host note, but a glissando
         // never terminates on a grace note (the stop always lands on the true host).
         var startGlissando = note.getGlissando();
-        var hasSlideStop = !isGrace && pendingStopGlissando != null;
+        var hasSlideStop = !isGrace && pendingStopGlissandoNote != null;
         var hasSlideStart = startGlissando != null;
 
         var articulations = note.getArticulations();
@@ -101,13 +102,13 @@ final class MusicXmlNotationsWriter {
         // Carries the computed end-point coordinates for external-renderer
         // fidelity (write-forward only; the reader ignores them).
         if (hasSlideStop) {
-            writeSlide(pw, MusicXmlTags.SLIDE_STOP, pendingStopGlissando);
+            writeSlide(pw, MusicXmlTags.SLIDE_STOP, pendingStopGlissandoNote, ctx.layoutResult());
         }
 
         // <slide type="start"> on the source note of a glissando.
         // Carries the computed start-point coordinates (write-forward only).
         if (hasSlideStart) {
-            writeSlide(pw, MusicXmlTags.SLIDE_START, startGlissando);
+            writeSlide(pw, MusicXmlTags.SLIDE_START, note, ctx.layoutResult());
         }
 
         // <tuplet> bracket: start on the anchor, stop on the end note.
@@ -229,13 +230,33 @@ final class MusicXmlNotationsWriter {
         }
     }
 
+    /**
+     * Emits one {@code <slide>} for the glissando owned by {@code glissandoNote}, carrying the
+     * endpoint the {@code slideType} names: the drawn line's end for a stop, its start for a start.
+     * <p>
+     * The coordinates come from the line's layout, so they are the ones the score is painted from.
+     * They are write-forward only — neither {@code MusicXmlReader} nor {@code MusicXmlNoteReader}
+     * reads {@code default-x}/{@code default-y} back.
+     *
+     * @param glissandoNote the note owning the glissando, which keys its geometry
+     * @param layoutResult  the owning line's layout, or null when none is available
+     */
     private static void writeSlide(
             PrintWriter pw,
             String slideType,
-            StaffElement.@Nullable Glissando glissando
+            @Nullable StaffElement glissandoNote,
+            @Nullable LayoutResult layoutResult
     ) {
-        if (glissando == null || !glissando.hasCachedGeometry) {
-            // No cached geometry available — emit a minimal slide without coordinates.
+        var slideLayout = (glissandoNote == null || layoutResult == null)
+            ? null
+            : layoutResult.getSlideLayout(glissandoNote);
+        var endpoints = slideLayout == null ? null : slideLayout.glissando();
+
+        if (endpoints == null) {
+            // The layout stores no geometry for a glissando too short to draw — its two notes
+            // sit closer together than the trimmed line's minimum visible length. Such a slide
+            // is emitted without coordinates rather than dropped, since it is still musically
+            // present.
             XML.writeEmptyTag(pw, MusicXmlTags.SLIDE,
                 MusicXmlTags.ATTR_TYPE, slideType,
                 MusicXmlTags.ATTR_LINE_TYPE, MusicXmlTags.LINE_SOLID
@@ -251,13 +272,11 @@ final class MusicXmlNotationsWriter {
         var isStop = MusicXmlTags.SLIDE_STOP.equals(slideType);
 
         if (isStop) {
-            // The stop slide's default-x/y is the *end* of the glissando line,
-            // computed from the start-note's cached geometry.
-            xSs = glissando.cachedStartX + glissando.cachedLength * glissando.cachedCos;
-            ySs = glissando.cachedStartY + glissando.cachedLength * glissando.cachedSin;
+            xSs = endpoints.endXSs();
+            ySs = endpoints.endYSs();
         } else {
-            xSs = glissando.cachedStartX;
-            ySs = glissando.cachedStartY;
+            xSs = endpoints.startXSs();
+            ySs = endpoints.startYSs();
         }
 
         XML.writeEmptyTag(pw, MusicXmlTags.SLIDE,

@@ -15,6 +15,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.BBox;
 import songscribe.engraving.SMuFLConstants;
+import songscribe.engraving.Staff;
 import songscribe.smufl.GlyphAnchors;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -521,6 +522,28 @@ public final class NoteGeometry {
     // ==========================================================================
     // Notehead / Ledger Line Geometry
     // ==========================================================================
+
+    /**
+     * Calculates the Y coordinate for a note given its staff position.
+     * <p>
+     * The staff position is relative to the middle line (B4), where:
+     * <ul>
+     *   <li>0 = B4 (middle line)</li>
+     *   <li>Negative values = higher pitches (above middle line)</li>
+     *   <li>Positive values = lower pitches (below middle line)</li>
+     * </ul>
+     * Each staff position is 0.5 ss (half a staff space).
+     * <p>
+     * Pass {@code middleLineYSs = 0} to get the midline-relative layout-space Y; pass the line's
+     * actual middle-line Y to get component space.
+     *
+     * @param staffPosition The note's staff position relative to middle line
+     * @param middleLineYSs Y position of middle staff line in staff spaces
+     * @return Y coordinate for the note in staff spaces
+     */
+    public static double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
+        return middleLineYSs + Staff.spToSs(staffPosition);
+    }
 
     /**
      * Horizontal extent of a ledger line, in staff spaces relative to the note origin

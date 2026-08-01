@@ -338,14 +338,14 @@ public final class ScoreInputHandler extends KeyAdapter
          * boundary — a selection never spans lines.
          */
         private void extendSelection(SelectionCoordinator coordinator) {
-            var state = coordinator.getActiveSelection();
+            var range = coordinator.getRange();
 
-            if (state == null || state.getSelectionAnchor() == -1) {
+            if (range == null) {
                 return;
             }
 
-            var anchor = state.getSelectionAnchor();
-            var movingEnd = (anchor == state.getSelectionBegin()) ? state.getSelectionEnd() : state.getSelectionBegin();
+            var anchor = range.anchor();
+            var movingEnd = (anchor == range.begin()) ? range.end() : range.begin();
             int target;
 
             if (code == KeyEvent.VK_LEFT) {
@@ -357,7 +357,7 @@ public final class ScoreInputHandler extends KeyAdapter
             } else {
                 target = movingEnd + 1;
 
-                if (target > state.getLine().effectiveElementCount() - 1) {
+                if (target > range.line().effectiveElementCount() - 1) {
                     return;
                 }
             }
@@ -406,16 +406,10 @@ public final class ScoreInputHandler extends KeyAdapter
                 return;
             }
 
-            var state = coordinator.getActiveSelection();
-
-            if (state == null) {
-                return;
-            }
-
             if (adjustedRange[0] == -1) {
-                state.clearSelection();
+                coordinator.clearActiveSelection();
             } else {
-                state.setSelectionRange(adjustedRange[0], adjustedRange[1]);
+                coordinator.selectRange(adjustedRange[0], adjustedRange[1]);
             }
         }
 
@@ -488,7 +482,7 @@ public final class ScoreInputHandler extends KeyAdapter
          * same one the mouse click-to-select path uses), then notifies and repaints.
          */
         private void selectSingle(SelectionCoordinator coordinator, int lineIndex, int elementIndex) {
-            if (coordinator.selectSingleElement(lineIndex, elementIndex) == null) {
+            if (!coordinator.selectSingleElement(lineIndex, elementIndex)) {
                 return;
             }
 

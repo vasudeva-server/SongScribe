@@ -28,6 +28,7 @@ import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.dom.FermataAttachment;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.util.GraphicsState;
@@ -79,7 +80,9 @@ public final class FermataRenderer implements ElementRenderer<StaffElement> {
         Graphics2D g2
     ) {
         // Guard: only render if a fermata attachment is present
-        if (element.findAttachment(FermataAttachment.class) == null) {
+        var fermata = element.findAttachment(FermataAttachment.class);
+
+        if (fermata == null) {
             return;
         }
 
@@ -110,7 +113,8 @@ public final class FermataRenderer implements ElementRenderer<StaffElement> {
         var y = RenderingUtils.glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            RenderingUtils.applyDecorationColor(g2, element, invariants, frame);
+            RenderingUtils.applyDecorationColor(
+                g2, new HitTarget.Attachment(fermata), element, invariants, frame);
             RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y, true);
         }
     }

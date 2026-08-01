@@ -28,7 +28,7 @@ import songscribe.Strings;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 
 /**
  * Utility class for showing confirmation dialogs before ending-invalidating mutations,

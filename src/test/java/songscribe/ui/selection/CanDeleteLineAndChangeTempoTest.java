@@ -31,6 +31,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.hit.HitTarget;
 import songscribe.ui.component.ScoreView;
 
 /**
@@ -58,7 +59,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
         song.withoutMutationTracking(() -> line.addElement(0, ElementType.CROTCHET.newInstance()));
 
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
-        coordinator.registerLineState(LINE_0, new LineSelectionState(line));
+        coordinator.registerLine(LINE_0, line);
         coordinator.activateLine(LINE_0);
         return coordinator;
     }
@@ -74,7 +75,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
         song.addLine(new Line(song));
 
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
-        coordinator.registerLineState(LINE_0, new LineSelectionState(firstLine));
+        coordinator.registerLine(LINE_0, firstLine);
         coordinator.activateLine(LINE_0);
         return coordinator;
     }
@@ -108,7 +109,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     @Test
     void testCanDeleteLineReturnsFalseWhenLineNotLineSelected() {
         var coordinator = oneLineSongCoordinator();
-        // Active line is not line-selected — no call to setLineSelected(true).
+        // Active line is not line-selected — no HitTarget.StaffLine selected on it.
 
         assertThat(coordinator.canDeleteLine())
             .as("canDeleteLine when active line is not line-selected")
@@ -127,10 +128,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     @Test
     void testCanDeleteLineReturnsTrueWhenOnlyOneLine() {
         var coordinator = oneLineSongCoordinator();
-        var lineState = coordinator.getLineState(LINE_0);
-        assertThat(lineState).isNotNull();
-
-        lineState.setLineSelected(true);
+        coordinator.select(new HitTarget.StaffLine());
 
         assertThat(coordinator.canDeleteLine())
             .as("canDeleteLine when line is selected and song has only one line")
@@ -148,10 +146,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     @Test
     void testCanDeleteLineReturnsTrueWhenLineSelectedAndMultipleLines() {
         var coordinator = twoLineSongCoordinator();
-        var lineState = coordinator.getLineState(LINE_0);
-        assertThat(lineState).isNotNull();
-
-        lineState.setLineSelected(true);
+        coordinator.select(new HitTarget.StaffLine());
 
         assertThat(coordinator.canDeleteLine())
             .as("canDeleteLine when line is selected and song has two lines")
@@ -164,7 +159,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
 
     /**
      * Row 34: canChangeTempo returns false when there is no active selection
-     * (getActiveSelection() returns null).
+     * (getActiveLine() returns null).
      */
     @Test
     void testCanChangeTempoReturnsFalseWithNoActiveSelection() {

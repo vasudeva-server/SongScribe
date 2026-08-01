@@ -33,6 +33,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.ElementType;
 import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
@@ -143,31 +144,55 @@ public final class RenderingUtils {
     }
 
     /**
-     * Returns the selection color if {@code element} is selected, otherwise the
-     * standard element color.
+     * Returns the rendering color for any decoration that is selectable in its own right —
+     * every kind, whether or not it hangs off a note.
+     * <p>
+     * <b>Selection takes precedence over everything else.</b> A selected decoration draws in
+     * {@link ScoreView#getSelectionColor()} even while its note is playing, hovered, or standing
+     * in as the insertion preview. It has to: in edit mode the selection is what the next Delete
+     * removes, and the user cannot be left guessing at that because playback happens to be
+     * running.
+     * <p>
+     * Only when the decoration is <em>not</em> selected does it take its owner note's color, so
+     * that playback, the replaced-element hover, the insertion preview and a range selection each
+     * color the whole note, decorations included. A decoration that belongs to no single note —
+     * a hairpin, an ending, a tuplet — passes a {@code null} owner and is plain black unless it
+     * is the selection.
+     *
+     * @param owner the note whose color an unselected decoration inherits, or {@code null} when
+     *              the decoration belongs to no single note
      */
-    static Color decorationSelectionColor(LineElement element, LineInvariants invariants) {
-        var selectionProvider = invariants.getSelectionProvider();
-
-        if (selectionProvider != null
-            && selectionProvider.isDecorationSelected(element, invariants.getLineIndex())) {
-            return invariants.getSelectionColor();
-        }
-
-        return ELEMENT_COLOR;
-    }
-
-    /**
-     * Sets the graphics color for a decoration attached to {@code element}.
-     * Delegates to {@link #getDecorationColor(StaffElement, LineInvariants, ElementFrame)}.
-     */
-    static void applyDecorationColor(
-        Graphics2D g2,
-        StaffElement element,
+    static Color decorationColor(
+        HitTarget target,
+        @Nullable StaffElement owner,
         LineInvariants invariants,
         ElementFrame frame
     ) {
-        g2.setColor(getDecorationColor(element, invariants, frame));
+        var targetColor = invariants.colorFor(target, frame.currentElementIndex());
+
+        if (!targetColor.equals(ELEMENT_COLOR)) {
+            return targetColor;
+        }
+
+        if (owner == null) {
+            return ELEMENT_COLOR;
+        }
+
+        return getDecorationColor(owner, invariants, frame);
+    }
+
+    /**
+     * Sets the graphics color for a selectable decoration.
+     * Delegates to {@link #decorationColor}.
+     */
+    static void applyDecorationColor(
+        Graphics2D g2,
+        HitTarget target,
+        @Nullable StaffElement owner,
+        LineInvariants invariants,
+        ElementFrame frame
+    ) {
+        g2.setColor(decorationColor(target, owner, invariants, frame));
     }
 
     // ==========================================================================
@@ -363,20 +388,16 @@ public final class RenderingUtils {
     /**
      * Calculates the Y coordinate for a note given its staff position.
      * <p>
-     * The staff position is relative to the middle line (B4), where:
-     * <ul>
-     *   <li>0 = B4 (middle line)</li>
-     *   <li>Negative values = higher pitches (above middle line)</li>
-     *   <li>Positive values = lower pitches (below middle line)</li>
-     * </ul>
-     * Each staff position is 0.5 ss (half a staff space).
+     * The arithmetic lives in {@link NoteGeometry#noteStaffPositionToCoordinateSs}, on the layout
+     * side of the boundary, because layout needs the same quantity and must not depend on
+     * {@code songscribe.ui}. This delegate keeps the render call sites reading naturally.
      *
      * @param staffPosition The note's staff position relative to middle line
      * @param middleLineYSs Y position of middle staff line in staff spaces
      * @return Y coordinate for the note in staff spaces
      */
     public static double noteStaffPositionToCoordinateSs(int staffPosition, double middleLineYSs) {
-        return middleLineYSs + Staff.spToSs(staffPosition);
+        return NoteGeometry.noteStaffPositionToCoordinateSs(staffPosition, middleLineYSs);
     }
 
     /**

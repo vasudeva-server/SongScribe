@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.hit.HitTarget;
 
 class SelectionCoordinatorLyricSelectionTest extends UnitTest {
 
@@ -37,16 +38,12 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
         line.addElement(first);
         line.addElement(second);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-        var state = coordinator.getLineState(0);
-        assertThat(state).isNotNull();
-        state.setSelectionFromClick(0);
+        coordinator.selectSingleElement(0, 0);
 
         coordinator.selectLyric(second, 2);
 
         assertThat(coordinator.hasActiveSelection()).isFalse();
-        assertThat(coordinator.hasLyricSelection()).isTrue();
-        assertThat(coordinator.getLyricSelection()).isEqualTo(
-            new SelectionCoordinator.LyricSelection(second, 2));
+        assertThat(coordinator.getSelectedTarget()).isEqualTo(new HitTarget.Lyric(second, 2));
     }
 
     @Test
@@ -57,13 +54,11 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
         line.addElement(first);
         line.addElement(second);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-        var state = coordinator.getLineState(0);
-        assertThat(state).isNotNull();
         coordinator.selectLyric(first, 1);
 
-        state.setSelectionFromClick(1);
+        coordinator.selectSingleElement(0, 1);
 
-        assertThat(coordinator.hasLyricSelection()).isFalse();
+        assertThat(coordinator.getSelectedTarget()).isNull();
         assertThat(coordinator.hasActiveSelection()).isTrue();
         assertThat(coordinator.getSingleSelectedElement()).isSameAs(second);
     }
@@ -78,13 +73,13 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
         line.addElement(element);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
         coordinator.selectLyric(element, 1);
-        assertThat(coordinator.hasLyricSelection()).as("lyric selection before activateLine").isTrue();
+        assertThat(coordinator.getSelectedTarget()).as("lyric selection before activateLine").isNotNull();
 
         coordinator.activateLine(0);
 
-        assertThat(coordinator.hasLyricSelection())
+        assertThat(coordinator.getSelectedTarget())
             .as("lyric selection cleared after activateLine")
-            .isFalse();
+            .isNull();
     }
 
     /**
@@ -97,18 +92,20 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
         line.addElement(element);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
         coordinator.selectLyric(element, 1);
-        assertThat(coordinator.hasLyricSelection()).as("lyric selection before clearSelection").isTrue();
+        assertThat(coordinator.getSelectedTarget()).as("lyric selection before clearSelection").isNotNull();
 
         coordinator.clearSelection();
 
-        assertThat(coordinator.hasLyricSelection())
+        assertThat(coordinator.getSelectedTarget())
             .as("lyric selection cleared after clearSelection")
-            .isFalse();
+            .isNull();
     }
 
     /**
      * Row 15: selectLyric on an element whose line is not registered leaves
-     * activeLineIndex at -1 (findLineIndex returns -1 for unknown lines).
+     * activeLineIndex at -1 (findLineIndex returns -1 for unknown lines), and no query
+     * reports the lyric as selected — every one of them is guarded on the active line, and
+     * -1 is not a line index any caller asks about.
      */
     @Test
     void testSelectLyricOnUnregisteredLineYieldsNegativeOneActiveLineIndex() {
@@ -124,5 +121,8 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
         assertThat(coordinator.getActiveLineIndex())
             .as("activeLineIndex after selectLyric on unregistered line")
             .isEqualTo(-1);
+        assertThat(coordinator.isSelected(new HitTarget.Lyric(element, 1), 0))
+            .as("isSelected(lyric) on line 0 after selecting a lyric on an unregistered line")
+            .isFalse();
     }
 }

@@ -56,6 +56,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
+import songscribe.hit.HitTarget;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.OptionDialogs;
 import songscribe.dom.Line;
@@ -65,7 +66,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.layout.EndingLineFixture;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LineEndingSupport;
@@ -109,7 +110,8 @@ import songscribe.ui.component.score.MainPanel;
 import songscribe.ui.component.score.StaffPanel;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.PasteModeManager;
-import songscribe.ui.selection.LineSelectionState;
+import songscribe.ui.selection.RangeQueries;
+import songscribe.ui.selection.Selection;
 import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
@@ -138,8 +140,8 @@ class ScoreViewControllerTest extends UnitTest {
 
             var selectionCoordinator = ReflectionTestHelper.createCoordinatorForLine(line);
             selectionCoordinator.selectLyric(element, 1);
-            assertThat(selectionCoordinator.getLyricSelection()).isEqualTo(
-                new SelectionCoordinator.LyricSelection(element, 1));
+            assertThat(selectionCoordinator.getSelectedTarget())
+                .isEqualTo(new HitTarget.Lyric(element, 1));
             assertThat(line.getElementIndex(element)).isGreaterThanOrEqualTo(0);
 
             var scoreMock = mock(ScoreView.class);
@@ -158,7 +160,7 @@ class ScoreViewControllerTest extends UnitTest {
             controller.handleDelete();
 
             assertThat(element.getLyricForVerse(1)).isNull();
-            assertThat(selectionCoordinator.hasLyricSelection()).isFalse();
+            assertThat(selectionCoordinator.getSelectedTarget()).isNull();
             assertThat(selectionCoordinator.hasActiveSelection()).isFalse();
             verify(scoreMock).selectionChanged();
             verify(scoreMock).repaint();
@@ -260,13 +262,10 @@ class ScoreViewControllerTest extends UnitTest {
             // Select everything but the last keepCount notes, mirroring "delete all but
             // the last 4 notes".
             ReflectionTestHelper.selectRange(coordinator, 0, noteCount - keepCount - 1);
-            var activeSelection = coordinator.getActiveSelection();
-
-            if (activeSelection == null) {
+            if (coordinator.getRange() == null) {
                 throw new IllegalStateException("Expected an active selection");
             }
 
-            var state = activeSelection;
             var controller = buildController(song, coordinator, scoreMock);
 
             var caughtDuringNotification = new Exception[1];
@@ -275,9 +274,13 @@ class ScoreViewControllerTest extends UnitTest {
                 @Handler
                 void onSongDidChange(SongDidChangeNotification notification) {
                     try {
-                        // Mirrors TrillAction.enableFromSelection reading the selection
-                        // state's begin/end range while the song is changing.
-                        state.canToggleTrill();
+                        // Mirrors TrillAction.enableFromSelection reading the selected
+                        // range while the song is changing.
+                        var range = coordinator.getRange();
+
+                        if (range != null) {
+                            RangeQueries.canToggleTrill(range);
+                        }
                     } catch (Exception e) {
                         caughtDuringNotification[0] = e;
                     }
@@ -680,11 +683,7 @@ class ScoreViewControllerTest extends UnitTest {
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
             // No element or glissando selection — mark the line itself as selected so
             // getSelectedLine() returns 0 rather than -1.
-            var state = coordinator.getActiveSelection();
-
-            if (state != null) {
-                state.setLineSelected(true);
-            }
+            coordinator.select(new HitTarget.StaffLine());
 
             var controller = buildController(song, coordinator, scoreMock);
             var lineCountBefore = song.lineCount();
@@ -705,11 +704,7 @@ class ScoreViewControllerTest extends UnitTest {
             when(scoreMock.canDeleteLine()).thenReturn(true);
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-            var state = coordinator.getActiveSelection();
-
-            if (state != null) {
-                state.setLineSelected(true);
-            }
+            coordinator.select(new HitTarget.StaffLine());
 
             var controller = buildController(song, coordinator, scoreMock);
             controller.handleDelete();
@@ -733,13 +728,8 @@ class ScoreViewControllerTest extends UnitTest {
             when(scoreMock.getSong()).thenReturn(songMock);
 
             var coordinatorMock = mock(SelectionCoordinator.class);
-            var stateMock = mock(LineSelectionState.class);
-            when(coordinatorMock.getLyricSelection()).thenReturn(null);
-            when(coordinatorMock.getActiveSelection()).thenReturn(stateMock);
-            when(stateMock.hasElementSelection()).thenReturn(true);
-            when(stateMock.getLine()).thenReturn(lineMock);
-            when(stateMock.getSelectionBegin()).thenReturn(0);
-            when(stateMock.getSelectionEnd()).thenReturn(1);
+            when(coordinatorMock.getSelectedTarget()).thenReturn(null);
+            when(coordinatorMock.getRange()).thenReturn(new Selection.Range(lineMock, 0, 1, 0));
             when(lineMock.getElements(0, 1)).thenReturn(List.of(noteA, noteB));
             when(lineMock.hasEndingInvalidatedByDeletion(any())).thenReturn(true);
 
@@ -774,7 +764,7 @@ class ScoreViewControllerTest extends UnitTest {
      * the end of the line, and every later reader of that range indexes off the end and
      * throws. The {@code songDidChange} handler is the only thing standing between an undo
      * and that crash, so these tests pin the call down where it is made rather than only on
-     * {@link LineSelectionState}, where the method it calls is already covered.
+     * {@link SelectionCoordinator}, where the method it calls is already covered.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -789,7 +779,6 @@ class ScoreViewControllerTest extends UnitTest {
         private Song song;
         private Line line;
         private SelectionCoordinator coordinator;
-        private LineSelectionState state;
         private MusicEditOperations operationsMock;
 
         @BeforeEach
@@ -806,13 +795,10 @@ class ScoreViewControllerTest extends UnitTest {
             coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
             ReflectionTestHelper.selectRange(coordinator, 0, NOTE_COUNT - 1);
 
-            var activeSelection = coordinator.getActiveSelection();
-
-            if (activeSelection == null) {
+            if (coordinator.getRange() == null) {
                 throw new IllegalStateException("Expected an active selection");
             }
 
-            state = activeSelection;
             operationsMock = mock(MusicEditOperations.class);
         }
 
@@ -852,17 +838,26 @@ class ScoreViewControllerTest extends UnitTest {
             return new SongDidChangeNotification(List.of(), song);
         }
 
+        /** The selected range, failing rather than returning null. */
+        private Selection.Range selectedRange() {
+            var range = coordinator.getRange();
+
+            assertThat(range).as("expected a selected range").isNotNull();
+
+            return range;
+        }
+
         @Test
         void testSongDidChangeClearsSelectionLeftRunningPastTheEndOfTheLine() {
             undoTheInsertions();
 
-            assertThat(state.getSelectionEnd())
+            assertThat(selectedRange().end())
                 .as("the fixture must strand the selection, or this test proves nothing")
                 .isGreaterThanOrEqualTo(line.elementCount());
 
             buildController().songDidChange(songDidChange());
 
-            assertThat(state.hasElementSelection()).isFalse();
+            assertThat(coordinator.getRange()).isNull();
         }
 
         @Test
@@ -871,9 +866,8 @@ class ScoreViewControllerTest extends UnitTest {
             // the test above while making the user's selection vanish after any edit.
             buildController().songDidChange(songDidChange());
 
-            assertThat(state.hasElementSelection()).isTrue();
-            assertThat(state.getSelectionBegin()).isEqualTo(0);
-            assertThat(state.getSelectionEnd()).isEqualTo(NOTE_COUNT - 1);
+            assertThat(selectedRange().begin()).isEqualTo(0);
+            assertThat(selectedRange().end()).isEqualTo(NOTE_COUNT - 1);
         }
 
         /**
@@ -891,7 +885,7 @@ class ScoreViewControllerTest extends UnitTest {
             var selectionSurvivedIntoCacheWarmUp = new boolean[1];
 
             when(operationsMock.canToggleTuplet()).thenAnswer(invocation -> {
-                selectionSurvivedIntoCacheWarmUp[0] = state.hasElementSelection();
+                selectionSurvivedIntoCacheWarmUp[0] = coordinator.getRange() != null;
                 return new TupletToggleInfo(false, Set.of(), null, false);
             });
 
@@ -962,7 +956,7 @@ class ScoreViewControllerTest extends UnitTest {
         void testHandleCopyIsNoOpWhenNoActiveElementSelection() {
             var scoreMock = mock(ScoreView.class);
             var coordinatorMock = mock(SelectionCoordinator.class);
-            when(coordinatorMock.getActiveSelection()).thenReturn(null);
+            when(coordinatorMock.getRange()).thenReturn(null);
 
             var clipboardManager = new ClipboardManager();
             var controller = new ScoreViewController(
@@ -978,14 +972,11 @@ class ScoreViewControllerTest extends UnitTest {
         }
 
         @Test
-        void testHandleCopyIsNoOpWhenActiveSelectionHasNoElementSelection() {
-            // state != null but hasElementSelection() == false (e.g. a lyric-only or caret
-            // selection): the guard must prevent any copy. Without it, handleCopy would read
-            // a selection range that does not exist.
-            var stateMock = mock(LineSelectionState.class);
-            when(stateMock.hasElementSelection()).thenReturn(false);
+        void testHandleCopyIsNoOpWhenTheSelectionIsATarget() {
+            // A line is active but what is selected on it is a target, not a range: the guard
+            // must prevent any copy. Without it, handleCopy would read a range that is not there.
             var coordinatorMock = mock(SelectionCoordinator.class);
-            when(coordinatorMock.getActiveSelection()).thenReturn(stateMock);
+            when(coordinatorMock.getRange()).thenReturn(null);
 
             var clipboardManager = new ClipboardManager();
             var controller = new ScoreViewController(
@@ -1359,7 +1350,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             // No element selection → the no-selection branch runs.
             var selectionCoordinator = mock(SelectionCoordinator.class);
-            when(selectionCoordinator.getActiveSelection()).thenReturn(null);
+            when(selectionCoordinator.getRange()).thenReturn(null);
 
             var controller = new ScoreViewController(
                 scoreMock,
@@ -1863,13 +1854,12 @@ class ScoreViewControllerTest extends UnitTest {
             controller.handleSelectAllElements(new SelectAllElementsCommand());
 
             // After selectAll, both notes must be within the selection.
-            // Pre-condition: getActiveSelection() is non-null because we selected a note above.
-            var state = coordinator.getActiveSelection();
-
-            assertThat(state).isNotNull();
-
-            assertThat(state.getSelectionBegin()).isEqualTo(0);
-            assertThat(state.getSelectionEnd()).isEqualTo(1);
+            assertThat(coordinator.getRange())
+                .isNotNull()
+                .satisfies(range -> {
+                    assertThat(range.begin()).isEqualTo(0);
+                    assertThat(range.end()).isEqualTo(1);
+                });
             verify(scoreMock).selectionChanged();
             verify(scoreMock).repaint();
         }
@@ -1884,11 +1874,7 @@ class ScoreViewControllerTest extends UnitTest {
             });
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-            var state = coordinator.getActiveSelection();
-
-            assertThat(state).isNotNull();
-
-            state.setLineSelected(true);
+            coordinator.select(new HitTarget.StaffLine());
 
             var scoreMock = mock(ScoreView.class);
             var controller = new ScoreViewController(
@@ -1900,9 +1886,13 @@ class ScoreViewControllerTest extends UnitTest {
 
             controller.handleSelectAllElements(new SelectAllElementsCommand());
 
-            assertThat(state.isLineSelected()).isFalse();
-            assertThat(state.getSelectionBegin()).isEqualTo(0);
-            assertThat(state.getSelectionEnd()).isEqualTo(1);
+            assertThat(coordinator.isLineSelected()).isFalse();
+            assertThat(coordinator.getRange())
+                .isNotNull()
+                .satisfies(range -> {
+                    assertThat(range.begin()).isEqualTo(0);
+                    assertThat(range.end()).isEqualTo(1);
+                });
             verify(scoreMock).selectionChanged();
             verify(scoreMock).repaint();
         }
@@ -1911,7 +1901,7 @@ class ScoreViewControllerTest extends UnitTest {
         void testHandleSelectAllElementsIsNoOpWhenNoActiveSelection() {
             var scoreMock = mock(ScoreView.class);
             var coordinatorMock = mock(SelectionCoordinator.class);
-            when(coordinatorMock.getActiveSelection()).thenReturn(null);
+            when(coordinatorMock.getRange()).thenReturn(null);
 
             var controller = new ScoreViewController(
                 scoreMock,
@@ -3541,7 +3531,7 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(notificationCount).isEqualTo(0);
             assertThat(line.effectiveElementCount()).isEqualTo(1);
             assertThat(line.getElement(0)).isSameAs(noteA);
-            assertThat(coordinator.getActiveSelection()).isNotNull();
+            assertThat(coordinator.getRange()).isNotNull();
         }
 
         @Test

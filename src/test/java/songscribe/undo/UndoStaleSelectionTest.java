@@ -46,7 +46,8 @@ import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.ScoreViewController;
-import songscribe.ui.selection.LineSelectionState;
+import songscribe.ui.selection.RangeQueries;
+import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.ReflectionTestHelper;
 
 /**
@@ -126,7 +127,7 @@ class UndoStaleSelectionTest extends UnitTest {
      * undoable insertion on the stack with the whole line selected — the state a user is
      * in when they select everything and then press undo.
      */
-    private LineSelectionState selectEverythingOverAnUndoableInsertion() {
+    private SelectionCoordinator selectEverythingOverAnUndoableInsertion() {
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < BASE_NOTE_COUNT; i++) {
                 line.addElement(ElementType.QUAVER.newInstance());
@@ -153,18 +154,16 @@ class UndoStaleSelectionTest extends UnitTest {
 
         ReflectionTestHelper.selectRange(coordinator, 0, SELECTION_END_INDEX);
 
-        var state = coordinator.getActiveSelection();
-
-        if (state == null) {
+        if (coordinator.getRange() == null) {
             throw new IllegalStateException("Expected an active selection");
         }
 
-        return state;
+        return coordinator;
     }
 
     @Test
     void testUndoingAnInsertionDoesNotLeaveAStaleSelectionForLaterHandlers() {
-        var state = selectEverythingOverAnUndoableInsertion();
+        var coordinator = selectEverythingOverAnUndoableInsertion();
 
         var probeRan = new boolean[1];
         var caughtDuringNotification = new Exception[1];
@@ -177,7 +176,11 @@ class UndoStaleSelectionTest extends UnitTest {
                 try {
                     // Mirrors UIAction.songDidChange re-deriving an action's enabled state
                     // by walking the selected range while the song is changing.
-                    state.canToggleTrill();
+                    var range = coordinator.getRange();
+
+                    if (range != null) {
+                        RangeQueries.canToggleTrill(range);
+                    }
                 } catch (Exception e) {
                     caughtDuringNotification[0] = e;
                 }
@@ -201,8 +204,8 @@ class UndoStaleSelectionTest extends UnitTest {
         assertThat(caughtDuringNotification[0])
             .as("songDidChange handlers must not see a selection running past the end of the line")
             .isNull();
-        assertThat(state.hasElementSelection())
+        assertThat(coordinator.getRange())
             .as("the stranded selection is dropped, not merely survived")
-            .isFalse();
+            .isNull();
     }
 }

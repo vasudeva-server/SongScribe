@@ -28,7 +28,9 @@ import module java.desktop;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
+import songscribe.hit.HitTarget;
+import songscribe.layout.EndingBracketGeometry;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LineEndingSupport;
 import songscribe.engraving.LineThickness;
@@ -93,7 +95,9 @@ public final class EndingRenderer {
             var yTopSs = RenderingUtils.layoutYToComponentYSs(decorationLayout.ySs(), invariants);
 
             // The color depends only on the ending, so resolve it once rather than per bracket.
-            var color = RenderingUtils.decorationSelectionColor(ending, invariants);
+            // An ending belongs to no single note, so it has no owner whose color it could take.
+            var color = RenderingUtils.decorationColor(
+                new HitTarget.Ending(ending), null, invariants, ElementFrame.LINE_LEVEL);
 
             for (var bracket : ending.getBracketRanges()) {
                 drawEnding(g2, ending, bracket, yTopSs, color);
@@ -160,9 +164,10 @@ public final class EndingRenderer {
 
             // Draw ending label (e.g. "1." or "2.") using Bravura volta glyphs.
             // Baseline = bracket top + glyph height + visual offset below bracket.
-            g2.setFont(Ending.ENDING_FONT);
+            g2.setFont(EndingBracketGeometry.ENDING_FONT);
             var label = bracket.label();
-            var glyphVector = Ending.ENDING_FONT.createGlyphVector(g2.getFontRenderContext(), label);
+            var glyphVector = EndingBracketGeometry.ENDING_FONT.createGlyphVector(
+                g2.getFontRenderContext(), label);
             var glyphHeightSs = GraphicUtils.inkHeight(glyphVector.getVisualBounds());
 
             // Add 1 device-pixel gap between the digit and the period

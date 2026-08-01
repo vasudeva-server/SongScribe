@@ -31,6 +31,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
+import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.LineThickness;
 import songscribe.shape.HairpinShape;
@@ -105,7 +106,9 @@ public final class HairpinRenderer {
         LineInvariants invariants
     ) {
         try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
-            g2.setColor(RenderingUtils.decorationSelectionColor(hairpin, invariants));
+            // A hairpin belongs to no single note, so it has no owner whose color it could take.
+            g2.setColor(RenderingUtils.decorationColor(
+                new HitTarget.Hairpin(hairpin), null, invariants, ElementFrame.LINE_LEVEL));
             // CAP_ROUND is intentional: its cap extends past the endpoint, so both lines
             // overlap at the narrow tip and fill it solidly. GraphicUtils.drawRoundedLine
             // keeps ends within endpoints, which leaves the tip visually unclosed.

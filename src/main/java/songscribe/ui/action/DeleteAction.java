@@ -23,6 +23,7 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.hit.HitTarget;
 import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 
@@ -55,7 +56,7 @@ public final class DeleteAction extends PasteboardAction {
         var scoreView = requireScoreView();
         var selection = scoreView.getSelectionCoordinator();
 
-        return selection.hasLyricSelection() ||
+        return selection.getSelectedTarget() instanceof HitTarget.Lyric ||
             selection.hasActiveSelection() ||
             selection.hasDecorationSelection() ||
             scoreView.canDeleteLine();

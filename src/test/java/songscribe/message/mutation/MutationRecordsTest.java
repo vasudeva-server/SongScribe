@@ -51,7 +51,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Song;
 import songscribe.dom.Tuplet;
 import songscribe.dom.Diminuendo;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.dom.RangeElement;
 import songscribe.dom.Tie;
 

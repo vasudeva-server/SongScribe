@@ -27,10 +27,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.ui.selection.LineSelectionState;
+import songscribe.ui.selection.RangeQueries;
+import songscribe.ui.selection.Selection;
 
 /**
- * Unit tests for {@link LineSelectionState#canToggleTie()} pitch validation logic.
+ * Unit tests for {@link RangeQueries#canToggleTie} pitch validation logic.
  * Uses the {@code tie-pitch-validation} fixture (Db major, 5 flats).
  */
 @SuppressWarnings({ "OverlyBroadThrowsClause", "StaticVariableMayNotBeInitialized", "StaticVariableUsedBeforeInitialization" })
@@ -96,9 +97,7 @@ class TiePitchValidationTest extends UnitTest {
     }
 
     private static boolean canTiePair(Note first, Note second) {
-        var state = new LineSelectionState(line);
-        state.setSelectionFromClick(first.ordinal());
-        state.extendSelectionTo(second.ordinal());
-        return state.canToggleTie();
+        return RangeQueries.canToggleTie(
+            new Selection.Range(line, first.ordinal(), second.ordinal(), first.ordinal()));
     }
 }

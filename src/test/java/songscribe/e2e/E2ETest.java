@@ -64,7 +64,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.MainFrame;
-import songscribe.ui.component.score.ElementHitTest;
+import songscribe.layout.ElementHitGeometry;
 import songscribe.ui.component.ScoreView;
 import songscribe.dom.ScaleContext;
 import songscribe.util.UIUtils;
@@ -427,13 +427,21 @@ public abstract class E2ETest {
             assertThat(line).isNotNull();
             var note = line.getElement(noteIndex);
 
+            var layoutResult = lc.getLayoutResult();
+            assertThat(layoutResult).isNotNull();
+
             var hitRect = new Rectangle2D.Double();
-            ElementHitTest.buildElementHitRect(lc, note, hitRect);
+            ElementHitGeometry.elementHitRectSs(
+                layoutResult.getElementXSs(note), note, hitRect, true);
+
+            // The hit rect is in layout space, whose Y origin is the staff midline; a click
+            // position is relative to the top of the component, so put the origin back.
+            var centerYSs = hitRect.y + (hitRect.height / 2) + lc.getMiddleLineYSs();
 
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(
                 locationOnScreen.x + ScaleContext.ssToRoundedPx(hitRect.x + hitRect.width / 2),
-                locationOnScreen.y + ScaleContext.ssToRoundedPx(hitRect.y + hitRect.height / 2)
+                locationOnScreen.y + ScaleContext.ssToRoundedPx(centerYSs)
             );
         });
         assertThat(result).isNotNull();

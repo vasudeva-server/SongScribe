@@ -87,10 +87,10 @@ class BatchMutationTest extends MainFrameMockTest {
     }
 
     private Line getLine(SelectionCoordinator coordinator) {
-        var selection = coordinator.getActiveSelection();
+        var selection = coordinator.getActiveLine();
         assertThat(selection).isNotNull();
 
-        return selection.getLine();
+        return selection;
     }
 
     // -- Inapplicable notes are skipped --

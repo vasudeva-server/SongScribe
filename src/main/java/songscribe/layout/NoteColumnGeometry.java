@@ -18,10 +18,9 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-package songscribe.ui.renderer;
+package songscribe.layout;
 
 import songscribe.dom.StaffElement;
-import songscribe.layout.NoteGeometry;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
@@ -64,7 +63,7 @@ import songscribe.smufl.SMuFLMetadata;
  * cache (the cache it replaces was needed only because the old Area build was expensive;
  * refs #465).
  */
-final class NoteColumnGeometry {
+public final class NoteColumnGeometry {
 
     /**
      * Horizontal extent of a single note in note-local staff spaces.
@@ -72,7 +71,7 @@ final class NoteColumnGeometry {
      * @param leftSs  left edge in staff spaces (note-local, ≤ 0)
      * @param rightSs right edge in staff spaces (note-local, ≥ 0)
      */
-    record ColumnExtent(double leftSs, double rightSs) {}
+    public record ColumnExtent(double leftSs, double rightSs) {}
 
     private NoteColumnGeometry() {}
 
@@ -85,7 +84,7 @@ final class NoteColumnGeometry {
      * @param beamed whether the note belongs to a beam group (affects dot placement)
      * @return the stem-free column extent
      */
-    static ColumnExtent glissandoAttachExtentSs(StaffElement note, boolean beamed) {
+    public static ColumnExtent glissandoAttachExtentSs(StaffElement note, boolean beamed) {
         var noteType = note.getType();
         var direction = NoteGeometry.effectiveDirection(note);
 
@@ -119,7 +118,7 @@ final class NoteColumnGeometry {
      * @param beamed whether the note belongs to a beam group (affects dot placement)
      * @return the full column extent
      */
-    static ColumnExtent extentSs(StaffElement note, boolean beamed) {
+    public static ColumnExtent extentSs(StaffElement note, boolean beamed) {
         return extentSs(note, glissandoAttachExtentSs(note, beamed));
     }
 
@@ -133,7 +132,7 @@ final class NoteColumnGeometry {
      * @param stemFree the stem-free extent for the same note, from {@link #glissandoAttachExtentSs}
      * @return the full column extent
      */
-    static ColumnExtent extentSs(StaffElement note, ColumnExtent stemFree) {
+    public static ColumnExtent extentSs(StaffElement note, ColumnExtent stemFree) {
         var noteType = note.getType();
         var leftSs = stemFree.leftSs();
         var rightSs = stemFree.rightSs();

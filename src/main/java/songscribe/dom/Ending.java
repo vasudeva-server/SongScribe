@@ -18,27 +18,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.layout;
+package songscribe.dom;
 
-import module java.desktop;
-
-import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Function;
 import java.util.stream.IntStream;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.dom.CollisionRegion;
-import songscribe.dom.ElementType;
-import songscribe.dom.Line;
-import songscribe.dom.RangeElement;
-import songscribe.dom.StaffElement;
-import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
-
-import songscribe.util.GraphicUtils;
-import songscribe.util.MyFontUtils;
 
 /**
  * Represents a first or second ending bracket above a repeated section.
@@ -52,26 +39,12 @@ public class Ending extends RangeElement {
      * Height of volta bracket tick marks in staff-space units.
      */
     public static final double VOLTA_TICK_HEIGHT_SS = 2.0;
-    /** Scale of volta label font relative to standard music font size. */
-    private static final float LABEL_FONT_SCALE = 0.6f;
-
-    /** Font for volta bracket labels. */
-    public static final Font ENDING_FONT = MyFontUtils.getLocalFont(
-        "emmentaler-16.otf", NoteGeometry.MUSIC_FONT_SIZE_SS * LABEL_FONT_SCALE);
 
     /** Horizontal inset of label from left arm of bracket. */
     public static final double LABEL_X_INSET_SS = 0.9;
 
     /** Vertical gap between the bracket's horizontal line and the top of the label. */
     public static final double LABEL_Y_OFFSET_SS = 0.5;
-
-    /** Cached visual bounds for the "1." label. */
-    private static final Rectangle2D LABEL_1_BOUNDS_SS =
-        ENDING_FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, "1.").getVisualBounds();
-
-    /** Cached visual bounds for the "2." label. */
-    private static final Rectangle2D LABEL_2_BOUNDS_SS =
-        ENDING_FONT.createGlyphVector(GraphicUtils.SCREEN_FRC, "2.").getVisualBounds();
 
     /**
      * The x-range and properties of a single visual bracket (first or second ending).
@@ -185,9 +158,13 @@ public class Ending extends RangeElement {
     /**
      * Builds the exception thrown when an ending is found to have no REPEAT splitting its
      * two brackets — corrupt state that should have been rejected on import or removed by
-     * invalidation. Shared by {@link #getSplitIndex} and {@link #computeBracketRanges}.
+     * invalidation. Shared by {@link #getSplitIndex} and the layout-side bracket-range
+     * computation, which enforces the same invariant.
+     *
+     * @param anchorIndex index of the ending's anchor element
+     * @param endIndex    index of the ending's end element
      */
-    private static IllegalStateException noSplitElementException(int anchorIndex, int endIndex) {
+    public static IllegalStateException noSplitElementException(int anchorIndex, int endIndex) {
         return new IllegalStateException(
             "Ending spanning elements [" + anchorIndex + ',' + endIndex
                 + "] has no split element; every ending must have a REPEAT between its two brackets");
@@ -201,132 +178,15 @@ public class Ending extends RangeElement {
     }
 
     /**
-     * Computes and stores the bracket ranges for this ending.
+     * Stores the bracket ranges computed during layout.
      * <p>
-     * Determines where each visual bracket starts and ends by examining the
-     * element types (barlines, repeats) in the line. The logic mirrors
-     * {@code EndingRenderer.renderEndings()} to ensure stacking and rendering
-     * use identical positions.
+     * Called by {@code songscribe.layout.EndingBracketGeometry}, which owns the geometry:
+     * computing the ranges needs layout types this DOM class must not depend on.
      *
-     * @param line     the line containing this ending
-     * @param columnFn function that returns the {@link ElementColumn} of an element,
-     *                 from which its X position and horizontal extents are read
-     * @return the computed bracket ranges (also stored on this Ending)
+     * @param bracketRanges the computed ranges, in bracket order
      */
-    public List<BracketRange> computeBracketRanges(
-        Line line,
-        Function<? super StaffElement, ElementColumn> columnFn
-    ) {
-        var start = getAnchorElementIndex();
-        var end = getEndElementIndex();
-
-        if (start < 0 || end < 0 || start >= line.elementCount()
-            || end >= line.elementCount()) {
-            bracketRanges = List.of();
-            return bracketRanges;
-        }
-
-        // Find the repeat element (REPEAT_RIGHT or REPEAT_LEFT_RIGHT) that separates first and second endings
-        var repeatSplitIndex = IntStream.rangeClosed(start, end)
-            .filter(i -> {
-                var t = line.getElement(i).getType();
-                return t == ElementType.REPEAT_RIGHT || t == ElementType.REPEAT_LEFT_RIGHT;
-            })
-            .findFirst()
-            .orElse(-1);
-
-        if (repeatSplitIndex < 0) {
-            throw noSplitElementException(start, end);
-        }
-
-        var startElement = line.getElement(start);
-
-        // Adjust start leftward if previous element is a barline or repeat
-        if (start > 0) {
-            var previousElement = line.getElement(start - 1);
-            var prevType = previousElement.getType();
-
-            if (prevType.isBarLine() || prevType.isRepeat()) {
-                --start;
-                startElement = previousElement;
-            }
-        }
-
-        var endElement = line.getElement(end);
-        var ranges = new ArrayList<BracketRange>(2);
-        var repeatX = 0.0;
-
-        // First bracket (anchor up to the split repeat)
-        if (start < repeatSplitIndex) {
-            var startColumn = columnFn.apply(startElement);
-            var x1 = startColumn.getXSs();
-            var startType = startElement.getType();
-
-            // For barlines and repeats, align to the governing thin barline center.
-            // For notes/rests, anchor to the element's left extent.
-            if (startType.isBarLine() || startType.isRepeat()) {
-                x1 += startType.endingAnchorXOffsetSs();
-            }
-            else {
-                x1 = startColumn.getLeftEdgeXSs() - NoteGeometry.ACCIDENTAL_PADDING_SS;
-            }
-
-            var repeatElementX = columnFn.apply(
-                line.getElement(repeatSplitIndex)).getXSs();
-            var x2 = repeatElementX
-                + LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
-            repeatX = repeatElementX
-                + LineThickness.REPEAT_RIGHT_AFTER_THICK_X_SS
-                - LineThickness.VOLTA_BRACKET_SS / 2;
-
-            ranges.add(new BracketRange(x1, x2, 1, true));
-        }
-
-        // Second bracket (after the split repeat)
-        if (end > repeatSplitIndex) {
-            var endColumn = columnFn.apply(endElement);
-            var x2 = endColumn.getXSs();
-            var endType = endElement.getType();
-
-            // Extend to the next barline/repeat if end element is not one
-            if (!endType.isBarLine() && !endType.isRepeat()
-                && end + 1 < line.elementCount()) {
-                var nextElement = line.getElement(end + 1);
-                var nextType = nextElement.getType();
-
-                if (nextType.isBarLine() || nextType.isRepeat()) {
-                    endType = nextType;
-                    x2 = columnFn.apply(nextElement).getXSs();
-                }
-            }
-
-            boolean hasClosingStroke;
-
-            switch (endType) {
-                case REPEAT_RIGHT, REPEAT_LEFT_RIGHT -> {
-                    x2 += LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
-                    hasClosingStroke = true;
-                }
-                case FINAL_DOUBLE_BARLINE -> {
-                    x2 += LineThickness.THIN_BARLINE_SS / 2;
-                    hasClosingStroke = true;
-                }
-                case SINGLE_BARLINE, DOUBLE_BARLINE -> {
-                    x2 += LineThickness.THIN_BARLINE_SS / 2;
-                    hasClosingStroke = false;
-                }
-                case REPEAT_LEFT -> hasClosingStroke = false;
-                default -> {
-                    x2 = endColumn.getRightEdgeXSs() + SMuFLConstants.AUGMENTATION_DOT_WIDTH_SS;
-                    hasClosingStroke = false;
-                }
-            }
-
-            ranges.add(new BracketRange(repeatX, x2, 2, hasClosingStroke));
-        }
-
-        bracketRanges = List.copyOf(ranges);
-        return bracketRanges;
+    public void setBracketRanges(List<BracketRange> bracketRanges) {
+        this.bracketRanges = bracketRanges;
     }
 
     /**
@@ -350,63 +210,6 @@ public class Ending extends RangeElement {
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
         // NOTE_HEAD_WIDTH_SS here is a generic minimum-span floor, not the end note's head width.
         return Math.max(SMuFLConstants.NOTE_HEAD_WIDTH_SS, endXSs - anchorXSs + getEndElementWidthSs());
-    }
-
-    /**
-     * Returns the cached visual bounds of the ending label text in staff-space units.
-     *
-     * @param number the bracket number (1 or 2)
-     * @return visual bounds rectangle in staff-space units
-     */
-    static Rectangle2D labelBoundsSs(int number) {
-        return number == 1 ? LABEL_1_BOUNDS_SS : LABEL_2_BOUNDS_SS;
-    }
-
-    /**
-     * Computes collision sub-regions for a single visual bracket.
-     * <p>
-     * Decomposes the bracket into horizontal bar, vertical ticks, and label
-     * so that higher stacking layers can nestle into the open space between them.
-     * All xOffset values are relative to the element's anchor X (the first bracket's x1).
-     *
-     * @param bracket  the bracket range to compute regions for
-     * @param xBaseSs  horizontal offset of this bracket's x1 from the element anchor X
-     * @return list of collision sub-regions
-     */
-    public List<CollisionRegion> computeCollisionRegions(
-        BracketRange bracket,
-        double xBaseSs
-    ) {
-        var spanWidthSs = bracket.widthSs();
-        var bracketThicknessSs = LineThickness.VOLTA_BRACKET_SS;
-        var regions = new ArrayList<CollisionRegion>(4);
-
-        // Horizontal bar
-        regions.add(new CollisionRegion(
-            xBaseSs, 0, spanWidthSs, bracketThicknessSs));
-
-        // Left tick
-        regions.add(new CollisionRegion(
-            xBaseSs, 0, bracketThicknessSs,
-            VOLTA_TICK_HEIGHT_SS));
-
-        // Right tick (only if there is a closing stroke)
-        if (bracket.hasClosingStroke()) {
-            regions.add(new CollisionRegion(
-                xBaseSs + spanWidthSs - bracketThicknessSs, 0,
-                bracketThicknessSs,
-                VOLTA_TICK_HEIGHT_SS));
-        }
-
-        // Label (e.g. "1." or "2.")
-        var labelBounds = labelBoundsSs(bracket.number());
-        var labelWidthSs = labelBounds.getWidth();
-        var labelHeightSs = GraphicUtils.inkHeight(labelBounds);
-        regions.add(new CollisionRegion(
-            xBaseSs + LABEL_X_INSET_SS, 0,
-            labelWidthSs, LABEL_Y_OFFSET_SS + labelHeightSs));
-
-        return regions;
     }
 
     @Override

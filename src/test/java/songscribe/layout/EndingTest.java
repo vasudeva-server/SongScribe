@@ -32,6 +32,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Ending;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.LineThickness;
@@ -249,7 +250,7 @@ class EndingTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Row 15 — computeCollisionRegions(BracketRange, double)
+    // Row 15 — EndingBracketGeometry.computeCollisionRegions(BracketRange, double)
     // -------------------------------------------------------------------------
 
     @Nested
@@ -261,9 +262,8 @@ class EndingTest extends UnitTest {
             var xBase = 5.0;
             var span = 10.0;
             var bracket = new Ending.BracketRange(xBase, xBase + span, 1, false);
-            var ending = minimalEnding();
 
-            var regions = ending.computeCollisionRegions(bracket, xBase);
+            var regions = EndingBracketGeometry.computeCollisionRegions(bracket, xBase);
 
             assertThat(regions).hasSize(3);
             assertThat(regions.get(0).xOffsetSs()).isEqualTo(xBase);
@@ -277,33 +277,18 @@ class EndingTest extends UnitTest {
             var xBase = 5.0;
             var span = 10.0;
             var bracket = new Ending.BracketRange(xBase, xBase + span, 1, true);
-            var ending = minimalEnding();
 
-            var regions = ending.computeCollisionRegions(bracket, xBase);
+            var regions = EndingBracketGeometry.computeCollisionRegions(bracket, xBase);
 
             assertThat(regions).hasSize(4);
             var expectedRightTickX = xBase + span - LineThickness.VOLTA_BRACKET_SS;
             assertThat(regions.get(2).xOffsetSs()).isEqualTo(expectedRightTickX);
             assertThat(regions.get(3).xOffsetSs()).isEqualTo(xBase + Ending.LABEL_X_INSET_SS);
         }
-
-        private Ending minimalEnding() {
-            var song = new Song();
-            var line = song.getLine(0);
-            var anchor = new StaffElement(ElementType.CROTCHET);
-            var end = new StaffElement(ElementType.CROTCHET);
-            var ending = new Ending(anchor, end);
-            song.withoutMutationTracking(() -> {
-                line.addElement(anchor);
-                line.addElement(end);
-                line.addRangeElement(ending);
-            });
-            return ending;
-        }
     }
 
     // -------------------------------------------------------------------------
-    // Row 14 — computeBracketRanges(Line, Function<StaffElement, ElementColumn>)
+    // Row 14 — EndingBracketGeometry.computeBracketRanges(Ending, Line, Function<StaffElement, ElementColumn>)
     // -------------------------------------------------------------------------
 
     @Nested
@@ -370,7 +355,7 @@ class EndingTest extends UnitTest {
             };
             var xs = new double[]{anchorX, note1X, note2X, splitX, note4X, note5X, endX};
 
-            var ranges = ending.computeBracketRanges(line, columnMap(elements, xs));
+            var ranges = EndingBracketGeometry.computeBracketRanges(ending, line, columnMap(elements, xs));
 
             assertThat(ranges).hasSize(2);
 
@@ -423,7 +408,7 @@ class EndingTest extends UnitTest {
             var elements = new StaffElement[]{prev, anchor, split, end, terminal};
             var xs = new double[]{prevX, anchorX, splitX, endX, terminalX};
 
-            var ranges = ending.computeBracketRanges(line, columnMap(elements, xs));
+            var ranges = EndingBracketGeometry.computeBracketRanges(ending, line, columnMap(elements, xs));
 
             assertThat(ranges).hasSize(2);
             // First bracket x1 anchored to the prev barline, not the anchor note
@@ -454,7 +439,7 @@ class EndingTest extends UnitTest {
             };
             var xs = new double[]{anchorX, note1X, note2X, splitX, note4X, note5X, endX};
 
-            var ranges = ending.computeBracketRanges(line, columnMap(elements, xs));
+            var ranges = EndingBracketGeometry.computeBracketRanges(ending, line, columnMap(elements, xs));
 
             assertThat(ranges).hasSize(2);
             assertThat(ranges.get(1).hasClosingStroke()).isTrue();
@@ -478,7 +463,7 @@ class EndingTest extends UnitTest {
             var elements = new StaffElement[]{anchor, mid, end};
             var xs = new double[]{10.0, 20.0, 30.0};
 
-            assertThatThrownBy(() -> ending.computeBracketRanges(line, columnMap(elements, xs)))
+            assertThatThrownBy(() -> EndingBracketGeometry.computeBracketRanges(ending, line, columnMap(elements, xs)))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("no split element");
         }
@@ -516,8 +501,8 @@ class EndingTest extends UnitTest {
             // Only the anchor has an accidental-inclusive left extent; the rest are bare noteheads.
             var leftExtents = new double[]{ACCIDENTAL_LEFT_EXTENT_SS, 0.0, 0.0, 0.0, 0.0};
 
-            var ranges = ending.computeBracketRanges(
-                line, columnMap(elements, xs, leftExtents, null));
+            var ranges = EndingBracketGeometry.computeBracketRanges(
+                ending, line, columnMap(elements, xs, leftExtents, null));
 
             assertThat(ranges).hasSize(2);
             var expectedX1 = anchorX + ACCIDENTAL_LEFT_EXTENT_SS - NoteGeometry.ACCIDENTAL_PADDING_SS;
@@ -550,7 +535,7 @@ class EndingTest extends UnitTest {
             };
 
             // All bare noteheads (left extent 0.0) — no accidental override.
-            var ranges = ending.computeBracketRanges(line, columnMap(elements, xs));
+            var ranges = EndingBracketGeometry.computeBracketRanges(ending, line, columnMap(elements, xs));
 
             assertThat(ranges).hasSize(2);
             var expectedX1 = anchorX - NoteGeometry.ACCIDENTAL_PADDING_SS;
@@ -591,8 +576,8 @@ class EndingTest extends UnitTest {
                 DOTTED_RIGHT_EXTENT_SS
             };
 
-            var ranges = ending.computeBracketRanges(
-                line, columnMap(elements, xs, null, rightExtents));
+            var ranges = EndingBracketGeometry.computeBracketRanges(
+                ending, line, columnMap(elements, xs, null, rightExtents));
 
             assertThat(ranges).hasSize(2);
             var bracket2 = ranges.get(1);

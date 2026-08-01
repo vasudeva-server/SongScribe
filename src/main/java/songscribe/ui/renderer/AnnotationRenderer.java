@@ -29,6 +29,7 @@ import module java.desktop;
 import songscribe.dom.StaffElement;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.ScaleContext;
+import songscribe.hit.HitTarget;
 import songscribe.util.GraphicsState;
 
 /**
@@ -73,7 +74,10 @@ public final class AnnotationRenderer implements ElementRenderer<StaffElement> {
 
         try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
             g2.setFont(ScaleContext.scaleFont(annotationFont));
-            RenderingUtils.applyDecorationColor(g2, element, invariants, frame);
+            // The annotation is selectable on its own, so the color is keyed on the attachment
+            // rather than on the note it hangs off.
+            RenderingUtils.applyDecorationColor(
+                g2, new HitTarget.Attachment(attachment), element, invariants, frame);
 
             var ascentSs = ScaleContext.fontAscentSs(annotationFont).value();
             var xSs = decorationLayout.xSs();

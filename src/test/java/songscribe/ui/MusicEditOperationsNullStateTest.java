@@ -51,7 +51,7 @@ import songscribe.ui.selection.TupletToggleInfo;
  * Tests for MusicEditOperations null-state guards (state == null paths) and
  * the toggleTuplet canToggle==false guard.
  *
- * <p>Each operation checks {@code coordinator.getActiveSelection()} on entry and
+ * <p>Each operation checks {@code coordinator.getRange()} on entry and
  * either returns a safe default or returns early without emitting any mutation.
  * These branches are dark in the main test suite; this class covers them directly.
  */
@@ -81,11 +81,11 @@ class MusicEditOperationsNullStateTest extends UnitTest {
 
     /**
      * Creates a MusicEditOperations whose coordinator has no active line,
-     * so getActiveSelection() returns null.
+     * so getRange() returns null.
      * MessageCenter is mocked after construction.
      */
     private MusicEditOperations opsWithNullState() {
-        // A coordinator with no registered/activated line returns null from getActiveSelection().
+        // A coordinator with no registered/activated line returns null from getRange().
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
         var ops = new MusicEditOperations(song, coordinator);
         messageCenterMock = mockStatic(MessageCenter.class);

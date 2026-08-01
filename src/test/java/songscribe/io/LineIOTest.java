@@ -57,7 +57,7 @@ import songscribe.dom.Song;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
 import songscribe.message.MessageCenter;
 
 @SuppressWarnings({ "PackageVisibleInnerClass", "OverlyBroadThrowsClause" })

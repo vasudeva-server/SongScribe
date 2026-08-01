@@ -36,7 +36,8 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
 import songscribe.engraving.LineThickness;
 import songscribe.layout.ElementColumn;
-import songscribe.layout.Ending;
+import songscribe.dom.Ending;
+import songscribe.layout.EndingBracketGeometry;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.RangeElement;
 import songscribe.layout.StaffExtents;
@@ -576,7 +577,8 @@ public class StructuralStacker {
             }
 
             // Compute bracket ranges (stored on the Ending for renderer use)
-            var brackets = ending.computeBracketRanges(
+            var brackets = EndingBracketGeometry.computeBracketRanges(
+                ending,
                 line,
                 e -> {
                     var col = columnsByElement.get(e);
@@ -602,7 +604,7 @@ public class StructuralStacker {
             for (var bracket : brackets) {
                 var xBaseSs = bracket.x1Ss() - anchorXSs;
                 allRegions.addAll(
-                    ending.computeCollisionRegions(bracket, xBaseSs));
+                    EndingBracketGeometry.computeCollisionRegions(bracket, xBaseSs));
             }
 
             // Overall width = from first bracket start to last bracket end

@@ -28,10 +28,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.Song;
-import songscribe.dom.ElementType;
-import songscribe.dom.Line;
-import songscribe.dom.StaffElement;
+import songscribe.dom.*;
 
 /**
  * Unit tests for the Ending invalidation and classification methods:

@@ -30,6 +30,7 @@ import songscribe.dom.Line;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.LineThickness;
 import songscribe.dom.Tuplet;
+import songscribe.hit.HitTarget;
 import songscribe.shape.TupletBracketShape;
 import songscribe.util.GraphicUtils;
 import songscribe.util.GraphicsState;
@@ -115,8 +116,7 @@ public final class TupletRenderer {
             var bracketLine = new BracketLine(anchorXSs, decorLayout.widthSs(),
                 decorLayout.ySs(), decorLayout.dySs());
 
-            renderTuplet(g2, invariants, bracketLine, leftXSs, rightXSs, tuplet.getGrade(),
-                numberOnly);
+            renderTuplet(g2, invariants, frame, tuplet, bracketLine, leftXSs, rightXSs, numberOnly);
         }
     }
 
@@ -137,22 +137,25 @@ public final class TupletRenderer {
      *
      * @param g2          graphics context (scale transform already applied)
      * @param invariants  line invariants
+     * @param frame       the element frame of the enclosing pass
+     * @param tuplet      the tuplet being drawn, as a click would address it
      * @param bracketLine slope origin and rise of the bracket line
      * @param leftXSs     left edge of the visual bracket
      * @param rightXSs    right edge of the visual bracket
-     * @param grade       tuplet number (3 for triplet, 5 for quintuplet, etc.)
      * @param numberOnly  true to draw only the number (no bracket)
      */
     private void renderTuplet(
         Graphics2D g2,
         LineInvariants invariants,
+        ElementFrame frame,
+        Tuplet tuplet,
         BracketLine bracketLine,
         double leftXSs,
         double rightXSs,
-        int grade,
         boolean numberOnly
     ) {
         var anchorXSs = bracketLine.anchorXSs();
+        var grade = tuplet.getGrade();
 
         // Convert layout Y to component Y — this is the top of the reserved box at the anchor X.
         // The conversion is a pure translation, so evaluating the sloped line in component space
@@ -178,7 +181,10 @@ public final class TupletRenderer {
         var thicknessSs = LineThickness.TUPLET_BRACKET_SS;
 
         try (var ignored = GraphicsState.save(g2, COLOR)) {
-            g2.setColor(RenderingUtils.ELEMENT_COLOR);
+            // A tuplet spans notes rather than hanging off one, so it has no owner whose color it
+            // could take: it is plain black unless it is itself the selection.
+            g2.setColor(RenderingUtils.decorationColor(
+                new HitTarget.Tuplet(tuplet), null, invariants, frame));
 
             double numberBaselineYSs;
 
