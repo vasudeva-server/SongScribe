@@ -383,7 +383,7 @@ class BeamScoringTest extends UnitTest {
     void testNoSolvedStemFallsBelowTheMinimumLength() {
         var stems = stemsFor(STEEP_ASCENDING_HALF_POSITIONS, EIGHTH_NOTE_BEAM_COUNT);
         var position = BeamScoring.solve(stems, DIR_UP, NO_FORCED_STEMS);
-        var xSpanSs = stems.get(stems.size() - 1).xSs() - stems.get(0).xSs();
+        var xSpanSs = stems.getLast().xSs() - stems.getFirst().xSs();
 
         // Stems reach the center of the outer beam, hence the half-thickness term.
         var heightOfBeamsSs = BeamScoring.BEAM_THICKNESS_SS;
@@ -469,7 +469,7 @@ class BeamScoringTest extends UnitTest {
             EIGHTH_NOTE_BEAM_COUNT
         ));
         var stackedStems = List.of(
-            singleStem.get(0),
+            singleStem.getFirst(),
             new BeamScoring.StemInput(
                 FIRST_STEM_X_SS,
                 HEAD_ABOVE_MIDDLE_Y_UP_SS,
@@ -806,7 +806,7 @@ class BeamScoringTest extends UnitTest {
         var contour = STEEP_ASCENDING_HALF_POSITIONS;
         var scoring = scoringFor(contour, DIR_UP);
         var stems = stemsFor(contour, EIGHTH_NOTE_BEAM_COUNT);
-        var xSpan = stems.get(stems.size() - 1).xSs() - stems.get(0).xSs();
+        var xSpan = stems.getLast().xSs() - stems.getFirst().xSs();
         var slope = (scoring.unquantedRightY() - scoring.unquantedLeftY()) / xSpan;
 
         // The intersection over stems of the feasible left-end Y values.

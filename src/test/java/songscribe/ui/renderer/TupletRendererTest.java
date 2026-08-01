@@ -209,7 +209,7 @@ class TupletRendererTest extends UnitTest {
 
         verify(g2, times(2)).draw(any(Shape.class));
         // First draw is the left-side bracket path: min X = leftXSs
-        var leftPath = recording.placedShapes().get(0).getBounds2D();
+        var leftPath = recording.placedShapes().getFirst().getBounds2D();
         assertThat(leftPath.getMinX()).isCloseTo(expectedLeftX, within(TOLERANCE));
     }
 
@@ -225,7 +225,7 @@ class TupletRendererTest extends UnitTest {
             ElementFrame.LINE_LEVEL);
 
         verify(g2, times(2)).draw(any(Shape.class));
-        var leftPath = recording.placedShapes().get(0).getBounds2D();
+        var leftPath = recording.placedShapes().getFirst().getBounds2D();
         assertThat(leftPath.getMinX()).isCloseTo(expectedLeftX, within(TOLERANCE));
     }
 
@@ -426,8 +426,8 @@ class TupletRendererTest extends UnitTest {
         RENDERER.renderTupletsFromLine(g2, invariants.requireCurrentLine(), invariants,
             ElementFrame.LINE_LEVEL);
 
-        var leftCornerYSs = cornerYSs(recording.placedShapes().get(0), 1);
-        var leftArmBottomYSs = cornerYSs(recording.placedShapes().get(0), 0);
+        var leftCornerYSs = cornerYSs(recording.placedShapes().getFirst(), 1);
+        var leftArmBottomYSs = cornerYSs(recording.placedShapes().getFirst(), 0);
 
         assertThat(leftArmBottomYSs - leftCornerYSs)
             .isCloseTo(Tuplet.BRACKET_ARM_HEIGHT_SS, within(TOLERANCE));

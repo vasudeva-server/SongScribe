@@ -594,7 +594,7 @@ class PlaybackControllerTest extends UnitTest {
                 var result = PlaybackController.buildSequenceForSelection(mockSong, null);
 
                 // buildFullSequence() was invoked and its return value was passed through
-                verify(ignored.constructed().get(0)).buildFullSequence();
+                verify(ignored.constructed().getFirst()).buildFullSequence();
                 assertThat(result).isNotNull();
             }
         }
@@ -619,7 +619,7 @@ class PlaybackControllerTest extends UnitTest {
                 var result = PlaybackController.buildSequenceForSelection(mockSong, selection);
 
                 assertThat(result).isNotNull();
-                verify(ignored.constructed().get(0))
+                verify(ignored.constructed().getFirst())
                     .buildFromNoteToEnd(expectedLineIndex, beginIndex);
             }
         }

@@ -648,7 +648,7 @@ public class LayoutEngine {
                 var beamPosition = BeamScoring.solve(stemInputs, dirSign, forcedFraction);
                 var leftYUpSs = beamPosition.leftYUpSs();
                 var rightYUpSs = beamPosition.rightYUpSs();
-                var xSpanSs = stemInputs.get(stemInputs.size() - 1).xSs();
+                var xSpanSs = stemInputs.getLast().xSs();
 
                 startYSs = -leftYUpSs - dirSign * LineThickness.BEAM_THICKNESS_SS / 2.0;
 

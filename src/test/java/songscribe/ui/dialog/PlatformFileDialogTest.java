@@ -124,7 +124,7 @@ class PlatformFileDialogTest extends UnitTest {
 
             try (var construction = mockConstruction(SystemFileChooser.class)) {
                 var dialog = new PlatformFileDialog(DUMMY_FRAME, "title", true, filters, 0);
-                var chooserMock = construction.constructed().get(0);
+                var chooserMock = construction.constructed().getFirst();
 
                 // File has .mssw extension: extension-based match should win
                 when(chooserMock.getSelectedFile()).thenReturn(new File("song.mssw"));
@@ -147,7 +147,7 @@ class PlatformFileDialogTest extends UnitTest {
 
             try (var construction = mockConstruction(SystemFileChooser.class)) {
                 var dialog = new PlatformFileDialog(DUMMY_FRAME, "title", true, filters, 0);
-                var chooserMock = construction.constructed().get(0);
+                var chooserMock = construction.constructed().getFirst();
 
                 // No selected file: fall back to dropdown
                 when(chooserMock.getSelectedFile()).thenReturn(null);
@@ -170,7 +170,7 @@ class PlatformFileDialogTest extends UnitTest {
 
             try (var construction = mockConstruction(SystemFileChooser.class)) {
                 var dialog = new PlatformFileDialog(DUMMY_FRAME, "title", true, filters, 0);
-                var chooserMock = construction.constructed().get(0);
+                var chooserMock = construction.constructed().getFirst();
 
                 // No file, dropdown returns unrecognized filter
                 when(chooserMock.getSelectedFile()).thenReturn(null);
@@ -280,7 +280,7 @@ class PlatformFileDialogTest extends UnitTest {
 
             try (var construction = mockConstruction(SystemFileChooser.class)) {
                 new PlatformFileDialog(DUMMY_FRAME, "title", true, filters, -1);
-                var chooserMock = construction.constructed().get(0);
+                var chooserMock = construction.constructed().getFirst();
 
                 // setFileFilter should be called with the filter at index 0 (clamped from -1)
                 verify(chooserMock).setFileFilter(
@@ -297,7 +297,7 @@ class PlatformFileDialogTest extends UnitTest {
 
             try (var construction = mockConstruction(SystemFileChooser.class)) {
                 new PlatformFileDialog(DUMMY_FRAME, "title", true, filters, 99);
-                var chooserMock = construction.constructed().get(0);
+                var chooserMock = construction.constructed().getFirst();
 
                 // setFileFilter should be called with the filter at index 1 (clamped from 99)
                 verify(chooserMock).setFileFilter(
@@ -314,7 +314,7 @@ class PlatformFileDialogTest extends UnitTest {
 
             try (var construction = mockConstruction(SystemFileChooser.class)) {
                 new PlatformFileDialog(DUMMY_FRAME, "title", true, filters, 1);
-                var chooserMock = construction.constructed().get(0);
+                var chooserMock = construction.constructed().getFirst();
 
                 verify(chooserMock).setFileFilter(
                     argThat(f -> f != null && "XML Files".equals(f.getDescription()))

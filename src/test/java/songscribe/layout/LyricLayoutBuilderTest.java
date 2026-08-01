@@ -245,7 +245,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         var box2XSs = col2XSs + halfHeadWidthSs;
 
         // First hyphen: from "do" syllable end → "re" box left, opened by column index 0
-        assertThat(hyphens.get(0).startXSs())
+        assertThat(hyphens.getFirst().startXSs())
             .as("first hyphen startXSs: end of 'do' box")
             .isCloseTo(box0XSs, within(TOLERANCE));
         assertThat(hyphens.get(0).endXSs())

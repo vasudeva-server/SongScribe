@@ -93,7 +93,7 @@ class TupletPopupButtonTest extends MainFrameMockTest {
 
     @Test
     void testMusicSelectionDidChangeEnabledWhenOneActionIsEnabled() {
-        Actions.TOGGLE_TUPLET_ACTIONS.get(0).setEnabled(true);
+        Actions.TOGGLE_TUPLET_ACTIONS.getFirst().setEnabled(true);
         button.musicSelectionDidChange(makeNotification());
         assertThat(button.isEnabled()).isTrue();
     }
@@ -106,7 +106,7 @@ class TupletPopupButtonTest extends MainFrameMockTest {
     void testConfigureButtonFromActionUsesFixedTupletTooltip() {
         // configureButtonFromAction is called by setCurrentAction;
         // the action's own tooltip is irrelevant — the override must win.
-        var action = Actions.TOGGLE_TUPLET_ACTIONS.get(0);
+        var action = Actions.TOGGLE_TUPLET_ACTIONS.getFirst();
         button.setCurrentAction(action);
         assertThat(button.getToolTipText()).isEqualTo(Strings.get(Strings.TOOLTIP_TUPLET));
     }

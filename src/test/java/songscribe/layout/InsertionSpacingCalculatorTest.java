@@ -998,7 +998,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(line, fragment, 0, null, null, null);
 
             var expectedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
-            assertThat(result.cloneXPositionsSs().get(0)).isEqualTo(expectedXSs);
+            assertThat(result.cloneXPositionsSs().getFirst()).isEqualTo(expectedXSs);
         }
 
         @Test
@@ -1012,7 +1012,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
                 line, List.of(fragmentElement), 1, null, null, null);
             var singleResult = InsertionSpacingCalculator.calculateInsertion(line, crotchet(), 1, null, null);
 
-            assertThat(fragmentResult.cloneXPositionsSs().get(0)).isEqualTo(singleResult.insertedElementXSs());
+            assertThat(fragmentResult.cloneXPositionsSs().getFirst()).isEqualTo(singleResult.insertedElementXSs());
         }
 
         @Test
@@ -1028,7 +1028,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var predecessorColumn = lightweightColumn(predecessor);
             predecessorColumn.setXSs(ScaleContext.pxToSs(predecessor.getXOffsetPx()));
             var expectedSeedXSs = springNextColumnXSs(predecessorColumn, lightweightColumn(fragmentElement));
-            assertThat(result.cloneXPositionsSs().get(0)).isEqualTo(expectedSeedXSs);
+            assertThat(result.cloneXPositionsSs().getFirst()).isEqualTo(expectedSeedXSs);
         }
 
         @Test
@@ -1042,7 +1042,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
                 line, List.of(fragmentElement), 1, deleteRange, null, null);
 
             var lastCloneColumn = lightweightColumn(fragmentElement);
-            lastCloneColumn.setXSs(result.cloneXPositionsSs().get(0));
+            lastCloneColumn.setXSs(result.cloneXPositionsSs().getFirst());
             var successorColumn = lightweightColumn(successor);
             var requiredSuccessorXSs = springNextColumnXSs(lastCloneColumn, successorColumn);
             var successorXSs = ScaleContext.pxToSs(successor.getXOffsetPx());
@@ -1162,9 +1162,9 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var withoutMetrics = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, fragment, line.effectiveElementCount(), null, null, null);
 
-            assertThat(withMetrics.cloneXPositionsSs().get(0))
+            assertThat(withMetrics.cloneXPositionsSs().getFirst())
                 .as("a wide syllable on the predecessor must push the fragment's clone further right")
-                .isGreaterThan(withoutMetrics.cloneXPositionsSs().get(0));
+                .isGreaterThan(withoutMetrics.cloneXPositionsSs().getFirst());
         }
 
         @Test
@@ -1220,8 +1220,8 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
             var predecessorColumn = lightweightColumn(predecessor);
             predecessorColumn.setXSs(ScaleContext.pxToSs(predecessor.getXOffsetPx()));
-            var expectedFirstCloneXSs = springNextColumnXSs(predecessorColumn, lightweightColumn(fragment.get(0)));
-            assertThat(result.cloneXPositionsSs().get(0))
+            var expectedFirstCloneXSs = springNextColumnXSs(predecessorColumn, lightweightColumn(fragment.getFirst()));
+            assertThat(result.cloneXPositionsSs().getFirst())
                 .as("first clone seeds from the element before the deleted range")
                 .isEqualTo(expectedFirstCloneXSs);
 
@@ -1262,7 +1262,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             layoutPredecessorColumn.setXSs(ScaleContext.pxToSs(predecessor.getXOffsetPx()) + LAYOUT_SHIFT_SS);
             var expectedCloneXSs = springNextColumnXSs(layoutPredecessorColumn, lightweightColumn(fragmentElement));
 
-            assertThat(result.cloneXPositionsSs().get(0))
+            assertThat(result.cloneXPositionsSs().getFirst())
                 .as("predecessor position must come from the supplied layout, not xOffsetPx")
                 .isEqualTo(expectedCloneXSs);
 
@@ -1272,7 +1272,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             xOffsetPredecessorColumn.setXSs(ScaleContext.pxToSs(predecessor.getXOffsetPx()));
             var xOffsetCloneXSs = springNextColumnXSs(xOffsetPredecessorColumn, lightweightColumn(fragmentElement));
 
-            assertThat(result.cloneXPositionsSs().get(0))
+            assertThat(result.cloneXPositionsSs().getFirst())
                 .as("layout-driven position must differ from the xOffsetPx-only position")
                 .isNotEqualTo(xOffsetCloneXSs);
         }

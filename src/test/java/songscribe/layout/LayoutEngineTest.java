@@ -1710,7 +1710,7 @@ class LayoutEngineTest extends UnitTest {
             notes.add(note);
         }
 
-        line.addBeaming(new Beam(notes.get(0), notes.get(notes.size() - 1)));
+        line.addBeaming(new Beam(notes.getFirst(), notes.getLast()));
         return notes;
     }
 
@@ -1832,7 +1832,7 @@ class LayoutEngineTest extends UnitTest {
         var result = require(engine().layout(line), "LayoutResult");
         var beamLayout = require(result.getBeamLayout(beam), "BeamLayout");
 
-        var firstXSs = result.getElementXSs(notes.get(0));
+        var firstXSs = result.getElementXSs(notes.getFirst());
         var stems = new ArrayList<BeamScoring.StemInput>(notes.size());
 
         for (var note : notes) {

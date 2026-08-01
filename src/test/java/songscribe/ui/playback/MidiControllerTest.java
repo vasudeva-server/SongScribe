@@ -78,7 +78,7 @@ class MidiControllerTest extends UnitTest {
 
             var captor = ArgumentCaptor.forClass(MidiMessage.class);
             verify(mockReceiver, times(MIDI_CHANNELS)).send(captor.capture(), anyLong());
-            return (ShortMessage) captor.getAllValues().get(0);
+            return (ShortMessage) captor.getAllValues().getFirst();
         }
 
         @Test

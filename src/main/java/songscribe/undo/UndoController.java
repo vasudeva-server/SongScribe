@@ -462,7 +462,7 @@ public final class UndoController {
         }
 
         // Tier 4 (span add/remove) — the only remaining types; dominant is the first.
-        return step.get(0);
+        return step.getFirst();
     }
 
     private static String opNameKey(Mutation dominant) {

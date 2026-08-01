@@ -96,7 +96,7 @@ class TempoChangeRendererTest extends UnitTest {
         var drawn = renderAndCaptureStrings(tempo);
 
         // The final drawString call contains the StringBuilder content.
-        var lastDrawn = drawn.get(drawn.size() - 1);
+        var lastDrawn = drawn.getLast();
 
         assertThat(lastDrawn).contains(String.valueOf(visibleTempo));
         assertThat(lastDrawn).contains(description);
@@ -112,7 +112,7 @@ class TempoChangeRendererTest extends UnitTest {
         var drawn = renderAndCaptureStrings(tempo);
 
         assertThat(drawn).hasSize(1);
-        assertThat(drawn.get(0)).isEqualTo(description);
+        assertThat(drawn.getFirst()).isEqualTo(description);
     }
 
 }

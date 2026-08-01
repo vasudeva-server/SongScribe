@@ -129,14 +129,14 @@ class ZoomControllerTest extends UnitTest {
     private int postedNewPercent() {
         assertThat(listener.received).hasSize(1);
 
-        return listener.received.get(0).getNewZoomPercent();
+        return listener.received.getFirst().getNewZoomPercent();
     }
 
     /** The {@code anchorPoint} of the sole notification posted so far. */
     private @Nullable Point postedAnchor() {
         assertThat(listener.received).hasSize(1);
 
-        return listener.received.get(0).getAnchorPoint();
+        return listener.received.getFirst().getAnchorPoint();
     }
 
     // -------------------------------------------------------------------------
@@ -384,7 +384,7 @@ class ZoomControllerTest extends UnitTest {
         ZoomController.zoomIn();
 
         assertThat(listener.received).hasSize(1);
-        var message = listener.received.get(0);
+        var message = listener.received.getFirst();
         assertThat(message.getOldZoomPercent()).isEqualTo(100);
         assertThat(message.getNewZoomPercent()).isEqualTo(150);
     }

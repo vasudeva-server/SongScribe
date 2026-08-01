@@ -83,7 +83,7 @@ class DialogOpenActionTest extends MainFrameMockTest {
 
         assertAll(
             () -> assertThat(capturedFrames).as("factory called exactly once").hasSize(1),
-            () -> assertThat(capturedFrames.get(0))
+            () -> assertThat(capturedFrames.getFirst())
                 .as("factory receives the injected MainFrame, not a different frame")
                 .isSameAs(injectedFrame),
             () -> assertThat(dialog).as("dialog is non-null").isNotNull()

@@ -100,7 +100,7 @@ class TickSliderTest extends UnitTest {
         slider.setValue(SECOND_STOP);
 
         assertThat(slider.tickCount()).isEqualTo(1);
-        assertThat(slider.ticks.get(0)).isEqualTo(SECOND_STOP);
+        assertThat(slider.ticks.getFirst()).isEqualTo(SECOND_STOP);
     }
 
     @Test
@@ -204,6 +204,6 @@ class TickSliderTest extends UnitTest {
         slider.setValue(FIRST_STOP);
 
         assertThat(slider.tickCount()).isEqualTo(1);
-        assertThat(slider.ticks.get(0)).isEqualTo(FIRST_STOP);
+        assertThat(slider.ticks.getFirst()).isEqualTo(FIRST_STOP);
     }
 }

@@ -414,7 +414,7 @@ class StaffLinesLayoutTest extends UnitTest {
         void testSingleLineSitsAtPanelTopWithNoSpacing() {
             var panel = laidOutPanel(plainLine());
 
-            assertThat(panel.getLinePanels().get(0).getY())
+            assertThat(panel.getLinePanels().getFirst().getY())
                 .as("the only line starts at the panel top")
                 .isEqualTo(0);
         }

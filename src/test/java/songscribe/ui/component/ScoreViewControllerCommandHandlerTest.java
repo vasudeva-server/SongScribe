@@ -374,8 +374,8 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(notification.getMutations().get(0)).isInstanceOf(RangeElementAddition.class);
-        assertThat(((RangeElementAddition) notification.getMutations().get(0)).element())
+        assertThat(notification.getMutations().getFirst()).isInstanceOf(RangeElementAddition.class);
+        assertThat(((RangeElementAddition) notification.getMutations().getFirst()).element())
             .isInstanceOf(Ending.class);
     }
 

@@ -72,7 +72,7 @@ class LineEndingSupportTest extends UnitTest {
             var result = LineEndingSupport.findEndings(fixture.line());
 
             assertThat(result).hasSize(1);
-            assertThat(result.get(0)).isSameAs(fixture.ending());
+            assertThat(result.getFirst()).isSameAs(fixture.ending());
         }
 
         @Test
@@ -164,19 +164,19 @@ class LineEndingSupportTest extends UnitTest {
         @Test
         void testIndexAtStartReturnsEnding() {
             var endings = oneEndingList();
-            assertThat(LineEndingSupport.findEndingAt(endings, AT_START)).isSameAs(endings.get(0));
+            assertThat(LineEndingSupport.findEndingAt(endings, AT_START)).isSameAs(endings.getFirst());
         }
 
         @Test
         void testIndexInsideReturnsEnding() {
             var endings = oneEndingList();
-            assertThat(LineEndingSupport.findEndingAt(endings, INSIDE)).isSameAs(endings.get(0));
+            assertThat(LineEndingSupport.findEndingAt(endings, INSIDE)).isSameAs(endings.getFirst());
         }
 
         @Test
         void testIndexAtEndReturnsEnding() {
             var endings = oneEndingList();
-            assertThat(LineEndingSupport.findEndingAt(endings, AT_END)).isSameAs(endings.get(0));
+            assertThat(LineEndingSupport.findEndingAt(endings, AT_END)).isSameAs(endings.getFirst());
         }
 
         @Test

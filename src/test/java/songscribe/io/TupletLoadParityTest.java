@@ -211,6 +211,6 @@ class TupletLoadParityTest extends UnitTest {
             throw new AssertionError("expected exactly one surviving tuplet, got " + tuplets.size());
         }
 
-        return tuplets.get(0);
+        return tuplets.getFirst();
     }
 }

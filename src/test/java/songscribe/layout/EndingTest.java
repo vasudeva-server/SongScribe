@@ -377,7 +377,7 @@ class EndingTest extends UnitTest {
             // First bracket: anchor=SINGLE_BARLINE at idx 0 (no prev), isBarLine → offset applied
             var expectedX1 = anchorX + ElementType.SINGLE_BARLINE.endingAnchorXOffsetSs();
             var expectedX2First = splitX + LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
-            var bracket1 = ranges.get(0);
+            var bracket1 = ranges.getFirst();
             assertThat(bracket1.number()).isEqualTo(1);
             assertThat(bracket1.x1Ss()).isEqualTo(expectedX1);
             assertThat(bracket1.x2Ss()).isEqualTo(expectedX2First);
@@ -428,9 +428,9 @@ class EndingTest extends UnitTest {
             assertThat(ranges).hasSize(2);
             // First bracket x1 anchored to the prev barline, not the anchor note
             var expectedX1 = prevX + ElementType.SINGLE_BARLINE.endingAnchorXOffsetSs();
-            assertThat(ranges.get(0).x1Ss()).isEqualTo(expectedX1);
+            assertThat(ranges.getFirst().x1Ss()).isEqualTo(expectedX1);
             // and it is left of the anchor — confirming the leftward pull
-            assertThat(ranges.get(0).x1Ss()).isLessThan(anchorX);
+            assertThat(ranges.getFirst().x1Ss()).isLessThan(anchorX);
         }
 
         @Test
@@ -521,7 +521,7 @@ class EndingTest extends UnitTest {
 
             assertThat(ranges).hasSize(2);
             var expectedX1 = anchorX + ACCIDENTAL_LEFT_EXTENT_SS - NoteGeometry.ACCIDENTAL_PADDING_SS;
-            assertThat(ranges.get(0).x1Ss()).isEqualTo(expectedX1);
+            assertThat(ranges.getFirst().x1Ss()).isEqualTo(expectedX1);
         }
 
         @Test
@@ -554,7 +554,7 @@ class EndingTest extends UnitTest {
 
             assertThat(ranges).hasSize(2);
             var expectedX1 = anchorX - NoteGeometry.ACCIDENTAL_PADDING_SS;
-            assertThat(ranges.get(0).x1Ss()).isEqualTo(expectedX1);
+            assertThat(ranges.getFirst().x1Ss()).isEqualTo(expectedX1);
         }
 
         @Test

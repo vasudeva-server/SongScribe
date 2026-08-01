@@ -289,7 +289,7 @@ final class BeamScoring {
 
         maxBeamCount = count;
         xSpan = stemCount == 0 ? 0.0 : stemXs[stemCount - 1] - stemXs[0];
-        edgeBeamCountLeft = stemCount == 0 ? 1 : stems.get(0).beamCount();
+        edgeBeamCountLeft = stemCount == 0 ? 1 : stems.getFirst().beamCount();
         edgeBeamCountRight = stemCount == 0 ? 1 : stems.get(stemCount - 1).beamCount();
         extraDemerit = SECONDARY_BEAM_DEMERIT / Math.max(edgeBeamCountLeft, edgeBeamCountRight);
 

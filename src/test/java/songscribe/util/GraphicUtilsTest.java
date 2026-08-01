@@ -400,7 +400,7 @@ class GraphicUtilsTest extends UnitTest {
                 assertThat(point.getX()).isNotNaN();
                 assertThat(point.getY()).isNotNaN();
             });
-            assertThat(points.get(0))
+            assertThat(points.getFirst())
                 .as("zero-length first segment leaves the start uninset")
                 .isEqualTo(new Point2D.Double(X1, Y));
         }

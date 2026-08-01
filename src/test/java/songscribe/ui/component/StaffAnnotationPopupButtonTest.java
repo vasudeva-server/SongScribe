@@ -94,7 +94,7 @@ class StaffAnnotationPopupButtonTest extends MainFrameMockTest {
     @Test
     void testMusicSelectionDidChangeEnabledWhenOneActionIsEnabled() {
         // Enable exactly one action — the button must become enabled
-        Actions.STAFF_ANNOTATION_ACTIONS.get(0).setEnabled(true);
+        Actions.STAFF_ANNOTATION_ACTIONS.getFirst().setEnabled(true);
         button.musicSelectionDidChange(makeNotification());
         assertThat(button.isEnabled()).isTrue();
     }

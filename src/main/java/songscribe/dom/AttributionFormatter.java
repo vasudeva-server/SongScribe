@@ -318,7 +318,7 @@ public final class AttributionFormatter {
         }
 
         if (size == 1) {
-            return items.get(0);
+            return items.getFirst();
         }
 
         if (size == 2) {

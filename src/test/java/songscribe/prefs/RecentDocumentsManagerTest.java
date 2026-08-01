@@ -104,7 +104,7 @@ class RecentDocumentsManagerTest extends UnitTest {
 
         var recents = RecentDocumentsManager.getRecents();
         assertThat(recents).hasSize(RecentDocumentsManager.MAX_SIZE);
-        assertThat(recents.get(0)).isEqualTo(extraPath);
+        assertThat(recents.getFirst()).isEqualTo(extraPath);
         assertThat(recents).doesNotContain(Path.of("/music/song_0.mssw"));
     }
 

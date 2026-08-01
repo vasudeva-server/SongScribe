@@ -85,7 +85,7 @@ class LyricLayoutTest extends E2ETest {
         }
 
         assertThat(boxes).hasSize(1);
-        var box = boxes.get(0);
+        var box = boxes.getFirst();
         assertThat(box.text()).isEqualTo(SYLLABLE);
         assertThat(box.verseIndex()).isEqualTo(1);
         assertThat(box.widthSs()).isGreaterThan(0.0);

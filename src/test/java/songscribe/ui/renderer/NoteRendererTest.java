@@ -269,7 +269,7 @@ class NoteRendererTest extends UnitTest {
         private static double dotXSs(ElementType type, boolean beamed, StaffElement.Direction direction) {
             var dots = collectDots(dottedNote(type), beamed, direction);
             assertThat(dots).hasSize(1);
-            return dots.get(0)[0];
+            return dots.getFirst()[0];
         }
 
         // Expected first-dot X derived independently from SMuFL metadata: the notehead's right
@@ -362,7 +362,7 @@ class NoteRendererTest extends UnitTest {
 
             var dots = collectDots(note, false, StaffElement.Direction.UP);
             assertThat(dots).hasSize(1);
-            assertThat(dots.get(0)[1]).isCloseTo(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS, within(TOLERANCE));
+            assertThat(dots.getFirst()[1]).isCloseTo(NoteGeometry.DOT_ON_LINE_Y_SHIFT_SS, within(TOLERANCE));
         }
 
         @Test
@@ -373,7 +373,7 @@ class NoteRendererTest extends UnitTest {
 
             var dots = collectDots(note, false, StaffElement.Direction.UP);
             assertThat(dots).hasSize(1);
-            assertThat(dots.get(0)[1]).isCloseTo(0.0, within(TOLERANCE));
+            assertThat(dots.getFirst()[1]).isCloseTo(0.0, within(TOLERANCE));
         }
 
         @Test

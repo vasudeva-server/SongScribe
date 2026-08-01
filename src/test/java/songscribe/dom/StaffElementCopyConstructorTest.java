@@ -133,7 +133,7 @@ class StaffElementCopyConstructorTest extends UnitTest {
         assertThat(clone.getArticulations()).hasSize(source.getArticulations().size());
 
         // Instances are distinct objects — clone has its own copies
-        assertThat(clone.getArticulations().get(0)).isNotSameAs(source.getArticulations().get(0));
+        assertThat(clone.getArticulations().getFirst()).isNotSameAs(source.getArticulations().getFirst());
 
         // Mutating clone's articulations does not affect the source
         clone.clearArticulations();
@@ -154,7 +154,7 @@ class StaffElementCopyConstructorTest extends UnitTest {
         assertThat(clone.getAttachments()).hasSize(source.getAttachments().size());
 
         // Instances are distinct objects — clone has its own copies
-        assertThat(clone.getAttachments().get(0)).isNotSameAs(source.getAttachments().get(0));
+        assertThat(clone.getAttachments().getFirst()).isNotSameAs(source.getAttachments().getFirst());
 
         // Mutating clone's attachments does not affect the source
         clone.clearAttachments();

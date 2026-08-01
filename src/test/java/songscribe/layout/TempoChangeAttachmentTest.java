@@ -79,7 +79,7 @@ class TempoChangeAttachmentTest extends UnitTest {
             // Only one region: text (no glyph region)
             assertThat(metrics.regions()).hasSize(1);
 
-            var textRegion = metrics.regions().get(0);
+            var textRegion = metrics.regions().getFirst();
 
             assertThat(textRegion.widthSs()).isGreaterThan(0.0);
 

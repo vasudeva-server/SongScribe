@@ -878,7 +878,7 @@ class NoteGeometryTest extends UnitTest {
 
             assertAll(
                 () -> assertThat(glyphs).containsExactly(SMuFLGlyph.ACCIDENTAL_SHARP),
-                () -> assertThat(positions.get(0)).isEqualTo(startX)
+                () -> assertThat(positions.getFirst()).isEqualTo(startX)
             );
         }
 

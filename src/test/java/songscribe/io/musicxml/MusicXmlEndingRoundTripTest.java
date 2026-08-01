@@ -88,7 +88,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         var endings = LineEndingSupport.findEndings(line2);
 
         assertThat(endings).as("ending count").hasSize(1);
-        var ending = endings.get(0);
+        var ending = endings.getFirst();
         assertRangeElementEquals(ending, 0, 4, "two-bracket REPEAT_LEFT ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_RIGHT must be at index 2")
@@ -127,7 +127,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         var endings = LineEndingSupport.findEndings(line2);
 
         assertThat(endings).as("ending count").hasSize(1);
-        var ending = endings.get(0);
+        var ending = endings.getFirst();
         assertRangeElementEquals(ending, 0, 4, "REPEAT_LEFT_RIGHT-split ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_LEFT_RIGHT must be at index 2")
@@ -168,7 +168,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         var endings = LineEndingSupport.findEndings(line2);
 
         assertThat(endings).as("ending count").hasSize(1);
-        var ending = endings.get(0);
+        var ending = endings.getFirst();
         assertRangeElementEquals(ending, 0, 4, "SINGLE_BARLINE-anchored ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_RIGHT must be at index 2")
@@ -261,7 +261,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         var endings = LineEndingSupport.findEndings(line2);
 
         assertThat(endings).as("ending count").hasSize(1);
-        var ending = endings.get(0);
+        var ending = endings.getFirst();
         assertRangeElementEquals(ending, 0, 3, "note-terminated ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_RIGHT must be at index 2")
@@ -299,7 +299,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         var endings = LineEndingSupport.findEndings(line2);
 
         assertThat(endings).as("ending count").hasSize(1);
-        var ending = endings.get(0);
+        var ending = endings.getFirst();
         assertRangeElementEquals(ending, 0, 3, "note-anchored, note-terminated ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_RIGHT must be at index 2")
@@ -337,7 +337,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         var endings = LineEndingSupport.findEndings(line2);
 
         assertThat(endings).as("ending count").hasSize(1);
-        var ending = endings.get(0);
+        var ending = endings.getFirst();
         assertRangeElementEquals(ending, 0, 3, "mid-line note-terminated ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_RIGHT must be at index 2")

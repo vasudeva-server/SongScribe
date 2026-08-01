@@ -257,7 +257,7 @@ class MigrationPipelineTest extends UnitTest {
 
             var note = line.getElement(0);
             assertThat(note.lyrics).hasSize(1);
-            assertThat(note.lyrics.get(0).text()).isEqualTo("hello");
+            assertThat(note.lyrics.getFirst().text()).isEqualTo("hello");
         }
     }
 
@@ -386,9 +386,9 @@ class MigrationPipelineTest extends UnitTest {
             stage(StageId.SYLLABIC_BACKFILL).apply().accept(c);
 
             // note[1] has a BEGIN predecessor, so its syllabic must be MIDDLE after normalization.
-            assertThat(note1.lyrics.get(0).syllabic()).isEqualTo(Lyric.Syllabic.MIDDLE);
+            assertThat(note1.lyrics.getFirst().syllabic()).isEqualTo(Lyric.Syllabic.MIDDLE);
             // note[0] has no predecessor, its own BEGIN signals continuation — stays BEGIN.
-            assertThat(note0.lyrics.get(0).syllabic()).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(note0.lyrics.getFirst().syllabic()).isEqualTo(Lyric.Syllabic.BEGIN);
         }
     }
 

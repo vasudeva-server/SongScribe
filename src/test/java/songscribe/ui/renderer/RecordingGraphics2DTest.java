@@ -189,7 +189,7 @@ class RecordingGraphics2DTest extends UnitTest {
             var drawables = graphics.displayList().drawables();
             assertThat(drawables).hasSize(1);
 
-            var glyphInk = (DisplayList.GlyphInk) drawables.get(0);
+            var glyphInk = (DisplayList.GlyphInk) drawables.getFirst();
             var expectedBounds = glyphInk.glyphVector().getVisualBounds();
 
             assertThat(glyphInk.boundsSs()).isEqualTo(expectedBounds);
@@ -300,7 +300,7 @@ class RecordingGraphics2DTest extends UnitTest {
         graphics.setFont(BravuraFont.font().deriveFont(BravuraFont.SIZE_SS * ElementType.GRACE_NOTE_SCALE));
         graphics.drawString(SMuFLGlyph.NOTEHEAD_BLACK.asString(), 0f, 0f);
 
-        var thirdVector = ((DisplayList.GlyphInk) graphics.displayList().drawables().get(0)).glyphVector();
+        var thirdVector = ((DisplayList.GlyphInk) graphics.displayList().drawables().getFirst()).glyphVector();
 
         assertThat(thirdVector).isNotSameAs(firstVector);
     }

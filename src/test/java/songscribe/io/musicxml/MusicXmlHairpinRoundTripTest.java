@@ -143,7 +143,7 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
         var crescendos = line2.getCrescendos();
 
         assertThat(crescendos).as("crescendo count after round-trip").hasSize(1);
-        assertHairpinEquals(crescendos.get(0), Crescendo.class, 0, 1, 0.0, 0.0, 0.0, "crescendo");
+        assertHairpinEquals(crescendos.getFirst(), Crescendo.class, 0, 1, 0.0, 0.0, 0.0, "crescendo");
     }
 
     @Test
@@ -166,7 +166,7 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(crescendos).as("crescendo count after shift round-trip").hasSize(1);
         assertHairpinEquals(
-            crescendos.get(0), Crescendo.class, 0, 1,
+            crescendos.getFirst(), Crescendo.class, 0, 1,
             HAIRPIN_X1_SHIFT_SS, HAIRPIN_X2_SHIFT_SS, HAIRPIN_Y_SHIFT_SS,
             "crescendo with shifts"
         );
@@ -191,7 +191,7 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
         var diminuendos = line2.getDiminuendos();
 
         assertThat(diminuendos).as("diminuendo count after round-trip").hasSize(1);
-        assertHairpinEquals(diminuendos.get(0), Diminuendo.class, 0, 1, 0.0, 0.0, 0.0, "diminuendo");
+        assertHairpinEquals(diminuendos.getFirst(), Diminuendo.class, 0, 1, 0.0, 0.0, 0.0, "diminuendo");
     }
 
     @Test
@@ -214,7 +214,7 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(diminuendos).as("diminuendo count after shift round-trip").hasSize(1);
         assertHairpinEquals(
-            diminuendos.get(0), Diminuendo.class, 0, 1,
+            diminuendos.getFirst(), Diminuendo.class, 0, 1,
             HAIRPIN_X1_SHIFT_SS, HAIRPIN_X2_SHIFT_SS, HAIRPIN_Y_SHIFT_SS,
             "diminuendo with shifts"
         );
@@ -329,7 +329,7 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(crescendos).as("crescendo count after measure-boundary round-trip").hasSize(1);
         // note0 → 0, SINGLE_BARLINE → 1, note1 → 2.
-        assertHairpinEquals(crescendos.get(0), Crescendo.class, 0, 2, 0.0, 0.0, 0.0, "measure-boundary crescendo");
+        assertHairpinEquals(crescendos.getFirst(), Crescendo.class, 0, 2, 0.0, 0.0, 0.0, "measure-boundary crescendo");
     }
 
     @Test
@@ -352,7 +352,7 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(crescendos).as("crescendo count when anchor is first note of measure").hasSize(1);
         // SINGLE_BARLINE → 0, note0 → 1, note1 → 2.
-        assertHairpinEquals(crescendos.get(0), Crescendo.class, 1, 2, 0.0, 0.0, 0.0, "measure-start crescendo");
+        assertHairpinEquals(crescendos.getFirst(), Crescendo.class, 1, 2, 0.0, 0.0, 0.0, "measure-start crescendo");
     }
 
     @Test
@@ -414,6 +414,6 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
             .as("exactly one crescendo must survive after the overlap drop")
             .hasSize(1);
         // note0 → index 0, note1 → index 1, note2 → index 2.
-        assertHairpinEquals(crescendos.get(0), Crescendo.class, 0, 2, 0.0, 0.0, 0.0, "surviving crescendo");
+        assertHairpinEquals(crescendos.getFirst(), Crescendo.class, 0, 2, 0.0, 0.0, 0.0, "surviving crescendo");
     }
 }

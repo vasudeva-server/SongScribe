@@ -240,7 +240,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
         var song = result.song();
         var lyricsFont = result.fonts().getLyricsFont();
         var lyricRenderMetrics = LyricRenderMetrics.forFont(lyricsFont);
-        var line = song.getLines().get(0);
+        var line = song.getLines().getFirst();
         var lastNoteIndex = lastPitchedNoteIndex(line);
         var staffRightMarginSs = song.getLineWidthSs();
 

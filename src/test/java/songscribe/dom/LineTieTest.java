@@ -91,10 +91,10 @@ class LineTieTest extends UnitTest {
                 () -> assertThat(ties)
                     .as("adjacent ties must remain as two separate ties")
                     .hasSize(2),
-                () -> assertThat(ties.get(0).getAnchorElementIndex())
+                () -> assertThat(ties.getFirst().getAnchorElementIndex())
                     .as("first tie anchor must be 0")
                     .isEqualTo(IDX_0),
-                () -> assertThat(ties.get(0).getEndElementIndex())
+                () -> assertThat(ties.getFirst().getEndElementIndex())
                     .as("first tie end must be 1")
                     .isEqualTo(IDX_1),
                 () -> assertThat(ties.get(1).getAnchorElementIndex())
@@ -124,10 +124,10 @@ class LineTieTest extends UnitTest {
                 () -> assertThat(ties)
                     .as("ties sharing a midpoint must remain as two separate ties")
                     .hasSize(2),
-                () -> assertThat(ties.get(0).getAnchorElementIndex())
+                () -> assertThat(ties.getFirst().getAnchorElementIndex())
                     .as("first tie anchor must be 0")
                     .isEqualTo(IDX_0),
-                () -> assertThat(ties.get(0).getEndElementIndex())
+                () -> assertThat(ties.getFirst().getEndElementIndex())
                     .as("first tie end must be 2")
                     .isEqualTo(IDX_2),
                 () -> assertThat(ties.get(1).getAnchorElementIndex())
@@ -198,10 +198,10 @@ class LineTieTest extends UnitTest {
                 () -> assertThat(ties)
                     .as("findTies must return exactly two ties")
                     .hasSize(2),
-                () -> assertThat(ties.get(0).getAnchorElementIndex())
+                () -> assertThat(ties.getFirst().getAnchorElementIndex())
                     .as("first tie anchor must be 0")
                     .isEqualTo(IDX_0),
-                () -> assertThat(ties.get(0).getEndElementIndex())
+                () -> assertThat(ties.getFirst().getEndElementIndex())
                     .as("first tie end must be 1")
                     .isEqualTo(IDX_1),
                 () -> assertThat(ties.get(1).getAnchorElementIndex())

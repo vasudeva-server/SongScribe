@@ -184,7 +184,7 @@ class StaffElementIOTest extends UnitTest {
             var note = song.getLine(0).getElement(0);
             var articulations = note.getArticulations();
             assertThat(articulations).hasSize(1);
-            assertThat(articulations.get(0).getType()).isEqualTo(ArticulationType.ACCENT);
+            assertThat(articulations.getFirst().getType()).isEqualTo(ArticulationType.ACCENT);
         }
     }
 
@@ -498,14 +498,14 @@ class StaffElementIOTest extends UnitTest {
         @Test
         void testParseExtendTypeContinueReturnsContinue() throws Exception {
             var song = parseXml(buildXmlWithExtend("continue"));
-            var lyric = song.getLine(0).getElement(0).lyrics.get(0);
+            var lyric = song.getLine(0).getElement(0).lyrics.getFirst();
             assertThat(lyric.extend()).isEqualTo(Lyric.Extend.CONTINUE);
         }
 
         @Test
         void testParseExtendTypeUnknownReturnsStart() throws Exception {
             var song = parseXml(buildXmlWithExtend("bogus"));
-            var lyric = song.getLine(0).getElement(0).lyrics.get(0);
+            var lyric = song.getLine(0).getElement(0).lyrics.getFirst();
             assertThat(lyric.extend()).isEqualTo(Lyric.Extend.START);
         }
     }
@@ -722,7 +722,7 @@ class StaffElementIOTest extends UnitTest {
             }
 
             assertThat(note.lyrics).hasSize(1);
-            assertThat(note.lyrics.get(0).syllabic()).isEqualTo(Lyric.Syllabic.MIDDLE);
+            assertThat(note.lyrics.getFirst().syllabic()).isEqualTo(Lyric.Syllabic.MIDDLE);
         }
 
         // Row 46: absent <syllabic> defaults to SINGLE (empty lyricSyllabic hits the default branch)
@@ -750,7 +750,7 @@ class StaffElementIOTest extends UnitTest {
             }
 
             assertThat(note.lyrics).hasSize(1);
-            assertThat(note.lyrics.get(0).syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(note.lyrics.getFirst().syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
     }

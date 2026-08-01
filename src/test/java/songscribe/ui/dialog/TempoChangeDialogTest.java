@@ -256,7 +256,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
             assertThat(construction.constructed())
                 .as("exactly one TempoChangeDialog was created")
                 .hasSize(1);
-            var captured = construction.constructed().get(0);
+            var captured = construction.constructed().getFirst();
 
             assertThat(captured.selectedElement)
                 .as("selectedElement set to the provided element before setVisible")

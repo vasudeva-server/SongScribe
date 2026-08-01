@@ -1111,13 +1111,13 @@ class LayoutResultTest extends UnitTest {
 
         var trills = result.getDecorationLayoutsByType(Trill.class);
         assertThat(trills).hasSize(1);
-        assertThat(trills.get(0).getKey()).isSameAs(trill);
-        assertThat(trills.get(0).getValue()).isSameAs(trillLayout);
+        assertThat(trills.getFirst().getKey()).isSameAs(trill);
+        assertThat(trills.getFirst().getValue()).isSameAs(trillLayout);
 
         var fermatas = result.getDecorationLayoutsByType(FermataAttachment.class);
         assertThat(fermatas).hasSize(1);
-        assertThat(fermatas.get(0).getKey()).isSameAs(fermata);
-        assertThat(fermatas.get(0).getValue()).isSameAs(fermataLayout);
+        assertThat(fermatas.getFirst().getKey()).isSameAs(fermata);
+        assertThat(fermatas.getFirst().getValue()).isSameAs(fermataLayout);
     }
 
     // ==========================================================================

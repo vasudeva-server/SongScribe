@@ -100,7 +100,7 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
         var beams = line2.findRangeElements(Beam.class);
 
         assertThat(beams).as("beam count after round-trip").hasSize(1);
-        assertRangeElementEquals(beams.get(0), 0, 1);
+        assertRangeElementEquals(beams.getFirst(), 0, 1);
     }
 
     @Test
@@ -122,7 +122,7 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
         var beams = line2.findRangeElements(Beam.class);
 
         assertThat(beams).as("beam count after round-trip").hasSize(1);
-        assertRangeElementEquals(beams.get(0), 0, 3);
+        assertRangeElementEquals(beams.getFirst(), 0, 3);
     }
 
     @Test
@@ -353,7 +353,7 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
         var beams = line2.findRangeElements(Beam.class);
 
         assertThat(beams).as("beam count after grace-in-group round-trip").hasSize(1);
-        assertRangeElementEquals(beams.get(0), 0, 2);
+        assertRangeElementEquals(beams.getFirst(), 0, 2);
         assertThat(line2.getElement(1).getType().isGraceNote())
             .as("interior grace note survives inside the beam group")
             .isTrue();

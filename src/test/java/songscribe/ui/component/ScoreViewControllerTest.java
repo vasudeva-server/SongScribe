@@ -2780,7 +2780,7 @@ class ScoreViewControllerTest extends UnitTest {
             song.withModification(() -> controller.tryInsertFragment(line, 1, null));
 
             assertThat(line.getRangeElements()).hasSize(1);
-            var span = line.getRangeElements().get(0);
+            var span = line.getRangeElements().getFirst();
             assertThat(span.getAnchorElementIndex()).isEqualTo(1);
             assertThat(span.getEndElementIndex()).isEqualTo(2);
         }
