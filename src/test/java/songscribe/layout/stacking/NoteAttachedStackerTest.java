@@ -1108,7 +1108,6 @@ class NoteAttachedStackerTest extends UnitTest {
         return note;
     }
 
-    @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value) {
         assertThat(value).isNotNull();
         return value;

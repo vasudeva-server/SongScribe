@@ -50,7 +50,6 @@ class VerticalStackingCalculatorTest extends UnitTest {
     private static final double LINE_WIDTH_SS = 100.0;
 
     /** Asserts non-null and narrows the type so NullAway is satisfied on the caller. */
-    @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
         assertThat(value).describedAs(description).isNotNull();
         return value;

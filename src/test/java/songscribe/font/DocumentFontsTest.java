@@ -157,6 +157,7 @@ class DocumentFontsTest extends UnitTest {
         @Test
         void testEqualReflexive() {
             var fonts = fullyPopulated();
+            //noinspection EqualsWithItself
             assertThat(fonts).isEqualTo(fonts);
         }
 

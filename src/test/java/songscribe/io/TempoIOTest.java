@@ -132,10 +132,6 @@ class TempoIOTest extends UnitTest {
 
             assertThat(tempo).isNotNull();
 
-            if (tempo == null) {
-                return;
-            }
-
             assertThat(tempo.shouldShowTempo()).isFalse();
         }
     }
@@ -165,10 +161,6 @@ class TempoIOTest extends UnitTest {
 
             assertThat(tempo).isNotNull();
 
-            if (tempo == null) {
-                return;
-            }
-
             assertThat(tempo.getTempoType()).isEqualTo(Duration.valueOf(expectedDurationName));
         }
     }
@@ -194,10 +186,6 @@ class TempoIOTest extends UnitTest {
 
             assertThat(tempo).isNotNull();
 
-            if (tempo == null) {
-                return;
-            }
-
             assertThat(tempo.getVisibleTempo()).isEqualTo(expectedVisibleTempo);
             assertThat(tempo.getTempoType()).isEqualTo(Duration.CROTCHET);
             assertThat(tempo.getTempoDescription()).isEqualTo("Andante");
@@ -215,10 +203,6 @@ class TempoIOTest extends UnitTest {
             var tempo = reader.endElement10(TempoIO.XML_TEMPO_CHANGE);
 
             assertThat(tempo).isNotNull();
-
-            if (tempo == null) {
-                return;
-            }
 
             assertThat(tempo.getTempoType()).isEqualTo(Duration.MINIM);
         }
@@ -264,10 +248,6 @@ class TempoIOTest extends UnitTest {
             var tempo = reader.endElement11(TempoIO.XML_TEMPO);
 
             assertThat(tempo).isNotNull();
-
-            if (tempo == null) {
-                return;
-            }
 
             assertThat(tempo.getTempoType()).isEqualTo(Duration.valueOf(expectedDurationName));
         }
@@ -323,10 +303,6 @@ class TempoIOTest extends UnitTest {
             var attachment = parsedNote.findAttachment(TempoChangeAttachment.class);
 
             assertThat(attachment).isNotNull();
-
-            if (attachment == null) {
-                return;
-            }
 
             var restored = attachment.getTempo();
             assertThat(restored.getVisibleTempo()).isEqualTo(visibleTempo);

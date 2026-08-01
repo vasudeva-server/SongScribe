@@ -160,9 +160,7 @@ class LyricLayoutBuilderTest extends UnitTest {
         StaffElement element) {
         var list = boxes.get(element);
 
-        if (list == null) {
-            throw new AssertionError("expected boxes for element but found none");
-        }
+        assertThat(list).as("expected boxes for element but found none").isNotNull();
 
         return list;
     }

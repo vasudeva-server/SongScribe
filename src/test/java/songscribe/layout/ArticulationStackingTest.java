@@ -88,7 +88,6 @@ class ArticulationStackingTest extends UnitTest {
     private static final double EXPLICIT_STEM_TOP_SS = -1.0;
 
     /** Asserts value is not null and returns it non-null for NullAway. */
-    @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
         assertThat(value).describedAs(description).isNotNull();
         return value;

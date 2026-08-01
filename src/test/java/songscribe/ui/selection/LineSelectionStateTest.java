@@ -713,7 +713,7 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(info.canToggle()).isTrue();
         assertThat(info.existing())
             .isNotNull()
-            .extracting(tuplet -> tuplet != null ? tuplet.getGrade() : 0)
+            .extracting(Tuplet::getGrade)
             .isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
         assertThat(info.coversExisting()).isTrue();
     }
@@ -737,7 +737,7 @@ class LineSelectionStateTest extends UnitTest {
         assertThat(info.validGrades()).isEmpty();
         assertThat(info.existing())
             .isNotNull()
-            .extracting(tuplet -> tuplet != null ? tuplet.getGrade() : 0)
+            .extracting(Tuplet::getGrade)
             .isEqualTo(TupletAction.Tuplet.TRIPLET.getSize());
         assertThat(info.coversExisting()).isFalse();
     }

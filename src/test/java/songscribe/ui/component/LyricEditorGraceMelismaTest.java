@@ -87,9 +87,7 @@ class LyricEditorGraceMelismaTest extends LyricEditorTestSupport {
     private static Lyric requireLyric(StaffElement element) {
         var lyric = element.getLyricForVerse(VERSE);
 
-        if (lyric == null) {
-            throw new AssertionError("expected a verse " + VERSE + " lyric on " + element.getType());
-        }
+        assertThat(lyric).as("expected a verse " + VERSE + " lyric on " + element.getType()).isNotNull();
 
         return lyric;
     }

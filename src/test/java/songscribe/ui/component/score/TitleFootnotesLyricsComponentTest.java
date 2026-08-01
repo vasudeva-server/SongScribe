@@ -291,11 +291,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
             var metrics = component.getFontMetrics(font);
             var inkBounds = GraphicUtils.inkBounds(title, font);
 
-            // Explicit guard rather than assertThat(...).isNotNull(): NullAway does not
-            // treat the AssertJ call as a null check, so it would flag the uses below.
-            if (inkBounds == null) {
-                throw new AssertionError("ink bounds for '" + title + "' must not be null");
-            }
+            assertThat(inkBounds).as("ink bounds for '" + title + "' must not be null").isNotNull();
 
             // Precondition: confirm this font/size actually overshoots the nominal
             // descent here, otherwise the assertion below would hold trivially.

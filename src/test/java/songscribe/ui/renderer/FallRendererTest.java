@@ -24,8 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mock;
 
-import java.util.Objects;
-
 import module java.desktop;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -82,7 +80,10 @@ class FallRendererTest extends UnitTest {
             .setCurrentLine(line)
             .build();
 
-        var fall = (StaffElement.Fall) Objects.requireNonNull(note.getSlide());
+        var slide = note.getSlide();
+        assertThat(slide).isNotNull();
+
+        var fall = (StaffElement.Fall) slide;
         assertThat(fall.cachedHitBounds).as("hit bounds unset before render").isNull();
 
         RENDERER.renderSlide(
@@ -96,7 +97,8 @@ class FallRendererTest extends UnitTest {
             note.getStaffPosition(), invariants.getMiddleLineYSs());
         var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.BRASS_FALL_LIP_SHORT);
 
-        var bounds = Objects.requireNonNull(fall.cachedHitBounds);
+        var bounds = fall.cachedHitBounds;
+        assertThat(bounds).isNotNull();
         assertThat(bounds.getX())
             .as("glyph left edge is one gap right of the note column")
             .isCloseTo(glyphXSs + bbox.left(), within(TOLERANCE_SS));
@@ -122,7 +124,10 @@ class FallRendererTest extends UnitTest {
             .setCurrentLine(line)
             .build();
 
-        var fall = (StaffElement.Fall) Objects.requireNonNull(note.getSlide());
+        var slide = note.getSlide();
+        assertThat(slide).isNotNull();
+
+        var fall = (StaffElement.Fall) slide;
 
         RENDERER.renderSlide(
             mock(Graphics2D.class), line, note, 0, invariants, ElementFrame.LINE_LEVEL);
@@ -167,7 +172,10 @@ class FallRendererTest extends UnitTest {
         var line = detachedLine();
         line.addElement(note);
 
-        var fall = (StaffElement.Fall) Objects.requireNonNull(note.getSlide());
+        var slide = note.getSlide();
+        assertThat(slide).isNotNull();
+
+        var fall = (StaffElement.Fall) slide;
         fall.cachedHitBounds = new Rectangle2D.Double(
             HIT_RECT_X_SS, HIT_RECT_Y_SS, HIT_RECT_WIDTH_SS, HIT_RECT_HEIGHT_SS);
 
@@ -183,7 +191,10 @@ class FallRendererTest extends UnitTest {
         var line = detachedLine();
         line.addElement(note);
 
-        var fall = (StaffElement.Fall) Objects.requireNonNull(note.getSlide());
+        var slide = note.getSlide();
+        assertThat(slide).isNotNull();
+
+        var fall = (StaffElement.Fall) slide;
         fall.cachedHitBounds = new Rectangle2D.Double(
             HIT_RECT_X_SS, HIT_RECT_Y_SS, HIT_RECT_WIDTH_SS, HIT_RECT_HEIGHT_SS);
 

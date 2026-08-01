@@ -181,12 +181,10 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
         var added = element.findAttachment(AnnotationAttachment.class);
         assertThat(added).as("attachment was added").isNotNull();
-        //noinspection ConstantValue -- need for NullAway
-        assertThat(added == null ? Float.NaN : added.getAnnotation().getXAlignment())
+        assertThat(added.getAnnotation().getXAlignment())
             .as("CENTER_ALIGNMENT stored in annotation")
             .isEqualTo(Component.CENTER_ALIGNMENT);
-        //noinspection ConstantValue -- need for NullAway
-        assertThat(added == null ? null : added.getAnnotation().getPlacement())
+        assertThat(added.getAnnotation().getPlacement())
             .as("ABOVE stored in annotation")
             .isEqualTo(Annotation.Placement.ABOVE);
     }
@@ -202,12 +200,10 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
         var added = element.findAttachment(AnnotationAttachment.class);
         assertThat(added).as("attachment was added").isNotNull();
-        //noinspection ConstantValue -- need for NullAway
-        assertThat(added == null ? Float.NaN : added.getAnnotation().getXAlignment())
+        assertThat(added.getAnnotation().getXAlignment())
             .as("RIGHT_ALIGNMENT stored in annotation")
             .isEqualTo(Component.RIGHT_ALIGNMENT);
-        //noinspection ConstantValue -- need for NullAway
-        assertThat(added == null ? null : added.getAnnotation().getPlacement())
+        assertThat(added.getAnnotation().getPlacement())
             .as("BELOW stored in annotation")
             .isEqualTo(Annotation.Placement.BELOW);
     }
@@ -223,12 +219,10 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
         var added = element.findAttachment(AnnotationAttachment.class);
         assertThat(added).as("attachment was added").isNotNull();
-        //noinspection ConstantValue -- need for NullAway
-        assertThat(added == null ? Float.NaN : added.getAnnotation().getXAlignment())
+        assertThat(added.getAnnotation().getXAlignment())
             .as("LEFT_ALIGNMENT stored in annotation")
             .isEqualTo(Component.LEFT_ALIGNMENT);
-        //noinspection ConstantValue -- need for NullAway
-        assertThat(added == null ? null : added.getAnnotation().getAnnotation())
+        assertThat(added.getAnnotation().getAnnotation())
             .as("annotation text preserved")
             .isEqualTo("dolce");
     }
@@ -248,11 +242,11 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
         // Still exactly one attachment (updated in-place)
         var updated = element.findAttachment(AnnotationAttachment.class);
+        assertThat(updated).isNotNull();
         assertThat(updated)
             .as("existing attachment updated, not replaced")
             .isSameAs(original);
-        //noinspection ConstantValue -- need for NullAway
-        assertThat(updated == null ? null : updated.getAnnotation().getAnnotation())
+        assertThat(updated.getAnnotation().getAnnotation())
             .as("annotation text updated to new value")
             .isEqualTo("new");
     }
@@ -271,8 +265,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
         assertThat(added)
             .as("new AnnotationAttachment added when none existed")
             .isNotNull();
-        //noinspection ConstantValue -- need for NullAway
-        assertThat(added == null ? null : added.getAnnotation().getAnnotation())
+        assertThat(added.getAnnotation().getAnnotation())
             .as("annotation text set on new attachment")
             .isEqualTo("fine");
     }

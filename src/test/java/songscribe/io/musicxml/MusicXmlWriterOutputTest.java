@@ -250,9 +250,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     private static Element requireCreditWordsForType(String xml, String creditType) throws Exception {
         var words = creditWordsForType(xml, creditType);
 
-        if (words == null) {
-            throw new AssertionError("%s credit must be present".formatted(creditType));
-        }
+        assertThat(words).as("%s credit must be present".formatted(creditType)).isNotNull();
 
         return words;
     }
@@ -432,7 +430,6 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      * cannot catch this: the reader ignores slide coordinate attributes.
      */
     @Test
-    @SuppressWarnings("NullAway")
     void testGlissandoSlideEndpointsInOutput() throws Exception {
         var song = buildSong(line -> {
             var startNote = ElementType.CROTCHET.newInstance();
@@ -440,6 +437,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
 
             // Populate the transient cached geometry the writer uses for default-x/y.
             var glissando = startNote.getGlissando();
+            assertThat(glissando).as("setGlissando attaches a glissando").isNotNull();
+
             glissando.cachedStartX      = SLIDE_START_X_SS;
             glissando.cachedStartY      = SLIDE_START_Y_SS;
             glissando.cachedLength      = SLIDE_LENGTH_SS;
@@ -615,13 +614,14 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     // -- Diagonal glissando: exercises BOTH the cos (X) and sin (Y) endpoint terms --
 
     @Test
-    @SuppressWarnings("NullAway")
     void testDiagonalGlissandoSlideEndpointsInOutput() throws Exception {
         var song = buildSong(line -> {
             var startNote = ElementType.CROTCHET.newInstance();
             startNote.setGlissando();
 
             var glissando = startNote.getGlissando();
+            assertThat(glissando).as("setGlissando attaches a glissando").isNotNull();
+
             glissando.cachedStartX      = SLIDE_START_X_SS;
             glissando.cachedStartY      = SLIDE_START_Y_SS;
             glissando.cachedLength      = SLIDE_LENGTH_SS;

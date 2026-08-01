@@ -314,10 +314,8 @@ class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
         var tempo = firstNote.findAttachment(TempoChangeAttachment.class);
         assertThat(tempo).as("first note carries the mirrored base tempo").isNotNull();
 
-        if (tempo != null) {
-            assertThat(tempo.getTempo().getVisibleTempo()).as("base tempo bpm").isEqualTo(BASE_TEMPO_BPM);
-            assertThat(tempo.getTempo().getTempoType()).as("base tempo type").isEqualTo(Duration.CROTCHET);
-        }
+        assertThat(tempo.getTempo().getVisibleTempo()).as("base tempo bpm").isEqualTo(BASE_TEMPO_BPM);
+        assertThat(tempo.getTempo().getTempoType()).as("base tempo type").isEqualTo(Duration.CROTCHET);
 
         assertThat(reloaded.getTempo()).as("song base tempo present").isNotNull();
 
@@ -325,21 +323,14 @@ class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
             assertThat(reloaded.getTempo().getVisibleTempo()).as("song base tempo bpm").isEqualTo(BASE_TEMPO_BPM);
         }
 
-        assertThat(firstNote.getLyricForVerse(FIRST_VERSE))
-            .as("first line lyric present").isNotNull();
-        assertThat(secondNote.getLyricForVerse(FIRST_VERSE))
-            .as("second line lyric present").isNotNull();
-
         var firstLyric = firstNote.getLyricForVerse(FIRST_VERSE);
         var secondLyric = secondNote.getLyricForVerse(FIRST_VERSE);
 
-        if (firstLyric != null) {
-            assertThat(firstLyric.text()).as("first line lyric text").isEqualTo(FIRST_LINE_LYRIC);
-        }
+        assertThat(firstLyric).as("first line lyric present").isNotNull();
+        assertThat(secondLyric).as("second line lyric present").isNotNull();
 
-        if (secondLyric != null) {
-            assertThat(secondLyric.text()).as("second line lyric text").isEqualTo(SECOND_LINE_LYRIC);
-        }
+        assertThat(firstLyric.text()).as("first line lyric text").isEqualTo(FIRST_LINE_LYRIC);
+        assertThat(secondLyric.text()).as("second line lyric text").isEqualTo(SECOND_LINE_LYRIC);
     }
 
     @Test
@@ -356,19 +347,19 @@ class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
         assertThat(aboveAttachment).as("ABOVE annotation attachment present").isNotNull();
         assertThat(belowAttachment).as("BELOW annotation attachment present").isNotNull();
 
-        if (aboveAttachment != null) {
-            var annotation = aboveAttachment.getAnnotation();
-            assertThat(annotation.getAnnotation()).as("ABOVE annotation text").isEqualTo(ABOVE_ANNOTATION_TEXT);
-            assertThat(annotation.getPlacement()).as("ABOVE annotation placement").isEqualTo(Annotation.Placement.ABOVE);
-            assertThat(annotation.getUserYOffsetSs()).as("ABOVE annotation Y offset").isEqualTo(ABOVE_Y_OFFSET_SS);
-        }
+        var aboveAnnotation = aboveAttachment.getAnnotation();
+        assertThat(aboveAnnotation.getAnnotation()).as("ABOVE annotation text").isEqualTo(ABOVE_ANNOTATION_TEXT);
+        assertThat(aboveAnnotation.getPlacement())
+            .as("ABOVE annotation placement")
+            .isEqualTo(Annotation.Placement.ABOVE);
+        assertThat(aboveAnnotation.getUserYOffsetSs()).as("ABOVE annotation Y offset").isEqualTo(ABOVE_Y_OFFSET_SS);
 
-        if (belowAttachment != null) {
-            var annotation = belowAttachment.getAnnotation();
-            assertThat(annotation.getAnnotation()).as("BELOW annotation text").isEqualTo(BELOW_ANNOTATION_TEXT);
-            assertThat(annotation.getPlacement()).as("BELOW annotation placement").isEqualTo(Annotation.Placement.BELOW);
-            assertThat(annotation.getUserYOffsetSs()).as("BELOW annotation Y offset").isEqualTo(BELOW_Y_OFFSET_SS);
-        }
+        var belowAnnotation = belowAttachment.getAnnotation();
+        assertThat(belowAnnotation.getAnnotation()).as("BELOW annotation text").isEqualTo(BELOW_ANNOTATION_TEXT);
+        assertThat(belowAnnotation.getPlacement())
+            .as("BELOW annotation placement")
+            .isEqualTo(Annotation.Placement.BELOW);
+        assertThat(belowAnnotation.getUserYOffsetSs()).as("BELOW annotation Y offset").isEqualTo(BELOW_Y_OFFSET_SS);
     }
 
     /**

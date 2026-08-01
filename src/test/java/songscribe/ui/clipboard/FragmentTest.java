@@ -505,9 +505,7 @@ class FragmentTest extends UnitTest {
 
             var pastedAttachment = pasted.elements().getFirst().findAttachment(AnnotationAttachment.class);
 
-            if (pastedAttachment == null) {
-                throw new AssertionError("the pasted element lost its annotation");
-            }
+            assertThat(pastedAttachment).as("the pasted element lost its annotation").isNotNull();
 
             var pastedAnnotation = pastedAttachment.getAnnotation();
             pastedAnnotation.setUserYOffsetSs(pastedAnnotation.getUserYOffsetSs() + 10.0);
@@ -535,9 +533,7 @@ class FragmentTest extends UnitTest {
 
             var pastedAttachment = pasted.elements().getFirst().findAttachment(TempoChangeAttachment.class);
 
-            if (pastedAttachment == null) {
-                throw new AssertionError("the pasted element lost its tempo change");
-            }
+            assertThat(pastedAttachment).as("the pasted element lost its tempo change").isNotNull();
 
             pastedAttachment.setUserYOffsetSs(pastedAttachment.getUserYOffsetSs() + 10.0);
 

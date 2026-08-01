@@ -293,11 +293,6 @@ public class UIAction extends AbstractAction {
         Flag... flags
     ) {
         super(name);
-
-        if (mainFrame == null) {
-            throw new IllegalArgumentException("mainFrame must not be null");
-        }
-
         this.mainFrame = mainFrame;
         putValue(ACTION_COMMAND_KEY, actionCommand);
         putValue(SHORT_DESCRIPTION, tooltip);
@@ -638,7 +633,7 @@ public class UIAction extends AbstractAction {
 
     protected boolean enableFromTextEditingState() {
         return (
-            !hasFlag(Flag.DISABLE_WHEN_EDITING_TEXT) || !UIUtils.isEditingTextIn(getMainFrame())
+            !hasFlag(Flag.DISABLE_WHEN_EDITING_TEXT) || !UIUtils.isEditingTextIn(mainFrame)
         );
     }
 

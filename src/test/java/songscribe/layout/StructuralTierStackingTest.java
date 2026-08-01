@@ -74,7 +74,6 @@ class StructuralTierStackingTest extends UnitTest {
     // horizontal neighbourhood.
     private static final int ABOVE_CENTER_SP = -2;
 
-    @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
         assertThat(value).describedAs(description).isNotNull();
         return value;

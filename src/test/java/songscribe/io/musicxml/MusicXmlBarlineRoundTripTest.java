@@ -102,7 +102,6 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     // -- Phase 4 tests --
 
     @Test
-    @SuppressWarnings("NullAway")
     void testBarlineStyleMappingRoundTripsForDirectTypes() {
         var directTypes = List.of(
             ElementType.SINGLE_BARLINE,

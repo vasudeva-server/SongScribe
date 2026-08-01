@@ -861,11 +861,6 @@ public class MainFrame extends JFrame implements Printable {
 
     public void handlePrefs() throws IllegalStateException {
         var dialog = Actions.PREFERENCES_ACTION.getDialog();
-
-        if (dialog == null) {
-            throw RuntimeError.exit("Preferences dialog could not be created");
-        }
-
         dialog.setVisible(true);
     }
 

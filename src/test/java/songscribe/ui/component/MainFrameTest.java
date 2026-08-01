@@ -1413,8 +1413,8 @@ class MainFrameTest extends UnitTest {
     @Nested
     class InitFrameOrderingContract {
 
-        @BeforeEach
         @SuppressWarnings("NullAway")
+        @BeforeEach
         void resetActionsBeforeTest() {
             // Other test classes may have left Actions initialized via initialize().
             // resetForTest() only clears mainFrame/appMenuActions, not the action constants

@@ -247,22 +247,13 @@ class PrefsTest extends UnitTest {
      * Reads values via {@link Number} because Gson deserializes JSON integers as {@code Double}
      * after a round-trip through the prefs file.
      */
-    @SuppressWarnings("NullAway")
     private void assertMapCoordinates(@Nullable Map<String, Object> map, int expectedX, int expectedY) {
         assertThat(map).isNotNull();
-
-        if (map == null) {
-            return; // unreachable — satisfies NullAway after the assertThat above
-        }
 
         var xRaw = map.get("x");
         var yRaw = map.get("y");
         assertThat(xRaw).isNotNull();
         assertThat(yRaw).isNotNull();
-
-        if (xRaw == null || yRaw == null) {
-            return; // unreachable — satisfies NullAway
-        }
 
         assertThat(((Number) xRaw).intValue()).isEqualTo(expectedX);
         assertThat(((Number) yRaw).intValue()).isEqualTo(expectedY);

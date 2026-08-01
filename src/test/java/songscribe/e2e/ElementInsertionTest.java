@@ -26,8 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 
 import module java.desktop;
 
-import java.util.Objects;
-
 import org.assertj.swing.edt.GuiActionRunner;
 import org.assertj.swing.finder.JOptionPaneFinder;
 import org.junit.jupiter.api.BeforeAll;
@@ -154,10 +152,12 @@ class ElementInsertionTest extends E2ETest {
 
             robot.pressMouse(insertPt, LEFT_BUTTON);
             Utils.sleep(GraceModeManager.MIN_DRAG_MILLIS);
-            int cancelScreenX = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
+            var cancelScreenX = GuiActionRunner.execute(() -> {
+                var lc = scoreView().getLineComponent(0);
+                assertThat(lc).isNotNull();
                 return lc.getLocationOnScreen().x + GraceModeManager.getCancelThresholdPx();
-            }));
+            });
+            assertThat(cancelScreenX).isNotNull();
             robot.moveMouse(new Point(cancelScreenX, insertPt.y));
             pause();
             robot.releaseMouseButtons();
@@ -213,17 +213,23 @@ class ElementInsertionTest extends E2ETest {
 
             // Click at midpoint between last pair host and standalone, at a different pitch
             var mid = midpoint(0, GraceElement.PAIR_C_HOST.index, GraceElement.STANDALONE.index);
-            var insertPt = new Point(mid.x, Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
+            var insertScreenY = GuiActionRunner.execute(() -> {
+                var lc = scoreView().getLineComponent(0);
+                assertThat(lc).isNotNull();
                 return lc.getLocationOnScreen().y + lc.staffPositionToYPx(-2);
-            })));
+            });
+            assertThat(insertScreenY).isNotNull();
+
+            var insertPt = new Point(mid.x, insertScreenY);
 
             robot.pressMouse(insertPt, LEFT_BUTTON);
             Utils.sleep(GraceModeManager.MIN_DRAG_MILLIS);
-            int connectScreenX = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
+            var connectScreenX = GuiActionRunner.execute(() -> {
+                var lc = scoreView().getLineComponent(0);
+                assertThat(lc).isNotNull();
                 return lc.getLocationOnScreen().x + GraceModeManager.getConnectThresholdPx();
-            }));
+            });
+            assertThat(connectScreenX).isNotNull();
             robot.moveMouse(new Point(connectScreenX, insertPt.y));
             pause();
             robot.releaseMouseButtons();
@@ -694,9 +700,7 @@ class ElementInsertionTest extends E2ETest {
         private void typeIntoLyricEditor() {
             var editor = GuiActionRunner.execute(() -> scoreView().getActiveLyricEditor());
 
-            if (editor == null) {
-                throw new AssertionError("the lyric editor did not open");
-            }
+            assertThat(editor).as("the lyric editor did not open").isNotNull();
 
             GuiActionRunner.execute(() -> editor.setText(LYRIC_SYLLABLE));
             pause();
@@ -707,16 +711,25 @@ class ElementInsertionTest extends E2ETest {
     // -- Grace note assertion helpers --
 
     private boolean isGraceModeActive() {
-        return Objects.requireNonNull(GuiActionRunner.execute(GraceModeManager::isActive));
+        var active = GuiActionRunner.execute(GraceModeManager::isActive);
+        assertThat(active).isNotNull();
+
+        return active;
     }
 
     private boolean isActionEnabled(UIAction action) {
-        return Objects.requireNonNull(GuiActionRunner.execute(action::isEnabled));
+        var enabled = GuiActionRunner.execute(action::isEnabled);
+        assertThat(enabled).isNotNull();
+
+        return enabled;
     }
 
     private boolean isActionSelected(UIAction action) {
         var selectable = (UIAction.Selectable) action;
-        return Objects.requireNonNull(GuiActionRunner.execute(selectable::isSelected));
+        var selected = GuiActionRunner.execute(selectable::isSelected);
+        assertThat(selected).isNotNull();
+
+        return selected;
     }
 
 }

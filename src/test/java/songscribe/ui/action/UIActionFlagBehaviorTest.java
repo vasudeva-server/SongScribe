@@ -39,7 +39,6 @@ import songscribe.ui.playback.PlaybackController;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -112,17 +111,6 @@ class UIActionFlagBehaviorTest extends MainFrameMockTest {
         var action = new DialogOpenAction<>(mainFrame(), "Test Dialog", StubDialog::new);
 
         assertThat(action.hasFlag(UIAction.Flag.OPENS_DIALOG)).isTrue();
-    }
-
-    // -- null mainFrame is rejected --
-
-    @Test
-    @SuppressWarnings("NullAway")
-    void testConstructorRejectsNullMainFrame() {
-        assertThrows(
-            IllegalArgumentException.class,
-            () -> new UIAction(null, "Test", null, 0, "test", "Test")
-        );
     }
 
     // -- setFlags disables on construction for selection/song-state flags --

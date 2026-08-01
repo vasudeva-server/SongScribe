@@ -144,15 +144,11 @@ class GraceGlissandoPreviewOverlayTest extends UnitTest {
 
         var layoutResult = lc.getLayoutResult();
 
-        if (layoutResult == null) {
-            throw new AssertionError("the fixture line must lay out for the ink to be resolvable");
-        }
+        assertThat(layoutResult).as("the fixture line must lay out for the ink to be resolvable").isNotNull();
 
         var graceColumn = layoutResult.getElementColumn(graceNote);
 
-        if (graceColumn == null) {
-            throw new AssertionError("the grace note must have a laid-out column");
-        }
+        assertThat(graceColumn).as("the grace note must have a laid-out column").isNotNull();
 
         // The same slot GraceModeManager.getLockedInsertionXSs() resolves: one fixed grace->host
         // gap past the grace note's column. The host is an undecorated crotchet, so its left
@@ -190,9 +186,7 @@ class GraceGlissandoPreviewOverlayTest extends UnitTest {
 
         var inkSs = overlay.getLastInkBoundsSs();
 
-        if (inkSs == null) {
-            throw new AssertionError("expected the preview glissando to produce ink");
-        }
+        assertThat(inkSs).as("expected the preview glissando to produce ink").isNotNull();
 
         return inkSs;
     }
@@ -274,9 +268,7 @@ class GraceGlissandoPreviewOverlayTest extends UnitTest {
         void testInkSpansTheGapBetweenTheGraceNoteAndTheHostSlot() {
             var layoutResult = lc.getLayoutResult();
 
-            if (layoutResult == null) {
-                throw new AssertionError("the fixture line must stay laid out");
-            }
+            assertThat(layoutResult).as("the fixture line must stay laid out").isNotNull();
 
             var inkSs = rebuiltInkSs();
 
@@ -344,9 +336,7 @@ class GraceGlissandoPreviewOverlayTest extends UnitTest {
         void testPreviewElementDidChangeHidesTheOverlayOnceGraceModeIsOver() {
             var installed = PreviewElementManager.getGraceGlissandoOverlay();
 
-            if (installed == null) {
-                throw new AssertionError("expected installOverlay to install a grace glissando overlay");
-            }
+            assertThat(installed).as("expected installOverlay to install a grace glissando overlay").isNotNull();
 
             PreviewElementManager.previewElementDidChange();
 

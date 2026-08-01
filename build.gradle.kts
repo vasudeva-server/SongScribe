@@ -134,6 +134,9 @@ tasks.withType<JavaCompile>().configureEach {
         error("NullAway")
         option("NullAway:OnlyNullMarked", "true")
         option("NullAway:JSpecifyMode", "true")
+        // Lets NullAway narrow a value to non-null after assertThat(x).isNotNull(),
+        // so tests don't need a null check purely to satisfy the checker.
+        option("NullAway:HandleTestAssertionLibraries", "true")
         disableWarningsInGeneratedCode = true
     }
 }

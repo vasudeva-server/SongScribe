@@ -223,10 +223,6 @@ class StaffElementIOTest extends UnitTest {
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
 
-            if (attachment == null) {
-                return;
-            }
-
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.QUAVER, Duration.QUAVER));
         }
 
@@ -235,10 +231,6 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("QUAVEREQUALSQUAVER"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-
-            if (attachment == null) {
-                return;
-            }
 
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.QUAVER, Duration.QUAVER));
         }
@@ -249,10 +241,6 @@ class StaffElementIOTest extends UnitTest {
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
 
-            if (attachment == null) {
-                return;
-            }
-
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM));
         }
 
@@ -261,10 +249,6 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("DOTTEDCROCHETEQUALSMINIM"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-
-            if (attachment == null) {
-                return;
-            }
 
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM));
         }
@@ -275,10 +259,6 @@ class StaffElementIOTest extends UnitTest {
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
 
-            if (attachment == null) {
-                return;
-            }
-
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.MINIM, Duration.CROTCHET_DOTTED));
         }
 
@@ -287,10 +267,6 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("MINIMEQUALSDOTTEDCROCHET"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-
-            if (attachment == null) {
-                return;
-            }
 
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.MINIM, Duration.CROTCHET_DOTTED));
         }
@@ -301,10 +277,6 @@ class StaffElementIOTest extends UnitTest {
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
 
-            if (attachment == null) {
-                return;
-            }
-
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET, Duration.CROTCHET_DOTTED));
         }
 
@@ -313,10 +285,6 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("CROTCHETQUALSDOTTEDCROCHET"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-
-            if (attachment == null) {
-                return;
-            }
 
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET, Duration.CROTCHET_DOTTED));
         }
@@ -327,10 +295,6 @@ class StaffElementIOTest extends UnitTest {
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
 
-            if (attachment == null) {
-                return;
-            }
-
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET));
         }
 
@@ -339,10 +303,6 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChange("DOTTEDCROCHETQUALSCROCHET"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-
-            if (attachment == null) {
-                return;
-            }
 
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET));
         }
@@ -354,10 +314,6 @@ class StaffElementIOTest extends UnitTest {
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
 
-            if (attachment == null) {
-                return;
-            }
-
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET, Duration.QUAVER));
         }
 
@@ -366,10 +322,6 @@ class StaffElementIOTest extends UnitTest {
             var song = parseXml(buildXmlWithBeatChangeAttributes("CROTCHET_DOTTED", "MINIM"));
             var attachment = song.getLine(0).getElement(0).findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-
-            if (attachment == null) {
-                return;
-            }
 
             assertThat(attachment.getBeatChange()).isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.MINIM));
         }
@@ -433,11 +385,6 @@ class StaffElementIOTest extends UnitTest {
 
             assertThat(dynamic).isNotNull();
 
-            //noinspection ConstantValue -- need for NullAway
-            if (dynamic == null) {
-                return;
-            }
-
             assertThat(dynamic.getType()).isEqualTo(DynamicType.FORTE);
         }
 
@@ -450,11 +397,6 @@ class StaffElementIOTest extends UnitTest {
             var dynamic = comp2.getLine(0).getElement(0).findAttachment(DynamicAttachment.class);
 
             assertThat(dynamic).isNotNull();
-
-            //noinspection ConstantValue -- need for NullAway
-            if (dynamic == null) {
-                return;
-            }
 
             assertThat(dynamic.getType()).isEqualTo(dynamicType);
         }
@@ -717,10 +659,6 @@ class StaffElementIOTest extends UnitTest {
 
             assertThat(note).isNotNull();
 
-            if (note == null) {
-                return;
-            }
-
             assertThat(note.lyrics).hasSize(1);
             assertThat(note.lyrics.getFirst().syllabic()).isEqualTo(Lyric.Syllabic.MIDDLE);
         }
@@ -744,10 +682,6 @@ class StaffElementIOTest extends UnitTest {
             var note = reader.endElement11("note");
 
             assertThat(note).isNotNull();
-
-            if (note == null) {
-                return;
-            }
 
             assertThat(note.lyrics).hasSize(1);
             assertThat(note.lyrics.getFirst().syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
@@ -1010,9 +944,7 @@ class StaffElementIOTest extends UnitTest {
             reader.startElement10("note", noteAttrs("LINE"));
             var element = reader.endElement10("note");
             assertThat(element).isNotNull();
-            if (element != null) {
-                assertThat(element.getType()).isEqualTo(ElementType.SINGLE_BARLINE);
-            }
+            assertThat(element.getType()).isEqualTo(ElementType.SINGLE_BARLINE);
         }
 
         @Test
@@ -1021,9 +953,7 @@ class StaffElementIOTest extends UnitTest {
             reader.startElement10("note", noteAttrs("GRACESEMIQUAVER"));
             var element = reader.endElement10("note");
             assertThat(element).isNotNull();
-            if (element != null) {
-                assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
-            }
+            assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
         }
 
         @Test
@@ -1032,9 +962,7 @@ class StaffElementIOTest extends UnitTest {
             reader.startElement10("note", noteAttrs("GRACE_SEMIQUAVER"));
             var element = reader.endElement10("note");
             assertThat(element).isNotNull();
-            if (element != null) {
-                assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
-            }
+            assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
         }
 
         @Test
@@ -1043,9 +971,7 @@ class StaffElementIOTest extends UnitTest {
             reader.startElement10("note", noteAttrs("GRACE_SEMIQUAVER_EDIT_STEP1"));
             var element = reader.endElement10("note");
             assertThat(element).isNotNull();
-            if (element != null) {
-                assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
-            }
+            assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
         }
     }
 
@@ -1065,9 +991,7 @@ class StaffElementIOTest extends UnitTest {
             reader.startElement11("note", noteAttrs("VERTICALLINE"));
             var element = reader.endElement11("note");
             assertThat(element).isNotNull();
-            if (element != null) {
-                assertThat(element.getType()).isEqualTo(ElementType.SINGLE_BARLINE);
-            }
+            assertThat(element.getType()).isEqualTo(ElementType.SINGLE_BARLINE);
         }
 
         @Test
@@ -1076,9 +1000,7 @@ class StaffElementIOTest extends UnitTest {
             reader.startElement11("note", noteAttrs("GRACE_SEMIQUAVER"));
             var element = reader.endElement11("note");
             assertThat(element).isNotNull();
-            if (element != null) {
-                assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
-            }
+            assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
         }
 
         @Test
@@ -1087,9 +1009,7 @@ class StaffElementIOTest extends UnitTest {
             reader.startElement11("note", noteAttrs("GRACE_SEMIQUAVER_EDIT_STEP1"));
             var element = reader.endElement11("note");
             assertThat(element).isNotNull();
-            if (element != null) {
-                assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
-            }
+            assertThat(element.getType()).isEqualTo(ElementType.GRACE_QUAVER);
         }
     }
 

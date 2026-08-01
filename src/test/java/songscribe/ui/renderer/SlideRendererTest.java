@@ -29,7 +29,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Objects;
 
 import module java.desktop;
 
@@ -170,7 +169,10 @@ class SlideRendererTest extends UnitTest {
     void testHitTestGlissando_diagonalLine_returnsNoteIndex() {
         // 45° glissando from (0, 0), length 10; midpoint in world coords: (5·cos45°, 5·sin45°)
         var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
-        setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 0.0, 0.0, 45.0, 10.0);
+        var glissando = line.getElement(0).getGlissando();
+        assertThat(glissando).isNotNull();
+
+        setCachedGeometry(glissando, 0.0, 0.0, 45.0, 10.0);
 
         var mid = 5.0 * Math.cos(Math.toRadians(45.0));
         assertThat(hitTestSlide(mid, mid, line)).isEqualTo(0);
@@ -187,7 +189,10 @@ class SlideRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_pointAfterEnd_returnsMinusOne() {
         var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
-        setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
+        var glissando = line.getElement(0).getGlissando();
+        assertThat(glissando).isNotNull();
+
+        setCachedGeometry(glissando, 5.0, 3.0, 0.0, 10.0);
 
         // localX = 15.1 - 5.0 = 10.1 > cachedLength (10.0)
         assertThat(hitTestSlide(15.1, 3.0, line)).isEqualTo(-1);
@@ -196,7 +201,10 @@ class SlideRendererTest extends UnitTest {
     @Test
     void testHitTestGlissando_pointBeforeStart_returnsMinusOne() {
         var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
-        setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
+        var glissando = line.getElement(0).getGlissando();
+        assertThat(glissando).isNotNull();
+
+        setCachedGeometry(glissando, 5.0, 3.0, 0.0, 10.0);
 
         // localX = 4.9 - 5.0 = -0.1 < 0
         assertThat(hitTestSlide(4.9, 3.0, line)).isEqualTo(-1);
@@ -206,7 +214,10 @@ class SlideRendererTest extends UnitTest {
     void testHitTestGlissando_pointBesideLine_returnsMinusOne() {
         // Same glissando, but click is 1.0 ss above (> halfHitSs = 0.5)
         var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
-        setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
+        var glissando = line.getElement(0).getGlissando();
+        assertThat(glissando).isNotNull();
+
+        setCachedGeometry(glissando, 5.0, 3.0, 0.0, 10.0);
 
         assertThat(hitTestSlide(10.0, 4.0, line)).isEqualTo(-1);
     }
@@ -215,7 +226,10 @@ class SlideRendererTest extends UnitTest {
     void testHitTestGlissando_pointOnLine_returnsNoteIndex() {
         // Horizontal glissando (angle=0) from (5.0, 3.0) with length 10.0
         var line = makeTwoNoteLineWithGlissando(0, null, -2, null);
-        setCachedGeometry(Objects.requireNonNull(line.getElement(0).getGlissando()), 5.0, 3.0, 0.0, 10.0);
+        var glissando = line.getElement(0).getGlissando();
+        assertThat(glissando).isNotNull();
+
+        setCachedGeometry(glissando, 5.0, 3.0, 0.0, 10.0);
 
         // Click at the midpoint: localX=5, localY=0 — well within hit bounds
         assertThat(hitTestSlide(10.0, 3.0, line)).isEqualTo(0);
@@ -237,7 +251,10 @@ class SlideRendererTest extends UnitTest {
         line.addElement(note1);
         line.addElement(note2);
 
-        setCachedGeometry(Objects.requireNonNull(note1.getGlissando()), 5.0, 3.0, 0.0, 10.0);
+        var glissando = note1.getGlissando();
+        assertThat(glissando).isNotNull();
+
+        setCachedGeometry(glissando, 5.0, 3.0, 0.0, 10.0);
 
         assertThat(hitTestSlide(10.0, 3.0, line)).isEqualTo(1);
     }
@@ -253,7 +270,10 @@ class SlideRendererTest extends UnitTest {
         line.addElement(grace);
         line.addElement(ElementType.CROTCHET.newInstance());
 
-        setCachedGeometry(Objects.requireNonNull(grace.getGlissando()), 5.0, 3.0, 0.0, 10.0);
+        var glissando = grace.getGlissando();
+        assertThat(glissando).isNotNull();
+
+        setCachedGeometry(glissando, 5.0, 3.0, 0.0, 10.0);
 
         assertThat(hitTestSlide(10.0, 3.0, line)).isEqualTo(0);
     }
@@ -505,7 +525,8 @@ class SlideRendererTest extends UnitTest {
         var result = SlideRenderer.computeEndpoints(src, tgt);
         assertThat(result).isNotNull();
 
-        var endpoints = Objects.requireNonNull(result);
+        var endpoints = result;
+        assertThat(endpoints).isNotNull();
         var expectedStartX = srcCx + HALF_COLUMN_SS + NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
         var expectedEndX = tgtCx - HALF_COLUMN_SS - NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
         assertThat(endpoints.startXSs()).isCloseTo(expectedStartX, within(0.01));
@@ -535,8 +556,8 @@ class SlideRendererTest extends UnitTest {
         assertThat(steepResult).isNotNull();
 
         var attachStartX = HALF_COLUMN_SS;  // src.glissRightXSs = 0 + HALF_COLUMN_SS
-        var shallowHorizontalInset = Objects.requireNonNull(shallowResult).startXSs() - attachStartX;
-        var steepHorizontalInset = Objects.requireNonNull(steepResult).startXSs() - attachStartX;
+        var shallowHorizontalInset = shallowResult.startXSs() - attachStartX;
+        var steepHorizontalInset = steepResult.startXSs() - attachStartX;
 
         // Steep glissando has a smaller horizontal inset (gap * cosθ < gap)
         assertThat(steepHorizontalInset).isLessThan(shallowHorizontalInset);
@@ -575,7 +596,8 @@ class SlideRendererTest extends UnitTest {
         var unitY = descendingDy / attachLength;
         var gap = NoteGeometry.GLISSANDO_DRAWN_GAP_SS;
 
-        var endpoints = Objects.requireNonNull(result);
+        var endpoints = result;
+        assertThat(endpoints).isNotNull();
         assertThat(endpoints.startYSs()).isCloseTo(unitY * gap, within(0.001));
         assertThat(endpoints.startYSs()).isLessThan(0.0);
         assertThat(endpoints.endYSs()).isCloseTo(descendingDy - unitY * gap, within(0.001));
@@ -686,9 +708,7 @@ class SlideRendererTest extends UnitTest {
 
         var inkSs = recordPreviewGlissando(line, PREVIEW_SOURCE_INDEX, previewElement, invariants);
 
-        if (inkSs == null) {
-            throw new AssertionError("expected the preview glissando to draw");
-        }
+        assertThat(inkSs).as("expected the preview glissando to draw").isNotNull();
 
         var src = SlideRenderer.resolveNoteContext(
             line.getElement(PREVIEW_SOURCE_INDEX), PREVIEW_SOURCE_INDEX, line,

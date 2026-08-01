@@ -202,11 +202,7 @@ class DebounceTest extends UnitTest {
             // Re-arm from inside the action exactly once. An implementation that tore its timer
             // down *after* running the action would stop the window this just opened.
             if (runCount.incrementAndGet() == 1) {
-                var self = debounceRef.get();
-
-                if (self != null) {
-                    self.trigger();
-                }
+                debounceRef.get().trigger();
             }
         });
 
@@ -285,9 +281,7 @@ class DebounceTest extends UnitTest {
 
         var debounce = holder.get();
 
-        if (debounce == null) {
-            throw new AssertionError("the factory returned no debounce");
-        }
+        assertThat(debounce).as("the factory returned no debounce").isNotNull();
 
         created.add(debounce);
         return debounce;

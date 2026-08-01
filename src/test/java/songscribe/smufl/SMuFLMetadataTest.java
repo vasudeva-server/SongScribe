@@ -88,10 +88,6 @@ class SMuFLMetadataTest extends UnitTest {
 
         assertThat(bbox).isNotNull();
 
-        if (bbox == null) {
-            return;
-        }
-
         assertThat(bbox.left()).isCloseTo(NOTEHEAD_BLACK_EXPECTED_LEFT, within(TOLERANCE));
         assertThat(bbox.top()).isCloseTo(NOTEHEAD_BLACK_EXPECTED_TOP, within(TOLERANCE));
         assertThat(bbox.right()).isCloseTo(NOTEHEAD_BLACK_EXPECTED_RIGHT, within(TOLERANCE));
@@ -147,10 +143,6 @@ class SMuFLMetadataTest extends UnitTest {
         var anchors = SMuFLMetadata.getAnchors(SMuFLGlyph.NOTEHEAD_BLACK);
 
         assertThat(anchors).isNotNull();
-
-        if (anchors == null) {
-            return;
-        }
 
         // noteheadBlack has stemUpSE and stemDownNW in Bravura metadata
         assertThat(anchors.stemUpSE())
@@ -298,10 +290,6 @@ class SMuFLMetadataTest extends UnitTest {
         assertThat(width)
             .as("getAdvanceWidth must return a non-null value for noteheadBlack")
             .isNotNull();
-
-        if (width == null) {
-            return;
-        }
 
         assertThat(width).isCloseTo(NOTEHEAD_BLACK_EXPECTED_WIDTH, within(TOLERANCE));
     }

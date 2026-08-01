@@ -299,7 +299,6 @@ class LayoutEngineTest extends UnitTest {
     }
 
     /** Asserts value is not null and returns it non-null for NullAway. */
-    @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
         assertThat(value).describedAs(description).isNotNull();
         return value;
@@ -1777,11 +1776,6 @@ class LayoutEngineTest extends UnitTest {
             var line = detachedLine();
             var notes = beamedNotes(line, ElementType.QUAVER, staffPositions);
             var result = engine().layout(line);
-
-            if (result == null) {
-                continue;
-            }
-
             var note = notes.get(1);
             var stem = result.getStemLayout(note);
 

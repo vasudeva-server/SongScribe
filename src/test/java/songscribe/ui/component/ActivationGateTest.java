@@ -77,22 +77,16 @@ class ActivationGateTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @SuppressWarnings("NullAway")
     void testActivateMakesGlassPaneVisible() {
         ActivationGate.activate();
 
         var pane = ActivationGate.glassPane;
         assertThat(pane).isNotNull();
 
-        if (pane == null) {
-            return; // unreachable — satisfies NullAway
-        }
-
         assertThat(pane.isVisible()).isTrue();
     }
 
     @Test
-    @SuppressWarnings("NullAway")
     void testDeactivateHidesGlassPane() {
         ActivationGate.activate();
         ActivationGate.deactivate();
@@ -100,15 +94,10 @@ class ActivationGateTest extends UnitTest {
         var pane = ActivationGate.glassPane;
         assertThat(pane).isNotNull();
 
-        if (pane == null) {
-            return; // unreachable — satisfies NullAway
-        }
-
         assertThat(pane.isVisible()).isFalse();
     }
 
     @Test
-    @SuppressWarnings("NullAway")
     void testDeactivateCancelsDebounce() {
         // Arm the debounce by calling appRaisedToForeground, then deactivate.
         ActivationGate.appRaisedToForeground();
@@ -116,10 +105,6 @@ class ActivationGateTest extends UnitTest {
 
         var debounce = ActivationGate.cmdTabDebounce;
         assertThat(debounce).isNotNull();
-
-        if (debounce == null) {
-            return; // unreachable — satisfies NullAway
-        }
 
         assertThat(debounce.isArmed()).isFalse();
     }
@@ -129,14 +114,9 @@ class ActivationGateTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @Test
-    @SuppressWarnings("NullAway")
     void testAppRaisedToForegroundArmsDebounce() {
         var debounce = ActivationGate.cmdTabDebounce;
         assertThat(debounce).isNotNull();
-
-        if (debounce == null) {
-            return; // unreachable — satisfies NullAway
-        }
 
         assertThat(debounce.isArmed()).isFalse();
 
@@ -146,7 +126,6 @@ class ActivationGateTest extends UnitTest {
     }
 
     @Test
-    @SuppressWarnings("NullAway")
     void testAppRaisedToForegroundKeepsDebounceArmedWhenAlreadyArmed() {
         // Named for what this can actually prove: a second trigger must not disarm the debounce.
         // That it also pushes the deadline out is Debounce's contract, tested there — isArmed()
@@ -156,10 +135,6 @@ class ActivationGateTest extends UnitTest {
 
         var debounce = ActivationGate.cmdTabDebounce;
         assertThat(debounce).isNotNull();
-
-        if (debounce == null) {
-            return; // unreachable — satisfies NullAway
-        }
 
         assertThat(debounce.isArmed()).isTrue();
     }

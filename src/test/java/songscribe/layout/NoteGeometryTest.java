@@ -55,7 +55,6 @@ class NoteGeometryTest extends UnitTest {
         return note;
     }
 
-    @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
         assertThat(value).describedAs(description).isNotNull();
         return value;
@@ -388,7 +387,6 @@ class NoteGeometryTest extends UnitTest {
          */
         private static final int LEDGER_OUTSIDE_ACC_RANGE_SP = -5;
 
-        @SuppressWarnings("NullAway")
         private static AccidentalBounds requireAccBounds(StaffElement note) {
             var bounds = NoteGeometry.getAccidentalBoundsSs(note);
             assertThat(bounds).as("accidental bounds must be non-null for this test").isNotNull();

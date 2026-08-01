@@ -132,7 +132,6 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     }
 
     /** Asserts value is not null and returns it non-null for NullAway. */
-    @SuppressWarnings("NullAway")
     private static LayoutResult requireLayout(@Nullable LayoutResult result) {
         assertThat(result).isNotNull();
         return result;

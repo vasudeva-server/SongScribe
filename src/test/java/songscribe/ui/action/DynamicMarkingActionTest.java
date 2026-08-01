@@ -57,7 +57,6 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
     class ApplyToElement {
 
         @Test
-        @SuppressWarnings("NullAway")
         void testAddDynamicToNoteWithNone() {
             var note = ElementType.CROTCHET.newInstance();
             FORTE_ACTION.applyToElement(note, true);
@@ -75,7 +74,6 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
         }
 
         @Test
-        @SuppressWarnings("NullAway")
         void testReplaceDifferentType() {
             var note = ElementType.CROTCHET.newInstance();
             note.addAttachment(new DynamicAttachment(note, DynamicType.PIANO));

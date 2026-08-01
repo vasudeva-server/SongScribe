@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 
@@ -57,7 +56,8 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
         );
 
         // Establish a lyric selection before triggering the callback.
-        var state = Objects.requireNonNull(coordinator.getActiveSelection());
+        var state = coordinator.getActiveSelection();
+        assertThat(state).isNotNull();
         var element = state.getLine().getElement(0);
         coordinator.selectLyric(element, 1);
         assertThat(coordinator.hasLyricSelection()).as("lyric selection before callback").isTrue();

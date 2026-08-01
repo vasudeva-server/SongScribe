@@ -108,15 +108,11 @@ class InsertionMarkerOverlayTest extends UnitTest {
 
             var bounds = overlay.getInkBoundsSs();
 
-            if (bounds == null) {
-                throw new AssertionError("expected non-null ink bounds");
-            }
+            assertThat(bounds).as("expected non-null ink bounds").isNotNull();
 
             var domLine = lc.getLine();
 
-            if (domLine == null) {
-                throw new AssertionError("test setup did not attach a line");
-            }
+            assertThat(domLine).as("test setup did not attach a line").isNotNull();
 
             var expectedCenterXSs = expectedCenterXSs(domLine);
             var expectedMinXSs = expectedCenterXSs - InsertionMarkerOverlay.INSERTION_POINT_THICKNESS_SS / 2;
@@ -136,9 +132,7 @@ class InsertionMarkerOverlayTest extends UnitTest {
 
             var bounds = overlay.getInkBoundsSs();
 
-            if (bounds == null) {
-                throw new AssertionError("expected non-null ink bounds");
-            }
+            assertThat(bounds).as("expected non-null ink bounds").isNotNull();
 
             // song is null on this LineComponent, so getMiddleLineYSs() stays at its 0.0 default.
             var expectedTopYSs = Staff.spToSs(Staff.MIN_STAFF_POSITION_SP);
@@ -165,9 +159,7 @@ class InsertionMarkerOverlayTest extends UnitTest {
             var secondLine = parentedLine();
             var secondDomLine = secondLine.getLine();
 
-            if (secondDomLine == null) {
-                throw new AssertionError("test setup did not attach a line");
-            }
+            assertThat(secondDomLine).as("test setup did not attach a line").isNotNull();
 
             secondDomLine.addElement(ElementType.CROTCHET.newInstance());
             overlay.setTarget(secondLine, TARGET_INDEX + 1);

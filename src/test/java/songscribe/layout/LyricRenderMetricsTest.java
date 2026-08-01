@@ -88,9 +88,7 @@ class LyricRenderMetricsTest extends UnitTest {
             List.of(column), song.getActiveVerse(), LYRIC_METRICS, false, LINE_WIDTH_SS);
         var boxes = result.boxes().get(element);
 
-        if (boxes == null) {
-            throw new AssertionError("Expected a lyric box for the element, but none were produced");
-        }
+        assertThat(boxes).as("Expected a lyric box for the element, but none were produced").isNotNull();
 
         assertThat(boxes).hasSize(1);
 

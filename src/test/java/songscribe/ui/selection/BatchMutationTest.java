@@ -29,7 +29,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -94,7 +93,10 @@ class BatchMutationTest extends MainFrameMockTest {
     }
 
     private Line getLine(SelectionCoordinator coordinator) {
-        return Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
+        var selection = coordinator.getActiveSelection();
+        assertThat(selection).isNotNull();
+
+        return selection.getLine();
     }
 
     // -- Inapplicable notes are skipped --
@@ -191,7 +193,8 @@ class BatchMutationTest extends MainFrameMockTest {
         ReflectionTestHelper.selectNote(coordinator, 3);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
-        var beam = Objects.requireNonNull(line.findBeamAt(0));
+        var beam = line.findBeamAt(0);
+        assertThat(beam).isNotNull();
         assertThat(beam.getAnchorElementIndex()).isEqualTo(0);
         assertThat(beam.getEndElementIndex()).isEqualTo(2);
         assertThat(line.findBeamAt(3)).isNull();
@@ -212,7 +215,8 @@ class BatchMutationTest extends MainFrameMockTest {
         ReflectionTestHelper.selectNote(coordinator, 0);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
-        var beam = Objects.requireNonNull(line.findBeamAt(1));
+        var beam = line.findBeamAt(1);
+        assertThat(beam).isNotNull();
         assertThat(beam.getAnchorElementIndex()).isEqualTo(1);
         assertThat(beam.getEndElementIndex()).isEqualTo(3);
         assertThat(line.findBeamAt(0)).isNull();
@@ -416,6 +420,7 @@ class BatchMutationTest extends MainFrameMockTest {
 
         var line = getLine(coordinator);
 
+        //noinspection ConstantValue
         for (var i = 0; i <= 2; i++) {
             assertThat(line.getElement(i).findAttachment(FermataAttachment.class))
                 .as("note %d should not have fermata", i)
@@ -436,7 +441,8 @@ class BatchMutationTest extends MainFrameMockTest {
 
         coordinator.applyActionToSelection(FERMATA_ACTION, true, null);
 
-        var selection = Objects.requireNonNull(coordinator.getSelection());
+        var selection = coordinator.getSelection();
+        assertThat(selection).isNotNull();
         assertThat(selection.begin()).isEqualTo(0);
         assertThat(selection.end()).isEqualTo(1);
     }
@@ -464,7 +470,8 @@ class BatchMutationTest extends MainFrameMockTest {
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
-        var preserved = Objects.requireNonNull(line.findTieAt(0));
+        var preserved = line.findTieAt(0);
+        assertThat(preserved).isNotNull();
         assertThat(preserved.getAnchorElementIndex()).isEqualTo(0);
         assertThat(preserved.getEndElementIndex()).isEqualTo(1);
     }
@@ -527,7 +534,8 @@ class BatchMutationTest extends MainFrameMockTest {
         ReflectionTestHelper.selectRange(coordinator, 3, 4);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
-        var preserved = Objects.requireNonNull(line.findTupletAt(0));
+        var preserved = line.findTupletAt(0);
+        assertThat(preserved).isNotNull();
         assertThat(preserved.getAnchorElementIndex()).isEqualTo(0);
         assertThat(preserved.getEndElementIndex()).isEqualTo(1);
     }

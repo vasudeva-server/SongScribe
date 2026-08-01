@@ -103,9 +103,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
     private Lyric requireLyric(int index, int verse) {
         var lyric = line.getElement(index).getLyricForVerse(verse);
 
-        if (lyric == null) {
-            throw new AssertionError("expected a verse " + verse + " lyric at index " + index);
-        }
+        assertThat(lyric).as("expected a verse " + verse + " lyric at index " + index).isNotNull();
 
         return lyric;
     }

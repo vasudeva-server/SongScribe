@@ -61,7 +61,6 @@ class VerticalStackingCalculatorTest extends UnitTest {
     // Bottom of the valid staff range — makes botSs + centerYSs exceed the default STAFF_HEIGHT_SS.
     private static final int BOTTOM_STAFF_POSITION = Staff.MAX_STAFF_POSITION_SP;
 
-    @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
         assertThat(value).describedAs(description).isNotNull();
         return value;

@@ -232,7 +232,7 @@ class DeleteLyricTest extends MainFrameMockTest {
 
             assertThat(lyricNote.getLyricForVerse(VERSE))
                 .isNotNull()
-                .extracting(lyric -> lyric != null ? lyric.syllabic() : null)
+                .extracting(Lyric::syllabic)
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
 
@@ -252,7 +252,7 @@ class DeleteLyricTest extends MainFrameMockTest {
 
             assertThat(otherNote.getLyricForVerse(VERSE))
                 .isNotNull()
-                .extracting(lyric -> lyric != null ? lyric.syllabic() : null)
+                .extracting(Lyric::syllabic)
                 .isEqualTo(Lyric.Syllabic.SINGLE);
         }
     }

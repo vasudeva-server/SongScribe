@@ -243,9 +243,7 @@ class LineOverlayComponentTest extends UnitTest {
 
             var hints = overlay.capturedHints;
 
-            if (hints == null) {
-                throw new AssertionError("renderOverlay must receive rendering hints");
-            }
+            assertThat(hints).as("renderOverlay must receive rendering hints").isNotNull();
 
             assertThat(hints.get(RenderingHints.KEY_ANTIALIASING))
                 .isEqualTo(RenderingHints.VALUE_ANTIALIAS_ON);
@@ -258,9 +256,7 @@ class LineOverlayComponentTest extends UnitTest {
 
             var transform = overlay.capturedTransform;
 
-            if (transform == null) {
-                throw new AssertionError("renderOverlay must receive a transform");
-            }
+            assertThat(transform).as("renderOverlay must receive a transform").isNotNull();
 
             var lineOriginPx = SwingUtilities.convertPoint(line, 0, 0, host);
             var expectedTx = lineOriginPx.x - overlay.getX();

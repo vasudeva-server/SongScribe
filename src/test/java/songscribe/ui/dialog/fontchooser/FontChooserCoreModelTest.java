@@ -117,7 +117,6 @@ class FontChooserCoreModelTest extends UnitTest {
     class FontFamiliesTests {
 
         @Test
-        @SuppressWarnings("NullAway")
         void testAddGroupsFontsByFamily() {
             // Two fonts sharing one family + one font from another family → two groups.
             var families = new FontFamilies();
@@ -141,24 +140,15 @@ class FontChooserCoreModelTest extends UnitTest {
             var latoFamily = families.get("Lato");
             assertThat(latoFamily).isNotNull();
 
-            if (latoFamily == null) {
-                return; // unreachable — satisfies NullAway after the assertThat above
-            }
-
             assertThat(latoFamily.getStyles()).hasSize(2);
 
             var arialFamily = families.get("Arial");
             assertThat(arialFamily).isNotNull();
 
-            if (arialFamily == null) {
-                return; // unreachable — satisfies NullAway after the assertThat above
-            }
-
             assertThat(arialFamily.getStyles()).hasSize(1);
         }
 
         @Test
-        @SuppressWarnings("NullAway")
         void testGetReturnsCorrectFamilyForKnownName() {
             var families = new FontFamilies();
             var font = Mockito.mock(Font.class);
@@ -168,10 +158,6 @@ class FontChooserCoreModelTest extends UnitTest {
 
             var result = families.get("Courier");
             assertThat(result).isNotNull();
-
-            if (result == null) {
-                return; // unreachable — satisfies NullAway after the assertThat above
-            }
 
             assertThat(result.getName()).isEqualTo("Courier");
         }
@@ -211,7 +197,6 @@ class FontChooserCoreModelTest extends UnitTest {
         }
 
         @Test
-        @SuppressWarnings("NullAway")
         void testCreateGroupsRemainingFontsByFamily() {
             var font1 = Mockito.mock(Font.class);
             var font2 = Mockito.mock(Font.class);
@@ -234,18 +219,10 @@ class FontChooserCoreModelTest extends UnitTest {
                 var latoFamily = result.get("Lato");
                 assertThat(latoFamily).isNotNull();
 
-                if (latoFamily == null) {
-                    return; // unreachable — satisfies NullAway after the assertThat above
-                }
-
                 assertThat(latoFamily.getStyles()).hasSize(2);
 
                 var helveticaFamily = result.get("Helvetica");
                 assertThat(helveticaFamily).isNotNull();
-
-                if (helveticaFamily == null) {
-                    return; // unreachable — satisfies NullAway after the assertThat above
-                }
 
                 assertThat(helveticaFamily.getStyles()).hasSize(1);
             }

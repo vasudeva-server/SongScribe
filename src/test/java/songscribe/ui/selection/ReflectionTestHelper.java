@@ -20,6 +20,7 @@
 
 package songscribe.ui.selection;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -169,9 +170,7 @@ public final class ReflectionTestHelper {
     private static LineSelectionState activeSelection(SelectionCoordinator coordinator) {
         var state = coordinator.getActiveSelection();
 
-        if (state == null) {
-            throw new AssertionError("the test coordinator has no active line state");
-        }
+        assertThat(state).as("the test coordinator has no active line state").isNotNull();
 
         return state;
     }

@@ -33,7 +33,6 @@ import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
 
 /**
  * Round-trip coverage for metric-modulation {@code <direction>} /
@@ -78,19 +77,13 @@ class MusicXmlMetricModulationRoundTripTest extends MusicXmlRoundTripSupport {
      */
     private Song buildBeatChangeSong(BeatChange beatChange) {
         return buildSong(line -> {
-            StaffElement markedNote = null;
-
             for (var i = 0; i < NOTE_COUNT; i++) {
                 var note = ElementType.CROTCHET.newInstance();
                 line.addElement(note);
 
                 if (i == MARKED_INDEX) {
-                    markedNote = note;
+                    note.addAttachment(new BeatChangeAttachment(note, beatChange));
                 }
-            }
-
-            if (markedNote != null) {
-                markedNote.addAttachment(new BeatChangeAttachment(markedNote, beatChange));
             }
         });
     }
@@ -116,12 +109,6 @@ class MusicXmlMetricModulationRoundTripTest extends MusicXmlRoundTripSupport {
 
         var reloadedChange = beatChangeOf(line, MARKED_INDEX);
         assertThat(reloadedChange).as("%s: marked note carries the beat change", legacyName).isNotNull();
-
-        // isNotNull() above already fails on null; this guard narrows the type for
-        // NullAway on the accessor calls below.
-        if (reloadedChange == null) {
-            return;
-        }
 
         assertThat(reloadedChange.duration())
             .as("%s: duration (left note value)", legacyName)
@@ -158,12 +145,6 @@ class MusicXmlMetricModulationRoundTripTest extends MusicXmlRoundTripSupport {
 
         var reloadedChange = beatChangeOf(reloaded.getLine(SECOND_LINE_INDEX), 0);
         assertThat(reloadedChange).as("line 2 note carries the beat change").isNotNull();
-
-        // isNotNull() above already fails on null; this guard narrows the type for
-        // NullAway on the accessor calls below.
-        if (reloadedChange == null) {
-            return;
-        }
 
         assertThat(reloadedChange.duration()).as("duration (left note value)").isEqualTo(beatChange.duration());
         assertThat(reloadedChange.beat()).as("beat (right note value)").isEqualTo(beatChange.beat());

@@ -73,8 +73,7 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
 
             var dynamic = line.getElement(0).findAttachment(DynamicAttachment.class);
             assertThat(dynamic).as("dynamic attachment preserved").isNotNull();
-            //noinspection ConstantValue -- need for NullAway
-            assertThat(dynamic == null ? null : dynamic.getType())
+            assertThat(dynamic.getType())
                 .as("dynamic type preserved").isEqualTo(DynamicType.FORTE);
         }
 
@@ -90,8 +89,7 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
 
             var dynamic = line.getElement(0).findAttachment(DynamicAttachment.class);
             assertThat(dynamic).as("dynamic attachment survives duration change").isNotNull();
-            //noinspection ConstantValue -- need for NullAway
-            assertThat(dynamic == null ? null : dynamic.getType())
+            assertThat(dynamic.getType())
                 .as("dynamic type preserved").isEqualTo(DynamicType.PIANO);
         }
 

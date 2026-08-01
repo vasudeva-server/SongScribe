@@ -30,7 +30,6 @@ import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import javax.swing.JOptionPane;
 
@@ -125,7 +124,10 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     }
 
     private Line getLine(SelectionCoordinator coordinator) {
-        return Objects.requireNonNull(coordinator.getActiveSelection()).getLine();
+        var selection = coordinator.getActiveSelection();
+        assertThat(selection).isNotNull();
+
+        return selection.getLine();
     }
 
     private <T extends Mutation> List<T> mutationsOfType(Class<? extends T> type) {

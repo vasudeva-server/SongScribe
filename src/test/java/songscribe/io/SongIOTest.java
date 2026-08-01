@@ -921,11 +921,6 @@ class SongIOTest extends UnitTest {
             var dynamic = note.findAttachment(DynamicAttachment.class);
             assertThat(dynamic).isNotNull();
 
-            //noinspection ConstantValue -- needed for NullAway
-            if (dynamic == null) {
-                return;
-            }
-
             assertThat(dynamic.getType()).isEqualTo(DynamicType.FORTE);
             assertThat(note.findAttachment(AnnotationAttachment.class)).isNull();
         }

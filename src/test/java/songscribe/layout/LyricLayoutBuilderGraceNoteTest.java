@@ -175,9 +175,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
     private static List<LyricBoxLayout> boxesOf(LyricLayoutBuilder.Result result, StaffElement element) {
         var list = result.boxes().get(element);
 
-        if (list == null) {
-            throw new AssertionError("expected boxes for element but found none");
-        }
+        assertThat(list).as("expected boxes for element but found none").isNotNull();
 
         return list;
     }

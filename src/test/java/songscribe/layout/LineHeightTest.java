@@ -99,7 +99,6 @@ class LineHeightTest extends UnitTest {
             .isLessThanOrEqualTo(LineSpacing.MIN_BELOW_MIDLINE_SS);
     }
 
-    @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
         assertThat(value).describedAs(description).isNotNull();
         return value;

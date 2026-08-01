@@ -25,8 +25,6 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 
 import module java.desktop;
 
-import java.util.Objects;
-
 import org.assertj.swing.edt.GuiActionRunner;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -96,8 +94,13 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(midpoint(0, Element.PAIR_B_SRC.index, Element.PAIR_B_TGT.index));
 
-            var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
-            assertThat(Objects.requireNonNull(lss).getSelectedDecoration())
+            var lineComponent = scoreView().getLineComponent(0);
+            assertThat(lineComponent).isNotNull();
+
+            var lss = lineComponent.getLineSelectionState();
+            assertThat(lss).isNotNull();
+
+            assertThat(lss.getSelectedDecoration())
                 .as("glissando on the clicked element selected by click")
                 .isEqualTo(new SelectedDecoration.SlideSelection(Element.PAIR_B_SRC.index));
         }
@@ -107,8 +110,13 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Element.PAIR_B_SRC.index));
 
-            var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
-            assertThat(Objects.requireNonNull(lss).isElementSelected(Element.PAIR_B_SRC.index))
+            var lineComponent = scoreView().getLineComponent(0);
+            assertThat(lineComponent).isNotNull();
+
+            var lss = lineComponent.getLineSelectionState();
+            assertThat(lss).isNotNull();
+
+            assertThat(lss.isElementSelected(Element.PAIR_B_SRC.index))
                 .as("source note selected").isTrue();
 
             var note = song().getLine(0).getElement(Element.PAIR_B_SRC.index);
@@ -120,8 +128,13 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Element.PAIR_B_TGT.index));
 
-            var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
-            assertThat(Objects.requireNonNull(lss).isElementSelected(Element.PAIR_B_TGT.index))
+            var lineComponent = scoreView().getLineComponent(0);
+            assertThat(lineComponent).isNotNull();
+
+            var lss = lineComponent.getLineSelectionState();
+            assertThat(lss).isNotNull();
+
+            assertThat(lss.isElementSelected(Element.PAIR_B_TGT.index))
                 .as("target note selected").isTrue();
 
             var sourceNote = song().getLine(0).getElement(Element.PAIR_B_SRC.index);
@@ -179,8 +192,13 @@ class NoteConnectionTest extends E2ETest {
             enterSelectMode();
             clickAt(midpoint(0, Element.PAIR_D_SRC.index, Element.PAIR_D_TGT.index));
 
-            var lss = Objects.requireNonNull(scoreView().getLineComponent(0)).getLineSelectionState();
-            assertThat(Objects.requireNonNull(lss).getSelectedDecoration())
+            var lineComponent = scoreView().getLineComponent(0);
+            assertThat(lineComponent).isNotNull();
+
+            var lss = lineComponent.getLineSelectionState();
+            assertThat(lss).isNotNull();
+
+            assertThat(lss.getSelectedDecoration())
                 .as("glissando selected")
                 .isInstanceOf(SelectedDecoration.SlideSelection.class);
 
@@ -194,9 +212,10 @@ class NoteConnectionTest extends E2ETest {
         @Order(2)
         @Test
         void testDeleteSourceNoteRemovesGlissando() {
-            var countBefore = Objects.requireNonNull(GuiActionRunner.execute(
+            var countBefore = GuiActionRunner.execute(
                 () -> song().getLine(0).elementCount()
-            ));
+            );
+            assertThat(countBefore).isNotNull();
 
             clickAt(noteScreenPosition(0, Element.PAIR_E_SRC.index));
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
@@ -216,9 +235,10 @@ class NoteConnectionTest extends E2ETest {
         @Test
         void testDeleteTargetNoteRemovesGlissando() {
             // After previous deletion: pair F source and target each shifted down
-            var countBefore = Objects.requireNonNull(GuiActionRunner.execute(
+            var countBefore = GuiActionRunner.execute(
                 () -> song().getLine(0).elementCount()
-            ));
+            );
+            assertThat(countBefore).isNotNull();
 
             clickAt(noteScreenPosition(0, Element.PAIR_F_TGT_SHIFTED.index));
             robot.pressAndReleaseKey(KeyEvent.VK_DELETE);

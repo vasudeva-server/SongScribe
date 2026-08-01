@@ -107,9 +107,7 @@ class ElementInkBoundsTest extends UnitTest {
     private static Rectangle2D requireInkBounds(StaffElement element) {
         var bounds = recordElement(element).inkBoundsSs();
 
-        if (bounds == null) {
-            throw new AssertionError("recordElement produced no ink for " + element.getType());
-        }
+        assertThat(bounds).as("recordElement produced no ink for " + element.getType()).isNotNull();
 
         return bounds;
     }

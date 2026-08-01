@@ -64,10 +64,6 @@ class DateUtilsTest extends UnitTest {
 
             assertThat(parsed).isNotNull();
 
-            if (parsed == null) {
-                return;
-            }
-
             assertThat(parsed.year()).isEqualTo("1984");
             assertThat(parsed.month()).isZero();
             assertThat(parsed.day()).isZero();
@@ -79,10 +75,6 @@ class DateUtilsTest extends UnitTest {
 
             assertThat(parsed).isNotNull();
 
-            if (parsed == null) {
-                return;
-            }
-
             assertThat(parsed.year()).isEqualTo("1984");
             assertThat(parsed.month()).isEqualTo(6);
             assertThat(parsed.day()).isZero();
@@ -93,10 +85,6 @@ class DateUtilsTest extends UnitTest {
             var parsed = DateUtils.parseIsoDate("1984-06-27");
 
             assertThat(parsed).isNotNull();
-
-            if (parsed == null) {
-                return;
-            }
 
             assertThat(parsed.year()).isEqualTo("1984");
             assertThat(parsed.month()).isEqualTo(6);

@@ -101,9 +101,7 @@ class HairpinActionStateTest extends UnitTest {
         LineSelectionState state() {
             var state = coordinator.getActiveSelection();
 
-            if (state == null) {
-                throw new AssertionError("the fixture's line must have an active selection state");
-            }
+            assertThat(state).as("the fixture's line must have an active selection state").isNotNull();
 
             return state;
         }

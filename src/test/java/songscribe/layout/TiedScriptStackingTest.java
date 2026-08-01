@@ -51,7 +51,7 @@ import songscribe.smufl.SMuFLMetadata;
  * ({@link AccentWedgeClearance}) nor tell a reservation that tracks the arc from one stamped across
  * the notehead ({@link AttachmentModeIndependence}).
  */
-@SuppressWarnings({"DataFlowIssue", "NullAway"})
+@SuppressWarnings("DataFlowIssue")
 class TiedScriptStackingTest extends UnitTest {
 
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;
@@ -62,7 +62,6 @@ class TiedScriptStackingTest extends UnitTest {
         return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
     }
 
-    @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
         assertThat(value).describedAs(description).isNotNull();
         return value;

@@ -1650,9 +1650,7 @@ class LineMutationTest extends UnitTest {
         private Lyric requireLyricForVerse(StaffElement element, int verse) {
             var lyric = element.getLyricForVerse(verse);
 
-            if (lyric == null) {
-                throw new AssertionError("expected a verse " + verse + " lyric");
-            }
+            assertThat(lyric).as("expected a verse " + verse + " lyric").isNotNull();
 
             return lyric;
         }
@@ -1767,7 +1765,7 @@ class LineMutationTest extends UnitTest {
         }
 
         private void addLyric(StaffElement element, Lyric.Syllabic syllabic, Lyric.Extend extend) {
-            var text = (syllabic != null && syllabic != Lyric.Syllabic.END
+            var text = (syllabic != Lyric.Syllabic.END
                         && syllabic != Lyric.Syllabic.MIDDLE) ? "x" : "";
             element.lyrics.add(new Lyric(VERSE, text, extend, syllabic, false));
         }
@@ -2640,9 +2638,7 @@ class LineMutationTest extends UnitTest {
 
             var moved = noteB.findAttachment(TempoChangeAttachment.class);
 
-            if (moved == null) {
-                throw new AssertionError("the initial tempo vanished with the deleted element");
-            }
+            assertThat(moved).as("the initial tempo vanished with the deleted element").isNotNull();
 
             assertThat(moved.getTempo().getVisibleTempo())
                 .as("the tempo on screen must survive a deletion of the note it sat on")
@@ -2658,9 +2654,7 @@ class LineMutationTest extends UnitTest {
 
             var moved = noteC.findAttachment(TempoChangeAttachment.class);
 
-            if (moved == null) {
-                throw new AssertionError("the initial tempo vanished with the deleted range");
-            }
+            assertThat(moved).as("the initial tempo vanished with the deleted range").isNotNull();
 
             assertThat(moved.getTempo().getVisibleTempo()).isEqualTo(ANCHOR_BPM);
         }
@@ -2679,9 +2673,7 @@ class LineMutationTest extends UnitTest {
 
             var kept = noteB.findAttachment(TempoChangeAttachment.class);
 
-            if (kept == null) {
-                throw new AssertionError("the element's own tempo change was removed");
-            }
+            assertThat(kept).as("the element's own tempo change was removed").isNotNull();
 
             assertThat(kept.getTempo().getVisibleTempo())
                 .as("the element's own tempo change wins over the one being displaced")

@@ -79,9 +79,6 @@ class FontChooserTest extends E2ETest {
             return fc;
         });
         assertThat(chooser).isNotNull();
-        if (chooser == null) {
-            return; // unreachable — satisfies NullAway after the assertThat above
-        }
 
         GuiActionRunner.execute(() -> chooser.setSelectedFont(fontAfter));
 
@@ -90,9 +87,6 @@ class FontChooserTest extends E2ETest {
         var selectedSize = GuiActionRunner.execute(chooser::getSelectedSize);
 
         assertThat(selectedFont).isNotNull();
-        if (selectedFont == null) {
-            return; // unreachable — satisfies NullAway after the assertThat above
-        }
 
         // The panes reflect the new font.
         assertThat(selectedFamily).isEqualTo(familyAfter.getName());

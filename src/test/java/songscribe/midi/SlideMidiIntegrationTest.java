@@ -24,7 +24,6 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Nested;
@@ -68,8 +67,9 @@ class SlideMidiIntegrationTest extends UnitTest {
     static void loadFixtureData() throws Exception {
         var song = loadFixture("connections");
         line = song.getLine(0);
-        var tempoAttachment = Objects.requireNonNull(
-            line.getElement(TEMPO_INDEX).findAttachment(TempoChangeAttachment.class));
+        var tempoAttachment = 
+            line.getElement(TEMPO_INDEX).findAttachment(TempoChangeAttachment.class);
+        assertThat(tempoAttachment).isNotNull();
         tempo = tempoAttachment.getTempo();
     }
 

@@ -181,11 +181,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
 
         var restored = line.getElement(FIRST).getLyricForVerse(Lyric.FIRST_VERSE);
 
-        // A manual null check, not assertThat(restored).isNotNull(): NullAway does not treat the
-        // AssertJ matcher as a guard, so the field dereferences below would fail to compile.
-        if (restored == null) {
-            throw new AssertionError("probe did not restore the original lyric");
-        }
+        assertThat(restored).as("probe did not restore the original lyric").isNotNull();
 
         assertThat(restored.text()).isEqualTo(SHORT_LYRIC);
         assertThat(restored.syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
@@ -219,11 +215,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
 
         var restored = line.getElement(FIRST).getLyricForVerse(Lyric.FIRST_VERSE);
 
-        // Manual null check rather than assertThat(restored).isNotNull(): NullAway does not narrow
-        // on the AssertJ matcher, so the dereference below would not compile.
-        if (restored == null) {
-            throw new AssertionError("probe did not restore the original lyric after the throw");
-        }
+        assertThat(restored).as("probe did not restore the original lyric after the throw").isNotNull();
 
         assertThat(restored.text()).isEqualTo(SHORT_LYRIC);
     }

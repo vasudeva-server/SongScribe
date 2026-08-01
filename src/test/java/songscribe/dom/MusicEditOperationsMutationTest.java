@@ -598,11 +598,10 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
         var restored = line.getElement(0).findAttachment(DynamicAttachment.class);
 
-        if (restored == null) {
-            throw new AssertionError(
-                "one undo must restore the stripped point dynamic — a raw "
-                    + "StaffElement.removeAttachment records no mutation and loses it forever");
-        }
+        assertThat(restored)
+            .as("one undo must restore the stripped point dynamic — a raw "
+                + "StaffElement.removeAttachment records no mutation and loses it forever")
+            .isNotNull();
 
         var remaining = crescendosOf(line);
         assertThat(remaining).hasSize(1);

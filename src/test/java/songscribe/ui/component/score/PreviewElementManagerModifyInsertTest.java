@@ -101,9 +101,7 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
     private Lyric requireLyric(int index, int verse) {
         var lyric = line.getElement(index).getLyricForVerse(verse);
 
-        if (lyric == null) {
-            throw new AssertionError("expected a verse " + verse + " lyric at index " + index);
-        }
+        assertThat(lyric).as("expected a verse " + verse + " lyric at index " + index).isNotNull();
 
         return lyric;
     }
@@ -382,8 +380,7 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
             var succ = line.getElement(2);
             var succLyric = succ.getLyricForVerse(1);
             assertThat(succLyric).as("successor still has a lyric").isNotNull();
-            //noinspection ConstantValue -- need for NullAway
-            assertThat(succLyric == null ? null : succLyric.syllabic())
+            assertThat(succLyric.syllabic())
                 .as("MIDDLE syllabic promoted to BEGIN after insertion before it")
                 .isEqualTo(Lyric.Syllabic.BEGIN);
         }

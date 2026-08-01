@@ -1265,9 +1265,7 @@ class ScoreInputHandlerTest extends UnitTest {
     private LineSelectionState activeSelectionOrFail(SelectionCoordinator coordinator) {
         var state = coordinator.getActiveSelection();
 
-        if (state == null) {
-            throw new AssertionError("Expected an active selection");
-        }
+        assertThat(state).as("Expected an active selection").isNotNull();
 
         return state;
     }

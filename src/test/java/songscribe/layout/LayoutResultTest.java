@@ -26,7 +26,6 @@ import static org.assertj.core.api.Assertions.within;
 
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
-import java.util.Objects;
 import java.util.Collections;
 
 import org.junit.jupiter.api.Test;
@@ -310,7 +309,8 @@ class LayoutResultTest extends UnitTest {
             )
         );
 
-        var nonNullHit = Objects.requireNonNull(hit);
+        var nonNullHit = hit;
+        assertThat(nonNullHit).isNotNull();
         assertThat(nonNullHit.element()).isSameAs(element);
         assertThat(nonNullHit.verse()).isEqualTo(1);
     }
@@ -1149,7 +1149,7 @@ class LayoutResultTest extends UnitTest {
 
         var position = result.getElementPosition(present);
         assertThat(position).isNotNull();
-        assertThat(Objects.requireNonNull(position).getX()).isCloseTo(SAMPLE_BOUNDS_LEFT_SS, within(TOLERANCE));
+        assertThat(position.getX()).isCloseTo(SAMPLE_BOUNDS_LEFT_SS, within(TOLERANCE));
         assertThat(position.getY()).isCloseTo(SAMPLE_BOUNDS_TOP_SS, within(TOLERANCE));
         assertThat(result.getElementPosition(absent)).isNull();
     }

@@ -153,8 +153,9 @@ final class MusicXmlHeaderWriter {
     /**
      * Writes the residual {@code <miscellaneous>} block (composition-date,
      * lyrics-date, composition-place, lyrics-source, unofficial-translation,
-     * sub-attribution-font/-size, row-height-adjustment), omitting the whole
-     * block when no field applies. Fields are collected into one insertion-ordered
+     * sub-attribution-font/-size, row-height-adjustment). The block is always
+     * emitted: lyrics-source and the sub-attribution font are unconditional, so
+     * at least three fields are always present. Fields are collected into one insertion-ordered
      * name→value map so they emit in order in a single {@code <miscellaneous>}
      * block, with each name paired to its value at the point of insertion (no
      * index coupling between separate name/value lists).
@@ -203,10 +204,6 @@ final class MusicXmlHeaderWriter {
 
         if (defaultRestLengthSs != Song.DEFAULT_REST_LENGTH_SS) {
             fields.put(MusicXmlTags.MISC_DEFAULT_REST_LENGTH, String.valueOf(defaultRestLengthSs));
-        }
-
-        if (fields.isEmpty()) {
-            return;
         }
 
         XML.writeBeginTag(pw, MusicXmlTags.MISCELLANEOUS);

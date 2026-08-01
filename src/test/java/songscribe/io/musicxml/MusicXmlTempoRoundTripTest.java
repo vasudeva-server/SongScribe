@@ -76,12 +76,6 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
             String context) {
         assertThat(actual).as("%s: present", context).isNotNull();
 
-        // isNotNull() above already fails the test on null; this guard narrows
-        // the type for NullAway on the field accesses below.
-        if (actual == null) {
-            return;
-        }
-
         assertThat(actual.getVisibleTempo()).as("%s: visibleTempo", context).isEqualTo(expectedVisibleTempo);
         assertThat(actual.getTempoType()).as("%s: tempoType", context).isEqualTo(expectedType);
         assertThat(actual.getTempoDescription()).as("%s: description", context).isEqualTo(expectedDescription);

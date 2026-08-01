@@ -71,11 +71,6 @@ class FormatMigratorTest extends UnitTest {
             var attachment = note.findAttachment(TempoChangeAttachment.class);
             assertThat(attachment).isNotNull();
 
-            //noinspection ConstantValue -- needed for NullAway
-            if (attachment == null) {
-                return;
-            }
-
             // Offset must remain at the default (0.0) because migration was skipped.
             assertThat(attachment.getUserYOffsetSs()).isEqualTo(0.0);
         }
@@ -93,11 +88,6 @@ class FormatMigratorTest extends UnitTest {
 
             var attachment = note.findAttachment(TempoChangeAttachment.class);
             assertThat(attachment).isNotNull();
-
-            //noinspection ConstantValue -- needed for NullAway
-            if (attachment == null) {
-                return;
-            }
 
             // Legacy migration adds the raw px value directly to userYOffsetSs
             // (no unit conversion — the px field is repurposed as an Ss delta).
@@ -124,11 +114,6 @@ class FormatMigratorTest extends UnitTest {
             var untouched = lineWithoutOffset.getElement(0).findAttachment(TempoChangeAttachment.class);
             assertThat(migrated).isNotNull();
             assertThat(untouched).isNotNull();
-
-            //noinspection ConstantValue -- needed for NullAway
-            if (migrated == null || untouched == null) {
-                return;
-            }
 
             // The mapped line gets its offset; the unmapped line falls back to DEFAULTS (tempo 0 → no-op).
             assertThat(migrated.getUserYOffsetSs()).isEqualTo(NON_ZERO_TEMPO_OFFSET_PX);
@@ -159,11 +144,6 @@ class FormatMigratorTest extends UnitTest {
             var attachment = note.findAttachment(TempoChangeAttachment.class);
             assertThat(attachment).isNotNull();
 
-            //noinspection ConstantValue -- needed for NullAway
-            if (attachment == null) {
-                return;
-            }
-
             assertThat(attachment.getUserYOffsetSs()).isEqualTo(NON_ZERO_TEMPO_OFFSET_PX);
         }
 
@@ -182,11 +162,6 @@ class FormatMigratorTest extends UnitTest {
             var attachment = note.findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
 
-            //noinspection ConstantValue -- needed for NullAway
-            if (attachment == null) {
-                return;
-            }
-
             // delta = nonDefault - default = BEAT_CHANGE_OFFSET_DELTA_PX; initial offset is 0.
             assertThat(attachment.getUserYOffsetSs()).isEqualTo(BEAT_CHANGE_OFFSET_DELTA_PX);
         }
@@ -204,11 +179,6 @@ class FormatMigratorTest extends UnitTest {
 
             var attachment = note.findAttachment(BeatChangeAttachment.class);
             assertThat(attachment).isNotNull();
-
-            //noinspection ConstantValue -- needed for NullAway
-            if (attachment == null) {
-                return;
-            }
 
             assertThat(attachment.getUserYOffsetSs()).isEqualTo(0.0);
         }
@@ -330,7 +300,6 @@ class FormatMigratorTest extends UnitTest {
             assertThat(hairpin.getX2ShiftSs()).isEqualTo(NON_ZERO_HAIRPIN_X2_SHIFT_SS / pps);
             assertThat(hairpin.getYShiftSs()).isEqualTo(NON_ZERO_HAIRPIN_Y_SHIFT_SS / pps);
         }
-
 
         // Row 17: Note with a non-zero attachment userYOffsetSs → divided by pps.
         @Test
@@ -548,11 +517,6 @@ class FormatMigratorTest extends UnitTest {
             var dynamic = line.getElement(0).findAttachment(DynamicAttachment.class);
             assertThat(dynamic).isNotNull();
 
-            //noinspection ConstantValue -- need for NullAway
-            if (dynamic == null) {
-                return;
-            }
-
             assertThat(dynamic.getType()).isEqualTo(DynamicType.FORTE);
         }
 
@@ -564,11 +528,6 @@ class FormatMigratorTest extends UnitTest {
 
             var dynamic = line.getElement(0).findAttachment(DynamicAttachment.class);
             assertThat(dynamic).isNotNull();
-
-            //noinspection ConstantValue -- need for NullAway
-            if (dynamic == null) {
-                return;
-            }
 
             assertThat(dynamic.getType()).isEqualTo(DynamicType.PIANISSIMO);
         }
@@ -609,11 +568,8 @@ class FormatMigratorTest extends UnitTest {
             assertThat(note.findAttachment(AnnotationAttachment.class)).isNull();
 
             var dynamic = note.findAttachment(DynamicAttachment.class);
+            assertThat(dynamic).isNotNull();
             assertThat(dynamic).isSameAs(existingDynamic);
-
-            if (dynamic == null) {
-                return;
-            }
 
             assertThat(dynamic.getType()).isEqualTo(DynamicType.MEZZO_FORTE);
         }

@@ -25,8 +25,6 @@ import module java.desktop;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mockStatic;
 
-import java.util.Objects;
-
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -59,7 +57,8 @@ class ElementTypeActionTest extends MainFrameMockTest {
     @Test
     void testCreateReplacementPreservesNoteKind() {
         var element = ElementType.MINIM.newInstance();
-        var replacement = Objects.requireNonNull(durationAction.createReplacement(element, true));
+        var replacement = durationAction.createReplacement(element, true);
+        assertThat(replacement).isNotNull();
         assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET);
     }
 
@@ -67,7 +66,8 @@ class ElementTypeActionTest extends MainFrameMockTest {
     @Test
     void testCreateReplacementPreservesRestKind() {
         var element = ElementType.MINIM_REST.newInstance();
-        var replacement = Objects.requireNonNull(durationAction.createReplacement(element, true));
+        var replacement = durationAction.createReplacement(element, true);
+        assertThat(replacement).isNotNull();
         assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET_REST);
     }
 
@@ -76,7 +76,8 @@ class ElementTypeActionTest extends MainFrameMockTest {
     void testCreateReplacementWithGraceNote() {
         var graceAction = ElementTypeAction.createGraceEighthNoteAction(mainFrame());
         var element = ElementType.CROTCHET.newInstance();
-        var replacement = Objects.requireNonNull(graceAction.createReplacement(element, true));
+        var replacement = graceAction.createReplacement(element, true);
+        assertThat(replacement).isNotNull();
         assertThat(replacement.getType()).isEqualTo(ElementType.GRACE_QUAVER);
     }
 

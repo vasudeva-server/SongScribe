@@ -220,9 +220,7 @@ class StaffLinesLayoutTest extends UnitTest {
         var linePanel = panel.getLinePanels().get(index);
         var result = linePanel.getLineComponent().getLayoutResult();
 
-        if (result == null) {
-            throw new AssertionError("line " + index + " has no layout result to measure");
-        }
+        assertThat(result).as("line " + index + " has no layout result to measure").isNotNull();
 
         return linePanel.getY() + toViewPx(result.paintAboveMidlineSs());
     }

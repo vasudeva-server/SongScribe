@@ -49,14 +49,13 @@ class DynamicAttachmentPersistenceTest extends UnitTest {
         var reloadedPianissimo = reloadedLine.getElement(PIANISSIMO_INDEX).findAttachment(DynamicAttachment.class);
         var reloadedUntouched = reloadedLine.getElement(UNTOUCHED_INDEX).findAttachment(DynamicAttachment.class);
 
+        assertThat(reloadedForte).as("forte attachment preserved after round-trip").isNotNull();
+        assertThat(reloadedPianissimo).as("pianissimo attachment preserved after round-trip").isNotNull();
+
         assertAll(
-            () -> assertThat(reloadedForte)
-                .as("forte attachment preserved after round-trip").isNotNull(),
-            () -> assertThat(reloadedForte == null ? null : reloadedForte.getType())
+            () -> assertThat(reloadedForte.getType())
                 .as("forte attachment type preserved").isEqualTo(DynamicType.FORTE),
-            () -> assertThat(reloadedPianissimo)
-                .as("pianissimo attachment preserved after round-trip").isNotNull(),
-            () -> assertThat(reloadedPianissimo == null ? null : reloadedPianissimo.getType())
+            () -> assertThat(reloadedPianissimo.getType())
                 .as("pianissimo attachment type preserved").isEqualTo(DynamicType.PIANISSIMO),
             () -> assertThat(reloadedUntouched)
                 .as("untouched note has no dynamic after round-trip").isNull()

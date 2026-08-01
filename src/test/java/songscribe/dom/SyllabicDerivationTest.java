@@ -167,9 +167,7 @@ class SyllabicDerivationTest extends UnitTest {
     private Lyric lyricForVerse(StaffElement element, int verse) {
         var lyric = element.getLyricForVerse(verse);
 
-        if (lyric == null) {
-            throw new AssertionError("expected lyric for verse " + verse + ", found none");
-        }
+        assertThat(lyric).as("expected lyric for verse " + verse + ", found none").isNotNull();
 
         return lyric;
     }

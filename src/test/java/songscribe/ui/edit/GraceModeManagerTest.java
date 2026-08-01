@@ -1859,9 +1859,7 @@ class GraceModeManagerTest extends UnitTest {
         private static Lyric requireLyric(Line line, int index, int verse) {
             var lyric = lyricAt(line, index, verse);
 
-            if (lyric == null) {
-                throw new AssertionError("expected a verse " + verse + " lyric at index " + index);
-            }
+            assertThat(lyric).as("expected a verse " + verse + " lyric at index " + index).isNotNull();
 
             return lyric;
         }

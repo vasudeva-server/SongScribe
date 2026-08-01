@@ -24,8 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
-import java.util.Objects;
-
 import module java.desktop;
 
 import org.assertj.swing.edt.GuiActionRunner;
@@ -147,11 +145,13 @@ class SelectionTest extends E2ETest {
         void testClickEmptySpaceDeselects() {
             enterSelectMode();
             clickAt(noteScreenPosition(0, Sel1.WHOLE.index));
-            var emptyPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
+            var emptyPoint = GuiActionRunner.execute(() -> {
+                var lc = scoreView().getLineComponent(0);
+                assertThat(lc).isNotNull();
                 var loc = lc.getLocationOnScreen();
                 return new Point(loc.x + lc.getWidth() - 10, loc.y + lc.getHeight() - 5);
-            }));
+            });
+            assertThat(emptyPoint).isNotNull();
             clickAt(emptyPoint);
             assertThat(scoreView().getSelectionSize()).as("click empty deselects").isEqualTo(0);
         }
@@ -219,15 +219,17 @@ class SelectionTest extends E2ETest {
         @Test
         void testClickInStaffHeaderSelectsLine() {
             enterSelectMode();
-            var lineClickPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
+            var lineClickPoint = GuiActionRunner.execute(() -> {
+                var lc = scoreView().getLineComponent(0);
+                assertThat(lc).isNotNull();
                 var loc = lc.getLocationOnScreen();
                 // Click at the midpoint of the clef — squarely inside the header region
                 var clefMidXPx = (int) Math.round(
                     ScaleContext.ssToPx(SMuFLConstants.G_CLEF_WIDTH_SS / 2.0));
                 var yPx = lc.staffPositionToYPx(0);
                 return new Point(loc.x + clefMidXPx, loc.y + yPx);
-            }));
+            });
+            assertThat(lineClickPoint).isNotNull();
             clickAt(lineClickPoint);
             assertThat(scoreView().isLineSelected(0)).as("line selected").isTrue();
         }
@@ -235,9 +237,11 @@ class SelectionTest extends E2ETest {
         @Test
         void testClickPastElementsDoesNotSelectLine() {
             enterSelectMode();
-            var lineClickPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
-                var line = Objects.requireNonNull(lc.getLine());
+            var lineClickPoint = GuiActionRunner.execute(() -> {
+                var lc = scoreView().getLineComponent(0);
+                assertThat(lc).isNotNull();
+                var line = lc.getLine();
+                assertThat(line).isNotNull();
                 var layoutResult = lc.getLayoutResult();
                 var lastElement = line.getElement(line.effectiveElementCount() - 1);
                 var lastXSs = layoutResult != null ? layoutResult.getElementXSs(lastElement) : 0.0;
@@ -245,7 +249,8 @@ class SelectionTest extends E2ETest {
                 var loc = lc.getLocationOnScreen();
                 var yPx = lc.staffPositionToYPx(0);
                 return new Point(loc.x + pastLastXPx, loc.y + yPx);
-            }));
+            });
+            assertThat(lineClickPoint).isNotNull();
             clickAt(lineClickPoint);
             assertThat(scoreView().isLineSelected(0)).as("line not selected past music").isFalse();
         }
@@ -305,11 +310,13 @@ class SelectionTest extends E2ETest {
         @Test
         void testAltClickEmptySpaceEntersSelectWithNoSelection() {
             enterEditMode();
-            var emptyPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
+            var emptyPoint = GuiActionRunner.execute(() -> {
+                var lc = scoreView().getLineComponent(0);
+                assertThat(lc).isNotNull();
                 var loc = lc.getLocationOnScreen();
                 return new Point(loc.x + lc.getWidth() - 10, loc.y + lc.getHeight() / 2);
-            }));
+            });
+            assertThat(emptyPoint).isNotNull();
             altClickAt(emptyPoint);
             assertAll(
                 () -> assertThat(scoreView().getMode()).as("mode is SELECT").isEqualTo(Mode.SELECT),
@@ -368,18 +375,21 @@ class SelectionTest extends E2ETest {
         @Test
         void testAltDragTiedNoteFromEditMode() {
             enterEditMode();
-            var originalSp = Objects.requireNonNull(GuiActionRunner.execute(
+            var originalSp = GuiActionRunner.execute(
                 () -> song().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()
-            ));
+            );
+            assertThat(originalSp).isNotNull();
             var targetSp = originalSp - 4;
 
             var startPoint = noteScreenPosition(0, Sel2.TIED_1.index);
-            var endPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-                var lc = Objects.requireNonNull(scoreView().getLineComponent(0));
+            var endPoint = GuiActionRunner.execute(() -> {
+                var lc = scoreView().getLineComponent(0);
+                assertThat(lc).isNotNull();
                 var endYPx = lc.staffPositionToYPx(targetSp);
                 var locationOnScreen = lc.getLocationOnScreen();
                 return new Point(startPoint.x, locationOnScreen.y + endYPx);
-            }));
+            });
+            assertThat(endPoint).isNotNull();
 
             altDrag(startPoint, endPoint);
             performLayout(0);
@@ -402,12 +412,15 @@ class SelectionTest extends E2ETest {
             clickAt(noteScreenPosition(0, Sel2.STACCATO.index));
             shiftClickAt(noteScreenPosition(0, Sel2.FERMATA.index));
 
-            var originalStaccatoSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> song().getLine(0).getElement(Sel2.STACCATO.index).getStaffPosition()));
-            int originalAccentSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> song().getLine(0).getElement(Sel2.ACCENT.index).getStaffPosition()));
-            var originalFermataSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> song().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()));
+            var originalStaccatoSp = GuiActionRunner.execute(
+                () -> song().getLine(0).getElement(Sel2.STACCATO.index).getStaffPosition());
+            assertThat(originalStaccatoSp).isNotNull();
+            var originalAccentSp = GuiActionRunner.execute(
+                () -> song().getLine(0).getElement(Sel2.ACCENT.index).getStaffPosition());
+            assertThat(originalAccentSp).isNotNull();
+            var originalFermataSp = GuiActionRunner.execute(
+                () -> song().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition());
+            assertThat(originalFermataSp).isNotNull();
 
             var targetSp = originalAccentSp - 2;
             dragNote(0, Sel2.ACCENT.index, targetSp);
@@ -433,12 +446,15 @@ class SelectionTest extends E2ETest {
             clickAt(noteScreenPosition(0, Sel2.FERMATA.index));
             shiftClickAt(noteScreenPosition(0, Sel2.TIED_1.index));
 
-            var currentFermataSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> song().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition()));
-            int currentTied1Sp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> song().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition()));
-            var currentTied2Sp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> song().getLine(0).getElement(Sel2.TIED_2.index).getStaffPosition()));
+            var currentFermataSp = GuiActionRunner.execute(
+                () -> song().getLine(0).getElement(Sel2.FERMATA.index).getStaffPosition());
+            assertThat(currentFermataSp).isNotNull();
+            var currentTied1Sp = GuiActionRunner.execute(
+                () -> song().getLine(0).getElement(Sel2.TIED_1.index).getStaffPosition());
+            assertThat(currentTied1Sp).isNotNull();
+            var currentTied2Sp = GuiActionRunner.execute(
+                () -> song().getLine(0).getElement(Sel2.TIED_2.index).getStaffPosition());
+            assertThat(currentTied2Sp).isNotNull();
 
             var targetSp = currentTied1Sp + 2;
             dragNote(0, Sel2.TIED_1.index, targetSp);
@@ -464,10 +480,12 @@ class SelectionTest extends E2ETest {
             clickAt(noteScreenPosition(0, Sel2.DEMI_SEMIQUAVER_REST.index));
             shiftClickAt(noteScreenPosition(0, Sel2.NOTE.index));
 
-            var currentRestSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> song().getLine(0).getElement(Sel2.DEMI_SEMIQUAVER_REST.index).getStaffPosition()));
-            int currentNoteSp = Objects.requireNonNull(GuiActionRunner.execute(
-                () -> song().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition()));
+            var currentRestSp = GuiActionRunner.execute(
+                () -> song().getLine(0).getElement(Sel2.DEMI_SEMIQUAVER_REST.index).getStaffPosition());
+            assertThat(currentRestSp).isNotNull();
+            var currentNoteSp = GuiActionRunner.execute(
+                () -> song().getLine(0).getElement(Sel2.NOTE.index).getStaffPosition());
+            assertThat(currentNoteSp).isNotNull();
 
             var targetSp = currentNoteSp - 2;
             dragNote(0, Sel2.NOTE.index, targetSp);

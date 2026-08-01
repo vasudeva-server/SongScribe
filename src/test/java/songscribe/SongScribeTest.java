@@ -291,10 +291,6 @@ class SongScribeTest extends UnitTest {
                 .as("resolveLogDir must return a non-null path when the directory can be created")
                 .isNotNull();
 
-            if (result == null) {
-                return; // unreachable — satisfies NullAway
-            }
-
             assertThat(new File(result).isDirectory())
                 .as("resolveLogDir must return a path to an existing directory")
                 .isTrue();
@@ -345,10 +341,6 @@ class SongScribeTest extends UnitTest {
                 .as("resolveLogDir on Windows with APPDATA set must return a non-null path")
                 .isNotNull();
 
-            if (result == null) {
-                return; // unreachable — satisfies NullAway
-            }
-
             assertThat(result)
                 .as("resolveLogDir on Windows with APPDATA set must start with the APPDATA value")
                 .startsWith(tempAppData.toString());
@@ -373,10 +365,6 @@ class SongScribeTest extends UnitTest {
             assertThat(result)
                 .as("resolveLogDir on Windows without APPDATA must return a non-null path under user.home")
                 .isNotNull();
-
-            if (result == null) {
-                return; // unreachable — satisfies NullAway
-            }
 
             assertThat(result)
                 .as("resolveLogDir on Windows without APPDATA must fall back to user.home")
@@ -408,10 +396,6 @@ class SongScribeTest extends UnitTest {
             assertThat(result)
                 .as("resolveLogDir on other platform must return a non-null path")
                 .isNotNull();
-
-            if (result == null) {
-                return; // unreachable — satisfies NullAway
-            }
 
             assertThat(result)
                 .as("resolveLogDir on other platform must end with .songscribe/logs")
@@ -475,10 +459,6 @@ class SongScribeTest extends UnitTest {
             assertThat(result)
                 .as("resolveLogDir must return the path when the log directory already exists")
                 .isNotNull();
-
-            if (result == null) {
-                return; // unreachable — satisfies NullAway
-            }
 
             assertThat(result)
                 .as("resolveLogDir must return the pre-existing directory path")
@@ -848,10 +828,6 @@ class SongScribeTest extends UnitTest {
                 .as("main must install a default uncaught exception handler")
                 .isNotNull();
 
-            if (handler == null) {
-                return; // unreachable — satisfies NullAway
-            }
-
             // ExitInProgressError has a private constructor — create via reflection.
             var constructor =
                 RuntimeError.ExitInProgressError.class.getDeclaredConstructor();
@@ -882,10 +858,6 @@ class SongScribeTest extends UnitTest {
             assertThat(handler)
                 .as("main must install a default uncaught exception handler")
                 .isNotNull();
-
-            if (handler == null) {
-                return; // unreachable — satisfies NullAway
-            }
 
             // Capture the Runnable passed to invokeLater to verify it is called
             // for a non-ExitInProgressError throwable on a non-EDT thread.

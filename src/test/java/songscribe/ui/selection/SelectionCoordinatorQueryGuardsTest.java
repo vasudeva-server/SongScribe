@@ -23,8 +23,6 @@ package songscribe.ui.selection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import java.util.Objects;
-
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -89,7 +87,10 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
         var coordinator = twoLineCoordinator();
 
         // Select element 0 on the active line (line 0).
-        Objects.requireNonNull(coordinator.getActiveSelection()).setSelectionFromClick(ELEMENT_0);
+        var selection = coordinator.getActiveSelection();
+        assertThat(selection).isNotNull();
+
+        selection.setSelectionFromClick(ELEMENT_0);
 
         // Query against line 1, which is not active.
         assertThat(coordinator.isElementSelected(ELEMENT_0, LINE_1))
@@ -123,7 +124,10 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
         var coordinator = twoLineCoordinator();
 
         // Select element 0 on the active line (line 0).
-        Objects.requireNonNull(coordinator.getActiveSelection()).setSelectionFromClick(ELEMENT_0);
+        var selection = coordinator.getActiveSelection();
+        assertThat(selection).isNotNull();
+
+        selection.setSelectionFromClick(ELEMENT_0);
 
         assertThat(coordinator.isElementSelected(ELEMENT_0, LINE_0))
             .as("isElementSelected(0, line 0) when element 0 is selected on active line")
@@ -143,7 +147,10 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
         var coordinator = twoLineCoordinator();
 
         // Activate line 0 and mark it as line-selected.
-        Objects.requireNonNull(coordinator.getLineState(LINE_0)).setLineSelected(true);
+        var lineState = coordinator.getLineState(LINE_0);
+        assertThat(lineState).isNotNull();
+
+        lineState.setLineSelected(true);
 
         // Query against line 1, which is not active.
         assertThat(coordinator.isLineSelected(LINE_1))
@@ -160,7 +167,10 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
         var coordinator = twoLineCoordinator();
 
         // Mark line 0 as line-selected via the state's own setter.
-        Objects.requireNonNull(coordinator.getLineState(LINE_0)).setLineSelected(true);
+        var lineState = coordinator.getLineState(LINE_0);
+        assertThat(lineState).isNotNull();
+
+        lineState.setLineSelected(true);
 
         assertThat(coordinator.isLineSelected(LINE_0))
             .as("isLineSelected(line 0) when state has lineSelected=true")

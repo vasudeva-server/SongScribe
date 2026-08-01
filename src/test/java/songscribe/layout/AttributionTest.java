@@ -55,9 +55,7 @@ class AttributionTest extends UnitTest {
     private static int inkWidthOf(Font font, String text) {
         var bounds = GraphicUtils.visualBounds(text, font);
 
-        if (bounds == null) {
-            throw new AssertionError("test text must be non-empty: " + text);
-        }
+        assertThat(bounds).as("test text must be non-empty: " + text).isNotNull();
 
         return (int) Math.ceil(bounds.getWidth());
     }

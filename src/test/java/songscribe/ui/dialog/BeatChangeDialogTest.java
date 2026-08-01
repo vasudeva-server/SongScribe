@@ -136,11 +136,11 @@ class BeatChangeDialogTest extends MainFrameMockTest {
         dialog.applyChange(element);
 
         var updated = element.findAttachment(BeatChangeAttachment.class);
+        assertThat(updated).isNotNull();
         assertThat(updated)
             .as("existing attachment updated in-place, not replaced")
             .isSameAs(original);
-        //noinspection ConstantValue -- needed for NullAway
-        assertThat(updated == null ? null : updated.getBeatChange())
+        assertThat(updated.getBeatChange())
             .as("BeatChange updated to new duration and beat")
             .isEqualTo(new BeatChange(Duration.MINIM, Duration.QUAVER));
     }
@@ -157,8 +157,7 @@ class BeatChangeDialogTest extends MainFrameMockTest {
         assertThat(added)
             .as("new BeatChangeAttachment added when none existed")
             .isNotNull();
-        //noinspection ConstantValue -- needed for NullAway
-        assertThat(added == null ? null : added.getBeatChange())
+        assertThat(added.getBeatChange())
             .as("new attachment has the selected duration and beat")
             .isEqualTo(new BeatChange(Duration.CROTCHET_DOTTED, Duration.CROTCHET));
     }

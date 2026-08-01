@@ -221,10 +221,6 @@ class PreviewElementManagerOverlayTest extends UnitTest {
 
         assertThat(overlay).isNotNull();
 
-        if (overlay == null) {
-            return;
-        }
-
         assertThat(overlay.getTargetLine())
             .as("trackMouse's general case anchors the overlay to the hovered line")
             .isSameAs(lc);
@@ -243,9 +239,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         PreviewElementManager.trackMouse(lc, mouseEvent(0, ON_STAFF_Y_PX, false));
         var overlay = PreviewElementManager.getOverlay();
 
-        if (overlay == null) {
-            throw new AssertionError("expected installOverlay to install a non-null overlay");
-        }
+        assertThat(overlay).as("expected installOverlay to install a non-null overlay").isNotNull();
 
         assertThat(overlay.isVisible())
             .as("precondition: the preview overlay must be visible before the change under test")
@@ -284,9 +278,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
 
         var overlay = PreviewElementManager.getOverlay();
 
-        if (overlay == null) {
-            throw new AssertionError("expected installOverlay to install a non-null overlay");
-        }
+        assertThat(overlay).as("expected installOverlay to install a non-null overlay").isNotNull();
 
         assertThat(overlay.getTargetLine())
             .as("hovering a different line re-anchors the overlay to it")
@@ -310,9 +302,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
 
         var overlay = PreviewElementManager.getOverlay();
 
-        if (overlay == null) {
-            throw new AssertionError("expected installOverlay to install a non-null overlay");
-        }
+        assertThat(overlay).as("expected installOverlay to install a non-null overlay").isNotNull();
 
         assertThat(PreviewElementManager.getCurrentInsertionLine())
             .as("the slide-placeholder branch still updates the tracked line")
@@ -336,9 +326,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
 
         var fallOverlay = PreviewElementManager.getFallOverlay();
 
-        if (fallOverlay == null) {
-            throw new AssertionError("expected installOverlay to install a non-null fall overlay");
-        }
+        assertThat(fallOverlay).as("expected installOverlay to install a non-null fall overlay").isNotNull();
 
         assertThat(fallOverlay.isVisible())
             .as("fixture sanity: the fall preview is visible before the click commits it")
@@ -368,9 +356,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         PreviewElementManager.trackMouse(lc, mouseEvent(0, ON_STAFF_Y_PX, false));
         var overlay = PreviewElementManager.getOverlay();
 
-        if (overlay == null) {
-            throw new AssertionError("expected installOverlay to install a non-null overlay");
-        }
+        assertThat(overlay).as("expected installOverlay to install a non-null overlay").isNotNull();
 
         assertThat(overlay.isVisible())
             .as("precondition: the preview overlay must be visible before the change under test")
@@ -404,9 +390,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         PreviewElementManager.trackMouse(lc, mouseEvent(0, ON_STAFF_Y_PX, false));
         var overlay = PreviewElementManager.getOverlay();
 
-        if (overlay == null) {
-            throw new AssertionError("expected installOverlay to install a non-null overlay");
-        }
+        assertThat(overlay).as("expected installOverlay to install a non-null overlay").isNotNull();
 
         assertThat(overlay.isVisible())
             .as("precondition: the preview overlay must be visible before the change under test")
@@ -438,9 +422,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         PreviewElementManager.trackMouse(lc, mouseEvent(0, ON_STAFF_Y_PX, false));
         var overlay = PreviewElementManager.getOverlay();
 
-        if (overlay == null) {
-            throw new AssertionError("expected installOverlay to install a non-null overlay");
-        }
+        assertThat(overlay).as("expected installOverlay to install a non-null overlay").isNotNull();
 
         assertThat(overlay.isVisible())
             .as("precondition: the preview overlay must be visible before the change under test")
@@ -474,9 +456,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
 
         var overlay = PreviewElementManager.getOverlay();
 
-        if (overlay == null) {
-            throw new AssertionError("expected installOverlay to install a non-null overlay");
-        }
+        assertThat(overlay).as("expected installOverlay to install a non-null overlay").isNotNull();
 
         assertThat(overlay.isVisible())
             .as("setting manager state alone must not show the overlay")
@@ -505,9 +485,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         PreviewElementManager.trackMouse(lc, mouseEvent(0, ON_STAFF_Y_PX, false));
         var overlay = PreviewElementManager.getOverlay();
 
-        if (overlay == null) {
-            throw new AssertionError("expected installOverlay to install a non-null overlay");
-        }
+        assertThat(overlay).as("expected installOverlay to install a non-null overlay").isNotNull();
 
         var boundsBefore = overlay.getBounds();
 
@@ -529,9 +507,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         PreviewElementManager.trackMouse(lc, mouseEvent(0, ON_STAFF_Y_PX, false));
         var overlay = PreviewElementManager.getOverlay();
 
-        if (overlay == null) {
-            throw new AssertionError("expected installOverlay to install a non-null overlay");
-        }
+        assertThat(overlay).as("expected installOverlay to install a non-null overlay").isNotNull();
 
         var boundsOnStaff = overlay.getBounds();
 
@@ -559,9 +535,9 @@ class PreviewElementManagerOverlayTest extends UnitTest {
 
         var graceGlissandoOverlay = PreviewElementManager.getGraceGlissandoOverlay();
 
-        if (graceGlissandoOverlay == null) {
-            throw new AssertionError("expected installOverlay to install a grace glissando overlay");
-        }
+        assertThat(graceGlissandoOverlay)
+            .as("expected installOverlay to install a grace glissando overlay")
+            .isNotNull();
 
         // Stands in for the hidePreviewElement(false) grace mode performs on its way into the
         // insert phase: the overlay is unanchored, and only the move that follows brings it back.

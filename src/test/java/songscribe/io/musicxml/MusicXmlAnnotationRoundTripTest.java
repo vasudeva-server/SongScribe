@@ -94,12 +94,6 @@ class MusicXmlAnnotationRoundTripTest extends MusicXmlRoundTripSupport {
         var attachment = element.findAttachment(AnnotationAttachment.class);
         assertThat(attachment).as("%s: annotation attachment present", context).isNotNull();
 
-        // isNotNull() above already fails on null; this guard narrows the type for
-        // NullAway on the field accesses below.
-        if (attachment == null) {
-            return;
-        }
-
         var annotation = attachment.getAnnotation();
         assertThat(annotation.getAnnotation()).as("%s: text", context).isEqualTo(expected.text());
         assertThat(annotation.getXAlignment()).as("%s: xAlignment", context).isEqualTo(expected.alignment());
@@ -170,11 +164,9 @@ class MusicXmlAnnotationRoundTripTest extends MusicXmlRoundTripSupport {
         var tempoAttachment = note1.findAttachment(TempoChangeAttachment.class);
         assertThat(tempoAttachment).as("tempo attachment present").isNotNull();
 
-        if (tempoAttachment != null) {
-            var tempo = tempoAttachment.getTempo();
-            assertThat(tempo.getVisibleTempo()).as("tempo bpm").isEqualTo(PER_NOTE_TEMPO_BPM);
-            assertThat(tempo.getTempoType()).as("tempo type").isEqualTo(Duration.MINIM);
-        }
+        var tempo = tempoAttachment.getTempo();
+        assertThat(tempo.getVisibleTempo()).as("tempo bpm").isEqualTo(PER_NOTE_TEMPO_BPM);
+        assertThat(tempo.getTempoType()).as("tempo type").isEqualTo(Duration.MINIM);
 
         assertAnnotationEquals(note1, annotationCase, "note carrying both tempo and annotation");
 

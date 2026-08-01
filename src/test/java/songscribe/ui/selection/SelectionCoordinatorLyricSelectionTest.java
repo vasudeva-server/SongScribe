@@ -22,8 +22,6 @@ package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Objects;
-
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -39,7 +37,8 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
         line.addElement(first);
         line.addElement(second);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-        var state = Objects.requireNonNull(coordinator.getLineState(0));
+        var state = coordinator.getLineState(0);
+        assertThat(state).isNotNull();
         state.setSelectionFromClick(0);
 
         coordinator.selectLyric(second, 2);
@@ -58,7 +57,8 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
         line.addElement(first);
         line.addElement(second);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-        var state = Objects.requireNonNull(coordinator.getLineState(0));
+        var state = coordinator.getLineState(0);
+        assertThat(state).isNotNull();
         coordinator.selectLyric(first, 1);
 
         state.setSelectionFromClick(1);

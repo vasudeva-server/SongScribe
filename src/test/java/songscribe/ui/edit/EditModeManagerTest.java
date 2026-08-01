@@ -887,9 +887,7 @@ class EditModeManagerTest extends UnitTest {
         private EditModeManager.Insertion requireLastInsertion() {
             var insertion = EditModeManager.getLastInsertion();
 
-            if (insertion == null) {
-                throw new AssertionError("expected a live insertion target");
-            }
+            assertThat(insertion).as("expected a live insertion target").isNotNull();
 
             return insertion;
         }

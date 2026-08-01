@@ -131,19 +131,18 @@ class TempoChangeDialogTest extends MainFrameMockTest {
             .as("TempoChangeAttachment was added")
             .isNotNull();
 
-        //noinspection ConstantValue -- NullAway guard
-        var tempo = added == null ? null : added.getTempo();
-        assertThat(tempo == null ? 0 : tempo.getVisibleTempo())
+        var tempo = added.getTempo();
+        assertThat(tempo.getVisibleTempo())
             .as("BPM written from section")
             .isEqualTo(80);
-        assertThat(tempo == null ? null : tempo.getTempoType())
+        assertThat(tempo.getTempoType())
             .as("tempo type written from section")
             .isEqualTo(Duration.MINIM);
-        assertThat(tempo == null ? null : tempo.getTempoDescription())
+        assertThat(tempo.getTempoDescription())
             .as("description written from section")
             .isEqualTo("Largo");
         // isShowOnlyDescription()=false → !false = true → shouldShowTempo=true
-        assertThat(tempo == null ? false : tempo.shouldShowTempo())
+        assertThat(tempo.shouldShowTempo())
             .as("showTempo is the inverse of isShowOnlyDescription")
             .isTrue();
     }
@@ -158,8 +157,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
 
         var added = element.findAttachment(TempoChangeAttachment.class);
         assertThat(added).as("attachment was added").isNotNull();
-        //noinspection ConstantValue -- NullAway guard
-        assertThat(added == null ? true : added.getTempo().shouldShowTempo())
+        assertThat(added.getTempo().shouldShowTempo())
             .as("showTempo=false when isShowOnlyDescription=true")
             .isFalse();
     }
@@ -176,15 +174,14 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         dialog.applyChange(element);
 
         var updated = element.findAttachment(TempoChangeAttachment.class);
+        assertThat(updated).isNotNull();
         assertThat(updated)
             .as("existing attachment updated in-place, not replaced")
             .isSameAs(original);
-        //noinspection ConstantValue -- NullAway guard
-        assertThat(updated == null ? 0 : updated.getTempo().getVisibleTempo())
+        assertThat(updated.getTempo().getVisibleTempo())
             .as("BPM updated in existing attachment")
             .isEqualTo(140);
-        //noinspection ConstantValue -- NullAway guard
-        assertThat(updated == null ? null : updated.getTempo().getTempoType())
+        assertThat(updated.getTempo().getTempoType())
             .as("tempo type updated in existing attachment")
             .isEqualTo(Duration.QUAVER);
     }
@@ -200,8 +197,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         assertThat(added)
             .as("new TempoChangeAttachment added when none existed")
             .isNotNull();
-        //noinspection ConstantValue -- NullAway guard
-        assertThat(added == null ? 0 : added.getTempo().getVisibleTempo())
+        assertThat(added.getTempo().getVisibleTempo())
             .as("new attachment has the configured BPM")
             .isEqualTo(Tempo.DEFAULT_BPM);
     }

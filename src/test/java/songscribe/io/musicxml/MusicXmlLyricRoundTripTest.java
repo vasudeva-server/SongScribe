@@ -67,12 +67,6 @@ class MusicXmlLyricRoundTripTest extends MusicXmlRoundTripSupport {
     private static void assertLyricEquals(@Nullable Lyric actual, Lyric expected, String context) {
         assertThat(actual).as("%s: present", context).isNotNull();
 
-        // isNotNull() above fails the test on null; this guard narrows the type
-        // for NullAway on the field accesses below.
-        if (actual == null) {
-            return;
-        }
-
         assertThat(actual.verse()).as("%s: verse", context).isEqualTo(expected.verse());
         assertThat(actual.text()).as("%s: text", context).isEqualTo(expected.text());
         assertThat(actual.syllabic()).as("%s: syllabic", context).isEqualTo(expected.syllabic());

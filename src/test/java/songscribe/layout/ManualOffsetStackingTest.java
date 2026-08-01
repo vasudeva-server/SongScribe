@@ -67,7 +67,6 @@ class ManualOffsetStackingTest extends UnitTest {
     private static final double NOTE2_X_SS = 30.0;
     private static final double NOTE3_X_SS = 50.0;
 
-    @SuppressWarnings("NullAway")
     private static <T> T require(@Nullable T value, String description) {
         assertThat(value).describedAs(description).isNotNull();
         return value;

@@ -26,8 +26,6 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.Objects;
-
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
 import songscribe.ui.MusicEditOperations;
@@ -139,12 +137,12 @@ class TieToggleTest extends UnitTest {
         var reloadedLine = reloaded.getLine(0);
         var reloadedTie = reloadedLine.findTieAt(TIED_1);
 
+        assertThat(reloadedTie).as("save/load: tie preserved").isNotNull();
+
         assertAll(
-            () -> assertThat(reloadedTie)
-                .as("save/load: tie preserved").isNotNull(),
-            () -> assertThat(Objects.requireNonNull(reloadedTie).getAnchorElementIndex())
+            () -> assertThat(reloadedTie.getAnchorElementIndex())
                 .as("tie start").isEqualTo(TIED_1),
-            () -> assertThat(Objects.requireNonNull(reloadedTie).getEndElementIndex())
+            () -> assertThat(reloadedTie.getEndElementIndex())
                 .as("tie end").isEqualTo(TIED_2)
         );
     }

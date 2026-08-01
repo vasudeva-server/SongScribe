@@ -23,8 +23,6 @@ package songscribe.ui.selection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
-import java.util.Objects;
-
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
@@ -86,7 +84,10 @@ class IsLyricSelectedTest extends UnitTest {
         var coordinator = twoLineCoordinator(song);
 
         // Select a lyric on line 0 (the active line).
-        var element = Objects.requireNonNull(coordinator.getLineState(LINE_0)).getLine().getElement(0);
+        var lineState = coordinator.getLineState(LINE_0);
+        assertThat(lineState).isNotNull();
+
+        var element = lineState.getLine().getElement(0);
         coordinator.selectLyric(element, VERSE_1);
         assertThat(coordinator.getActiveLineIndex()).as("active line after selectLyric").isEqualTo(LINE_0);
 
@@ -107,7 +108,10 @@ class IsLyricSelectedTest extends UnitTest {
         // Line 0 is active; no lyric selected yet.
         assertThat(coordinator.hasLyricSelection()).as("lyricSelection before any selectLyric").isFalse();
 
-        var element = Objects.requireNonNull(coordinator.getLineState(LINE_0)).getLine().getElement(0);
+        var lineState = coordinator.getLineState(LINE_0);
+        assertThat(lineState).isNotNull();
+
+        var element = lineState.getLine().getElement(0);
 
         assertThat(coordinator.isLyricSelected(element, VERSE_1, LINE_0))
             .as("isLyricSelected with no lyric selection on active line")
@@ -126,7 +130,10 @@ class IsLyricSelectedTest extends UnitTest {
     void testIsLyricSelectedReturnsTrueForMatchingElementAndVerse() {
         var song = minimalSongMock();
         var coordinator = twoLineCoordinator(song);
-        var element = Objects.requireNonNull(coordinator.getLineState(LINE_0)).getLine().getElement(0);
+        var lineState = coordinator.getLineState(LINE_0);
+        assertThat(lineState).isNotNull();
+
+        var element = lineState.getLine().getElement(0);
 
         coordinator.selectLyric(element, VERSE_2);
 
@@ -143,7 +150,10 @@ class IsLyricSelectedTest extends UnitTest {
     void testIsLyricSelectedReturnsFalseForWrongVerse() {
         var song = minimalSongMock();
         var coordinator = twoLineCoordinator(song);
-        var element = Objects.requireNonNull(coordinator.getLineState(LINE_0)).getLine().getElement(0);
+        var lineState = coordinator.getLineState(LINE_0);
+        assertThat(lineState).isNotNull();
+
+        var element = lineState.getLine().getElement(0);
 
         coordinator.selectLyric(element, VERSE_2);
 
@@ -160,7 +170,10 @@ class IsLyricSelectedTest extends UnitTest {
     void testIsLyricSelectedReturnsFalseForDifferentElement() {
         var song = minimalSongMock();
         var coordinator = twoLineCoordinator(song);
-        var lineA = Objects.requireNonNull(coordinator.getLineState(LINE_0)).getLine();
+        var lineState = coordinator.getLineState(LINE_0);
+        assertThat(lineState).isNotNull();
+
+        var lineA = lineState.getLine();
         var elementA = lineA.getElement(0);
         // Add a second element to line A so we have a distinct reference.
         lineA.addElement(ElementType.CROTCHET.newInstance());

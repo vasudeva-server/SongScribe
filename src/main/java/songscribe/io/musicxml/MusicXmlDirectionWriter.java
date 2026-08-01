@@ -55,7 +55,7 @@ final class MusicXmlDirectionWriter {
 
         var description = tempo.getTempoDescription();
 
-        if (description != null && !description.isEmpty()) {
+        if (!description.isEmpty()) {
             writeWordsDirectionType(pw, description);
         }
 

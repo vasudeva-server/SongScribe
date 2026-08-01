@@ -21,7 +21,6 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Nested;
@@ -29,9 +28,8 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.ui.component.ScoreView;
 
-// Rows 37–38: musicSelectionDidChange enablement and null-guard for KeySignatureChangeAction
+// Row 37: musicSelectionDidChange enablement for KeySignatureChangeAction
 class KeySignatureChangeActionTest extends MainFrameMockTest {
 
     // Row 37: enablement is gated on whether a line is currently selected
@@ -60,29 +58,5 @@ class KeySignatureChangeActionTest extends MainFrameMockTest {
 
             assertThat(action.isEnabled()).isTrue();
         }
-    }
-
-    // Row 38: null-guard prevents NPE when the notification's score view is absent.
-    // BUG (now fixed): the original code called message.getScoreView().getSelectedLine()
-    // without a null check. Unlike TempoChangeAction (which guards on ctrl != null),
-    // KeySignatureChangeAction had no guard. A null score view would NPE at
-    // message.getScoreView().getSelectedLine() — see KeySignatureChangeAction.musicSelectionDidChange.
-    // The fix: check scoreView != null before calling getSelectedLine().
-    @Test
-    void testNullScoreViewDoesNotThrow() {
-        // Simulate a notification whose score view is null (e.g., constructed via
-        // a mock, as happens in tests that do not pass a real ScoreView).
-        // Without the guard, this NPEs. With the guard, updateEnabledState() still
-        // runs and sets the enabled state via flag checks; setEnabled(line != -1) is skipped.
-        var message = mock(MusicSelectionDidChangeNotification.class);
-        when(message.getScoreView()).thenReturn((ScoreView) null);
-        var action = KeySignatureChangeAction.createAction(mainFrame());
-
-        // Must not throw — the guard in the fixed implementation handles null safely
-        action.musicSelectionDidChange(message);
-
-        // updateEnabledState() ran; since the line check was skipped the action
-        // was left in whatever state the flag checks set (enabled by default stubs)
-        assertThat(action.isEnabled()).isTrue();
     }
 }

@@ -76,11 +76,9 @@ class MetronomeResolverTest extends UnitTest {
         var attachment = note.findAttachment(TempoChangeAttachment.class);
         assertThat(attachment).as("complete tempo binds to the note").isNotNull();
 
-        if (attachment != null) {
-            var tempo = attachment.getTempo();
-            assertThat(tempo.getVisibleTempo()).as("visible tempo").isEqualTo(TEMPO_BPM);
-            assertThat(tempo.getTempoType()).as("beat-unit duration").isEqualTo(Duration.CROTCHET);
-        }
+        var tempo = attachment.getTempo();
+        assertThat(tempo.getVisibleTempo()).as("visible tempo").isEqualTo(TEMPO_BPM);
+        assertThat(tempo.getTempoType()).as("beat-unit duration").isEqualTo(Duration.CROTCHET);
     }
 
     @Test
@@ -96,11 +94,9 @@ class MetronomeResolverTest extends UnitTest {
         var attachment = note.findAttachment(BeatChangeAttachment.class);
         assertThat(attachment).as("complete metric modulation binds to the note").isNotNull();
 
-        if (attachment != null) {
-            var beatChange = attachment.getBeatChange();
-            assertThat(beatChange.duration()).as("left note value").isEqualTo(Duration.QUAVER);
-            assertThat(beatChange.beat()).as("right note value").isEqualTo(Duration.QUAVER);
-        }
+        var beatChange = attachment.getBeatChange();
+        assertThat(beatChange.duration()).as("left note value").isEqualTo(Duration.QUAVER);
+        assertThat(beatChange.beat()).as("right note value").isEqualTo(Duration.QUAVER);
     }
 
     // -------------------------------------------------------------------------
@@ -248,10 +244,8 @@ class MetronomeResolverTest extends UnitTest {
         var attachment = note.findAttachment(TempoChangeAttachment.class);
         assertThat(attachment).as("the next direction builds after a dropped one").isNotNull();
 
-        if (attachment != null) {
-            assertThat(attachment.getTempo().getVisibleTempo())
-                .as("no state leaked from the dropped direction")
-                .isEqualTo(TEMPO_BPM);
-        }
+        assertThat(attachment.getTempo().getVisibleTempo())
+            .as("no state leaked from the dropped direction")
+            .isEqualTo(TEMPO_BPM);
     }
 }

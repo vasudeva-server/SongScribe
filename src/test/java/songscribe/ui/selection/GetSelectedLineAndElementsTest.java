@@ -23,7 +23,6 @@ package songscribe.ui.selection;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 
@@ -57,7 +56,10 @@ class GetSelectedLineAndElementsTest extends UnitTest {
             List.of(ElementType.CROTCHET.newInstance()),
             List.of()
         );
-        Objects.requireNonNull(coordinator.getLineState(LINE_0)).setLineSelected(true);
+        var lineState = coordinator.getLineState(LINE_0);
+        assertThat(lineState).isNotNull();
+
+        lineState.setLineSelected(true);
 
         assertThat(coordinator.getSelectedLine())
             .as("getSelectedLine when active line has line-selection")

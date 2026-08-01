@@ -88,9 +88,7 @@ class AttributionPaneTest extends UnitTest {
     private static double widthOf(Font font, String text) {
         var bounds = GraphicUtils.visualBounds(text, font);
 
-        if (bounds == null) {
-            throw new AssertionError("test text must be non-empty: " + text);
-        }
+        assertThat(bounds).as("test text must be non-empty: " + text).isNotNull();
 
         return bounds.getWidth();
     }
@@ -106,9 +104,7 @@ class AttributionPaneTest extends UnitTest {
     private static double heightOf(Font font) {
         var bounds = GraphicUtils.visualBounds(AttributionPane.LINE_BOX_REFERENCE, font);
 
-        if (bounds == null) {
-            throw new AssertionError("line-box reference must be non-empty");
-        }
+        assertThat(bounds).as("line-box reference must be non-empty").isNotNull();
 
         return bounds.getHeight();
     }

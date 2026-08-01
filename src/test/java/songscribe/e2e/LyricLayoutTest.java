@@ -80,9 +80,6 @@ class LyricLayoutTest extends E2ETest {
         });
 
         assertThat(boxes).isNotNull();
-        if (boxes == null) {
-            return; // unreachable — satisfies NullAway after the assertThat above
-        }
 
         assertThat(boxes).hasSize(1);
         var box = boxes.getFirst();

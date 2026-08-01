@@ -195,7 +195,6 @@ class SongLoadingTest extends UnitTest {
     }
 
     @Test
-    @SuppressWarnings("NullAway")
     void testLoadFromAttachesInitialTempoToFirstLineElement() {
         var tempo = new Tempo();
         tempo.setVisibleTempo(120);
@@ -242,7 +241,6 @@ class SongLoadingTest extends UnitTest {
     }
 
     @Test
-    @SuppressWarnings("NullAway")
     void testLoadFromAnchorsInitialTempoOnLeadingGraceNote() {
         var tempo = new Tempo();
         tempo.setVisibleTempo(120);
@@ -381,10 +379,6 @@ class SongLoadingTest extends UnitTest {
         // Per-note lyric: typographic + short-A (Lyric compact constructor, processText with true).
         var lyric = loaded.getLine(0).getElement(0).getLyricForVerse(Lyric.FIRST_VERSE);
         assertThat(lyric).isNotNull();
-
-        if (lyric == null) {
-            return; // unreachable — satisfies NullAway after the assertThat above
-        }
 
         assertThat(lyric.text())
             .as("per-note lyric — straight quote and -- become typographic; ă stripped")

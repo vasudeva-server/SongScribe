@@ -266,9 +266,7 @@ class HairpinSelectionTest extends E2ETest {
     private static <T> T onEdt(Supplier<T> supplier) {
         var result = GuiActionRunner.execute(supplier::get);
 
-        if (result == null) {
-            throw new AssertionError("Expected a value from the EDT but got null");
-        }
+        assertThat(result).as("Expected a value from the EDT but got null").isNotNull();
 
         return result;
     }
@@ -288,9 +286,7 @@ class HairpinSelectionTest extends E2ETest {
     private LineComponent lineComponent() {
         var lineComponent = scoreView().getLineComponent(0);
 
-        if (lineComponent == null) {
-            throw new AssertionError("Line 0 has no LineComponent");
-        }
+        assertThat(lineComponent).as("Line 0 has no LineComponent").isNotNull();
 
         return lineComponent;
     }
@@ -360,15 +356,11 @@ class HairpinSelectionTest extends E2ETest {
             var lineComponent = lineComponent();
             var layoutResult = lineComponent.getLayoutResult();
 
-            if (layoutResult == null) {
-                throw new AssertionError("Line 0 has no layout result");
-            }
+            assertThat(layoutResult).as("Line 0 has no layout result").isNotNull();
 
             var layout = layoutResult.getDecorationLayout(hairpin);
 
-            if (layout == null) {
-                throw new AssertionError("Hairpin has no decoration layout");
-            }
+            assertThat(layout).as("Hairpin has no decoration layout").isNotNull();
 
             var centerXSs = layout.xSs() + layout.widthSs() / 2;
             var centerYSs = lineComponent.getMiddleLineYSs() + layout.ySs()

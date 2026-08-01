@@ -565,9 +565,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var graceLyric = grace.getLyricForVerse(1);
 
-            if (graceLyric == null) {
-                throw new AssertionError("the now-ordinary former grace note lost its syllable");
-            }
+            assertThat(graceLyric).as("the now-ordinary former grace note lost its syllable").isNotNull();
 
             // Both elements survive the un-pairing, so the syllable simply stays put —
             // only its melisma goes away.
@@ -952,10 +950,6 @@ class ScoreViewControllerTest extends UnitTest {
             var fragment = clipboardManager.getFragment();
             assertThat(fragment).isNotNull();
 
-            if (fragment == null) {
-                return; // unreachable — NullAway flow narrowing
-            }
-
             // Verify the copies are independent clones, not the originals
             assertThat(fragment.elements().get(0)).isNotSameAs(noteA);
             assertThat(fragment.elements().get(1)).isNotSameAs(noteB);
@@ -1053,10 +1047,6 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(clipboardManager.getSize()).isEqualTo(2);
             var fragment = clipboardManager.getFragment();
             assertThat(fragment).isNotNull();
-
-            if (fragment == null) {
-                return; // unreachable — NullAway flow narrowing
-            }
 
             assertThat(fragment.elements().get(0).getType()).isEqualTo(noteA.getType());
             assertThat(fragment.elements().get(1).getType()).isEqualTo(noteB.getType());
@@ -1721,9 +1711,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var hostLyric = host.getLyricForVerse(1);
 
-            if (hostLyric == null) {
-                throw new AssertionError("the grace note's syllable was not handed back to the host");
-            }
+            assertThat(hostLyric).as("the grace note's syllable was not handed back to the host").isNotNull();
 
             assertThat(hostLyric.text()).isEqualTo("der");
             assertThat(hostLyric.syllabic()).isEqualTo(Lyric.Syllabic.MIDDLE);
@@ -1732,9 +1720,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var predecessorLyric = predecessor.getLyricForVerse(1);
 
-            if (predecessorLyric == null) {
-                throw new AssertionError("the predecessor's syllable was removed");
-            }
+            assertThat(predecessorLyric).as("the predecessor's syllable was removed").isNotNull();
 
             // The assertion that catches the ordering bug.
             assertThat(predecessorLyric.syllabic()).isEqualTo(Lyric.Syllabic.BEGIN);
@@ -1882,10 +1868,6 @@ class ScoreViewControllerTest extends UnitTest {
 
             assertThat(state).isNotNull();
 
-            if (state == null) {
-                return; // unreachable — NullAway flow narrowing
-            }
-
             assertThat(state.getSelectionBegin()).isEqualTo(0);
             assertThat(state.getSelectionEnd()).isEqualTo(1);
             verify(scoreMock).selectionChanged();
@@ -1905,10 +1887,6 @@ class ScoreViewControllerTest extends UnitTest {
             var state = coordinator.getActiveSelection();
 
             assertThat(state).isNotNull();
-
-            if (state == null) {
-                return; // unreachable — NullAway flow narrowing
-            }
 
             state.setLineSelected(true);
 
@@ -2662,10 +2640,6 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(middleLyric).isNotNull();
             assertThat(endLyric).isNotNull();
 
-            if (beginLyric == null || middleLyric == null || endLyric == null) {
-                return; // unreachable — NullAway flow narrowing
-            }
-
             assertThat(beginLyric.syllabic())
                 .as("severed predecessor becomes a standalone word")
                 .isEqualTo(Lyric.Syllabic.SINGLE);
@@ -2706,10 +2680,6 @@ class ScoreViewControllerTest extends UnitTest {
 
             var startLyric = start.getLyricForVerse(1);
             assertThat(startLyric).isNotNull();
-
-            if (startLyric == null) {
-                return; // unreachable — NullAway flow narrowing
-            }
 
             assertThat(startLyric.extend()).as("severed predecessor's melisma is truncated")
                 .isEqualTo(Lyric.Extend.NONE);
@@ -3367,10 +3337,6 @@ class ScoreViewControllerTest extends UnitTest {
             var cutFragment = clipboardManager.getFragment();
             assertThat(cutFragment).isNotNull();
 
-            if (cutFragment == null) {
-                return; // unreachable — NullAway flow narrowing
-            }
-
             var cutCount = cutFragment.elements().size();
 
             // Paste the cut fragment straight back at the same index.
@@ -3399,10 +3365,6 @@ class ScoreViewControllerTest extends UnitTest {
 
             var restoredLyric = restoredAnchor.getLyricForVerse(1);
             assertThat(restoredLyric).isNotNull();
-
-            if (restoredLyric == null) {
-                return; // unreachable — NullAway flow narrowing
-            }
 
             assertThat(restoredLyric.text()).as("the lyric text survived the round trip").isEqualTo("la");
             assertThat(restoredLyric.syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
@@ -3459,10 +3421,6 @@ class ScoreViewControllerTest extends UnitTest {
             var secondLyric = line.getElement(1).getLyricForVerse(1);
             assertThat(firstLyric).isNotNull();
             assertThat(secondLyric).isNotNull();
-
-            if (firstLyric == null || secondLyric == null) {
-                return; // unreachable — NullAway flow narrowing
-            }
 
             assertThat(firstLyric.syllabic())
                 .as("no predecessor to sever against — the seam repair must be a no-op here")

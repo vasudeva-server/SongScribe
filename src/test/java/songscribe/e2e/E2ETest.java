@@ -20,6 +20,7 @@
 
 package songscribe.e2e;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.swing.core.MouseButton.LEFT_BUTTON;
 
 import module java.desktop;
@@ -31,7 +32,6 @@ import java.io.PrintWriter;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 
 import org.assertj.swing.exception.UnexpectedException;
@@ -195,8 +195,10 @@ public abstract class E2ETest {
     }
 
     private static void positionOverlay() {
-        var overlay = Objects.requireNonNull(statusOverlay);
-        var scoreView = Objects.requireNonNull(MainFrame.getInstance().getScoreView());
+        var overlay = statusOverlay;
+        assertThat(overlay).isNotNull();
+        var scoreView = MainFrame.getInstance().getScoreView();
+        assertThat(scoreView).isNotNull();
         var scoreLoc = scoreView.getLocationOnScreen();
         var scoreSize = scoreView.getSize();
         var overlaySize = overlay.getPreferredSize();
@@ -220,7 +222,10 @@ public abstract class E2ETest {
     // -- Accessors --
 
     protected ScoreView scoreView() {
-        return Objects.requireNonNull(MainFrame.getInstance().getScoreView());
+        var scoreView = MainFrame.getInstance().getScoreView();
+        assertThat(scoreView).isNotNull();
+
+        return scoreView;
     }
 
     protected Song song() {
@@ -415,9 +420,11 @@ public abstract class E2ETest {
      * suitable for robot clicks.
      */
     protected Point noteScreenPosition(int lineIndex, int noteIndex) {
-        return Objects.requireNonNull(GuiActionRunner.execute(() -> {
-            var lc = Objects.requireNonNull(scoreView().getLineComponent(lineIndex));
-            var line = Objects.requireNonNull(lc.getLine());
+        var result = GuiActionRunner.execute(() -> {
+            var lc = scoreView().getLineComponent(lineIndex);
+            assertThat(lc).isNotNull();
+            var line = lc.getLine();
+            assertThat(line).isNotNull();
             var note = line.getElement(noteIndex);
 
             var hitRect = new Rectangle2D.Double();
@@ -428,7 +435,10 @@ public abstract class E2ETest {
                 locationOnScreen.x + ScaleContext.ssToRoundedPx(hitRect.x + hitRect.width / 2),
                 locationOnScreen.y + ScaleContext.ssToRoundedPx(hitRect.y + hitRect.height / 2)
             );
-        }));
+        });
+        assertThat(result).isNotNull();
+
+        return result;
     }
 
     /**
@@ -438,9 +448,11 @@ public abstract class E2ETest {
      * X is placed past the last note (or at a fixed offset if the line is empty).
      */
     protected Point insertionPoint(int lineIndex, int staffPositionSp) {
-        return Objects.requireNonNull(GuiActionRunner.execute(() -> {
-            var lc = Objects.requireNonNull(scoreView().getLineComponent(lineIndex));
-            var line = Objects.requireNonNull(lc.getLine());
+        var result = GuiActionRunner.execute(() -> {
+            var lc = scoreView().getLineComponent(lineIndex);
+            assertThat(lc).isNotNull();
+            var line = lc.getLine();
+            assertThat(line).isNotNull();
 
             int xPx;
 
@@ -462,7 +474,10 @@ public abstract class E2ETest {
                 locationOnScreen.x + xPx,
                 locationOnScreen.y + yPx
             );
-        }));
+        });
+        assertThat(result).isNotNull();
+
+        return result;
     }
 
     /**
@@ -470,9 +485,11 @@ public abstract class E2ETest {
      * The x coordinate is placed a few pixels to the left of the element's layout position.
      */
     protected Point insertionPointBefore(int lineIndex, int elementIndex, int staffPositionSp) {
-        return Objects.requireNonNull(GuiActionRunner.execute(() -> {
-            var lc = Objects.requireNonNull(scoreView().getLineComponent(lineIndex));
-            var line = Objects.requireNonNull(lc.getLine());
+        var result = GuiActionRunner.execute(() -> {
+            var lc = scoreView().getLineComponent(lineIndex);
+            assertThat(lc).isNotNull();
+            var line = lc.getLine();
+            assertThat(line).isNotNull();
             var layoutResult = lc.getLayoutResult();
 
             var element = line.getElement(elementIndex);
@@ -486,7 +503,10 @@ public abstract class E2ETest {
                 locationOnScreen.x + xPx,
                 locationOnScreen.y + yPx
             );
-        }));
+        });
+        assertThat(result).isNotNull();
+
+        return result;
     }
 
     /**
@@ -495,12 +515,14 @@ public abstract class E2ETest {
     protected void dragNote(int lineIndex, int noteIndex, int targetStaffPositionSp) {
         var startPoint = noteScreenPosition(lineIndex, noteIndex);
 
-        var endPoint = Objects.requireNonNull(GuiActionRunner.execute(() -> {
-            var lc = Objects.requireNonNull(scoreView().getLineComponent(lineIndex));
+        var endPoint = GuiActionRunner.execute(() -> {
+            var lc = scoreView().getLineComponent(lineIndex);
+            assertThat(lc).isNotNull();
             var endYPx = lc.staffPositionToYPx(targetStaffPositionSp);
             var locationOnScreen = lc.getLocationOnScreen();
             return new Point(startPoint.x, locationOnScreen.y + endYPx);
-        }));
+        });
+        assertThat(endPoint).isNotNull();
 
         robot.pressMouse(startPoint, LEFT_BUTTON);
         pause();
@@ -672,7 +694,8 @@ public abstract class E2ETest {
      */
     protected void performLayout(int lineIndex) {
         GuiActionRunner.execute(() -> {
-            var lc = Objects.requireNonNull(scoreView().getLineComponent(lineIndex));
+            var lc = scoreView().getLineComponent(lineIndex);
+            assertThat(lc).isNotNull();
             lc.invalidateLayout();
             lc.paintImmediately(lc.getBounds());
         });
@@ -739,12 +762,13 @@ public abstract class E2ETest {
      * on the scoreView and laid out.
      */
     protected void loadFixture(String fixtureName) throws UnexpectedException {
-        var song = Objects.requireNonNull(GuiActionRunner.execute(() -> {
+        var song = GuiActionRunner.execute(() -> {
             var result = UnitTest.loadFixtureResult(fixtureName);
             scoreView().setSong(result.song());
             scoreView().installDocumentFonts(result.fonts());
             return result.song();
-        }));
+        });
+        assertThat(song).isNotNull();
 
         performLayout(0);
     }

@@ -212,9 +212,7 @@ class PreviewElementOverlayTest extends UnitTest {
             overlay.previewDidChange(lc);
             var bounds = overlay.getInkBoundsSs();
 
-            if (bounds == null) {
-                throw new AssertionError("expected non-null preview ink bounds");
-            }
+            assertThat(bounds).as("expected non-null preview ink bounds").isNotNull();
 
             return bounds;
         }
@@ -236,9 +234,7 @@ class PreviewElementOverlayTest extends UnitTest {
 
             var domLine = lc.getLine();
 
-            if (domLine == null) {
-                throw new AssertionError("test setup did not attach a line");
-            }
+            assertThat(domLine).as("test setup did not attach a line").isNotNull();
 
             var calculatedXSs = HorizontalSpacingCalculator.calculateFirstElementXSs(domLine);
 

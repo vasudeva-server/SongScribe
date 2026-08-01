@@ -205,10 +205,6 @@ class MigrationPipelineTest extends UnitTest {
             var attachment = note.findAttachment(TempoChangeAttachment.class);
             assertThat(attachment).isNotNull();
 
-            if (attachment == null) {
-                return;
-            }
-
             assertThat(attachment.getUserYOffsetSs()).isEqualTo(TEMPO_CHANGE_Y_POS_PX);
         }
     }

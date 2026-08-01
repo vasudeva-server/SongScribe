@@ -354,7 +354,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
                 closeCallCount++;
                 // Skip super to avoid NPE on the uninitialised JDialog field
             } else {
-                super.setVisible(visible);
+                super.setVisible(true);
             }
         }
     }

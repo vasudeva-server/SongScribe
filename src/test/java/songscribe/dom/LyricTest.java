@@ -175,7 +175,6 @@ class LyricTest extends UnitTest {
         assertThat(carrier.text()).isEmpty();
     }
 
-    @SuppressWarnings("NullAway")
     @Test
     void testLegacyImportDoubleHyphenCompoundMarkerIsNotCorruptedToEmDash() {
         // The "--" compound-word marker in legacy lyric blobs is consumed by the parser
@@ -190,10 +189,6 @@ class LyricTest extends UnitTest {
 
         assertThat(heartLyric).isNotNull();
         assertThat(gardenLyric).isNotNull();
-
-        if (heartLyric == null || gardenLyric == null) {
-            return; // unreachable — satisfies NullAway after the assertThat above
-        }
 
         // syllabic: heart=BEGIN compound, garden=END; texts must not contain an em-dash.
         assertThat(heartLyric.text()).isEqualTo("heart");

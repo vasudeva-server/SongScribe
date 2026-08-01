@@ -428,9 +428,7 @@ class LineComponentTest extends UnitTest {
 
             var result = lineComponent.getLayoutResult();
 
-            if (result == null) {
-                throw new AssertionError("layout produced no result for an over-full line");
-            }
+            assertThat(result).as("layout produced no result for an over-full line").isNotNull();
 
             // States the case this test is about, so it cannot quietly become a test of a line that
             // fits if the width or note count ever drift.
@@ -459,9 +457,7 @@ class LineComponentTest extends UnitTest {
             // The width above is a clip, not a fit: the line really does extend beyond it.
             var line = lineComponent.getLine();
 
-            if (line == null) {
-                throw new AssertionError("the component under test has no line");
-            }
+            assertThat(line).as("the component under test has no line").isNotNull();
 
             assertThat(result.getElementXSs(line.getElements().getLast()))
                 .as("last element of an over-full line, against the staff width it is clipped to")
@@ -685,11 +681,9 @@ class LineComponentTest extends UnitTest {
                 .as("setLine creates a non-null LineSelectionState")
                 .isNotNull();
 
-            if (selectionState != null) {
-                assertThat(selectionState.getLine())
-                    .as("LineSelectionState wraps the supplied line")
-                    .isSameAs(line);
-            }
+            assertThat(selectionState.getLine())
+                .as("LineSelectionState wraps the supplied line")
+                .isSameAs(line);
         }
 
         /**
@@ -717,10 +711,8 @@ class LineComponentTest extends UnitTest {
                 .as("setLine creates a non-null LineSelectionState")
                 .isNotNull();
 
-            if (lineSelectionState != null) {
-                verify(mockCoordinator)
-                    .registerLineState(0, lineSelectionState);
-            }
+            verify(mockCoordinator)
+                .registerLineState(0, lineSelectionState);
         }
     }
 
@@ -763,14 +755,12 @@ class LineComponentTest extends UnitTest {
                 .as("non-null line + layout → readyLayout is non-null")
                 .isNotNull();
 
-            if (ready != null) {
-                assertThat(ready.line())
-                    .as("ReadyLayout.line() returns the set line")
-                    .isSameAs(line);
-                assertThat(ready.layoutResult())
-                    .as("ReadyLayout.layoutResult() returns the set layout")
-                    .isSameAs(mockLayout);
-            }
+            assertThat(ready.line())
+                .as("ReadyLayout.line() returns the set line")
+                .isSameAs(line);
+            assertThat(ready.layoutResult())
+                .as("ReadyLayout.layoutResult() returns the set layout")
+                .isSameAs(mockLayout);
         }
 
         /**

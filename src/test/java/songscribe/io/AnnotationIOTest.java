@@ -249,11 +249,6 @@ class AnnotationIOTest extends UnitTest {
             );
             assertThat(annotation).isNotNull();
 
-            //noinspection ConstantValue -- NullAway guard
-            if (annotation == null) {
-                return;
-            }
-
             assertThat(annotation.getXAlignment()).isEqualTo(DEFAULT_ALIGNMENT);
         }
 
@@ -278,11 +273,6 @@ class AnnotationIOTest extends UnitTest {
                 AnnotationIO.XML_YPOS, "notanint"
             );
             assertThat(annotation).isNotNull();
-
-            //noinspection ConstantValue -- NullAway guard
-            if (annotation == null) {
-                return;
-            }
 
             assertThat(annotation.getPlacement()).isEqualTo(Annotation.Placement.ABOVE);
         }
@@ -310,11 +300,6 @@ class AnnotationIOTest extends UnitTest {
             );
             assertThat(annotation).isNotNull();
 
-            //noinspection ConstantValue -- NullAway guard
-            if (annotation == null) {
-                return;
-            }
-
             assertThat(annotation.getPlacement()).isEqualTo(Annotation.Placement.ABOVE);
         }
 
@@ -339,11 +324,6 @@ class AnnotationIOTest extends UnitTest {
                 AnnotationIO.XML_USER_Y_OFFSET, "notadouble"
             );
             assertThat(annotation).isNotNull();
-
-            //noinspection ConstantValue -- NullAway guard
-            if (annotation == null) {
-                return;
-            }
 
             assertThat(annotation.getUserYOffsetSs()).isEqualTo(DEFAULT_USER_Y_OFFSET);
         }
@@ -434,9 +414,7 @@ class AnnotationIOTest extends UnitTest {
             reader.endElement11(AnnotationIO.XML_YPOS);
             var annotation = reader.endElement11(AnnotationIO.XML_ANNOTATION);
 
-            if (annotation == null) {
-                throw new AssertionError("AnnotationReader returned null for legacy ypos=" + ypos);
-            }
+            assertThat(annotation).as("AnnotationReader returned null for legacy ypos=" + ypos).isNotNull();
 
             return annotation;
         }

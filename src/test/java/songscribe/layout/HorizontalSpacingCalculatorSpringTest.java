@@ -976,9 +976,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     private static double[] solvedGapLengthsSs(SpringSolveResult result) {
         var gapLengthsSs = result.gapLengthsSs();
 
-        if (gapLengthsSs == null) {
-            throw new AssertionError("expected a solved result, but the solver reported infeasible");
-        }
+        assertThat(gapLengthsSs).as("expected a solved result, but the solver reported infeasible").isNotNull();
 
         return gapLengthsSs;
     }

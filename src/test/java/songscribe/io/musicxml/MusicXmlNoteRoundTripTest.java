@@ -126,14 +126,12 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
         } else {
             assertThat(actualFermata).as("%s: fermata", context).isNotNull();
 
-            if (actualFermata != null) {
-                assertThat(actualFermata.getAlignment())
-                    .as("%s: fermata alignment", context)
-                    .isEqualTo(expectedFermata.getAlignment());
-                assertThat(actualFermata.getOwnerElement())
-                    .as("%s: fermata owner element", context)
-                    .isEqualTo(actual);
-            }
+            assertThat(actualFermata.getAlignment())
+                .as("%s: fermata alignment", context)
+                .isEqualTo(expectedFermata.getAlignment());
+            assertThat(actualFermata.getOwnerElement())
+                .as("%s: fermata owner element", context)
+                .isEqualTo(actual);
         }
 
         var expectedDynamic = expected.findAttachment(DynamicAttachment.class);
@@ -144,11 +142,9 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
         } else {
             assertThat(actualDynamic).as("%s: dynamics", context).isNotNull();
 
-            if (actualDynamic != null) {
-                assertThat(actualDynamic.getType())
-                    .as("%s: dynamics type", context)
-                    .isEqualTo(expectedDynamic.getType());
-            }
+            assertThat(actualDynamic.getType())
+                .as("%s: dynamics type", context)
+                .isEqualTo(expectedDynamic.getType());
         }
     }
 

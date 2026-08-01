@@ -79,9 +79,7 @@ class SelectionCoordinatorStaleCacheTest extends MainFrameMockTest {
 
         var state = coordinator.getActiveSelection();
 
-        if (state == null) {
-            throw new AssertionError("the test coordinator has no active line state");
-        }
+        assertThat(state).as("the test coordinator has no active line state").isNotNull();
 
         var line = state.getLine();
         var barline = line.getElement(0);

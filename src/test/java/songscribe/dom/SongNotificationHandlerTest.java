@@ -103,9 +103,7 @@ class SongNotificationHandlerTest extends UnitTest {
                 .as("handler must initialize tempo when it was null")
                 .isNotNull();
 
-            if (tempo != null) {
-                assertThat(tempo.getTempoDescription()).isEqualTo(newDescription);
-            }
+            assertThat(tempo.getTempoDescription()).isEqualTo(newDescription);
         }
 
         @Test

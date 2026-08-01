@@ -134,15 +134,11 @@ class RecordingGraphics2DTest extends UnitTest {
 
         var bbox = SMuFLMetadata.getBBox(SMuFLGlyph.NOTEHEAD_BLACK);
 
-        if (bbox == null) {
-            throw new AssertionError("notehead metadata unexpectedly missing");
-        }
+        assertThat(bbox).as("notehead metadata unexpectedly missing").isNotNull();
 
         var bounds = graphics.displayList().inkBoundsSs();
 
-        if (bounds == null) {
-            throw new AssertionError("drawString recorded no ink");
-        }
+        assertThat(bounds).as("drawString recorded no ink").isNotNull();
 
         assertThat(bounds.getX()).isCloseTo(bbox.left(), within(BOUNDS_EPSILON));
         assertThat(bounds.getY()).isCloseTo(bbox.top(), within(BOUNDS_EPSILON));
@@ -158,15 +154,11 @@ class RecordingGraphics2DTest extends UnitTest {
 
         var bbox = SMuFLMetadata.getBBox(SMuFLGlyph.NOTEHEAD_BLACK);
 
-        if (bbox == null) {
-            throw new AssertionError("notehead metadata unexpectedly missing");
-        }
+        assertThat(bbox).as("notehead metadata unexpectedly missing").isNotNull();
 
         var bounds = graphics.displayList().inkBoundsSs();
 
-        if (bounds == null) {
-            throw new AssertionError("drawString recorded no ink");
-        }
+        assertThat(bounds).as("drawString recorded no ink").isNotNull();
 
         assertThat(bounds.getWidth())
             .isCloseTo(bbox.width() * ElementType.GRACE_NOTE_SCALE, within(BOUNDS_EPSILON));
@@ -232,9 +224,7 @@ class RecordingGraphics2DTest extends UnitTest {
         var expectedBounds = graphics.getStroke().createStrokedShape(line).getBounds2D();
         var bounds = graphics.displayList().inkBoundsSs();
 
-        if (bounds == null) {
-            throw new AssertionError("draw recorded no ink");
-        }
+        assertThat(bounds).as("draw recorded no ink").isNotNull();
 
         assertThat(bounds).isEqualTo(expectedBounds);
 
@@ -258,9 +248,7 @@ class RecordingGraphics2DTest extends UnitTest {
 
         var bounds = graphics.displayList().inkBoundsSs();
 
-        if (bounds == null) {
-            throw new AssertionError("drawRoundedLine recorded no ink");
-        }
+        assertThat(bounds).as("drawRoundedLine recorded no ink").isNotNull();
 
         assertThat(bounds.getMinX()).isCloseTo(-thicknessSs / 2, within(BOUNDS_EPSILON));
         assertThat(bounds.getMaxX()).isCloseTo(thicknessSs / 2, within(BOUNDS_EPSILON));

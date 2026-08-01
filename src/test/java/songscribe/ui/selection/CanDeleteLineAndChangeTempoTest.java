@@ -24,7 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 
@@ -128,7 +127,10 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     @Test
     void testCanDeleteLineReturnsTrueWhenOnlyOneLine() {
         var coordinator = oneLineSongCoordinator();
-        Objects.requireNonNull(coordinator.getLineState(LINE_0)).setLineSelected(true);
+        var lineState = coordinator.getLineState(LINE_0);
+        assertThat(lineState).isNotNull();
+
+        lineState.setLineSelected(true);
 
         assertThat(coordinator.canDeleteLine())
             .as("canDeleteLine when line is selected and song has only one line")
@@ -146,7 +148,10 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     @Test
     void testCanDeleteLineReturnsTrueWhenLineSelectedAndMultipleLines() {
         var coordinator = twoLineSongCoordinator();
-        Objects.requireNonNull(coordinator.getLineState(LINE_0)).setLineSelected(true);
+        var lineState = coordinator.getLineState(LINE_0);
+        assertThat(lineState).isNotNull();
+
+        lineState.setLineSelected(true);
 
         assertThat(coordinator.canDeleteLine())
             .as("canDeleteLine when line is selected and song has two lines")

@@ -587,9 +587,7 @@ class SpringSpacerTest extends UnitTest {
     private static double[] solvedGapLengthsSs(SpringSolveResult result) {
         var gapLengthsSs = result.gapLengthsSs();
 
-        if (gapLengthsSs == null) {
-            throw new AssertionError("expected a solved result, but the solve was INFEASIBLE");
-        }
+        assertThat(gapLengthsSs).as("expected a solved result, but the solve was INFEASIBLE").isNotNull();
 
         return gapLengthsSs;
     }

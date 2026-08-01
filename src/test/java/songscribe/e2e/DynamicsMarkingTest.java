@@ -74,33 +74,27 @@ class DynamicsMarkingTest extends E2ETest {
     // -- Helper: require a DynamicAttachment or fail the test --
 
     /**
-     * Returns the DynamicAttachment on the given element, or throws AssertionError
-     * if none is present. Avoids {@code @SuppressWarnings("NullAway")} by using
-     * a null guard that throws.
+     * Returns the DynamicAttachment on the given element, failing the test
+     * if none is present.
      */
     private static DynamicAttachment requireAttachment(StaffElement element) {
         var attachment = element.findAttachment(DynamicAttachment.class);
 
-        if (attachment == null) {
-            throw new AssertionError("Expected DynamicAttachment on element but found none");
-        }
+        assertThat(attachment).as("Expected DynamicAttachment on element but found none").isNotNull();
 
         return attachment;
     }
 
     /**
      * Fetches the DynamicAttachment from a note at the given index (line 0) on the EDT,
-     * or throws AssertionError if absent.
+     * failing the test if absent.
      */
     private DynamicAttachment requireAttachmentOnNote(int noteIndex) {
         var attachment = GuiActionRunner.execute(() ->
             requireAttachment(song().getLine(0).getElement(noteIndex))
         );
 
-        //noinspection ConstantValue
-        if (attachment == null) {
-            throw new AssertionError("GuiActionRunner returned null unexpectedly");
-        }
+        assertThat(attachment).as("GuiActionRunner returned null unexpectedly").isNotNull();
 
         return attachment;
     }

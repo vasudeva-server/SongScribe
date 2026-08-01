@@ -50,11 +50,9 @@ class BeatUnitMappingTest extends UnitTest {
             .as("%s must have a forward-map entry", duration)
             .isNotNull();
 
-        if (entry != null) {
-            assertThat(BeatUnitMapping.forBeatUnit(entry.token(), entry.dotCount()))
-                .as("(%s, %d) must map back to %s", entry.token(), entry.dotCount(), duration)
-                .isEqualTo(duration);
-        }
+        assertThat(BeatUnitMapping.forBeatUnit(entry.token(), entry.dotCount()))
+            .as("(%s, %d) must map back to %s", entry.token(), entry.dotCount(), duration)
+            .isEqualTo(duration);
     }
 
     @Test
