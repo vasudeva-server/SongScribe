@@ -225,9 +225,7 @@ public class Line {
 
         applyChange(
             new ElementInsertion(this, index, element),
-            () -> {
-                elements.add(index, element);
-            }
+            () -> elements.add(index, element)
         );
     }
 
@@ -2046,7 +2044,7 @@ public class Line {
             span.setEndElement(elements.get(mergedEndIdx));
         }
 
-        int finalMergedAnchor = mergedAnchorIdx;
+        var finalMergedAnchor = mergedAnchorIdx;
         var finalMergedEnd = mergedEndIdx;
         var subsumedSpans = rangeElements.stream()
             .filter(re -> type.isInstance(re)

@@ -252,10 +252,10 @@ class LineComponentTest extends UnitTest {
          */
         @Test
         void testFractionalValueRoundsToNearestInt() {
-            double middleLineYSs = 5.1;
+            var middleLineYSs = 5.1;
             lc.setMiddleLineYSs(middleLineYSs);
             // round(8.0 * 5.1) = round(40.8) = 41
-            int expected = (int) Math.round(ScaleContext.ssToPx(middleLineYSs));
+            var expected = (int) Math.round(ScaleContext.ssToPx(middleLineYSs));
 
             assertThat(lc.getMiddleLineYPx())
                 .as("5.1 ss × 8 px/ss = 40.8 → rounded to 41")
@@ -362,11 +362,11 @@ class LineComponentTest extends UnitTest {
             // Sizing goes through the ViewScale seam, which scales by the fixed
             // DEFAULT_PIXELS_PER_STAFF_SPACE times the zoom factor — deliberately not the
             // mutable ScaleContext pps, so overriding that here would not affect the result.
-            final double pxPerSs = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+            final var pxPerSs = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
 
             // The line's own painted height, not a song-wide one: each line is now sized
             // to its own content.
-            final double paintLineHeightSs = 9.5;
+            final var paintLineHeightSs = 9.5;
 
             var mockScoreView = mock(ScoreView.class);
             var mockCoordinator = mock(SelectionCoordinator.class);
@@ -381,7 +381,7 @@ class LineComponentTest extends UnitTest {
             // left at its default: outside the running app that default is a page-derived
             // value the test does not control (and is 0.0 when no provider is installed), so
             // a derived expectation could match a width read from the wrong source entirely.
-            final double lineWidthSs = 42.5;
+            final var lineWidthSs = 42.5;
             var song = spy(new Song());
             doReturn(lineWidthSs).when(song).getLineWidthSs();
             lc.song = song;
@@ -421,7 +421,7 @@ class LineComponentTest extends UnitTest {
          */
         @Test
         void testOverflowingLineIsSizedToWhatItPaintsAndClippedToTheStaffWidth() {
-            final double pxPerSs = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
+            final var pxPerSs = ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE;
             var lineComponent = componentWithNotes(OVERFLOWING_NOTE_COUNT, SP_WELL_ABOVE_THE_STAFF);
 
             lineComponent.ensureLayout();
@@ -822,7 +822,7 @@ class LineComponentTest extends UnitTest {
             when(graceMock.mouseClicked(any(LineComponent.class), any(MouseEvent.class)))
                 .thenReturn(true);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
                 // scoreView is null — if not consumed this would throw via getScoreView()
                 lc.mouseClicked(event);
@@ -869,7 +869,7 @@ class LineComponentTest extends UnitTest {
             var pasteMock = mock(PasteModeManager.class);
             lc.setScoreView(mock(ScoreView.class));
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
                 lc.mousePressed(event);
@@ -892,7 +892,7 @@ class LineComponentTest extends UnitTest {
             var mockScoreView = mock(ScoreView.class);
             lc.setScoreView(mockScoreView);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
                 emm.when(EditModeManager::getPasteModeManager)
                     .thenReturn(mock(PasteModeManager.class));
@@ -950,7 +950,7 @@ class LineComponentTest extends UnitTest {
             var pasteMock = mock(PasteModeManager.class);
             when(pasteMock.isInProgress()).thenReturn(inProgress);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
 
@@ -992,7 +992,7 @@ class LineComponentTest extends UnitTest {
             // getGraceLineComponent() returns a different lc (or null) → not this lc
             when(graceMock.getGraceLineComponent()).thenReturn(null);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
 
                 assertThat(lc.gracePreviewLineFrame())
@@ -1008,8 +1008,8 @@ class LineComponentTest extends UnitTest {
          */
         @Test
         void testReturnsShiftedFrameWhenThisIsActiveGraceLineWithPreview() {
-            final double shiftSs = 3.5;
-            final int insertionIndex = 2;
+            final var shiftSs = 3.5;
+            final var insertionIndex = 2;
             // Only the shift is read here; the projected spring chain the fit gate would
             // solve is irrelevant to the preview frame, so an empty chain stands in for it.
             var preview = new InsertionResult(0.0, shiftSs, 0.0, List.of(), 0.0, 0.0);
@@ -1020,7 +1020,7 @@ class LineComponentTest extends UnitTest {
             // getHostInsertionIndex() returns graceNoteIndex + 1; mock directly
             when(graceMock.getHostInsertionIndex()).thenReturn(insertionIndex);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
 
                 var frame = lc.gracePreviewLineFrame();
@@ -1048,7 +1048,7 @@ class LineComponentTest extends UnitTest {
             when(graceMock.getGraceLineComponent()).thenReturn(lc);
             when(graceMock.getHostInsertionPreview()).thenReturn(null);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
 
                 assertThat(lc.gracePreviewLineFrame())
@@ -1111,9 +1111,10 @@ class LineComponentTest extends UnitTest {
             var graceMock = mock(GraceModeManager.class);
             var pasteMock = mock(PasteModeManager.class);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                 MockedStatic<ElementHitTest> hitTest = mockStatic(ElementHitTest.class);
-                 MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var hitTest = mockStatic(ElementHitTest.class);
+                var lyricEditor = mockStatic(LyricEditor.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
@@ -1180,9 +1181,10 @@ class LineComponentTest extends UnitTest {
             var graceMock = mock(GraceModeManager.class);
             var pasteMock = mock(PasteModeManager.class);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                 MockedStatic<ElementHitTest> hitTest = mockStatic(ElementHitTest.class);
-                 MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var hitTest = mockStatic(ElementHitTest.class);
+                var lyricEditor = mockStatic(LyricEditor.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
@@ -1259,8 +1261,9 @@ class LineComponentTest extends UnitTest {
             var graceMock = mock(GraceModeManager.class);
             var pasteMock = mock(PasteModeManager.class);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                 MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var lyricEditor = mockStatic(LyricEditor.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
@@ -1373,9 +1376,10 @@ class LineComponentTest extends UnitTest {
             var graceMock = mock(GraceModeManager.class);
             var pasteMock = mock(PasteModeManager.class);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                 MockedStatic<PreviewElementManager> preview = mockStatic(PreviewElementManager.class);
-                 MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class)) {
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var preview = mockStatic(PreviewElementManager.class);
+                var playback = mockStatic(PlaybackController.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
@@ -1472,8 +1476,9 @@ class LineComponentTest extends UnitTest {
             var graceMock = mock(GraceModeManager.class);
             var pasteMock = mock(PasteModeManager.class);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                 MockedStatic<PreviewElementManager> preview = mockStatic(PreviewElementManager.class)) {
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var preview = mockStatic(PreviewElementManager.class)) {
 
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);

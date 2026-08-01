@@ -405,7 +405,7 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
             // Beaming across a group of quavers.
             line -> {
                 var beamNotes = addNotes(line, ElementType.QUAVER, 4);
-                line.addBeaming(new Beam(beamNotes.get(0), beamNotes.get(beamNotes.size() - 1)));
+                line.addBeaming(new Beam(beamNotes.getFirst(), beamNotes.getLast()));
             },
             // A tie chain across three crotchets, stored as two adjacent spans.
             line -> {
@@ -416,13 +416,13 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
             // A triplet with a vertical offset and a quintuplet.
             line -> {
                 var triplet = addNotes(line, ElementType.QUAVER, TRIPLET);
-                var tupletSpan = new Tuplet(triplet.get(0), triplet.get(TRIPLET - 1), TRIPLET,
+                var tupletSpan = new Tuplet(triplet.getFirst(), triplet.get(TRIPLET - 1), TRIPLET,
                     TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
                 tupletSpan.setVerticalPositionSs(TUPLET_VERTICAL_SS);
                 line.addTuplet(tupletSpan);
 
                 var quintuplet = addNotes(line, ElementType.SEMIQUAVER, QUINTUPLET);
-                line.addTuplet(new Tuplet(quintuplet.get(0), quintuplet.get(QUINTUPLET - 1), QUINTUPLET,
+                line.addTuplet(new Tuplet(quintuplet.getFirst(), quintuplet.get(QUINTUPLET - 1), QUINTUPLET,
                     QUINTUPLET_NORMAL_NOTES, ElementType.SEMIQUAVER, NO_DOTS));
             },
             // Crescendo and diminuendo with user offsets.
@@ -696,7 +696,7 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
     private static List<StaffElement> addNotes(Line line, ElementType type, int count) {
         var notes = new ArrayList<StaffElement>();
 
-        for (int i = 0; i < count; i++) {
+        for (var i = 0; i < count; i++) {
             var note = type.newInstance();
             line.addElement(note);
             notes.add(note);

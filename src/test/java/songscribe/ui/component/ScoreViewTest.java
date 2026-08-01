@@ -1121,7 +1121,7 @@ class ScoreViewTest extends UnitTest {
         void testOpensOnTheSingleSelectedNote() {
             selectSingle(INDEX_NORMAL);
 
-            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+            try (var lyricEditor = mockStatic(LyricEditor.class)) {
                 scoreView.editLyricOnSelection();
 
                 lyricEditor.verify(
@@ -1134,7 +1134,7 @@ class ScoreViewTest extends UnitTest {
             // The host carries no lyric of its own; the pair's lyric lives on the grace note.
             selectSingle(INDEX_HOST);
 
-            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+            try (var lyricEditor = mockStatic(LyricEditor.class)) {
                 scoreView.editLyricOnSelection();
 
                 lyricEditor.verify(
@@ -1147,7 +1147,7 @@ class ScoreViewTest extends UnitTest {
             // A rest can carry a lyric, matching what the menu command allows.
             selectSingle(INDEX_REST);
 
-            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+            try (var lyricEditor = mockStatic(LyricEditor.class)) {
                 scoreView.editLyricOnSelection();
 
                 lyricEditor.verify(() -> LyricEditor.deselectAndOpenOn(scoreView, line, INDEX_REST));
@@ -1157,7 +1157,7 @@ class ScoreViewTest extends UnitTest {
         @Test
         void testDoesNothingWithNoSelection() {
             // Without the null-selection guard this would dereference a null selection.
-            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+            try (var lyricEditor = mockStatic(LyricEditor.class)) {
                 scoreView.editLyricOnSelection();
 
                 lyricEditor.verifyNoInteractions();
@@ -1170,7 +1170,7 @@ class ScoreViewTest extends UnitTest {
             // must not silently pick one note out of a range the user never singled out.
             selectionState.setSelectionRange(INDEX_NORMAL, INDEX_HOST);
 
-            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+            try (var lyricEditor = mockStatic(LyricEditor.class)) {
                 scoreView.editLyricOnSelection();
 
                 lyricEditor.verifyNoInteractions();
@@ -1183,7 +1183,7 @@ class ScoreViewTest extends UnitTest {
             // so this is the multi-element guard seen through the other gesture that hits it.
             selectionState.setLineSelected(true);
 
-            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+            try (var lyricEditor = mockStatic(LyricEditor.class)) {
                 scoreView.editLyricOnSelection();
 
                 lyricEditor.verifyNoInteractions();
@@ -1198,7 +1198,7 @@ class ScoreViewTest extends UnitTest {
                 () -> line.addElement(ElementType.SINGLE_BARLINE.newInstance()));
             selectSingle(barlineIndex);
 
-            try (MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+            try (var lyricEditor = mockStatic(LyricEditor.class)) {
                 scoreView.editLyricOnSelection();
 
                 lyricEditor.verifyNoInteractions();
@@ -1209,8 +1209,9 @@ class ScoreViewTest extends UnitTest {
         void testDoesNothingDuringPlayback() {
             selectSingle(INDEX_NORMAL);
 
-            try (MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class);
-                 MockedStatic<LyricEditor> lyricEditor = mockStatic(LyricEditor.class)) {
+            try (
+                var playback = mockStatic(PlaybackController.class);
+                var lyricEditor = mockStatic(LyricEditor.class)) {
 
                 playback.when(PlaybackController::isPlaying).thenReturn(true);
 

@@ -304,9 +304,7 @@ class SongLineManagementTest extends UnitTest {
         @Test
         void testRemoveLineReducesLineCount() {
             var song = new Song();
-            song.withoutMutationTracking(() -> {
-                song.addLine(new Line(song));
-            });
+            song.withoutMutationTracking(() -> song.addLine(new Line(song)));
 
             assertThat(song.lineCount()).isEqualTo(2);
             song.removeLine(1);
@@ -317,9 +315,7 @@ class SongLineManagementTest extends UnitTest {
         void testRemoveLastLine_TransfersTerminalToPreviousLine() {
             // When the last line is removed, the terminal must migrate to the new last line.
             var song = new Song();
-            song.withoutMutationTracking(() -> {
-                song.addLine(new Line(song));
-            });
+            song.withoutMutationTracking(() -> song.addLine(new Line(song)));
 
             // Line 0 lost its terminal to line 1 when line 1 was added.
             // Remove line 1 — terminal must come back to line 0.
@@ -357,9 +353,7 @@ class SongLineManagementTest extends UnitTest {
             // Set up: replace terminal with REPEAT_RIGHT, then add a second line.
             song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
-            song.withoutMutationTracking(() -> {
-                song.addLine(new Line(song));
-            });
+            song.withoutMutationTracking(() -> song.addLine(new Line(song)));
 
             // Remove the second line — the outgoingTerminalType from line 1 is
             // REPEAT_RIGHT (if it was carried there), or line 0 ends up with it.
@@ -420,9 +414,7 @@ class SongLineManagementTest extends UnitTest {
             // so the existing last line keeps its terminal.
             var song = new Song();
             // Add a second line via mutation-free setup: line 0 keeps its terminal.
-            song.withoutMutationTracking(() -> {
-                song.addLine(new Line(song));
-            });
+            song.withoutMutationTracking(() -> song.addLine(new Line(song)));
             // Lines: [line0-with-terminal, line1-empty]. Insert a new line at index 0.
             song.addLine(0, new Line(song));
 
@@ -455,9 +447,7 @@ class SongLineManagementTest extends UnitTest {
 
             // Build new last line ending in REPEAT_RIGHT.
             var newLine = new Line(song);
-            song.withoutMutationTracking(() -> {
-                newLine.addElement(ElementType.REPEAT_RIGHT.newInstance());
-            });
+            song.withoutMutationTracking(() -> newLine.addElement(ElementType.REPEAT_RIGHT.newInstance()));
 
             // addLine: outgoingTerminalType(line0, newLine) → null (line0 ends in CROTCHET).
             // terminalTypeToInstall → REPEAT_RIGHT (from the new line's last element).

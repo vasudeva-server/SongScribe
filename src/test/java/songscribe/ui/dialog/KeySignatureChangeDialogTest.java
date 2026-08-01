@@ -170,7 +170,7 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
         when(song.getLine(SELECTED_LINE_INDEX)).thenReturn(line);
         when(song.indexOfLine(line)).thenReturn(INDEX_OF_LINE);
         when(song.isMutationTrackingSuspended()).thenReturn(true);
-        doAnswer(answerVoid((Runnable body) -> body.run()))
+        doAnswer(answerVoid(Runnable::run))
             .when(song).withModification(any(Runnable.class));
 
         var score = mockEnv().score();

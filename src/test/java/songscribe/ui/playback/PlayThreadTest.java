@@ -93,9 +93,9 @@ class PlayThreadTest extends UnitTest {
         void testWhenPlayNoteOnTrueSendsNoteOnThenNoteOff() throws InterruptedException {
             var mockReceiver = mock(Receiver.class);
             MidiController.midiReceiver = mockReceiver;
-            final int pitch = 60;
+            final var pitch = 60;
             // setupInstrument sends 3 messages; then NOTE_ON; then NOTE_OFF = 5 total
-            final int expectedMessageCount = 5;
+            final var expectedMessageCount = 5;
 
             runAndJoin(new PlayThread(pitch, true));
 
@@ -118,9 +118,9 @@ class PlayThreadTest extends UnitTest {
         void testDefaultConstructorSetsPlayNoteOnTrue() throws InterruptedException {
             var mockReceiver = mock(Receiver.class);
             MidiController.midiReceiver = mockReceiver;
-            final int pitch = 60;
+            final var pitch = 60;
             // setupInstrument sends 3 messages; then NOTE_ON; then NOTE_OFF = 5 total
-            final int expectedMessageCount = 5;
+            final var expectedMessageCount = 5;
 
             // The one-arg constructor defaults playNoteOn to true
             runAndJoin(new PlayThread(pitch));
@@ -136,7 +136,7 @@ class PlayThreadTest extends UnitTest {
         void testWhenPlayNoteOnFalseSkipsNoteOnButSendsNoteOff() throws InterruptedException {
             var mockReceiver = mock(Receiver.class);
             MidiController.midiReceiver = mockReceiver;
-            final int pitch = 64;
+            final var pitch = 64;
 
             runAndJoin(new PlayThread(pitch, false));
 
@@ -164,8 +164,8 @@ class PlayThreadTest extends UnitTest {
 
         @Test
         void testSendsBankSelectProgramChangeAndNoteOn() throws Exception {
-            final int pitch = 69;
-            final int instrument = 5;
+            final var pitch = 69;
+            final var instrument = 5;
             PlaybackController.setInstrument(instrument);
             var mockReceiver = mock(Receiver.class);
             MidiController.midiReceiver = mockReceiver;
@@ -178,7 +178,7 @@ class PlayThreadTest extends UnitTest {
             assertThat(messages).hasSize(4);
 
             // Bank MSB: CC 0 on channel 0 with value 0
-            var bankMsb = messages.get(0);
+            var bankMsb = messages.getFirst();
             assertThat(bankMsb.getCommand()).isEqualTo(ShortMessage.CONTROL_CHANGE);
             assertThat(bankMsb.getChannel()).isEqualTo(MIDI_CHANNEL);
             assertThat(bankMsb.getData1()).isEqualTo(BANK_MSB_CONTROLLER);
@@ -219,7 +219,7 @@ class PlayThreadTest extends UnitTest {
 
         @Test
         void testSendsNoteOffWithCorrectPitch() throws Exception {
-            final int pitch = 72;
+            final var pitch = 72;
             var mockReceiver = mock(Receiver.class);
             MidiController.midiReceiver = mockReceiver;
 

@@ -82,18 +82,10 @@ class TupletRendererTest extends UnitTest {
         var placedShapes = new ArrayList<Shape>();
 
         when(g2.getTransform()).thenAnswer(invocation -> new AffineTransform(transform));
-        doAnswer(answerVoid((Double tx, Double ty) -> {
-            transform.translate(tx, ty);
-        })).when(g2).translate(anyDouble(), anyDouble());
-        doAnswer(answerVoid((Double theta) -> {
-            transform.rotate(theta);
-        })).when(g2).rotate(anyDouble());
-        doAnswer(answerVoid((AffineTransform newTransform) -> {
-            transform.setTransform(newTransform);
-        })).when(g2).setTransform(any(AffineTransform.class));
-        doAnswer(answerVoid((Shape local) -> {
-            placedShapes.add(transform.createTransformedShape(local));
-        })).when(g2).draw(any(Shape.class));
+        doAnswer(answerVoid(transform::translate)).when(g2).translate(anyDouble(), anyDouble());
+        doAnswer(answerVoid((Double theta) -> transform.rotate(theta))).when(g2).rotate(anyDouble());
+        doAnswer(answerVoid((AffineTransform newTransform) -> transform.setTransform(newTransform))).when(g2).setTransform(any(AffineTransform.class));
+        doAnswer(answerVoid((Shape local) -> placedShapes.add(transform.createTransformedShape(local)))).when(g2).draw(any(Shape.class));
 
         return new RecordingG2(g2, placedShapes);
     }

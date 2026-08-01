@@ -867,9 +867,7 @@ class SongScribeTest extends UnitTest {
                 // Simulate being called from a background thread (not the EDT).
                 swingMock.when(SwingUtilities::isEventDispatchThread).thenReturn(false);
                 swingMock.when(() -> SwingUtilities.invokeLater(any(Runnable.class)))
-                    .thenAnswer(answerVoid((Runnable runnable) -> {
-                        capturedRunnable.set(runnable);
-                    }));
+                    .thenAnswer(answerVoid(capturedRunnable::set));
 
                 handler.uncaughtException(Thread.currentThread(), new RuntimeException("background error"));
             }

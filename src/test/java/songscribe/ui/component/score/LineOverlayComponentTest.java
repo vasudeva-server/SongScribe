@@ -102,8 +102,8 @@ class LineOverlayComponentTest extends UnitTest {
      * reflects a real, controllable zoom.
      */
     private LineComponent attachedLine(int originX, int originY, int zoomPercent) {
-        final int lineWidthPx = 500;
-        final int lineHeightPx = 100;
+        final var lineWidthPx = 500;
+        final var lineHeightPx = 100;
 
         var viewScale = new ViewScale();
         viewScale.setZoomPercent(zoomPercent);
@@ -172,16 +172,16 @@ class LineOverlayComponentTest extends UnitTest {
          */
         @Test
         void testBoundsConvertToExpectedViewPixelRectangleAtNonDefaultZoom() {
-            final int zoomPercent = 250;
-            final int originX = 101;
-            final int originY = 53;
-            final double minXSs = 0.037;
-            final double minYSs = -1.263;
-            final double maxXSs = 2.481;
-            final double maxYSs = 1.777;
+            final var zoomPercent = 250;
+            final var originX = 101;
+            final var originY = 53;
+            final var minXSs = 0.037;
+            final var minYSs = -1.263;
+            final var maxXSs = 2.481;
+            final var maxYSs = 1.777;
             // The 1-device-pixel pad LineOverlayComponent applies on every side, documented on
             // its INK_PAD_PX field. Exempt from the "no magic numbers" rule (value 1).
-            final int inkPadPx = 1;
+            final var inkPadPx = 1;
 
             var line = attachedLine(originX, originY, zoomPercent);
             overlay.inkBoundsSs = new Rectangle2D.Double(minXSs, minYSs, maxXSs - minXSs, maxYSs - minYSs);
@@ -222,9 +222,9 @@ class LineOverlayComponentTest extends UnitTest {
 
         @Test
         void testPaintComponentAppliesHintsThenComposesTranslateAndScale() {
-            final int zoomPercent = 200;
-            final int originX = 40;
-            final int originY = 30;
+            final var zoomPercent = 200;
+            final var originX = 40;
+            final var originY = 30;
 
             var line = attachedLine(originX, originY, zoomPercent);
             overlay.inkBoundsSs = new Rectangle2D.Double(-1, -1, 2, 2);

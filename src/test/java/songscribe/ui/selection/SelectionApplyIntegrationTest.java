@@ -116,12 +116,8 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         var songMock = mock(Song.class);
         when(songMock.isModifying()).thenReturn(true);
         when(songMock.getLineWidthSs()).thenReturn(UNCONSTRAINED_LINE_WIDTH_SS);
-        doAnswer(answerVoid((Runnable runnable) -> {
-            runnable.run();
-        })).when(songMock).withModification(any());
-        doAnswer(answerVoid((Mutation mutation, Runnable mutator) -> {
-            mutator.run();
-        })).when(songMock).applyChange(any(), any());
+        doAnswer(answerVoid(Runnable::run)).when(songMock).withModification(any());
+        doAnswer(answerVoid((Mutation mutation, Runnable mutator) -> mutator.run())).when(songMock).applyChange(any(), any());
         return songMock;
     }
 

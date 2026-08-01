@@ -96,9 +96,7 @@ class AccidentalMaterializerTest extends UnitTest {
         var song = line.getSong();
         when(song.isMutationTrackingSuspended()).thenReturn(false);
         when(song.isModifying()).thenReturn(true);
-        doAnswer(answerVoid((Mutation mutation, Runnable mutator) -> {
-            mutator.run();
-        })).when(song).applyChange(any(Mutation.class), any(Runnable.class));
+        doAnswer(answerVoid((Mutation mutation, Runnable mutator) -> mutator.run())).when(song).applyChange(any(Mutation.class), any(Runnable.class));
         return song;
     }
 

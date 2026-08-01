@@ -156,9 +156,7 @@ class SongLoadingTest extends UnitTest {
         assertThat(song.lineCount()).isEqualTo(2);
 
         var newLine = new Line(song);
-        song.withoutMutationTracking(() -> {
-            newLine.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE));
-        });
+        song.withoutMutationTracking(() -> newLine.addElement(Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE)));
 
         var data = new SongData(
             null,

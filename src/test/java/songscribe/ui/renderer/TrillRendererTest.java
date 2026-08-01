@@ -74,7 +74,7 @@ class TrillRendererTest extends UnitTest {
     void testDrawWavyLineWithLengthEqualToSegmentWidthUsesOneSegment() {
         // length = 1 × WIGGLE_SEGMENT_WIDTH_SS → segments = round(1.0) = 1
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        double length = TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS;
+        var length = TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS;
 
         RENDERER.drawWavyLine(g2Spy, 0.0, 0.0, length, Color.BLACK);
 
@@ -85,8 +85,8 @@ class TrillRendererTest extends UnitTest {
     void testDrawWavyLineWithLengthForThreeSegmentsDrawsThreeTimes() {
         // length = 3 × WIGGLE_SEGMENT_WIDTH_SS → segments = 3
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        int expectedSegments = 3;
-        double length = expectedSegments * TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS;
+        var expectedSegments = 3;
+        var length = expectedSegments * TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS;
 
         RENDERER.drawWavyLine(g2Spy, 0.0, 0.0, length, Color.BLACK);
 
@@ -103,7 +103,7 @@ class TrillRendererTest extends UnitTest {
         // A very short length (less than WIGGLE_SEGMENT_WIDTH_SS but > 0)
         // must still draw at least 1 segment due to Math.max(1, ...).
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        double tinyLength = TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS * 0.1;
+        var tinyLength = TrillRenderer.WIGGLE_SEGMENT_WIDTH_SS * 0.1;
 
         RENDERER.drawWavyLine(g2Spy, 0.0, 0.0, tinyLength, Color.BLACK);
 

@@ -383,7 +383,7 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     // TU6 — key signature round-trips
     @Test
     void testKeySignatureWithSharpsRoundTrips() throws Exception {
-        final int sharpCount = 3;
+        final var sharpCount = 3;
         var song = buildSong(line -> line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance()));
         song.withoutMutationTracking(() -> {
             song.setDefaultKeyType(KeyType.SHARPS);
@@ -396,7 +396,7 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testKeySignatureWithFlatsRoundTrips() throws Exception {
-        final int flatCount = 2;
+        final var flatCount = 2;
         var song = buildSong(line -> line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance()));
         song.withoutMutationTracking(() -> {
             song.setDefaultKeyType(KeyType.FLATS);

@@ -85,7 +85,7 @@ class TextFocusDelegateTest extends UnitTest {
      * The event is a KEY_PRESSED so {@code getKeyCode()} returns VK_TAB.
      */
     private static KeyEvent tabKeyEvent(Component source, boolean shiftDown) {
-        int modifiers = shiftDown ? KeyEvent.SHIFT_DOWN_MASK : 0;
+        var modifiers = shiftDown ? KeyEvent.SHIFT_DOWN_MASK : 0;
         return new KeyEvent(source, KeyEvent.KEY_PRESSED, 0L, modifiers, KeyEvent.VK_TAB, KeyEvent.CHAR_UNDEFINED);
     }
 

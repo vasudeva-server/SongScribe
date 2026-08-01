@@ -294,8 +294,8 @@ class KeySignatureRendererTest extends UnitTest {
     void testRenderKeyChangeSameTypeAddingAccidentalsDrawsOnlyNewKey() {
         // line: 2 sharps → nextLine: 4 sharps (adding)
         // Should draw 4 accidentals (the full new key, no naturals)
-        final int currentCount = 2;
-        final int newCount = 4;
+        final var currentCount = 2;
+        final var newCount = 4;
 
         var g2spy = spy(realG2());
         var invariants = RenderContextTestHelper.newContext(new Song()).build();
@@ -319,9 +319,9 @@ class KeySignatureRendererTest extends UnitTest {
     void testRenderKeyChangeSameTypeRemovingAccidentalsDrawsNewKeyAndNaturals() {
         // line: 4 sharps → nextLine: 2 sharps (removing 2)
         // Should draw 2 sharps + 2 naturals = 4 total drawString calls
-        final int currentCount = 4;
-        final int newCount = 2;
-        final int removedCount = currentCount - newCount;
+        final var currentCount = 4;
+        final var newCount = 2;
+        final var removedCount = currentCount - newCount;
 
         var g2spy = spy(realG2());
         var invariants = RenderContextTestHelper.newContext(new Song()).build();
@@ -348,8 +348,8 @@ class KeySignatureRendererTest extends UnitTest {
     void testRenderKeyChangeDifferentTypeDrawsNaturalsThenNewKey() {
         // line: 3 sharps → nextLine: 2 flats (type change)
         // Should draw 3 naturals + 2 flats = 5 total drawString calls
-        final int currentCount = 3;
-        final int newCount = 2;
+        final var currentCount = 3;
+        final var newCount = 2;
 
         var g2spy = spy(realG2());
         var invariants = RenderContextTestHelper.newContext(new Song()).build();

@@ -71,9 +71,7 @@ class NoteRendererTest extends UnitTest {
         var g2 = mock(Graphics2D.class);
         when(g2.getTransform()).thenReturn(new AffineTransform());
         var filledShapes = new ArrayList<Shape>();
-        doAnswer(answerVoid((Shape shape) -> {
-            filledShapes.add(shape);
-        })).when(g2).fill(any(Shape.class));
+        doAnswer(answerVoid((Shape shape) -> filledShapes.add(shape))).when(g2).fill(any(Shape.class));
         doNothing().when(g2).translate(anyDouble(), anyDouble());
 
         return new RecordingG2(g2, filledShapes);

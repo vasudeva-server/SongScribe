@@ -419,6 +419,7 @@ public final class UndoController {
         // fallback label from the step's dominant mutation.
         var opName = step.opName();
 
+        //noinspection ReplaceNullCheck
         if (opName != null) {
             return Strings.get(labeledKey, opName);
         }

@@ -116,7 +116,7 @@ class EditModeManagerTest extends UnitTest {
         void testInstanceThrowsWhenNotInitialized() {
             // INSTANCE is null (reset in @AfterEach); any static method that calls instance()
             // must throw AssertionError via the RuntimeError exit handler.
-            assertThatThrownBy(() -> EditModeManager.getGraceModeManager())
+            assertThatThrownBy(EditModeManager::getGraceModeManager)
                 .isInstanceOf(AssertionError.class);
         }
 
@@ -279,7 +279,7 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.decorateElement(element);
             var articulations = element.getArticulations();
             assertThat(articulations).hasSize(1);
-            assertThat(articulations.get(0).getType()).isEqualTo(ArticulationType.STACCATO);
+            assertThat(articulations.getFirst().getType()).isEqualTo(ArticulationType.STACCATO);
         }
 
         /**
@@ -305,7 +305,7 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.decorateElement(element);
             var articulations = element.getArticulations();
             assertThat(articulations).hasSize(1);
-            assertThat(articulations.get(0).getType()).isEqualTo(ArticulationType.ACCENT);
+            assertThat(articulations.getFirst().getType()).isEqualTo(ArticulationType.ACCENT);
         }
 
         /**
@@ -492,13 +492,14 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.setPlayInsertedNote(true);
             EditModeManager.setPreviewElement(ElementType.CROTCHET.newInstance());
             var line = lineWith(ElementType.CROTCHET);
-            try (MockedConstruction<PlayThread> playThreadConstruction =
+            try (
+                var playThreadConstruction =
                      mockConstruction(PlayThread.class)) {
                 EditModeManager.previewElementDidChange(line, 0);
                 assertThat(playThreadConstruction.constructed())
                     .as("PlayThread should be constructed when playInsertedNote=true and element is a note")
                     .hasSize(1);
-                verify(playThreadConstruction.constructed().get(0)).start();
+                verify(playThreadConstruction.constructed().getFirst()).start();
             }
         }
 
@@ -507,7 +508,8 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.setPlayInsertedNote(false);
             EditModeManager.setPreviewElement(ElementType.CROTCHET.newInstance());
             var line = lineWith(ElementType.CROTCHET);
-            try (MockedConstruction<PlayThread> playThreadConstruction =
+            try (
+                var playThreadConstruction =
                      mockConstruction(PlayThread.class)) {
                 EditModeManager.previewElementDidChange(line, 0);
                 assertThat(playThreadConstruction.constructed())
@@ -522,7 +524,8 @@ class EditModeManagerTest extends UnitTest {
             EditModeManager.setPlayInsertedNote(true);
             EditModeManager.setPreviewElement(ElementType.CROTCHET_REST.newInstance());
             var line = lineWith(ElementType.CROTCHET_REST);
-            try (MockedConstruction<PlayThread> playThreadConstruction =
+            try (
+                var playThreadConstruction =
                      mockConstruction(PlayThread.class)) {
                 EditModeManager.previewElementDidChange(line, 0);
                 assertThat(playThreadConstruction.constructed())

@@ -147,7 +147,7 @@ class MetronomeRendererTest extends UnitTest {
         var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
         final var startXSs = 2.0;
         final var ySs = 0.0;
-        double dotAdvance = MetronomeAttachment.dotAdvanceWidthSs();
+        var dotAdvance = MetronomeAttachment.dotAdvanceWidthSs();
 
         var undottedEnd = RENDERER.drawDurationEquals(g2, Duration.CROTCHET, startXSs, ySs, attrFont, Color.BLACK);
         var dottedEnd = RENDERER.drawDurationEquals(g2, Duration.CROTCHET_DOTTED, startXSs, ySs, attrFont, Color.BLACK);

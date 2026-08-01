@@ -1786,9 +1786,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var toolkitMock = mock(Toolkit.class);
             AWTEventListener[] capturedListener = {null};
-            doAnswer(answerVoid((AWTEventListener listener, Long eventMask) -> {
-                capturedListener[0] = listener;
-            })).when(toolkitMock).addAWTEventListener(any(AWTEventListener.class), anyLong());
+            doAnswer(answerVoid((AWTEventListener listener, Long eventMask) -> capturedListener[0] = listener)).when(toolkitMock).addAWTEventListener(any(AWTEventListener.class), anyLong());
 
             try (var toolkitStatic = mockStatic(Toolkit.class)) {
                 toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
@@ -1825,9 +1823,7 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var toolkitMock = mock(Toolkit.class);
             AWTEventListener[] capturedListener = {null};
-            doAnswer(answerVoid((AWTEventListener listener, Long eventMask) -> {
-                capturedListener[0] = listener;
-            })).when(toolkitMock).addAWTEventListener(any(AWTEventListener.class), anyLong());
+            doAnswer(answerVoid((AWTEventListener listener, Long eventMask) -> capturedListener[0] = listener)).when(toolkitMock).addAWTEventListener(any(AWTEventListener.class), anyLong());
 
             try (var toolkitStatic = mockStatic(Toolkit.class)) {
                 toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);

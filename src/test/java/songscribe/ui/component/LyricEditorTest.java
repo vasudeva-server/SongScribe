@@ -271,9 +271,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
             // The real alert is modal and steals focus, firing focusLost, which re-enters the commit
             // path while the alert is up. Simulate that re-entry and assert only one alert is shown.
             dialogs.when(() -> OptionDialogs.showErrorMessage(any(), any(), any()))
-                .thenAnswer(answerVoid((Object parent, String titleKey, String messageKey) -> {
-                    editor.commit();
-                }));
+                .thenAnswer(answerVoid((Object parent, String titleKey, String messageKey) -> editor.commit()));
 
             editor.commit();
 

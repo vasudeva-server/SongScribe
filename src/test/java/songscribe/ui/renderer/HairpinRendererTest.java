@@ -363,9 +363,7 @@ class HairpinRendererTest extends UnitTest {
 
         var g2 = spy(RenderContextTestHelper.realG2());
         var drawColors = new ArrayList<Color>();
-        doAnswer(answerVoid((Shape shape) -> {
-            drawColors.add(g2.getColor());
-        })).when(g2).draw(any(Shape.class));
+        doAnswer(answerVoid((Shape shape) -> drawColors.add(g2.getColor()))).when(g2).draw(any(Shape.class));
 
         HairpinRenderer.getInstance().renderHairpinsFromLine(g2, builder.build());
 

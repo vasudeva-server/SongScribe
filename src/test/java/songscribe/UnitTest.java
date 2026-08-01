@@ -256,7 +256,7 @@ public abstract class UnitTest {
         // An unstubbed mock reports verse 0, which no lyric ever carries, so every lyric on
         // every fixture element would read as absent to layout and to the editor.
         when(songMock.getActiveVerse()).thenReturn(Lyric.FIRST_VERSE);
-        doAnswer(answerVoid((Runnable body) -> body.run()))
+        doAnswer(answerVoid(Runnable::run))
             .when(songMock).withModification(any(Runnable.class));
         doAnswer(answerVoid((String label, Runnable body) -> body.run()))
             .when(songMock).withModification(any(String.class), any(Runnable.class));

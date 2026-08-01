@@ -514,9 +514,7 @@ class StaffElementIOTest extends UnitTest {
                     + "<glissandox2translate>3.0</glissandox2translate>"
             );
 
-            assertThatCode(() -> {
-                assertThat(parseXml(xml).getLine(0).getElement(0).hasGlissando()).isTrue();
-            }).doesNotThrowAnyException();
+            assertThatCode(() -> assertThat(parseXml(xml).getLine(0).getElement(0).hasGlissando()).isTrue()).doesNotThrowAnyException();
         }
 
         @Test

@@ -74,7 +74,7 @@ class ScoreComponentTest extends UnitTest {
          */
         @Test
         void testExplicitContentXReturnedDirectly() {
-            final float explicitX = 42.5f;
+            final var explicitX = 42.5f;
             component.setContentX(explicitX);
             var g2 = createGraphics();
 
@@ -158,7 +158,7 @@ class ScoreComponentTest extends UnitTest {
          */
         @Test
         void testUniformMarginSetsAllSides() {
-            final int margin = 10;
+            final var margin = 10;
             component.setMargin(margin);
 
             assertThat(component.getMarginTop())
@@ -181,10 +181,10 @@ class ScoreComponentTest extends UnitTest {
          */
         @Test
         void testCssStyleMarginSetsEachSideIndependently() {
-            final int top = 1;
-            final int right = 2;
-            final int bottom = 3;
-            final int left = 4;
+            final var top = 1;
+            final var right = 2;
+            final var bottom = 3;
+            final var left = 4;
             component.setMargin(top, right, bottom, left);
 
             assertThat(component.getMarginTop())

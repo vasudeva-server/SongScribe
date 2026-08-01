@@ -1086,7 +1086,7 @@ class GraceModeManagerTest extends UnitTest {
 
             // detachedLine's song mock leaves withoutMutationTracking a no-op by default;
             // stub it to run its body so abort()'s untracked removal actually executes.
-            doAnswer(answerVoid((Runnable body) -> body.run()))
+            doAnswer(answerVoid(Runnable::run))
                 .when(line.getSong()).withoutMutationTracking(any(Runnable.class));
 
             manager.setState(GraceModeManager.State.GRACE_NOTE);
@@ -2025,9 +2025,7 @@ class GraceModeManagerTest extends UnitTest {
             // The host goes in through the real insert path, which this fixture mocks out.
             // Stand in for it so the indices move exactly as they do in production.
             previewMock.when(() -> PreviewElementManager.handleClick(lineComponent, true))
-                .thenAnswer(answerVoid((LineComponent lc, Boolean forceInsert) -> {
-                    line.addElement(NEW_HOST_INDEX, hostPreview);
-                }));
+                .thenAnswer(answerVoid((LineComponent lc, Boolean forceInsert) -> line.addElement(NEW_HOST_INDEX, hostPreview)));
 
             var e = mouseEvent(
                 lineComponent, MouseEvent.MOUSE_CLICKED, RELEASE_X, MOUSE_DOWN_Y, MouseEvent.BUTTON1);
@@ -2119,7 +2117,7 @@ class GraceModeManagerTest extends UnitTest {
          */
         private Song suspendableSongMock() {
             var song = minimalSongMock();
-            doAnswer(answerVoid((Runnable body) -> body.run()))
+            doAnswer(answerVoid(Runnable::run))
                 .when(song).withoutMutationTracking(any(Runnable.class));
             return song;
         }

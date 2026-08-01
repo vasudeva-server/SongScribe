@@ -60,7 +60,7 @@ class KeySignatureDisplayTest extends UnitTest {
         var iter = attributed.getIterator();
         var sb = new StringBuilder();
 
-        for (char c = iter.first(); c != CharacterIterator.DONE; c = iter.next()) {
+        for (var c = iter.first(); c != CharacterIterator.DONE; c = iter.next()) {
             sb.append(c);
         }
 
@@ -228,7 +228,7 @@ class KeySignatureDisplayTest extends UnitTest {
     @Test
     void testSuffixForSharpsCountContainsCountAndWord() {
         // Verify the choice format for counts 3–7 (counts 1 and 2 are covered by the preceding tests)
-        for (int count = 3; count <= SHARP_TONICS.length - 1; count++) {
+        for (var count = 3; count <= SHARP_TONICS.length - 1; count++) {
             var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.SHARPS, count));
             assertThat(result)
                 .as("count=" + count)
@@ -256,7 +256,7 @@ class KeySignatureDisplayTest extends UnitTest {
     @Test
     void testSuffixForFlatsCountContainsCountAndWord() {
         // Verify the choice format for counts 3–7
-        for (int count = 3; count <= FLAT_TONICS.length - 1; count++) {
+        for (var count = 3; count <= FLAT_TONICS.length - 1; count++) {
             var result = textOf(KeySignatureDisplay.getDisplayName(KeyType.FLATS, count));
             assertThat(result)
                 .as("count=" + count)
@@ -320,7 +320,7 @@ class KeySignatureDisplayTest extends UnitTest {
     void testTonicHasAccidentalNoneWithNonzeroCountHasNoGlyphFont() {
         // KeyType.NONE → tonicHasAccidental returns false regardless of count
         // Even with count = 7, no glyph font is applied
-        for (int count = 1; count <= FLAT_TONICS.length - 1; count++) {
+        for (var count = 1; count <= FLAT_TONICS.length - 1; count++) {
             var attributed = KeySignatureDisplay.getDisplayName(KeyType.NONE, count);
             var text = textOf(attributed);
             // Tonic is non-empty; font at index 0 must not be Bravura
@@ -350,7 +350,7 @@ class KeySignatureDisplayTest extends UnitTest {
         var text = textOf(attributed);
         var fontAt0 = fontAt(attributed, 0);
 
-        for (int i = 0; i < text.length(); i++) {
+        for (var i = 0; i < text.length(); i++) {
             assertThat(fontAt(attributed, i))
                 .as("font at index " + i)
                 .isEqualTo(fontAt0);
@@ -393,7 +393,7 @@ class KeySignatureDisplayTest extends UnitTest {
             .isGreaterThan(0f);
 
         // suffix chars: no glyph font, no tracking
-        for (int i = tonicLength; i < text.length(); i++) {
+        for (var i = tonicLength; i < text.length(); i++) {
             assertThat(fontAt(attributed, i).getName())
                 .as("suffix char at " + i + " must not be Bravura")
                 .doesNotContainIgnoringCase("Bravura");

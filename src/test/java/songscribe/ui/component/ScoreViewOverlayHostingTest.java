@@ -255,11 +255,11 @@ class ScoreViewOverlayHostingTest extends UnitTest {
          */
         @Test
         void testOverlayFollowsTargetAfterALineHeightChangeRepositionsItWithinItsOwnStack() {
-            final int firstLineHeightPx = 40;
-            final int firstLineGrownHeightPx = 90;
-            final int targetLineHeightPx = 30;
-            final int stackWidthPx = 300;
-            final int stackHeightPx = 300;
+            final var firstLineHeightPx = 40;
+            final var firstLineGrownHeightPx = 90;
+            final var targetLineHeightPx = 30;
+            final var stackWidthPx = 300;
+            final var stackHeightPx = 300;
 
             var scoreView = newScoreView();
 
@@ -301,12 +301,12 @@ class ScoreViewOverlayHostingTest extends UnitTest {
          */
         @Test
         void testOverlayFollowsTargetAfterATitleHeightChangeMovesItsStackWithoutResizingIt() {
-            final int titleHeightPx = 20;
-            final int titleGrownHeightPx = 70;
-            final int innerStackHeightPx = 60;
-            final int targetLineHeightPx = 50;
-            final int outerWidthPx = 300;
-            final int outerHeightPx = 300;
+            final var titleHeightPx = 20;
+            final var titleGrownHeightPx = 70;
+            final var innerStackHeightPx = 60;
+            final var targetLineHeightPx = 50;
+            final var outerWidthPx = 300;
+            final var outerHeightPx = 300;
 
             var scoreView = newScoreView();
 
@@ -362,11 +362,11 @@ class ScoreViewOverlayHostingTest extends UnitTest {
          */
         @Test
         void testOverlayDetachedByABareRemoveIsNoLongerRefreshed() {
-            final int firstLineHeightPx = 40;
-            final int firstLineGrownHeightPx = 90;
-            final int targetLineHeightPx = 30;
-            final int stackWidthPx = 300;
-            final int stackHeightPx = 300;
+            final var firstLineHeightPx = 40;
+            final var firstLineGrownHeightPx = 90;
+            final var targetLineHeightPx = 30;
+            final var stackWidthPx = 300;
+            final var stackHeightPx = 300;
 
             var scoreView = newScoreView();
 
@@ -437,11 +437,11 @@ class ScoreViewOverlayHostingTest extends UnitTest {
          */
         @Test
         void testVisibleOverlayResizesWhenTheZoomChanges() {
-            final int initialZoomPercent = 100;
-            final int zoomedPercent = 200;
-            final int lineWidthPx = 500;
-            final int lineHeightPx = 100;
-            final int roundingTolerancePx = 4;
+            final var initialZoomPercent = 100;
+            final var zoomedPercent = 200;
+            final var lineWidthPx = 500;
+            final var lineHeightPx = 100;
+            final var roundingTolerancePx = 4;
 
             var scoreView = newScoreView();
             scoreView.getViewScale().setZoomPercent(initialZoomPercent);

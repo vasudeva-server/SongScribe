@@ -149,9 +149,7 @@ class EndingRendererTest extends UnitTest {
         // drawPath passes a Path2D directly to draw() without touching the graphics transform,
         // so capture the path as-is.
         var placedShapes = new ArrayList<Shape>();
-        doAnswer(answerVoid((Shape local) -> {
-            placedShapes.add(local);
-        })).when(g2).draw(any(Shape.class));
+        doAnswer(answerVoid((Shape local) -> placedShapes.add(local))).when(g2).draw(any(Shape.class));
 
         RENDERER.renderEndings(g2, line, 0, invariants);
 

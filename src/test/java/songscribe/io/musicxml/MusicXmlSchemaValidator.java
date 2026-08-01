@@ -76,7 +76,7 @@ final class MusicXmlSchemaValidator {
      * @throws IOException  if an I/O error occurs during validation
      */
     void validate(String xml) throws SAXException, IOException {
-        Validator validator = SCHEMA.newValidator();
+        var validator = SCHEMA.newValidator();
         validator.validate(new StreamSource(new StringReader(xml)));
     }
 }

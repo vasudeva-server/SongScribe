@@ -266,7 +266,7 @@ class LineIOTest extends UnitTest {
         void testNonZeroYPosIncludesYPos() throws Exception {
             var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
             var trill = new Trill(elements.getElement(0), elements.getElement(1));
-            final int Y_POS = 3;
+            final var Y_POS = 3;
             trill.setYPositionSs(Y_POS);
             elements.addRangeElement(trill);
 
@@ -319,7 +319,7 @@ class LineIOTest extends UnitTest {
 
             var tuplet = new Tuplet(elements.getElement(0), elements.getElement(2), TRIPLET_GRADE,
                 TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
-            final int VERT_POS = 4;
+            final var VERT_POS = 4;
             tuplet.setVerticalPositionSs(VERT_POS);
             elements.addTuplet(tuplet);
 
@@ -352,9 +352,9 @@ class LineIOTest extends UnitTest {
         void testAnyNonZeroShiftIncludesAllShifts() throws Exception {
             var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
             var diminuendo = new Diminuendo(elements.getElement(0), elements.getElement(1));
-            final double X1 = 1.5;
-            final double X2 = 0.0;
-            final double Y = -2.0;
+            final var X1 = 1.5;
+            final var X2 = 0.0;
+            final var Y = -2.0;
             diminuendo.setX1ShiftSs(X1);
             diminuendo.setX2ShiftSs(X2);
             diminuendo.setYShiftSs(Y);
@@ -1219,7 +1219,7 @@ class LineIOTest extends UnitTest {
         @Test
         void testNonZeroYPositionRoundTrip() throws Exception {
             // <trills>0,2,5;</trills> → yPositionSs == 5
-            final int Y_POS = 5;
+            final var Y_POS = 5;
             var reader = buildReaderWithNotes(
                 ElementType.CROTCHET,
                 ElementType.CROTCHET,
@@ -1276,7 +1276,7 @@ class LineIOTest extends UnitTest {
         @Test
         void testContiguousIndicesCoalesceIntoOneTrill() throws Exception {
             // Notes at indices 2,3,4 are trill-flagged → single Trill covering [2,4]
-            final int NOTE_COUNT = 5;
+            final var NOTE_COUNT = 5;
             var reader = buildReaderWithTrillNotes(NOTE_COUNT, 2, 3, 4);
             var parsedLine = reader.endElement11("line");
 
@@ -1291,7 +1291,7 @@ class LineIOTest extends UnitTest {
         @Test
         void testNonContiguousIndicesProduceTwoTrillPairs() throws Exception {
             // Notes at indices 2 and 4 (non-contiguous) → two Trills: [2,2] and [4,4]
-            final int NOTE_COUNT = 5;
+            final var NOTE_COUNT = 5;
             var reader = buildReaderWithTrillNotes(NOTE_COUNT, 2, 4);
             var parsedLine = reader.endElement11("line");
 
@@ -1320,7 +1320,7 @@ class LineIOTest extends UnitTest {
             // Notes occupy indices 0-4 with valid ranges for all types; a trailing
             // REPEAT_RIGHT(5) + CROTCHET(6) give the ending a split so it survives the
             // split-less drop guard (issue #306).
-            final int ELEMENT_COUNT = 7;
+            final var ELEMENT_COUNT = 7;
             var reader = buildReaderWithNotes(
                 ElementType.QUAVER,
                 ElementType.QUAVER,

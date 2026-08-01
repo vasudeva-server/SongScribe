@@ -56,9 +56,7 @@ class LineEndingSupportTest extends UnitTest {
         void testNoEndingsOnLineReturnsEmptyList() {
             var song = new Song();
             var line = song.getLine(0);
-            song.withoutMutationTracking(() -> {
-                line.addElement(new StaffElement(ElementType.CROTCHET));
-            });
+            song.withoutMutationTracking(() -> line.addElement(new StaffElement(ElementType.CROTCHET)));
 
             var result = LineEndingSupport.findEndings(line);
 

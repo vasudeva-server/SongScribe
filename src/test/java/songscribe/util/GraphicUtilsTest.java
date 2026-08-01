@@ -229,9 +229,7 @@ class GraphicUtilsTest extends UnitTest {
             var g2 = spy(image.createGraphics());
             var placed = new Shape[]{null};
 
-            doAnswer(answerVoid((Shape local) -> {
-                placed[0] = g2.getTransform().createTransformedShape(local);
-            })).when(g2).fill(any(Shape.class));
+            doAnswer(answerVoid((Shape local) -> placed[0] = g2.getTransform().createTransformedShape(local))).when(g2).fill(any(Shape.class));
 
             try {
                 draw.accept(g2);
@@ -301,9 +299,7 @@ class GraphicUtilsTest extends UnitTest {
             var g2 = spy(image.createGraphics());
             var stroked = new Shape[]{null};
 
-            doAnswer(answerVoid((Shape path) -> {
-                stroked[0] = g2.getStroke().createStrokedShape(path);
-            })).when(g2).draw(any(Shape.class));
+            doAnswer(answerVoid((Shape path) -> stroked[0] = g2.getStroke().createStrokedShape(path))).when(g2).draw(any(Shape.class));
 
             try {
                 draw.accept(g2);
@@ -455,9 +451,7 @@ class GraphicUtilsTest extends UnitTest {
             var g2 = spy(image.createGraphics());
             var captured = new Shape[]{null};
 
-            doAnswer(answerVoid((Shape shape) -> {
-                captured[0] = shape;
-            })).when(g2).draw(any(Shape.class));
+            doAnswer(answerVoid((Shape shape) -> captured[0] = shape)).when(g2).draw(any(Shape.class));
 
             try {
                 draw.accept(g2);
@@ -484,9 +478,7 @@ class GraphicUtilsTest extends UnitTest {
             var g2 = spy(image.createGraphics());
             var drawCount = new int[]{0};
 
-            doAnswer(answerVoid((Shape shape) -> {
-                drawCount[0]++;
-            })).when(g2).draw(any(Shape.class));
+            doAnswer(answerVoid((Shape shape) -> drawCount[0]++)).when(g2).draw(any(Shape.class));
 
             try {
                 draw.accept(g2);

@@ -1526,9 +1526,7 @@ class MainFrameTest extends UnitTest {
                     () -> OptionDialogs.showWarningMessage(
                         any(), anyString(), anyString()
                     )
-                ).thenAnswer(answerVoid((Object parent, String titleKey, String messageKey) -> {
-                    capturedTitles.add(titleKey);
-                }));
+                ).thenAnswer(answerVoid((Object parent, String titleKey, String messageKey) -> capturedTitles.add(titleKey)));
 
                 // Must not throw — returns normally when no fatal error is present
                 MainFrame.drainStartupErrors();

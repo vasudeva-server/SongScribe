@@ -541,7 +541,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
                 .as("three lines → exactly three LinePanels")
                 .hasSize(3);
 
-            final int expectedComponents = 3;
+            final var expectedComponents = 3;
             assertThat(panel.getComponentCount())
                 .as("three lines → three child components, one per line, no spacer children")
                 .isEqualTo(expectedComponents);
@@ -580,7 +580,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
 
             assertThat(panel.getLinePanel(0))
                 .as("index 0 is in range → first LinePanel returned")
-                .isSameAs(linePanels.get(0));
+                .isSameAs(linePanels.getFirst());
         }
 
         /**
@@ -607,7 +607,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             var panel = new StaffPanel();
             panel.setSong(song);
             var linePanels = panel.getLinePanels();
-            int lastIndex = linePanels.size() - 1;
+            var lastIndex = linePanels.size() - 1;
 
             assertThat(panel.getLinePanel(lastIndex))
                 .as("last valid index returns last LinePanel")
@@ -678,7 +678,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
 
             var panels = panel.getLinePanels();
             // Single panel covers y=[0, 49]; point at y=60 is outside it.
-            panels.get(0).setBounds(0, 0, 200, 50);
+            panels.getFirst().setBounds(0, 0, 200, 50);
 
             assertThat(panel.getLinePanelAt(new Point(50, 60)))
                 .as("point y=60 is below the only panel (height 50) → null")
@@ -827,8 +827,8 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
          */
         @Test
         void testThreeLinesSpanTwoUniformMidlineGaps() {
-            final int lineCount = 3;
-            final int lineWidthPx = 200;
+            final var lineCount = 3;
+            final var lineWidthPx = 200;
             var panel = staffPanelWithMeasuredLines(lineCount, lineWidthPx);
 
             var size = panel.getPreferredSize();
@@ -852,8 +852,8 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
          */
         @Test
         void testSingleLineAddsNoInterLineGap() {
-            final int lineCount = 1;
-            final int lineWidthPx = 200;
+            final var lineCount = 1;
+            final var lineWidthPx = 200;
             var panel = staffPanelWithMeasuredLines(lineCount, lineWidthPx);
 
             assertThat(panel.getPreferredSize().height)
@@ -878,8 +878,8 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
          */
         @Test
         void testLinesAreSizedIndividuallyAndSpacedUniformly() {
-            final int lineCount = 3;
-            final int panelWidthPx = 200;
+            final var lineCount = 3;
+            final var panelWidthPx = 200;
             var panel = staffPanelWithMeasuredLines(lineCount, panelWidthPx);
 
             var preferredSize = panel.getPreferredSize();
@@ -1096,9 +1096,9 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             var footnotesSize = mainPanel.getFootnotesComponent().getPreferredSize();
 
             // The gap is what remains after subtracting all children's sizes.
-            int gap = totalSize.height - titleHeight - staffSize.height
+            var gap = totalSize.height - titleHeight - staffSize.height
                 - textSize.height - footnotesSize.height;
-            int expectedGap = ScaleContext.ssToRoundedPx(MainPanel.SCORE_MARGIN_TOP_SS);
+            var expectedGap = ScaleContext.ssToRoundedPx(MainPanel.SCORE_MARGIN_TOP_SS);
 
             assertThat(gap)
                 .as("gap between title and score must equal scoreMarginTop")
@@ -1139,7 +1139,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             var footnotesSize = mainPanel.getFootnotesComponent().getPreferredSize();
 
             // No gap: total = 0(title) + 0(gap) + staffHeight + textHeight + footnotesHeight
-            int expectedHeight = staffSize.height + textSize.height + footnotesSize.height;
+            var expectedHeight = staffSize.height + textSize.height + footnotesSize.height;
 
             assertThat(totalSize.height)
                 .as("empty title (height=0) → no gap: total = staffH + textH + footnotesH")
@@ -1167,13 +1167,13 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             // Place staffPanel at y=50, height=100.
             mainPanel.getStaffPanel().setBounds(0, 50, 200, 100);
             // Place the sole LinePanel to fill the staffPanel area (local coords).
-            mainPanel.getStaffPanel().getLinePanels().get(0).setBounds(0, 0, 200, 100);
+            mainPanel.getStaffPanel().getLinePanels().getFirst().setBounds(0, 0, 200, 100);
 
             // Point (10, 80) in mainPanel coords → local (10, 30) which is inside the LinePanel.
             var result = mainPanel.getLinePanelAt(new Point(10, 80));
             assertThat(result)
                 .as("point inside staffPanel bounds → LinePanel returned")
-                .isSameAs(mainPanel.getStaffPanel().getLinePanels().get(0));
+                .isSameAs(mainPanel.getStaffPanel().getLinePanels().getFirst());
         }
 
         /**

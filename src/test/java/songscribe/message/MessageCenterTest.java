@@ -94,29 +94,22 @@ class MessageCenterTest extends UnitTest {
     private static final int SECOND_PRIORITY = 10;
 
     /** Records invocation order via a shared list. */
-    private static final class OrderedListener {
-        private final List<? super Integer> order;
-        private final int tag;
-
-        OrderedListener(List<? super Integer> order, int tag) {
-            this.order = order;
-            this.tag = tag;
-        }
+        private record OrderedListener(List<? super Integer> order, int tag) {
 
         @Handler(priority = FIRST_PRIORITY)
-        public void onHighPriority(SaveCommand message) {
-            if (tag == FIRST_PRIORITY) {
-                order.add(tag);
+            public void onHighPriority(SaveCommand message) {
+                if (tag == FIRST_PRIORITY) {
+                    order.add(tag);
+                }
             }
-        }
 
-        @Handler(priority = SECOND_PRIORITY)
-        public void onLowPriority(SaveCommand message) {
-            if (tag == SECOND_PRIORITY) {
-                order.add(tag);
+            @Handler(priority = SECOND_PRIORITY)
+            public void onLowPriority(SaveCommand message) {
+                if (tag == SECOND_PRIORITY) {
+                    order.add(tag);
+                }
             }
         }
-    }
 
     @Test
     void testHighPriorityHandlerRunsBeforeLowPriority() {

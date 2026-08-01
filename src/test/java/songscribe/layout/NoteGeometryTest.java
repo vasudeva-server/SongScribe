@@ -98,7 +98,7 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testSharpWidthMatchesSmuflAdvance() {
-            float expectedWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_SHARP);
+            var expectedWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_SHARP);
             assertThat(NoteGeometry.getAccidentalWidthSs(crotchetWithAccidental(Accidental.SHARP)))
                 .isEqualTo(expectedWidthSs);
         }
@@ -106,7 +106,7 @@ class NoteGeometryTest extends UnitTest {
         @Test
         void testDoubleSharpWidthMatchesSmuflAdvance() {
             // DOUBLE_SHARP is a single-glyph accidental — width equals its advance width exactly
-            float expectedWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP);
+            var expectedWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP);
             assertThat(NoteGeometry.getAccidentalWidthSs(crotchetWithAccidental(Accidental.DOUBLE_SHARP)))
                 .isEqualTo(expectedWidthSs);
         }
@@ -150,10 +150,10 @@ class NoteGeometryTest extends UnitTest {
         @Test
         void testParenthesizedDoubleSharpAddsParenWidths() {
             // DOUBLE_SHARP has zero parenthesis kerning, so total = base + left-paren + right-paren
-            float baseWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP);
-            float parenLeftWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
-            float parenRightWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
-            float expectedWidthSs = baseWidthSs + parenLeftWidthSs + parenRightWidthSs;
+            var baseWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP);
+            var parenLeftWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
+            var parenRightWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT);
+            var expectedWidthSs = baseWidthSs + parenLeftWidthSs + parenRightWidthSs;
 
             var note = crotchetWithAccidental(Accidental.DOUBLE_SHARP);
             note.setAccidentalInParentheses(true);
@@ -182,14 +182,14 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testSharpBoundsExact() {
-            float sharpAdvanceWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_SHARP);
-            float startXSs = -NoteGeometry.ACCIDENTAL_PADDING_SS - sharpAdvanceWidthSs;
+            var sharpAdvanceWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_SHARP);
+            var startXSs = -NoteGeometry.ACCIDENTAL_PADDING_SS - sharpAdvanceWidthSs;
             var sharpBBox = require(SMuFLMetadata.getBBox(SMuFLGlyph.ACCIDENTAL_SHARP), "ACCIDENTAL_SHARP bbox");
 
-            double expectedLeftSs = sharpBBox.left() + startXSs;
-            double expectedWidthSs = sharpBBox.width();
-            double expectedTopSs = sharpBBox.top();
-            double expectedBotSs = sharpBBox.bottom();
+            var expectedLeftSs = sharpBBox.left() + startXSs;
+            var expectedWidthSs = sharpBBox.width();
+            var expectedTopSs = sharpBBox.top();
+            var expectedBotSs = sharpBBox.bottom();
 
             var bounds = require(
                 NoteGeometry.getAccidentalBoundsSs(crotchetWithAccidental(Accidental.SHARP)),
@@ -205,14 +205,14 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testDoubleSharpBoundsExact() {
-            float dsAdvanceWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP);
-            float startXSs = -NoteGeometry.ACCIDENTAL_PADDING_SS - dsAdvanceWidthSs;
+            var dsAdvanceWidthSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP);
+            var startXSs = -NoteGeometry.ACCIDENTAL_PADDING_SS - dsAdvanceWidthSs;
             var dsBBox = require(SMuFLMetadata.getBBox(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP), "ACCIDENTAL_DOUBLE_SHARP bbox");
 
-            double expectedLeftSs = dsBBox.left() + startXSs;
-            double expectedWidthSs = dsBBox.width();
-            double expectedTopSs = dsBBox.top();
-            double expectedBotSs = dsBBox.bottom();
+            var expectedLeftSs = dsBBox.left() + startXSs;
+            var expectedWidthSs = dsBBox.width();
+            var expectedTopSs = dsBBox.top();
+            var expectedBotSs = dsBBox.bottom();
 
             var bounds = require(
                 NoteGeometry.getAccidentalBoundsSs(crotchetWithAccidental(Accidental.DOUBLE_SHARP)),
@@ -865,7 +865,7 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testSingleComponentEmittedAtStartX() {
-            final float startX = 2.0f;
+            final var startX = 2.0f;
             var glyphs = new ArrayList<SMuFLGlyph>();
             var positions = new ArrayList<Float>();
 
@@ -882,11 +882,11 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testParenthesizedSharpEmitsThreeGlyphsWithKerning() {
-            final float startX = 0.0f;
-            float parenLeftAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
-            float sharpAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_SHARP);
-            float sharpLeftKerningSs = sharpParenLeftKerningSs();
-            float sharpRightKerningSs = sharpParenRightKerningSs();
+            final var startX = 0.0f;
+            var parenLeftAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
+            var sharpAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_SHARP);
+            var sharpLeftKerningSs = sharpParenLeftKerningSs();
+            var sharpRightKerningSs = sharpParenRightKerningSs();
             var glyphs = new ArrayList<SMuFLGlyph>();
             var positions = new ArrayList<Float>();
 
@@ -895,14 +895,14 @@ class NoteGeometryTest extends UnitTest {
                 true, startX, 1f,
                 (g, x) -> { glyphs.add(g); positions.add(x); });
 
-            float expectedSharpX = startX + parenLeftAdvanceSs + sharpLeftKerningSs;
-            float expectedParenRightX = expectedSharpX + sharpAdvanceSs + sharpRightKerningSs;
+            var expectedSharpX = startX + parenLeftAdvanceSs + sharpLeftKerningSs;
+            var expectedParenRightX = expectedSharpX + sharpAdvanceSs + sharpRightKerningSs;
             assertAll(
                 () -> assertThat(glyphs).containsExactly(
                     SMuFLGlyph.ACCIDENTAL_PARENS_LEFT,
                     SMuFLGlyph.ACCIDENTAL_SHARP,
                     SMuFLGlyph.ACCIDENTAL_PARENS_RIGHT),
-                () -> assertThat(positions.get(0)).isEqualTo(startX),
+                () -> assertThat(positions.getFirst()).isEqualTo(startX),
                 () -> assertThat(positions.get(1)).isEqualTo(expectedSharpX),
                 () -> assertThat(positions.get(2)).isEqualTo(expectedParenRightX)
             );
@@ -911,9 +911,9 @@ class NoteGeometryTest extends UnitTest {
         @Test
         void testParenthesizedDoubleSharpHasZeroKerning() {
             // DOUBLE_SHARP absent from kerning maps → getOrDefault returns 0f on both sides
-            final float startX = 0.0f;
-            float parenLeftAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
-            float dsAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP);
+            final var startX = 0.0f;
+            var parenLeftAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
+            var dsAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_DOUBLE_SHARP);
             var positions = new ArrayList<Float>();
 
             NoteGeometry.walkAccidentalGlyphs(
@@ -921,8 +921,8 @@ class NoteGeometryTest extends UnitTest {
                 true, startX, 1f,
                 (g, x) -> positions.add(x));
 
-            float expectedDsX = startX + parenLeftAdvanceSs;  // zero left kerning
-            float expectedParenRightX = expectedDsX + dsAdvanceSs;  // zero right kerning
+            var expectedDsX = startX + parenLeftAdvanceSs;  // zero left kerning
+            var expectedParenRightX = expectedDsX + dsAdvanceSs;  // zero right kerning
             assertAll(
                 () -> assertThat(positions).hasSize(3),
                 () -> assertThat(positions.get(1)).isEqualTo(expectedDsX),
@@ -935,12 +935,12 @@ class NoteGeometryTest extends UnitTest {
             // A scale != 1f must multiply the accidental's own advance as well as the paren advance
             // and kerning, so the right paren — the last glyph the walk emits — lands at the sum of
             // every scaled step (grace-note layout).
-            final float startX = 0.0f;
-            final float scale = ElementType.GRACE_NOTE_SCALE;
-            float parenLeftAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
-            float sharpAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_SHARP);
-            float sharpLeftKerningSs = sharpParenLeftKerningSs();
-            float sharpRightKerningSs = sharpParenRightKerningSs();
+            final var startX = 0.0f;
+            final var scale = ElementType.GRACE_NOTE_SCALE;
+            var parenLeftAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
+            var sharpAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_SHARP);
+            var sharpLeftKerningSs = sharpParenLeftKerningSs();
+            var sharpRightKerningSs = sharpParenRightKerningSs();
             var positions = new ArrayList<Float>();
 
             NoteGeometry.walkAccidentalGlyphs(
@@ -950,11 +950,11 @@ class NoteGeometryTest extends UnitTest {
 
             // Accumulate in the same left-to-right order the production walk uses, so the float
             // comparison stays exact.
-            float expectedSharpX = startX + scale * parenLeftAdvanceSs + scale * sharpLeftKerningSs;
-            float expectedParenRightX = expectedSharpX + scale * sharpAdvanceSs + scale * sharpRightKerningSs;
+            var expectedSharpX = startX + scale * parenLeftAdvanceSs + scale * sharpLeftKerningSs;
+            var expectedParenRightX = expectedSharpX + scale * sharpAdvanceSs + scale * sharpRightKerningSs;
             assertAll(
                 () -> assertThat(positions).hasSize(3),
-                () -> assertThat(positions.get(0)).isEqualTo(startX),
+                () -> assertThat(positions.getFirst()).isEqualTo(startX),
                 () -> assertThat(positions.get(2)).isEqualTo(expectedParenRightX)
             );
         }
@@ -963,10 +963,10 @@ class NoteGeometryTest extends UnitTest {
         void testScaleMultipliesParenAdvanceAndKerning() {
             // A scale != 1f must also multiply the parenthesis advance and the kerning around the
             // glyph, so the inner glyph lands at startX + scale*parenAdvance + scale*kerning.
-            final float startX = 0.0f;
-            final float scale = ElementType.GRACE_NOTE_SCALE;
-            float parenLeftAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
-            float sharpLeftKerningSs = sharpParenLeftKerningSs();
+            final var startX = 0.0f;
+            final var scale = ElementType.GRACE_NOTE_SCALE;
+            var parenLeftAdvanceSs = (float) SMuFLMetadata.getAdvanceWidthOrZero(SMuFLGlyph.ACCIDENTAL_PARENS_LEFT);
+            var sharpLeftKerningSs = sharpParenLeftKerningSs();
             var positions = new ArrayList<Float>();
 
             NoteGeometry.walkAccidentalGlyphs(
@@ -974,7 +974,7 @@ class NoteGeometryTest extends UnitTest {
                 true, startX, scale,
                 (g, x) -> positions.add(x));
 
-            float expectedSharpX = startX + scale * parenLeftAdvanceSs + scale * sharpLeftKerningSs;
+            var expectedSharpX = startX + scale * parenLeftAdvanceSs + scale * sharpLeftKerningSs;
             assertThat(positions.get(1)).isEqualTo(expectedSharpX);
         }
     }
