@@ -114,6 +114,6 @@ public final class LineEndingSupport {
             .map(e -> e.checkReplacement(oldElement, newElement, line))
             .filter(e -> !(e instanceof Ending.EndingEffect.None))
             .findFirst()
-            .orElseGet(() -> Ending.EndingEffect.None.INSTANCE);
+            .orElse(Ending.EndingEffect.None.INSTANCE);
     }
 }
