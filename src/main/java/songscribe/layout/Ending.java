@@ -580,18 +580,11 @@ public class Ending extends RangeElement {
         var anchorIndex = getAnchorElementIndex();
         var endIndex = getEndElementIndex();
 
-        if (anchorIndex < 0 || endIndex < 0) {
-            return false;
-        }
-
-        if (insertedIndex <= anchorIndex || insertedIndex >= endIndex) {
-            return false;
-        }
-
         // Any interior barline or repeat invalidates the ending, the split boundary
         // included: inserting one immediately before the split element does not take
         // over as the split, it leaves the sub-span carrying two.
-        return true;
+        return anchorIndex >= 0 && endIndex >= 0 &&
+            insertedIndex > anchorIndex && insertedIndex < endIndex;
     }
 
     /**

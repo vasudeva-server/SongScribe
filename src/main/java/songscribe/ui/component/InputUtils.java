@@ -236,15 +236,12 @@ public final class InputUtils {
         }
 
         private boolean isProspectiveTextValid(Document doc, int length, String text) {
+            //noinspection SimplifiableIfStatement
             if (!text.isEmpty() && !pattern.matcher(text).matches()) {
                 return false;
             }
 
-            if (doc.getLength() - length + text.length() > maxChars) {
-                return false;
-            }
-
-            return true;
+            return doc.getLength() - length + text.length() <= maxChars;
         }
     }
 }
