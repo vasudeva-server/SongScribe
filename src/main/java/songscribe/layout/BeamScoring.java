@@ -610,19 +610,21 @@ final class BeamScoring {
             below = below || positions[i] < coveringDown;
         }
 
-        var concave = above && below;
+        if (above && below) {
+            return true;
+        }
 
         // A note as close or closer to the beam than begin and end, but reached in
         // the opposite direction from the overall last-first dy.
         var dy = positions[last] - positions[0];
         var closest = Math.max(beamDir * positions[last], beamDir * positions[0]);
 
-        for (var i = 2; !concave && i < last; i++) {
+        for (var i = 2; i < last; i++) {
             var innerDy = positions[i] - positions[i - 1];
 
             if (Integer.signum(innerDy) != Integer.signum(dy)
                 && (beamDir * positions[i] >= closest || beamDir * positions[i - 1] >= closest)) {
-                concave = true;
+                return true;
             }
         }
 
@@ -632,7 +634,7 @@ final class BeamScoring {
             allCloser = beamDir * positions[i] > closest;
         }
 
-        return concave || allCloser;
+        return allCloser;
     }
 
     /**
