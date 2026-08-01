@@ -157,10 +157,11 @@ final class MusicXmlNotationsWriter {
             XML.indent();
 
             for (var articulation : articulations) {
-                switch (articulation.getType()) {
-                    case ACCENT -> XML.writeEmptyTag(pw, MusicXmlTags.ACCENT);
-                    case STACCATO -> XML.writeEmptyTag(pw, MusicXmlTags.STACCATO);
-                }
+                XML.writeEmptyTag(pw, switch (articulation.getType()) {
+                        case ACCENT -> MusicXmlTags.ACCENT;
+                        case STACCATO -> MusicXmlTags.STACCATO;
+                    }
+                );
             }
 
             if (note.hasFall()) {

@@ -60,11 +60,11 @@ public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
 
     @Override
     protected String opLabel(AttachmentOp op) {
-        return switch (op) {
-            case ADD -> Strings.get(Strings.ACTION_EDIT_OP_ADD_TEMPO_CHANGE);
-            case CHANGE -> Strings.get(Strings.ACTION_EDIT_OP_CHANGE_TEMPO_CHANGE);
-            case REMOVE -> Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TEMPO_CHANGE);
-        };
+        return Strings.get(switch (op) {
+            case ADD -> Strings.ACTION_EDIT_OP_ADD_TEMPO_CHANGE;
+            case CHANGE -> Strings.ACTION_EDIT_OP_CHANGE_TEMPO_CHANGE;
+            case REMOVE -> Strings.ACTION_EDIT_OP_REMOVE_TEMPO_CHANGE;
+        });
     }
 
     @Override

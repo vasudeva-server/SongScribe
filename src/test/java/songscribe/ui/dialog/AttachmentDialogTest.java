@@ -321,11 +321,11 @@ class AttachmentDialogTest extends MainFrameMockTest {
 
         @Override
         protected String opLabel(AttachmentOp op) {
-            return switch (op) {
-                case ADD -> Strings.get(Strings.ACTION_EDIT_OP_ADD_ANNOTATION);
-                case CHANGE -> Strings.get(Strings.ACTION_EDIT_OP_CHANGE_ANNOTATION);
-                case REMOVE -> Strings.get(Strings.ACTION_EDIT_OP_REMOVE_ANNOTATION);
-            };
+            return Strings.get(switch (op) {
+                case ADD -> Strings.ACTION_EDIT_OP_ADD_ANNOTATION;
+                case CHANGE -> Strings.ACTION_EDIT_OP_CHANGE_ANNOTATION;
+                case REMOVE -> Strings.ACTION_EDIT_OP_REMOVE_ANNOTATION;
+            });
         }
 
         @Override

@@ -108,18 +108,24 @@ public final class OpNames {
 
         var singular = types.size() == 1;
 
-        return switch (common) {
-            case NOTE -> Strings.get(
-                singular ? Strings.ACTION_EDIT_OP_DELETE_NOTE : Strings.ACTION_EDIT_OP_DELETE_NOTES);
-            case REST -> Strings.get(
-                singular ? Strings.ACTION_EDIT_OP_DELETE_REST : Strings.ACTION_EDIT_OP_DELETE_RESTS);
-            case BARLINE -> Strings.get(
-                singular ? Strings.ACTION_EDIT_OP_DELETE_BARLINE : Strings.ACTION_EDIT_OP_DELETE_BARLINES);
-            case REPEAT -> Strings.get(
-                singular ? Strings.ACTION_EDIT_OP_DELETE_REPEAT : Strings.ACTION_EDIT_OP_DELETE_REPEATS);
-            case BREATH_MARK -> Strings.get(
-                singular ? Strings.ACTION_EDIT_OP_DELETE_BREATH_MARK : Strings.ACTION_EDIT_OP_DELETE_BREATH_MARKS);
-        };
+        return Strings.get(
+            switch (common) {
+                case NOTE -> singular ?
+                    Strings.ACTION_EDIT_OP_DELETE_NOTE :
+                    Strings.ACTION_EDIT_OP_DELETE_NOTES;
+                case REST -> singular ?
+                    Strings.ACTION_EDIT_OP_DELETE_REST :
+                    Strings.ACTION_EDIT_OP_DELETE_RESTS;
+                case BARLINE -> singular ?
+                    Strings.ACTION_EDIT_OP_DELETE_BARLINE :
+                    Strings.ACTION_EDIT_OP_DELETE_BARLINES;
+                case REPEAT -> singular ?
+                    Strings.ACTION_EDIT_OP_DELETE_REPEAT :
+                    Strings.ACTION_EDIT_OP_DELETE_REPEATS;
+                case BREATH_MARK -> singular ?
+                    Strings.ACTION_EDIT_OP_DELETE_BREATH_MARK :
+                    Strings.ACTION_EDIT_OP_DELETE_BREATH_MARKS;
+            });
     }
 
     /**
