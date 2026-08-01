@@ -343,8 +343,8 @@ final class NoteAccumulator {
     }
 
     void addTied(@Nullable String type) {
-        tiedStart |= MusicXmlTags.TYPE_START.equals(type);
-        tiedStop |= MusicXmlTags.TYPE_STOP.equals(type);
+        tiedStart = tiedStart || MusicXmlTags.TYPE_START.equals(type);
+        tiedStop = tiedStop || MusicXmlTags.TYPE_STOP.equals(type);
     }
 
     void markTupletStart() {
