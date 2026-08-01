@@ -105,7 +105,6 @@ public final class GraceModeManager {
     private static GraceModeManager instance = null;
 
     // Dependencies
-    private final EditModeManager editModeManager;
     private final SelectionCoordinator selectionCoordinator;
 
     // State
@@ -151,11 +150,7 @@ public final class GraceModeManager {
     // True when the insertion path took that offer, so the pairing owes the repairs.
     private boolean insertionRepairsOwed = false;
 
-    public GraceModeManager(
-        EditModeManager editModeManager,
-        SelectionCoordinator selectionCoordinator
-    ) {
-        this.editModeManager = editModeManager;
+    public GraceModeManager(SelectionCoordinator selectionCoordinator) {
         this.selectionCoordinator = selectionCoordinator;
         instance = this;
     }

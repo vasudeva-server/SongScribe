@@ -103,7 +103,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testIsActiveReturnsFalseWhenInstanceIsInactive() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             // Initial state is INACTIVE
             assertThat(GraceModeManager.isActive()).isFalse();
             assertThat(manager.isInProgress()).isFalse();
@@ -111,7 +111,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testIsActiveReturnsTrueWhenStateIsNonInactive() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             manager.setState(GraceModeManager.State.GRACE_NOTE);
             assertThat(GraceModeManager.isActive()).isTrue();
             assertThat(manager.isInProgress()).isTrue();
@@ -119,7 +119,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testIsInProgressIsFalseOnlyForInactiveState() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
 
             for (var state : GraceModeManager.State.values()) {
                 manager.setState(state);
@@ -147,7 +147,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testIsPendingCancelReturnsFalseWhenPendingCancelIsFalse() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var element = ElementType.GRACE_QUAVER.newInstance();
             // pendingCancel defaults to false
             assertThat(GraceModeManager.isPendingCancel(element)).isFalse();
@@ -155,7 +155,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testIsPendingCancelReturnsFalseForDifferentElement() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var otherElement = ElementType.CROTCHET.newInstance();
 
@@ -168,7 +168,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testIsPendingCancelReturnsTrueForExactGraceNoteInstance() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
 
             manager.setPendingCancel(true);
@@ -199,7 +199,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testCancelThresholdReturnsMinus1WhenGraceNoteIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var lineComponent = mock(LineComponent.class);
             manager.setGraceNote(null);
             manager.setGraceLineComponent(lineComponent);
@@ -208,7 +208,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testCancelThresholdReturnsMinus1WhenLineComponentIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             manager.setGraceNote(ElementType.GRACE_QUAVER.newInstance());
             manager.setGraceLineComponent(null);
             assertThat(GraceModeManager.getCancelThresholdPx()).isEqualTo(-1);
@@ -216,7 +216,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testCancelThresholdReturnsMinus1WhenLayoutIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var lineComponent = mock(LineComponent.class);
             when(lineComponent.getLayoutResult()).thenReturn(null);
             manager.setGraceNote(ElementType.GRACE_QUAVER.newInstance());
@@ -226,7 +226,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testCancelThresholdIsGraceXPxMinusSlopPx() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
             var layout = mock(LayoutResult.class);
@@ -245,7 +245,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testConnectThresholdReturnsMinus1WhenColumnIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
             var layout = mock(LayoutResult.class);
@@ -262,7 +262,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testConnectThresholdIsRightEdgePxPlusSlopPx() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
             var layout = mock(LayoutResult.class);
@@ -293,7 +293,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsZeroWhenGraceNoteIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             manager.setGraceNote(null);
             manager.setGraceLine(detachedLine());
             manager.setGraceLineComponent(mock(LineComponent.class));
@@ -302,7 +302,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsZeroWhenGraceLineIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             manager.setGraceNote(ElementType.GRACE_QUAVER.newInstance());
             manager.setGraceLine(null);
             manager.setGraceLineComponent(mock(LineComponent.class));
@@ -311,7 +311,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsZeroWhenGraceLineComponentIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             manager.setGraceNote(ElementType.GRACE_QUAVER.newInstance());
             manager.setGraceLine(detachedLine());
             manager.setGraceLineComponent(null);
@@ -320,7 +320,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsZeroWhenLayoutIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var lineComponent = mock(LineComponent.class);
             when(lineComponent.getLayoutResult()).thenReturn(null);
             manager.setGraceNote(ElementType.GRACE_QUAVER.newInstance());
@@ -331,7 +331,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsZeroWhenColumnIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
             var layout = mock(LayoutResult.class);
@@ -347,7 +347,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testComputedValueIsColumnXPlusRightExtentPlusGapPlusHostLeftExtent() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             // Preview element with no accidental → hostLeftExtentSs = 0
             var hostPreview = ElementType.CROTCHET.newInstance();
@@ -378,7 +378,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testUsesZeroHostLeftExtentWhenPreviewElementIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
             var layout = mock(LayoutResult.class);
@@ -443,7 +443,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsTrueAndConsumesWhenStateIsGraceNoteInsert() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_PRESSED, 0, 0, MouseEvent.BUTTON1);
@@ -453,7 +453,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsFalseWhenStateIsGraceNote() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             manager.setState(GraceModeManager.State.GRACE_NOTE);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_PRESSED, 0, 0, MouseEvent.BUTTON1);
@@ -463,7 +463,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsFalseForNonButton1() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_PRESSED, 0, 0, MouseEvent.BUTTON2);
 
@@ -472,7 +472,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsFalseWhenPreviewElementIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             // getPreviewElement() is static — configure the class-level static mock.
             editModeManagerMock.when(EditModeManager::getPreviewElement).thenReturn(null);
             var lineComponent = mock(LineComponent.class);
@@ -483,7 +483,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsFalseWhenPreviewElementIsNotGraceQuaver() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             editModeManagerMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.CROTCHET.newInstance());
             var lineComponent = mock(LineComponent.class);
@@ -494,7 +494,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsTrueAndDoesNotEnterGraceNoteWhenInsideGraceHostPair() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             editModeManagerMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
 
@@ -515,7 +515,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsFalseWhenXIndexIsNegative() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             editModeManagerMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
 
@@ -534,7 +534,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsTrueAndShowsErrorWhenNoRoomForGraceNote() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             editModeManagerMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
 
@@ -560,7 +560,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testEntersGraceNoteStateWhenRoomCheckPasses() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             editModeManagerMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
 
@@ -608,7 +608,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsTrueAndConsumesWhenStateIsGraceNoteInsert() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
@@ -618,7 +618,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsFalseWhenStateIsInactive() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_RELEASED, 0, 0, MouseEvent.BUTTON1);
 
@@ -627,7 +627,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testFinishesWithCancelWhenMouseDownPointIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var line = detachedLine();
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             line.addElement(graceNote);
@@ -648,7 +648,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testDragLeftWithPendingCancelFinishesWithCancel() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var line = detachedLine();
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             line.addElement(graceNote);
@@ -675,7 +675,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testClickTransitionsToGraceNoteInsertState() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var line = detachedLine();
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             line.addElement(graceNote);
@@ -724,7 +724,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsTrueAndConsumesWhenStateIsGraceNoteInsert() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 0, 0, MouseEvent.BUTTON1);
@@ -734,7 +734,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsFalseWhenStateIsInactive() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_DRAGGED, 0, 0, MouseEvent.BUTTON1);
 
@@ -743,7 +743,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testPendingCancelSetWhenDragLeftOfGraceNote() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var lineComponent = mock(LineComponent.class);
             var layout = mock(LayoutResult.class);
@@ -775,7 +775,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testPendingConnectSetWithoutMutatingSlideWhenDragRightWithEligibleHost() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var hostNote = ElementType.CROTCHET.newInstance();
             var line = detachedLine();
@@ -815,7 +815,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testPendingConnectClearedWithoutMutatingSlideWhenDragBackLeft() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
@@ -873,7 +873,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsFalseWhenNotInProgress() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_CLICKED, 0, 0, MouseEvent.BUTTON1);
 
@@ -882,7 +882,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsTrueWhenInProgressButNotGraceNoteInsertState() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             manager.setState(GraceModeManager.State.GRACE_NOTE);
             var lineComponent = mock(LineComponent.class);
             var e = mouseEvent(lineComponent, MouseEvent.MOUSE_CLICKED, 0, 0, MouseEvent.BUTTON1);
@@ -893,7 +893,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testJustEnteredInsertFlagSuppressesFirstClick() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             manager.setState(GraceModeManager.State.GRACE_NOTE_INSERT);
             setField(manager, "justEnteredInsert", true);
             var lineComponent = mock(LineComponent.class);
@@ -906,7 +906,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testCancelWhenClickOnDifferentLine() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
@@ -929,7 +929,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testCancelWhenClickLeftOfGraceNote() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
@@ -997,7 +997,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testFinishesWithCancelWhenHostNoteDoesNotFit() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var hostPreview = ElementType.CROTCHET.newInstance();
             var line = detachedLine();
@@ -1079,7 +1079,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testCancelRemovesGraceNoteWithoutModificationBracket() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
@@ -1108,7 +1108,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testCancelDoesNotRemoveWhenGraceNoteIsNull() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var line = detachedLine();
             var note = ElementType.CROTCHET.newInstance();
             line.addElement(note);
@@ -1164,7 +1164,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testFinishResetsAllStateFieldsToDefaults() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
@@ -1195,7 +1195,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testFinishPostsGraceModeStateDidChangeNotificationWithFalse() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
@@ -1226,7 +1226,7 @@ class GraceModeManagerTest extends UnitTest {
          */
         @Test
         void testFinishRebuildsThePreviewOverlays() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
@@ -1263,7 +1263,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @BeforeEach
         void setUp() {
-            manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            manager = new GraceModeManager(selectionCoordinator);
             graceLineComponent = mock(LineComponent.class);
             manager.setGraceLineComponent(graceLineComponent);
             setField(manager, "graceNoteIndex", GRACE_NOTE_INDEX);
@@ -1331,7 +1331,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testPendingConnectIsFalseWhenNoNextElement() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             // Line with only the grace note — no next element
             var line = detachedLine();
@@ -1366,7 +1366,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testPendingConnectIsFalseWhenNextElementIsNotPitchedNote() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var restNote = ElementType.CROTCHET_REST.newInstance();
             var line = detachedLine();
@@ -1400,7 +1400,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testPendingConnectIsTrueWhenNextElementIsPitchedNote() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var hostNote = ElementType.CROTCHET.newInstance();
             var line = detachedLine();
@@ -1475,7 +1475,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testNotificationWithTruePostedOnEnterGraceNote() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             editModeManagerMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
             previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
@@ -1509,7 +1509,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testNotificationWithFalsePostedOnFinish() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var graceNote = ElementType.GRACE_QUAVER.newInstance();
             var line = detachedLine();
             line.addElement(graceNote);
@@ -1574,7 +1574,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testEnterGraceNoteSelectsQuarterNoteAndClearsEmbellishments() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             editModeManagerMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
             previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
@@ -1637,7 +1637,7 @@ class GraceModeManagerTest extends UnitTest {
          */
         @Test
         void testClearsEmbellishmentsBeforeSelectingHostDuration() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             editModeManagerMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
             previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
@@ -1827,7 +1827,7 @@ class GraceModeManagerTest extends UnitTest {
          * mouseReleased routes to enterGraceNotePaired(connectNext = true).
          */
         private void connectByDragRight(Line line) {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             var lineComponent = mock(LineComponent.class);
 
             manager.setState(GraceModeManager.State.GRACE_NOTE);
@@ -1939,7 +1939,7 @@ class GraceModeManagerTest extends UnitTest {
 
         @Test
         void testTheGraceNoteInsertionRunsWithTheRepairsDeferred() {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
             editModeManagerMock.when(EditModeManager::getPreviewElement)
                 .thenReturn(ElementType.GRACE_QUAVER.newInstance());
             previewMock.when(PreviewElementManager::getCurrentXIndex).thenReturn(0);
@@ -2181,7 +2181,7 @@ class GraceModeManagerTest extends UnitTest {
          * in, with the insertion's repairs recorded as owed or not.
          */
         private GraceModeManager graceModeManagerOn(Line line, boolean repairsOwed) {
-            var manager = new GraceModeManager(editModeManager, selectionCoordinator);
+            var manager = new GraceModeManager(selectionCoordinator);
 
             manager.setState(GraceModeManager.State.GRACE_NOTE);
             manager.setGraceNote(line.getElement(GRACE_INDEX));

@@ -127,7 +127,7 @@ public final class EditModeManager {
         ScoreView scoreView
     ) {
         this.scoreActions = scoreActions;
-        graceModeManager = new GraceModeManager(this, selectionCoordinator);
+        graceModeManager = new GraceModeManager(selectionCoordinator);
         pasteModeManager = new PasteModeManager(clipboardManager, scoreView);
         MessageCenter.subscribe(this);
     }
