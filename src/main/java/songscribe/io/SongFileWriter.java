@@ -65,12 +65,8 @@ public final class SongFileWriter {
      * @throws IOException if the file cannot be opened for writing
      */
     public static boolean write(Song song, DocumentFontsHolder fonts, File file) throws IOException {
-        var pw = new PrintWriter(file, StandardCharsets.UTF_8);
-
-        try {
+        try (var pw = new PrintWriter(file, StandardCharsets.UTF_8)) {
             return write(song, fonts, pw);
-        } finally {
-            pw.close();
         }
     }
 }
