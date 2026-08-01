@@ -225,7 +225,7 @@ class MenuControllerTest extends UnitTest {
             var components = controller.openRecentMenu.getMenuComponents();
             assertThat(components).hasSize(1);
             assertThat(components[0]).isInstanceOf(JMenuItem.class);
-            assertThat(((JMenuItem) components[0]).isEnabled()).isFalse();
+            assertThat(components[0].isEnabled()).isFalse();
         }
 
         // -------------------------------------------------------------------------
@@ -323,9 +323,7 @@ class MenuControllerTest extends UnitTest {
          */
         private static boolean menuContainsAction(JMenu menu, Action action) {
             return Arrays.stream(menu.getMenuComponents())
-                .filter(c -> c instanceof JMenuItem item && item.getAction() == action)
-                .findAny()
-                .isPresent();
+                .anyMatch(c -> c instanceof JMenuItem item && item.getAction() == action);
         }
     }
 }

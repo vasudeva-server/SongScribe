@@ -217,7 +217,7 @@ class MessageCenterTest extends UnitTest {
             var error = new PublicationError()
                 .setCause(cause)
                 .setListener(null)
-                .setHandler((Method) null)
+                .setHandler(null)
                 .setPublishedMessage(null);
 
             var thrown = catchThrowable(() -> invokeHandlePublicationError(error));
@@ -233,7 +233,7 @@ class MessageCenterTest extends UnitTest {
             var error = new PublicationError()
                 .setMessage("bus error without cause")
                 .setListener(null)
-                .setHandler((Method) null)
+                .setHandler(null)
                 .setPublishedMessage(null);
             // cause is null → code path: RuntimeError.exit(error.getMessage())
             var thrown = catchThrowable(() -> invokeHandlePublicationError(error));

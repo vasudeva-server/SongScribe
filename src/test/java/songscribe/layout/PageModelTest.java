@@ -108,27 +108,27 @@ class PageModelTest extends UnitTest {
         @Test
         void letterPageWidthPx() {
             var expected = GraphicUtils.Unit.INCH.convertToPixels(8.5);
-            assertThat(PageModel.getPageWidthPx().value()).isEqualTo((double) expected);
+            assertThat(PageModel.getPageWidthPx().value()).isEqualTo(expected);
         }
 
         @Test
         void letterPageHeightPx() {
             var expected = GraphicUtils.Unit.INCH.convertToPixels(11.0);
-            assertThat(PageModel.getPageHeightPx().value()).isEqualTo((double) expected);
+            assertThat(PageModel.getPageHeightPx().value()).isEqualTo(expected);
         }
 
         @Test
         void a4PageWidthPx() {
             Prefs.put(PrefsKey.PAGE_SIZE, "a4");
             var expected = GraphicUtils.Unit.INCH.convertToPixels(8.27);
-            assertThat(PageModel.getPageWidthPx().value()).isEqualTo((double) expected);
+            assertThat(PageModel.getPageWidthPx().value()).isEqualTo(expected);
         }
 
         @Test
         void a4PageHeightPx() {
             Prefs.put(PrefsKey.PAGE_SIZE, "a4");
             var expected = GraphicUtils.Unit.INCH.convertToPixels(11.69);
-            assertThat(PageModel.getPageHeightPx().value()).isEqualTo((double) expected);
+            assertThat(PageModel.getPageHeightPx().value()).isEqualTo(expected);
         }
     }
 
@@ -139,13 +139,13 @@ class PageModelTest extends UnitTest {
         @Test
         void topMarginIsHalfInch() {
             var expected = GraphicUtils.Unit.INCH.convertToPixels(0.5);
-            assertThat(PageModel.getTopMarginPx().value()).isEqualTo((double) expected);
+            assertThat(PageModel.getTopMarginPx().value()).isEqualTo(expected);
         }
 
         @Test
         void bottomMarginIsHalfInch() {
             var expected = GraphicUtils.Unit.INCH.convertToPixels(0.5);
-            assertThat(PageModel.getBottomMarginPx().value()).isEqualTo((double) expected);
+            assertThat(PageModel.getBottomMarginPx().value()).isEqualTo(expected);
         }
 
         @Test

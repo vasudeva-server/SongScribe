@@ -974,7 +974,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // clone by the same column gap the standard algorithm produces for two
             // identical elements, since the gap depends only on geometry, not position.
             var line = lineWithCrotchets(2, songWithLineWidth(WIDE_LINE_SS));
-            var fragment = List.<StaffElement>of(crotchet(), crotchet(), crotchet());
+            var fragment = List.of(crotchet(), crotchet(), crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, fragment, line.effectiveElementCount(), null, null, null);
@@ -992,7 +992,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         @Test
         void testSeedsFromFirstElementXWhenInsertingAtIndexZero() {
             var line = lineWithCrotchets(0, songWithLineWidth(WIDE_LINE_SS));
-            var fragment = List.<StaffElement>of(crotchet());
+            var fragment = List.of(crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(line, fragment, 0, null, null, null);
 
@@ -1052,7 +1052,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         @Test
         void testFragmentThatJustFitsReturnsFitsVerdict() {
             var line = lineWithCrotchets(3, songWithLineWidth(WIDE_LINE_SS));
-            var fittingFragment = List.<StaffElement>of(crotchet(), crotchet());
+            var fittingFragment = List.of(crotchet(), crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, fittingFragment, line.effectiveElementCount(), null, null, null);
@@ -1064,13 +1064,13 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         @Test
         void testFragmentOneElementLargerReturnsLineFullVerdict() {
             var line = lineWithCrotchets(3, songWithLineWidth(WIDE_LINE_SS));
-            var fittingFragment = List.<StaffElement>of(crotchet(), crotchet());
+            var fittingFragment = List.of(crotchet(), crotchet());
             var fittingResult = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, fittingFragment, line.effectiveElementCount(), null, null, null);
             // A margin that just clears the two-element fragment's fully compressed floor.
             var marginSs = fullyCompressedWidthSs(fittingResult) + BOUNDARY_SLACK_SS;
 
-            var oneElementLargerFragment = List.<StaffElement>of(crotchet(), crotchet(), crotchet());
+            var oneElementLargerFragment = List.of(crotchet(), crotchet(), crotchet());
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, oneElementLargerFragment, line.effectiveElementCount(), null, null, null);
 
@@ -1088,7 +1088,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         @Test
         void testProjectsATrailingLineRestAfterANonTerminalLastClone() {
             var line = lineWithCrotchets(3, songWithLineWidth(WIDE_LINE_SS));
-            var fragment = List.<StaffElement>of(crotchet(), crotchet());
+            var fragment = List.of(crotchet(), crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, fragment, line.effectiveElementCount(), null, null, null);
@@ -1102,7 +1102,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         void testDoesNotMutateLineOrElementsOnFits() {
             var line = lineWithCrotchets(3, songWithLineWidth(WIDE_LINE_SS));
             var before = snapshotElements(line);
-            var fragment = List.<StaffElement>of(crotchet(), crotchet());
+            var fragment = List.of(crotchet(), crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, fragment, line.effectiveElementCount(), null, null, null);
@@ -1115,7 +1115,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
         void testDoesNotMutateLineOrElementsOnLineFull() {
             var line = lineWithCrotchets(3, songWithLineWidth(0));
             var before = snapshotElements(line);
-            var fragment = List.<StaffElement>of(crotchet(), crotchet());
+            var fragment = List.of(crotchet(), crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, fragment, line.effectiveElementCount(), null, null, null);
@@ -1154,7 +1154,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             predecessor.setXOffsetPx(ScaleContext.ssToRoundedPx(predecessorXSs));
             line.addElement(predecessor);
 
-            var fragment = List.<StaffElement>of(crotchet());
+            var fragment = List.of(crotchet());
 
             var withMetrics = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, fragment, line.effectiveElementCount(), null, null, lyricRenderMetrics());
@@ -1174,7 +1174,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             // Math.max(0, shiftSs) clamp — but no existing test checks the sign.
             var line = lineWithCrotchets(NEGATIVE_SHIFT_LINE_ELEMENT_COUNT, songWithLineWidth(WIDE_LINE_SS));
             var deleteRange = new InsertionSpacingCalculator.DeletedRange(1, NEGATIVE_SHIFT_DELETE_RANGE_END_INDEX);
-            var fragment = List.<StaffElement>of(crotchet());
+            var fragment = List.of(crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, fragment, 1, deleteRange, null, null);
@@ -1192,7 +1192,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var largeGapSs = 50.0;
             var secondElementXSs = firstXSs + largeGapSs;
             var line = widelySpacedTwoCrotchetLine(secondElementXSs);
-            var fragment = List.<StaffElement>of(crotchet());
+            var fragment = List.of(crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, fragment, 1, null, null, null);
@@ -1210,7 +1210,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             var predecessor = line.getElement(0);
             var successor = line.getElement(MULTI_FRAGMENT_DELETE_LINE_ELEMENT_COUNT - 1);
             var deleteRange = new InsertionSpacingCalculator.DeletedRange(1, MULTI_FRAGMENT_DELETE_RANGE_END_INDEX);
-            var fragment = List.<StaffElement>of(crotchet(), crotchet());
+            var fragment = List.of(crotchet(), crotchet());
 
             var result = InsertionSpacingCalculator.calculateFragmentInsertion(
                 line, fragment, 1, deleteRange, null, null);
@@ -1315,7 +1315,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             @Test
             void testNegativeInsertIndexThrowsIllegalArgumentException() {
                 var line = lineWithCrotchets(0);
-                var fragment = List.<StaffElement>of(crotchet());
+                var fragment = List.of(crotchet());
                 var insertIndex = -1;
                 var effectiveCount = line.effectiveElementCount();
                 var expectedMessage = "insertIndex " + insertIndex + " out of bounds [0, " + effectiveCount + ']';
@@ -1329,7 +1329,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             @Test
             void testInsertIndexBeyondEffectiveCountThrowsIllegalArgumentException() {
                 var line = lineWithCrotchets(0);
-                var fragment = List.<StaffElement>of(crotchet());
+                var fragment = List.of(crotchet());
                 var effectiveCount = line.effectiveElementCount();
                 var insertIndex = effectiveCount + 1;
                 var expectedMessage = "insertIndex " + insertIndex + " out of bounds [0, " + effectiveCount + ']';
@@ -1343,7 +1343,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             @Test
             void testDeleteRangeWithNegativeBeginThrowsIllegalArgumentException() {
                 var line = lineWithCrotchets(VALIDATION_LINE_ELEMENT_COUNT);
-                var fragment = List.<StaffElement>of(crotchet());
+                var fragment = List.of(crotchet());
                 var deleteRange = new InsertionSpacingCalculator.DeletedRange(-1, 1);
                 var expectedMessage = "invalid deleteRange " + deleteRange;
 
@@ -1356,7 +1356,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             @Test
             void testDeleteRangeWithBeginGreaterThanEndThrowsIllegalArgumentException() {
                 var line = lineWithCrotchets(VALIDATION_LINE_ELEMENT_COUNT);
-                var fragment = List.<StaffElement>of(crotchet());
+                var fragment = List.of(crotchet());
                 var deleteRange =
                     new InsertionSpacingCalculator.DeletedRange(VALIDATION_LINE_ELEMENT_COUNT - 1, 0);
                 var expectedMessage = "invalid deleteRange " + deleteRange;
@@ -1370,7 +1370,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             @Test
             void testDeleteRangeWithEndAtOrBeyondEffectiveCountThrowsIllegalArgumentException() {
                 var line = lineWithCrotchets(VALIDATION_LINE_ELEMENT_COUNT);
-                var fragment = List.<StaffElement>of(crotchet());
+                var fragment = List.of(crotchet());
                 var deleteRange =
                     new InsertionSpacingCalculator.DeletedRange(0, VALIDATION_LINE_ELEMENT_COUNT);
                 var expectedMessage = "invalid deleteRange " + deleteRange;
@@ -1384,7 +1384,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             @Test
             void testInsertIndexNotEqualToDeleteRangeBeginThrowsIllegalArgumentException() {
                 var line = lineWithCrotchets(VALIDATION_LINE_ELEMENT_COUNT);
-                var fragment = List.<StaffElement>of(crotchet());
+                var fragment = List.of(crotchet());
                 var deleteRange = new InsertionSpacingCalculator.DeletedRange(1, 1);
                 var insertIndex = 0;
                 var expectedMessage = "insertIndex " + insertIndex

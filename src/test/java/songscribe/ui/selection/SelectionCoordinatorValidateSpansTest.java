@@ -108,7 +108,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // Three eighths with a beam over [0..2]; replacing the middle element
         // with a sixteenth keeps every element beamable, so the beam is
         // untouched.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()
@@ -133,7 +133,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // Three eighths with a beam over [0..2]; replacing the first element
         // with a quarter trims the beam from the left end, producing one
         // BeamingRemoval + one BeamingAddition for the truncated [1..2] span.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()
@@ -164,7 +164,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // Three eighths with a beam over [0..2]; replacing the last element
         // with a quarter trims the beam from the right end, producing one
         // BeamingRemoval + one BeamingAddition for the truncated [0..1] span.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()
@@ -195,7 +195,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // Five eighths with a beam over [0..4]; replacing the middle element
         // with a quarter punctures the interior — the beam is killed outright,
         // not split, per the Phase 4 trim-and-kill rule.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
@@ -228,7 +228,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
     void testBeamSurvivesGraceNoteInTheInterior() {
         // Beam over [0..2] with a grace note at index 1; replacing the last element with a
         // sixteenth keeps every real member beamable, so the beam must be left alone.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.GRACE_QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()
@@ -255,7 +255,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // Two eighths with a beam over [0..1]; replacing one element with a
         // quarter leaves a single beamable element, which cannot form a beam
         // on its own — the beam is killed with no addition.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()
         );
@@ -288,7 +288,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // Five eighths with two disjoint tuplets: [0..1] and [3..4]. Selecting
         // the full range [0..4] overlaps both, so both trigger a TupletRemoval
         // when the replaceable action is applied.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
@@ -320,7 +320,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
     void testNonOverlappingTupletsUntouched() {
         // Five eighths with a tuplet at [3..4] — entirely outside the selected
         // index 0. The replacement emits no TupletRemoval records.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
@@ -348,7 +348,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // Line.modifyElement detects DOT_COUNT in the modified fields and emits
         // a TupletRemoval directly — independent of validateSpans.
         var dotAction = DotAction.createDotAction(mainFrame());
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()

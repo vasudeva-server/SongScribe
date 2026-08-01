@@ -201,7 +201,7 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
     protected static void assertRangeElementEquals(
             Tuplet actual, int expectedAnchor, int expectedEnd,
             int expectedGrade, int expectedVerticalPositionSs) {
-        assertRangeElementEquals((RangeElement) actual, expectedAnchor, expectedEnd, "tuplet");
+        assertRangeElementEquals(actual, expectedAnchor, expectedEnd, "tuplet");
         assertThat(actual.getGrade())
             .as("tuplet: grade")
             .isEqualTo(expectedGrade);
@@ -216,7 +216,7 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
      */
     protected static void assertRangeElementEquals(
             Trill actual, int expectedAnchor, int expectedEnd, int expectedYPositionSs) {
-        assertRangeElementEquals((RangeElement) actual, expectedAnchor, expectedEnd, "trill");
+        assertRangeElementEquals(actual, expectedAnchor, expectedEnd, "trill");
         assertThat(actual.getYPositionSs())
             .as("trill: yPositionSs")
             .isEqualTo(expectedYPositionSs);

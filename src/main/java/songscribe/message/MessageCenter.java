@@ -12,7 +12,7 @@ import songscribe.error.RuntimeError;
 public final class MessageCenter {
 
     private static final MBassador<Message> eventBus =
-        new MBassador<>((IPublicationErrorHandler) MessageCenter::handlePublicationError);
+        new MBassador<>(MessageCenter::handlePublicationError);
 
     // Test-only observation hook, null in production. MBassador wraps its error
     // handler in catch(Throwable) and swallows whatever it throws, so a throwing

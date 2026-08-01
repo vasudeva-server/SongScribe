@@ -82,7 +82,7 @@ class ReflectionIntegrationTest extends UnitTest {
     }
 
     private void assertSelected(UIAction.Reflectable action, boolean expected) {
-        assertThat(((UIAction.Selectable) action).isSelected()).isEqualTo(expected);
+        assertThat(action.isSelected()).isEqualTo(expected);
     }
 
     @Test

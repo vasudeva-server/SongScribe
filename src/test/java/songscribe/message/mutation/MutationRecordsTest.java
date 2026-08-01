@@ -114,7 +114,7 @@ class MutationRecordsTest extends UnitTest {
             var line = detachedLine();
             var first = ElementType.CROTCHET.newInstance();
             var second = ElementType.QUAVER.newInstance();
-            var deleted = List.<StaffElement>of(first, second);
+            var deleted = List.of(first, second);
             var mutation = new ElementRangeDeletion(line, 2, 3, deleted);
 
             assertThat(mutation.line()).isSameAs(line);

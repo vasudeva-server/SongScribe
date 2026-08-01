@@ -517,7 +517,7 @@ class MainFrameTest extends UnitTest {
                 var captor = ArgumentCaptor.forClass(String.class);
                 dialogMock.verify(
                     () -> PlatformFileDialog.showSaveDialog(
-                        any(), any(), any(), captor.capture(), (String[]) any()
+                        any(), any(), any(), captor.capture(), any()
                     )
                 );
                 assertThat(captor.getValue())
@@ -549,7 +549,7 @@ class MainFrameTest extends UnitTest {
                 var captor = ArgumentCaptor.forClass(String.class);
                 dialogMock.verify(
                     () -> PlatformFileDialog.showSaveDialog(
-                        any(), any(), any(), captor.capture(), (String[]) any()
+                        any(), any(), any(), captor.capture(), any()
                     )
                 );
                 assertThat(captor.getValue())

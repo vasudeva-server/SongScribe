@@ -247,7 +247,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
 
     @Test
     void testElementReplaceableEmitsOneReplacementPerSelectedElement() {
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()
@@ -275,7 +275,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
 
     @Test
     void testElementReplaceableSkipsInapplicableElements() {
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.SINGLE_BARLINE.newInstance(),
             ElementType.QUAVER.newInstance()
@@ -298,7 +298,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         // Four eighths with a beam over [0..3]; replacing the tail eighth with
         // a quarter trims the beam from the right end, producing one
         // BeamingRemoval + one BeamingAddition for the truncated [0..2] span.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
@@ -332,7 +332,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     void testElementReplaceableEmitsTupletRemovalOnOverlap() {
         // Five eighths with a tuplet over [0..4]; replacing any interior
         // element with a quarter removes the tuplet flatly (no split).
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
@@ -366,7 +366,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     void testElementReplaceableNeverEmitsTieMutations() {
         // A tie over [0..1] with a duration change on both endpoints: the
         // dead tie-repair branch must stay dead — zero tie mutations.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()
         );
@@ -386,7 +386,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
 
     @Test
     void testElementModifiableEmitsOneModificationPerAffectedElement() {
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.CROTCHET.newInstance(),
             ElementType.CROTCHET.newInstance(),
             ElementType.CROTCHET.newInstance()
@@ -415,7 +415,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     @Test
     void testElementModifiableSkipsInapplicableElements() {
         // Accidentals only apply to notes — rests and barlines are skipped.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.CROTCHET.newInstance(),
             ElementType.CROTCHET_REST.newInstance(),
             ElementType.SINGLE_BARLINE.newInstance(),
@@ -436,7 +436,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
 
     @Test
     void testElementModifiableFermataUsesFermataField() {
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.CROTCHET.newInstance(),
             ElementType.CROTCHET.newInstance()
         );
@@ -457,7 +457,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
 
     @Test
     void testElementModifiableDotUsesDotCountField() {
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.CROTCHET.newInstance(),
             ElementType.CROTCHET.newInstance()
         );
@@ -481,7 +481,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         // Even with a beam and tuplet spanning the selection, an
         // ElementModifiable action never triggers beam repair or tuplet
         // invalidation — it doesn't touch element type.
-        var notes = List.<StaffElement>of(
+        var notes = List.of(
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance(),
             ElementType.QUAVER.newInstance()

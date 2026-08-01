@@ -47,6 +47,8 @@ import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.LineSelectionState;
 import songscribe.ui.selection.SelectionCoordinator;
 
+import java.util.Arrays;
+
 /**
  * Unit tests for {@link TrillAction}: checked-state overlap detection, G1
  * enablement (reusing {@link LineSelectionState#canToggleTrill()}), and the
@@ -448,9 +450,7 @@ class TrillActionTest extends UnitTest {
             var elementCount = trill2EndIndex + 1;
             var types = new ElementType[elementCount];
 
-            for (var i = 0; i < elementCount; i++) {
-                types[i] = ElementType.CROTCHET;
-            }
+            Arrays.fill(types, ElementType.CROTCHET);
 
             var line = lineOf(types);
             line.addRangeElement(
@@ -476,9 +476,7 @@ class TrillActionTest extends UnitTest {
             var elementCount = nonOverlappingEndIndex + 1;
             var types = new ElementType[elementCount];
 
-            for (var i = 0; i < elementCount; i++) {
-                types[i] = ElementType.CROTCHET;
-            }
+            Arrays.fill(types, ElementType.CROTCHET);
 
             var line = lineOf(types);
             line.addRangeElement(

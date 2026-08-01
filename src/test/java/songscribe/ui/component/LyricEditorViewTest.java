@@ -93,7 +93,7 @@ class LyricEditorViewTest extends LyricEditorTestSupport {
      * single-line text field using {@code LyricTextFieldUI}.
      */
     private LyricEditor.LeadingSlackFieldView slackViewOf(LyricEditor editor) {
-        var rootView = ((BasicTextUI) editor.getUI()).getRootView(editor);
+        var rootView = editor.getUI().getRootView(editor);
         var view = rootView.getView(0);
         assertThat(view).as("view is LeadingSlackFieldView").isInstanceOf(LyricEditor.LeadingSlackFieldView.class);
         return (LyricEditor.LeadingSlackFieldView) view;

@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -127,9 +128,7 @@ class TupletValidatorCoreTest extends UnitTest {
     ) {
         var types = new ElementType[count];
 
-        for (var i = 0; i < count; i++) {
-            types[i] = type;
-        }
+        Arrays.fill(types, type);
 
         return validateWholeLine(songWithBeat(beat, types), grade, strictness);
     }

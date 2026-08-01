@@ -238,7 +238,7 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testIsLyricSpanPlayingWhenAnchorIsPlaying() {
         var line = lyricLine();
-        var element = (StaffElement) line.getElement(0);
+        var element = line.getElement(0);
 
         var invariants = seededBuilder()
             .setCurrentLine(line)
@@ -253,7 +253,7 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testIsLyricSpanPlayingForMelismaExtender() {
         var line = melismaLine();
-        var element = (StaffElement) line.getElement(0);
+        var element = line.getElement(0);
 
         // Index 1 is the STOP carrier; index 0 is the START anchor
         // Playing index 1 should keep index 0's lyric highlighted
@@ -271,7 +271,7 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testIsLyricSpanPlayingForMultiCarrierMelisma() {
         var line = multiCarrierMelismaLine();
-        var anchor = (StaffElement) line.getElement(0);
+        var anchor = line.getElement(0);
 
         // Anchor at 0 (START), carriers CONTINUE at 1 and 2, STOP at 3, new word at 4.
         // Every carrier index must keep the anchor's lyric highlighted.
@@ -299,7 +299,7 @@ class LineInvariantsTest extends UnitTest {
 
         // A CONTINUE carrier is not itself a forward-extending anchor: querying the
         // carrier at index 1 while a later carrier plays must not highlight it.
-        var carrier = (StaffElement) line.getElement(1);
+        var carrier = line.getElement(1);
         var playingLaterCarrier = seededBuilder()
             .setCurrentLine(line)
             .setPlayingNoteIndex(3)
@@ -314,7 +314,7 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testIsLyricSpanPlayingForBeginMiddleContiguous() {
         var line = beginMiddleLine();
-        var element = (StaffElement) line.getElement(0);
+        var element = line.getElement(0);
 
         // Index 1 has no lyric; playing note at 1 is inside the BEGIN anchor's span
         var invariants = seededBuilder()
@@ -332,10 +332,10 @@ class LineInvariantsTest extends UnitTest {
         var line = beginMiddleLine();
         // Add a third element with a new syllable, terminating the span at index 1
         line.addElement(ElementType.CROTCHET.newInstance());
-        var thirdElement = (StaffElement) line.getElement(2);
+        var thirdElement = line.getElement(2);
         thirdElement.setLyricForVerse(1, Lyric.Syllabic.END, false, "do", Lyric.Extend.NONE);
 
-        var element = (StaffElement) line.getElement(0);
+        var element = line.getElement(0);
 
         // Now the BEGIN anchor's span ends at index 1 (the text-bearing END syllable is at 2,
         // so spanEnd = 2 - 1 = 1). Playing at index 2 is outside.
@@ -355,7 +355,7 @@ class LineInvariantsTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
 
-        var element = (StaffElement) line.getElement(0);
+        var element = line.getElement(0);
         // element has no lyric at verse 1
 
         var invariants = seededBuilder()
@@ -371,7 +371,7 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testGetLyricColorSelectedLyricReturnsSelectionColor() {
         var line = lyricLine();
-        var element = (StaffElement) line.getElement(0);
+        var element = line.getElement(0);
 
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(true);
@@ -392,13 +392,13 @@ class LineInvariantsTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        ((StaffElement) line.getElement(0)).setLyricForVerse(
+        line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
-        ((StaffElement) line.getElement(1)).setLyricForVerse(
+        line.getElement(1).setLyricForVerse(
             1, null, false, null, Lyric.Extend.CONTINUE);
         // index 2 has no lyric — span runs to end of line
 
-        var element = (StaffElement) line.getElement(0);
+        var element = line.getElement(0);
 
         var invariants = seededBuilder()
             .setCurrentLine(line)
@@ -423,11 +423,11 @@ class LineInvariantsTest extends UnitTest {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        ((StaffElement) line.getElement(0)).setLyricForVerse(
+        line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.MIDDLE, false, "lo", Lyric.Extend.NONE);
         // index 1 intentionally left without a lyric
 
-        var element = (StaffElement) line.getElement(0);
+        var element = line.getElement(0);
 
         var invariants = seededBuilder()
             .setCurrentLine(line)
@@ -444,7 +444,7 @@ class LineInvariantsTest extends UnitTest {
         var line = lyricLine(); // SINGLE syllable at index 0
         line.addElement(ElementType.CROTCHET.newInstance());
 
-        var element = (StaffElement) line.getElement(0);
+        var element = line.getElement(0);
 
         // Playing note at index 1 is past the anchor, but SINGLE does not extend forward
         var invariants = seededBuilder()
@@ -463,10 +463,10 @@ class LineInvariantsTest extends UnitTest {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        ((StaffElement) line.getElement(1)).setLyricForVerse(
+        line.getElement(1).setLyricForVerse(
             1, Lyric.Syllabic.BEGIN, false, "hi", Lyric.Extend.NONE);
 
-        var element = (StaffElement) line.getElement(1);
+        var element = line.getElement(1);
 
         var invariants = seededBuilder()
             .setCurrentLine(line)
@@ -480,7 +480,7 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testGetLyricColorSelectionProviderNotSelectedReturnsBlack() {
         var line = lyricLine();
-        var element = (StaffElement) line.getElement(0);
+        var element = line.getElement(0);
 
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isLyricSelected(element, 1, 0)).thenReturn(false);
@@ -501,9 +501,9 @@ class LineInvariantsTest extends UnitTest {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        ((StaffElement) line.getElement(0)).setLyricForVerse(
+        line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
-        ((StaffElement) line.getElement(1)).setLyricForVerse(
+        line.getElement(1).setLyricForVerse(
             1, null, false, null, Lyric.Extend.STOP);
         return line;
     }
@@ -520,15 +520,15 @@ class LineInvariantsTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        ((StaffElement) line.getElement(0)).setLyricForVerse(
+        line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
-        ((StaffElement) line.getElement(1)).setLyricForVerse(
+        line.getElement(1).setLyricForVerse(
             1, null, false, null, Lyric.Extend.CONTINUE);
-        ((StaffElement) line.getElement(2)).setLyricForVerse(
+        line.getElement(2).setLyricForVerse(
             1, null, false, null, Lyric.Extend.CONTINUE);
-        ((StaffElement) line.getElement(3)).setLyricForVerse(
+        line.getElement(3).setLyricForVerse(
             1, null, false, null, Lyric.Extend.STOP);
-        ((StaffElement) line.getElement(4)).setLyricForVerse(
+        line.getElement(4).setLyricForVerse(
             1, Lyric.Syllabic.SINGLE, false, "next", Lyric.Extend.NONE);
         return line;
     }
@@ -541,7 +541,7 @@ class LineInvariantsTest extends UnitTest {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        ((StaffElement) line.getElement(0)).setLyricForVerse(
+        line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.BEGIN, false, "hel", Lyric.Extend.NONE);
         // index 1 intentionally left without a lyric
         return line;
@@ -553,7 +553,7 @@ class LineInvariantsTest extends UnitTest {
     private static Line lyricLine() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());
-        ((StaffElement) line.getElement(0)).setLyricForVerse(
+        line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.SINGLE, false, "la", Lyric.Extend.NONE);
         return line;
     }

@@ -73,7 +73,7 @@ class SelectionCoordinatorStaleCacheTest extends MainFrameMockTest {
             .as("precondition: a barline carries no duration")
             .isFalse();
         coordinator.triggerReflection();
-        assertThat(((SelectableUIAction) action).isSelected())
+        assertThat(action.isSelected())
             .as("precondition: a barline cannot carry a sharp")
             .isFalse();
 
@@ -120,7 +120,7 @@ class SelectionCoordinatorStaleCacheTest extends MainFrameMockTest {
 
         fixture.coordinator().triggerReflection();
 
-        assertThat(((SelectableUIAction) fixture.action()).isSelected())
+        assertThat(fixture.action().isSelected())
             .as("the selected note carries a sharp")
             .isTrue();
     }
