@@ -75,6 +75,7 @@ public final class PDFExporter {
             var leftMarginFactor =
                 (double) data.leftInnerMarginPx /
                     (double) (data.leftInnerMarginPx + data.rightOuterMarginPx);
+            //noinspection UnusedAssignment
             leftMargin = scaledMargin * leftMarginFactor;
         }
 

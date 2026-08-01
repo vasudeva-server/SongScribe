@@ -742,14 +742,16 @@ final class BeamScoring {
 
         @Override
         public String toString() {
+            var format = "stemLen=" + LOG_NUMBER_FORMAT
+                + " slopeDir=" + LOG_NUMBER_FORMAT
+                + " slopeMus=" + LOG_NUMBER_FORMAT
+                + " slopeIdeal=" + LOG_NUMBER_FORMAT
+                + " horizInter=" + LOG_NUMBER_FORMAT
+                + " forbidden=" + LOG_NUMBER_FORMAT
+                + " initial=" + LOG_NUMBER_FORMAT;
+
             return String.format(
-                "stemLen=" + LOG_NUMBER_FORMAT
-                    + " slopeDir=" + LOG_NUMBER_FORMAT
-                    + " slopeMus=" + LOG_NUMBER_FORMAT
-                    + " slopeIdeal=" + LOG_NUMBER_FORMAT
-                    + " horizInter=" + LOG_NUMBER_FORMAT
-                    + " forbidden=" + LOG_NUMBER_FORMAT
-                    + " initial=" + LOG_NUMBER_FORMAT,
+                format,
                 stemLengths,
                 slopeDirection,
                 slopeMusical,

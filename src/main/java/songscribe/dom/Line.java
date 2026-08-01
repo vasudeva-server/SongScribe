@@ -2461,7 +2461,7 @@ public class Line {
         // before restoring the originals, and run in reverse list order so undo restores
         // them in the order they were in, leaving the document identical to before.
         var doomed = new ArrayList<>(run.stream().map(HairpinSpan::hairpin).toList());
-        doomed.sort(Comparator.comparingInt(rangeElements::indexOf).reversed());
+        doomed.sort(Comparator.<Hairpin>comparingInt(rangeElements::indexOf).reversed());
         doomed.forEach(this::removeInvalidatedRangeElement);
 
         var reshaped = (Hairpin) first.copy(anchorElement, endElement);
