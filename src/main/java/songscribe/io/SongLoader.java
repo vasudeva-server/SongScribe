@@ -39,7 +39,9 @@ import songscribe.dom.TupletLoadPass;
  */
 public final class SongLoader {
 
-    private static final SAXParserFactory PARSER_FACTORY = SAXParserFactory.newInstance();
+    // A .mssw file is user-supplied like any other, so it gets the same hardening
+    // as the MusicXML path — see SafeXmlParser.
+    private static final SAXParserFactory PARSER_FACTORY = SafeXmlParser.newHardenedFactory();
 
     private SongLoader() {}
 

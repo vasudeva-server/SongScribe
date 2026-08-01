@@ -21,6 +21,10 @@
 package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.io.XmlFixtures.closeTag;
+import static songscribe.io.XmlFixtures.element;
+import static songscribe.io.XmlFixtures.emptyTag;
+import static songscribe.io.XmlFixtures.openTag;
 
 import java.io.PrintWriter;
 import java.io.StringReader;
@@ -68,11 +72,14 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
      * root element so future fixtures inherit the tag instead of silently breaking.
      */
     protected static final String SOFTWARE_IDENTIFICATION =
-        "  <identification>\n" +
-        "    <encoding>\n" +
-        "      <software>" + Constants.PACKAGE_NAME + "</software>\n" +
-        "    </encoding>\n" +
-        "  </identification>\n";
+        "  " + openTag(MusicXmlTags.IDENTIFICATION) + '\n' +
+        "    " + openTag(MusicXmlTags.ENCODING) + '\n' +
+        "      " + element(MusicXmlTags.SOFTWARE, Constants.PACKAGE_NAME) + '\n' +
+        "    " + closeTag(MusicXmlTags.ENCODING) + '\n' +
+        "  " + closeTag(MusicXmlTags.IDENTIFICATION) + '\n';
+
+    /** The single part these fixtures declare and then fill. */
+    private static final String PART_ID = "P1";
 
     // -- helpers --
 
@@ -81,28 +88,35 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
      * SongScribe provenance tag, a new-system {@code <print>} (so the reader starts a
      * line), and standard attributes. Shared by the hand-built reader edge-case and
      * round-trip fixtures.
+     *
+     * <p>Element and attribute names come from {@link MusicXmlTags} wherever the codec
+     * has a constant for them, so renaming one there cannot leave this fixture quietly
+     * emitting an element the reader no longer recognises. The few names spelled out
+     * below ({@code divisions}, {@code time}, {@code clef}, {@code part-name}) are
+     * literals in the writer too, so there is no constant for them to drift from.
      */
     protected static String scoreWithMeasureBody(String measureBody) {
         return
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<score-partwise version=\"4.0\">\n" +
+            openTag(MusicXmlTags.SCORE_PARTWISE, MusicXmlTags.ATTR_VERSION, MusicXmlTags.VERSION_VALUE) + '\n' +
             SOFTWARE_IDENTIFICATION +
-            "  <part-list>\n" +
-            "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
-            "  </part-list>\n" +
-            "  <part id=\"P1\">\n" +
-            "    <measure number=\"1\">\n" +
-            "      <print new-system=\"yes\"/>\n" +
-            "      <attributes>\n" +
-            "        <divisions>480</divisions>\n" +
-            "        <key><fifths>0</fifths></key>\n" +
+            "  " + openTag(MusicXmlTags.PART_LIST) + '\n' +
+            "    " + openTag(MusicXmlTags.SCORE_PART, MusicXmlTags.ATTR_ID, PART_ID) +
+                "<part-name></part-name>" + closeTag(MusicXmlTags.SCORE_PART) + '\n' +
+            "  " + closeTag(MusicXmlTags.PART_LIST) + '\n' +
+            "  " + openTag(MusicXmlTags.PART, MusicXmlTags.ATTR_ID, PART_ID) + '\n' +
+            "    " + openTag(MusicXmlTags.MEASURE, MusicXmlTags.ATTR_NUMBER, "1") + '\n' +
+            "      " + emptyTag(MusicXmlTags.PRINT, MusicXmlTags.ATTR_NEW_SYSTEM, MusicXmlTags.YES) + '\n' +
+            "      " + openTag(MusicXmlTags.ATTRIBUTES) + '\n' +
+            "        <divisions>" + MusicXmlUnits.DIVISIONS + "</divisions>\n" +
+            "        " + element(MusicXmlTags.KEY, element(MusicXmlTags.FIFTHS, "0")) + '\n' +
             "        <time print-object=\"no\"><senza-misura/></time>\n" +
             "        <clef><sign>G</sign><line>2</line></clef>\n" +
-            "      </attributes>\n" +
+            "      " + closeTag(MusicXmlTags.ATTRIBUTES) + '\n' +
             measureBody +
-            "    </measure>\n" +
-            "  </part>\n" +
-            "</score-partwise>\n";
+            "    " + closeTag(MusicXmlTags.MEASURE) + '\n' +
+            "  " + closeTag(MusicXmlTags.PART) + '\n' +
+            closeTag(MusicXmlTags.SCORE_PARTWISE) + '\n';
     }
 
     // The Song-only overloads default to DocumentFonts.defaultFonts() so the

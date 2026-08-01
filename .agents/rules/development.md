@@ -25,7 +25,7 @@ MANDATORY: Never invoke the `/run` or `/verify` skill (via the Skill tool or oth
 
 ## Writing Tests
 
-Before writing tests, read the relevant guide (not auto-loaded): [testing-common.md](../guides/testing-common.md), [testing-unit.md](../guides/testing-unit.md), [testing-e2e.md](../guides/testing-e2e.md).
+Before reading, creating, or modifying tests, read the relevant guide (not auto-loaded): [testing-common.md](../guides/testing-common.md), [testing-unit.md](../guides/testing-unit.md), [testing-e2e.md](../guides/testing-e2e.md).
 
 ## Javadoc References to Constants
 

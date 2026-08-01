@@ -29,6 +29,7 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 import org.xml.sax.helpers.DefaultHandler;
 
@@ -304,6 +305,17 @@ public final class SongIO {
         private boolean hasBeenDynamicallyLaidOut = false;
         private final List<Line> parsedLines = new ArrayList<>();
         private final Map<Line, LegacyLineOffsets> parsedLegacyOffsets = new HashMap<>();
+
+        /**
+         * Refuses to fetch anything a {@code DOCTYPE} names, handing the parser an
+         * empty stand-in instead. {@code SAXParser.parse} installs this handler as
+         * the entity resolver, so this override is all it takes — see
+         * {@link SafeXmlParser#emptyEntitySource()}.
+         */
+        @Override
+        public InputSource resolveEntity(String publicId, String systemId) {
+            return SafeXmlParser.emptyEntitySource();
+        }
 
         @Override
         public void startElement(

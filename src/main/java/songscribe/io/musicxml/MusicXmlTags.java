@@ -27,8 +27,13 @@ package songscribe.io.musicxml;
  *
  * <p>Bar-style, repeat-direction, and barline-location <em>values</em> live in
  * {@link BarlineStyleMapping}, which owns the barline mapping.
+ *
+ * <p>The class is public only so that tests outside this package can build
+ * MusicXML fixtures from the same vocabulary the codec uses, rather than
+ * restating the literals. Members stay package-private by default; a member is
+ * widened to public only when such a test needs it.
  */
-final class MusicXmlTags {
+public final class MusicXmlTags {
 
     private MusicXmlTags() {}
 
@@ -37,7 +42,7 @@ final class MusicXmlTags {
      * reader accepts: documents at this version or later are read
      * (forward-compatible); older ones are rejected.
      */
-    static final String VERSION_VALUE = "4.0";
+    public static final String VERSION_VALUE = "4.0";
 
     // MusicXML's positional coordinate unit is the tenth: 1 staff space = 10
     // tenths. Shared by both sides of the codec so the writer's px→tenths and the
@@ -45,18 +50,18 @@ final class MusicXmlTags {
     static final int TENTHS_PER_STAFF_SPACE = 10;
 
     // Element names — document structure.
-    static final String SCORE_PARTWISE = "score-partwise";
-    static final String PART_LIST      = "part-list";
-    static final String SCORE_PART     = "score-part";
-    static final String PART           = "part";
-    static final String MEASURE        = "measure";
-    static final String ATTRIBUTES     = "attributes";
-    static final String KEY            = "key";
-    static final String FIFTHS         = "fifths";
-    static final String PRINT          = "print";
-    static final String BARLINE        = "barline";
-    static final String BAR_STYLE      = "bar-style";
-    static final String REPEAT         = "repeat";
+    public static final String SCORE_PARTWISE = "score-partwise";
+    static final String        PART_LIST      = "part-list";
+    static final String        SCORE_PART     = "score-part";
+    static final String        PART           = "part";
+    static final String        MEASURE        = "measure";
+    static final String        ATTRIBUTES     = "attributes";
+    static final String        KEY            = "key";
+    static final String        FIFTHS         = "fifths";
+    static final String        PRINT          = "print";
+    static final String        BARLINE        = "barline";
+    static final String        BAR_STYLE      = "bar-style";
+    static final String        REPEAT         = "repeat";
 
     // Element names — note subtree.
     static final String NOTE          = "note";
@@ -120,15 +125,15 @@ final class MusicXmlTags {
     static final String METRONOME_RELATION = "metronome-relation";
 
     // Element names — head / identification subtree.
-    static final String MOVEMENT_TITLE  = "movement-title";
-    static final String MOVEMENT_NUMBER = "movement-number";
-    static final String IDENTIFICATION  = "identification";
-    static final String CREATOR         = "creator";
-    static final String RIGHTS          = "rights";
-    static final String ENCODING        = "encoding";
-    static final String SOFTWARE        = "software";
-    static final String ENCODING_DATE   = "encoding-date";
-    static final String SUPPORTS        = "supports";
+    static final String        MOVEMENT_TITLE  = "movement-title";
+    static final String        MOVEMENT_NUMBER = "movement-number";
+    static final String        IDENTIFICATION  = "identification";
+    static final String        CREATOR         = "creator";
+    static final String        RIGHTS          = "rights";
+    static final String        ENCODING        = "encoding";
+    public static final String SOFTWARE        = "software";
+    static final String        ENCODING_DATE   = "encoding-date";
+    static final String        SUPPORTS        = "supports";
 
     // Element names — defaults subtree.
     static final String DEFAULTS       = "defaults";
@@ -155,12 +160,12 @@ final class MusicXmlTags {
     static final String MISCELLANEOUS_FIELD = "miscellaneous-field";
 
     // Attribute names — document structure.
-    static final String ATTR_VERSION    = "version";
-    static final String ATTR_NEW_SYSTEM = "new-system";
-    static final String ATTR_LOCATION   = "location";
-    static final String ATTR_DIRECTION  = "direction";
-    static final String ATTR_NUMBER     = "number";
-    static final String ATTR_ID         = "id";
+    public static final String ATTR_VERSION    = "version";
+    static final String        ATTR_NEW_SYSTEM = "new-system";
+    static final String        ATTR_LOCATION   = "location";
+    static final String        ATTR_DIRECTION  = "direction";
+    static final String        ATTR_NUMBER     = "number";
+    static final String        ATTR_ID         = "id";
 
     // Attribute names — note subtree.
     static final String ATTR_SLASH       = "slash";

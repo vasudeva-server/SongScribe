@@ -31,11 +31,13 @@ import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.regex.Pattern;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import songscribe.UnitTest;
+import songscribe.io.musicxml.MusicXmlTags;
 import songscribe.io.musicxml.MusicXmlWriter;
 
 /**
@@ -54,20 +56,110 @@ class SongFileLoaderTest extends UnitTest {
     private static final String EXTENSIONLESS_FILE_NAME = "song-with-no-extension";
     private static final String NONEXISTENT_FILE_NAME = "does-not-exist.musicxml";
 
-    private static final String SOFTWARE_TAG_REGEX = "<software>[^<]*</software>";
+    // Every element/attribute name the fixtures edit comes from MusicXmlTags, the
+    // vocabulary the writer emits, so renaming a tag there cannot leave these
+    // fixtures silently editing nothing and passing.
     private static final String FOREIGN_SOFTWARE = "Finale";
     private static final String BLANK_SOFTWARE = "   ";
+    // <software> content is text-only, so any run of non-'<' is the whole value.
+    private static final String SOFTWARE_TAG_REGEX =
+        XmlFixtures.element(MusicXmlTags.SOFTWARE, "[^<]*");
 
-    private static final String NATIVE_ROOT_OPEN_TAG = "<score-partwise version=\"4.0\">";
-    private static final String NATIVE_ROOT_CLOSE_TAG = "</score-partwise>";
-    private static final String FOREIGN_ROOT_OPEN_TAG = "<score-timewise version=\"4.0\">";
-    private static final String FOREIGN_ROOT_CLOSE_TAG = "</score-timewise>";
+    // score-timewise is the other MusicXML root; the writer never emits it, so it
+    // has no MusicXmlTags constant.
+    private static final String FOREIGN_ROOT = "score-timewise";
+    private static final String NATIVE_ROOT_OPEN_TAG =
+        rootOpenTag(MusicXmlTags.SCORE_PARTWISE, MusicXmlTags.VERSION_VALUE);
+    private static final String NATIVE_ROOT_CLOSE_TAG = XmlFixtures.closeTag(MusicXmlTags.SCORE_PARTWISE);
+    private static final String FOREIGN_ROOT_OPEN_TAG =
+        rootOpenTag(FOREIGN_ROOT, MusicXmlTags.VERSION_VALUE);
+    private static final String FOREIGN_ROOT_CLOSE_TAG = XmlFixtures.closeTag(FOREIGN_ROOT);
 
-    private static final String VERSION_ATTR = "version=\"4.0\"";
-    private static final String VERSION_TOO_OLD_ATTR = "version=\"3.0\"";
-    private static final String VERSION_UNPARSEABLE_ATTR = "version=\"x\"";
-    private static final String VERSION_MISSING_TAG = "<score-partwise>";
+    private static final String TOO_OLD_VERSION = "3.0";
+    private static final String UNPARSEABLE_VERSION = "x";
+    private static final String VERSION_ATTR = versionAttr(MusicXmlTags.VERSION_VALUE);
+    private static final String VERSION_TOO_OLD_ATTR = versionAttr(TOO_OLD_VERSION);
+    private static final String VERSION_UNPARSEABLE_ATTR = versionAttr(UNPARSEABLE_VERSION);
+    private static final String VERSION_MISSING_TAG = XmlFixtures.openTag(MusicXmlTags.SCORE_PARTWISE);
+
+    // The DOCTYPE a real Finale/Dolet export carries. The public and system
+    // identifiers are the vendor's, so they stay verbatim.
+    private static final String MUSICXML_DOCTYPE =
+        "<!DOCTYPE " + MusicXmlTags.SCORE_PARTWISE +
+            " PUBLIC \"-//Recordare//DTD MusicXML 3.0 Partwise//EN\"" +
+            " \"http://www.musicxml.org/dtds/partwise.dtd\">";
+    private static final String XXE_ENTITY_NAME = "xxe";
+    private static final String SECRET_FILE_NAME = "secret.txt";
+    private static final String XXE_SECRET = "TOP-SECRET-CONTENTS";
+
+    // Deliberately not valid document-type-definition syntax: a parser that fetched
+    // this file would fail on it, so a successful load proves it was never fetched.
+    private static final String BROKEN_DTD_FILE_NAME = "broken.dtd";
+    private static final String BROKEN_DTD_CONTENT = "this is not a document type definition";
+
+    // A "billion laughs" bomb: each level expands to ENTITY_BOMB_FANOUT copies of the
+    // level below it, so referencing the top level demands far more expansions than
+    // the runtime permits. Six levels is well past the limit while still building
+    // instantly and staying a few hundred bytes on disk.
+    private static final int ENTITY_BOMB_LEVELS = 6;
+    private static final int ENTITY_BOMB_FANOUT = 10;
+    private static final String ENTITY_BOMB_LEAF = "aaaaaaaaaa";
+    private static final String ENTITY_BOMB_PREFIX = "bomb";
+    // The runtime names the limit it enforced; matching only this word keeps the test
+    // off the exact wording, which is the runtime's to change.
+    private static final String ENTITY_EXPANSION_ERROR_TOKEN = "entity expansions";
+
     private static final Pattern SOFTWARE_TAG_PATTERN = Pattern.compile(SOFTWARE_TAG_REGEX);
+
+    private static String versionAttr(String version) {
+        return XmlFixtures.attr(MusicXmlTags.ATTR_VERSION, version);
+    }
+
+    private static String rootOpenTag(String rootName, String version) {
+        return XmlFixtures.openTag(rootName, MusicXmlTags.ATTR_VERSION, version);
+    }
+
+    private static String doctypeWithInternalSubset(String internalSubset) {
+        return "<!DOCTYPE " + MusicXmlTags.SCORE_PARTWISE + " [" + internalSubset + "]>";
+    }
+
+    private static String entityReference(int level) {
+        return '&' + ENTITY_BOMB_PREFIX + level + ';';
+    }
+
+    private static String entityBombDoctype() {
+        var subset = new StringBuilder(entityDeclaration(0, ENTITY_BOMB_LEAF));
+
+        for (var level = 1; level < ENTITY_BOMB_LEVELS; level++) {
+            subset.append(entityDeclaration(level, entityReference(level - 1).repeat(ENTITY_BOMB_FANOUT)));
+        }
+
+        return doctypeWithInternalSubset(subset.toString());
+    }
+
+    private static String entityDeclaration(int level, String value) {
+        return "<!ENTITY " + ENTITY_BOMB_PREFIX + level + " \"" + value + "\">";
+    }
+
+    /** The detail of an {@link SongLoadResult.UnsupportedFileFormat}, failing loudly on any other result. */
+    @Nullable
+    private static String unsupportedFormatDetail(SongLoadResult result) {
+        if (!(result instanceof SongLoadResult.UnsupportedFileFormat unsupported)) {
+            throw new AssertionError("expected UnsupportedFileFormat but got " + result);
+        }
+
+        return unsupported.detail();
+    }
+
+    /** The software tag of a {@link SongLoadResult.WrongSoftware}, failing loudly on any other result. */
+    @Nullable
+    private static String wrongSoftwareTag(SongLoadResult result) {
+        if (!(result instanceof SongLoadResult.WrongSoftware wrongSoftware)) {
+            throw new AssertionError("expected WrongSoftware but got " + result);
+        }
+
+        return wrongSoftware.software();
+    }
 
     @SuppressWarnings("StaticVariableMayNotBeInitialized")
     private static String validMusicXml;
@@ -127,13 +219,10 @@ class SongFileLoaderTest extends UnitTest {
     @Test
     void testMusicXmlWithForeignSoftwareReturnsWrongSoftware(@TempDir Path tempDir) throws IOException {
         var foreignXml = SOFTWARE_TAG_PATTERN.matcher(validMusicXml)
-            .replaceFirst("<software>" + FOREIGN_SOFTWARE + "</software>");
+            .replaceFirst(XmlFixtures.element(MusicXmlTags.SOFTWARE, FOREIGN_SOFTWARE));
         var file = writeFile(tempDir, "foreign." + MUSICXML_EXTENSION, foreignXml);
 
-        var result = SongFileLoader.load(file);
-
-        assertThat(result).isInstanceOf(SongLoadResult.WrongSoftware.class);
-        assertThat(((SongLoadResult.WrongSoftware) result).software()).isEqualTo(FOREIGN_SOFTWARE);
+        assertThat(wrongSoftwareTag(SongFileLoader.load(file))).isEqualTo(FOREIGN_SOFTWARE);
     }
 
     // -- (d) <software> element removed entirely ---------------------------------------------
@@ -145,10 +234,7 @@ class SongFileLoaderTest extends UnitTest {
         var noSoftwareXml = SOFTWARE_TAG_PATTERN.matcher(validMusicXml).replaceFirst("");
         var file = writeFile(tempDir, "no-software." + MUSICXML_EXTENSION, noSoftwareXml);
 
-        var result = SongFileLoader.load(file);
-
-        assertThat(result).isInstanceOf(SongLoadResult.WrongSoftware.class);
-        assertThat(((SongLoadResult.WrongSoftware) result).software()).isNull();
+        assertThat(wrongSoftwareTag(SongFileLoader.load(file))).isNull();
     }
 
     // -- (e) <software> whitespace-only -------------------------------------------------------
@@ -156,10 +242,10 @@ class SongFileLoaderTest extends UnitTest {
     @Test
     void testMusicXmlWithBlankSoftwareReturnsWrongSoftware(@TempDir Path tempDir) throws IOException {
         var blankSoftwareXml = SOFTWARE_TAG_PATTERN.matcher(validMusicXml)
-            .replaceFirst("<software>" + BLANK_SOFTWARE + "</software>");
+            .replaceFirst(XmlFixtures.element(MusicXmlTags.SOFTWARE, BLANK_SOFTWARE));
         var file = writeFile(tempDir, "blank-software." + MUSICXML_EXTENSION, blankSoftwareXml);
 
-        assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.WrongSoftware.class);
+        assertThat(wrongSoftwareTag(SongFileLoader.load(file))).isBlank();
     }
 
     // -- (f) writer-produced .xml (same content, .xml name) ----------------------------------
@@ -176,10 +262,10 @@ class SongFileLoaderTest extends UnitTest {
     @Test
     void testForeignXmlExtensionReturnsWrongSoftware(@TempDir Path tempDir) throws IOException {
         var foreignXml = SOFTWARE_TAG_PATTERN.matcher(validMusicXml)
-            .replaceFirst("<software>" + FOREIGN_SOFTWARE + "</software>");
+            .replaceFirst(XmlFixtures.element(MusicXmlTags.SOFTWARE, FOREIGN_SOFTWARE));
         var file = writeFile(tempDir, "foreign." + XML_EXTENSION, foreignXml);
 
-        assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.WrongSoftware.class);
+        assertThat(wrongSoftwareTag(SongFileLoader.load(file))).isEqualTo(FOREIGN_SOFTWARE);
     }
 
     // -- (h) unsupported extension / no extension --------------------------------------------
@@ -190,17 +276,16 @@ class SongFileLoaderTest extends UnitTest {
 
         var file = writeFile(tempDir, "song." + PDF_EXTENSION, validMusicXml);
 
-        var result = SongFileLoader.load(file);
-
-        assertThat(result).isInstanceOf(SongLoadResult.UnsupportedFileFormat.class);
-        assertThat(((SongLoadResult.UnsupportedFileFormat) result).detail()).isEqualTo(PDF_EXTENSION);
+        assertThat(unsupportedFormatDetail(SongFileLoader.load(file))).isEqualTo(PDF_EXTENSION);
     }
 
     @Test
     void testExtensionlessPathReturnsUnsupportedFileFormat(@TempDir Path tempDir) throws IOException {
         var file = writeFile(tempDir, EXTENSIONLESS_FILE_NAME, validMusicXml);
 
-        assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.UnsupportedFileFormat.class);
+        // A name with no extension reports an empty one, distinguishing this from the
+        // rejections that name a bad root element or an unusable version.
+        assertThat(unsupportedFormatDetail(SongFileLoader.load(file))).isEmpty();
     }
 
     // -- (i) root element is not <score-partwise> --------------------------------------------
@@ -212,7 +297,7 @@ class SongFileLoaderTest extends UnitTest {
             .replace(NATIVE_ROOT_CLOSE_TAG, FOREIGN_ROOT_CLOSE_TAG);
         var file = writeFile(tempDir, "wrong-root." + MUSICXML_EXTENSION, wrongRootXml);
 
-        assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.UnsupportedFileFormat.class);
+        assertThat(unsupportedFormatDetail(SongFileLoader.load(file))).contains(FOREIGN_ROOT);
     }
 
     // -- (j) unsupported / missing / unparseable version -------------------------------------
@@ -222,7 +307,10 @@ class SongFileLoaderTest extends UnitTest {
         var oldVersionXml = validMusicXml.replace(VERSION_ATTR, VERSION_TOO_OLD_ATTR);
         var file = writeFile(tempDir, "old-version." + MUSICXML_EXTENSION, oldVersionXml);
 
-        assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.UnsupportedFileFormat.class);
+        var detail = unsupportedFormatDetail(SongFileLoader.load(file));
+
+        assertThat(detail).contains(TOO_OLD_VERSION);
+        assertThat(detail).contains(MusicXmlTags.VERSION_VALUE);
     }
 
     @Test
@@ -230,7 +318,12 @@ class SongFileLoaderTest extends UnitTest {
         var missingVersionXml = validMusicXml.replace(NATIVE_ROOT_OPEN_TAG, VERSION_MISSING_TAG);
         var file = writeFile(tempDir, "missing-version." + MUSICXML_EXTENSION, missingVersionXml);
 
-        assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.UnsupportedFileFormat.class);
+        var detail = unsupportedFormatDetail(SongFileLoader.load(file));
+
+        // Names the attribute that is absent, and cannot be quoting a version it never
+        // found — which is what separates this from the unparseable-version rejection.
+        assertThat(detail).contains(MusicXmlTags.ATTR_VERSION);
+        assertThat(detail).doesNotContain("'");
     }
 
     @Test
@@ -238,10 +331,97 @@ class SongFileLoaderTest extends UnitTest {
         var unparseableVersionXml = validMusicXml.replace(VERSION_ATTR, VERSION_UNPARSEABLE_ATTR);
         var file = writeFile(tempDir, "unparseable-version." + MUSICXML_EXTENSION, unparseableVersionXml);
 
-        assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.UnsupportedFileFormat.class);
+        assertThat(unsupportedFormatDetail(SongFileLoader.load(file)))
+            .contains('\'' + UNPARSEABLE_VERSION + '\'');
     }
 
-    // -- (k) malformed (not well-formed) XML --------------------------------------------------
+    // -- (k) a DOCTYPE is tolerated, and nothing it declares is acted upon ---------------------
+    //
+    // Every mainstream notation program emits a DOCTYPE, so the parser has to read past
+    // one. It reads and acts on everything above the root element before this reader's
+    // first callback fires, so rejecting a document quickly afterwards is a diagnosis,
+    // not a defense — these tests pin the "nothing is acted upon" half in place.
+
+    @Test
+    void testDoctypedValidDocumentSucceeds(@TempDir Path tempDir) throws IOException {
+        // The motivating case: a DOCTYPE must make no difference at all to a document
+        // that is otherwise exactly what the writer produced.
+        var doctypedXml = validMusicXml.replace(NATIVE_ROOT_OPEN_TAG, MUSICXML_DOCTYPE + NATIVE_ROOT_OPEN_TAG);
+        var file = writeFile(tempDir, "doctyped-valid." + MUSICXML_EXTENSION, doctypedXml);
+
+        assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.Success.class);
+    }
+
+    @Test
+    void testDoctypedOldVersionReturnsUnsupportedFileFormatNotParseError(@TempDir Path tempDir)
+        throws IOException {
+        // Rejecting the declaration outright aborts the parse before the version gate is
+        // reached, so the user is told the document is damaged instead of that it isn't
+        // SongScribe MusicXML.
+        var doctypedXml = validMusicXml
+            .replace(NATIVE_ROOT_OPEN_TAG, MUSICXML_DOCTYPE + NATIVE_ROOT_OPEN_TAG)
+            .replace(VERSION_ATTR, VERSION_TOO_OLD_ATTR);
+        // Without this the fixture is a plain old-version document and the test would
+        // pass while never exercising the DOCTYPE path at all.
+        assertThat(doctypedXml).contains(MUSICXML_DOCTYPE);
+
+        var file = writeFile(tempDir, "doctyped." + XML_EXTENSION, doctypedXml);
+
+        assertThat(unsupportedFormatDetail(SongFileLoader.load(file))).contains(TOO_OLD_VERSION);
+    }
+
+    @Test
+    void testExternalEntityInDoctypeIsNotResolved(@TempDir Path tempDir) throws IOException {
+        var secretFile = writeFile(tempDir, SECRET_FILE_NAME, XXE_SECRET);
+        var entityDoctype = doctypeWithInternalSubset(
+            "<!ENTITY " + XXE_ENTITY_NAME + " SYSTEM \"" + secretFile.toURI() + "\">");
+        var xxeXml = SOFTWARE_TAG_PATTERN.matcher(validMusicXml)
+            .replaceFirst(XmlFixtures.element(MusicXmlTags.SOFTWARE, '&' + XXE_ENTITY_NAME + ';'))
+            .replace(NATIVE_ROOT_OPEN_TAG, entityDoctype + NATIVE_ROOT_OPEN_TAG);
+        var file = writeFile(tempDir, "xxe." + MUSICXML_EXTENSION, xxeXml);
+
+        // The reference is dropped rather than substituted, so the provenance tag ends up
+        // empty. Asserting emptiness rather than "not the secret" catches a leak that
+        // arrives with surrounding whitespace, or that pulls in some other file entirely.
+        assertThat(wrongSoftwareTag(SongFileLoader.load(file))).isEmpty();
+    }
+
+    @Test
+    void testExternalDtdSubsetIsNotFetched(@TempDir Path tempDir) throws IOException {
+        var brokenDtd = writeFile(tempDir, BROKEN_DTD_FILE_NAME, BROKEN_DTD_CONTENT);
+        var externalDoctype =
+            "<!DOCTYPE " + MusicXmlTags.SCORE_PARTWISE + " SYSTEM \"" + brokenDtd.toURI() + "\">";
+        var externalDtdXml =
+            validMusicXml.replace(NATIVE_ROOT_OPEN_TAG, externalDoctype + NATIVE_ROOT_OPEN_TAG);
+        var file = writeFile(tempDir, "external-dtd." + MUSICXML_EXTENSION, externalDtdXml);
+
+        // Loading succeeds only because the definition file was never read — its contents
+        // are not valid syntax, so fetching it would fail the parse. A real export points
+        // this at a URL, where fetching would also stall on the network.
+        assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.Success.class);
+    }
+
+    @Test
+    void testEntityExpansionBombReturnsParseError(@TempDir Path tempDir) throws IOException {
+        // Tolerating the declaration is what makes nested entity definitions reachable at
+        // all. This file is a few hundred bytes and would expand to gigabytes if the
+        // runtime did not cap expansion, freezing the window it was opened from.
+        var bombXml = SOFTWARE_TAG_PATTERN.matcher(validMusicXml)
+            .replaceFirst(XmlFixtures.element(MusicXmlTags.SOFTWARE, entityReference(ENTITY_BOMB_LEVELS - 1)))
+            .replace(NATIVE_ROOT_OPEN_TAG, entityBombDoctype() + NATIVE_ROOT_OPEN_TAG);
+        var file = writeFile(tempDir, "entity-bomb." + MUSICXML_EXTENSION, bombXml);
+        var result = SongFileLoader.load(file);
+
+        if (!(result instanceof SongLoadResult.ParseError parseError)) {
+            throw new AssertionError("expected ParseError but got " + result);
+        }
+
+        // Naming the cause keeps the test from passing on a malformed-fixture parse
+        // error, which would look identical from the outside.
+        assertThat(parseError.cause()).hasMessageContaining(ENTITY_EXPANSION_ERROR_TOKEN);
+    }
+
+    // -- (l) malformed (not well-formed) XML --------------------------------------------------
 
     @Test
     void testMalformedXmlReturnsParseError(@TempDir Path tempDir) throws IOException {
@@ -253,7 +433,7 @@ class SongFileLoaderTest extends UnitTest {
         assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.ParseError.class);
     }
 
-    // -- (l) nonexistent path -------------------------------------------------------------------
+    // -- (m) nonexistent path -------------------------------------------------------------------
 
     @Test
     void testNonexistentPathReturnsIoError(@TempDir Path tempDir) {

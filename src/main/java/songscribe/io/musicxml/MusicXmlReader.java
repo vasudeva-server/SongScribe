@@ -30,8 +30,6 @@ import org.jspecify.annotations.Nullable;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
-import org.xml.sax.SAXNotRecognizedException;
-import org.xml.sax.SAXNotSupportedException;
 import org.xml.sax.helpers.DefaultHandler;
 
 import songscribe.dom.ElementType;
@@ -40,6 +38,7 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TupletLoadPass;
 import songscribe.font.DocumentFonts;
+import songscribe.io.SafeXmlParser;
 import songscribe.io.SongLoadResult;
 import songscribe.util.Utils;
 
@@ -114,23 +113,13 @@ public final class MusicXmlReader extends DefaultHandler {
 
     // Element names, attribute names, and shared values are in MusicXmlTags.
 
+    // A DOCTYPE is tolerated but nothing it names is acted upon — see SafeXmlParser
+    // for why both halves of that are necessary.
     private static final SAXParserFactory PARSER_FACTORY;
 
     static {
-        PARSER_FACTORY = SAXParserFactory.newInstance();
+        PARSER_FACTORY = SafeXmlParser.newHardenedFactory();
         PARSER_FACTORY.setNamespaceAware(true);
-        PARSER_FACTORY.setValidating(false);
-        try {
-            // Harden against XXE: the writer never emits DOCTYPE, so legitimate
-            // input is unaffected; crafted documents are rejected.
-            PARSER_FACTORY.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-            PARSER_FACTORY.setFeature("http://xml.org/sax/features/external-general-entities", false);
-            PARSER_FACTORY.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-            PARSER_FACTORY.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-            PARSER_FACTORY.setXIncludeAware(false);
-        } catch (SAXNotRecognizedException | SAXNotSupportedException | ParserConfigurationException e) {
-            throw new ExceptionInInitializerError(e);
-        }
     }
 
     private Where where = Where.NONE;
@@ -315,6 +304,17 @@ public final class MusicXmlReader extends DefaultHandler {
      */
     public static SongLoadResult.Success read(File file) throws IOException, SAXException {
         return read(new InputSource(file.toURI().toString()));
+    }
+
+    /**
+     * Refuses to fetch anything a {@code DOCTYPE} names, handing the parser an
+     * empty stand-in instead. {@code SAXParser.parse} installs this handler as the
+     * entity resolver, so this override is all it takes — see
+     * {@link SafeXmlParser#emptyEntitySource()}.
+     */
+    @Override
+    public InputSource resolveEntity(String publicId, String systemId) {
+        return SafeXmlParser.emptyEntitySource();
     }
 
     // -------------------------------------------------------------------------

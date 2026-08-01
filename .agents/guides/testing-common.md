@@ -225,8 +225,14 @@ public APIs:
 - A private method that is a self-contained unit worth testing directly → make
   it package-private and test it directly, rather than driving it through a
   public method that needs heavy setup.
-- A private constant a test needs → widen it to package-private and access it
-  directly. Never redeclare or duplicate the literal in test code.
+- A constant a test needs, in the same package → widen it to package-private
+  and access it directly.
+- A constant a test needs, in a different package → widen the constant AND its
+  enclosing class to public. If making the type public is wrong — it's internal
+  vocabulary that must stay sealed — stop and propose the alternative (moving
+  the test into that package, or extracting the constants to a public home)
+  rather than choosing one yourself.
+- Never redeclare or duplicate the literal in test code.
 - A private field a test needs to read or write → add a package-private (or
   public) getter and/or setter in the production class and call it from the test.
   Never widen the field itself to package-private.
