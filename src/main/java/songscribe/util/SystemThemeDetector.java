@@ -131,6 +131,7 @@ public final class SystemThemeDetector {
     private void pollLoop() {
         while (!Thread.currentThread().isInterrupted()) {
             try {
+                //noinspection BusyWait
                 Thread.sleep(THEME_POLL_INTERVAL.toMillis());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
