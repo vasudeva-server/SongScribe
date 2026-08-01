@@ -748,11 +748,12 @@ public final class MusicEditOperations {
      * range may not cross a repeat or a non-single barline.
      */
     private static boolean isHairpinEligibleSpan(Line line, int begin, int end) {
-        if (!line.getElement(end).getType().isPitchedNote()) {
-            return false;
-        }
-
-        return line.canAnchorHairpin(begin, end) && !line.spansStructuralBoundary(begin, end);
+        return line.getElement(end).getType().isPitchedNote() &&
+            line.canAnchorHairpin(
+                begin,
+                end
+            ) &&
+            !line.spansStructuralBoundary(begin, end);
     }
 
     // ========== First-Second Ending Operations ==========

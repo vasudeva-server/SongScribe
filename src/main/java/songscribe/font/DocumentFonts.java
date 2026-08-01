@@ -113,11 +113,8 @@ public final class DocumentFonts implements DocumentFontsHolder {
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-
-        return obj instanceof DocumentFonts other && Objects.equals(fonts, other.fonts);
+        return this == obj ||
+            obj instanceof DocumentFonts other && Objects.equals(fonts, other.fonts);
     }
 
     @Override

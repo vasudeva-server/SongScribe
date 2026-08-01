@@ -498,12 +498,10 @@ class LineSelectionHandler {
         var scoreView = lc.getScoreView();
         var line = lc.getLine();
 
-        if (line == null) {
-            return false;
-        }
+        return line != null &&
+            !MidiController.isPlaying() &&
+            (scoreView.getMode() == Mode.SELECT || e.isAltDown());
 
-        return !MidiController.isPlaying()
-            && (scoreView.getMode() == Mode.SELECT || e.isAltDown());
     }
 
     // ======================================================================
