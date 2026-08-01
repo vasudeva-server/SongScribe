@@ -279,7 +279,7 @@ final class MusicXmlHeaderReader {
         }
     }
 
-    void handleEndSoftware(String qName) throws SAXException {
+    void handleEndSoftware(String qName) throws MusicXmlReader.ForeignSoftwareException {
         // Provenance tag. <software> arrives in the header before any <part>, so
         // reject a present-but-foreign document here rather than parsing the
         // whole score body only to discard it. A missing or blank tag can only
@@ -358,7 +358,7 @@ final class MusicXmlHeaderReader {
      * from the reader's {@code endDocument}; a missing, blank, or foreign
      * {@code <software>} tag is rejected here.
      */
-    void checkProvenance() throws SAXException {
+    void checkProvenance() throws MusicXmlReader.ForeignSoftwareException {
         if (software == null || software.isBlank() || !software.startsWith(Constants.PACKAGE_NAME)) {
             throw new MusicXmlReader.ForeignSoftwareException(software);
         }
