@@ -193,23 +193,7 @@ public abstract class BaseDialog {
     }
 
     private JComponent buildTabbedContent() {
-        // Full-height sidebar: opaque, theme-live background, 1px right divider.
-        var sidebar = new JPanel(new BorderLayout()) {
-            @Override
-            public void updateUI() {
-                // Fired from JComponent's ctor (via setUI) BEFORE our init runs —
-                // reference no instance fields; the static lookup is safe.
-                super.updateUI();
-                setBackground(UIManager.getColor("TabbedPane.background"));
-            }
-        };
-        sidebar.setOpaque(true);
-
-        // The divider sits on the sidebar panel, outside the list's internal padding.
-        sidebar.setBorder(new ThemeAwareMatteBorder(
-            0, 0, 0, 1, FlatLafKey.DIALOG_SIDEBAR_BORDER_COLOR.key()
-        ));
-        sidebar.add(tabList, BorderLayout.CENTER);
+        var sidebar = new SidebarPanel(tabList);
 
         tabContentArea.add(tabCards, BorderLayout.CENTER);
 
@@ -246,7 +230,7 @@ public abstract class BaseDialog {
      * sidebar row; its card name is its insertion index.
      */
     protected void addTab(Tab tab) {
-        tabCards.add(tab, String.valueOf(getTabs().size()));
+        tabCards.add(tab, String.valueOf(tabs.size()));
         tabListModel.addElement(tab.getTitle());
         registerTab(tab);
     }
@@ -712,6 +696,28 @@ public abstract class BaseDialog {
         }
 
         return true;
+    }
+
+    private static final class SidebarPanel extends JPanel {
+        // Full-height sidebar: opaque, theme-live background, 1px right divider.
+        private SidebarPanel(JComponent tabList) {
+            super(new BorderLayout());
+            setOpaque(true);
+
+            // The divider sits on the sidebar panel, outside the list's internal padding.
+            setBorder(new ThemeAwareMatteBorder(
+                0, 0, 0, 1, FlatLafKey.DIALOG_SIDEBAR_BORDER_COLOR.key()
+            ));
+            add(tabList, BorderLayout.CENTER);
+        }
+
+        @Override
+        public void updateUI() {
+            // Fired from JComponent's ctor (via setUI) BEFORE our init runs —
+            // reference no instance fields; the static lookup is safe.
+            super.updateUI();
+            setBackground(UIManager.getColor("TabbedPane.background"));
+        }
     }
 
     @SuppressWarnings("NoopMethodInAbstractClass")
