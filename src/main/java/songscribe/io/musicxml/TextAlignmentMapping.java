@@ -45,7 +45,9 @@ final class TextAlignmentMapping {
     static String alignToken(float xAlignment) {
         if (xAlignment == Component.RIGHT_ALIGNMENT) {
             return MusicXmlTags.HALIGN_RIGHT;
-        } else if (xAlignment == Component.CENTER_ALIGNMENT) {
+        }
+
+        if (xAlignment == Component.CENTER_ALIGNMENT) {
             return MusicXmlTags.HALIGN_CENTER;
         }
 
@@ -60,7 +62,9 @@ final class TextAlignmentMapping {
     static float xAlignment(@Nullable String alignToken) {
         if (MusicXmlTags.HALIGN_RIGHT.equals(alignToken)) {
             return Component.RIGHT_ALIGNMENT;
-        } else if (MusicXmlTags.HALIGN_CENTER.equals(alignToken)) {
+        }
+
+        if (MusicXmlTags.HALIGN_CENTER.equals(alignToken)) {
             return Component.CENTER_ALIGNMENT;
         }
 

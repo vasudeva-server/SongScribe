@@ -57,11 +57,11 @@ public final class HairpinShape {
                 new Line2D.Double(x1, middleYSs, x2, topYSs),
                 new Line2D.Double(x1, middleYSs, x2, bottomYSs)
             };
-        } else {
-            return new Line2D.Double[]{
-                new Line2D.Double(x1, topYSs, x2, middleYSs),
-                new Line2D.Double(x1, bottomYSs, x2, middleYSs)
-            };
         }
+
+        return new Line2D.Double[]{
+            new Line2D.Double(x1, topYSs, x2, middleYSs),
+            new Line2D.Double(x1, bottomYSs, x2, middleYSs)
+        };
     }
 }

@@ -76,7 +76,9 @@ final class WedgeTypeMapping {
     static String wedgeType(Hairpin hairpin) {
         if (hairpin instanceof Crescendo) {
             return MusicXmlTags.WEDGE_CRESCENDO;
-        } else if (hairpin instanceof Diminuendo) {
+        }
+
+        if (hairpin instanceof Diminuendo) {
             return MusicXmlTags.WEDGE_DIMINUENDO;
         }
 

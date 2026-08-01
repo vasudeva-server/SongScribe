@@ -1031,11 +1031,7 @@ public class MainFrame extends JFrame implements Printable {
 
     /** Returns true on success, false on write failure or user-cancelled file chooser. */
     public boolean save() {
-        if (currentFile == null) {
-            return saveAsNewFile();
-        } else {
-            return saveCurrentFile();
-        }
+        return (currentFile == null) ? saveAsNewFile() : saveCurrentFile();
     }
 
     boolean saveCurrentFile() {

@@ -793,7 +793,14 @@ class LayoutEngineTest extends UnitTest {
             + LineThickness.BEAM_THICKNESS_SS / 2.0;
 
         for (var sp : new int[]{SP_CONTOUR_FIRST, SP_CONTOUR_MIDDLE, SP_CONTOUR_LAST}) {
-            var note = (sp == SP_CONTOUR_FIRST) ? note1 : (sp == SP_CONTOUR_MIDDLE) ? note2 : note3;
+            var note = note3;
+
+            if (sp == SP_CONTOUR_FIRST) {
+                note = note1;
+            } else if (sp == SP_CONTOUR_MIDDLE) {
+                note = note2;
+            }
+
             var stem = require(result.getStemLayout(note), "StemLayout at sp=" + sp);
             assertThat(stem.bottomYSs() - stem.topYSs())
                 .describedAs("stem length at sp=%d must be ≥ the extreme minimum stem length".formatted(sp))

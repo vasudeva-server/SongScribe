@@ -127,13 +127,18 @@ public final class BeamMath {
 
         if (i == beamStart) {
             return true;                          // first element → stub right
-        } else if (i == beamEnd || rightBeams < myBeams) {
-            return false;                         // last element or after break → left
-        } else if (leftBeams < myBeams) {
-            return true;                          // element at a beam break → right
-        } else {
-            return rightBeams >= leftBeams;       // toward neighbour with more beams
         }
+
+        if (i == beamEnd || rightBeams < myBeams) {
+            return false;                         // last element or after break → left
+        }
+
+        //noinspection SimplifiableIfStatement
+        if (leftBeams < myBeams) {
+            return true;                          // element at a beam break → right
+        }
+
+        return rightBeams >= leftBeams;       // toward neighbour with more beams
     }
 
     // -------------------------------------------------------------------------

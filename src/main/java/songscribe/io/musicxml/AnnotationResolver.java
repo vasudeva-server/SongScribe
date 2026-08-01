@@ -87,7 +87,9 @@ final class AnnotationResolver {
     static Annotation.@Nullable Placement placementFor(@Nullable String token) {
         if (MusicXmlTags.PLACEMENT_ABOVE.equals(token)) {
             return Annotation.Placement.ABOVE;
-        } else if (MusicXmlTags.PLACEMENT_BELOW.equals(token)) {
+        }
+
+        if (MusicXmlTags.PLACEMENT_BELOW.equals(token)) {
             return Annotation.Placement.BELOW;
         }
 

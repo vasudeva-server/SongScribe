@@ -45,6 +45,7 @@ import songscribe.font.DocumentFontsHolder;
 import songscribe.font.FontKey;
 import songscribe.export.ImageExporter;
 import songscribe.export.SVGExporter;
+import songscribe.io.LoadWarning;
 import songscribe.io.SongLoadResult;
 import songscribe.io.SongFileLoader;
 import songscribe.ui.dialog.MigrationWindow;
@@ -465,8 +466,8 @@ public final class ScoreView
                 }
 
                 for (var warning : success.warnings()) {
-                    switch (warning.type()) {
-                        case INVALID_LYRICS_DATE -> OptionDialogs.showWarningMessage(
+                    if (warning.type() == LoadWarning.Type.INVALID_LYRICS_DATE) {
+                        OptionDialogs.showWarningMessage(
                             null,
                             Strings.ALERT_TITLE_LYRICS_DATE,
                             Strings.ALERT_LYRICS_DATE_INVALID,
