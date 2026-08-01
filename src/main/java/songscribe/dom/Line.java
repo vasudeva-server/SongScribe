@@ -1257,7 +1257,7 @@ public class Line {
         }
 
         var isPaired = isPairedGraceNote(graceIndex);
-        var verses = new LinkedHashSet<Integer>(verseNumbersOf(elements.get(graceIndex)));
+        var verses = new LinkedHashSet<>(verseNumbersOf(elements.get(graceIndex)));
         verses.addAll(verseNumbersOf(elements.get(hostIndex)));
 
         for (var verse : verses) {
@@ -2462,7 +2462,7 @@ public class Line {
         // Removals precede the addition so reverse-order undo drops the reshaped hairpin
         // before restoring the originals, and run in reverse list order so undo restores
         // them in the order they were in, leaving the document identical to before.
-        var doomed = new ArrayList<Hairpin>(run.stream().map(HairpinSpan::hairpin).toList());
+        var doomed = new ArrayList<>(run.stream().map(HairpinSpan::hairpin).toList());
         doomed.sort(Comparator.comparingInt(rangeElements::indexOf).reversed());
         doomed.forEach(this::removeInvalidatedRangeElement);
 

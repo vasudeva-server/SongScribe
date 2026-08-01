@@ -791,7 +791,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testABreathMarkInsideThePastedSpanDropsTheBracket() {
             var song = songWithBeat(Duration.CROTCHET);
             var line = song.getLine(0);
-            var notes = new ArrayList<StaffElement>(tripletQuavers());
+            var notes = new ArrayList<>(tripletQuavers());
             var tuplet = new Tuplet(notes.getFirst(), notes.getLast(), TRIPLET_GRADE,
                 TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
             notes.add(1, ElementType.BREATH_MARK.newInstance());
@@ -828,7 +828,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             // survives the paste that costs the tuplet its bracket.
             var song = songWithBeat(Duration.CROTCHET);
             var line = song.getLine(0);
-            var notes = new ArrayList<StaffElement>(tripletQuavers());
+            var notes = new ArrayList<>(tripletQuavers());
             var tuplet = new Tuplet(notes.getFirst(), notes.getLast(), TRIPLET_GRADE,
                 TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
             var beam = new Beam(notes.getFirst(), notes.getLast());
@@ -877,7 +877,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             // used here is one the rule would otherwise reject outright.
             var song = songWithBeat(Duration.CROTCHET);
             var line = song.getLine(0);
-            var notes = new ArrayList<StaffElement>(tripletQuavers());
+            var notes = new ArrayList<>(tripletQuavers());
             var tuplet = new Tuplet(notes.getFirst(), notes.getLast(), TRIPLET_GRADE,
                 TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
             notes.add(1, ElementType.BREATH_MARK.newInstance());

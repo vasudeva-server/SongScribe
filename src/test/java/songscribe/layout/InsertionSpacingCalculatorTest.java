@@ -954,7 +954,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
     /** Snapshots every element's identity and xOffsetPx, in order, including the terminal barline. */
     private static List<Object> snapshotElements(Line line) {
-        var snapshot = new ArrayList<Object>();
+        var snapshot = new ArrayList<>();
 
         for (var i = 0; i < line.elementCount(); i++) {
             var element = line.getElement(i);

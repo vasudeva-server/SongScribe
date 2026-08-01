@@ -172,7 +172,7 @@ public abstract class BaseDialog {
     }
 
     private JList<String> buildTabList() {
-        var list = new JList<String>(tabListModel) {
+        var list = new JList<>(tabListModel) {
             @Override
             public void updateUI() {
                 // Fired from JComponent's ctor (via setUI) BEFORE our init runs —
