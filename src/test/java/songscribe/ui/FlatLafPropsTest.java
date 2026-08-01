@@ -35,7 +35,7 @@ class FlatLafPropsTest extends UnitTest {
     void testGetReturnsTypedValueWhenKeyPresent() {
         // installFlatLafDefaults() is called by UnitTest.suppressDialogs(); no extra setup needed.
         // DIALOG_COMPONENT_VERTICAL_GAP is defined as 5 in FlatLaf.properties.
-        final int expectedGap = 5;
+        final var expectedGap = 5;
         var gap = FlatLafProps.getInt(FlatLafKey.DIALOG_COMPONENT_VERTICAL_GAP);
         assertThat(gap).isEqualTo(expectedGap);
     }

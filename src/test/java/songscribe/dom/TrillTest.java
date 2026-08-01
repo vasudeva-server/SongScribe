@@ -94,13 +94,13 @@ class TrillTest extends UnitTest {
             var end = new StaffElement(ElementType.CROTCHET);
             var trill = createMultiNoteTrill(anchor, end);
             var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
-            double glyphWidthSs = bbox.width();
+            var glyphWidthSs = bbox.width();
 
             // anchorX == endX => geometry = glyphWidth (clamp and geometry are equal).
             // Use anchorX > endX to strictly exercise the clamp branch.
-            double anchorXSs = 1.0;
-            double endXSs = 0.0;
-            double geometryWidthSs = endXSs - anchorXSs + glyphWidthSs;
+            var anchorXSs = 1.0;
+            var endXSs = 0.0;
+            var geometryWidthSs = endXSs - anchorXSs + glyphWidthSs;
 
             assertThat(geometryWidthSs)
                 .as("precondition: geometry width must be less than glyphWidth for clamp branch")
@@ -120,11 +120,11 @@ class TrillTest extends UnitTest {
             var end = new StaffElement(ElementType.CROTCHET);
             var trill = createMultiNoteTrill(anchor, end);
             var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
-            double glyphWidthSs = bbox.width();
+            var glyphWidthSs = bbox.width();
 
-            double anchorXSs = 0.0;
-            double endXSs = 3.0;
-            double expectedWidthSs = endXSs - anchorXSs + glyphWidthSs;
+            var anchorXSs = 0.0;
+            var endXSs = 3.0;
+            var expectedWidthSs = endXSs - anchorXSs + glyphWidthSs;
 
             assertThat(expectedWidthSs)
                 .as("precondition: geometry width must exceed glyphWidth for geometry branch")
@@ -158,7 +158,7 @@ class TrillTest extends UnitTest {
             var anchor = new StaffElement(ElementType.CROTCHET);
             var trill = new Trill(anchor);
             var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
-            double expectedPx = bbox.height() * TEST_PPS;
+            var expectedPx = bbox.height() * TEST_PPS;
 
             assertThat(trill.getContentHeightPx())
                 .isCloseTo(expectedPx, within(DOUBLE_EPSILON));
@@ -169,7 +169,7 @@ class TrillTest extends UnitTest {
             var anchor = new StaffElement(ElementType.CROTCHET);
             var trill = new Trill(anchor);
             var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
-            double expectedPx = bbox.width() * TEST_PPS;
+            var expectedPx = bbox.width() * TEST_PPS;
 
             assertThat(trill.getContentWidthPx())
                 .isCloseTo(expectedPx, within(DOUBLE_EPSILON));

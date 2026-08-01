@@ -176,7 +176,7 @@ class NoteTypeMappingTest extends UnitTest {
 
     @Test
     void testTicksThrowsForDotCountAboveMax() {
-        final int overMax = 3;
+        final var overMax = 3;
         assertThatIllegalArgumentException()
             .isThrownBy(() -> NoteTypeMapping.ticks(ElementType.CROTCHET, overMax))
             .withMessageContaining("dotCount");

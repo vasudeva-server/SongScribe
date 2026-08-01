@@ -150,9 +150,9 @@ class BarRendererTest extends UnitTest {
         var thin = LineThickness.THIN_BARLINE_SS;
         var thick = LineThickness.THICK_BARLINE_SS;
         var sep = LineThickness.BARLINE_SEPARATION_SS;
-        final double startX = 0.0;
-        final double topY = -2.0;
-        final double bottomY = 2.0;
+        final var startX = 0.0;
+        final var topY = -2.0;
+        final var bottomY = 2.0;
 
         var x = startX + SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS + sep;
         x += thin + sep;

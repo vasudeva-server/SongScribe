@@ -204,8 +204,8 @@ class VerticalStackingCalculatorTest extends UnitTest {
         //   belowContentSs     = STEM_BOT_SS - STAFF_HALF_SS
         //
         // belowContentSs is distinct from belowStaff (which floors at MIN_BELOW_STAFF_SS = 4.0).
-        final double stemBotSs = 5.0;
-        final double expectedBelowContentSs = stemBotSs - Staff.STAFF_HALF_SS;
+        final var stemBotSs = 5.0;
+        final var expectedBelowContentSs = stemBotSs - Staff.STAFF_HALF_SS;
 
         var note = ElementType.CROTCHET.newInstance();
         // Staff position 0 keeps centerYSs = 0, so notehead bot << STAFF_HALF_SS;
@@ -241,9 +241,9 @@ class VerticalStackingCalculatorTest extends UnitTest {
         // A dragged (user-offset) sloped tuplet must translate rigidly: ySs shifts by the
         // drag offset, but dySs (the slope itself) is untouched -- the whole bracket moves,
         // it does not re-tilt.
-        final double originalYSs = -4.0;
-        final double slopeDySs = 1.5;
-        final int dragOffsetSs = -2;
+        final var originalYSs = -4.0;
+        final var slopeDySs = 1.5;
+        final var dragOffsetSs = -2;
 
         var anchor = ElementType.QUAVER.newInstance();
         var end = ElementType.QUAVER.newInstance();

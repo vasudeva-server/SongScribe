@@ -134,8 +134,8 @@ class ScaleContextTest extends UnitTest {
 
     @Test
     void testPxToSsIsInverseOfSsToPxForRoundValue() {
-        double originalSs = SS_SMALL;
-        double roundTripped = ScaleContext.pxToSs(ScaleContext.ssToPx(originalSs));
+        var originalSs = SS_SMALL;
+        var roundTripped = ScaleContext.pxToSs(ScaleContext.ssToPx(originalSs));
         assertThat(roundTripped).isCloseTo(originalSs, within(DOUBLE_EPSILON));
     }
 
@@ -177,8 +177,8 @@ class ScaleContextTest extends UnitTest {
 
     @Test
     void testScaleFontConvertsPointSizeThroughPxToSs() {
-        float expectedSize = (float) ScaleContext.pxToSs(TEST_FONT.getSize());
-        Font scaledFont = ScaleContext.scaleFont(TEST_FONT);
+        var expectedSize = (float) ScaleContext.pxToSs(TEST_FONT.getSize());
+        var scaledFont = ScaleContext.scaleFont(TEST_FONT);
         assertThat(scaledFont.getSize2D()).isCloseTo(expectedSize, within((float) DOUBLE_EPSILON));
     }
 
@@ -189,21 +189,21 @@ class ScaleContextTest extends UnitTest {
     @Test
     void testFontAscentSsEqualsPxToSsOfLineMetricAscent() {
         double rawAscentPx = TEST_FONT.getLineMetrics("", GraphicUtils.SCREEN_FRC).getAscent();
-        double expectedSs = ScaleContext.pxToSs(rawAscentPx);
+        var expectedSs = ScaleContext.pxToSs(rawAscentPx);
         assertThat(ScaleContext.fontAscentSs(TEST_FONT).value()).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
     }
 
     @Test
     void testFontDescentSsEqualsPxToSsOfLineMetricDescent() {
         double rawDescentPx = TEST_FONT.getLineMetrics("", GraphicUtils.SCREEN_FRC).getDescent();
-        double expectedSs = ScaleContext.pxToSs(rawDescentPx);
+        var expectedSs = ScaleContext.pxToSs(rawDescentPx);
         assertThat(ScaleContext.fontDescentSs(TEST_FONT).value()).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
     }
 
     @Test
     void testFontMaxAscentSsEqualsPxToSsOfFontMetricsMaxAscent() {
         double rawMaxAscentPx = MyFontUtils.getFontMetrics(TEST_FONT).getMaxAscent();
-        double expectedSs = ScaleContext.pxToSs(rawMaxAscentPx);
+        var expectedSs = ScaleContext.pxToSs(rawMaxAscentPx);
         assertThat(ScaleContext.fontMaxAscentSs(TEST_FONT).value()).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
     }
 
@@ -211,14 +211,14 @@ class ScaleContextTest extends UnitTest {
     void testTextHeightSsEqualsPxToSsOfAscentPlusDescent() {
         var lm = TEST_FONT.getLineMetrics("", GraphicUtils.SCREEN_FRC);
         double rawHeightPx = lm.getAscent() + lm.getDescent();
-        double expectedSs = ScaleContext.pxToSs(rawHeightPx);
+        var expectedSs = ScaleContext.pxToSs(rawHeightPx);
         assertThat(ScaleContext.textHeightSs(TEST_FONT).value()).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
     }
 
     @Test
     void testTextWidthSsEqualsPxToSsOfTextLayoutAdvance() {
         double rawAdvancePx = new TextLayout(TEST_TEXT, TEST_FONT, GraphicUtils.SCREEN_FRC).getAdvance();
-        double expectedSs = ScaleContext.pxToSs(rawAdvancePx);
+        var expectedSs = ScaleContext.pxToSs(rawAdvancePx);
         assertThat(ScaleContext.textWidthSs(TEST_FONT, TEST_TEXT).value()).isCloseTo(expectedSs, within(DOUBLE_EPSILON));
     }
 }

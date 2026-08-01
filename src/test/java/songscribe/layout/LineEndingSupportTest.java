@@ -136,13 +136,13 @@ class LineEndingSupportTest extends UnitTest {
             var ending   = new Ending(anchorEl, endEl);
             song.withoutMutationTracking(() -> {
                 // Pad 3 elements before anchor so anchor lands at index ANCHOR_IDX
-                for (int i = 0; i < ANCHOR_IDX; i++) {
+                for (var i = 0; i < ANCHOR_IDX; i++) {
                     line.addElement(new StaffElement(ElementType.CROTCHET));
                 }
                 line.addElement(anchorEl);
                 // Fill interior: need END_IDX - ANCHOR_IDX - 1 = 3 notes
-                int interiorCount = END_IDX - ANCHOR_IDX - 1;
-                for (int i = 0; i < interiorCount; i++) {
+                var interiorCount = END_IDX - ANCHOR_IDX - 1;
+                for (var i = 0; i < interiorCount; i++) {
                     line.addElement(new StaffElement(ElementType.CROTCHET));
                 }
                 line.addElement(endEl);

@@ -40,13 +40,13 @@ class LineThicknessTest extends UnitTest {
 
         @Test
         void testStemThicknessEqualsBaseTimesMultiplier() {
-            double expectedStemSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * LineThickness.STEM_MULTIPLIER;
+            var expectedStemSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * LineThickness.STEM_MULTIPLIER;
             assertThat(LineThickness.STEM_SS).isEqualTo(expectedStemSs);
         }
 
         @Test
         void testLedgerLineThicknessEqualsBaseTimesTwo() {
-            double expectedLedgerLineSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * 2;
+            var expectedLedgerLineSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * 2;
             assertThat(LineThickness.LEDGER_LINE_SS).isEqualTo(expectedLedgerLineSs);
         }
 
@@ -58,13 +58,13 @@ class LineThicknessTest extends UnitTest {
 
         @Test
         void testVoltaBracketThicknessEqualsBaseTimesMultiplier() {
-            double expectedVoltaBracketSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * LineThickness.VOLTA_BRACKET_MULTIPLIER;
+            var expectedVoltaBracketSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * LineThickness.VOLTA_BRACKET_MULTIPLIER;
             assertThat(LineThickness.VOLTA_BRACKET_SS).isEqualTo(expectedVoltaBracketSs);
         }
 
         @Test
         void testTupletBracketThicknessEqualsBaseTimesMultiplier() {
-            double expectedTupletBracketSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * LineThickness.TUPLET_BRACKET_MULTIPLIER;
+            var expectedTupletBracketSs = LineThickness.LILYPOND_BASE_THICKNESS_SS * LineThickness.TUPLET_BRACKET_MULTIPLIER;
             assertThat(LineThickness.TUPLET_BRACKET_SS).isEqualTo(expectedTupletBracketSs);
         }
     }
@@ -154,7 +154,7 @@ class LineThicknessTest extends UnitTest {
     @Test
     void testRepeatRightThinBarlineCenterXSsMatchesFormula() {
         // formula: dotsAdvanceWidth + barlineSeparation + thinBarline/2
-        double expected = SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS
+        var expected = SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS
                 + LineThickness.BARLINE_SEPARATION_SS
                 + LineThickness.THIN_BARLINE_SS / 2;
         assertThat(LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS).isEqualTo(expected);
@@ -164,7 +164,7 @@ class LineThicknessTest extends UnitTest {
     void testRepeatRightAfterThickXSsMatchesFormula() {
         // formula: dotsAdvanceWidth + sep + thin + sep + thick
         var sep = LineThickness.BARLINE_SEPARATION_SS;
-        double expected = SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS
+        var expected = SMuFLConstants.REPEAT_DOTS_ADVANCE_WIDTH_SS
                 + sep + LineThickness.THIN_BARLINE_SS + sep + LineThickness.THICK_BARLINE_SS;
         assertAll(
             () -> assertThat(LineThickness.REPEAT_RIGHT_AFTER_THICK_X_SS).isEqualTo(expected),

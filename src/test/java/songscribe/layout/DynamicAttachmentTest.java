@@ -158,7 +158,7 @@ class DynamicAttachmentTest extends UnitTest {
         @Test
         void testContentHeightPxEqualsHeightSsTimesScale() {
             var attachment = new DynamicAttachment(DynamicType.FORTE);
-            double expectedPx = attachment.getContentHeightSs() * TEST_PPS;
+            var expectedPx = attachment.getContentHeightSs() * TEST_PPS;
             assertThat(attachment.getContentHeightPx()).isCloseTo(expectedPx, within(DOUBLE_EPSILON));
         }
 
@@ -172,7 +172,7 @@ class DynamicAttachmentTest extends UnitTest {
         @Test
         void testContentWidthPxEqualsWidthSsTimesScale() {
             var attachment = new DynamicAttachment(DynamicType.FORTE);
-            double expectedPx = attachment.getContentWidthSs() * TEST_PPS;
+            var expectedPx = attachment.getContentWidthSs() * TEST_PPS;
             assertThat(attachment.getContentWidthPx()).isCloseTo(expectedPx, within(DOUBLE_EPSILON));
         }
 

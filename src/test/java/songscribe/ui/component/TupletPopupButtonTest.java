@@ -53,7 +53,7 @@ class TupletPopupButtonTest extends MainFrameMockTest {
         var actions = Actions.TOGGLE_TUPLET_ACTIONS;
         savedEnabledStates = new boolean[actions.size()];
 
-        for (int i = 0; i < actions.size(); i++) {
+        for (var i = 0; i < actions.size(); i++) {
             savedEnabledStates[i] = actions.get(i).isEnabled();
         }
 
@@ -68,7 +68,7 @@ class TupletPopupButtonTest extends MainFrameMockTest {
     void restoreActionEnabledStates() {
         var actions = Actions.TOGGLE_TUPLET_ACTIONS;
 
-        for (int i = 0; i < actions.size(); i++) {
+        for (var i = 0; i < actions.size(); i++) {
             actions.get(i).setEnabled(savedEnabledStates[i]);
         }
     }

@@ -67,7 +67,7 @@ public final class Indent {
 
     /** Prints the current indentation as spaces, without a trailing newline. */
     public void print(PrintWriter pw) {
-        for (int i = 0; i < width; i++) {
+        for (var i = 0; i < width; i++) {
             pw.print(' ');
         }
     }

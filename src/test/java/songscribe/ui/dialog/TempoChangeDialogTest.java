@@ -250,7 +250,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         var element = ElementType.CROTCHET.newInstance();
         var line = detachedLine();
 
-        try (MockedConstruction<TempoChangeDialog> construction = mockConstruction(TempoChangeDialog.class)) {
+        try (var construction = mockConstruction(TempoChangeDialog.class)) {
             TempoChangeDialog.showForElement(mainFrame(), element, line);
 
             assertThat(construction.constructed())

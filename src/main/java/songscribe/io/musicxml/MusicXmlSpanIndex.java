@@ -181,7 +181,7 @@ final class MusicXmlSpanIndex {
         var count = line.elementCount();
         var builders = new SpanBuilder[count];
 
-        for (int i = 0; i < count; i++) {
+        for (var i = 0; i < count; i++) {
             builders[i] = new SpanBuilder();
         }
 
@@ -201,7 +201,7 @@ final class MusicXmlSpanIndex {
                 continue;
             }
 
-            for (int i = anchorIdx; i <= endIdx; i++) {
+            for (var i = anchorIdx; i <= endIdx; i++) {
                 // A grace note inside the span is not a beam member — the beam passes
                 // over it, so it carries no <beam> of its own (refs #592).
                 if (line.getElement(i).getType().isGraceNote()) {
@@ -238,7 +238,7 @@ final class MusicXmlSpanIndex {
             builders[anchorIdx].isTupletAnchor = true;
             builders[endIdx].isTupletEnd = true;
 
-            for (int i = anchorIdx; i <= endIdx; i++) {
+            for (var i = anchorIdx; i <= endIdx; i++) {
                 // A grace note inside the span is not a tuplet member — it takes no
                 // <time-modification> (refs #592).
                 if (line.getElement(i).getType().isGraceNote()) {
@@ -261,7 +261,7 @@ final class MusicXmlSpanIndex {
             builders[anchorIdx].isTrillAnchor = true;
             builders[endIdx].isTrillEnd = true;
 
-            for (int i = anchorIdx; i <= endIdx; i++) {
+            for (var i = anchorIdx; i <= endIdx; i++) {
                 builders[i].trill = trill;
             }
         }
@@ -355,7 +355,7 @@ final class MusicXmlSpanIndex {
         // Assemble the final immutable per-index records.
         var result = new IndexSpanMarkers[count];
 
-        for (int i = 0; i < count; i++) {
+        for (var i = 0; i < count; i++) {
             result[i] = builders[i].build();
         }
 

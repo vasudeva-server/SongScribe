@@ -139,12 +139,12 @@ class HairpinRendererTest extends UnitTest {
         var crescendoLines = HairpinRenderer.computeHairpinLines(layout, true, invariants);
         var diminuendoLines = HairpinRenderer.computeHairpinLines(layout, false, invariants);
 
-        for (Line2D.Double line : crescendoLines) {
+        for (var line : crescendoLines) {
             assertThat(line.x1).isEqualTo(HAIRPIN_X_SS);
             assertThat(line.x2).isEqualTo(expectedX2);
         }
 
-        for (Line2D.Double line : diminuendoLines) {
+        for (var line : diminuendoLines) {
             assertThat(line.x1).isEqualTo(HAIRPIN_X_SS);
             assertThat(line.x2).isEqualTo(expectedX2);
         }

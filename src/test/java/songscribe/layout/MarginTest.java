@@ -31,7 +31,7 @@ class MarginTest extends UnitTest {
 
     @Test
     void testUniformSetsAllSidesToGivenValue() {
-        final double marginSs = 1.5;
+        final var marginSs = 1.5;
 
         var margin = Margin.uniform(marginSs);
 

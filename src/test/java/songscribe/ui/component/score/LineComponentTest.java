@@ -143,7 +143,7 @@ class LineComponentTest extends UnitTest {
         song.withoutMutationTracking(() -> song.setLineWidthSs(NARROW_LINE_WIDTH_SS));
         song.withoutMutationTracking(() -> song.addLine(song.lineCount(), new Line(song)));
 
-        final int lineIndex = 1;
+        final var lineIndex = 1;
         var line = song.getLine(lineIndex);
 
         song.withoutMutationTracking(() -> {
@@ -189,7 +189,7 @@ class LineComponentTest extends UnitTest {
         void testSpZeroReturnsMiddleLineYPx() {
             lc.setMiddleLineYSs(5.0);
             // Default scale: 8 px per ss → middleLineYPx = round(8.0 * 5.0) = 40
-            final int expectedMiddleLineYPx = 40;
+            final var expectedMiddleLineYPx = 40;
 
             assertThat(lc.staffPositionToYPx(0))
                 .as("sp=0 → no offset, returns middleLineYPx")
@@ -203,8 +203,8 @@ class LineComponentTest extends UnitTest {
         @Test
         void testPositiveSpAddsDownwardOffset() {
             lc.setMiddleLineYSs(5.0);
-            final int expectedMiddleLineYPx = 40;
-            final int expectedOffset = 8; // round(8.0 * STAFF_POSITION_OFFSET_SS * 2) = round(8.0)
+            final var expectedMiddleLineYPx = 40;
+            final var expectedOffset = 8; // round(8.0 * STAFF_POSITION_OFFSET_SS * 2) = round(8.0)
 
             assertThat(lc.staffPositionToYPx(2))
                 .as("sp=2 → middleLineYPx + 8")
@@ -217,8 +217,8 @@ class LineComponentTest extends UnitTest {
         @Test
         void testNegativeSpAddsUpwardOffset() {
             lc.setMiddleLineYSs(5.0);
-            final int expectedMiddleLineYPx = 40;
-            final int expectedOffset = 8; // magnitude
+            final var expectedMiddleLineYPx = 40;
+            final var expectedOffset = 8; // magnitude
 
             assertThat(lc.staffPositionToYPx(-2))
                 .as("sp=-2 → middleLineYPx - 8")

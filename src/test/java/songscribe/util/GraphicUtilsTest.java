@@ -134,15 +134,15 @@ class GraphicUtilsTest extends UnitTest {
         @Test
         void testInchBranchRoundsToTwoDecimalPlaces() {
             // choose a pixel count that produces a non-exact fraction to exercise rounding
-            int pixels = GraphicUtils.getDpi() / 2 + 1;
-            double expected = Math.round(pixels * 100.0 / GraphicUtils.getDpi()) / 100d;
+            var pixels = GraphicUtils.getDpi() / 2 + 1;
+            var expected = Math.round(pixels * 100.0 / GraphicUtils.getDpi()) / 100d;
             assertThat(GraphicUtils.convertFromPixels(pixels, Unit.INCH)).isEqualTo(expected);
         }
 
         @Test
         void testCmBranchConvertsOneInchInMm() {
             // dpi pixels = 1 inch = CM_PER_INCH*10 mm; result rounded to nearest mm
-            double expected = Math.round(GraphicUtils.CM_PER_INCH * 10) / 10d;
+            var expected = Math.round(GraphicUtils.CM_PER_INCH * 10) / 10d;
             assertThat(GraphicUtils.convertFromPixels(GraphicUtils.getDpi(), Unit.CM))
                 .isEqualTo(expected);
         }
@@ -150,8 +150,8 @@ class GraphicUtilsTest extends UnitTest {
         @Test
         void testCmBranchRoundsToNearestMm() {
             // half-inch in pixels; result = CM_PER_INCH*10/2 mm, rounded to nearest mm
-            int pixels = GraphicUtils.getDpi() / 2;
-            double expected = Math.round(GraphicUtils.CM_PER_INCH * 10 / 2) / 10d;
+            var pixels = GraphicUtils.getDpi() / 2;
+            var expected = Math.round(GraphicUtils.CM_PER_INCH * 10 / 2) / 10d;
             assertThat(GraphicUtils.convertFromPixels(pixels, Unit.CM)).isEqualTo(expected);
         }
     }
@@ -167,7 +167,7 @@ class GraphicUtilsTest extends UnitTest {
         @Test
         void testCmBranchConvertsOneInchInMmToDpiPixels() {
             // 1 inch = CM_PER_INCH*10 mm; CM branch divides by CM_PER_INCH*10, giving dpi pixels
-            double oneInchInMm = GraphicUtils.CM_PER_INCH * 10;
+            var oneInchInMm = GraphicUtils.CM_PER_INCH * 10;
             assertThat(GraphicUtils.convertToPixels(oneInchInMm, Unit.CM)).isEqualTo(GraphicUtils.getDpi());
         }
     }

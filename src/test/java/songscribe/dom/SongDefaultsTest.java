@@ -204,8 +204,8 @@ class SongDefaultsTest extends UnitTest {
         // testGetTempoAtWalksBackToEarlierLineWhenLineHasNoChange.
         //
         // We use withoutMutationTracking so setup doesn't fire global notifications.
-        final int LINE_0_TEMPO_BPM = 80;
-        final int LINE_1_TEMPO_BPM = 100;
+        final var LINE_0_TEMPO_BPM = 80;
+        final var LINE_1_TEMPO_BPM = 100;
 
         song.withoutMutationTracking(() -> {
             var line0 = song.getLine(0);
@@ -249,7 +249,7 @@ class SongDefaultsTest extends UnitTest {
     @Test
     void testGetTempoAtWalksBackToEarlierLineWhenLineHasNoChange() {
         var song = new Song();
-        final int LINE_0_TEMPO_BPM = 80;
+        final var LINE_0_TEMPO_BPM = 80;
 
         song.withoutMutationTracking(() -> {
             var line0 = song.getLine(0);
@@ -274,8 +274,8 @@ class SongDefaultsTest extends UnitTest {
     @Test
     void testGetTempoAtIgnoresLaterChangeOnSameLine() {
         var song = new Song();
-        final int EARLY_TEMPO_BPM = 80;
-        final int LATER_TEMPO_BPM = 100;
+        final var EARLY_TEMPO_BPM = 80;
+        final var LATER_TEMPO_BPM = 100;
 
         song.withoutMutationTracking(() -> {
             var line0 = song.getLine(0);

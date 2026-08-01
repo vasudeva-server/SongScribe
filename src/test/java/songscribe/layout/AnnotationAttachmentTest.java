@@ -112,7 +112,7 @@ class AnnotationAttachmentTest extends UnitTest {
             // Compute expected width from the raw AWT text advance converted to
             // staff-space units, bypassing ScaleContext.textWidthSs entirely.
             double rawAdvancePx = new TextLayout(ANNOTATION_TEXT, font, GraphicUtils.SCREEN_FRC).getAdvance();
-            double expectedWidthSs = ScaleContext.pxToSs(rawAdvancePx);
+            var expectedWidthSs = ScaleContext.pxToSs(rawAdvancePx);
 
             assertThat(attachment.computeContentWidthSs(font)).isCloseTo(expectedWidthSs, within(EPSILON));
         }

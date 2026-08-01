@@ -212,7 +212,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
 
             // tab1 is not initially selected, so the initial setVisible(true) already
             // fires tabWillHide on it via selectTab(0); setVisible(false) fires it again.
-            final int expectedTab1HideCount = 2;
+            final var expectedTab1HideCount = 2;
             assertThat(tab1.willHideCount)
                 .as("tab1 gets tabWillHide on initial show (not selected) and on setVisible(false)")
                 .isEqualTo(expectedTab1HideCount);

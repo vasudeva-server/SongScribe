@@ -203,7 +203,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
             PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setCurrentSlideZone(SlideZone.FALL);
 
-            try (MockedStatic<OptionDialogs> optionDialogsMock = mockStatic(OptionDialogs.class)) {
+            try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
                 PreviewElementManager.handleClick(lc);
 
                 optionDialogsMock.verify(() -> OptionDialogs.showErrorMessage(
@@ -339,7 +339,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
 
             var countBefore = line.elementCount();
 
-            try (MockedStatic<OptionDialogs> optionDialogsMock = mockStatic(OptionDialogs.class)) {
+            try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
                 PreviewElementManager.handleClick(lc, true);
 
                 optionDialogsMock.verify(() -> OptionDialogs.showErrorMessage(

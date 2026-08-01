@@ -43,7 +43,7 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     private static List<ElementType> barlineTypesOf(Line line) {
         var result = new ArrayList<ElementType>();
 
-        for (StaffElement element : line.getElements()) {
+        for (var element : line.getElements()) {
             var type = element.getType();
 
             if (type.isBarLine() || type.isRepeat()) {
@@ -71,7 +71,7 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
 
         var lineCount = expected.lineCount();
 
-        for (int i = 0; i < lineCount; i++) {
+        for (var i = 0; i < lineCount; i++) {
             var expectedBarlines = barlineTypesOf(expected.getLine(i));
             var actualBarlines   = barlineTypesOf(actual.getLine(i));
             assertThat(actualBarlines)

@@ -124,8 +124,8 @@ class KeySignatureRendererTest extends UnitTest {
 
     @Test
     void testRenderKeyChangeRightAlignsTheLastAccidental() {
-        final int currentCount = 3;
-        final int newCount = 2;
+        final var currentCount = 3;
+        final var newCount = 2;
 
         var g2spy = spy(realG2());
         var invariants = RenderContextTestHelper.newContext(new Song()).build();
@@ -149,8 +149,8 @@ class KeySignatureRendererTest extends UnitTest {
 
     @Test
     void testRenderKeyChangeSeparatesTheCancellationFromTheNewKey() {
-        final int currentCount = 3;
-        final int newCount = 2;
+        final var currentCount = 3;
+        final var newCount = 2;
 
         var g2spy = spy(realG2());
         var invariants = RenderContextTestHelper.newContext(new Song()).build();
@@ -182,8 +182,8 @@ class KeySignatureRendererTest extends UnitTest {
      */
     @Test
     void testRenderKeyChangeUsesTheReverseGapWhenTheNaturalsComeSecond() {
-        final int currentCount = 4;
-        final int newCount = 2;
+        final var currentCount = 4;
+        final var newCount = 2;
 
         var g2spy = spy(realG2());
         var invariants = RenderContextTestHelper.newContext(new Song()).build();
@@ -206,8 +206,8 @@ class KeySignatureRendererTest extends UnitTest {
 
     @Test
     void testRenderKeyChangeKernsNaturalsApart() {
-        final int currentCount = 3;
-        final int newCount = 0;
+        final var currentCount = 3;
+        final var newCount = 0;
 
         var g2spy = spy(realG2());
         var invariants = RenderContextTestHelper.newContext(new Song()).build();

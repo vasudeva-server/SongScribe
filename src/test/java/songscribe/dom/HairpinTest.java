@@ -81,9 +81,9 @@ class HairpinTest extends UnitTest {
             var end = new StaffElement(ElementType.CROTCHET);
             var hairpin = createHairpin(anchor, end);
 
-            double anchorXSs = 0.0;
-            double endXSs = 0.0;
-            double geometryWidthSs = endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
+            var anchorXSs = 0.0;
+            var endXSs = 0.0;
+            var geometryWidthSs = endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
 
             assertThat(geometryWidthSs)
                 .as("precondition: geometry width must be less than the minimum for clamp branch")
@@ -104,9 +104,9 @@ class HairpinTest extends UnitTest {
             var hairpin = createHairpin(anchor, end);
 
             // Use a span large enough that geometry dominates.
-            double anchorXSs = 0.0;
-            double endXSs = Hairpin.HAIRPIN_OPENING_HEIGHT_SS + 2.0;
-            double expectedWidthSs = endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
+            var anchorXSs = 0.0;
+            var endXSs = Hairpin.HAIRPIN_OPENING_HEIGHT_SS + 2.0;
+            var expectedWidthSs = endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
 
             assertThat(expectedWidthSs)
                 .as("precondition: geometry width must exceed the minimum for geometry branch")
@@ -130,8 +130,8 @@ class HairpinTest extends UnitTest {
             var wholeNoteHairpin = createHairpin(anchor, new StaffElement(ElementType.SEMIBREVE));
             var crotchetHairpin = createHairpin(anchor, new StaffElement(ElementType.CROTCHET));
 
-            double anchorXSs = 0.0;
-            double endXSs = Hairpin.HAIRPIN_OPENING_HEIGHT_SS + 2.0;
+            var anchorXSs = 0.0;
+            var endXSs = Hairpin.HAIRPIN_OPENING_HEIGHT_SS + 2.0;
             var wholeNoteWidthSs = SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_WHOLE).right();
 
             assertThat(wholeNoteHairpin.getSpanWidthSs(anchorXSs, endXSs))
@@ -150,8 +150,8 @@ class HairpinTest extends UnitTest {
                 new StaffElement(ElementType.CROTCHET), new StaffElement(ElementType.CROTCHET));
             hairpin.setEndElement(null);
 
-            double anchorXSs = 0.0;
-            double endXSs = Hairpin.HAIRPIN_OPENING_HEIGHT_SS + 2.0;
+            var anchorXSs = 0.0;
+            var endXSs = Hairpin.HAIRPIN_OPENING_HEIGHT_SS + 2.0;
 
             assertThat(hairpin.getSpanWidthSs(anchorXSs, endXSs))
                 .isCloseTo(

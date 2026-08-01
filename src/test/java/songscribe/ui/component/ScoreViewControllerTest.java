@@ -1380,7 +1380,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var pasteModeManager = mock(PasteModeManager.class);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
                 controller.handlePasteboardOp(new PasteboardOpCommand(PasteboardAction.Operation.PASTE));
@@ -2588,8 +2588,8 @@ class ScoreViewControllerTest extends UnitTest {
         // lower than the note the user copied.
         @Test
         void testPastingANoteThatSoundedSharpInItsSourceContextMaterializesTheSharp() {
-            final int sharedPositionSp = 4;
-            final int unrelatedPositionSp = 2;
+            final var sharedPositionSp = 4;
+            final var unrelatedPositionSp = 2;
 
             var sourceSong = wideSong();
             var sourceLine = sourceSong.getLine(0);

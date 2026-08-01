@@ -94,7 +94,7 @@ class RecentDocumentsManagerTest extends UnitTest {
     void testAddEnforcesMaxSizeCap() {
         // Fill the list to MAX_SIZE, then add one more. The list must stay at MAX_SIZE
         // and the oldest (first-added) entry must be dropped.
-        for (int i = 0; i < RecentDocumentsManager.MAX_SIZE; i++) {
+        for (var i = 0; i < RecentDocumentsManager.MAX_SIZE; i++) {
             RecentDocumentsManager.add(Path.of("/music/song_" + i + ".mssw"));
         }
 

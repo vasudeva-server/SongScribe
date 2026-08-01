@@ -122,7 +122,7 @@ public final class MusicXmlWriter {
      * every line break.
      */
     private static void writeLineDrivenMeasures(Song song, PrintWriter pw) {
-        int measureNumber = 0;
+        var measureNumber = 0;
 
         // The key signature currently in effect. Measure 1 emits the song default
         // (see writeAttributes); each later line whose effective key differs from
@@ -136,7 +136,7 @@ public final class MusicXmlWriter {
         // TempoChangeAttachment if present, else song.getTempo().
         var firstSongElement = song.initialTempoAnchor();
 
-        for (Line line : song.getLines()) {
+        for (var line : song.getLines()) {
             // Glissandos are intra-line — they cannot span a system break.
             // Reset the pending-stop state at the start of each line so a
             // dangling glissando from a malformed song does not bleed across.
@@ -163,7 +163,7 @@ public final class MusicXmlWriter {
             // measureOpen tracks whether the current measure tag is still open.
             // A measure is open after we write its opening tag and closed after
             // we write its closing tag.
-            boolean measureOpen = true;
+            var measureOpen = true;
 
             var elements = line.getElements();
             var lastElement = elements.isEmpty() ? null : elements.getLast();
@@ -179,7 +179,7 @@ public final class MusicXmlWriter {
             // end-of-line invisible right barline, avoiding a redundant second one.
             List<EndingMarker> lastNoteEndingMarkers = List.of();
 
-            for (int i = 0; i < elements.size(); i++) {
+            for (var i = 0; i < elements.size(); i++) {
                 var element = elements.get(i);
                 var type = element.getType();
                 var markers = spanIndex[i];

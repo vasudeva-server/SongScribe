@@ -61,14 +61,14 @@ class FermataAttachmentTest extends UnitTest {
         @Test
         void testGetContentHeightPxEqualsHeightSsTimesScale() {
             var attachment = new FermataAttachment();
-            double expectedPx = attachment.getContentHeightSs() * TEST_PPS;
+            var expectedPx = attachment.getContentHeightSs() * TEST_PPS;
             assertThat(attachment.getContentHeightPx()).isCloseTo(expectedPx, within(DOUBLE_EPSILON));
         }
 
         @Test
         void testGetContentWidthPxEqualsWidthSsTimesScale() {
             var attachment = new FermataAttachment();
-            double expectedPx = attachment.getContentWidthSs() * TEST_PPS;
+            var expectedPx = attachment.getContentWidthSs() * TEST_PPS;
             assertThat(attachment.getContentWidthPx()).isCloseTo(expectedPx, within(DOUBLE_EPSILON));
         }
     }

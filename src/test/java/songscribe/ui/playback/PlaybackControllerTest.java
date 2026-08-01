@@ -280,7 +280,7 @@ class PlaybackControllerTest extends UnitTest {
         @Test
         void testPlaybackDidPauseSetsStateSavesTickAndPostsNotification() {
             var mockSequencer = mock(Sequencer.class);
-            final long savedTick = 42L;
+            final var savedTick = 42L;
             when(mockSequencer.getTickPosition()).thenReturn(savedTick);
             MidiController.sequencer = mockSequencer;
 
@@ -373,8 +373,8 @@ class PlaybackControllerTest extends UnitTest {
             var mockScore = mock(ScoreView.class);
             var mockLine = mock(Line.class);
             var mockLineComponent = mock(LineComponent.class);
-            final int lineIndex = 2;
-            final int noteIndex = 5;
+            final var lineIndex = 2;
+            final var noteIndex = 5;
             var mockSong = mock(Song.class);
             when(mockScore.getLineComponent(lineIndex)).thenReturn(mockLineComponent);
             when(mockScore.getSong()).thenReturn(mockSong);
@@ -424,9 +424,9 @@ class PlaybackControllerTest extends UnitTest {
             var mockPrevLineComponent = mock(LineComponent.class);
             var mockNewLineComponent = mock(LineComponent.class);
             var mockLine = mock(Line.class);
-            final int prevLine = 0;
-            final int newLine = 1;
-            final int noteIndex = 3;
+            final var prevLine = 0;
+            final var newLine = 1;
+            final var noteIndex = 3;
             var mockSong = mock(Song.class);
             when(mockScore.getLineComponent(prevLine)).thenReturn(mockPrevLineComponent);
             when(mockScore.getLineComponent(newLine)).thenReturn(mockNewLineComponent);
@@ -450,8 +450,8 @@ class PlaybackControllerTest extends UnitTest {
             var mockScore = mock(ScoreView.class);
             var mockLineComponent = mock(LineComponent.class);
             var mockLine = mock(Line.class);
-            final int lineIndex = 1;
-            final int noteIndex = 2;
+            final var lineIndex = 1;
+            final var noteIndex = 2;
             var mockSong = mock(Song.class);
             when(mockScore.getLineComponent(lineIndex)).thenReturn(mockLineComponent);
             when(mockScore.getSong()).thenReturn(mockSong);
@@ -504,8 +504,8 @@ class PlaybackControllerTest extends UnitTest {
             var mockSequencer = mock(Sequencer.class);
             var mockScore = mock(ScoreView.class);
             var mockSong = mock(Song.class);
-            final long savedTick = 200L;
-            final long tickLength = 1000L;
+            final var savedTick = 200L;
+            final var tickLength = 1000L;
 
             when(mockScore.getSong()).thenReturn(mockSong);
             when(mockSong.getLines()).thenReturn(new ArrayList<>());
@@ -603,14 +603,14 @@ class PlaybackControllerTest extends UnitTest {
         void testNonNullSelectionBuildsFromNoteToEnd() throws Exception {
             var mockSong = mock(Song.class);
             var line = detachedLine();
-            final int beginIndex = 2;
+            final var beginIndex = 2;
             var selection = new ElementSelection(line, beginIndex, 5);
 
             // getLines().indexOf(line) must return the line index used in the call
             var lines = new ArrayList<Line>();
             lines.add(line);
             when(mockSong.getLines()).thenReturn(lines);
-            final int expectedLineIndex = 0;
+            final var expectedLineIndex = 0;
 
             try (var ignored = mockConstruction(MidiSequenceBuilder.class,
                 (builder, ctx) -> when(builder.buildFromNoteToEnd(anyInt(), anyInt()))
@@ -631,7 +631,7 @@ class PlaybackControllerTest extends UnitTest {
 
         @Test
         void testDelegatesToMidiControllerWithPrefValue() {
-            final int prefVolume = 80;
+            final var prefVolume = 80;
 
             try (var prefsMock = mockStatic(Prefs.class);
                  var midiControllerMock = mockStatic(MidiController.class)) {
@@ -650,10 +650,10 @@ class PlaybackControllerTest extends UnitTest {
 
         @Test
         void testGetPlaybackSettingsApplySettingsRoundTrip() {
-            final int expectedInstrument = 42;
-            final int expectedTempo = 110;
-            final int expectedDuration = 75;
-            final boolean expectedPlayWithRepeats = true;
+            final var expectedInstrument = 42;
+            final var expectedTempo = 110;
+            final var expectedDuration = 75;
+            final var expectedPlayWithRepeats = true;
 
             PlaybackController.setInstrument(expectedInstrument);
             PlaybackController.setTempoChangePercent(expectedTempo);

@@ -64,7 +64,7 @@ class ClefTest extends UnitTest {
     @Test
     void testGetContentWidthPxEqualsGClefBboxWidthTimesPps() {
         var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.G_CLEF);
-        double expectedPx = bbox.width() * TEST_PPS;
+        var expectedPx = bbox.width() * TEST_PPS;
 
         assertThat(new Clef().getContentWidthPx())
             .isCloseTo(expectedPx, within(DOUBLE_EPSILON));
@@ -73,7 +73,7 @@ class ClefTest extends UnitTest {
     @Test
     void testGetContentHeightPxEqualsGClefBboxHeightTimesPps() {
         var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.G_CLEF);
-        double expectedPx = bbox.height() * TEST_PPS;
+        var expectedPx = bbox.height() * TEST_PPS;
 
         assertThat(new Clef().getContentHeightPx())
             .isCloseTo(expectedPx, within(DOUBLE_EPSILON));

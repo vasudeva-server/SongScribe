@@ -136,7 +136,7 @@ class NonEmptyGuardTest extends UnitTest {
             );
 
             // Simulate the user pressing "use default" (index 1 in the options array)
-            try (MockedStatic<OptionDialogs> optionMock = mockStatic(OptionDialogs.class)) {
+            try (var optionMock = mockStatic(OptionDialogs.class)) {
                 optionMock.when(
                     () -> OptionDialogs.showOptionDialog(
                         any(), any(), any(), anyInt(), anyInt(), any(), any(), any()

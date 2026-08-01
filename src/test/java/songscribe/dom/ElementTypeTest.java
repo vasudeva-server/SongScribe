@@ -508,7 +508,7 @@ class ElementTypeTest extends UnitTest {
         // terminalFlushRightXSs = lineWidthSs − terminalType.baseWidthSs
         // Expected values are derived from the barline thickness constants, not from the
         // production method, so a bug in the formula cannot make the test pass falsely.
-        final double lineWidthSs = 40.0;
+        final var lineWidthSs = 40.0;
 
         // FINAL_DOUBLE_BARLINE: baseWidthSs = thin + thick + sep
         var finalBarBaseWidth = LineThickness.THIN_BARLINE_SS

@@ -51,7 +51,7 @@ class StaffAnnotationPopupButtonTest extends MainFrameMockTest {
         var actions = Actions.STAFF_ANNOTATION_ACTIONS;
         savedEnabledStates = new boolean[actions.size()];
 
-        for (int i = 0; i < actions.size(); i++) {
+        for (var i = 0; i < actions.size(); i++) {
             savedEnabledStates[i] = actions.get(i).isEnabled();
         }
 
@@ -68,7 +68,7 @@ class StaffAnnotationPopupButtonTest extends MainFrameMockTest {
         // Restore global action state so other tests are not affected
         var actions = Actions.STAFF_ANNOTATION_ACTIONS;
 
-        for (int i = 0; i < actions.size(); i++) {
+        for (var i = 0; i < actions.size(); i++) {
             actions.get(i).setEnabled(savedEnabledStates[i]);
         }
     }

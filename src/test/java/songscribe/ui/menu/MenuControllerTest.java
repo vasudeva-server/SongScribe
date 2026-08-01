@@ -244,7 +244,7 @@ class MenuControllerTest extends UnitTest {
 
             var components = controller.openRecentMenu.getMenuComponents();
             // 2 path items + 1 separator + 1 Clear action = 4 components
-            final int expectedCount = 4;
+            final var expectedCount = 4;
             assertThat(components).hasSize(expectedCount);
             // First two components are action items (one per path)
             assertThat(components[0]).isInstanceOf(JMenuItem.class);
@@ -271,7 +271,7 @@ class MenuControllerTest extends UnitTest {
             controller.recentDocumentsDidChange(new RecentDocumentsDidChangeNotification());
 
             // The handler must have called rebuildOpenRecentMenu(): 1 item + separator + clear = 3.
-            final int expectedCount = 3;
+            final var expectedCount = 3;
             assertThat(controller.openRecentMenu.getMenuComponentCount()).isEqualTo(expectedCount);
         }
 

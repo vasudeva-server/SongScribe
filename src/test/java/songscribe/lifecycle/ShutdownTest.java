@@ -253,7 +253,7 @@ class ShutdownTest {
     // 16. Cross-thread CleanupTask.run() racing on two threads: body runs exactly once.
     @Test
     void cleanupTaskRunsAtMostOnceUnderRace() throws InterruptedException {
-        final int threadCount = 8;
+        final var threadCount = 8;
         var counter = new AtomicInteger(0);
         var task = new Shutdown.CleanupTask("race", counter::incrementAndGet);
 
@@ -261,7 +261,7 @@ class ShutdownTest {
         var doneGate = new CountDownLatch(threadCount);
         var threads = new ArrayList<Thread>();
 
-        for (int i = 0; i < threadCount; i++) {
+        for (var i = 0; i < threadCount; i++) {
             var t = new Thread(() -> {
                 try {
                     startGate.await();

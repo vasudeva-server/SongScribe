@@ -168,7 +168,7 @@ class MainFrameTest extends UnitTest {
             doCallRealMethod().when(frame).showSaveDialog();
 
             // saveIdx == 0, so return 0 from showOptionDialog to choose Save
-            final int saveIdx = 0;
+            final var saveIdx = 0;
 
             try (var optionDialogsMock = mockStatic(OptionDialogs.class);
                  var saveActionMock = mockStatic(SaveAction.class)) {
@@ -207,7 +207,7 @@ class MainFrameTest extends UnitTest {
             doCallRealMethod().when(frame).showSaveDialog();
 
             // dontSaveIdx == 1
-            final int dontSaveIdx = 1;
+            final var dontSaveIdx = 1;
 
             try (var optionDialogsMock = mockStatic(OptionDialogs.class);
                  var saveActionMock = mockStatic(SaveAction.class)) {

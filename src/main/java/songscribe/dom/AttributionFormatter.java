@@ -327,7 +327,7 @@ public final class AttributionFormatter {
 
         var sb = new StringBuilder();
 
-        for (int i = 0; i < size - OXFORD_TAIL_COUNT; i++) {
+        for (var i = 0; i < size - OXFORD_TAIL_COUNT; i++) {
             sb.append(items.get(i));
             sb.append(", ");
         }

@@ -40,12 +40,12 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testUniformProducesCorrectLayers() {
-            final double contentXSs = 2.0;
-            final double contentYSs = 3.0;
-            final double contentWidthSs = 4.0;
-            final double contentHeightSs = 1.5;
-            final double paddingSs = 0.5;
-            final double marginSs = 0.25;
+            final var contentXSs = 2.0;
+            final var contentYSs = 3.0;
+            final var contentWidthSs = 4.0;
+            final var contentHeightSs = 1.5;
+            final var paddingSs = 0.5;
+            final var marginSs = 0.25;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var bounds = ElementBoundsSs.uniform(content, paddingSs, marginSs);
@@ -54,18 +54,18 @@ class ElementBoundsSsTest extends UnitTest {
             assertThat(bounds.getContentBounds()).isEqualTo(content);
 
             // padding = content expanded by paddingSs on all sides
-            final double expectedPaddingX = contentXSs - paddingSs;
-            final double expectedPaddingY = contentYSs - paddingSs;
-            final double expectedPaddingW = contentWidthSs + 2 * paddingSs;
-            final double expectedPaddingH = contentHeightSs + 2 * paddingSs;
+            final var expectedPaddingX = contentXSs - paddingSs;
+            final var expectedPaddingY = contentYSs - paddingSs;
+            final var expectedPaddingW = contentWidthSs + 2 * paddingSs;
+            final var expectedPaddingH = contentHeightSs + 2 * paddingSs;
             assertThat(bounds.getPaddingBounds()).isEqualTo(
                 new Rectangle2D.Double(expectedPaddingX, expectedPaddingY, expectedPaddingW, expectedPaddingH));
 
             // margin = padding expanded by marginSs on all sides
-            final double expectedMarginX = expectedPaddingX - marginSs;
-            final double expectedMarginY = expectedPaddingY - marginSs;
-            final double expectedMarginW = expectedPaddingW + 2 * marginSs;
-            final double expectedMarginH = expectedPaddingH + 2 * marginSs;
+            final var expectedMarginX = expectedPaddingX - marginSs;
+            final var expectedMarginY = expectedPaddingY - marginSs;
+            final var expectedMarginW = expectedPaddingW + 2 * marginSs;
+            final var expectedMarginH = expectedPaddingH + 2 * marginSs;
             assertThat(bounds.getMarginBounds()).isEqualTo(
                 new Rectangle2D.Double(expectedMarginX, expectedMarginY, expectedMarginW, expectedMarginH));
 
@@ -75,13 +75,13 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testWithMarginProducesCorrectLayersAndNoTopMargin() {
-            final double contentXSs = 1.0;
-            final double contentYSs = 2.0;
-            final double contentWidthSs = 6.0;
-            final double contentHeightSs = 2.0;
-            final double leftMarginSs = 0.5;
-            final double bottomMarginSs = 0.75;
-            final double rightMarginSs = 0.25;
+            final var contentXSs = 1.0;
+            final var contentYSs = 2.0;
+            final var contentWidthSs = 6.0;
+            final var contentHeightSs = 2.0;
+            final var leftMarginSs = 0.5;
+            final var bottomMarginSs = 0.75;
+            final var rightMarginSs = 0.25;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var margin = new Margin(leftMarginSs, bottomMarginSs, rightMarginSs);
@@ -91,24 +91,24 @@ class ElementBoundsSsTest extends UnitTest {
             assertThat(bounds.getPaddingBounds()).isEqualTo(content);
 
             // margin: left and right expand, bottom expands, top NOT expanded (y stays at contentY)
-            final double expectedMarginX = contentXSs - leftMarginSs;
-            final double expectedMarginY = contentYSs; // no top margin
-            final double expectedMarginW = contentWidthSs + leftMarginSs + rightMarginSs;
-            final double expectedMarginH = contentHeightSs + bottomMarginSs; // only bottom
+            final var expectedMarginX = contentXSs - leftMarginSs;
+            final var expectedMarginY = contentYSs; // no top margin
+            final var expectedMarginW = contentWidthSs + leftMarginSs + rightMarginSs;
+            final var expectedMarginH = contentHeightSs + bottomMarginSs; // only bottom
             assertThat(bounds.getMarginBounds()).isEqualTo(
                 new Rectangle2D.Double(expectedMarginX, expectedMarginY, expectedMarginW, expectedMarginH));
         }
 
         @Test
         void testWithMarginOnlyProducesCorrectLayers() {
-            final double contentXSs = 0.0;
-            final double contentYSs = 0.0;
-            final double contentWidthSs = 3.0;
-            final double contentHeightSs = 1.0;
-            final double marginXSs = -1.0;
-            final double marginYSs = -0.5;
-            final double marginWidthSs = 5.0;
-            final double marginHeightSs = 2.0;
+            final var contentXSs = 0.0;
+            final var contentYSs = 0.0;
+            final var contentWidthSs = 3.0;
+            final var contentHeightSs = 1.0;
+            final var marginXSs = -1.0;
+            final var marginYSs = -0.5;
+            final var marginWidthSs = 5.0;
+            final var marginHeightSs = 2.0;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var marginRect = new Rectangle2D.Double(marginXSs, marginYSs, marginWidthSs, marginHeightSs);
@@ -121,10 +121,10 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testContentOnlyProducesAllLayersEqualToContent() {
-            final double contentXSs = 5.0;
-            final double contentYSs = 1.0;
-            final double contentWidthSs = 2.0;
-            final double contentHeightSs = 3.0;
+            final var contentXSs = 5.0;
+            final var contentYSs = 1.0;
+            final var contentWidthSs = 2.0;
+            final var contentHeightSs = 3.0;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var bounds = ElementBoundsSs.contentOnly(content);
@@ -150,8 +150,8 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testThisBottomMarginWinsWhenLarger() {
-            final double thisBottomMarginSs = 2.0;
-            final double belowTopMarginSs = 1.0;
+            final var thisBottomMarginSs = 2.0;
+            final var belowTopMarginSs = 1.0;
 
             var above = boundsWithBottomMarginSs(thisBottomMarginSs);
             var below = boundsWithTopMarginSs(belowTopMarginSs);
@@ -161,8 +161,8 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testBelowTopMarginWinsWhenLarger() {
-            final double thisBottomMarginSs = 0.5;
-            final double belowTopMarginSs = 1.5;
+            final var thisBottomMarginSs = 0.5;
+            final var belowTopMarginSs = 1.5;
 
             var above = boundsWithBottomMarginSs(thisBottomMarginSs);
             var below = boundsWithTopMarginSs(belowTopMarginSs);
@@ -172,7 +172,7 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testEqualMarginsProduceThatValue() {
-            final double marginSs = 1.25;
+            final var marginSs = 1.25;
 
             var above = boundsWithBottomMarginSs(marginSs);
             var below = boundsWithTopMarginSs(marginSs);
@@ -183,9 +183,9 @@ class ElementBoundsSsTest extends UnitTest {
         // Builds bounds where the margin extends `bottomMarginSs` below the content.
         // Content: (0, 0, 1, 1); margin bottom extends down by bottomMarginSs.
         private static ElementBoundsSs boundsWithBottomMarginSs(double bottomMarginSs) {
-            final double xSs = 0.0;
-            final double ySs = 0.0;
-            final double sizeSs = 1.0;
+            final var xSs = 0.0;
+            final var ySs = 0.0;
+            final var sizeSs = 1.0;
             var content = new Rectangle2D.Double(xSs, ySs, sizeSs, sizeSs);
             var marginRect = new Rectangle2D.Double(xSs, ySs, sizeSs, sizeSs + bottomMarginSs);
             return ElementBoundsSs.withMarginOnly(content, marginRect);
@@ -194,8 +194,8 @@ class ElementBoundsSsTest extends UnitTest {
         // Builds bounds where the margin extends `topMarginSs` above the content.
         // Content: (0, topMarginSs, 1, 1); marginY = 0 so topMargin = topMarginSs.
         private static ElementBoundsSs boundsWithTopMarginSs(double topMarginSs) {
-            final double xSs = 0.0;
-            final double sizeSs = 1.0;
+            final var xSs = 0.0;
+            final var sizeSs = 1.0;
             var content = new Rectangle2D.Double(xSs, topMarginSs, sizeSs, sizeSs);
             var marginRect = new Rectangle2D.Double(xSs, 0.0, sizeSs, topMarginSs + sizeSs);
             return ElementBoundsSs.withMarginOnly(content, marginRect);
@@ -211,46 +211,46 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testPointInsidePaddingReturnsTrue() {
-            final double paddingSs = 0.5;
-            final double contentXSs = 2.0;
-            final double contentYSs = 2.0;
-            final double contentSizeSs = 2.0;
+            final var paddingSs = 0.5;
+            final var contentXSs = 2.0;
+            final var contentYSs = 2.0;
+            final var contentSizeSs = 2.0;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentSizeSs, contentSizeSs);
             var bounds = ElementBoundsSs.uniform(content, paddingSs, 0.0);
 
             // Center of content is well inside padding
-            final double centerX = contentXSs + contentSizeSs / 2;
-            final double centerY = contentYSs + contentSizeSs / 2;
+            final var centerX = contentXSs + contentSizeSs / 2;
+            final var centerY = contentYSs + contentSizeSs / 2;
             assertThat(bounds.containsForHitTest(centerX, centerY)).isTrue();
         }
 
         @Test
         void testPointInMarginButOutsidePaddingReturnsFalse() {
-            final double paddingSs = 0.25;
-            final double marginSs = 1.0;
-            final double contentXSs = 2.0;
-            final double contentYSs = 2.0;
-            final double contentSizeSs = 2.0;
-            final double pastPaddingEdgeSs = 0.1;
+            final var paddingSs = 0.25;
+            final var marginSs = 1.0;
+            final var contentXSs = 2.0;
+            final var contentYSs = 2.0;
+            final var contentSizeSs = 2.0;
+            final var pastPaddingEdgeSs = 0.1;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentSizeSs, contentSizeSs);
             var bounds = ElementBoundsSs.uniform(content, paddingSs, marginSs);
 
             // A point inside margin but outside padding: just beyond the padding edge
-            final double justOutsidePaddingX = contentXSs - paddingSs - pastPaddingEdgeSs;
-            final double insideY = contentYSs + contentSizeSs / 2;
+            final var justOutsidePaddingX = contentXSs - paddingSs - pastPaddingEdgeSs;
+            final var insideY = contentYSs + contentSizeSs / 2;
             assertThat(bounds.containsForHitTest(justOutsidePaddingX, insideY)).isFalse();
         }
 
         @Test
         void testPointFullyOutsideReturnsFalse() {
-            final double paddingSs = 0.5;
-            final double contentXSs = 2.0;
-            final double contentYSs = 2.0;
-            final double contentSizeSs = 2.0;
+            final var paddingSs = 0.5;
+            final var contentXSs = 2.0;
+            final var contentYSs = 2.0;
+            final var contentSizeSs = 2.0;
 
-            final double farLeftXSs = -100.0;
+            final var farLeftXSs = -100.0;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentSizeSs, contentSizeSs);
             var bounds = ElementBoundsSs.uniform(content, paddingSs, 0.0);
@@ -270,8 +270,8 @@ class ElementBoundsSsTest extends UnitTest {
         @Test
         void testIntersectsMarginReturnsTrueWhenMarginsOverlap() {
             // two elements whose margin rects overlap but content does not
-            final double sizeSSs = 1.0;
-            final double marginSs = 1.0;
+            final var sizeSSs = 1.0;
+            final var marginSs = 1.0;
 
             var contentA = new Rectangle2D.Double(0.0, 0.0, sizeSSs, sizeSSs);
             var contentB = new Rectangle2D.Double(sizeSSs + marginSs, 0.0, sizeSSs, sizeSSs);
@@ -284,9 +284,9 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testIntersectsMarginReturnsFalseWhenMarginsDontOverlap() {
-            final double sizeSSs = 1.0;
-            final double marginSs = 0.1;
-            final double gapSs = 1.0; // gap >> margin, so margins don't touch
+            final var sizeSSs = 1.0;
+            final var marginSs = 0.1;
+            final var gapSs = 1.0; // gap >> margin, so margins don't touch
 
             var contentA = new Rectangle2D.Double(0.0, 0.0, sizeSSs, sizeSSs);
             var contentB = new Rectangle2D.Double(sizeSSs + gapSs, 0.0, sizeSSs, sizeSSs);
@@ -298,9 +298,9 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testIntersectsPaddingReturnsTrueWhenPaddingOverlaps() {
-            final double sizeSSs = 2.0;
-            final double paddingSs = 0.5;
-            final double overlapNudgeSs = 0.1;
+            final var sizeSSs = 2.0;
+            final var paddingSs = 0.5;
+            final var overlapNudgeSs = 0.1;
 
             // Place B at xSs = sizeSSs + paddingSs so padding edges touch (just barely overlapping)
             var contentA = new Rectangle2D.Double(0.0, 0.0, sizeSSs, sizeSSs);
@@ -313,9 +313,9 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testIntersectsPaddingReturnsFalseWhenPaddingDontOverlap() {
-            final double sizeSSs = 2.0;
-            final double paddingSs = 0.25;
-            final double gapSs = 2.0; // far apart
+            final var sizeSSs = 2.0;
+            final var paddingSs = 0.25;
+            final var gapSs = 2.0; // far apart
 
             var contentA = new Rectangle2D.Double(0.0, 0.0, sizeSSs, sizeSSs);
             var contentB = new Rectangle2D.Double(sizeSSs + gapSs, 0.0, sizeSSs, sizeSSs);
@@ -335,15 +335,15 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testTranslateShiftsAllFourLayersWhenVisualExplicitlySet() {
-            final double contentXSs = 1.0;
-            final double contentYSs = 2.0;
-            final double contentWidthSs = 3.0;
-            final double contentHeightSs = 1.5;
-            final double paddingSs = 0.5;
-            final double marginSs = 0.25;
-            final double visualExtensionSs = 0.75;
-            final double dxSs = 2.0;
-            final double dySs = 3.0;
+            final var contentXSs = 1.0;
+            final var contentYSs = 2.0;
+            final var contentWidthSs = 3.0;
+            final var contentHeightSs = 1.5;
+            final var paddingSs = 0.5;
+            final var marginSs = 0.25;
+            final var visualExtensionSs = 0.75;
+            final var dxSs = 2.0;
+            final var dySs = 3.0;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var padding = new Rectangle2D.Double(
@@ -372,13 +372,13 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testTranslateWithNullVisualFallsBackToShiftedMargin() {
-            final double contentXSs = 0.0;
-            final double contentYSs = 0.0;
-            final double contentWidthSs = 2.0;
-            final double contentHeightSs = 2.0;
-            final double marginSs = 0.25;
-            final double dxSs = 1.5;
-            final double dySs = 2.5;
+            final var contentXSs = 0.0;
+            final var contentYSs = 0.0;
+            final var contentWidthSs = 2.0;
+            final var contentHeightSs = 2.0;
+            final var marginSs = 0.25;
+            final var dxSs = 1.5;
+            final var dySs = 2.5;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var bounds = ElementBoundsSs.uniform(content, 0.0, marginSs);
@@ -398,13 +398,13 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testExplicitVisualRectIsReturnedWhenSet() {
-            final double contentXSs = 1.0;
-            final double contentYSs = 1.0;
-            final double contentSizeSs = 2.0;
-            final double visualXSs = 0.0;
-            final double visualYSs = 0.0;
-            final double visualWidthSs = 5.0;
-            final double visualHeightSs = 5.0;
+            final var contentXSs = 1.0;
+            final var contentYSs = 1.0;
+            final var contentSizeSs = 2.0;
+            final var visualXSs = 0.0;
+            final var visualYSs = 0.0;
+            final var visualWidthSs = 5.0;
+            final var visualHeightSs = 5.0;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentSizeSs, contentSizeSs);
             var visual = new Rectangle2D.Double(visualXSs, visualYSs, visualWidthSs, visualHeightSs);
@@ -415,11 +415,11 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testNoVisualFallsBackToMarginBounds() {
-            final double contentXSs = 2.0;
-            final double contentYSs = 3.0;
-            final double contentWidthSs = 4.0;
-            final double contentHeightSs = 2.0;
-            final double marginSs = 0.5;
+            final var contentXSs = 2.0;
+            final var contentYSs = 3.0;
+            final var contentWidthSs = 4.0;
+            final var contentHeightSs = 2.0;
+            final var marginSs = 0.5;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var bounds = ElementBoundsSs.uniform(content, 0.0, marginSs);
@@ -437,13 +437,13 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testGetPaddingCssUniformPaddingReturnsOneToken() {
-            final double contentXSs = 2.0;
-            final double contentYSs = 2.0;
-            final double contentWidthSs = 4.0;
-            final double contentHeightSs = 4.0;
-            final double paddingSs = 2.0;
-            final double marginSs = 5.0;
-            final int expectedTokenSs = (int) paddingSs;
+            final var contentXSs = 2.0;
+            final var contentYSs = 2.0;
+            final var contentWidthSs = 4.0;
+            final var contentHeightSs = 4.0;
+            final var paddingSs = 2.0;
+            final var marginSs = 5.0;
+            final var expectedTokenSs = (int) paddingSs;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var bounds = ElementBoundsSs.uniform(content, paddingSs, marginSs);
@@ -453,18 +453,18 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testGetPaddingCssAsymmetricPaddingReturnsFourTokens() {
-            final double contentXSs = 5.0;
-            final double contentYSs = 5.0;
-            final double contentWidthSs = 4.0;
-            final double contentHeightSs = 4.0;
-            final double topPaddingSs = 1.0;
-            final double rightPaddingSs = 2.0;
-            final double bottomPaddingSs = 3.0;
-            final double leftPaddingSs = 4.0;
-            final int expectedTop = (int) topPaddingSs;
-            final int expectedRight = (int) rightPaddingSs;
-            final int expectedBottom = (int) bottomPaddingSs;
-            final int expectedLeft = (int) leftPaddingSs;
+            final var contentXSs = 5.0;
+            final var contentYSs = 5.0;
+            final var contentWidthSs = 4.0;
+            final var contentHeightSs = 4.0;
+            final var topPaddingSs = 1.0;
+            final var rightPaddingSs = 2.0;
+            final var bottomPaddingSs = 3.0;
+            final var leftPaddingSs = 4.0;
+            final var expectedTop = (int) topPaddingSs;
+            final var expectedRight = (int) rightPaddingSs;
+            final var expectedBottom = (int) bottomPaddingSs;
+            final var expectedLeft = (int) leftPaddingSs;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var padding = new Rectangle2D.Double(
@@ -480,12 +480,12 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testGetMarginCssUniformMarginReturnsOneToken() {
-            final double contentXSs = 2.0;
-            final double contentYSs = 2.0;
-            final double contentWidthSs = 4.0;
-            final double contentHeightSs = 4.0;
-            final double marginSs = 3.0;
-            final int expectedTokenSs = (int) marginSs;
+            final var contentXSs = 2.0;
+            final var contentYSs = 2.0;
+            final var contentWidthSs = 4.0;
+            final var contentHeightSs = 4.0;
+            final var marginSs = 3.0;
+            final var expectedTokenSs = (int) marginSs;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var bounds = ElementBoundsSs.uniform(content, 0.0, marginSs);
@@ -495,18 +495,18 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testGetMarginCssAsymmetricMarginReturnsFourTokens() {
-            final double contentXSs = 10.0;
-            final double contentYSs = 10.0;
-            final double contentWidthSs = 4.0;
-            final double contentHeightSs = 4.0;
-            final double topMarginSs = 2.0;
-            final double rightMarginSs = 4.0;
-            final double bottomMarginSs = 6.0;
-            final double leftMarginSs = 8.0;
-            final int expectedTop = (int) topMarginSs;
-            final int expectedRight = (int) rightMarginSs;
-            final int expectedBottom = (int) bottomMarginSs;
-            final int expectedLeft = (int) leftMarginSs;
+            final var contentXSs = 10.0;
+            final var contentYSs = 10.0;
+            final var contentWidthSs = 4.0;
+            final var contentHeightSs = 4.0;
+            final var topMarginSs = 2.0;
+            final var rightMarginSs = 4.0;
+            final var bottomMarginSs = 6.0;
+            final var leftMarginSs = 8.0;
+            final var expectedTop = (int) topMarginSs;
+            final var expectedRight = (int) rightMarginSs;
+            final var expectedBottom = (int) bottomMarginSs;
+            final var expectedLeft = (int) leftMarginSs;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var margin = new Rectangle2D.Double(
@@ -530,12 +530,12 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testAccessorsReturnExactContentAndMarginCoordinates() {
-            final double contentXSs = 3.0;
-            final double contentYSs = 5.0;
-            final double contentWidthSs = 4.0;
-            final double contentHeightSs = 2.0;
-            final double paddingSs = 0.5;
-            final double marginSs = 0.25;
+            final var contentXSs = 3.0;
+            final var contentYSs = 5.0;
+            final var contentWidthSs = 4.0;
+            final var contentHeightSs = 2.0;
+            final var paddingSs = 0.5;
+            final var marginSs = 0.25;
 
             var content = new Rectangle2D.Double(contentXSs, contentYSs, contentWidthSs, contentHeightSs);
             var bounds = ElementBoundsSs.uniform(content, paddingSs, marginSs);
@@ -547,8 +547,8 @@ class ElementBoundsSsTest extends UnitTest {
             assertThat(bounds.getRightSs()).isEqualTo(contentXSs + contentWidthSs);
 
             // Margin-derived accessors (margin = padding + marginSs on each side)
-            final double expectedMarginTopSs = contentYSs - paddingSs - marginSs;
-            final double expectedMarginBottomSs = contentYSs + contentHeightSs + paddingSs + marginSs;
+            final var expectedMarginTopSs = contentYSs - paddingSs - marginSs;
+            final var expectedMarginBottomSs = contentYSs + contentHeightSs + paddingSs + marginSs;
             assertThat(bounds.getMarginTopSs()).isEqualTo(expectedMarginTopSs);
             assertThat(bounds.getMarginBottomSs()).isEqualTo(expectedMarginBottomSs);
         }
@@ -593,30 +593,30 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testAllSamePaddingReturnsOneToken() {
-            final double uniformPaddingSs = 3.0;
-            final int expected = (int) uniformPaddingSs;
+            final var uniformPaddingSs = 3.0;
+            final var expected = (int) uniformPaddingSs;
             var bounds = ElementBoundsSs.uniform(content(), uniformPaddingSs, 0.0);
             assertThat(bounds.getPaddingCss()).isEqualTo(expected + "ss");
         }
 
         @Test
         void testTopBottomSameLeftRightSameReturnsTwoTokens() {
-            final double topBottomPaddingSs = 2.0;
-            final double leftRightPaddingSs = 4.0;
-            final int expectedVertical = (int) topBottomPaddingSs;
-            final int expectedHorizontal = (int) leftRightPaddingSs;
+            final var topBottomPaddingSs = 2.0;
+            final var leftRightPaddingSs = 4.0;
+            final var expectedVertical = (int) topBottomPaddingSs;
+            final var expectedHorizontal = (int) leftRightPaddingSs;
             var bounds = withPadding(topBottomPaddingSs, leftRightPaddingSs, topBottomPaddingSs, leftRightPaddingSs);
             assertThat(bounds.getPaddingCss()).isEqualTo(expectedVertical + "ss " + expectedHorizontal + "ss");
         }
 
         @Test
         void testLeftRightSameTopBottomDifferentReturnsThreeTokens() {
-            final double topPaddingSs = 1.0;
-            final double sidesPaddingSs = 2.0;
-            final double bottomPaddingSs = 3.0;
-            final int expectedTop = (int) topPaddingSs;
-            final int expectedSides = (int) sidesPaddingSs;
-            final int expectedBottom = (int) bottomPaddingSs;
+            final var topPaddingSs = 1.0;
+            final var sidesPaddingSs = 2.0;
+            final var bottomPaddingSs = 3.0;
+            final var expectedTop = (int) topPaddingSs;
+            final var expectedSides = (int) sidesPaddingSs;
+            final var expectedBottom = (int) bottomPaddingSs;
             var bounds = withPadding(topPaddingSs, sidesPaddingSs, bottomPaddingSs, sidesPaddingSs);
             assertThat(bounds.getPaddingCss())
                 .isEqualTo(expectedTop + "ss " + expectedSides + "ss " + expectedBottom + "ss");
@@ -624,14 +624,14 @@ class ElementBoundsSsTest extends UnitTest {
 
         @Test
         void testAllDifferentReturnsFourTokens() {
-            final double topPaddingSs = 1.0;
-            final double rightPaddingSs = 2.0;
-            final double bottomPaddingSs = 3.0;
-            final double leftPaddingSs = 4.0;
-            final int expectedTop = (int) topPaddingSs;
-            final int expectedRight = (int) rightPaddingSs;
-            final int expectedBottom = (int) bottomPaddingSs;
-            final int expectedLeft = (int) leftPaddingSs;
+            final var topPaddingSs = 1.0;
+            final var rightPaddingSs = 2.0;
+            final var bottomPaddingSs = 3.0;
+            final var leftPaddingSs = 4.0;
+            final var expectedTop = (int) topPaddingSs;
+            final var expectedRight = (int) rightPaddingSs;
+            final var expectedBottom = (int) bottomPaddingSs;
+            final var expectedLeft = (int) leftPaddingSs;
             var bounds = withPadding(topPaddingSs, rightPaddingSs, bottomPaddingSs, leftPaddingSs);
             assertThat(bounds.getPaddingCss())
                 .isEqualTo(expectedTop + "ss " + expectedRight + "ss " + expectedBottom + "ss " + expectedLeft + "ss");

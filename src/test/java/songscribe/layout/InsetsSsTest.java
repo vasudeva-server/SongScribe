@@ -48,14 +48,14 @@ class InsetsSsTest extends UnitTest {
     @Test
     void testToInsetsPxConvertsAllFourSidesWithKnownScale() {
         // At DEFAULT_PIXELS_PER_STAFF_SPACE (8px/ss): pin exact pixel values for each side
-        final double topSs = 1.0;
-        final double leftSs = 2.0;
-        final double bottomSs = 3.0;
-        final double rightSs = 4.0;
-        final int expectedTopPx = 8;     // 8.0 × 1.0
-        final int expectedLeftPx = 16;   // 8.0 × 2.0
-        final int expectedBottomPx = 24; // 8.0 × 3.0
-        final int expectedRightPx = 32;  // 8.0 × 4.0
+        final var topSs = 1.0;
+        final var leftSs = 2.0;
+        final var bottomSs = 3.0;
+        final var rightSs = 4.0;
+        final var expectedTopPx = 8;     // 8.0 × 1.0
+        final var expectedLeftPx = 16;   // 8.0 × 2.0
+        final var expectedBottomPx = 24; // 8.0 × 3.0
+        final var expectedRightPx = 32;  // 8.0 × 4.0
 
         var insets = new InsetsSs(topSs, leftSs, bottomSs, rightSs);
         var result = insets.toInsetsPx();
@@ -71,8 +71,8 @@ class InsetsSsTest extends UnitTest {
     @Test
     void testToInsetsPxRoundsToNearestNotTruncates() {
         // 0.5625ss × 8.0px/ss = 4.5px; Math.round gives 5, truncation would give 4
-        final double halfPointSs = 0.5625;
-        final int expectedRoundedPx = 5;
+        final var halfPointSs = 0.5625;
+        final var expectedRoundedPx = 5;
 
         var insets = new InsetsSs(halfPointSs, halfPointSs, halfPointSs, halfPointSs);
         var result = insets.toInsetsPx();

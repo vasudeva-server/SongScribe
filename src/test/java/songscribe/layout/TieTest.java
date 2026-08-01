@@ -94,7 +94,7 @@ class TieTest extends UnitTest {
     @Test
     void testGetSpanWidthSsReturnsDifferenceWhenAboveFloor() {
         var tie = createTie();
-        double expectedSpan = END_X_ABOVE_FLOOR_SS - ANCHOR_X_SS;
+        var expectedSpan = END_X_ABOVE_FLOOR_SS - ANCHOR_X_SS;
 
         assertThat(tie.getSpanWidthSs(ANCHOR_X_SS, END_X_ABOVE_FLOOR_SS))
             .isCloseTo(expectedSpan, within(EPSILON));

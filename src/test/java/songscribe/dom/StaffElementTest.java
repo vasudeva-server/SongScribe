@@ -269,7 +269,7 @@ class StaffElementTest extends UnitTest {
         var element = new StaffElement(ElementType.CROTCHET);
         element.addAttachment(new FermataAttachment(element));
 
-        int expectedDuration = (int) (element.getDefaultDurationWithDots() * FERMATA_EXTENSION);
+        var expectedDuration = (int) (element.getDefaultDurationWithDots() * FERMATA_EXTENSION);
         assertThat(element.getDuration()).isEqualTo(expectedDuration);
     }
 

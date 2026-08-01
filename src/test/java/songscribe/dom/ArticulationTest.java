@@ -66,7 +66,7 @@ class ArticulationTest extends UnitTest {
 
     @Test
     void testGetContentHeightPxEqualsAccentGlyphHeightTimesPps() {
-        double expectedPx = AccentShape.accent().getBounds2D().getHeight() * TEST_PPS;
+        var expectedPx = AccentShape.accent().getBounds2D().getHeight() * TEST_PPS;
 
         assertThat(new Articulation(ArticulationType.ACCENT).getContentHeightPx())
             .isCloseTo(expectedPx, within(DOUBLE_EPSILON));
@@ -75,7 +75,7 @@ class ArticulationTest extends UnitTest {
     @Test
     void testGetContentHeightPxEqualsStaccatoBboxHeightTimesPps() {
         var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
-        double expectedPx = bbox.height() * TEST_PPS;
+        var expectedPx = bbox.height() * TEST_PPS;
 
         assertThat(new Articulation(ArticulationType.STACCATO).getContentHeightPx())
             .isCloseTo(expectedPx, within(DOUBLE_EPSILON));
@@ -83,7 +83,7 @@ class ArticulationTest extends UnitTest {
 
     @Test
     void testGetContentWidthPxEqualsAccentGlyphWidthTimesPps() {
-        double expectedPx = AccentShape.accent().getBounds2D().getWidth() * TEST_PPS;
+        var expectedPx = AccentShape.accent().getBounds2D().getWidth() * TEST_PPS;
 
         assertThat(new Articulation(ArticulationType.ACCENT).getContentWidthPx())
             .isCloseTo(expectedPx, within(DOUBLE_EPSILON));
@@ -92,7 +92,7 @@ class ArticulationTest extends UnitTest {
     @Test
     void testGetContentWidthPxEqualsStaccatoBboxWidthTimesPps() {
         var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ARTIC_STACCATO_ABOVE);
-        double expectedPx = bbox.width() * TEST_PPS;
+        var expectedPx = bbox.width() * TEST_PPS;
 
         assertThat(new Articulation(ArticulationType.STACCATO).getContentWidthPx())
             .isCloseTo(expectedPx, within(DOUBLE_EPSILON));

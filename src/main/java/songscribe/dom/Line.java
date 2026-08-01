@@ -2047,7 +2047,7 @@ public class Line {
         }
 
         int finalMergedAnchor = mergedAnchorIdx;
-        int finalMergedEnd = mergedEndIdx;
+        var finalMergedEnd = mergedEndIdx;
         var subsumedSpans = rangeElements.stream()
             .filter(re -> type.isInstance(re)
                 && type.cast(re).getAnchorElementIndex() >= finalMergedAnchor

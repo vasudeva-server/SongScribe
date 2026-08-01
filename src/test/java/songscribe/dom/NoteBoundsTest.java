@@ -165,8 +165,8 @@ class NoteBoundsTest extends UnitTest {
             // Use full as both noteWithStemBounds and noteWithArticulationsBounds.
             var nb = new NoteBounds(head, full, full, true);
 
-            double expectedCenterX = head.getCenterX(); // HEAD_X + HEAD_WIDTH / 2
-            double expectedCenterY = head.getCenterY(); // HEAD_Y + HEAD_HEIGHT / 2
+            var expectedCenterX = head.getCenterX(); // HEAD_X + HEAD_WIDTH / 2
+            var expectedCenterY = head.getCenterY(); // HEAD_Y + HEAD_HEIGHT / 2
 
             assertThat(nb.getCenterX()).isCloseTo(expectedCenterX, within(DELTA));
             assertThat(nb.getCenterY()).isCloseTo(expectedCenterY, within(DELTA));
@@ -197,9 +197,9 @@ class NoteBoundsTest extends UnitTest {
 
             var result = nb.getOppositeFromStemBounds();
 
-            double headCenterY    = head.getCenterY();
-            double artMaxY        = art.getMaxY();
-            double expectedHeight = artMaxY - headCenterY;
+            var headCenterY    = head.getCenterY();
+            var artMaxY        = art.getMaxY();
+            var expectedHeight = artMaxY - headCenterY;
 
             assertThat(result.getX()).isCloseTo(ART_X, within(DELTA));
             assertThat(result.getY()).isCloseTo(headCenterY, within(DELTA));
@@ -220,8 +220,8 @@ class NoteBoundsTest extends UnitTest {
 
             var result = nb.getOppositeFromStemBounds();
 
-            double headCenterY    = head.getCenterY();
-            double expectedHeight = headCenterY - ART_Y;
+            var headCenterY    = head.getCenterY();
+            var expectedHeight = headCenterY - ART_Y;
 
             assertThat(result.getX()).isCloseTo(ART_X, within(DELTA));
             assertThat(result.getY()).isCloseTo(ART_Y, within(DELTA));
@@ -253,7 +253,7 @@ class NoteBoundsTest extends UnitTest {
     @Test
     void testGetBottomReadsArticulationsBoundsMaxY() {
         var nb = new NoteBounds(headRect(), stemRect(), artRect(), true);
-        double expectedMaxY = ART_Y + ART_HEIGHT;
+        var expectedMaxY = ART_Y + ART_HEIGHT;
 
         assertThat(nb.getBottom()).isCloseTo(expectedMaxY, within(DELTA));
     }
@@ -268,7 +268,7 @@ class NoteBoundsTest extends UnitTest {
     @Test
     void testGetAttachmentBottomYReadsArticulationsBoundsMaxY() {
         var nb = new NoteBounds(headRect(), stemRect(), artRect(), true);
-        double expectedMaxY = ART_Y + ART_HEIGHT;
+        var expectedMaxY = ART_Y + ART_HEIGHT;
 
         assertThat(nb.getAttachmentBottomY()).isCloseTo(expectedMaxY, within(DELTA));
     }
@@ -293,8 +293,8 @@ class NoteBoundsTest extends UnitTest {
 
             var result = nb.getStemSideBounds();
 
-            double headCenterY = head.getCenterY(); // HEAD_Y + HEAD_HEIGHT / 2
-            double expectedHeight = headCenterY - ART_Y;
+            var headCenterY = head.getCenterY(); // HEAD_Y + HEAD_HEIGHT / 2
+            var expectedHeight = headCenterY - ART_Y;
 
             assertThat(result.getX()).isCloseTo(ART_X, within(DELTA));
             assertThat(result.getY()).isCloseTo(ART_Y, within(DELTA));
@@ -315,9 +315,9 @@ class NoteBoundsTest extends UnitTest {
 
             var result = nb.getStemSideBounds();
 
-            double headCenterY  = head.getCenterY();
-            double artMaxY      = art.getMaxY();
-            double expectedHeight = artMaxY - headCenterY;
+            var headCenterY  = head.getCenterY();
+            var artMaxY      = art.getMaxY();
+            var expectedHeight = artMaxY - headCenterY;
 
             assertThat(result.getX()).isCloseTo(ART_X, within(DELTA));
             assertThat(result.getY()).isCloseTo(headCenterY, within(DELTA));

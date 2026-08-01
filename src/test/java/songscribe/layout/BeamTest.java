@@ -77,7 +77,7 @@ class BeamTest extends UnitTest {
     @Test
     void testGetSpanWidthSsReturnsDifferenceWhenAboveFloor() {
         var beam = createBeam();
-        double expectedSpan = END_X_ABOVE_FLOOR_SS - ANCHOR_X_SS;
+        var expectedSpan = END_X_ABOVE_FLOOR_SS - ANCHOR_X_SS;
 
         assertThat(beam.getSpanWidthSs(ANCHOR_X_SS, END_X_ABOVE_FLOOR_SS))
             .isCloseTo(expectedSpan, within(DELTA));

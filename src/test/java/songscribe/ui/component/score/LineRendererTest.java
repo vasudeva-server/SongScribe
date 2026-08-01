@@ -162,7 +162,7 @@ class LineRendererTest extends UnitTest {
          */
         @Test
         void testSelectedLineUsesSelectionColor() {
-            final int lineIndex = 0;
+            final var lineIndex = 0;
             var selectionProvider = mock(LineComponent.SelectionProvider.class);
             when(selectionProvider.isLineSelected(lineIndex)).thenReturn(true);
 
@@ -205,7 +205,7 @@ class LineRendererTest extends UnitTest {
          */
         @Test
         void testSelectedOverflowingLineUsesSelectionColor() {
-            final int lineIndex = 0;
+            final var lineIndex = 0;
             var selectionProvider = mock(LineComponent.SelectionProvider.class);
             when(selectionProvider.isLineSelected(lineIndex)).thenReturn(true);
 

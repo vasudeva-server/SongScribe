@@ -89,8 +89,8 @@ class TempoChangeRendererTest extends UnitTest {
         // showTempo=true: tempoBuilder builds "{visibleTempo} {description}"
         // drawDurationEquals() is called before the text drawString, so there
         // will be multiple drawString calls; the last one contains the tempoBuilder content.
-        final int visibleTempo = 120;
-        final String description = "Allegro";
+        final var visibleTempo = 120;
+        final var description = "Allegro";
         var tempo = new Tempo(visibleTempo, Duration.CROTCHET, description, true);
 
         var drawn = renderAndCaptureStrings(tempo);
@@ -106,7 +106,7 @@ class TempoChangeRendererTest extends UnitTest {
     void testRenderTempoChangeWithoutShowTempoDrawsOnlyDescription() {
         // showTempo=false: tempoBuilder builds only "{description}";
         // drawDurationEquals() is NOT called, so exactly 1 drawString call.
-        final String description = "Andante";
+        final var description = "Andante";
         var tempo = new Tempo(0, Duration.CROTCHET, description, false);
 
         var drawn = renderAndCaptureStrings(tempo);

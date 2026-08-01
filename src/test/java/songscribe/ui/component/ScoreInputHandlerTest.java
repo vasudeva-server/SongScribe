@@ -105,7 +105,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var handler = new ScoreInputHandler(callback);
             var pasteModeManager = mock(PasteModeManager.class);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
                 handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
@@ -122,7 +122,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var pasteModeManager = mock(PasteModeManager.class);
             when(pasteModeManager.isInProgress()).thenReturn(true);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
                 handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
@@ -139,7 +139,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var pasteModeManager = mock(PasteModeManager.class);
             when(pasteModeManager.isInProgress()).thenReturn(false);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
                 handler.mouseClicked(mouseClickEvent(MouseEvent.BUTTON1));
@@ -158,8 +158,8 @@ class ScoreInputHandlerTest extends UnitTest {
             var pasteModeManager = mock(PasteModeManager.class);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
@@ -179,8 +179,8 @@ class ScoreInputHandlerTest extends UnitTest {
             var pasteModeManager = mock(PasteModeManager.class);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
@@ -206,8 +206,8 @@ class ScoreInputHandlerTest extends UnitTest {
             when(pasteModeManager.isInProgress()).thenReturn(true);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
@@ -233,8 +233,8 @@ class ScoreInputHandlerTest extends UnitTest {
             when(pasteModeManager.isInProgress()).thenReturn(true);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
@@ -288,7 +288,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var callback = mock(InputHandlerCallback.class);
             var handler = new ScoreInputHandler(callback);
 
-            try (MockedStatic<LineComponent> lc = mockStatic(LineComponent.class)) {
+            try (var lc = mockStatic(LineComponent.class)) {
                 handler.keyPressed(keyEvent(KeyEvent.VK_ALT));
 
                 lc.verify(LineComponent::clearPreviewElement);
@@ -315,7 +315,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var pasteModeManager = mock(PasteModeManager.class);
             when(graceModeManager.isInProgress()).thenReturn(true);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
@@ -339,8 +339,8 @@ class ScoreInputHandlerTest extends UnitTest {
             when(pasteModeManager.isInProgress()).thenReturn(true);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
@@ -366,8 +366,8 @@ class ScoreInputHandlerTest extends UnitTest {
             when(graceModeManager.isInProgress()).thenReturn(false);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
@@ -390,9 +390,9 @@ class ScoreInputHandlerTest extends UnitTest {
             when(graceModeManager.isInProgress()).thenReturn(false);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<UIUtils> ui = mockStatic(UIUtils.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var ui = mockStatic(UIUtils.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
@@ -416,9 +416,9 @@ class ScoreInputHandlerTest extends UnitTest {
             when(graceModeManager.isInProgress()).thenReturn(false);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<UIUtils> ui = mockStatic(UIUtils.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var ui = mockStatic(UIUtils.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
@@ -440,8 +440,8 @@ class ScoreInputHandlerTest extends UnitTest {
             when(graceModeManager.isInProgress()).thenReturn(false);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
@@ -466,7 +466,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var callback = mock(InputHandlerCallback.class);
             var handler = new ScoreInputHandler(callback);
 
-            try (MockedStatic<LineComponent> lc = mockStatic(LineComponent.class)) {
+            try (var lc = mockStatic(LineComponent.class)) {
                 handler.keyReleased(keyEvent(KeyEvent.VK_ALT));
 
                 lc.verify(() -> LineComponent.setAltPressed(false));
@@ -490,7 +490,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var pasteModeManager = mock(PasteModeManager.class);
             when(pasteModeManager.isInProgress()).thenReturn(true);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
                 pressArrowKey(callback, KeyEvent.VK_ENTER);
@@ -509,7 +509,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var pasteModeManager = mock(PasteModeManager.class);
             when(pasteModeManager.isInProgress()).thenReturn(false);
 
-            try (MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class)) {
+            try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
 
                 pressArrowKey(callback, KeyEvent.VK_ENTER);
@@ -704,7 +704,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
         @Test
         void testUpRaisesSingleSelectedNotePitchAndRecordsMutation() {
-            final int originalPositionSp = 4;
+            final var originalPositionSp = 4;
             var song = new Song();
             var line = song.getLine(0);
             var note = ElementType.CROTCHET.newInstance();
@@ -734,7 +734,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
         @Test
         void testDownLowersSingleSelectedNotePitchAndRecordsMutation() {
-            final int originalPositionSp = 4;
+            final var originalPositionSp = 4;
             var song = new Song();
             var line = song.getLine(0);
             var note = ElementType.CROTCHET.newInstance();
@@ -766,7 +766,7 @@ class ScoreInputHandlerTest extends UnitTest {
         // silently change pitch — a note the user never touched.
         @Test
         void testShiftingANoteAwayWritesItsAccidentalOntoTheNoteThatInheritedIt() {
-            final int sharedPositionSp = 4;
+            final var sharedPositionSp = 4;
             var song = new Song();
             var line = song.getLine(0);
             var movedNote = ElementType.CROTCHET.newInstance();
@@ -797,8 +797,8 @@ class ScoreInputHandlerTest extends UnitTest {
 
         @Test
         void testUpShiftsEveryNoteInMultiSelection() {
-            final int firstPositionSp = 0;
-            final int secondPositionSp = 2;
+            final var firstPositionSp = 0;
+            final var secondPositionSp = 2;
             var song = new Song();
             var line = song.getLine(0);
             var firstNote = ElementType.CROTCHET.newInstance();
@@ -871,7 +871,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
         @Test
         void testDownCollapsingUnselectedPrecedingGraceNoteShrinksSelectionRange() {
-            final int gracePositionSp = 4;
+            final var gracePositionSp = 4;
             var song = new Song();
             var line = song.getLine(0);
             var grace = ElementType.GRACE_QUAVER.newInstance();
@@ -1050,15 +1050,15 @@ class ScoreInputHandlerTest extends UnitTest {
 
             // 7 plain KEY_CODES bindings + shift-Left/Right extension bindings
             // + the plain-B beam-with-previous binding.
-            final int expectedBindingCount = 10;
+            final var expectedBindingCount = 10;
             assertThat(bindings).hasSize(expectedBindingCount);
 
             var inputMap = component.getInputMap(JPanel.WHEN_FOCUSED);
             var actionMap = component.getActionMap();
 
             for (var entry : bindings.entrySet()) {
-                KeyStroke keystroke = entry.getKey();
-                Object actionKey = entry.getValue();
+                var keystroke = entry.getKey();
+                var actionKey = entry.getValue();
 
                 assertThat(inputMap.get(keystroke)).isEqualTo(actionKey);
                 assertThat(actionMap.get(actionKey)).isNotNull();
@@ -1099,8 +1099,8 @@ class ScoreInputHandlerTest extends UnitTest {
             var pasteModeManager = mock(PasteModeManager.class);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
@@ -1117,7 +1117,7 @@ class ScoreInputHandlerTest extends UnitTest {
             var callback = mock(InputHandlerCallback.class);
             when(callback.getMode()).thenReturn(Mode.SELECT);
 
-            try (MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)) {
+            try (var mc = mockStatic(MessageCenter.class)) {
                 var consumed = pressBeamKey(callback);
 
                 assertThat(consumed)
@@ -1136,8 +1136,8 @@ class ScoreInputHandlerTest extends UnitTest {
             var pasteModeManager = mock(PasteModeManager.class);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
@@ -1158,8 +1158,8 @@ class ScoreInputHandlerTest extends UnitTest {
             when(pasteModeManager.isInProgress()).thenReturn(true);
 
             try (
-                MockedStatic<EditModeManager> emm = mockStatic(EditModeManager.class);
-                MockedStatic<MessageCenter> mc = mockStatic(MessageCenter.class)
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
             ) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
                 emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);

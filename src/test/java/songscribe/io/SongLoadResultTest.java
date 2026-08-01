@@ -78,8 +78,8 @@ class SongLoadResultTest extends UnitTest {
     // row 55: LineWidthTooLarge branch throws IOException with both inch values in message
     @Test
     void testSongOrThrowOnLineWidthTooLargeThrowsIOExceptionWithBothInchValues() {
-        double actualInches = 10.5;
-        double maxInches = 8.5;
+        var actualInches = 10.5;
+        var maxInches = 8.5;
         var result = new SongLoadResult.LineWidthTooLarge(new File("test.mssw"), actualInches, maxInches);
         assertThatThrownBy(result::songOrThrow)
             .isInstanceOf(IOException.class)

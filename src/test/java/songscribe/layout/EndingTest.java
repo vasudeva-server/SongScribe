@@ -90,15 +90,15 @@ class EndingTest extends UnitTest {
 
         @Test
         void testZeroSpanReturnsNoteHeadWidth() {
-            double anchorX = 10.0;
+            var anchorX = 10.0;
             assertThat(ending.getSpanWidthSs(anchorX, anchorX))
                 .isEqualTo(SMuFLConstants.NOTE_HEAD_WIDTH_SS);
         }
 
         @Test
         void testPositiveSpanReturnsDifferencesPlusNoteHeadWidth() {
-            double anchorX = 10.0;
-            double span = 10.0;
+            var anchorX = 10.0;
+            var span = 10.0;
             assertThat(ending.getSpanWidthSs(anchorX, anchorX + span))
                 .isEqualTo(span + SMuFLConstants.NOTE_HEAD_WIDTH_SS);
         }
@@ -124,8 +124,8 @@ class EndingTest extends UnitTest {
         // read from the font metadata so this fails if a whole note is measured as a black one again.
         @Test
         void testWiderEndNoteheadStretchesTheSpan() {
-            double anchorX = 10.0;
-            double span = 10.0;
+            var anchorX = 10.0;
+            var span = 10.0;
             var wholeNoteWidthSs = SMuFLMetadata.requireBBox(SMuFLGlyph.NOTEHEAD_WHOLE).right();
 
             assertThat(endingEndingOn(ElementType.SEMIBREVE).getSpanWidthSs(anchorX, anchorX + span))
@@ -138,7 +138,7 @@ class EndingTest extends UnitTest {
         // is narrower than the floor, and a zero-length span on one still yields the floor.
         @Test
         void testMinimumSpanFloorDoesNotTrackTheEndNoteheadWidth() {
-            double anchorX = 10.0;
+            var anchorX = 10.0;
             var graceEnding = endingEndingOn(ElementType.GRACE_QUAVER);
 
             assertThat(ElementType.GRACE_QUAVER.getElementWidthSs())
@@ -258,8 +258,8 @@ class EndingTest extends UnitTest {
         @Test
         void testNoClosingStrokeProducesThreeRegions() {
             // No closing stroke → bar, left-tick, label = 3 regions
-            double xBase = 5.0;
-            double span = 10.0;
+            var xBase = 5.0;
+            var span = 10.0;
             var bracket = new Ending.BracketRange(xBase, xBase + span, 1, false);
             var ending = minimalEnding();
 
@@ -274,15 +274,15 @@ class EndingTest extends UnitTest {
         @Test
         void testClosingStrokeProducesFourRegionsWithRightTick() {
             // Closing stroke → bar, left-tick, right-tick, label = 4 regions
-            double xBase = 5.0;
-            double span = 10.0;
+            var xBase = 5.0;
+            var span = 10.0;
             var bracket = new Ending.BracketRange(xBase, xBase + span, 1, true);
             var ending = minimalEnding();
 
             var regions = ending.computeCollisionRegions(bracket, xBase);
 
             assertThat(regions).hasSize(4);
-            double expectedRightTickX = xBase + span - LineThickness.VOLTA_BRACKET_SS;
+            var expectedRightTickX = xBase + span - LineThickness.VOLTA_BRACKET_SS;
             assertThat(regions.get(2).xOffsetSs()).isEqualTo(expectedRightTickX);
             assertThat(regions.get(3).xOffsetSs()).isEqualTo(xBase + Ending.LABEL_X_INSET_SS);
         }
@@ -332,7 +332,7 @@ class EndingTest extends UnitTest {
             double @Nullable [] leftExtents, double @Nullable [] rightExtents
         ) {
             return el -> {
-                for (int i = 0; i < elements.length; i++) {
+                for (var i = 0; i < elements.length; i++) {
                     if (elements[i] == el) {
                         var leftExtentSs = leftExtents == null ? 0.0 : leftExtents[i];
                         var rightExtentSs = rightExtents == null
@@ -357,13 +357,13 @@ class EndingTest extends UnitTest {
             var line = fixture.line();
             var ending = fixture.ending();
 
-            double anchorX = 10.0;
-            double note1X = 20.0;
-            double note2X = 30.0;
-            double splitX = 40.0;
-            double note4X = 50.0;
-            double note5X = 60.0;
-            double endX = 70.0;
+            var anchorX = 10.0;
+            var note1X = 20.0;
+            var note2X = 30.0;
+            var splitX = 40.0;
+            var note4X = 50.0;
+            var note5X = 60.0;
+            var endX = 70.0;
             var elements = new StaffElement[]{
                 fixture.anchor(), fixture.note1(), fixture.note2(),
                 fixture.split(), fixture.note4(), fixture.note5(), fixture.end()
@@ -375,16 +375,16 @@ class EndingTest extends UnitTest {
             assertThat(ranges).hasSize(2);
 
             // First bracket: anchor=SINGLE_BARLINE at idx 0 (no prev), isBarLine → offset applied
-            double expectedX1 = anchorX + ElementType.SINGLE_BARLINE.endingAnchorXOffsetSs();
-            double expectedX2First = splitX + LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
+            var expectedX1 = anchorX + ElementType.SINGLE_BARLINE.endingAnchorXOffsetSs();
+            var expectedX2First = splitX + LineThickness.REPEAT_RIGHT_THIN_BARLINE_CENTER_X_SS;
             var bracket1 = ranges.get(0);
             assertThat(bracket1.number()).isEqualTo(1);
             assertThat(bracket1.x1Ss()).isEqualTo(expectedX1);
             assertThat(bracket1.x2Ss()).isEqualTo(expectedX2First);
 
             // Second bracket: starts after repeat thick barline, end=SINGLE_BARLINE → no closing stroke
-            double expectedX1Second = splitX + LineThickness.REPEAT_RIGHT_AFTER_THICK_X_SS - LineThickness.VOLTA_BRACKET_SS / 2;
-            double expectedX2Second = endX + LineThickness.THIN_BARLINE_SS / 2;
+            var expectedX1Second = splitX + LineThickness.REPEAT_RIGHT_AFTER_THICK_X_SS - LineThickness.VOLTA_BRACKET_SS / 2;
+            var expectedX2Second = endX + LineThickness.THIN_BARLINE_SS / 2;
             var bracket2 = ranges.get(1);
             assertThat(bracket2.number()).isEqualTo(2);
             assertThat(bracket2.x1Ss()).isEqualTo(expectedX1Second);
@@ -415,11 +415,11 @@ class EndingTest extends UnitTest {
             // FINAL_DOUBLE_BARLINE at last index (added by Song)
             var terminal = line.getElement(line.elementCount() - 1);
 
-            double prevX = 5.0;
-            double anchorX = 15.0;
-            double splitX = 25.0;
-            double endX = 35.0;
-            double terminalX = 45.0;
+            var prevX = 5.0;
+            var anchorX = 15.0;
+            var splitX = 25.0;
+            var endX = 35.0;
+            var terminalX = 45.0;
             var elements = new StaffElement[]{prev, anchor, split, end, terminal};
             var xs = new double[]{prevX, anchorX, splitX, endX, terminalX};
 
@@ -427,7 +427,7 @@ class EndingTest extends UnitTest {
 
             assertThat(ranges).hasSize(2);
             // First bracket x1 anchored to the prev barline, not the anchor note
-            double expectedX1 = prevX + ElementType.SINGLE_BARLINE.endingAnchorXOffsetSs();
+            var expectedX1 = prevX + ElementType.SINGLE_BARLINE.endingAnchorXOffsetSs();
             assertThat(ranges.get(0).x1Ss()).isEqualTo(expectedX1);
             // and it is left of the anchor — confirming the leftward pull
             assertThat(ranges.get(0).x1Ss()).isLessThan(anchorX);
@@ -441,13 +441,13 @@ class EndingTest extends UnitTest {
             var line = fixture.line();
             var ending = fixture.ending();
 
-            double anchorX = 10.0;
-            double note1X = 20.0;
-            double note2X = 30.0;
-            double splitX = 40.0;
-            double note4X = 50.0;
-            double note5X = 60.0;
-            double endX = 70.0;
+            var anchorX = 10.0;
+            var note1X = 20.0;
+            var note2X = 30.0;
+            var splitX = 40.0;
+            var note4X = 50.0;
+            var note5X = 60.0;
+            var endX = 70.0;
             var elements = new StaffElement[]{
                 fixture.anchor(), fixture.note1(), fixture.note2(),
                 fixture.split(), fixture.note4(), fixture.note5(), fixture.end()
@@ -508,7 +508,7 @@ class EndingTest extends UnitTest {
             line.addElement(end);
             line.addRangeElement(ending);
 
-            double anchorX = 10.0;
+            var anchorX = 10.0;
             var elements = new StaffElement[]{anchor, note2, split, note4, end};
             var xs = new double[]{
                 anchorX, anchorX + 10.0, anchorX + 20.0, anchorX + 30.0, anchorX + 40.0
@@ -543,7 +543,7 @@ class EndingTest extends UnitTest {
             line.addElement(end);
             line.addRangeElement(ending);
 
-            double anchorX = 10.0;
+            var anchorX = 10.0;
             var elements = new StaffElement[]{anchor, note2, split, note4, end};
             var xs = new double[]{
                 anchorX, anchorX + 10.0, anchorX + 20.0, anchorX + 30.0, anchorX + 40.0
@@ -578,7 +578,7 @@ class EndingTest extends UnitTest {
             line.addElement(end);
             line.addRangeElement(ending);
 
-            double anchorX = 10.0;
+            var anchorX = 10.0;
             var elements = new StaffElement[]{anchor, note2, split, note4, end};
             var xs = new double[]{
                 anchorX, anchorX + 10.0, anchorX + 20.0, anchorX + 30.0, anchorX + 40.0

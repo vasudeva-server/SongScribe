@@ -276,7 +276,7 @@ class LayoutResultTest extends UnitTest {
     @Test
     void testMinLineHeightSsConstantHasConcretePinnedValue() {
         // (STAFF_HALF_SS 2.0 + MIN_ABOVE_STAFF_SS 3.0) + (STAFF_HALF_SS 2.0 + MIN_BELOW_STAFF_SS 4.0)
-        final double expectedMinLineHeightSs = 11.0;
+        final var expectedMinLineHeightSs = 11.0;
 
         assertThat(LineSpacing.MIN_LINE_HEIGHT_SS)
             .isCloseTo(expectedMinLineHeightSs, within(TOLERANCE));

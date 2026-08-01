@@ -473,9 +473,9 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         );
 
         try (
-            MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class);
-            MockedStatic<EditModeManager> editModeManager = mockStatic(EditModeManager.class);
-            MockedStatic<UIUtils> uiUtils = mockStatic(UIUtils.class)
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var uiUtils = mockStatic(UIUtils.class)
         ) {
             playback.when(PlaybackController::isPlaying).thenReturn(true);
 
@@ -496,9 +496,9 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         );
 
         try (
-            MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class);
-            MockedStatic<EditModeManager> editModeManager = mockStatic(EditModeManager.class);
-            MockedStatic<UIUtils> uiUtils = mockStatic(UIUtils.class)
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var uiUtils = mockStatic(UIUtils.class)
         ) {
             playback.when(PlaybackController::isPlaying).thenReturn(false);
             editModeManager.when(EditModeManager::getLastInsertion).thenReturn(null);
@@ -529,10 +529,10 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         );
 
         try (
-            MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class);
-            MockedStatic<EditModeManager> editModeManager = mockStatic(EditModeManager.class);
-            MockedStatic<MusicEditOperations> operations = mockStatic(MusicEditOperations.class);
-            MockedStatic<UIUtils> uiUtils = mockStatic(UIUtils.class)
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var operations = mockStatic(MusicEditOperations.class);
+            var uiUtils = mockStatic(UIUtils.class)
         ) {
             playback.when(PlaybackController::isPlaying).thenReturn(false);
             editModeManager.when(EditModeManager::getLastInsertion).thenReturn(insertion);
@@ -565,10 +565,10 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
         );
 
         try (
-            MockedStatic<PlaybackController> playback = mockStatic(PlaybackController.class);
-            MockedStatic<EditModeManager> editModeManager = mockStatic(EditModeManager.class);
-            MockedStatic<MusicEditOperations> operations = mockStatic(MusicEditOperations.class);
-            MockedStatic<UIUtils> uiUtils = mockStatic(UIUtils.class)
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var operations = mockStatic(MusicEditOperations.class);
+            var uiUtils = mockStatic(UIUtils.class)
         ) {
             playback.when(PlaybackController::isPlaying).thenReturn(false);
             editModeManager.when(EditModeManager::getLastInsertion).thenReturn(insertion);

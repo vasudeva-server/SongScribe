@@ -45,21 +45,21 @@ class StaffTest extends UnitTest {
 
         @Test
         void testPositivePositionScalesByOffset() {
-            final int positionSp = 2;
-            final double expectedSs = positionSp * Staff.STAFF_POSITION_OFFSET_SS;
+            final var positionSp = 2;
+            final var expectedSs = positionSp * Staff.STAFF_POSITION_OFFSET_SS;
             assertThat(Staff.spToSs(positionSp)).isEqualTo(expectedSs);
         }
 
         @Test
         void testNegativePositionScalesByOffset() {
-            final int positionSp = -4;
-            final double expectedSs = positionSp * Staff.STAFF_POSITION_OFFSET_SS;
+            final var positionSp = -4;
+            final var expectedSs = positionSp * Staff.STAFF_POSITION_OFFSET_SS;
             assertThat(Staff.spToSs(positionSp)).isEqualTo(expectedSs);
         }
 
         @Test
         void testRoundTripSpToSsToSp() {
-            final int originalSp = 6;
+            final var originalSp = 6;
             assertThat(Staff.ssToSp(Staff.spToSs(originalSp))).isEqualTo(originalSp);
         }
     }
@@ -86,37 +86,37 @@ class StaffTest extends UnitTest {
         @Test
         void testExactNegativeConversion() {
             // -0.5ss / 0.5 = -1.0sp exactly
-            final int expectedSp = -1;
+            final var expectedSp = -1;
             assertThat(Staff.ssToSp(-Staff.STAFF_POSITION_OFFSET_SS)).isEqualTo(expectedSp);
         }
 
         @Test
         void testPositiveHalfBoundaryRoundsUp() {
             // 0.25ss = exactly 0.5sp; Math.round(0.5) = 1 (half-up)
-            final double halfBoundarySs = Staff.STAFF_POSITION_OFFSET_SS / 2;
+            final var halfBoundarySs = Staff.STAFF_POSITION_OFFSET_SS / 2;
             assertThat(Staff.ssToSp(halfBoundarySs)).isEqualTo(1);
         }
 
         @Test
         void testBelowPositiveHalfBoundaryRoundsDown() {
             // 0.125ss = 0.25sp; Math.round(0.25) = 0 (clearly below 0.5)
-            final double belowHalfBoundarySs = Staff.STAFF_POSITION_OFFSET_SS / 2 / 2;
+            final var belowHalfBoundarySs = Staff.STAFF_POSITION_OFFSET_SS / 2 / 2;
             assertThat(Staff.ssToSp(belowHalfBoundarySs)).isEqualTo(0);
         }
 
         @Test
         void testNegativeHalfBoundaryRoundsTowardPositiveInfinity() {
             // -0.25ss = exactly -0.5sp; Java Math.round(-0.5) = 0 (rounds toward +inf), NOT -1
-            final double negHalfBoundarySs = -Staff.STAFF_POSITION_OFFSET_SS / 2;
+            final var negHalfBoundarySs = -Staff.STAFF_POSITION_OFFSET_SS / 2;
             assertThat(Staff.ssToSp(negHalfBoundarySs)).isEqualTo(0);
         }
 
         @Test
         void testPastNegativeHalfBoundaryRoundsToNegative() {
             // -0.375ss = -0.75sp; Math.round(-0.75) = -1
-            final double halfBoundarySs = Staff.STAFF_POSITION_OFFSET_SS / 2;
-            final double pastNegHalfBoundarySs = -(halfBoundarySs + halfBoundarySs / 2);
-            final int expectedSp = -1;
+            final var halfBoundarySs = Staff.STAFF_POSITION_OFFSET_SS / 2;
+            final var pastNegHalfBoundarySs = -(halfBoundarySs + halfBoundarySs / 2);
+            final var expectedSp = -1;
             assertThat(Staff.ssToSp(pastNegHalfBoundarySs)).isEqualTo(expectedSp);
         }
     }
@@ -134,7 +134,7 @@ class StaffTest extends UnitTest {
 
         @Test
         void testMinStaffPositionSpMatchesFormulaAndConcreteValue() {
-            final int expectedSp = -10;
+            final var expectedSp = -10;
             assertAll(
                 () -> assertThat(Staff.MIN_STAFF_POSITION_SP)
                         .isEqualTo(-(Staff.STAFF_LINES_ABOVE + EXTRA_LEDGER_LINES) * 2),
@@ -144,7 +144,7 @@ class StaffTest extends UnitTest {
 
         @Test
         void testMaxStaffPositionSpMatchesFormulaAndConcreteValue() {
-            final int expectedSp = 12;
+            final var expectedSp = 12;
             assertAll(
                 () -> assertThat(Staff.MAX_STAFF_POSITION_SP)
                         .isEqualTo((Staff.STAFF_LINES_BELOW + EXTRA_LEDGER_LINES) * 2),
@@ -154,7 +154,7 @@ class StaffTest extends UnitTest {
 
         @Test
         void testMinAboveStaffSsMatchesFormulaAndConcreteValue() {
-            final double expectedSs = 3.0;
+            final var expectedSs = 3.0;
             assertAll(
                 () -> assertThat(Staff.MIN_ABOVE_STAFF_SS)
                         .isEqualTo(Math.abs(Staff.MIN_STAFF_POSITION_SP)
@@ -166,7 +166,7 @@ class StaffTest extends UnitTest {
 
         @Test
         void testMinBelowStaffSsMatchesFormulaAndConcreteValue() {
-            final double expectedSs = 4.0;
+            final var expectedSs = 4.0;
             assertAll(
                 () -> assertThat(Staff.MIN_BELOW_STAFF_SS)
                         .isEqualTo(Staff.MAX_STAFF_POSITION_SP

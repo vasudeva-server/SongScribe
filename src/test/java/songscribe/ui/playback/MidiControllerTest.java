@@ -133,7 +133,7 @@ class MidiControllerTest extends UnitTest {
         void testSendsProgramChangeOnChannel0WithCorrectProgram() throws Exception {
             var mockReceiver = mock(Receiver.class);
             MidiController.midiReceiver = mockReceiver;
-            final int program = 42;
+            final var program = 42;
 
             MidiController.setPlaybackInstrument(program);
 

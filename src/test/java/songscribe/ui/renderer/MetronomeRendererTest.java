@@ -106,8 +106,8 @@ class MetronomeRendererTest extends UnitTest {
         // Undotted note: draws (1) duration glyph, (2) "=" string — no dot glyph
         var g2Spy = spy(RenderContextTestHelper.realG2());
         var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
-        final double startXSs = 2.0;
-        final double ySs = 0.0;
+        final var startXSs = 2.0;
+        final var ySs = 0.0;
 
         RENDERER.drawDurationEquals(g2Spy, Duration.CROTCHET, startXSs, ySs, attrFont, Color.BLACK);
 
@@ -119,8 +119,8 @@ class MetronomeRendererTest extends UnitTest {
         // Dotted note: draws (1) duration glyph, (2) augmentation dot glyph, (3) "=" string
         var g2Spy = spy(RenderContextTestHelper.realG2());
         var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
-        final double startXSs = 2.0;
-        final double ySs = 0.0;
+        final var startXSs = 2.0;
+        final var ySs = 0.0;
 
         RENDERER.drawDurationEquals(g2Spy, Duration.CROTCHET_DOTTED, startXSs, ySs, attrFont, Color.BLACK);
 
@@ -132,8 +132,8 @@ class MetronomeRendererTest extends UnitTest {
         // The returned X must be further right than the start, regardless of scale or font.
         var g2 = RenderContextTestHelper.realG2();
         var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
-        final double startXSs = 2.0;
-        final double ySs = 0.0;
+        final var startXSs = 2.0;
+        final var ySs = 0.0;
 
         var endX = RENDERER.drawDurationEquals(g2, Duration.CROTCHET, startXSs, ySs, attrFont, Color.BLACK);
 
@@ -145,8 +145,8 @@ class MetronomeRendererTest extends UnitTest {
         // dotted return − undotted return ≈ dotAdvanceWidthSs() (one extra dot advance)
         var g2 = RenderContextTestHelper.realG2();
         var attrFont = DocumentFonts.defaultFonts().getFont(FontKey.ANNOTATION);
-        final double startXSs = 2.0;
-        final double ySs = 0.0;
+        final var startXSs = 2.0;
+        final var ySs = 0.0;
         double dotAdvance = MetronomeAttachment.dotAdvanceWidthSs();
 
         var undottedEnd = RENDERER.drawDurationEquals(g2, Duration.CROTCHET, startXSs, ySs, attrFont, Color.BLACK);

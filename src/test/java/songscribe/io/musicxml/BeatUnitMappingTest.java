@@ -86,7 +86,7 @@ class BeatUnitMappingTest extends UnitTest {
 
     @Test
     void testForBeatUnitReturnsNullForUnsupportedDotCount() {
-        final int unsupportedDotCount = 2;
+        final var unsupportedDotCount = 2;
 
         assertThat(BeatUnitMapping.forBeatUnit(NoteTypeMapping.TYPE_QUARTER, unsupportedDotCount))
             .as("no Duration has more than one dot")

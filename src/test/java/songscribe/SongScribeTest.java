@@ -853,7 +853,7 @@ class SongScribeTest extends UnitTest {
             }
 
             // ExitInProgressError has a private constructor — create via reflection.
-            Constructor<RuntimeError.ExitInProgressError> constructor =
+            var constructor =
                 RuntimeError.ExitInProgressError.class.getDeclaredConstructor();
             constructor.setAccessible(true);
             var exitInProgress = constructor.newInstance();
@@ -924,4 +924,3 @@ class SongScribeTest extends UnitTest {
         }
     }
 }
-
