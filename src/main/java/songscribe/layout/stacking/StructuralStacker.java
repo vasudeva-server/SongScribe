@@ -262,7 +262,7 @@ public class StructuralStacker {
         double widthSs,
         double leftArmXSs,
         double rightArmXSs,
-        ToDoubleFunction<ElementColumn> obstacleTopSs) {
+        ToDoubleFunction<? super ElementColumn> obstacleTopSs) {
 
         var slope = dySs / widthSs;
         var leftYSs = Double.POSITIVE_INFINITY;
@@ -439,7 +439,7 @@ public class StructuralStacker {
         List<ElementColumn> nonRestColumns,
         double anchorXSs,
         double widthSs,
-        ToDoubleFunction<ElementColumn> obstacleTopSs) {
+        ToDoubleFunction<? super ElementColumn> obstacleTopSs) {
 
         // Defensive early-out: an all-rest span or a single non-rest column has no contour and a
         // zero tip run (which would divide to NaN). Such tuplets are also rejected on load (#518).

@@ -222,7 +222,7 @@ public final class ScoreInputHandler extends KeyAdapter
      * pane, where the toggle-beam action's own plain {@code b} accelerator lives.
      */
     private void registerToggleBeamWithPreviousBinding(
-        Map<KeyStroke, Object> bindings, InputMap inputMap, ActionMap actionMap) {
+        Map<? super KeyStroke, Object> bindings, InputMap inputMap, ActionMap actionMap) {
         registerKeyStroke(bindings, inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_B, 0),
             new AbstractAction() {
                 @Override
@@ -243,7 +243,7 @@ public final class ScoreInputHandler extends KeyAdapter
     }
 
     private void registerBinding(
-        Map<KeyStroke, Object> bindings, InputMap inputMap, ActionMap actionMap, int keyCode, int modifiers) {
+        Map<? super KeyStroke, Object> bindings, InputMap inputMap, ActionMap actionMap, int keyCode, int modifiers) {
         var keyStroke = KeyStroke.getKeyStroke(keyCode, modifiers);
         var shift = (modifiers & InputEvent.SHIFT_DOWN_MASK) != 0;
         registerKeyStroke(bindings, inputMap, actionMap, keyStroke, new KeyAction(callback, keyCode, shift));

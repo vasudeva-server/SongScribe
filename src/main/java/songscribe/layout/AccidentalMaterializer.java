@@ -142,7 +142,7 @@ public final class AccidentalMaterializer {
     public static boolean applyIfAccepted(
         Line line,
         List<AccidentalReconciliation.AccidentalChange> accidentalChanges,
-        List<StaffElement> detachedElements,
+        List<? extends StaffElement> detachedElements,
         BooleanSupplier accepted) {
 
         var saved = apply(line, accidentalChanges, detachedElements);

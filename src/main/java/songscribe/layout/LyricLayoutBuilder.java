@@ -253,7 +253,7 @@ public final class LyricLayoutBuilder {
      */
     private static void clampExtendersToFollowingSyllable(
         List<LyricConnectorLayout> connectors,
-        Map<StaffElement, List<LyricBoxLayout>> boxesByElement,
+        Map<StaffElement, ? extends List<LyricBoxLayout>> boxesByElement,
         double gapSs) {
 
         for (var i = 0; i < connectors.size(); i++) {

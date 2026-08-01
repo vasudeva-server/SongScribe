@@ -2157,8 +2157,8 @@ public class Line {
      */
     private <H extends Hairpin> void addHairpin(
         H hairpin,
-        BiFunction<Line, ? super H, ? extends Mutation> mutationFactory,
-        Class<H> type
+        BiFunction<? super Line, ? super H, ? extends Mutation> mutationFactory,
+        Class<? extends H> type
     ) {
         hairpin.setParentLine(this);
 
@@ -2334,7 +2334,7 @@ public class Line {
         Hairpin hairpin,
         int first,
         int last,
-        List<StaffElement> survivors
+        List<? extends StaffElement> survivors
     ) {
         if (survivors.get(first) == hairpin.getAnchorElement()) {
             return first;
@@ -2416,7 +2416,7 @@ public class Line {
      *
      * @param spans all post-deletion spans of one hairpin type, in any order
      */
-    private void mergeAdjacentSpans(List<HairpinSpan> spans, List<StaffElement> survivors) {
+    private void mergeAdjacentSpans(List<HairpinSpan> spans, List<? extends StaffElement> survivors) {
         spans.sort(Comparator.comparingInt(HairpinSpan::begin));
 
         var run = new ArrayList<HairpinSpan>();

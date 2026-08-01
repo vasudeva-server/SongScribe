@@ -44,7 +44,7 @@ public class DialogOpenAction<T extends BaseDialog> extends UIAction {
     private @Nullable T dialog = null;
     private final Function<? super MainFrame, ? extends T> dialogFactory;
 
-    public DialogOpenAction(MainFrame mainFrame, String name, Function<MainFrame, T> dialogFactory, Flag... flags) {
+    public DialogOpenAction(MainFrame mainFrame, String name, Function<? super MainFrame, ? extends T> dialogFactory, Flag... flags) {
         this(mainFrame, name, 0, 0, dialogFactory, flags);
     }
 

@@ -348,7 +348,7 @@ class PasteSpanReconciliationTest extends UnitTest {
          * <em>which</em> one survives, this one pins down that not both do.
          */
         private void assertAtMostOneSurvives(
-            BiFunction<StaffElement, ? super StaffElement, ? extends RangeElement> spanFactory
+            BiFunction<? super StaffElement, ? super StaffElement, ? extends RangeElement> spanFactory
         ) {
             var line = sixNoteLine();
             var destinationSpan =
@@ -414,12 +414,12 @@ class PasteSpanReconciliationTest extends UnitTest {
         DIMINUENDO(Diminuendo::new, false, false),
         ENDING(Ending::new, false, false);
 
-        private final BiFunction<StaffElement, ? super StaffElement, ? extends RangeElement> factory;
+        private final BiFunction<? super StaffElement, ? super StaffElement, ? extends RangeElement> factory;
         private final boolean destinationRemovedOnStraddle;
         private final boolean fragmentKeptOnStraddle;
 
         SpanKind(
-            BiFunction<StaffElement, ? super StaffElement, ? extends RangeElement> factory,
+            BiFunction<? super StaffElement, ? super StaffElement, ? extends RangeElement> factory,
             boolean destinationRemovedOnStraddle,
             boolean fragmentKeptOnStraddle
         ) {

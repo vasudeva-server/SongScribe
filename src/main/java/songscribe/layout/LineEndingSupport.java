@@ -57,7 +57,7 @@ public final class LineEndingSupport {
     }
 
     /** Returns true if {@code elementIndex} falls inside any ending. */
-    public static boolean isInsideAnyEnding(List<Ending> endings, int elementIndex) {
+    public static boolean isInsideAnyEnding(List<? extends Ending> endings, int elementIndex) {
         return findEndingAt(endings, elementIndex) != null;
     }
 

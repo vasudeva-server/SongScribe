@@ -77,7 +77,7 @@ class FragmentTest extends UnitTest {
         // Then instantiates the captured fragment again and asserts the spans re-anchor
         // to a *fresh* set of clones each time.
         private void assertSpanSurvivesCopyAndReanchors(
-            BiFunction<StaffElement, ? super StaffElement, ? extends RangeElement> spanFactory
+            BiFunction<? super StaffElement, ? super StaffElement, ? extends RangeElement> spanFactory
         ) {
             var line = detachedLine();
             var noteA = crotchet();

@@ -47,7 +47,7 @@ public final class SongScribe {
     // Package-private for testing: look up a platform-specific log directory,
     // creating it if it does not already exist, and return its path. Returns
     // null if the directory could not be created.
-    static @Nullable String resolveLogDir(Function<String, @Nullable String> env) {
+    static @Nullable String resolveLogDir(Function<? super String, @Nullable String> env) {
         return resolveLogDir(env, SystemInfo.isMacOS, SystemInfo.isWindows);
     }
 
