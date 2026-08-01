@@ -32,7 +32,6 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
 
 class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
 

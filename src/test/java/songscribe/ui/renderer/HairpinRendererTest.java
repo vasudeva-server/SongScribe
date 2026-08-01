@@ -30,7 +30,6 @@ import static org.mockito.Mockito.when;
 
 import java.awt.Color;
 import java.awt.Shape;
-import java.awt.geom.Line2D;
 import java.util.ArrayList;
 import java.util.List;
 

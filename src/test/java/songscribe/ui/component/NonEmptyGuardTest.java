@@ -31,7 +31,6 @@ import javax.swing.JTextField;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
 import songscribe.Strings;
 import songscribe.UnitTest;

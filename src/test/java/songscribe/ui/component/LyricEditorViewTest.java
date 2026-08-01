@@ -23,7 +23,6 @@ package songscribe.ui.component;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.awt.Rectangle;
-import java.awt.Shape;
 
 import javax.swing.plaf.basic.BasicTextUI;
 
