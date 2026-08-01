@@ -31,7 +31,7 @@ import songscribe.UnitTest;
  * values, so that a transposed codepoint or misspelled name is detectable.
  *
  * Expected values are taken directly from the SMuFL specification
- * (https://w3c-cg.github.io/smufl/latest/) -- NOT derived from the production
+ * (<a href="https://w3c-cg.github.io/smufl/latest/">...</a>) -- NOT derived from the production
  * accessors under test.
  */
 class SMuFLGlyphTest extends UnitTest {
