@@ -174,6 +174,7 @@ public class Tuplet extends RangeElement {
     /**
      * Reserved vertical height for a number-only tuplet (beamed, stems up).
      */
+    @SuppressWarnings("SameReturnValue")
     public static double numberOnlyHeightSs() {
         return TUPLET_NUMBER_INK_HEIGHT_SS;
     }

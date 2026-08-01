@@ -88,6 +88,7 @@ class HairpinActionStateTest extends UnitTest {
         }
 
         /** Adds a diminuendo spanning [anchor, end] without going through the merge logic. */
+        @SuppressWarnings("UnusedReturnValue")
         Diminuendo addDiminuendo(int anchor, int end) {
             var hairpin = new Diminuendo(line.getElement(anchor), line.getElement(end));
             line.addRangeElement(hairpin);

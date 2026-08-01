@@ -141,6 +141,7 @@ public class LineTrackBuilder {
      * @param endElement Index of the last element to add
      * @return Pair of (ending tick position, ending tempo)
      */
+    @SuppressWarnings("UnusedReturnValue")
     public TrackPosition addToTrack(
         Track track,
         int lineIndex,
@@ -198,6 +199,7 @@ public class LineTrackBuilder {
      * @param slideHelper Shared slide state across calls
      * @return Pair of (ending tick position, ending tempo)
      */
+    @SuppressWarnings("UnusedReturnValue")
     public TrackPosition addToTrack(
         Track track,
         int lineIndex,

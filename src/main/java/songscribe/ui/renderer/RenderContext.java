@@ -70,16 +70,6 @@ public interface RenderContext {
     int getNoteYPosPx(int staffPosition, int lineIndex);
 
     /**
-     * Returns the Y position for content rendered below the lyrics area.
-     */
-    int getUnderLyricsYPosPx();
-
-    /**
-     * Returns the starting Y position for the score content.
-     */
-    int getStartY();
-
-    /**
      * Returns the X position where key signature accidentals are drawn.
      */
     int getLeadingKeysPosPx();

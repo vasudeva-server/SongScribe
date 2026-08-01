@@ -348,6 +348,7 @@ final class RangeSpanResolver {
      * can clear its field. Shared by the four {@code flushPending*Start} methods,
      * which differ only in the field cleared and the message logged.
      */
+    @SuppressWarnings("SameReturnValue")
     @Nullable
     private <T> T warnIfDangling(@Nullable T pending, String warnMessage) {
         if (pending != null) {

@@ -107,6 +107,7 @@ public final class AccidentalMaterializer {
     ) {
         // Written out rather than compact: NullAway does not carry the type-use @Nullable
         // annotations from the record header onto the synthesized canonical constructor.
+        @SuppressWarnings("RedundantRecordConstructor")
         private SavedAccidental(
             int index,
             StaffElement note,

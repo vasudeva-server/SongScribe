@@ -1702,6 +1702,7 @@ public final class Song {
      * @param edit  the raw state change
      * @return {@code true} if at least one tuplet was removed
      */
+    @SuppressWarnings("UnusedReturnValue")
     public static boolean withBeatDefiningEditOn(@Nullable StaffElement owner, Runnable edit) {
         var line = owner != null ? owner.getLine() : null;
 

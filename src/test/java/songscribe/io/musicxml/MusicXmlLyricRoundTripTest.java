@@ -79,6 +79,7 @@ class MusicXmlLyricRoundTripTest extends MusicXmlRoundTripSupport {
     }
 
     /** Adds a fresh crotchet carrying {@code lyrics} to {@code line} and returns it. */
+    @SuppressWarnings("UnusedReturnValue")
     private static StaffElement addNote(Line line, Lyric... lyrics) {
         var note = ElementType.CROTCHET.newInstance();
         line.addElement(note);

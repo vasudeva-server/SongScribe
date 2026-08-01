@@ -646,6 +646,7 @@ public final class NoteGeometry {
      * down-stem noteheads align horizontally. (Down-stem heads were formerly shifted left by half a
      * stem width; that shift only pushed the whole note off its reference and has been removed.)
      */
+    @SuppressWarnings("SameReturnValue")
     public static float getNoteheadXOffsetSs(ElementType noteType, StaffElement.Direction direction) {
         return 0f;
     }

@@ -95,6 +95,7 @@ class TrillActionTest extends UnitTest {
         when(mockScore.getSelectionSize()).thenReturn(state.getSelectionSize());
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     private LineSelectionState selectRange(Line line, int begin, int end) {
         var state = new LineSelectionState(line);
         state.setSelectionFromClick(begin);
@@ -103,6 +104,7 @@ class TrillActionTest extends UnitTest {
         return state;
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     private LineSelectionState noActiveSelection(Line line) {
         var state = new LineSelectionState(line);
         wireSelection(state, false);

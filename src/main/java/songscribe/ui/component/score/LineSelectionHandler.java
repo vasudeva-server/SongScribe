@@ -524,6 +524,7 @@ class LineSelectionHandler {
      * line itself, so unlike an ending or a hairpin there is no state that can be missing:
      * this always succeeds.
      */
+    @SuppressWarnings("SameReturnValue")
     private boolean selectLyric(StaffElement element, int verse) {
         var scoreView = lc.getScoreView();
         scoreView.getSelectionCoordinator().selectLyric(element, verse);

@@ -660,12 +660,6 @@ public final class ScoreView
             (lineIndex * rowHeightPx));
     }
 
-    @Override
-    public int getUnderLyricsYPosPx() {
-        // TODO: Calculate from component hierarchy
-        return 0;
-    }
-
     @Nullable
     public StaffElement getPreviewElement() {
         return EditModeManager.getPreviewElement();
@@ -931,12 +925,6 @@ public final class ScoreView
     @Nullable
     public StaffElement getSingleSelectedElement() {
         return selectionCoordinator.getSingleSelectedElement();
-    }
-
-    @Override
-    public int getStartY() {
-        // TODO: Calculate from component hierarchy
-        return 0;
     }
 
     public Dimension getSheetSize() {

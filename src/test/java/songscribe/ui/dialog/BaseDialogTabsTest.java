@@ -363,6 +363,7 @@ class BaseDialogTabsTest extends MainFrameMockTest {
             return getScoreView();
         }
 
+        @SuppressWarnings("UnusedReturnValue")
         ScoreView scoreViewRequired() {
             return requireScoreView();
         }

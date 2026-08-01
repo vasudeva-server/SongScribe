@@ -905,7 +905,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
     }
 
     // =========================================================================
-    // StaffPanel — row 28: getLayoutResults threading
+    // StaffPanel — row 28: layOutLines threading
     // =========================================================================
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -944,7 +944,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             panel.getLinePanels().add(lp1);
             panel.getLinePanels().add(lp2);
 
-            panel.getLayoutResults();
+            panel.layOutLines();
 
             // The second LineComponent must have received true from line 1's result.
             verify(lc2).setHasLeadingLyricContinuation(true);
@@ -983,7 +983,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             panel.getLinePanels().add(lp2);
             panel.getLinePanels().add(lp3);
 
-            panel.getLayoutResults();
+            panel.layOutLines();
 
             // Line 2 gets true (from line 1's non-null result).
             verify(lc2).setHasLeadingLyricContinuation(true);
@@ -1014,7 +1014,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
             when(mockScoreView.getLyricsFont()).thenReturn(TEST_FONT);
 
             // Build a mock LineComponent that provides the ScoreView and returns null
-            // for getLayoutResult() so getLayoutResults() produces an empty list.
+            // for getLayoutResult() so layOutLines() produces an empty list.
             var mockLc = mock(LineComponent.class);
             when(mockLc.getScoreView()).thenReturn(mockScoreView);
             when(mockLc.getLayoutResult()).thenReturn(null);

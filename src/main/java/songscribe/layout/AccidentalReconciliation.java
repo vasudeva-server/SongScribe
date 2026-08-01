@@ -172,6 +172,7 @@ public final class AccidentalReconciliation {
         // Written out rather than compact: NullAway does not carry the type-use @Nullable
         // annotation from the record header onto the synthesized canonical constructor, so callers
         // passing a null accidental — a removal — would otherwise be rejected.
+        @SuppressWarnings("RedundantRecordConstructor")
         public AccidentalChange(StaffElement note, StaffElement.@Nullable Accidental accidental) {
             this.note = note;
             this.accidental = accidental;

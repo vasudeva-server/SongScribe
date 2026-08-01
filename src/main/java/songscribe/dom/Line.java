@@ -2630,6 +2630,7 @@ public class Line {
      * @param element The range element to remove
      * @return true if the element was removed
      */
+    @SuppressWarnings("UnusedReturnValue")
     public boolean removeRangeElement(RangeElement element) {
         var index = rangeElements.indexOf(element);
 

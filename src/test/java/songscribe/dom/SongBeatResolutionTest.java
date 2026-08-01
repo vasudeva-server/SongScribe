@@ -62,6 +62,7 @@ class SongBeatResolutionTest extends UnitTest {
     }
 
     /** Appends a crotchet carrying a tempo change whose tempo type is {@code tempoType}. */
+    @SuppressWarnings("UnusedReturnValue")
     private static StaffElement addNoteWithTempoChange(Line line, Duration tempoType, int bpm) {
         var note = addPlainNote(line);
         note.addAttachment(new TempoChangeAttachment(note, tempoOf(tempoType, bpm)));

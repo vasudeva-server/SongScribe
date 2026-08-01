@@ -507,6 +507,13 @@ public final class RecordingGraphics2D extends Graphics2D {
         recordFill(transform == null ? imageRect : transform.createTransformedShape(imageRect));
     }
 
+    /**
+     * Records the bounds of an image draw. Returns true unconditionally because the
+     * {@code drawImage} overrides that delegate here must honor the {@link java.awt.Graphics}
+     * contract, where true means the image was rendered completely — always the case when
+     * recording, since nothing is loaded asynchronously.
+     */
+    @SuppressWarnings("SameReturnValue")
     private boolean recordImage(@Nullable Image image, int x, int y, @Nullable ImageObserver observer) {
         var imageRect = imageRect(image, observer);
 

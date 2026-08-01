@@ -74,6 +74,7 @@ public final class FlatLafProps {
         return get(key, Float.class);
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public static String getString(FlatLafKey key) {
         return get(key, String.class);
     }

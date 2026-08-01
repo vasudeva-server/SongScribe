@@ -191,10 +191,7 @@ public class StaffPanel extends JPanel {
         // column spacing for syllable gaps.
         scoreView.rebuildLyricRenderMetrics();
 
-        // Lay out each line in order, threading lyric-extender continuation across line
-        // boundaries so that a melisma that runs off the end of one line reappears as a
-        // leading stub on the next.
-        getLayoutResults();
+        layOutLines();
     }
 
     /**
@@ -207,9 +204,15 @@ public class StaffPanel extends JPanel {
     }
 
     /**
+     * Lays out every line in order, threading lyric-extender continuation across line boundaries so
+     * that a melisma running off the end of one line reappears as a leading stub on the next.
+     * <p>
      * Package-private for testing.
+     *
+     * @return The layout of each line that produced one, in line order. Lines that have not been
+     *         laid out yet are skipped, so the list can be shorter than the line count
      */
-    ArrayList<LayoutResult> getLayoutResults() {
+    ArrayList<LayoutResult> layOutLines() {
         var layouts = new ArrayList<LayoutResult>();
         var hasLeadingLyricContinuation = false;
 
