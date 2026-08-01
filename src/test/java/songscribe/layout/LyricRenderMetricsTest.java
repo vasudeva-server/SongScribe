@@ -117,7 +117,7 @@ class LyricRenderMetricsTest extends UnitTest {
         // This is NOT f(x)≈f(x) — it catches any divergence if the production method
         // switches to a different width-computation path.
         var text = "do";
-        final var expectedWidthSs = ScaleContext.textWidthSs(LYRICS_FONT, text).value();
+        var expectedWidthSs = ScaleContext.textWidthSs(LYRICS_FONT, text).value();
         assertThat(LYRIC_METRICS.lyricBoxWidthSs(text)).isCloseTo(expectedWidthSs, within(TOLERANCE));
     }
 

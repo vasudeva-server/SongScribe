@@ -359,7 +359,7 @@ class MainFrameTest extends UnitTest {
 
         /**
          * When {@code currentFile} cannot be opened for writing, the {@link IOException}
-         * from the {@link java.io.PrintWriter} constructor is caught, an error dialog is
+         * from the {@link PrintWriter} constructor is caught, an error dialog is
          * shown via {@link OptionDialogs}, and {@code false} is returned.
          *
          * <p>Using a directory as {@code currentFile} reliably triggers the IOException

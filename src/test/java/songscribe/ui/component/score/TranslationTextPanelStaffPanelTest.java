@@ -64,7 +64,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
     private static final Font TEST_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 12);
 
     /**
-     * Creates an off-screen {@link java.awt.Graphics2D} backed by a 1x1 image.
+     * Creates an off-screen {@link Graphics2D} backed by a 1x1 image.
      * Caller is responsible for disposing the result.
      */
     private static Graphics2D createOffscreenGraphics() {

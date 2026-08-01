@@ -53,7 +53,7 @@ import songscribe.util.GraphicUtils;
  *       {@link TitleComponent#topGapPx()} == 0, and full-width span</li>
  *   <li>7F rows 9-10 — {@link FootnotesComponent#getPreferredSize()} null/empty/non-empty,
  *       and {@link FootnotesComponent#calculateRenderX(double)} width-cap invariant</li>
- *   <li>7F rows 14-15 — {@link LyricsComponent#getTextWidth(java.awt.Graphics2D)} null/empty guards
+ *   <li>7F rows 14-15 — {@link LyricsComponent#getTextWidth(Graphics2D)} null/empty guards
  *       and {@link LyricsComponent#getPreferredSize()} height-scaling formula</li>
  * </ul>
  */
@@ -638,7 +638,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     /**
-     * Creates an off-screen {@link java.awt.Graphics2D} backed by a 1×1 pixel image.
+     * Creates an off-screen {@link Graphics2D} backed by a 1×1 pixel image.
      * Used to test {@link LyricsComponent#getTextWidth} without a real display context.
      * Caller is responsible for disposing the returned object.
      */
@@ -651,7 +651,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
     class LyricsComponentGetTextWidth {
 
         /**
-         * When {@code song} is null, {@link LyricsComponent#getTextWidth(java.awt.Graphics2D)}
+         * When {@code song} is null, {@link LyricsComponent#getTextWidth(Graphics2D)}
          * returns 0 without throwing.
          */
         @Test
@@ -670,7 +670,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
         }
 
         /**
-         * When the song has empty under-lyrics, {@link LyricsComponent#getTextWidth(java.awt.Graphics2D)}
+         * When the song has empty under-lyrics, {@link LyricsComponent#getTextWidth(Graphics2D)}
          * returns 0.
          */
         @Test
@@ -691,7 +691,7 @@ class TitleFootnotesLyricsComponentTest extends UnitTest {
         }
 
         /**
-         * When under-lyrics are non-empty, {@link LyricsComponent#getTextWidth(java.awt.Graphics2D)}
+         * When under-lyrics are non-empty, {@link LyricsComponent#getTextWidth(Graphics2D)}
          * returns a positive value — confirming delegation to
          * {@link GraphicUtils#getTextBlockWidth}.
          */
