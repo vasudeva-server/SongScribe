@@ -433,7 +433,7 @@ public class MainFrame extends JFrame implements Printable {
      * clamped to {@code [0, MIN_SPLASH_DURATION_MS]}.
      */
     static long remainingFloorMs(long elapsedMs) {
-        return Math.max(0, Math.min(MIN_SPLASH_DURATION_MS, MIN_SPLASH_DURATION_MS - elapsedMs));
+        return Math.clamp(MIN_SPLASH_DURATION_MS - elapsedMs, 0, MIN_SPLASH_DURATION_MS);
     }
 
     /**
@@ -441,7 +441,7 @@ public class MainFrame extends JFrame implements Printable {
      * clamped to {@code [0, MIDI_INIT_TIMEOUT_MS]}.
      */
     static long remainingCapMs(long elapsedMs) {
-        return Math.max(0, Math.min(MIDI_INIT_TIMEOUT_MS, MIDI_INIT_TIMEOUT_MS - elapsedMs));
+        return Math.clamp(MIDI_INIT_TIMEOUT_MS - elapsedMs, 0, MIDI_INIT_TIMEOUT_MS);
     }
 
     static void performStartupAction(@Nullable Path mostRecentPath) {
