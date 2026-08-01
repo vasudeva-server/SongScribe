@@ -3,7 +3,6 @@ package songscribe.message;
 import java.util.function.Consumer;
 
 import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.error.IPublicationErrorHandler;
 import net.engio.mbassy.bus.error.PublicationError;
 import org.jspecify.annotations.Nullable;
 

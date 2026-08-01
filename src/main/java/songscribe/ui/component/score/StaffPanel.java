@@ -212,6 +212,7 @@ public class StaffPanel extends JPanel {
      * @return The layout of each line that produced one, in line order. Lines that have not been
      *         laid out yet are skipped, so the list can be shorter than the line count
      */
+    @SuppressWarnings("UnusedReturnValue")
     ArrayList<LayoutResult> layOutLines() {
         var layouts = new ArrayList<LayoutResult>();
         var hasLeadingLyricContinuation = false;

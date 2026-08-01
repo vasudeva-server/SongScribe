@@ -2280,7 +2280,7 @@ public class Line {
         Hairpin hairpin,
         int anchorIndex,
         int endIndex,
-        List<StaffElement> survivors,
+        List<? extends StaffElement> survivors,
         Map<StaffElement, Integer> survivorIndices
     ) {
         // Nothing outside the range can fall between two elements inside it, so what

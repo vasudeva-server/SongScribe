@@ -46,7 +46,6 @@ import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.SongMetadata;
-import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Song;

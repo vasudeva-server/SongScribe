@@ -511,7 +511,7 @@ public final class MusicXmlReader extends DefaultHandler {
     }
 
     @Override
-    public void endElement(String uri, String localName, String qName) throws SAXException {
+    public void endElement(String uri, String localName, String qName) throws SAXException, ForeignSoftwareException {
         switch (where) {
             case BAR_STYLE -> measureReader.handleEndBarStyle(qName);
             case BARLINE -> measureReader.handleEndBarline(qName);
@@ -654,7 +654,7 @@ public final class MusicXmlReader extends DefaultHandler {
     }
 
     @Override
-    public void endDocument() throws SAXException {
+    public void endDocument() throws ForeignSoftwareException {
         // Provenance gate: only SongScribe-authored documents are accepted. The
         // <software> tag is captured and owned by the header reader.
         headerReader.checkProvenance();

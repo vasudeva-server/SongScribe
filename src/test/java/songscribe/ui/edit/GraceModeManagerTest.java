@@ -71,6 +71,7 @@ import static org.mockito.Mockito.when;
 class GraceModeManagerTest extends UnitTest {
 
     /** Mocked EditModeManager — injected to satisfy the non-null constructor contract. */
+    @SuppressWarnings("FieldCanBeLocal")
     private EditModeManager editModeManager;
     /** Mocked SelectionCoordinator injected into each GraceModeManager under test. */
     private SelectionCoordinator selectionCoordinator;

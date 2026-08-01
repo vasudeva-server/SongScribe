@@ -36,7 +36,6 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.font.DocumentFonts;
 import songscribe.layout.LayoutResult;

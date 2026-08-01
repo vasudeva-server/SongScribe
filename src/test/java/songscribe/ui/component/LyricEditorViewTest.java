@@ -24,8 +24,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.awt.Rectangle;
 
-import javax.swing.plaf.basic.BasicTextUI;
-
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 

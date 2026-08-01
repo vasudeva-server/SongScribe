@@ -32,7 +32,6 @@ import songscribe.dom.StaffElement;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.action.AccidentalAction;
-import songscribe.ui.action.SelectableUIAction;
 
 /**
  * The coordinator answers questions about the selection out of caches keyed by

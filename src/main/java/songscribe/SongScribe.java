@@ -87,7 +87,7 @@ public final class SongScribe {
     // Package-private for testing: accepts an env-var provider and console-log
     // resource URL so tests can supply controlled values without relying on actual
     // OS environment variables or classpath resources.
-    static void configureLogging(Function<String, @Nullable String> env, @Nullable URL consoleLogUrl) {
+    static void configureLogging(Function<? super String, @Nullable String> env, @Nullable URL consoleLogUrl) {
         if (env.apply("CONSOLE_LOG") != null) {
             if (consoleLogUrl != null) {
                 System.setProperty("logback.configurationFile", consoleLogUrl.toString());
