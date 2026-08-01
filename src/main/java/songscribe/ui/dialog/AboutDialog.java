@@ -33,7 +33,7 @@ import songscribe.util.Utils;
 
 public class AboutDialog extends BaseDialog {
 
-    public static final String WEB = "http://www.songscribe.org";
+    public static final String WEB = "https://www.songscribe.org";
     private static final String ACKNOWLEDGEMENTS_URL =
         "https://github.com/vasudeva-server/SongScribe/blob/main/THIRD_PARTY_LICENSES.txt";
 
