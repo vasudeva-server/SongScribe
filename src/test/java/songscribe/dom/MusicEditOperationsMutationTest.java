@@ -530,15 +530,15 @@ class MusicEditOperationsMutationTest extends UnitTest {
     private static final DynamicAttachment.DynamicType POINT_DYNAMIC =
         DynamicAttachment.DynamicType.FORTE;
 
+    /** The selection {@link #setupExtendEnv} is built for: the two notes past the crescendo. */
+    private static final int EXTEND_SELECTION_BEGIN = 2;
+    private static final int EXTEND_SELECTION_END = 3;
+
     /**
      * Four crotchets whose first two already carry a crescendo, with a point dynamic
      * on element 0. Selecting [2, 3] then extends that crescendo to [0, 3], so element
      * 0 lies inside the merged range but two notes outside the selection.
      */
-    /** The selection {@link #setupExtendEnv} is built for: the two notes past the crescendo. */
-    private static final int EXTEND_SELECTION_BEGIN = 2;
-    private static final int EXTEND_SELECTION_END = 3;
-
     private Env setupExtendEnv() {
         var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet());
         var line = env.line();

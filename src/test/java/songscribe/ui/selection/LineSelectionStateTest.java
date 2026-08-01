@@ -70,10 +70,6 @@ class LineSelectionStateTest extends UnitTest {
     }
 
     /**
-     * Builds a detached line holding two crotchets — enough for an ending or a hairpin
-     * to span.
-     */
-    /**
      * Stubs the mock song behind a detached fixture so tuplet validation can resolve a beat.
      * An unstubbed mock resolves to no beat at all, which no real song ever does.
      */
@@ -83,6 +79,10 @@ class LineSelectionStateTest extends UnitTest {
         return line;
     }
 
+    /**
+     * Builds a detached line holding two crotchets — enough for an ending or a hairpin
+     * to span.
+     */
     private Line twoNoteLine() {
         var line = detachedLine();
         line.addElement(ElementType.CROTCHET.newInstance());

@@ -90,7 +90,7 @@ class SpringSpacerTest extends UnitTest {
     private static final double LONG_CHAIN_STRUT_STEP_SS = 0.05;
     private static final double LONG_CHAIN_HEADROOM_SS = 0.5;
 
-    /** A tight beam-internal gap: it levels to {@link #TIGHT_WEIGHT} of a normal gap's length. */
+    /** A tight beam-internal gap: it levels to {@code TIGHT_WEIGHT} of a normal gap's length. */
     private static final double TIGHT_WEIGHT = 0.6;
     private static final double WEIGHTED_REST_SS = 5.0;
     private static final double WEIGHTED_STRUT_SS = 1.0;

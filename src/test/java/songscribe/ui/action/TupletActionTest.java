@@ -216,7 +216,6 @@ class TupletActionTest extends MainFrameMockTest {
     // Helpers
     // -----------------------------------------------------------------------
 
-    /** Fires {@code musicSelectionDidChange} on all seven actions with the given tuplet state. */
     /**
      * Every other test here passes either all grades or none, and those two cases cannot
      * tell a per-grade check apart from no check at all: replacing the enabled state with a
@@ -241,6 +240,7 @@ class TupletActionTest extends MainFrameMockTest {
         }
     }
 
+    /** Fires {@code musicSelectionDidChange} on all seven actions with the given tuplet state. */
     private void fireAll(TupletToggleInfo info) {
         when(mockEnv().ctrl().canToggleTuplet()).thenReturn(info);
         var notification = new MusicSelectionDidChangeNotification(mockEnv().score());

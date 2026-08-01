@@ -49,7 +49,7 @@ public final class StaffHeaderMetrics {
     /**
      * Gap from the clef's right edge to the key signature's left edge.
      * LilyPond {@code Clef} {@code space-alist}: the {@code key-signature} entry,
-     * an {@code extra-space} of {@value #CLEF_GAP_SS}.
+     * an {@code extra-space} of {@value}.
      */
     public static final double CLEF_GAP_SS = 0.82;
 
@@ -58,7 +58,7 @@ public final class StaffHeaderMetrics {
      * the order LilyPond itself always uses, and the one this program draws when the key
      * changes type. LilyPond {@code KeyCancellation} {@code space-alist}: the
      * {@code key-signature} entry, an {@code extra-space} of
-     * {@value #CANCELLATION_TO_KEY_GAP_SS}.
+     * {@value}.
      */
     public static final double CANCELLATION_TO_KEY_GAP_SS = 0.5;
 
@@ -66,14 +66,14 @@ public final class StaffHeaderMetrics {
      * Gap from a key signature to a cancellation that follows it — the reverse order, which
      * this program draws when the key keeps its type but sheds accidentals. LilyPond
      * {@code KeySignature} {@code space-alist}: the {@code key-cancellation} entry, an
-     * {@code extra-space} of {@value #KEY_TO_CANCELLATION_GAP_SS}.
+     * {@code extra-space} of {@value}.
      */
     public static final double KEY_TO_CANCELLATION_GAP_SS = 0.3;
 
     /**
      * Gap from the key signature's right edge to the first note.
      * LilyPond {@code KeySignature} {@code space-alist}: the {@code first-note} entry, a
-     * {@code shrink-space} of {@value #KEY_SIGNATURE_FIRST_NOTE_GAP_SS}. {@code shrink-space}
+     * {@code shrink-space} of {@value}. {@code shrink-space}
      * makes this the distance at natural spacing, which a crowded line may compress but
      * never stretches.
      */
@@ -82,7 +82,7 @@ public final class StaffHeaderMetrics {
     /**
      * Span from the clef's <em>left</em> edge to the first note when no key signature
      * intervenes. LilyPond {@code Clef} {@code space-alist}: the {@code first-note} entry, a
-     * {@code minimum-fixed-space} of {@value #CLEF_FIRST_NOTE_SPAN_SS} — a floor on the whole
+     * {@code minimum-fixed-space} of {@value} — a floor on the whole
      * span rather than a gap added past the clef, so a clef narrower than this leaves the
      * remainder as open space.
      */

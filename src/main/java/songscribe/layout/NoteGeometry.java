@@ -189,15 +189,6 @@ public final class NoteGeometry {
     }
 
     /**
-     * Computes the base stem geometry for a note type and direction.
-     * This is the shared anchor selection and positioning logic used by both
-     * {@code NoteRenderer} (for drawing) and {@code GlissandoRenderer} (for area building).
-     *
-     * @param noteType  The note type (determines anchor and stem length)
-     * @param direction UP for stem-up, DOWN for stem-down
-     * @return The base stem geometry
-     */
-    /**
      * Returns the amount (≥ 0, ss) a stem is shortened because it points in its <em>forced</em>
      * (unnatural) direction, per Ross &amp; Gourlay (LilyPond {@code stem.cc:519-555}).
      *
@@ -244,6 +235,15 @@ public final class NoteGeometry {
             : SMuFLConstants.STEM_LENGTH_SS;
     }
 
+    /**
+     * Computes the base stem geometry for a note type and direction.
+     * This is the shared anchor selection and positioning logic used by both
+     * {@code NoteRenderer} (for drawing) and {@code GlissandoRenderer} (for area building).
+     *
+     * @param noteType  The note type (determines anchor and stem length)
+     * @param direction UP for stem-up, DOWN for stem-down
+     * @return The base stem geometry
+     */
     public static StemGeometry computeBaseStemGeometry(ElementType noteType, StaffElement.Direction direction) {
         var isGrace = noteType.isGraceNote();
         var anchor = isGrace ? STEM_UP_SE_BLACK_SMALL : stemSideAnchor(noteType, direction);

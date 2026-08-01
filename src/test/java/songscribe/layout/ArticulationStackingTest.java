@@ -95,10 +95,6 @@ class ArticulationStackingTest extends UnitTest {
     }
 
     /**
-     * Creates a note with the given staff position, stem direction, and articulations.
-     * Upper=true means stem up (note below middle), upper=false means stem down (note above middle).
-     */
-    /**
      * The x an articulation's {@link LayoutResult.DecorationLayout} carries: the glyph's left edge,
      * centerd on the notehead — where {@code ArticulationRenderer} draws it, and so where it
      * collides. Not the note's column x; an accent is wider than a notehead.
@@ -113,6 +109,10 @@ class ArticulationStackingTest extends UnitTest {
         return NOTE_X_SS + NoteGeometry.getNoteheadCenterXSs(note) - widthSs / 2.0;
     }
 
+    /**
+     * Creates a note with the given staff position, stem direction, and articulations.
+     * Upper=true means stem up (note below middle), upper=false means stem down (note above middle).
+     */
     private static StaffElement createNote(int staffPosition, boolean upper, ArticulationType... types) {
         var note = ElementType.CROTCHET.newInstance();
         note.setStaffPosition(staffPosition);

@@ -731,14 +731,6 @@ class SongIOTest extends UnitTest {
     }
 
     /**
-     * End-to-end wiring tests for the migration pipeline through {@link SongIO.DocumentReader#getSong()}.
-     * Each test parses a fabricated document at a specific legacy version band and asserts the migrated
-     * result on the assembled {@link Song}. Where the per-stage logic is already covered in isolation by
-     * {@code MigrationPipelineTest}, these tests verify the cut-over's read-back: that {@code getSong}
-     * threads the migrated scalars and lines (from the {@code MigrationContext}) into {@code SongData}
-     * rather than the stale parsed fields.
-     */
-    /**
      * Tests for {@code endElement12} field mapping: keys, keytype, number, title,
      * place, year, month, day, underLyrics, banglaLyrics, translatedLyrics,
      * attribution, footnotes, and unofficialTranslation are all read back correctly
@@ -861,6 +853,14 @@ class SongIOTest extends UnitTest {
         }
     }
 
+    /**
+     * End-to-end wiring tests for the migration pipeline through {@link SongIO.DocumentReader#getSong()}.
+     * Each test parses a fabricated document at a specific legacy version band and asserts the migrated
+     * result on the assembled {@link Song}. Where the per-stage logic is already covered in isolation by
+     * {@code MigrationPipelineTest}, these tests verify the cut-over's read-back: that {@code getSong}
+     * threads the migrated scalars and lines (from the {@code MigrationContext}) into {@code SongData}
+     * rather than the stale parsed fields.
+     */
     @SuppressWarnings({ "PackageVisibleInnerClass", "DataFlowIssue" })
     @Nested
     class LegacyMigrationWiring {
@@ -1337,10 +1337,6 @@ class SongIOTest extends UnitTest {
             """;
     }
 
-    /**
-     * A pre-migration v2.5 composition with obsolete per-note nudge fields that
-     * must be silently discarded.
-     */
     // =========================================================================
     // Phase 5 tests
     // =========================================================================
@@ -1557,6 +1553,10 @@ class SongIOTest extends UnitTest {
         }
     }
 
+    /**
+     * A pre-migration v2.5 composition with obsolete per-note nudge fields that
+     * must be silently discarded.
+     */
     private static String legacyNudgeFieldsXml() {
         return """
             <?xml version="1.0" encoding="UTF-8"?>

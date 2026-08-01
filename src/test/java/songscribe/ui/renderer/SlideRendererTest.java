@@ -142,16 +142,16 @@ class SlideRendererTest extends UnitTest {
     // ======================================================================
 
     /**
-     * Injects synthetic cached geometry onto a glissando, bypassing the render pass.
-     * Angle is in degrees for readability; the method converts to radians internally.
-     */
-    /**
      * Builds a hit-test context for a slide hit test, which reads only the point and the line.
      */
     private static int hitTestSlide(double xSs, double ySs, Line line) {
         return RENDERER.hitTestSlide(xSs, ySs, line);
     }
 
+    /**
+     * Injects synthetic cached geometry onto a glissando, bypassing the render pass.
+     * Angle is in degrees for readability; the method converts to radians internally.
+     */
     private static void setCachedGeometry(
         StaffElement.Glissando glissando,
         double startXSs, double startYSs,

@@ -422,9 +422,8 @@ class LineRenderer {
     /**
      * Runs {@code render} with the frame's preview shift translated into {@code g2} when
      * {@code spanStart} falls at or after the shift boundary. The transform is restored
-     * on exit (including on exception).
+     * on exit (including on exception). Package-private for testing.
      */
-    /** Package-private for testing. */
     static void renderWithPreviewShiftIfNeeded(
         Graphics2D g2,
         ElementFrame frame,
