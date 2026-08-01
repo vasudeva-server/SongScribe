@@ -29,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -53,7 +54,7 @@ class SongFileLoaderTest extends UnitTest {
     private static final String EXTENSIONLESS_FILE_NAME = "song-with-no-extension";
     private static final String NONEXISTENT_FILE_NAME = "does-not-exist.musicxml";
 
-    private static final String SOFTWARE_TAG_PATTERN = "<software>[^<]*</software>";
+    private static final String SOFTWARE_TAG_REGEX = "<software>[^<]*</software>";
     private static final String FOREIGN_SOFTWARE = "Finale";
     private static final String BLANK_SOFTWARE = "   ";
 
@@ -66,8 +67,11 @@ class SongFileLoaderTest extends UnitTest {
     private static final String VERSION_TOO_OLD_ATTR = "version=\"3.0\"";
     private static final String VERSION_UNPARSEABLE_ATTR = "version=\"x\"";
     private static final String VERSION_MISSING_TAG = "<score-partwise>";
+    private static final Pattern SOFTWARE_TAG_PATTERN = Pattern.compile(SOFTWARE_TAG_REGEX);
 
+    @SuppressWarnings("StaticVariableMayNotBeInitialized")
     private static String validMusicXml;
+    @SuppressWarnings("StaticVariableMayNotBeInitialized")
     private static File corpusMsswFile;
 
     @BeforeAll
@@ -122,8 +126,8 @@ class SongFileLoaderTest extends UnitTest {
 
     @Test
     void testMusicXmlWithForeignSoftwareReturnsWrongSoftware(@TempDir Path tempDir) throws IOException {
-        var foreignXml = validMusicXml.replaceFirst(
-            SOFTWARE_TAG_PATTERN, "<software>" + FOREIGN_SOFTWARE + "</software>");
+        var foreignXml = SOFTWARE_TAG_PATTERN.matcher(validMusicXml)
+            .replaceFirst("<software>" + FOREIGN_SOFTWARE + "</software>");
         var file = writeFile(tempDir, "foreign." + MUSICXML_EXTENSION, foreignXml);
 
         var result = SongFileLoader.load(file);
@@ -138,7 +142,7 @@ class SongFileLoaderTest extends UnitTest {
     void testMusicXmlWithSoftwareElementRemovedReturnsWrongSoftwareWithNullSoftware(@TempDir Path tempDir)
         throws IOException {
 
-        var noSoftwareXml = validMusicXml.replaceFirst(SOFTWARE_TAG_PATTERN, "");
+        var noSoftwareXml = SOFTWARE_TAG_PATTERN.matcher(validMusicXml).replaceFirst("");
         var file = writeFile(tempDir, "no-software." + MUSICXML_EXTENSION, noSoftwareXml);
 
         var result = SongFileLoader.load(file);
@@ -151,8 +155,8 @@ class SongFileLoaderTest extends UnitTest {
 
     @Test
     void testMusicXmlWithBlankSoftwareReturnsWrongSoftware(@TempDir Path tempDir) throws IOException {
-        var blankSoftwareXml = validMusicXml.replaceFirst(
-            SOFTWARE_TAG_PATTERN, "<software>" + BLANK_SOFTWARE + "</software>");
+        var blankSoftwareXml = SOFTWARE_TAG_PATTERN.matcher(validMusicXml)
+            .replaceFirst("<software>" + BLANK_SOFTWARE + "</software>");
         var file = writeFile(tempDir, "blank-software." + MUSICXML_EXTENSION, blankSoftwareXml);
 
         assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.WrongSoftware.class);
@@ -171,8 +175,8 @@ class SongFileLoaderTest extends UnitTest {
 
     @Test
     void testForeignXmlExtensionReturnsWrongSoftware(@TempDir Path tempDir) throws IOException {
-        var foreignXml = validMusicXml.replaceFirst(
-            SOFTWARE_TAG_PATTERN, "<software>" + FOREIGN_SOFTWARE + "</software>");
+        var foreignXml = SOFTWARE_TAG_PATTERN.matcher(validMusicXml)
+            .replaceFirst("<software>" + FOREIGN_SOFTWARE + "</software>");
         var file = writeFile(tempDir, "foreign." + XML_EXTENSION, foreignXml);
 
         assertThat(SongFileLoader.load(file)).isInstanceOf(SongLoadResult.WrongSoftware.class);

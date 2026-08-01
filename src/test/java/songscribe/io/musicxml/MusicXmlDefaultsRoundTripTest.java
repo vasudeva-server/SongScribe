@@ -30,6 +30,8 @@ import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 
+import java.util.regex.Pattern;
+
 /**
  * Round-trip coverage for the {@code <defaults>} writer + reader (Phase 6): the
  * line width (via {@code <page-width>}), the row-height adjustment (via a
@@ -82,6 +84,8 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
     // Write-forward values overwritten by hand to prove the reader ignores them.
     private static final String TAMPERED_PAGE_HEIGHT = "9999";
     private static final String TAMPERED_SCALING_TENTHS = "80";
+    private static final Pattern DEFAULTS_PATTERN = Pattern.compile("(?s)\\s*<defaults>.*?</defaults>");
+    private static final Pattern SUB_ATTRIBUTION_PATTERN = Pattern.compile("(?m)^.*name=\"sub-attribution-font.*\\R?");
 
     // -------------------------------------------------------------------------
     // Helpers
@@ -220,9 +224,7 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
         // stripped roles revert to their defaults.
         var fonts = customFonts();
         var xml = writeToString(songWithLayout(), fonts);
-        var stripped = xml
-            .replaceAll("(?s)\\s*<defaults>.*?</defaults>", "")
-            .replaceAll("(?m)^.*name=\"sub-attribution-font.*\\R?", "");
+        var stripped = SUB_ATTRIBUTION_PATTERN.matcher(DEFAULTS_PATTERN.matcher(xml).replaceAll("")).replaceAll("");
 
         var result = parseResult(stripped);
 
