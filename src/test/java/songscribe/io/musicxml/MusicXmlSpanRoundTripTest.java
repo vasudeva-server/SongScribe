@@ -414,25 +414,27 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testTupletWithNormalTypeIsTrustedAsStated() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>eighth</type>\n" +
-            "        <dot/>\n" +
-            "        <time-modification><actual-notes>2</actual-notes><normal-notes>3</normal-notes>"
-            + "<normal-type>eighth</normal-type><normal-dot/></time-modification>\n" +
-            "        <notations><tuplet type=\"start\" number=\"1\"/></notations>\n" +
-            "      </note>\n" +
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>eighth</type>\n" +
-            "        <dot/>\n" +
-            "        <time-modification><actual-notes>2</actual-notes><normal-notes>3</normal-notes>"
-            + "<normal-type>eighth</normal-type><normal-dot/></time-modification>\n" +
-            "        <notations><tuplet type=\"stop\" number=\"1\"/></notations>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>eighth</type>
+                        <dot/>
+                        <time-modification><actual-notes>2</actual-notes><normal-notes>3</normal-notes>\
+                <normal-type>eighth</normal-type><normal-dot/></time-modification>
+                        <notations><tuplet type="start" number="1"/></notations>
+                      </note>
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>eighth</type>
+                        <dot/>
+                        <time-modification><actual-notes>2</actual-notes><normal-notes>3</normal-notes>\
+                <normal-type>eighth</normal-type><normal-dot/></time-modification>
+                        <notations><tuplet type="stop" number="1"/></notations>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         var tuplets = parse(xml).getLine(0).findRangeElements(Tuplet.class);

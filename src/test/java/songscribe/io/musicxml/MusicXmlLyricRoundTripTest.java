@@ -211,16 +211,18 @@ class MusicXmlLyricRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void lyricWithoutNumberLoadsAsVerseOne() throws Exception {
         var body =
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "        <lyric>\n" +
-            "          <syllabic>single</syllabic>\n" +
-            "          <text>oh</text>\n" +
-            "        </lyric>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n";
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                        <lyric>
+                          <syllabic>single</syllabic>
+                          <text>oh</text>
+                        </lyric>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """;
 
         var song = parse(scoreWithMeasureBody(body));
         var note = noteAt(song, 0);

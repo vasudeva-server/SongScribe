@@ -207,15 +207,17 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         // then buildEnding finds no split and drops the ending. The note and its closing
         // barline survive, so import otherwise proceeds normally.
         var xml = scoreWithMeasureBody(
-            "      <barline location=\"left\"><bar-style>none</bar-style>"
-                + "<ending number=\"1\" type=\"start\"/></barline>\n"
-            + "      <note>\n"
-            + "        <pitch><step>B</step><octave>4</octave></pitch>\n"
-            + "        <duration>480</duration>\n"
-            + "        <type>quarter</type>\n"
-            + "      </note>\n"
-            + "      <barline location=\"right\"><bar-style>light-heavy</bar-style>"
-                + "<ending number=\"2\" type=\"stop\"/></barline>\n"
+            """
+                      <barline location="left"><bar-style>none</bar-style>\
+                <ending number="1" type="start"/></barline>
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style>\
+                <ending number="2" type="stop"/></barline>
+                """
         );
 
         var song = parse(xml);

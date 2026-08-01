@@ -214,15 +214,17 @@ class MusicXmlAnnotationRoundTripTest extends MusicXmlRoundTripSupport {
         // left to the metronome resolver, which drops it — it is never promoted to
         // a phantom annotation.
         var xml = scoreWithMeasureBody(
-            "      <direction><direction-type>" +
-            "<words>not an annotation</words>" +
-            "</direction-type></direction>\n" +
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <direction><direction-type>\
+                <words>not an annotation</words>\
+                </direction-type></direction>
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         var song = parse(xml);

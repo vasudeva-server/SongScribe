@@ -194,13 +194,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testStraySlideStopIsIgnored() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "        <notations><slide type=\"stop\" line-type=\"solid\"/></notations>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                        <notations><slide type="stop" line-type="solid"/></notations>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         var song = parse(xml);
@@ -214,13 +216,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testUnknownAccidentalTokenIsIgnored() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "        <accidental>bogus</accidental>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>none</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                        <accidental>bogus</accidental>
+                      </note>
+                      <barline location="right"><bar-style>none</bar-style></barline>
+                """
         );
 
         var song = parse(xml);
@@ -232,13 +236,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testUnknownDynamicSymbolIsIgnored() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "        <notations><dynamics><xyz/></dynamics></notations>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>none</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                        <notations><dynamics><xyz/></dynamics></notations>
+                      </note>
+                      <barline location="right"><bar-style>none</bar-style></barline>
+                """
         );
 
         var song = parse(xml);
@@ -252,11 +258,13 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testNoteMissingTypeThrows() {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>none</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                      </note>
+                      <barline location="right"><bar-style>none</bar-style></barline>
+                """
         );
 
         assertThatThrownBy(() -> parse(xml))
@@ -267,12 +275,14 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testUnrecognisedTypeTokenThrows() {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>bogus</type>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>none</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>bogus</type>
+                      </note>
+                      <barline location="right"><bar-style>none</bar-style></barline>
+                """
         );
 
         assertThatThrownBy(() -> parse(xml))
@@ -283,12 +293,14 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testMalformedOctaveThrows() {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>xyz</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>none</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>xyz</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>none</bar-style></barline>
+                """
         );
 
         assertThatThrownBy(() -> parse(xml))
@@ -299,12 +311,14 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testMalformedRelativeXThrows() {
         var xml = scoreWithMeasureBody(
-            "      <note relative-x=\"abc\">\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>none</bar-style></barline>\n"
+            """
+                      <note relative-x="abc">
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>none</bar-style></barline>
+                """
         );
 
         assertThatThrownBy(() -> parse(xml))
@@ -356,13 +370,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testDanglingBeamBeginProducesNoBeam() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>240</duration>\n" +
-            "        <type>eighth</type>\n" +
-            "        <beam number=\"1\">begin</beam>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>240</duration>
+                        <type>eighth</type>
+                        <beam number="1">begin</beam>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         var song = parse(xml);
@@ -419,13 +435,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testDanglingTiedStartProducesNoTie() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "        <notations><tied type=\"start\"/></notations>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                        <notations><tied type="start"/></notations>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         var song = parse(xml);
@@ -438,14 +456,16 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testDanglingTupletStartThrows() {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>\n" +
-            "        <notations><tuplet type=\"start\" number=\"1\"/></notations>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>
+                        <notations><tuplet type="start" number="1"/></notations>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         assertThatThrownBy(() -> parse(xml))
@@ -457,17 +477,19 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testSingleNoteTupletThrows() {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>\n" +
-            "        <notations>\n" +
-            "          <tuplet type=\"start\" number=\"1\"/>\n" +
-            "          <tuplet type=\"stop\" number=\"1\"/>\n" +
-            "        </notations>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                        <time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification>
+                        <notations>
+                          <tuplet type="start" number="1"/>
+                          <tuplet type="stop" number="1"/>
+                        </notations>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         assertThatThrownBy(() -> parse(xml))
@@ -479,13 +501,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testDanglingWavyLineStartProducesNoTrill() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "        <notations><ornaments><trill-mark/><wavy-line type=\"start\" number=\"1\"/></ornaments></notations>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                        <notations><ornaments><trill-mark/><wavy-line type="start" number="1"/></ornaments></notations>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         var song = parse(xml);
@@ -498,15 +522,17 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testUnpairedWedgeStartProducesNoHairpin() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <direction><direction-type>" +
-            "<wedge type=\"crescendo\" number=\"1\"/>" +
-            "</direction-type></direction>\n" +
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <direction><direction-type>\
+                <wedge type="crescendo" number="1"/>\
+                </direction-type></direction>
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         var song = parse(xml);
@@ -525,13 +551,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         // A number="1" type="start" anchor with no number="2" type="stop" close —
         // dropPendingEnding drops it at part-end flush.
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style>" +
-            "<ending number=\"1\" type=\"start\"/></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style>\
+                <ending number="1" type="start"/></barline>
+                """
         );
 
         var song = parse(xml);
@@ -546,13 +574,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testOrphanBeamEndIsIgnored() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>240</duration>\n" +
-            "        <type>eighth</type>\n" +
-            "        <beam number=\"1\">end</beam>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>240</duration>
+                        <type>eighth</type>
+                        <beam number="1">end</beam>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         var song = parse(xml);
@@ -565,13 +595,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testOrphanTiedStopIsIgnored() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "        <notations><tied type=\"stop\"/></notations>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                        <notations><tied type="stop"/></notations>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         var song = parse(xml);
@@ -584,13 +616,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testOrphanTupletStopThrows() {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "        <notations><tuplet type=\"stop\" number=\"1\"/></notations>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                        <notations><tuplet type="stop" number="1"/></notations>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         assertThatThrownBy(() -> parse(xml))
@@ -602,13 +636,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testOrphanWavyLineStopIsIgnored() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "        <notations><ornaments><wavy-line type=\"stop\" number=\"1\"/></ornaments></notations>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                        <notations><ornaments><wavy-line type="stop" number="1"/></ornaments></notations>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         var song = parse(xml);
@@ -621,15 +657,17 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     @Test
     void testOrphanWedgeStopIsIgnored() throws Exception {
         var xml = scoreWithMeasureBody(
-            "      <direction><direction-type>" +
-            "<wedge type=\"stop\" number=\"1\"/>" +
-            "</direction-type></direction>\n" +
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
+            """
+                      <direction><direction-type>\
+                <wedge type="stop" number="1"/>\
+                </direction-type></direction>
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
         );
 
         var song = parse(xml);
@@ -647,13 +685,15 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     void testOrphanEndingStopIsIgnored() throws Exception {
         // A number="2" type="stop" with no matching number="1" start — ignored.
         var xml = scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style>" +
-            "<ending number=\"2\" type=\"stop\"/></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style>\
+                <ending number="2" type="stop"/></barline>
+                """
         );
 
         var song = parse(xml);
@@ -753,29 +793,31 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         // No <identification>/<software> block at all: the provenance gate fires
         // at endDocument, not mid-parse, so the document must otherwise be valid.
         var xml =
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
-            "<score-partwise version=\"4.0\">\n" +
-            "  <part-list>\n" +
-            "    <score-part id=\"P1\"><part-name></part-name></score-part>\n" +
-            "  </part-list>\n" +
-            "  <part id=\"P1\">\n" +
-            "    <measure number=\"1\">\n" +
-            "      <print new-system=\"yes\"/>\n" +
-            "      <attributes>\n" +
-            "        <divisions>480</divisions>\n" +
-            "        <key><fifths>0</fifths></key>\n" +
-            "        <time print-object=\"no\"><senza-misura/></time>\n" +
-            "        <clef><sign>G</sign><line>2</line></clef>\n" +
-            "      </attributes>\n" +
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n" +
-            "    </measure>\n" +
-            "  </part>\n" +
-            "</score-partwise>\n";
+            """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <score-partwise version="4.0">
+                  <part-list>
+                    <score-part id="P1"><part-name></part-name></score-part>
+                  </part-list>
+                  <part id="P1">
+                    <measure number="1">
+                      <print new-system="yes"/>
+                      <attributes>
+                        <divisions>480</divisions>
+                        <key><fifths>0</fifths></key>
+                        <time print-object="no"><senza-misura/></time>
+                        <clef><sign>G</sign><line>2</line></clef>
+                      </attributes>
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                    </measure>
+                  </part>
+                </score-partwise>
+                """;
 
         var exception = assertThrows(MusicXmlReader.ForeignSoftwareException.class, () -> parse(xml));
         // Missing tag → software() is null, distinguishing it from the blank case.
@@ -812,12 +854,14 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
 
     private static String scoreWithSoftware(String softwareElement) {
         return scoreWithMeasureBody(
-            "      <note>\n" +
-            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
-            "        <duration>480</duration>\n" +
-            "        <type>quarter</type>\n" +
-            "      </note>\n" +
-            "      <barline location=\"right\"><bar-style>none</bar-style></barline>\n"
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>none</bar-style></barline>
+                """
         ).replace(
             "<software>" + Constants.PACKAGE_NAME + "</software>",
             softwareElement
