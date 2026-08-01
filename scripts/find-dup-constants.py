@@ -24,6 +24,7 @@ PROD_PATTERN = re.compile(r'static\s+final\s+\w+\s+({name})\b')
 def parse_constants_file(path: Path) -> dict[str, list[tuple[int, str]]]:
     """Returns {test_file_path: [(line, name), ...]}"""
     result: dict[str, list[tuple[int, str]]] = {}
+    # noinspection type-hints
     current_file: str | None = None
 
     for raw in path.read_text(encoding='utf-8').splitlines():

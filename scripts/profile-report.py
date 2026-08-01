@@ -80,15 +80,15 @@ def parse_tree(text, cpool):
     current = {}  # level -> most recent Frame at that level
     root = [None]
 
-    def emit(key, level, left_inc, width):
-        state["level0"] = level
-        state["left0"] += left_inc
-        if width is not None:
-            state["width0"] = width
-        title = cpool[key >> 3]
-        fr = Frame(title, level, state["left0"], state["width0"])
-        current[level] = fr
-        parent = current.get(level - 1)
+    def emit(frame_key, frame_level, frame_left_inc, frame_width):
+        state["level0"] = frame_level
+        state["left0"] += frame_left_inc
+        if frame_width is not None:
+            state["width0"] = frame_width
+        title = cpool[frame_key >> 3]
+        fr = Frame(title, frame_level, state["left0"], state["width0"])
+        current[frame_level] = fr
+        parent = current.get(frame_level - 1)
         if parent is None:
             root[0] = fr
         else:
