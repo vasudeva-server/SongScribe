@@ -132,7 +132,7 @@ public final class ObjC {
         try (var arena = Arena.ofConfined()) {
             return (MemorySegment) OBJC_GET_CLASS.invoke(arena.allocateFrom(name));
         } catch (Throwable t) {
-            throw asRuntime("objc_getClass(" + name + ")", t);
+            throw asRuntime("objc_getClass(" + name + ')', t);
         }
     }
 
@@ -144,7 +144,7 @@ public final class ObjC {
         try (var arena = Arena.ofConfined()) {
             return (MemorySegment) SEL_REGISTER_NAME.invoke(arena.allocateFrom(name));
         } catch (Throwable t) {
-            throw asRuntime("sel_registerName(" + name + ")", t);
+            throw asRuntime("sel_registerName(" + name + ')', t);
         }
     }
 

@@ -88,9 +88,9 @@ public class Trill extends RangeElement {
     public String toIndexString() {
         var base = getAnchorElementIndex() + "," + getEndElementIndex();
         if (yPositionSs != 0) {
-            return base + "," + yPositionSs + ";";
+            return base + ',' + yPositionSs + ';';
         }
-        return base + ";";
+        return base + ';';
     }
 
     /**

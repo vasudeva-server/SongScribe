@@ -296,7 +296,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
         var editor = new LyricEditor(score, line, element);
         // Still overflowing after the edit: an already-full line must not be blocked, so the user
         // can keep editing toward a shorter lyric that fits.
-        editor.setText(overflowLyric + "x");
+        editor.setText(overflowLyric + 'x');
 
         messageCenterMock = mockStatic(MessageCenter.class);
 
@@ -307,7 +307,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         // The edit was written and a mutation emitted — the overflowing pre-state did not block it.
         captureSingleDidChange();
-        assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::text).isEqualTo(overflowLyric + "x");
+        assertThat(element.getLyricForVerse(Lyric.FIRST_VERSE)).extracting(Lyric::text).isEqualTo(overflowLyric + 'x');
     }
 
     // -----------------------------------------------------------------------
@@ -1426,7 +1426,7 @@ class LyricEditorTest extends LyricEditorTestSupport {
 
         fireAltA(editor, false);
 
-        assertThat(editor.getText()).isEqualTo("c" + LyricEditor.LONG_A + "at");
+        assertThat(editor.getText()).isEqualTo('c' + LyricEditor.LONG_A + "at");
     }
 
     // Alt-A must not claim these combinations: doing so would swallow a system shortcut, or

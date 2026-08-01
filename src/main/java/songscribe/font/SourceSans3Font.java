@@ -58,7 +58,7 @@ public final class SourceSans3Font {
      * removed plus a hyphen (e.g. {@code SourceSans3SongScribe-SemiBold}). Derived from
      * {@link #FAMILY} so the two cannot drift.
      */
-    public static final String PS_PREFIX = FAMILY.replace(" ", "") + "-";
+    public static final String PS_PREFIX = FAMILY.replace(" ", "") + '-';
 
     /** Regular (PLAIN) face filename. */
     public static final String STYLE_REGULAR = "source-sans-3-regular.ttf";

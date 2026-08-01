@@ -249,7 +249,7 @@ final class MusicXmlNoteWriter {
         if (product % grade != 0) {
             throw new ArithmeticException(
                 "Performed duration is not an integer for " + type + " dotCount=" + dotCount
-                + " in a " + grade + ":" + tuplet.getNormalNotes() + " tuplet"
+                + " in a " + grade + ':' + tuplet.getNormalNotes() + " tuplet"
                 + " (DIVISIONS=" + NoteTypeMapping.DIVISIONS + " is wrong)"
             );
         }

@@ -157,7 +157,7 @@ class MusicXmlHeaderRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(xml)
             .as("an empty number omits the <movement-number> element entirely")
-            .doesNotContain("<" + MusicXmlTags.MOVEMENT_NUMBER + ">");
+            .doesNotContain('<' + MusicXmlTags.MOVEMENT_NUMBER + '>');
 
         var reloaded = roundTrip(song);
 

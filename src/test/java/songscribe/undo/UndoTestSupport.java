@@ -100,7 +100,7 @@ final class UndoTestSupport {
         if (captured.isEmpty()) {
             throw new IllegalStateException(
                 "The edit posted no SongDidChangeNotification (trackingSuspended="
-                    + song.isMutationTrackingSuspended() + ", replaying=" + song.isReplaying() + ")");
+                    + song.isMutationTrackingSuspended() + ", replaying=" + song.isReplaying() + ')');
         }
 
         return captured.getFirst();

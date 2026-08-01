@@ -189,7 +189,7 @@ public class Ending extends RangeElement {
      */
     private static IllegalStateException noSplitElementException(int anchorIndex, int endIndex) {
         return new IllegalStateException(
-            "Ending spanning elements [" + anchorIndex + "," + endIndex
+            "Ending spanning elements [" + anchorIndex + ',' + endIndex
                 + "] has no split element; every ending must have a REPEAT between its two brackets");
     }
 

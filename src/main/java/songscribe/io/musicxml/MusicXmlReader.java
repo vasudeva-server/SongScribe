@@ -429,7 +429,7 @@ public final class MusicXmlReader extends DefaultHandler {
                     try {
                         comparison = Utils.compareVersions(version, MusicXmlTags.VERSION_VALUE);
                     } catch (NumberFormatException e) {
-                        throw new UnsupportedFormatException("unparseable version '" + version + "'");
+                        throw new UnsupportedFormatException("unparseable version '" + version + '\'');
                     }
 
                     if (comparison < 0) {
@@ -443,7 +443,7 @@ public final class MusicXmlReader extends DefaultHandler {
                     song.beginSuspendMutationTracking();
                     where = Where.SCORE_PARTWISE;
                 } else {
-                    throw new UnsupportedFormatException("root <" + qName + ">");
+                    throw new UnsupportedFormatException("root <" + qName + '>');
                 }
             }
             case SCORE_PARTWISE -> {

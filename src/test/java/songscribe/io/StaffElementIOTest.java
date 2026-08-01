@@ -701,7 +701,7 @@ class StaffElementIOTest extends UnitTest {
 
             var output = writeNote(note);
 
-            assertThat(output).contains("number=\"" + VERSE_ONE + "\"");
+            assertThat(output).contains("number=\"" + VERSE_ONE + '"');
         }
 
         @Test
@@ -712,7 +712,7 @@ class StaffElementIOTest extends UnitTest {
 
             var output = writeNote(note);
 
-            assertThat(output).contains("number=\"" + VERSE_TWO + "\"");
+            assertThat(output).contains("number=\"" + VERSE_TWO + '"');
         }
 
         @Test

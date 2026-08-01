@@ -87,7 +87,7 @@ public sealed interface SongLoadResult permits SongLoadResult.Success, SongLoadR
         // Single source of truth for this failure's message, shared with the
         // reader exception that produces it, so the wording cannot drift.
         public static String message(@Nullable String software) {
-            return "File was not created by SongScribe (software: " + software + ")";
+            return "File was not created by SongScribe (software: " + software + ')';
         }
     }
 

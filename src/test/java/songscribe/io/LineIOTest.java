@@ -132,8 +132,8 @@ class LineIOTest extends UnitTest {
 
             var output = writeLine(line);
 
-            assertThat(output).contains("<" + LineIO.XML_KEYS + ">2</" + LineIO.XML_KEYS + ">");
-            assertThat(output).contains("<" + LineIO.XML_KEYTYPE + ">SHARPS</" + LineIO.XML_KEYTYPE + ">");
+            assertThat(output).contains('<' + LineIO.XML_KEYS + ">2</" + LineIO.XML_KEYS + '>');
+            assertThat(output).contains('<' + LineIO.XML_KEYTYPE + ">SHARPS</" + LineIO.XML_KEYTYPE + '>');
         }
 
         @Test
@@ -141,8 +141,8 @@ class LineIOTest extends UnitTest {
             // Line key matches song default → tags must be absent
             var output = writeLine(line);
 
-            assertThat(output).doesNotContain("<" + LineIO.XML_KEYS + ">");
-            assertThat(output).doesNotContain("<" + LineIO.XML_KEYTYPE + ">");
+            assertThat(output).doesNotContain('<' + LineIO.XML_KEYS + '>');
+            assertThat(output).doesNotContain('<' + LineIO.XML_KEYTYPE + '>');
         }
     }
 
@@ -161,7 +161,7 @@ class LineIOTest extends UnitTest {
 
             var output = writeLine(line);
 
-            assertThat(output).contains("<" + LineIO.XML_NOTE_DIST_CHANGE + ">");
+            assertThat(output).contains('<' + LineIO.XML_NOTE_DIST_CHANGE + '>');
         }
 
         @Test
@@ -169,7 +169,7 @@ class LineIOTest extends UnitTest {
             // elementSpacingRatio defaults to 1.0 — no changeElementSpacingRatio call
             var output = writeLine(line);
 
-            assertThat(output).doesNotContain("<" + LineIO.XML_NOTE_DIST_CHANGE + ">");
+            assertThat(output).doesNotContain('<' + LineIO.XML_NOTE_DIST_CHANGE + '>');
         }
     }
 
@@ -184,7 +184,7 @@ class LineIOTest extends UnitTest {
         void testAlwaysWritesLyricsYPosTag() throws Exception {
             var output = writeLine(line);
 
-            assertThat(output).contains("<" + LineIO.XML_LYRICS_YPOS + ">");
+            assertThat(output).contains('<' + LineIO.XML_LYRICS_YPOS + '>');
         }
     }
 
@@ -199,10 +199,10 @@ class LineIOTest extends UnitTest {
         void testLegacyYPosTagsAbsentInNewDocuments() throws Exception {
             var output = writeLine(line);
 
-            assertThat(output).doesNotContain("<" + LineIO.XML_TEMPO_CHANGE_YPOS + ">");
-            assertThat(output).doesNotContain("<" + LineIO.XML_BEAT_CHANGE_YPOS + ">");
-            assertThat(output).doesNotContain("<" + LineIO.XML_FSENDING_YPOS + ">");
-            assertThat(output).doesNotContain("<" + LineIO.XML_TRILL_YPOS + ">");
+            assertThat(output).doesNotContain('<' + LineIO.XML_TEMPO_CHANGE_YPOS + '>');
+            assertThat(output).doesNotContain('<' + LineIO.XML_BEAT_CHANGE_YPOS + '>');
+            assertThat(output).doesNotContain('<' + LineIO.XML_FSENDING_YPOS + '>');
+            assertThat(output).doesNotContain('<' + LineIO.XML_TRILL_YPOS + '>');
         }
     }
 
@@ -363,7 +363,7 @@ class LineIOTest extends UnitTest {
             var result = LineIO.rangeElementsToString(elements.findRangeElements(Diminuendo.class));
 
             // All three shift fields written when any is non-zero
-            assertThat(result).isEqualTo("0,1," + X1 + "," + X2 + "," + Y + ";");
+            assertThat(result).isEqualTo("0,1," + X1 + ',' + X2 + ',' + Y + ';');
         }
     }
 
@@ -812,7 +812,7 @@ class LineIOTest extends UnitTest {
                 ElementType.CROTCHET,
                 ElementType.CROTCHET
             );
-            feedTag(reader, LineIO.XML_TUPLETS, "0,2," + TRIPLET_GRADE + "," + VERT_POS + ";");
+            feedTag(reader, LineIO.XML_TUPLETS, "0,2," + TRIPLET_GRADE + ',' + VERT_POS + ';');
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
@@ -1018,7 +1018,7 @@ class LineIOTest extends UnitTest {
                 ElementType.CROTCHET,
                 ElementType.CROTCHET
             );
-            feedTag(reader, LineIO.XML_CRESCENDO, "0,2," + X1_SHIFT + "," + X2_SHIFT + "," + Y_SHIFT + ";");
+            feedTag(reader, LineIO.XML_CRESCENDO, "0,2," + X1_SHIFT + ',' + X2_SHIFT + ',' + Y_SHIFT + ';');
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
@@ -1072,7 +1072,7 @@ class LineIOTest extends UnitTest {
                 ElementType.CROTCHET,
                 ElementType.CROTCHET
             );
-            feedTag(reader, LineIO.XML_DIMINUENDO, "0,2," + X1_SHIFT + "," + X2_SHIFT + "," + Y_SHIFT + ";");
+            feedTag(reader, LineIO.XML_DIMINUENDO, "0,2," + X1_SHIFT + ',' + X2_SHIFT + ',' + Y_SHIFT + ';');
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();
@@ -1225,7 +1225,7 @@ class LineIOTest extends UnitTest {
                 ElementType.CROTCHET,
                 ElementType.CROTCHET
             );
-            feedTag(reader, LineIO.XML_TRILLS, "0,2," + Y_POS + ";");
+            feedTag(reader, LineIO.XML_TRILLS, "0,2," + Y_POS + ';');
             var parsedLine = reader.endElement11("line");
 
             assertThat(parsedLine).isNotNull();

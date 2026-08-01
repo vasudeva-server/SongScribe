@@ -599,7 +599,7 @@ class PrefsTest extends UnitTest {
         void testMigrateMapsKnownKeysIntoStore(@TempDir File tempDir) throws IOException {
             // Old properties file with a "dpi" entry → must be stored under
             // PrefsKey.EXPORT_DPI as Long (because the default is numeric).
-            var oldFile = writePropsFile(tempDir, OLD_KEY_DPI + "=" + OLD_DPI_VALUE);
+            var oldFile = writePropsFile(tempDir, OLD_KEY_DPI + '=' + OLD_DPI_VALUE);
 
             Prefs.migrateForTest(oldFile);
 

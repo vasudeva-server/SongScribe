@@ -121,7 +121,7 @@ final class MusicXmlHeaderWriter {
 
         XML.writeBeginTag(pw, MusicXmlTags.ENCODING);
         XML.indent();
-        XML.writeValue(pw, MusicXmlTags.SOFTWARE, Constants.PACKAGE_NAME + " " + Version.PUBLIC_VERSION);
+        XML.writeValue(pw, MusicXmlTags.SOFTWARE, Constants.PACKAGE_NAME + ' ' + Version.PUBLIC_VERSION);
         XML.writeValue(pw, MusicXmlTags.ENCODING_DATE, headerText.encodingDate());
         XML.writeEmptyTag(
             pw,

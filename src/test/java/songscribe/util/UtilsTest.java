@@ -248,7 +248,7 @@ class UtilsTest extends UnitTest {
     @Nested
     class GetResourcePath {
         private static final String RESOURCE_NAME = "junit-platform.properties";
-        private static final String RESOURCE_WITH_SLASH = "/" + RESOURCE_NAME;
+        private static final String RESOURCE_WITH_SLASH = '/' + RESOURCE_NAME;
         private static final String NONEXISTENT_RESOURCE = "nonexistent-resource.txt";
 
         @Test

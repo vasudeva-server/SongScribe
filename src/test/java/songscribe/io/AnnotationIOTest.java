@@ -140,9 +140,9 @@ class AnnotationIOTest extends UnitTest {
             var output = writeAnnotation(annotation);
 
             assertThat(output)
-                .contains("<" + AnnotationIO.XML_NAME + ">Hello</" + AnnotationIO.XML_NAME + ">")
-                .contains("<" + AnnotationIO.XML_ALIGNMENT + ">" + CENTER_ALIGNMENT + "</" + AnnotationIO.XML_ALIGNMENT + ">")
-                .contains("<" + AnnotationIO.XML_PLACEMENT + ">BELOW</" + AnnotationIO.XML_PLACEMENT + ">")
+                .contains('<' + AnnotationIO.XML_NAME + ">Hello</" + AnnotationIO.XML_NAME + '>')
+                .contains('<' + AnnotationIO.XML_ALIGNMENT + '>' + CENTER_ALIGNMENT + "</" + AnnotationIO.XML_ALIGNMENT + '>')
+                .contains('<' + AnnotationIO.XML_PLACEMENT + ">BELOW</" + AnnotationIO.XML_PLACEMENT + '>')
                 .doesNotContain(AnnotationIO.XML_YPOS);
         }
 
@@ -154,7 +154,7 @@ class AnnotationIOTest extends UnitTest {
             var output = writeAnnotation(annotation);
 
             assertThat(output)
-                .contains("<" + AnnotationIO.XML_PLACEMENT + ">ABOVE</" + AnnotationIO.XML_PLACEMENT + ">");
+                .contains('<' + AnnotationIO.XML_PLACEMENT + ">ABOVE</" + AnnotationIO.XML_PLACEMENT + '>');
         }
 
         // Row 51 (branch 1): userYOffsetSs == 0 → <useryoffset> element absent
@@ -178,7 +178,7 @@ class AnnotationIOTest extends UnitTest {
             var output = writeAnnotation(annotation);
 
             assertThat(output).contains(
-                "<" + AnnotationIO.XML_USER_Y_OFFSET + ">" + nonZeroOffset + "</" + AnnotationIO.XML_USER_Y_OFFSET + ">"
+                '<' + AnnotationIO.XML_USER_Y_OFFSET + '>' + nonZeroOffset + "</" + AnnotationIO.XML_USER_Y_OFFSET + '>'
             );
         }
     }

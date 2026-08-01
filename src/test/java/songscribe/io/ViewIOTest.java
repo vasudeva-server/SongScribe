@@ -109,7 +109,7 @@ class ViewIOTest extends UnitTest {
                 var font = fonts.getFont(key);
                 var psName = font.getPSName();
                 var size = Integer.toString(font.getSize());
-                if (output.contains(">" + psName + "<") && output.contains(">" + size + "<")) {
+                if (output.contains('>' + psName + '<') && output.contains('>' + size + '<')) {
                     rolePairs++;
                 }
             }
@@ -136,8 +136,8 @@ class ViewIOTest extends UnitTest {
             var titleFont = fonts.getFont(FontKey.TITLE);
             // The PSName should appear in the output; the bare family name without the
             // style suffix must NOT stand alone as a token (it would lose face identity).
-            assertThat(output).contains(">" + titleFont.getPSName() + "<");
-            assertThat(output).doesNotContain(">" + titleFont.getFamily() + "<");
+            assertThat(output).contains('>' + titleFont.getPSName() + '<');
+            assertThat(output).doesNotContain('>' + titleFont.getFamily() + '<');
         }
 
         private static String captureWriteView(DocumentFonts fonts) {
@@ -286,7 +286,7 @@ class ViewIOTest extends UnitTest {
                     var tagEnd = trimmed.indexOf('>');
                     if (tagEnd > 0) {
                         var tag = trimmed.substring(1, tagEnd);
-                        var closeTag = "</" + tag + ">";
+                        var closeTag = "</" + tag + '>';
                         var closeIdx = trimmed.indexOf(closeTag);
                         if (closeIdx > tagEnd) {
                             var value = trimmed.substring(tagEnd + 1, closeIdx);

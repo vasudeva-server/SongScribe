@@ -229,7 +229,7 @@ class MusicXmlCreditRoundTripTest extends MusicXmlRoundTripSupport {
 
         var xml = writeToString(song, fonts);
 
-        var titleSizeAttr = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + "\"";
+        var titleSizeAttr = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + '"';
         assertThat(xml)
             .as("the title credit's font-family carries the PostScript name")
             .contains(MusicXmlTags.ATTR_FONT_FAMILY + "=\"" + titleFont.getPSName() + "\" " + titleSizeAttr);
@@ -267,7 +267,7 @@ class MusicXmlCreditRoundTripTest extends MusicXmlRoundTripSupport {
         // The resolved family name is shared across credits, but the title size is
         // unique — target the font-family that immediately precedes the title's
         // font-size so only that credit loses its family.
-        var titleFontSize = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + "\"";
+        var titleFontSize = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + '"';
         var familyBeforeTitleSize = MusicXmlTags.ATTR_FONT_FAMILY + "=\"[^\"]*\" " + titleFontSize;
         var tampered = xml.replaceAll(familyBeforeTitleSize, titleFontSize);
 
@@ -330,8 +330,8 @@ class MusicXmlCreditRoundTripTest extends MusicXmlRoundTripSupport {
 
         // The title size is unique, so rewriting font-size="53" targets only the
         // title credit; the fractional .6 must round up to 54.
-        var titleSize = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + "\"";
-        var titleDecimalSize = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE_DECIMAL + "\"";
+        var titleSize = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + '"';
+        var titleDecimalSize = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE_DECIMAL + '"';
         var tampered = xml.replace(titleSize, titleDecimalSize);
 
         assertThat(xml)
@@ -361,10 +361,10 @@ class MusicXmlCreditRoundTripTest extends MusicXmlRoundTripSupport {
         // credit's weight/style are rewritten to bold/italic.
         var titleNormalRun = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + "\" "
             + MusicXmlTags.ATTR_FONT_WEIGHT + "=\"" + MusicXmlTags.WEIGHT_NORMAL + "\" "
-            + MusicXmlTags.ATTR_FONT_STYLE + "=\"" + MusicXmlTags.STYLE_NORMAL + "\"";
+            + MusicXmlTags.ATTR_FONT_STYLE + "=\"" + MusicXmlTags.STYLE_NORMAL + '"';
         var titleBoldItalicRun = MusicXmlTags.ATTR_FONT_SIZE + "=\"" + TITLE_FONT_SIZE + "\" "
             + MusicXmlTags.ATTR_FONT_WEIGHT + "=\"" + MusicXmlTags.WEIGHT_BOLD + "\" "
-            + MusicXmlTags.ATTR_FONT_STYLE + "=\"" + MusicXmlTags.STYLE_ITALIC + "\"";
+            + MusicXmlTags.ATTR_FONT_STYLE + "=\"" + MusicXmlTags.STYLE_ITALIC + '"';
         var tampered = xml.replace(titleNormalRun, titleBoldItalicRun);
 
         assertThat(xml)

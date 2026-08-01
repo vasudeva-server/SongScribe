@@ -125,7 +125,7 @@ public class UIConverter extends JFrame {
     public boolean isLegalFileName(String fileName) {
         return (
             (fileName.length() >= 10) &&
-            fileName.endsWith("." + FileExtensions.SONGWRITER) &&
+            fileName.endsWith('.' + FileExtensions.SONGWRITER) &&
             Character.isDigit(fileName.charAt(0)) &&
             Character.isDigit(fileName.charAt(1)) &&
             Character.isDigit(fileName.charAt(2)) &&
@@ -731,7 +731,7 @@ public class UIConverter extends JFrame {
                             ),
                         }
                     );
-                } else if (fileName.endsWith("." + FileExtensions.SONGWRITER)) {
+                } else if (fileName.endsWith('.' + FileExtensions.SONGWRITER)) {
                     rejectListModel.addElement(
                         fileName.substring(
                             0,
@@ -791,11 +791,11 @@ public class UIConverter extends JFrame {
             numberStr = String.format("%03d", number);
             var originalSongFile = new File(
                 currentDir,
-                selectedSong + "." + FileExtensions.SONGWRITER
+                selectedSong + '.' + FileExtensions.SONGWRITER
             );
             var renamedSongFile = new File(
                 currentDir,
-                numberStr + ' ' + selectedSong + "." + FileExtensions.SONGWRITER
+                numberStr + ' ' + selectedSong + '.' + FileExtensions.SONGWRITER
             );
 
             if (!isLegalFileName(renamedSongFile.getName())) {

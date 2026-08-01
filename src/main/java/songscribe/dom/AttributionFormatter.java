@@ -217,7 +217,7 @@ public final class AttributionFormatter {
         var groups = new LinkedHashMap<String, CreditGroup>();
 
         for (var credit : credits) {
-            var key = credit.person() + " " + credit.connector();
+            var key = credit.person() + ' ' + credit.connector();
             groups.computeIfAbsent(key, k -> new CreditGroup(credit.person(), credit.connector()))
                   .addRole(credit.role());
         }

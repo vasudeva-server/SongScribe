@@ -652,7 +652,7 @@ final class MusicXmlHeaderReader {
         } catch (IllegalArgumentException e) {
             throw new SAXException(
                 "Corrupt document: malformed <" + MusicXmlTags.MISC_LYRICS_SOURCE +
-                "> value: '" + token + "'", e
+                "> value: '" + token + '\'', e
             );
         }
     }

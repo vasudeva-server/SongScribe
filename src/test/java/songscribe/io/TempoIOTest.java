@@ -113,7 +113,7 @@ class TempoIOTest extends UnitTest {
 
             var output = writeTempo(t);
 
-            assertThat(output).contains("<" + TempoIO.XML_DONT_SHOW_TEMPO + " />");
+            assertThat(output).contains('<' + TempoIO.XML_DONT_SHOW_TEMPO + " />");
         }
     }
 
@@ -223,7 +223,7 @@ class TempoIOTest extends UnitTest {
 
             assertThatThrownBy(() -> reader.endElement11(TempoIO.XML_TEMPO_TYPE))
                 .isInstanceOf(SAXException.class)
-                .hasMessageContaining("Corrupt document: unknown tempo duration: '" + unknownName + "'");
+                .hasMessageContaining("Corrupt document: unknown tempo duration: '" + unknownName + '\'');
         }
 
         // v1.1 files can still carry the underscore-less v1.0 dotted-duration tokens
@@ -326,9 +326,9 @@ class TempoIOTest extends UnitTest {
             var output = writeTempo(t);
 
             assertThat(output)
-                .contains("<" + TempoIO.XML_VISIBLE_TEMPO + ">" + visibleTempo + "</" + TempoIO.XML_VISIBLE_TEMPO + ">")
-                .contains("<" + TempoIO.XML_TEMPO_TYPE + ">CROTCHET</" + TempoIO.XML_TEMPO_TYPE + ">")
-                .contains("<" + TempoIO.XML_TEMPO_DESCRIPTION + ">" + description + "</" + TempoIO.XML_TEMPO_DESCRIPTION + ">");
+                .contains('<' + TempoIO.XML_VISIBLE_TEMPO + '>' + visibleTempo + "</" + TempoIO.XML_VISIBLE_TEMPO + '>')
+                .contains('<' + TempoIO.XML_TEMPO_TYPE + ">CROTCHET</" + TempoIO.XML_TEMPO_TYPE + '>')
+                .contains('<' + TempoIO.XML_TEMPO_DESCRIPTION + '>' + description + "</" + TempoIO.XML_TEMPO_DESCRIPTION + '>');
         }
     }
 

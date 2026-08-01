@@ -39,12 +39,12 @@ class ComponentNamesTest extends UnitTest {
 
     @Test
     void testLineZeroReturnsPrefixPlusZero() {
-        assertThat(ComponentNames.line(0)).isEqualTo(ComponentNames.LINE_PREFIX + "0");
+        assertThat(ComponentNames.line(0)).isEqualTo(ComponentNames.LINE_PREFIX + '0');
     }
 
     @Test
     void testLineThreeReturnsPrefixPlusThree() {
-        assertThat(ComponentNames.line(3)).isEqualTo(ComponentNames.LINE_PREFIX + "3");
+        assertThat(ComponentNames.line(3)).isEqualTo(ComponentNames.LINE_PREFIX + '3');
     }
 
     @Test

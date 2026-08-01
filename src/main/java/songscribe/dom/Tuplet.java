@@ -345,12 +345,12 @@ public class Tuplet extends RangeElement {
 
     @Override
     public String toIndexString() {
-        var base = getAnchorElementIndex() + "," + getEndElementIndex() + "," + grade;
+        var base = getAnchorElementIndex() + "," + getEndElementIndex() + ',' + grade;
 
         if (verticalPositionSs != 0) {
-            return base + "," + verticalPositionSs + ";";
+            return base + ',' + verticalPositionSs + ';';
         }
 
-        return base + ";";
+        return base + ';';
     }
 }

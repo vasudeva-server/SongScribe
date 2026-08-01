@@ -85,7 +85,7 @@ public final class MusicXmlWriter {
 
         // <score-part> and its child are emitted inline on one line.
         XML.printIndent(pw);
-        pw.println("<" + MusicXmlTags.SCORE_PART + " " + MusicXmlTags.ATTR_ID + "=\"" + MusicXmlTags.PART_ID + "\"><part-name></part-name></" + MusicXmlTags.SCORE_PART + ">");
+        pw.println('<' + MusicXmlTags.SCORE_PART + ' ' + MusicXmlTags.ATTR_ID + "=\"" + MusicXmlTags.PART_ID + "\"><part-name></part-name></" + MusicXmlTags.SCORE_PART + '>');
 
         XML.dedent();
         XML.writeEndTag(pw, MusicXmlTags.PART_LIST);

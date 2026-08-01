@@ -120,8 +120,8 @@ public abstract sealed class Hairpin extends RangeElement
     public String toIndexString() {
         var base = getAnchorElementIndex() + "," + getEndElementIndex();
         if (x1ShiftSs != 0 || x2ShiftSs != 0 || yShiftSs != 0) {
-            return base + "," + x1ShiftSs + "," + x2ShiftSs + "," + yShiftSs + ";";
+            return base + ',' + x1ShiftSs + ',' + x2ShiftSs + ',' + yShiftSs + ';';
         }
-        return base + ";";
+        return base + ';';
     }
 }

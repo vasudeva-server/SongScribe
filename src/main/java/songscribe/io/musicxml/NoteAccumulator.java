@@ -551,7 +551,7 @@ final class NoteAccumulator {
         var elementType = NoteTypeMapping.forTypeToken(typeToken, isRest, isGrace);
 
         if (elementType == null) {
-            throw new SAXException("Unrecognised <type> token: '" + typeToken + "'");
+            throw new SAXException("Unrecognised <type> token: '" + typeToken + '\'');
         }
 
         var element = elementType.newInstance();

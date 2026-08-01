@@ -249,8 +249,8 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
 
         // Strip the font-family from the single <word-font> element, leaving the
         // <lyric-font> intact.
-        var wordFontFamily = "<" + MusicXmlTags.WORD_FONT + " " + MusicXmlTags.ATTR_FONT_FAMILY + "=\"[^\"]*\"";
-        var tampered = xml.replaceAll(wordFontFamily, "<" + MusicXmlTags.WORD_FONT);
+        var wordFontFamily = '<' + MusicXmlTags.WORD_FONT + ' ' + MusicXmlTags.ATTR_FONT_FAMILY + "=\"[^\"]*\"";
+        var tampered = xml.replaceAll(wordFontFamily, '<' + MusicXmlTags.WORD_FONT);
 
         assertThat(xml)
             .as("precondition: the <word-font> carried a font-family")
@@ -278,23 +278,23 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
 
         var tampered = xml
             .replace(
-                "<" + MusicXmlTags.PAGE_HEIGHT + ">" + MusicXmlTags.PAGE_HEIGHT_TENTHS
-                    + "</" + MusicXmlTags.PAGE_HEIGHT + ">",
-                "<" + MusicXmlTags.PAGE_HEIGHT + ">" + TAMPERED_PAGE_HEIGHT
-                    + "</" + MusicXmlTags.PAGE_HEIGHT + ">"
+                '<' + MusicXmlTags.PAGE_HEIGHT + '>' + MusicXmlTags.PAGE_HEIGHT_TENTHS
+                    + "</" + MusicXmlTags.PAGE_HEIGHT + '>',
+                '<' + MusicXmlTags.PAGE_HEIGHT + '>' + TAMPERED_PAGE_HEIGHT
+                    + "</" + MusicXmlTags.PAGE_HEIGHT + '>'
             )
             .replace(
-                "<" + MusicXmlTags.TENTHS + ">" + MusicXmlTags.SCALING_TENTHS
-                    + "</" + MusicXmlTags.TENTHS + ">",
-                "<" + MusicXmlTags.TENTHS + ">" + TAMPERED_SCALING_TENTHS
-                    + "</" + MusicXmlTags.TENTHS + ">"
+                '<' + MusicXmlTags.TENTHS + '>' + MusicXmlTags.SCALING_TENTHS
+                    + "</" + MusicXmlTags.TENTHS + '>',
+                '<' + MusicXmlTags.TENTHS + '>' + TAMPERED_SCALING_TENTHS
+                    + "</" + MusicXmlTags.TENTHS + '>'
             );
 
         // The replacements must have matched, or the test would prove nothing.
         assertThat(tampered)
             .as("tamper precondition: page-height / scaling values were rewritten")
             .contains(TAMPERED_PAGE_HEIGHT)
-            .contains("<" + MusicXmlTags.TENTHS + ">" + TAMPERED_SCALING_TENTHS);
+            .contains('<' + MusicXmlTags.TENTHS + '>' + TAMPERED_SCALING_TENTHS);
 
         var reloaded = parse(tampered);
 

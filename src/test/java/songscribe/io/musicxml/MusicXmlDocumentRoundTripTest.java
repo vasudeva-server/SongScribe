@@ -374,16 +374,16 @@ class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
         var song = fullDocumentSong();
         var xml = writeToString(song);
 
-        var creditWordsOpenTag = "<" + MusicXmlTags.CREDIT_WORDS + "[^>]*>";
-        var creditWordsCloseTag = "</" + MusicXmlTags.CREDIT_WORDS + ">";
+        var creditWordsOpenTag = '<' + MusicXmlTags.CREDIT_WORDS + "[^>]*>";
+        var creditWordsCloseTag = "</" + MusicXmlTags.CREDIT_WORDS + '>';
 
         var tampered = xml
             .replaceAll(
-                "(" + creditWordsOpenTag + ")" + Pattern.quote(song.getNumberedTitle()) + "(" + creditWordsCloseTag + ")",
+                '(' + creditWordsOpenTag + ')' + Pattern.quote(song.getNumberedTitle()) + '(' + creditWordsCloseTag + ')',
                 "$1" + TAMPERED_TITLE_TEXT + "$2"
             )
             .replaceAll(
-                "(" + creditWordsOpenTag + ")" + Pattern.quote(COMPOSER) + "(" + creditWordsCloseTag + ")",
+                '(' + creditWordsOpenTag + ')' + Pattern.quote(COMPOSER) + '(' + creditWordsCloseTag + ')',
                 "$1" + TAMPERED_COMPOSER_TEXT + "$2"
             );
 

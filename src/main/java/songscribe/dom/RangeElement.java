@@ -253,7 +253,7 @@ public abstract class RangeElement extends LineElement {
      * Serializes this element's anchor/end indices as {@code "anchorIdx,endIdx;"}.
      */
     public String toIndexString() {
-        return getAnchorElementIndex() + "," + getEndElementIndex() + ";";
+        return getAnchorElementIndex() + "," + getEndElementIndex() + ';';
     }
 
     /**
