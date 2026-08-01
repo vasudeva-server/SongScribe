@@ -115,3 +115,13 @@ var baz = foo.getBaz();
 
 A chain used exactly once needs no local — don't introduce a variable just to
 name an intermediate step.
+
+## Initialize static fields
+
+Explicityly initialize static fields whenever possible, do not rely on the compiler default.
+
+```java
+private static int lastMouseScreenXPx = 0;
+private static @Nullable Consumer<? super String> publicationErrorProbe = null;
+private static boolean overflowWarningShown = false;
+```
