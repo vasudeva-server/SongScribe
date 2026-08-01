@@ -22,6 +22,7 @@ package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeastOnce;
@@ -270,10 +271,9 @@ class LyricEditorTest extends LyricEditorTestSupport {
             // The real alert is modal and steals focus, firing focusLost, which re-enters the commit
             // path while the alert is up. Simulate that re-entry and assert only one alert is shown.
             dialogs.when(() -> OptionDialogs.showErrorMessage(any(), any(), any()))
-                .thenAnswer(invocation -> {
+                .thenAnswer(answerVoid((Object parent, String titleKey, String messageKey) -> {
                     editor.commit();
-                    return null;
-                });
+                }));
 
             editor.commit();
 

@@ -22,6 +22,7 @@ package songscribe.util;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.spy;
@@ -228,11 +229,9 @@ class GraphicUtilsTest extends UnitTest {
             var g2 = spy(image.createGraphics());
             var placed = new Shape[]{null};
 
-            doAnswer(invocation -> {
-                Shape local = invocation.getArgument(0);
+            doAnswer(answerVoid((Shape local) -> {
                 placed[0] = g2.getTransform().createTransformedShape(local);
-                return null;
-            }).when(g2).fill(any(Shape.class));
+            })).when(g2).fill(any(Shape.class));
 
             try {
                 draw.accept(g2);
@@ -302,11 +301,9 @@ class GraphicUtilsTest extends UnitTest {
             var g2 = spy(image.createGraphics());
             var stroked = new Shape[]{null};
 
-            doAnswer(invocation -> {
-                Shape path = invocation.getArgument(0);
+            doAnswer(answerVoid((Shape path) -> {
                 stroked[0] = g2.getStroke().createStrokedShape(path);
-                return null;
-            }).when(g2).draw(any(Shape.class));
+            })).when(g2).draw(any(Shape.class));
 
             try {
                 draw.accept(g2);
@@ -458,10 +455,9 @@ class GraphicUtilsTest extends UnitTest {
             var g2 = spy(image.createGraphics());
             var captured = new Shape[]{null};
 
-            doAnswer(invocation -> {
-                captured[0] = invocation.getArgument(0);
-                return null;
-            }).when(g2).draw(any(Shape.class));
+            doAnswer(answerVoid((Shape shape) -> {
+                captured[0] = shape;
+            })).when(g2).draw(any(Shape.class));
 
             try {
                 draw.accept(g2);
@@ -488,10 +484,9 @@ class GraphicUtilsTest extends UnitTest {
             var g2 = spy(image.createGraphics());
             var drawCount = new int[]{0};
 
-            doAnswer(invocation -> {
+            doAnswer(answerVoid((Shape shape) -> {
                 drawCount[0]++;
-                return null;
-            }).when(g2).draw(any(Shape.class));
+            })).when(g2).draw(any(Shape.class));
 
             try {
                 draw.accept(g2);

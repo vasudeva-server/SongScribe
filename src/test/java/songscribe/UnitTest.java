@@ -58,6 +58,7 @@ import org.xml.sax.SAXException;
 
 import songscribe.error.RuntimeErrorTestHelper;
 
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
@@ -255,9 +256,9 @@ public abstract class UnitTest {
         // An unstubbed mock reports verse 0, which no lyric ever carries, so every lyric on
         // every fixture element would read as absent to layout and to the editor.
         when(songMock.getActiveVerse()).thenReturn(Lyric.FIRST_VERSE);
-        doAnswer(inv -> { ((Runnable) inv.getArgument(0)).run(); return null; })
+        doAnswer(answerVoid((Runnable body) -> body.run()))
             .when(songMock).withModification(any(Runnable.class));
-        doAnswer(inv -> { ((Runnable) inv.getArgument(1)).run(); return null; })
+        doAnswer(answerVoid((String label, Runnable body) -> body.run()))
             .when(songMock).withModification(any(String.class), any(Runnable.class));
         // Reports no tuplets removed: a mock has no tuplets to invalidate, and a test that
         // cares about the removal path builds a real Song.

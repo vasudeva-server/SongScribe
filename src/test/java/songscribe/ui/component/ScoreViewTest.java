@@ -44,6 +44,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.swing.JComponent;
 import javax.swing.KeyStroke;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -892,7 +893,7 @@ class ScoreViewTest extends UnitTest {
             // Use a real fixture file; SongLoader is not mocked here so the full
             // success code path runs with real I/O.
             var file = fixtureFile("full-line");
-            var capturedFile = new AtomicReference<File>();
+            var capturedFile = new AtomicReference<@Nullable File>();
             var scoreView = new ScoreView(capturedFile::set);
             var result = scoreView.openFile(file, true);
 
@@ -924,7 +925,7 @@ class ScoreViewTest extends UnitTest {
             var file = tempDir.resolve("song.musicxml").toFile();
             Files.writeString(file.toPath(), stringWriter.toString());
 
-            var capturedFile = new AtomicReference<File>();
+            var capturedFile = new AtomicReference<@Nullable File>();
             var scoreView = new ScoreView(capturedFile::set);
             var result = scoreView.openFile(file, true);
 
@@ -941,7 +942,7 @@ class ScoreViewTest extends UnitTest {
             // updateCurrentFile=false: the onFileOpened guard must suppress the callback
             // even on a successful load; without the guard the callback would always fire.
             var file = fixtureFile("full-line");
-            var capturedFile = new AtomicReference<File>();
+            var capturedFile = new AtomicReference<@Nullable File>();
             var scoreView = new ScoreView(capturedFile::set);
             var result = scoreView.openFile(file, false);
 

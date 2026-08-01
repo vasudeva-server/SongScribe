@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
@@ -108,18 +109,13 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         var songMock = mock(Song.class);
         when(songMock.isModifying()).thenReturn(true);
         when(songMock.getLineWidthSs()).thenReturn(UNCONSTRAINED_LINE_WIDTH_SS);
-        doAnswer(inv -> {
-            Runnable runnable = inv.getArgument(0);
+        doAnswer(answerVoid((Runnable runnable) -> {
             runnable.run();
-            return null;
-        }).when(songMock).withModification(any());
-        doAnswer(inv -> {
-            Mutation mutation = inv.getArgument(0);
-            Runnable mutator = inv.getArgument(1);
+        })).when(songMock).withModification(any());
+        doAnswer(answerVoid((Mutation mutation, Runnable mutator) -> {
             capturedMutations.add(mutation);
             mutator.run();
-            return null;
-        }).when(songMock).applyChange(any(), any());
+        })).when(songMock).applyChange(any(), any());
         return songMock;
     }
 

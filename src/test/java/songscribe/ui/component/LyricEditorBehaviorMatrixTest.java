@@ -21,6 +21,7 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.atLeastOnce;
@@ -1785,10 +1786,9 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var toolkitMock = mock(Toolkit.class);
             AWTEventListener[] capturedListener = {null};
-            doAnswer(invocation -> {
-                capturedListener[0] = invocation.getArgument(0);
-                return null;
-            }).when(toolkitMock).addAWTEventListener(any(AWTEventListener.class), anyLong());
+            doAnswer(answerVoid((AWTEventListener listener, Long eventMask) -> {
+                capturedListener[0] = listener;
+            })).when(toolkitMock).addAWTEventListener(any(AWTEventListener.class), anyLong());
 
             try (var toolkitStatic = mockStatic(Toolkit.class)) {
                 toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);
@@ -1825,10 +1825,9 @@ class LyricEditorBehaviorMatrixTest extends LyricEditorTestSupport {
 
             var toolkitMock = mock(Toolkit.class);
             AWTEventListener[] capturedListener = {null};
-            doAnswer(invocation -> {
-                capturedListener[0] = invocation.getArgument(0);
-                return null;
-            }).when(toolkitMock).addAWTEventListener(any(AWTEventListener.class), anyLong());
+            doAnswer(answerVoid((AWTEventListener listener, Long eventMask) -> {
+                capturedListener[0] = listener;
+            })).when(toolkitMock).addAWTEventListener(any(AWTEventListener.class), anyLong());
 
             try (var toolkitStatic = mockStatic(Toolkit.class)) {
                 toolkitStatic.when(Toolkit::getDefaultToolkit).thenReturn(toolkitMock);

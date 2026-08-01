@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -34,6 +35,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
+import songscribe.message.mutation.Mutation;
 import songscribe.dom.Beam;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
@@ -79,16 +81,12 @@ class BatchMutationTest extends MainFrameMockTest {
         var songMock = mock(Song.class);
         when(songMock.isModifying()).thenReturn(true);
         when(songMock.getLineWidthSs()).thenReturn(UNCONSTRAINED_LINE_WIDTH_SS);
-        doAnswer(inv -> {
-            Runnable runnable = inv.getArgument(0);
+        doAnswer(answerVoid((Runnable runnable) -> {
             runnable.run();
-            return null;
-        }).when(songMock).withModification(any());
-        doAnswer(inv -> {
-            Runnable mutator = inv.getArgument(1);
+        })).when(songMock).withModification(any());
+        doAnswer(answerVoid((Mutation mutation, Runnable mutator) -> {
             mutator.run();
-            return null;
-        }).when(songMock).applyChange(any(), any());
+        })).when(songMock).applyChange(any(), any());
         return songMock;
     }
 

@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -195,14 +196,18 @@ class DebounceTest extends UnitTest {
     void testActionMayRetriggerFromWithinItself(String name, DebounceFactory factory) throws Exception {
         var runCount = new AtomicInteger();
         var ranTwice = new CountDownLatch(2);
-        var debounceRef = new AtomicReference<Debounce>();
+        var debounceRef = new AtomicReference<@Nullable Debounce>();
         var debounce = create(factory, DELAY_MS, () -> {
             ranTwice.countDown();
 
             // Re-arm from inside the action exactly once. An implementation that tore its timer
             // down *after* running the action would stop the window this just opened.
-            if (runCount.incrementAndGet() == 1) {
-                debounceRef.get().trigger();
+            // Null only until the reference is published below; the latch fails the test
+            // if the re-arm never happens.
+            var pending = debounceRef.get();
+
+            if (runCount.incrementAndGet() == 1 && pending != null) {
+                pending.trigger();
             }
         });
 
@@ -276,7 +281,7 @@ class DebounceTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     private Debounce create(DebounceFactory factory, int delayMs, Runnable action) throws Exception {
-        var holder = new AtomicReference<Debounce>();
+        var holder = new AtomicReference<@Nullable Debounce>();
         EventQueue.invokeAndWait(() -> holder.set(factory.create(delayMs, action)));
 
         var debounce = holder.get();

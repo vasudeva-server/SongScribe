@@ -21,6 +21,7 @@ package songscribe;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 
@@ -861,16 +862,15 @@ class SongScribeTest extends UnitTest {
 
             // Capture the Runnable passed to invokeLater to verify it is called
             // for a non-ExitInProgressError throwable on a non-EDT thread.
-            var capturedRunnable = new AtomicReference<Runnable>();
+            var capturedRunnable = new AtomicReference<@Nullable Runnable>();
 
             try (var swingMock = mockStatic(SwingUtilities.class)) {
                 // Simulate being called from a background thread (not the EDT).
                 swingMock.when(SwingUtilities::isEventDispatchThread).thenReturn(false);
                 swingMock.when(() -> SwingUtilities.invokeLater(any(Runnable.class)))
-                    .thenAnswer(invocation -> {
-                        capturedRunnable.set(invocation.getArgument(0));
-                        return null;
-                    });
+                    .thenAnswer(answerVoid((Runnable runnable) -> {
+                        capturedRunnable.set(runnable);
+                    }));
 
                 handler.uncaughtException(Thread.currentThread(), new RuntimeException("background error"));
             }

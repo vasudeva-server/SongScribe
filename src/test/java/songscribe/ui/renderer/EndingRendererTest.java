@@ -22,6 +22,7 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
@@ -148,11 +149,9 @@ class EndingRendererTest extends UnitTest {
         // drawPath passes a Path2D directly to draw() without touching the graphics transform,
         // so capture the path as-is.
         var placedShapes = new ArrayList<Shape>();
-        doAnswer(invocation -> {
-            Shape local = invocation.getArgument(0);
+        doAnswer(answerVoid((Shape local) -> {
             placedShapes.add(local);
-            return null;
-        }).when(g2).draw(any(Shape.class));
+        })).when(g2).draw(any(Shape.class));
 
         RENDERER.renderEndings(g2, line, 0, invariants);
 

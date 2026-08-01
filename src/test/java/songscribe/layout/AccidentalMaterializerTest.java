@@ -21,6 +21,7 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
@@ -95,10 +96,9 @@ class AccidentalMaterializerTest extends UnitTest {
         var song = line.getSong();
         when(song.isMutationTrackingSuspended()).thenReturn(false);
         when(song.isModifying()).thenReturn(true);
-        doAnswer(invocation -> {
-            ((Runnable) invocation.getArgument(1)).run();
-            return null;
-        }).when(song).applyChange(any(Mutation.class), any(Runnable.class));
+        doAnswer(answerVoid((Mutation mutation, Runnable mutator) -> {
+            mutator.run();
+        })).when(song).applyChange(any(Mutation.class), any(Runnable.class));
         return song;
     }
 

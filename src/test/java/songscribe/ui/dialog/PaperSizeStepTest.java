@@ -34,6 +34,7 @@ import songscribe.util.GraphicUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.offset;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 
@@ -56,7 +57,8 @@ class PaperSizeStepTest extends UnitTest {
         // Default: non-metric (imperial)
         prefsMock.when(() -> Prefs.getBoolean(PrefsKey.METRIC)).thenReturn(false);
         // Suppress writes to the real prefs system
-        prefsMock.when(() -> Prefs.put(any(PrefsKey.class), any(boolean.class))).then(inv -> null);
+        prefsMock.when(() -> Prefs.put(any(PrefsKey.class), any(boolean.class)))
+            .then(answerVoid((PrefsKey key, Boolean value) -> { }));
 
         pageLayoutData = new PageLayoutData();
         step = new PaperSizeStep(pageLayoutData);

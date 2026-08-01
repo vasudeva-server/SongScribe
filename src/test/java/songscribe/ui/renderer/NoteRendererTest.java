@@ -22,9 +22,11 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -69,11 +71,10 @@ class NoteRendererTest extends UnitTest {
         var g2 = mock(Graphics2D.class);
         when(g2.getTransform()).thenReturn(new AffineTransform());
         var filledShapes = new ArrayList<Shape>();
-        doAnswer(invocation -> {
-            filledShapes.add(invocation.getArgument(0));
-            return null;
-        }).when(g2).fill(any(Shape.class));
-        doAnswer(invocation -> null).when(g2).translate(anyDouble(), anyDouble());
+        doAnswer(answerVoid((Shape shape) -> {
+            filledShapes.add(shape);
+        })).when(g2).fill(any(Shape.class));
+        doNothing().when(g2).translate(anyDouble(), anyDouble());
 
         return new RecordingG2(g2, filledShapes);
     }

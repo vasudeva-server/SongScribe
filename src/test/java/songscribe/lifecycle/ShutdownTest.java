@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -319,7 +320,7 @@ class ShutdownTest {
     // 19. now() called from a non-EDT thread throws IllegalStateException.
     @Test
     void nowThrowsWhenCalledOffEdt() throws InterruptedException {
-        var caught = new AtomicReference<Throwable>();
+        var caught = new AtomicReference<@Nullable Throwable>();
         var done = new CountDownLatch(1);
 
         var thread = new Thread(() -> {

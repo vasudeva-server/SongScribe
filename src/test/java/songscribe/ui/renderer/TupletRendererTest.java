@@ -22,6 +22,7 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.doAnswer;
@@ -81,23 +82,18 @@ class TupletRendererTest extends UnitTest {
         var placedShapes = new ArrayList<Shape>();
 
         when(g2.getTransform()).thenAnswer(invocation -> new AffineTransform(transform));
-        doAnswer(invocation -> {
-            transform.translate(invocation.getArgument(0), invocation.getArgument(1));
-            return null;
-        }).when(g2).translate(anyDouble(), anyDouble());
-        doAnswer(invocation -> {
-            transform.rotate(invocation.getArgument(0));
-            return null;
-        }).when(g2).rotate(anyDouble());
-        doAnswer(invocation -> {
-            transform.setTransform(invocation.getArgument(0));
-            return null;
-        }).when(g2).setTransform(any(AffineTransform.class));
-        doAnswer(invocation -> {
-            Shape local = invocation.getArgument(0);
+        doAnswer(answerVoid((Double tx, Double ty) -> {
+            transform.translate(tx, ty);
+        })).when(g2).translate(anyDouble(), anyDouble());
+        doAnswer(answerVoid((Double theta) -> {
+            transform.rotate(theta);
+        })).when(g2).rotate(anyDouble());
+        doAnswer(answerVoid((AffineTransform newTransform) -> {
+            transform.setTransform(newTransform);
+        })).when(g2).setTransform(any(AffineTransform.class));
+        doAnswer(answerVoid((Shape local) -> {
             placedShapes.add(transform.createTransformedShape(local));
-            return null;
-        }).when(g2).draw(any(Shape.class));
+        })).when(g2).draw(any(Shape.class));
 
         return new RecordingG2(g2, placedShapes);
     }

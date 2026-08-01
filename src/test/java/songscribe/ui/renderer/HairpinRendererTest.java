@@ -21,6 +21,7 @@
 package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -363,10 +364,9 @@ class HairpinRendererTest extends UnitTest {
 
         var g2 = spy(RenderContextTestHelper.realG2());
         var drawColors = new ArrayList<Color>();
-        doAnswer(invocation -> {
+        doAnswer(answerVoid((Shape shape) -> {
             drawColors.add(g2.getColor());
-            return null;
-        }).when(g2).draw(any(Shape.class));
+        })).when(g2).draw(any(Shape.class));
 
         HairpinRenderer.getInstance().renderHairpinsFromLine(g2, builder.build());
 

@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -211,7 +212,7 @@ class ComponentHierarchyNavigatorTest extends UnitTest {
         when(provider.getMainPanel()).thenReturn(null);
 
         var navigator = new ComponentHierarchyNavigator(provider);
-        var captured = new AtomicReference<int[]>();
+        var captured = new AtomicReference<int @Nullable []>();
         navigator.updateLayoutFromComponents(captured::set);
 
         // layoutUpdater must not have been called when mainPanel is null
@@ -232,7 +233,7 @@ class ComponentHierarchyNavigatorTest extends UnitTest {
         when(provider.getMainPanel()).thenReturn(mainPanel);
 
         var navigator = new ComponentHierarchyNavigator(provider);
-        var captured = new AtomicReference<int[]>();
+        var captured = new AtomicReference<int @Nullable []>();
         navigator.updateLayoutFromComponents(captured::set);
 
         // layoutUpdater must not have been called when there are no line panels
@@ -264,7 +265,7 @@ class ComponentHierarchyNavigatorTest extends UnitTest {
         when(provider.getMainPanel()).thenReturn(mainPanel);
 
         var navigator = new ComponentHierarchyNavigator(provider);
-        var captured = new AtomicReference<int[]>();
+        var captured = new AtomicReference<int @Nullable []>();
         navigator.updateLayoutFromComponents(captured::set);
 
         // With one line there is no adjacent pair, so no inter-line gap enters the row
@@ -306,7 +307,7 @@ class ComponentHierarchyNavigatorTest extends UnitTest {
         when(provider.getMainPanel()).thenReturn(mainPanel);
 
         var navigator = new ComponentHierarchyNavigator(provider);
-        var captured = new AtomicReference<int[]>();
+        var captured = new AtomicReference<int @Nullable []>();
         navigator.updateLayoutFromComponents(captured::set);
 
         var result = captured.get();

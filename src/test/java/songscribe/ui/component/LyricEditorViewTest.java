@@ -27,7 +27,6 @@ import java.awt.Shape;
 
 import javax.swing.plaf.basic.BasicTextUI;
 
-import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -51,7 +50,7 @@ class LyricEditorViewTest extends LyricEditorTestSupport {
         @Test
         void testNullAdjustedReturnsNull() {
             var input = new Rectangle(5, 10, 100, 20);
-            @Nullable Shape result = LyricEditor.keepAllocationAtContentOrigin(input, null);
+            var result = LyricEditor.keepAllocationAtContentOrigin(input, null);
             assertThat(result).isNull();
         }
 

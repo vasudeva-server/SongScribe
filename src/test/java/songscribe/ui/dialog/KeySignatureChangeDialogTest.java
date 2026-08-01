@@ -36,6 +36,7 @@ import songscribe.prefs.Prefs;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
@@ -169,7 +170,7 @@ class KeySignatureChangeDialogTest extends MainFrameMockTest {
         when(song.getLine(SELECTED_LINE_INDEX)).thenReturn(line);
         when(song.indexOfLine(line)).thenReturn(INDEX_OF_LINE);
         when(song.isMutationTrackingSuspended()).thenReturn(true);
-        doAnswer(inv -> { ((Runnable) inv.getArgument(0)).run(); return null; })
+        doAnswer(answerVoid((Runnable body) -> body.run()))
             .when(song).withModification(any(Runnable.class));
 
         var score = mockEnv().score();

@@ -22,6 +22,7 @@ package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -40,6 +41,7 @@ import java.awt.print.PageFormat;
 import java.awt.print.Printable;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -60,6 +62,7 @@ import javax.swing.JRootPane;
 import songscribe.Strings;
 import songscribe.UnitTest;
 import songscribe.dom.Song;
+import songscribe.font.DocumentFontsHolder;
 import songscribe.io.SongFileWriter;
 import songscribe.io.musicxml.MusicXmlWriter;
 import songscribe.message.MessageCenter;
@@ -336,7 +339,7 @@ class MainFrameTest extends UnitTest {
                 // MusicXmlWriter.writeSong is a no-op stub — we only care about side-effects.
                 musicXmlWriterMock.when(
                     () -> MusicXmlWriter.writeSong(any(Song.class), any(), any())
-                ).then(inv -> null);
+                ).then(answerVoid((Song song, DocumentFontsHolder fonts, PrintWriter pw) -> { }));
 
                 var result = frame.saveCurrentFile();
 
@@ -1523,10 +1526,9 @@ class MainFrameTest extends UnitTest {
                     () -> OptionDialogs.showWarningMessage(
                         any(), anyString(), anyString()
                     )
-                ).thenAnswer(invocation -> {
-                    capturedTitles.add(invocation.getArgument(1));
-                    return null;
-                });
+                ).thenAnswer(answerVoid((Object parent, String titleKey, String messageKey) -> {
+                    capturedTitles.add(titleKey);
+                }));
 
                 // Must not throw — returns normally when no fatal error is present
                 MainFrame.drainStartupErrors();

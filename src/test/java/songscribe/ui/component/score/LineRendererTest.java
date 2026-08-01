@@ -38,6 +38,7 @@ import java.awt.image.BufferedImage;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.assertj.core.data.Offset;
+import org.jspecify.annotations.Nullable;
 import org.mockito.MockedStatic;
 
 import org.junit.jupiter.api.AfterEach;
@@ -260,13 +261,16 @@ class LineRendererTest extends UnitTest {
         @Test
         void testShiftAppliedWhenSpanStartAtOrAfterFromIndex() {
             var frame = ElementFrame.lineLevelWithPreviewShift(FROM_INDEX, SHIFT_SS);
-            var capturedTransform = new AtomicReference<AffineTransform>();
+            var capturedTransform = new AtomicReference<@Nullable AffineTransform>();
 
             // Boundary: spanStart exactly equals fromIndex
             LineRenderer.renderWithPreviewShiftIfNeeded(
                 g2, frame, FROM_INDEX, () -> capturedTransform.set(g2.getTransform())
             );
-            assertThat(capturedTransform.get().getTranslateX())
+            var atBoundary = capturedTransform.get();
+
+            assertThat(atBoundary).as("the render lambda must have run").isNotNull();
+            assertThat(atBoundary.getTranslateX())
                 .as("render lambda sees x-translation of previewShiftSs when spanStart == fromIndex")
                 .isEqualTo(identityTransform.getTranslateX() + SHIFT_SS, TOLERANCE);
 
@@ -274,7 +278,11 @@ class LineRendererTest extends UnitTest {
             LineRenderer.renderWithPreviewShiftIfNeeded(
                 g2, frame, FROM_INDEX + 1, () -> capturedTransform.set(g2.getTransform())
             );
-            assertThat(capturedTransform.get().getTranslateX())
+
+            var pastBoundary = capturedTransform.get();
+
+            assertThat(pastBoundary).as("the render lambda must have run").isNotNull();
+            assertThat(pastBoundary.getTranslateX())
                 .as("render lambda sees x-translation of previewShiftSs when spanStart > fromIndex")
                 .isEqualTo(identityTransform.getTranslateX() + SHIFT_SS, TOLERANCE);
         }
@@ -286,14 +294,17 @@ class LineRendererTest extends UnitTest {
         @Test
         void testShiftNotAppliedWhenSpanStartBeforeFromIndex() {
             var frame = ElementFrame.lineLevelWithPreviewShift(FROM_INDEX, SHIFT_SS);
-            var capturedTransform = new AtomicReference<AffineTransform>();
+            var capturedTransform = new AtomicReference<@Nullable AffineTransform>();
 
             // spanStart is one less than fromIndex → below the boundary
             LineRenderer.renderWithPreviewShiftIfNeeded(
                 g2, frame, FROM_INDEX - 1, () -> capturedTransform.set(g2.getTransform())
             );
 
-            assertThat(capturedTransform.get().getTranslateX())
+            var captured = capturedTransform.get();
+
+            assertThat(captured).as("the render lambda must have run").isNotNull();
+            assertThat(captured.getTranslateX())
                 .as("render lambda sees unchanged x-translation when spanStart < fromIndex")
                 .isEqualTo(identityTransform.getTranslateX(), TOLERANCE);
         }
@@ -304,14 +315,17 @@ class LineRendererTest extends UnitTest {
          */
         @Test
         void testShiftNotAppliedWhenFrameHasNoPreviewShift() {
-            var capturedTransform = new AtomicReference<AffineTransform>();
+            var capturedTransform = new AtomicReference<@Nullable AffineTransform>();
 
             // LINE_LEVEL has no preview shift
             LineRenderer.renderWithPreviewShiftIfNeeded(
                 g2, ElementFrame.LINE_LEVEL, 0, () -> capturedTransform.set(g2.getTransform())
             );
 
-            assertThat(capturedTransform.get().getTranslateX())
+            var captured = capturedTransform.get();
+
+            assertThat(captured).as("the render lambda must have run").isNotNull();
+            assertThat(captured.getTranslateX())
                 .as("render lambda sees unchanged transform when frame has no preview shift")
                 .isEqualTo(identityTransform.getTranslateX(), TOLERANCE);
         }

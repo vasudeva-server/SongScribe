@@ -56,6 +56,7 @@ import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.selection.SelectionCoordinator;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -1085,7 +1086,7 @@ class GraceModeManagerTest extends UnitTest {
 
             // detachedLine's song mock leaves withoutMutationTracking a no-op by default;
             // stub it to run its body so abort()'s untracked removal actually executes.
-            doAnswer(inv -> { ((Runnable) inv.getArgument(0)).run(); return null; })
+            doAnswer(answerVoid((Runnable body) -> body.run()))
                 .when(line.getSong()).withoutMutationTracking(any(Runnable.class));
 
             manager.setState(GraceModeManager.State.GRACE_NOTE);
@@ -1652,8 +1653,8 @@ class GraceModeManagerTest extends UnitTest {
             var decorationsWereSet = new boolean[1];
             var durationWasPosted = new boolean[1];
 
-            messageCenterMock.when(() -> MessageCenter.post(any())).thenAnswer(invocation -> {
-                if (invocation.getArgument(0) instanceof DurationWasSelectedNotification) {
+            messageCenterMock.when(() -> MessageCenter.post(any())).thenAnswer(answerVoid((Message message) -> {
+                if (message instanceof DurationWasSelectedNotification) {
                     durationWasPosted[0] = true;
                     decorationsWereSet[0] =
                         Actions.DOT_ACTION_GROUP.getSelected() != null
@@ -1662,9 +1663,7 @@ class GraceModeManagerTest extends UnitTest {
                             || Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected()
                             || Actions.ACCENT_ACTION.isSelected();
                 }
-
-                return null;
-            });
+            }));
 
             try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
                 calcMock.when(
@@ -1949,11 +1948,10 @@ class GraceModeManagerTest extends UnitTest {
             var clicked = new boolean[1];
             var deferredDuringClick = new boolean[1];
             previewMock.when(() -> PreviewElementManager.handleClick(any(LineComponent.class)))
-                .thenAnswer(invocation -> {
+                .thenAnswer(answerVoid((LineComponent lc) -> {
                     clicked[0] = true;
                     deferredDuringClick[0] = GraceModeManager.deferInsertionRepairs();
-                    return null;
-                });
+                }));
 
             try (var calcMock = mockStatic(InsertionSpacingCalculator.class)) {
                 calcMock.when(
@@ -2027,10 +2025,9 @@ class GraceModeManagerTest extends UnitTest {
             // The host goes in through the real insert path, which this fixture mocks out.
             // Stand in for it so the indices move exactly as they do in production.
             previewMock.when(() -> PreviewElementManager.handleClick(lineComponent, true))
-                .thenAnswer(invocation -> {
+                .thenAnswer(answerVoid((LineComponent lc, Boolean forceInsert) -> {
                     line.addElement(NEW_HOST_INDEX, hostPreview);
-                    return null;
-                });
+                }));
 
             var e = mouseEvent(
                 lineComponent, MouseEvent.MOUSE_CLICKED, RELEASE_X, MOUSE_DOWN_Y, MouseEvent.BUTTON1);
@@ -2122,10 +2119,8 @@ class GraceModeManagerTest extends UnitTest {
          */
         private Song suspendableSongMock() {
             var song = minimalSongMock();
-            doAnswer(invocation -> {
-                ((Runnable) invocation.getArgument(0)).run();
-                return null;
-            }).when(song).withoutMutationTracking(any(Runnable.class));
+            doAnswer(answerVoid((Runnable body) -> body.run()))
+                .when(song).withoutMutationTracking(any(Runnable.class));
             return song;
         }
 
