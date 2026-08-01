@@ -45,8 +45,8 @@ class PackageDependencyTest extends UnitTest {
         try (var walk = Files.walk(dir)) {
             walk.filter(p -> p.toString().endsWith(".java"))
                 .forEach(file -> {
-                    try {
-                        Files.lines(file)
+                    try (var lines = Files.lines(file)) {
+                        lines
                             .filter(line -> line.startsWith("import " + forbiddenPrefix))
                             .map(line -> file + ": " + line.strip())
                             .forEach(violations::add);
