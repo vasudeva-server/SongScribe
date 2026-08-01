@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Point;
+import java.awt.event.InputEvent;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
@@ -1149,7 +1150,7 @@ class LineComponentTest extends UnitTest {
             // Shift+click extends a selection. This method runs before the selection handler
             // sees the click, so without the guard it would discard the selection being built.
             clickWith(
-                clickEvent(DOUBLE_CLICK, MouseEvent.SHIFT_DOWN_MASK),
+                clickEvent(DOUBLE_CLICK, InputEvent.SHIFT_DOWN_MASK),
                 MockedStatic::verifyNoInteractions);
         }
 

@@ -38,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import songscribe.UnitTest;
 import songscribe.ui.OptionDialogs;
 
+@SuppressWarnings("ThrowableNotThrown")
 class RuntimeErrorTest extends UnitTest {
 
     private ListAppender<ILoggingEvent> appender;

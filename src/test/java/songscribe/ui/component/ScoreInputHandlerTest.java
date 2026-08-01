@@ -41,8 +41,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.util.List;
 
-import javax.swing.JPanel;
-import javax.swing.KeyStroke;
+import javax.swing.*;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -1053,7 +1052,7 @@ class ScoreInputHandlerTest extends UnitTest {
             final var expectedBindingCount = 10;
             assertThat(bindings).hasSize(expectedBindingCount);
 
-            var inputMap = component.getInputMap(JPanel.WHEN_FOCUSED);
+            var inputMap = component.getInputMap(JComponent.WHEN_FOCUSED);
             var actionMap = component.getActionMap();
 
             for (var entry : bindings.entrySet()) {
@@ -1190,7 +1189,7 @@ class ScoreInputHandlerTest extends UnitTest {
             handler.installKeyBindings(component);
 
             var action = component.getActionMap().get(
-                component.getInputMap(JPanel.WHEN_FOCUSED).get(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0)));
+                component.getInputMap(JComponent.WHEN_FOCUSED).get(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0)));
 
             if (!action.isEnabled()) {
                 return false;
@@ -1235,7 +1234,7 @@ class ScoreInputHandlerTest extends UnitTest {
         handler.installKeyBindings(component);
 
         var action = component.getActionMap().get(
-            component.getInputMap(JPanel.WHEN_FOCUSED).get(KeyStroke.getKeyStroke(keyCode, 0)));
+            component.getInputMap(JComponent.WHEN_FOCUSED).get(KeyStroke.getKeyStroke(keyCode, 0)));
         action.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
     }
 
@@ -1249,7 +1248,7 @@ class ScoreInputHandlerTest extends UnitTest {
         handler.installKeyBindings(component);
 
         var action = component.getActionMap().get(
-            component.getInputMap(JPanel.WHEN_FOCUSED).get(
+            component.getInputMap(JComponent.WHEN_FOCUSED).get(
                 KeyStroke.getKeyStroke(keyCode, InputEvent.SHIFT_DOWN_MASK)));
         action.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
     }

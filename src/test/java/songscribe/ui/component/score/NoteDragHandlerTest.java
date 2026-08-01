@@ -588,7 +588,7 @@ class NoteDragHandlerTest extends UnitTest {
         private MouseEvent shiftPressEvent() {
             return new MouseEvent(
                 lc, MouseEvent.MOUSE_PRESSED, 0L,
-                MouseEvent.SHIFT_DOWN_MASK,
+                InputEvent.SHIFT_DOWN_MASK,
                 MOUSE_X, PRESS_SCREEN_Y, MOUSE_X, PRESS_SCREEN_Y, 1, false, MouseEvent.BUTTON1
             );
         }

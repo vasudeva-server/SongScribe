@@ -29,6 +29,7 @@ import static org.mockito.Mockito.verify;
 
 import java.awt.Component;
 import java.awt.event.FocusEvent;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 
 import javax.swing.JTextArea;
@@ -85,7 +86,7 @@ class TextFocusDelegateTest extends UnitTest {
      * The event is a KEY_PRESSED so {@code getKeyCode()} returns VK_TAB.
      */
     private static KeyEvent tabKeyEvent(Component source, boolean shiftDown) {
-        var modifiers = shiftDown ? KeyEvent.SHIFT_DOWN_MASK : 0;
+        var modifiers = shiftDown ? InputEvent.SHIFT_DOWN_MASK : 0;
         return new KeyEvent(source, KeyEvent.KEY_PRESSED, 0L, modifiers, KeyEvent.VK_TAB, KeyEvent.CHAR_UNDEFINED);
     }
 

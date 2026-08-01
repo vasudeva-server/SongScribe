@@ -23,6 +23,7 @@ package songscribe.ui.renderer;
 import module java.desktop;
 
 import java.text.AttributedCharacterIterator;
+import java.text.CharacterIterator;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -292,7 +293,7 @@ public final class RecordingGraphics2D extends Graphics2D {
     private static String iteratorText(AttributedCharacterIterator iterator) {
         var text = new StringBuilder();
 
-        for (var c = iterator.first(); c != AttributedCharacterIterator.DONE; c = iterator.next()) {
+        for (var c = iterator.first(); c != CharacterIterator.DONE; c = iterator.next()) {
             text.append(c);
         }
 
