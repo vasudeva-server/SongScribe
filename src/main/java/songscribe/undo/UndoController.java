@@ -68,7 +68,6 @@ import songscribe.message.notification.DocumentWasSavedNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.UndoStateDidChangeNotification;
 import songscribe.ui.component.MainFrame;
-import songscribe.undo.MutationReplayer;
 
 /**
  * Application-level undo/redo engine. Each {@link SongDidChangeNotification} (one
@@ -154,7 +153,7 @@ public final class UndoController {
 
     // A field (not a constant) so a future preference can adjust it at runtime.
     @SuppressWarnings({ "FieldCanBeLocal", "FieldMayBeFinal" })
-    private final int undoStackMaxDepth = DEFAULT_UNDO_STACK_MAX_DEPTH;
+    private static final int undoStackMaxDepth = DEFAULT_UNDO_STACK_MAX_DEPTH;
 
     // Reference to the undo step on top of undoStack at last save (or BASELINE when
     // the stack was empty then). Compared with == everywhere. cleanValid goes false
@@ -365,7 +364,7 @@ public final class UndoController {
      * that was on top at the last save (or both are the empty BASELINE).
      */
     private void recomputeModified(Song song) {
-        var atCleanPosition = undoStack.isEmpty() ? cleanStep == BASELINE : undoStack.peek() == cleanStep;
+        var atCleanPosition = cleanStep == (undoStack.isEmpty() ? BASELINE : undoStack.peek());
         song.setModified(!cleanValid || !atCleanPosition);
     }
 
@@ -468,27 +467,19 @@ public final class UndoController {
     private static String opNameKey(Mutation dominant) {
         return switch (dominant) {
             case ElementInsertion _ -> Strings.ACTION_EDIT_OP_ADD_NOTE;
-            case ElementDeletion _ -> Strings.ACTION_EDIT_OP_DELETE_NOTE;
-            case ElementRangeDeletion _ -> Strings.ACTION_EDIT_OP_DELETE_NOTE;
+            case ElementDeletion _, ElementRangeDeletion _ -> Strings.ACTION_EDIT_OP_DELETE_NOTE;
             case ElementReplacement _ -> Strings.ACTION_EDIT_OP_REPLACE_NOTE;
             case ElementModification _ -> Strings.ACTION_EDIT_OP_EDIT_NOTE;
             case LineInsertion _ -> Strings.ACTION_EDIT_OP_ADD_LINE;
             case LineDeletion _ -> Strings.ACTION_EDIT_OP_DELETE_LINE;
             case LineKeyChange _ -> Strings.ACTION_EDIT_OP_CHANGE_KEY;
-            case LineLayoutChange _ -> Strings.ACTION_EDIT_OP_CHANGE_LAYOUT;
-            case LayoutChange _ -> Strings.ACTION_EDIT_OP_CHANGE_LAYOUT;
-            case BeamingAddition _ -> Strings.ACTION_EDIT_OP_BEAMING;
-            case BeamingRemoval _ -> Strings.ACTION_EDIT_OP_BEAMING;
-            case TieAddition _ -> Strings.ACTION_EDIT_OP_TIE;
-            case TieRemoval _ -> Strings.ACTION_EDIT_OP_TIE;
-            case TupletAddition _ -> Strings.ACTION_EDIT_OP_TUPLET;
-            case TupletRemoval _ -> Strings.ACTION_EDIT_OP_TUPLET;
-            case CrescendoAddition _ -> Strings.ACTION_EDIT_OP_CRESCENDO;
-            case CrescendoRemoval _ -> Strings.ACTION_EDIT_OP_CRESCENDO;
-            case DiminuendoAddition _ -> Strings.ACTION_EDIT_OP_DIMINUENDO;
-            case DiminuendoRemoval _ -> Strings.ACTION_EDIT_OP_DIMINUENDO;
-            case RangeElementAddition _ -> Strings.ACTION_EDIT_OP_RANGE_ELEMENT;
-            case RangeElementRemoval _ -> Strings.ACTION_EDIT_OP_RANGE_ELEMENT;
+            case LineLayoutChange _, LayoutChange _ -> Strings.ACTION_EDIT_OP_CHANGE_LAYOUT;
+            case BeamingAddition _, BeamingRemoval _ -> Strings.ACTION_EDIT_OP_BEAMING;
+            case TieAddition _, TieRemoval _ -> Strings.ACTION_EDIT_OP_TIE;
+            case TupletAddition _, TupletRemoval _ -> Strings.ACTION_EDIT_OP_TUPLET;
+            case CrescendoAddition _, CrescendoRemoval _ -> Strings.ACTION_EDIT_OP_CRESCENDO;
+            case DiminuendoAddition _, DiminuendoRemoval _ -> Strings.ACTION_EDIT_OP_DIMINUENDO;
+            case RangeElementAddition _, RangeElementRemoval _ -> Strings.ACTION_EDIT_OP_RANGE_ELEMENT;
             case MetadataChange metadataChange -> metadataOpNameKey(metadataChange.field());
             case FontChange _ -> Strings.ACTION_EDIT_OP_CHANGE_FONTS;
             case LyricsChange _ -> Strings.ACTION_EDIT_OP_EDIT_LYRICS;
@@ -500,8 +491,7 @@ public final class UndoController {
             case ATTRIBUTION -> Strings.ACTION_EDIT_OP_CHANGE_ATTRIBUTION;
             case TEMPO -> Strings.ACTION_EDIT_OP_CHANGE_TEMPO;
             case FOOTNOTES -> Strings.ACTION_EDIT_OP_CHANGE_FOOTNOTES;
-            case DEFAULT_KEY_ACCIDENTAL_COUNT -> Strings.ACTION_EDIT_OP_CHANGE_KEY;
-            case DEFAULT_KEY_TYPE -> Strings.ACTION_EDIT_OP_CHANGE_KEY;
+            case DEFAULT_KEY_ACCIDENTAL_COUNT, DEFAULT_KEY_TYPE -> Strings.ACTION_EDIT_OP_CHANGE_KEY;
         };
     }
 }
