@@ -436,12 +436,12 @@ class TrillActionTest extends UnitTest {
     @Nested
     class UncheckAction {
 
-        private final int trill1AnchorIndex = 3;
-        private final int trill1EndIndex = 5;
-        private final int trill2AnchorIndex = 7;
-        private final int trill2EndIndex = 9;
-        private final int selectionBeginIndex = 4;
-        private final int selectionEndIndex = 8;
+        private static final int trill1AnchorIndex = 3;
+        private static final int trill1EndIndex = 5;
+        private static final int trill2AnchorIndex = 7;
+        private static final int trill2EndIndex = 9;
+        private static final int selectionBeginIndex = 4;
+        private static final int selectionEndIndex = 8;
 
         @Test
         void testUncheckingRemovesAllOverlappingTrills() {

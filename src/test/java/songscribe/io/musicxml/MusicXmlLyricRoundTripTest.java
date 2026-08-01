@@ -31,6 +31,8 @@ import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 
+import java.util.Collections;
+
 /**
  * Round-trip coverage for per-note {@code <lyric>} emission and parsing (Phase 6).
  * Each case builds a lyric-bearing song, {@link #roundTrip}s it through the writer
@@ -83,11 +85,7 @@ class MusicXmlLyricRoundTripTest extends MusicXmlRoundTripSupport {
     private static StaffElement addNote(Line line, Lyric... lyrics) {
         var note = ElementType.CROTCHET.newInstance();
         line.addElement(note);
-
-        for (var lyric : lyrics) {
-            note.lyrics.add(lyric);
-        }
-
+        Collections.addAll(note.lyrics, lyrics);
         return note;
     }
 

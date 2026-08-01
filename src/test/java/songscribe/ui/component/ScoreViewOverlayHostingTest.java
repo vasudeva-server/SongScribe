@@ -86,7 +86,7 @@ class ScoreViewOverlayHostingTest extends UnitTest {
             var y = 0;
 
             for (var child : parent.getComponents()) {
-                var heightPx = heightsPx.getOrDefault(child, 0);
+                int heightPx = heightsPx.getOrDefault(child, 0);
                 child.setBounds(0, y, parent.getWidth(), heightPx);
                 y += heightPx;
             }

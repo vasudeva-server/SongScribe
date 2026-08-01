@@ -2236,7 +2236,7 @@ public class Line {
 
         for (var element : elements) {
             if (!doomed.contains(element)) {
-                survivorIndices.putIfAbsent(element, survivors.size());
+                survivorIndices.computeIfAbsent(element, k -> survivors.size());
                 survivors.add(element);
             }
         }
