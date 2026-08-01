@@ -297,7 +297,7 @@ public class MainFrame extends JFrame implements Printable {
 
     /** Starts the {@code "startup-gate"} daemon thread, which calls {@link #runStartupGate()}. */
     private static void startStartupGate() {
-        var thread = new Thread(() -> runStartupGate(), "startup-gate");
+        var thread = new Thread(MainFrame::runStartupGate, "startup-gate");
         thread.setDaemon(true);
         thread.start();
     }

@@ -1630,10 +1630,8 @@ public final class ScoreView
      * and stay hidden until the pointer moved.
      */
     private void retargetOverlays() {
-        forEachLineOverlay(overlay -> {
-            // retarget() ends in inkDidChange(), which recomputes the bounds itself.
-            overlay.retarget();
-        });
+        // retarget() ends in inkDidChange(), which recomputes the bounds itself.
+        forEachLineOverlay(LineOverlayComponent::retarget);
     }
 
     /**

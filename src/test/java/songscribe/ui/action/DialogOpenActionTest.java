@@ -45,7 +45,7 @@ class DialogOpenActionTest extends MainFrameMockTest {
 
     @Test
     void testConstructorDerivesActionCommandFromName() {
-        var action = new DialogOpenAction<>(mainFrame(), "Song Settings", frame -> new StubDialog(frame));
+        var action = new DialogOpenAction<>(mainFrame(), "Song Settings", StubDialog::new);
         assertThat(action.getActionCommand()).isEqualTo("song-settings");
     }
 

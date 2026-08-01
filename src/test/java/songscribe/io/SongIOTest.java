@@ -378,7 +378,7 @@ class SongIOTest extends UnitTest {
             assertThat(song.getTempo())
                 .as("v1.0 tempo at pos=0 must map to song-level tempo")
                 .isNotNull()
-                .extracting(t -> t.getVisibleTempo())
+                .extracting(Tempo::getVisibleTempo)
                 .as("song-level tempo BPM")
                 .isEqualTo(SONG_LEVEL_TEMPO_BPM);
         }
