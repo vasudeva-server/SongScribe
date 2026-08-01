@@ -97,7 +97,7 @@ public class MainFrame extends JFrame implements Printable {
     static final long MIDI_INIT_TIMEOUT_MS = 5_000;
 
     // State shared between main(), the startup gate, and reveal()
-    private static long splashShownAtMs;
+    private static long splashShownAtMs = 0;
     private static CountDownLatch midiReadyLatch = new CountDownLatch(0);
     private static Runnable pendingStartupAction = () -> {};
 

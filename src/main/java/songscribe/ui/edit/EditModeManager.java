@@ -61,7 +61,7 @@ public final class EditModeManager {
     public record Insertion(Line line, int elementIndex) {}
 
     @Nullable
-    private static EditModeManager INSTANCE;
+    private static EditModeManager INSTANCE = null;
 
     /**
      * Creates the singleton instance and wires it to the given dependencies.

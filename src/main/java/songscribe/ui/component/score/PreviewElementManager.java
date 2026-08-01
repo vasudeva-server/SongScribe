@@ -208,13 +208,13 @@ public final class PreviewElementManager {
      * time. Either would otherwise bring the cursor back and re-arm the dwell that is meant to be
      * taking it away.
      */
-    private static int lastMouseScreenXPx;
+    private static int lastMouseScreenXPx = 0;
 
     /** @see #lastMouseScreenXPx */
-    private static int lastMouseScreenYPx;
+    private static int lastMouseScreenYPx = 0;
 
     /** Whether {@link #lastMouseScreenXPx}/{@link #lastMouseScreenYPx} hold a real position yet. */
-    private static boolean hasLastMouseScreenPoint;
+    private static boolean hasLastMouseScreenPoint = false;
 
     /** Strong reference to prevent GC by the weak-reference message bus; used for subscriptions. */
     private static final PreviewElementManager INSTANCE = new PreviewElementManager();

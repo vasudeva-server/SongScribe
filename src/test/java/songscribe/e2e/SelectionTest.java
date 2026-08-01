@@ -53,6 +53,7 @@ import songscribe.dom.ScaleContext;
  * ToolbarReflectionTest, BarlineHitTest, and parts of TieTest and
  * ElementInsertionTest.
  */
+@SuppressWarnings("NonFinalStaticVariableUsedInClassInitialization")
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
 class SelectionTest extends E2ETest {
 

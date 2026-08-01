@@ -164,7 +164,7 @@ public class LineComponent extends ScoreComponent
      * scope the flag per document — otherwise it either swallows a warning the user needs or fires a
      * stale one.
      */
-    private static boolean overflowWarningShown;
+    private static boolean overflowWarningShown = false;
 
     /** True when the previous line's lyric extender continues into this line. */
     private boolean hasLeadingLyricContinuation;

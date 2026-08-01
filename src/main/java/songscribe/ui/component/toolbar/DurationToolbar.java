@@ -28,6 +28,7 @@ import songscribe.ui.component.StickyToggleButton;
 
 public class DurationToolbar extends Toolbar {
 
+    @SuppressWarnings("NonFinalStaticVariableUsedInClassInitialization")
     private static final List<ElementTypeAction> ACTIONS =
         Actions.DURATION_ACTION_GROUP.getActions();
 

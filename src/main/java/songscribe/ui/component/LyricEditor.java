@@ -1089,6 +1089,7 @@ public final class LyricEditor extends MyJTextField {
     }
 
     private boolean isPlaceholderIntact() {
+        //noinspection InstanceVariableUsedBeforeInitialized
         return placeholder != null && getText().equals(placeholder.text());
     }
 
