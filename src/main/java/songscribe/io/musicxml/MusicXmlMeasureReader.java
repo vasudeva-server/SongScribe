@@ -84,19 +84,19 @@ final class MusicXmlMeasureReader {
     }
 
     void handleStartBarline(String qName, Attributes attributes) {
-        if (qName.equals(MusicXmlTags.BAR_STYLE)) {
-            reader.setWhere(Where.BAR_STYLE);
-        } else if (qName.equals(MusicXmlTags.ENDING)) {
-            // <ending> is an empty element; collect it and stay in BARLINE.
-            // Resolution to the barline's StaffElement happens once the
-            // barline is appended (see BarlineParser.processBarline /
-            // EndingResolver.attachBarlineEndings).
-            barlines.addEndingMarker(new EndingResolver.EndingMarker(
-                attributes.getValue(MusicXmlTags.ATTR_NUMBER),
-                attributes.getValue(MusicXmlTags.ATTR_TYPE)
-            ));
-        } else if (qName.equals(MusicXmlTags.REPEAT)) {
-            barlines.setRepeatDirection(attributes.getValue(MusicXmlTags.ATTR_DIRECTION));
+        switch (qName) {
+            case MusicXmlTags.BAR_STYLE -> reader.setWhere(Where.BAR_STYLE);
+            case MusicXmlTags.ENDING ->
+                // <ending> is an empty element; collect it and stay in BARLINE.
+                // Resolution to the barline's StaffElement happens once the
+                // barline is appended (see BarlineParser.processBarline /
+                // EndingResolver.attachBarlineEndings).
+                barlines.addEndingMarker(new EndingResolver.EndingMarker(
+                    attributes.getValue(MusicXmlTags.ATTR_NUMBER),
+                    attributes.getValue(MusicXmlTags.ATTR_TYPE)
+                ));
+            case MusicXmlTags.REPEAT ->
+                barlines.setRepeatDirection(attributes.getValue(MusicXmlTags.ATTR_DIRECTION));
         }
     }
 

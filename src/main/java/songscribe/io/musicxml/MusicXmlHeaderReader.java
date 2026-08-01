@@ -189,16 +189,15 @@ final class MusicXmlHeaderReader {
     }
 
     void handleStartIdentification(String qName, Attributes attributes) {
-        if (qName.equals(MusicXmlTags.CREATOR)) {
-            // Capture the routing type here; the name text arrives at </creator>.
-            creatorType = attributes.getValue(MusicXmlTags.ATTR_TYPE);
-            reader.setWhere(Where.CREATOR);
-        } else if (qName.equals(MusicXmlTags.RIGHTS)) {
-            reader.setWhere(Where.RIGHTS);
-        } else if (qName.equals(MusicXmlTags.ENCODING)) {
-            reader.setWhere(Where.ENCODING);
-        } else if (qName.equals(MusicXmlTags.MISCELLANEOUS)) {
-            reader.setWhere(Where.MISCELLANEOUS);
+        switch (qName) {
+            case MusicXmlTags.CREATOR -> {
+                // Capture the routing type here; the name text arrives at </creator>.
+                creatorType = attributes.getValue(MusicXmlTags.ATTR_TYPE);
+                reader.setWhere(Where.CREATOR);
+            }
+            case MusicXmlTags.RIGHTS -> reader.setWhere(Where.RIGHTS);
+            case MusicXmlTags.ENCODING -> reader.setWhere(Where.ENCODING);
+            case MusicXmlTags.MISCELLANEOUS -> reader.setWhere(Where.MISCELLANEOUS);
         }
     }
 
@@ -224,16 +223,12 @@ final class MusicXmlHeaderReader {
         // consumed by their own states; <music-font>/<lyric-language> are
         // empty write-forward elements skipped in place. Only <page-layout>
         // (for <page-width>) and the <word-font>/<lyric-font> roles read.
-        if (qName.equals(MusicXmlTags.SCALING)) {
-            reader.setWhere(Where.DEFAULTS_SCALING);
-        } else if (qName.equals(MusicXmlTags.PAGE_LAYOUT)) {
-            reader.setWhere(Where.DEFAULTS_PAGE_LAYOUT);
-        } else if (qName.equals(MusicXmlTags.STAFF_LAYOUT)) {
-            reader.setWhere(Where.DEFAULTS_STAFF_LAYOUT);
-        } else if (qName.equals(MusicXmlTags.WORD_FONT)) {
-            setDocumentFont(FontKey.ANNOTATION, attributes);
-        } else if (qName.equals(MusicXmlTags.LYRIC_FONT)) {
-            setDocumentFont(FontKey.LYRICS, attributes);
+        switch (qName) {
+            case MusicXmlTags.SCALING -> reader.setWhere(Where.DEFAULTS_SCALING);
+            case MusicXmlTags.PAGE_LAYOUT -> reader.setWhere(Where.DEFAULTS_PAGE_LAYOUT);
+            case MusicXmlTags.STAFF_LAYOUT -> reader.setWhere(Where.DEFAULTS_STAFF_LAYOUT);
+            case MusicXmlTags.WORD_FONT -> setDocumentFont(FontKey.ANNOTATION, attributes);
+            case MusicXmlTags.LYRIC_FONT -> setDocumentFont(FontKey.LYRICS, attributes);
         }
     }
 

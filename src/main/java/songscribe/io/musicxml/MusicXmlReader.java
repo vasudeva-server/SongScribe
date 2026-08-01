@@ -446,20 +446,14 @@ public final class MusicXmlReader extends DefaultHandler {
                 }
             }
             case SCORE_PARTWISE -> {
-                if (qName.equals(MusicXmlTags.MOVEMENT_TITLE)) {
-                    where = Where.MOVEMENT_TITLE;
-                } else if (qName.equals(MusicXmlTags.MOVEMENT_NUMBER)) {
-                    where = Where.MOVEMENT_NUMBER;
-                } else if (qName.equals(MusicXmlTags.IDENTIFICATION)) {
-                    where = Where.IDENTIFICATION;
-                } else if (qName.equals(MusicXmlTags.DEFAULTS)) {
-                    where = Where.DEFAULTS;
-                } else if (qName.equals(MusicXmlTags.PART_LIST)) {
-                    where = Where.PART_LIST;
-                } else if (qName.equals(MusicXmlTags.PART)) {
-                    where = Where.PART;
-                } else if (qName.equals(MusicXmlTags.CREDIT)) {
-                    headerReader.beginCredit();
+                switch (qName) {
+                    case MusicXmlTags.MOVEMENT_TITLE -> where = Where.MOVEMENT_TITLE;
+                    case MusicXmlTags.MOVEMENT_NUMBER -> where = Where.MOVEMENT_NUMBER;
+                    case MusicXmlTags.IDENTIFICATION -> where = Where.IDENTIFICATION;
+                    case MusicXmlTags.DEFAULTS -> where = Where.DEFAULTS;
+                    case MusicXmlTags.PART_LIST -> where = Where.PART_LIST;
+                    case MusicXmlTags.PART -> where = Where.PART;
+                    case MusicXmlTags.CREDIT -> headerReader.beginCredit();
                 }
             }
             case IDENTIFICATION -> headerReader.handleStartIdentification(qName, attributes);
@@ -471,25 +465,27 @@ public final class MusicXmlReader extends DefaultHandler {
             case PART_LIST -> measureReader.handleStartPartList(qName);
             case PART -> measureReader.handleStartPart(qName);
             case MEASURE -> {
-                if (qName.equals(MusicXmlTags.ATTRIBUTES)) {
-                    where = Where.ATTRIBUTES;
-                } else if (qName.equals(MusicXmlTags.PRINT)) {
-                    if (MusicXmlTags.YES.equals(attributes.getValue(MusicXmlTags.ATTR_NEW_SYSTEM))) {
-                        startNewLine();
+                switch (qName) {
+                    case MusicXmlTags.ATTRIBUTES -> where = Where.ATTRIBUTES;
+                    case MusicXmlTags.PRINT -> {
+                        if (MusicXmlTags.YES.equals(attributes.getValue(MusicXmlTags.ATTR_NEW_SYSTEM))) {
+                            startNewLine();
+                        }
                     }
-                } else if (qName.equals(MusicXmlTags.BARLINE)) {
-                    barlines.beginBarline(attributes.getValue(MusicXmlTags.ATTR_LOCATION));
-                    where = Where.BARLINE;
-                } else if (qName.equals(MusicXmlTags.DIRECTION)) {
-                    // A placement attribute (and no <metronome>) marks this
-                    // direction as an annotation; tempo/metric-mod/wedge
-                    // directions never carry placement — see AnnotationResolver.
-                    annotations.beginDirection(
-                        AnnotationResolver.placementFor(attributes.getValue(MusicXmlTags.ATTR_PLACEMENT))
-                    );
-                    where = Where.DIRECTION;
-                } else if (qName.equals(MusicXmlTags.NOTE)) {
-                    startNote(attributes);
+                    case MusicXmlTags.BARLINE -> {
+                        barlines.beginBarline(attributes.getValue(MusicXmlTags.ATTR_LOCATION));
+                        where = Where.BARLINE;
+                    }
+                    case MusicXmlTags.DIRECTION -> {
+                        // A placement attribute (and no <metronome>) marks this
+                        // direction as an annotation; tempo/metric-mod/wedge
+                        // directions never carry placement — see AnnotationResolver.
+                        annotations.beginDirection(
+                            AnnotationResolver.placementFor(attributes.getValue(MusicXmlTags.ATTR_PLACEMENT))
+                        );
+                        where = Where.DIRECTION;
+                    }
+                    case MusicXmlTags.NOTE -> startNote(attributes);
                 }
             }
             case ATTRIBUTES -> measureReader.handleStartAttributes(qName);

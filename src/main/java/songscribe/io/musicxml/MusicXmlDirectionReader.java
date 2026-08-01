@@ -89,45 +89,53 @@ final class MusicXmlDirectionReader {
     }
 
     void handleStartDirectionType(String qName, Attributes attributes) throws SAXException {
-        if (qName.equals(MusicXmlTags.WEDGE)) {
-            wedges.handleWedge(attributes);
-            reader.setWhere(Where.WEDGE);
-        } else if (qName.equals(MusicXmlTags.METRONOME)) {
-            metronome.beginMetronome(attributes);
-            reader.setWhere(Where.METRONOME);
-        } else if (qName.equals(MusicXmlTags.WORDS)) {
-            // For an annotation direction, the halign and relative-y
-            // recover the annotation's alignment and user Y offset; the
-            // text arrives at </words>.
-            if (annotations.isAnnotationDirection()) {
-                annotations.setXAlignment(
-                    TextAlignmentMapping.xAlignment(attributes.getValue(MusicXmlTags.ATTR_HALIGN))
-                );
-                annotations.setUserYOffsetSs(
-                    MusicXmlUnits.optionalTenthsAttrToSs(attributes, MusicXmlTags.ATTR_RELATIVE_Y)
-                );
+        switch (qName) {
+            case MusicXmlTags.WEDGE -> {
+                wedges.handleWedge(attributes);
+                reader.setWhere(Where.WEDGE);
             }
+            case MusicXmlTags.METRONOME -> {
+                metronome.beginMetronome(attributes);
+                reader.setWhere(Where.METRONOME);
+            }
+            case MusicXmlTags.WORDS -> {
+                // For an annotation direction, the halign and relative-y
+                // recover the annotation's alignment and user Y offset; the
+                // text arrives at </words>.
+                if (annotations.isAnnotationDirection()) {
+                    annotations.setXAlignment(
+                        TextAlignmentMapping.xAlignment(attributes.getValue(MusicXmlTags.ATTR_HALIGN))
+                    );
+                    annotations.setUserYOffsetSs(
+                        MusicXmlUnits.optionalTenthsAttrToSs(
+                            attributes,
+                            MusicXmlTags.ATTR_RELATIVE_Y
+                        )
+                    );
+                }
 
-            reader.setWhere(Where.WORDS);
+                reader.setWhere(Where.WORDS);
+            }
         }
     }
 
     void handleStartMetronome(String qName) {
-        if (qName.equals(MusicXmlTags.BEAT_UNIT)) {
-            reader.setWhere(Where.BEAT_UNIT);
-        } else if (qName.equals(MusicXmlTags.BEAT_UNIT_DOT)) {
-            metronome.addBeatUnitDot();
-            reader.setWhere(Where.BEAT_UNIT_DOT);
-        } else if (qName.equals(MusicXmlTags.PER_MINUTE)) {
-            reader.setWhere(Where.PER_MINUTE);
-        } else if (qName.equals(MusicXmlTags.METRONOME_NOTE)) {
-            metronome.beginMetronomeNote();
-            reader.setWhere(Where.METRONOME_NOTE);
-        } else if (qName.equals(MusicXmlTags.METRONOME_RELATION)) {
-            // <metronome-relation> is always "equals"; its position (between
-            // the two note groups) carries no read state beyond marking the
-            // modulation form, which the metronome-notes already do.
-            reader.setWhere(Where.METRONOME_RELATION);
+        switch (qName) {
+            case MusicXmlTags.BEAT_UNIT -> reader.setWhere(Where.BEAT_UNIT);
+            case MusicXmlTags.BEAT_UNIT_DOT -> {
+                metronome.addBeatUnitDot();
+                reader.setWhere(Where.BEAT_UNIT_DOT);
+            }
+            case MusicXmlTags.PER_MINUTE -> reader.setWhere(Where.PER_MINUTE);
+            case MusicXmlTags.METRONOME_NOTE -> {
+                metronome.beginMetronomeNote();
+                reader.setWhere(Where.METRONOME_NOTE);
+            }
+            case MusicXmlTags.METRONOME_RELATION ->
+                // <metronome-relation> is always "equals"; its position (between
+                // the two note groups) carries no read state beyond marking the
+                // modulation form, which the metronome-notes already do.
+                reader.setWhere(Where.METRONOME_RELATION);
         }
     }
 

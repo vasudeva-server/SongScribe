@@ -72,54 +72,57 @@ final class MusicXmlNoteReader {
      * the orchestrator).
      */
     void handleStartNote(String qName, Attributes attributes) throws SAXException {
-        if (qName.equals(MusicXmlTags.GRACE)) {
-            note.markGrace();
-            reader.setWhere(Where.GRACE);
-        } else if (qName.equals(MusicXmlTags.REST)) {
-            note.markRest();
-            reader.setWhere(Where.REST);
-        } else if (qName.equals(MusicXmlTags.PITCH)) {
-            reader.setWhere(Where.PITCH);
-        } else if (qName.equals(MusicXmlTags.DURATION)) {
-            reader.setWhere(Where.DURATION);
-        } else if (qName.equals(MusicXmlTags.NOTE_TYPE)) {
-            reader.setWhere(Where.NOTE_TYPE);
-        } else if (qName.equals(MusicXmlTags.DOT)) {
-            note.incrementDotCount();
-            reader.setWhere(Where.DOT);
-        } else if (qName.equals(MusicXmlTags.ACCIDENTAL)) {
-            note.setAccidentalParenthesized(
-                MusicXmlTags.YES.equals(attributes.getValue(MusicXmlTags.ATTR_CAUTIONARY))
-                    || MusicXmlTags.YES.equals(attributes.getValue(MusicXmlTags.ATTR_PARENTHESES))
-            );
-            reader.setWhere(Where.ACCIDENTAL);
-        } else if (qName.equals(MusicXmlTags.STEM)) {
-            note.markStemPresent();
-            reader.setWhere(Where.STEM);
-        } else if (qName.equals(MusicXmlTags.TIE)) {
-            // Sound tie — write-forward only; <tied> is the source of truth
-            // for span reconstruction, so this carries no read state.
-            reader.setWhere(Where.TIE);
-        } else if (qName.equals(MusicXmlTags.TIME_MOD)) {
-            reader.setWhere(Where.TIME_MODIFICATION);
-        } else if (qName.equals(MusicXmlTags.BEAM)) {
-            // Only the primary beam (number="1") drives span collapse;
-            // secondary levels and hooks are write-forward (layout re-derives).
-            note.setBeamLevelIsOne(
-                MusicXmlTags.NUMBER_1.equals(attributes.getValue(MusicXmlTags.ATTR_NUMBER))
-            );
-            reader.setWhere(Where.BEAM);
-        } else if (qName.equals(MusicXmlTags.NOTATIONS)) {
-            reader.setWhere(Where.NOTATIONS);
-        } else if (qName.equals(MusicXmlTags.LYRIC)) {
-            // A <lyric number="N"> opens one verse. Absent number → verse 1
-            // (lenient, matching StaffElementIO).
-            var numberAttr = attributes.getValue(MusicXmlTags.ATTR_NUMBER);
-            var verse = numberAttr != null
-                ? MusicXmlUnits.parseIntOrThrow(MusicXmlTags.ATTR_NUMBER, numberAttr)
-                : DEFAULT_LYRIC_VERSE;
-            note.beginLyric(verse);
-            reader.setWhere(Where.LYRIC);
+        switch (qName) {
+            case MusicXmlTags.GRACE -> {
+                note.markGrace();
+                reader.setWhere(Where.GRACE);
+            }
+            case MusicXmlTags.REST -> {
+                note.markRest();
+                reader.setWhere(Where.REST);
+            }
+            case MusicXmlTags.PITCH -> reader.setWhere(Where.PITCH);
+            case MusicXmlTags.DURATION -> reader.setWhere(Where.DURATION);
+            case MusicXmlTags.NOTE_TYPE -> reader.setWhere(Where.NOTE_TYPE);
+            case MusicXmlTags.DOT -> {
+                note.incrementDotCount();
+                reader.setWhere(Where.DOT);
+            }
+            case MusicXmlTags.ACCIDENTAL -> {
+                note.setAccidentalParenthesized(
+                    MusicXmlTags.YES.equals(attributes.getValue(MusicXmlTags.ATTR_CAUTIONARY))
+                        || MusicXmlTags.YES.equals(attributes.getValue(MusicXmlTags.ATTR_PARENTHESES))
+                );
+                reader.setWhere(Where.ACCIDENTAL);
+            }
+            case MusicXmlTags.STEM -> {
+                note.markStemPresent();
+                reader.setWhere(Where.STEM);
+            }
+            case MusicXmlTags.TIE ->
+                // Sound tie — write-forward only; <tied> is the source of truth
+                // for span reconstruction, so this carries no read state.
+                reader.setWhere(Where.TIE);
+            case MusicXmlTags.TIME_MOD -> reader.setWhere(Where.TIME_MODIFICATION);
+            case MusicXmlTags.BEAM -> {
+                // Only the primary beam (number="1") drives span collapse;
+                // secondary levels and hooks are write-forward (layout re-derives).
+                note.setBeamLevelIsOne(
+                    MusicXmlTags.NUMBER_1.equals(attributes.getValue(MusicXmlTags.ATTR_NUMBER))
+                );
+                reader.setWhere(Where.BEAM);
+            }
+            case MusicXmlTags.NOTATIONS -> reader.setWhere(Where.NOTATIONS);
+            case MusicXmlTags.LYRIC -> {
+                // A <lyric number="N"> opens one verse. Absent number → verse 1
+                // (lenient, matching StaffElementIO).
+                var numberAttr = attributes.getValue(MusicXmlTags.ATTR_NUMBER);
+                var verse = numberAttr != null
+                    ? MusicXmlUnits.parseIntOrThrow(MusicXmlTags.ATTR_NUMBER, numberAttr)
+                    : DEFAULT_LYRIC_VERSE;
+                note.beginLyric(verse);
+                reader.setWhere(Where.LYRIC);
+            }
         }
     }
 
@@ -262,32 +265,34 @@ final class MusicXmlNoteReader {
      * orchestrator's {@code finishNote}.
      */
     void handleStartNotations(String qName, Attributes attributes) throws SAXException {
-        if (qName.equals(MusicXmlTags.ARTICULATIONS)) {
-            reader.setWhere(Where.ARTICULATIONS);
-        } else if (qName.equals(MusicXmlTags.FERMATA)) {
-            note.markFermata();
-            reader.setWhere(Where.FERMATA);
-        } else if (qName.equals(MusicXmlTags.DYNAMICS)) {
-            reader.setWhere(Where.DYNAMICS);
-        } else if (qName.equals(MusicXmlTags.SLIDE)) {
-            note.setSlideType(attributes.getValue(MusicXmlTags.ATTR_TYPE));
-            reader.setWhere(Where.SLIDE);
-        } else if (qName.equals(MusicXmlTags.TIED)) {
-            note.addTied(attributes.getValue(MusicXmlTags.ATTR_TYPE));
-            reader.setWhere(Where.TIED);
-        } else if (qName.equals(MusicXmlTags.TUPLET)) {
-            var type = attributes.getValue(MusicXmlTags.ATTR_TYPE);
-
-            if (MusicXmlTags.TYPE_START.equals(type)) {
-                note.markTupletStart();
-                note.captureTupletRelativeY(attributes);
-            } else if (MusicXmlTags.TYPE_STOP.equals(type)) {
-                note.markTupletStop();
+        switch (qName) {
+            case MusicXmlTags.ARTICULATIONS -> reader.setWhere(Where.ARTICULATIONS);
+            case MusicXmlTags.FERMATA -> {
+                note.markFermata();
+                reader.setWhere(Where.FERMATA);
             }
+            case MusicXmlTags.DYNAMICS -> reader.setWhere(Where.DYNAMICS);
+            case MusicXmlTags.SLIDE -> {
+                note.setSlideType(attributes.getValue(MusicXmlTags.ATTR_TYPE));
+                reader.setWhere(Where.SLIDE);
+            }
+            case MusicXmlTags.TIED -> {
+                note.addTied(attributes.getValue(MusicXmlTags.ATTR_TYPE));
+                reader.setWhere(Where.TIED);
+            }
+            case MusicXmlTags.TUPLET -> {
+                var type = attributes.getValue(MusicXmlTags.ATTR_TYPE);
 
-            reader.setWhere(Where.TUPLET);
-        } else if (qName.equals(MusicXmlTags.ORNAMENTS)) {
-            reader.setWhere(Where.ORNAMENTS);
+                if (MusicXmlTags.TYPE_START.equals(type)) {
+                    note.markTupletStart();
+                    note.captureTupletRelativeY(attributes);
+                } else if (MusicXmlTags.TYPE_STOP.equals(type)) {
+                    note.markTupletStop();
+                }
+
+                reader.setWhere(Where.TUPLET);
+            }
+            case MusicXmlTags.ORNAMENTS -> reader.setWhere(Where.ORNAMENTS);
         }
     }
 
@@ -315,18 +320,23 @@ final class MusicXmlNoteReader {
 
     /** Dispatches an {@code <articulations>} child, marking it onto {@code note}. */
     void handleStartArticulations(String qName) {
-        if (qName.equals(MusicXmlTags.ACCENT)) {
-            note.markAccent();
-            reader.setWhere(Where.ACCENT);
-        } else if (qName.equals(MusicXmlTags.STACCATO)) {
-            note.markStaccato();
-            reader.setWhere(Where.STACCATO);
-        } else if (qName.equals(MusicXmlTags.FALLOFF)) {
-            note.markFall();
-            reader.setWhere(Where.FALLOFF);
-        } else if (qName.equals(MusicXmlTags.BREATH_MARK)) {
-            note.markBreathMark();
-            reader.setWhere(Where.BREATH_MARK);
+        switch (qName) {
+            case MusicXmlTags.ACCENT -> {
+                note.markAccent();
+                reader.setWhere(Where.ACCENT);
+            }
+            case MusicXmlTags.STACCATO -> {
+                note.markStaccato();
+                reader.setWhere(Where.STACCATO);
+            }
+            case MusicXmlTags.FALLOFF -> {
+                note.markFall();
+                reader.setWhere(Where.FALLOFF);
+            }
+            case MusicXmlTags.BREATH_MARK -> {
+                note.markBreathMark();
+                reader.setWhere(Where.BREATH_MARK);
+            }
         }
     }
 
@@ -351,17 +361,17 @@ final class MusicXmlNoteReader {
 
     /** Dispatches a {@code <lyric>} child to its owning leaf state. */
     void handleStartLyric(String qName, Attributes attributes) {
-        if (qName.equals(MusicXmlTags.SYLLABIC)) {
-            reader.setWhere(Where.SYLLABIC);
-        } else if (qName.equals(MusicXmlTags.LYRIC_TEXT)) {
-            reader.setWhere(Where.LYRIC_TEXT);
-        } else if (qName.equals(MusicXmlTags.EXTEND)) {
-            // <extend> is an empty element; its type attr is the only data.
-            // Absent/unrecognized type → START (see SyllabicMapping).
-            note.setLyricExtend(
-                SyllabicMapping.forExtendToken(attributes.getValue(MusicXmlTags.ATTR_TYPE))
-            );
-            reader.setWhere(Where.EXTEND);
+        switch (qName) {
+            case MusicXmlTags.SYLLABIC -> reader.setWhere(Where.SYLLABIC);
+            case MusicXmlTags.LYRIC_TEXT -> reader.setWhere(Where.LYRIC_TEXT);
+            case MusicXmlTags.EXTEND -> {
+                // <extend> is an empty element; its type attr is the only data.
+                // Absent/unrecognized type → START (see SyllabicMapping).
+                note.setLyricExtend(
+                    SyllabicMapping.forExtendToken(attributes.getValue(MusicXmlTags.ATTR_TYPE))
+                );
+                reader.setWhere(Where.EXTEND);
+            }
         }
     }
 
