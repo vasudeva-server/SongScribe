@@ -308,5 +308,4 @@ The definitive tier/pass order, from `VerticalStackingCalculator.calculate()`:
 
 ## Open Questions
 
-- Two unused enums, `songscribe.layout.LayoutLayer` and `songscribe.layout.VerticalOrder`, describe a stacking order that does **not** match the implementation above (e.g. `LayoutLayer` lists `TRILL` before `FERMATA`; `VerticalOrder` lists `ENDINGS` above `ANNOTATIONS_ABOVE`). Neither is referenced anywhere in the codebase. Worth deciding whether to delete them or bring them in line with `VerticalStackingCalculator`, so future readers don't treat them as authoritative.
 - The hairpin/text-dynamic endpoint coordination described in Example 8 (rule 6) is not implemented as automatic behavior — only manual per-hairpin shifts exist. Is automatic coordination still wanted, or should that rule be dropped from the design intent entirely?
