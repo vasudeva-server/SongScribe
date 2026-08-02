@@ -253,14 +253,6 @@ public abstract class Span extends LineElement {
     }
 
     /**
-     * Returns whether this span overlaps the inclusive element index
-     * range {@code [begin, end]}.
-     */
-    public boolean overlaps(int begin, int end) {
-        return matches(overlapping(begin, end));
-    }
-
-    /**
      * Serializes this element's anchor/end indices as {@code "anchorIdx,endIdx;"}.
      */
     public String toIndexString() {
@@ -306,13 +298,6 @@ public abstract class Span extends LineElement {
      */
     public static IndexPredicate exactly(int anchorIndex, int endIndex) {
         return (spanAnchorIndex, spanEndIndex) -> spanAnchorIndex == anchorIndex && spanEndIndex == endIndex;
-    }
-
-    /**
-     * Returns whether {@code predicate} accepts this span's resolved endpoint indices.
-     */
-    public boolean matches(IndexPredicate predicate) {
-        return predicate.test(getAnchorElementIndex(), getEndElementIndex());
     }
 
     /**

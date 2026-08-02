@@ -20,8 +20,10 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.assertAll;
 
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -313,6 +315,57 @@ class LineTieTest extends UnitTest {
             assertThat(emptyLine.sameTieAt(IDX_0, IDX_1))
                 .as("an empty line has no ties to match")
                 .isFalse();
+        }
+
+        @Test
+        void testAdjacentTiesSharingAnEndpointReturnsFalse() {
+            // Ties [0,1] and [1,2] share note 1 but are two distinct tie objects: ties,
+            // unlike beams, deliberately never merge at a shared endpoint. sameTieAt must
+            // require one and the same tie to cover both given notes, so 0 and 2 — each
+            // covered by a different tie — must not count as "the same tie".
+            song.withoutMutationTracking(() ->
+                line.addTie(new Tie(line.getElement(IDX_1), line.getElement(IDX_2))));
+
+            assertThat(line.sameTieAt(IDX_0, IDX_2))
+                .as("note 0 is in tie [0,1] and note 2 is in a different tie [1,2]")
+                .isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Span.getContentWidthPx() — one-line ssToPx(getContentWidthSs()) wrapper
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class GetContentWidthPx {
+
+        // Pixels-per-staff-space used in this group — chosen to be non-trivial and
+        // distinct from the production default (8.0) so a forgotten reset surfaces
+        // in the right test rather than silently passing.
+        private static final double TEST_PPS = 12.5;
+
+        // Tolerance for floating-point comparisons; exact arithmetic is expected
+        // but representation noise warrants a tiny epsilon.
+        private static final double DOUBLE_EPSILON = 1e-9;
+
+        @BeforeEach
+        void setPps() {
+            ScaleContext.setPixelsPerStaffSpace(TEST_PPS);
+        }
+
+        @AfterEach
+        void resetPps() {
+            ScaleContext.setPixelsPerStaffSpace(ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE);
+        }
+
+        @Test
+        void testGetContentWidthPxEqualsContentWidthSsTimesPps() {
+            var tie = new Tie(line.getElement(IDX_0), line.getElement(IDX_1));
+            var expectedPx = tie.getContentWidthSs() * TEST_PPS;
+
+            assertThat(tie.getContentWidthPx())
+                .isCloseTo(expectedPx, within(DOUBLE_EPSILON));
         }
     }
 }

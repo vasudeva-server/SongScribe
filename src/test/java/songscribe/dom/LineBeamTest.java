@@ -191,6 +191,118 @@ class LineBeamTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // mergeOverlappingSpans — absorption predicate branch coverage
+    // -----------------------------------------------------------------------
+
+    /**
+     * {@code mergeOverlappingSpans}'s two absorption predicates are conjunctions:
+     * <ul>
+     *   <li>anchor side: {@code candidateAnchor <= anchorIdx && anchorIdx <= candidateEnd + reach}</li>
+     *   <li>end side: {@code candidateAnchor - reach <= endIdx && endIdx <= candidateEnd}</li>
+     * </ul>
+     * Beams never absorb an adjacent span ({@code reach == 0}). Each test below sets up a
+     * candidate that satisfies exactly one half of one conjunction, so the other half alone
+     * must keep it from being absorbed — proving the {@code &&} cannot be relaxed to
+     * {@code ||} without a failure.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MergePredicateBranchCoverage {
+
+        /**
+         * Anchor side, first half only false: the candidate [3,4] starts after the new
+         * beam's anchor (3), so {@code candidateAnchor <= anchorIdx} fails even though
+         * {@code anchorIdx <= candidateEnd + reach} (2 <= 4) holds.
+         */
+        @Test
+        void testCandidateStartingAfterNewAnchorFailsFirstHalfAndIsNotAbsorbed() {
+            var candidate = new Beam(line.getElement(IDX_3), line.getElement(IDX_4));
+            var added = new Beam(line.getElement(IDX_2), line.getElement(IDX_2));
+
+            song.withoutMutationTracking(() -> line.addBeaming(candidate));
+            song.withoutMutationTracking(() -> line.addBeaming(added));
+
+            assertAll(
+                () -> assertThat(line.findBeamsOverlapping(IDX_0, IDX_4))
+                    .as("candidate starting after the new beam's anchor must not be absorbed")
+                    .hasSize(2),
+                () -> assertThat(added.getAnchorElementIndex())
+                    .as("new beam's anchor must stay 2, not shrink toward the candidate's anchor")
+                    .isEqualTo(IDX_2)
+            );
+        }
+
+        /**
+         * Anchor side, second half only false: the candidate [0,1] starts at or before
+         * the new beam's anchor (3), so {@code candidateAnchor <= anchorIdx} (0 <= 3)
+         * holds, but {@code anchorIdx <= candidateEnd + reach} (3 <= 1) fails.
+         */
+        @Test
+        void testCandidateEndingBeforeNewAnchorFailsSecondHalfAndIsNotAbsorbed() {
+            var candidate = new Beam(line.getElement(IDX_0), line.getElement(IDX_1));
+            var added = new Beam(line.getElement(IDX_3), line.getElement(IDX_3));
+
+            song.withoutMutationTracking(() -> line.addBeaming(candidate));
+            song.withoutMutationTracking(() -> line.addBeaming(added));
+
+            assertAll(
+                () -> assertThat(line.findBeamsOverlapping(IDX_0, IDX_4))
+                    .as("candidate ending before the new beam's anchor must not be absorbed")
+                    .hasSize(2),
+                () -> assertThat(added.getAnchorElementIndex())
+                    .as("new beam's anchor must stay 3, not widen toward the candidate's anchor")
+                    .isEqualTo(IDX_3)
+            );
+        }
+
+        /**
+         * End side, first half only false: the candidate [3,4] starts too far past the
+         * new beam's end (2) for {@code candidateAnchor - reach <= endIdx} (3 <= 2) to
+         * hold, even though {@code endIdx <= candidateEnd} (2 <= 4) does.
+         */
+        @Test
+        void testCandidateStartingAfterNewEndFailsFirstHalfAndIsNotAbsorbed() {
+            var candidate = new Beam(line.getElement(IDX_3), line.getElement(IDX_4));
+            var added = new Beam(line.getElement(IDX_1), line.getElement(IDX_2));
+
+            song.withoutMutationTracking(() -> line.addBeaming(candidate));
+            song.withoutMutationTracking(() -> line.addBeaming(added));
+
+            assertAll(
+                () -> assertThat(line.findBeamsOverlapping(IDX_0, IDX_4))
+                    .as("candidate starting after the new beam's end must not be absorbed")
+                    .hasSize(2),
+                () -> assertThat(added.getEndElementIndex())
+                    .as("new beam's end must stay 2, not widen toward the candidate's end")
+                    .isEqualTo(IDX_2)
+            );
+        }
+
+        /**
+         * End side, second half only false: the candidate [0,1] starts at or before the
+         * new beam's end (4) for {@code candidateAnchor - reach <= endIdx} (0 <= 4) to
+         * hold, but {@code endIdx <= candidateEnd} (4 <= 1) fails.
+         */
+        @Test
+        void testCandidateEndingBeforeNewEndFailsSecondHalfAndIsNotAbsorbed() {
+            var candidate = new Beam(line.getElement(IDX_0), line.getElement(IDX_1));
+            var added = new Beam(line.getElement(IDX_3), line.getElement(IDX_4));
+
+            song.withoutMutationTracking(() -> line.addBeaming(candidate));
+            song.withoutMutationTracking(() -> line.addBeaming(added));
+
+            assertAll(
+                () -> assertThat(line.findBeamsOverlapping(IDX_0, IDX_4))
+                    .as("candidate ending before the new beam's end must not be absorbed")
+                    .hasSize(2),
+                () -> assertThat(added.getEndElementIndex())
+                    .as("new beam's end must stay 4, not shrink toward the candidate's end")
+                    .isEqualTo(IDX_4)
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // removeBeaming — absent beam is no-op (row 27)
     // -----------------------------------------------------------------------
 

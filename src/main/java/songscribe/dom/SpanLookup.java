@@ -30,13 +30,13 @@ import org.jspecify.annotations.Nullable;
  * resolve both endpoint indices, compare" loop exists in exactly one place.
  * <p>
  * An implementor supplies only the spans to query and how each span's endpoints resolve to
- * positions; {@link #findSpans(Class, Span.IndexPredicate)} and
- * {@link #findFirstSpan(Class, Span.IndexPredicate)} are the only methods here that iterate,
+ * positions; {@link #findSpans(Class, Span.IndexPredicate)}, {@link #findFirstSpan(Class,
+ * Span.IndexPredicate)}, and {@link #findSpans(Class)} are the only methods here that iterate,
  * and every typed query below delegates to one of them with a {@link Span.IndexPredicate}.
  */
 public interface SpanLookup {
 
-    /** The spans to query, in line order. */
+    /** The spans to query, in the order they were added. */
     List<Span> getSpans();
 
     /** The anchor element's position in the line, or -1 when unresolvable. */
@@ -45,7 +45,7 @@ public interface SpanLookup {
     /** The end element's position in the line, or -1 when unresolvable. */
     int endIndexOf(Span span);
 
-    // --- the only two methods that iterate ---------------------------------
+    // --- the only three methods that iterate --------------------------------
 
     /**
      * Returns every span of {@code type} whose resolved endpoint indices satisfy {@code matches}.
@@ -77,14 +77,27 @@ public interface SpanLookup {
         return null;
     }
 
-    // --- expressed via those two -------------------------------------------
-
     /**
      * Returns every span of {@code type}, whatever its endpoints resolve to.
+     * <p>
+     * Filters by type only and resolves no endpoint positions — unlike routing through
+     * {@link #findSpans(Class, Span.IndexPredicate)} with an always-true predicate, which
+     * would still resolve both endpoints of every matching span because Java evaluates
+     * arguments eagerly.
      */
     default <T extends Span> List<T> findSpans(Class<T> type) {
-        return findSpans(type, (anchorIndex, endIndex) -> true);
+        var result = new ArrayList<T>();
+
+        for (var span : getSpans()) {
+            if (type.isInstance(span)) {
+                result.add(type.cast(span));
+            }
+        }
+
+        return result;
     }
+
+    // --- expressed via those three ------------------------------------------
 
     /**
      * Returns whether any span of {@code type} satisfies {@code matches}.

@@ -25,6 +25,7 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -81,6 +82,37 @@ public class Line implements LyricRun, SpanLookup {
     @Nullable
     private KeyType keyType = null;
     private final List<StaffElement> elements = new ArrayList<>();
+
+    /**
+     * Live unmodifiable view of {@link #elements}, held once rather than wrapped per call:
+     * {@link #getElements()} is on the repaint path, and the wrapper tracks later mutations
+     * of {@code elements} anyway.
+     */
+    private final List<StaffElement> elementsView = Collections.unmodifiableList(elements);
+
+    /**
+     * Lazily-built position index over {@link #elements}, or null when it must be rebuilt.
+     * <p>
+     * Identity-keyed, matching {@code ArrayList.indexOf}'s semantics: no {@code StaffElement}
+     * overrides {@code equals}/{@code hashCode}, and an override added later must not silently
+     * change what an element's position means.
+     * <p>
+     * {@code volatile} for safe publication: the map is shared mutable state where the bare
+     * list was not, and {@code IdentityHashMap}'s internal table is not {@code final}, so a
+     * reader on another thread could otherwise see a non-null reference to a map whose
+     * contents are not yet visible.
+     *
+     * <pre>
+     *   elements written  ──► attach/detach(StaffElement) ──► elementIndexMap = null
+     *        addElement ×2, setElement, removeElement, removeRange
+     *
+     *   spans written     ──► attach/detach(Span) ────────► no effect
+     *        appendChild/removeChild                         (spans do not move elements)
+     *
+     *   getElementIndex() ──► null? rebuild : cached lookup
+     * </pre>
+     */
+    private volatile @Nullable Map<StaffElement, Integer> elementIndexMap = null;
 
     /**
      * Default beat change Y position (-3 staff spaces above middle)
@@ -254,12 +286,23 @@ public class Line implements LyricRun, SpanLookup {
 
     /** Points {@code element} and everything below it at this line. */
     private void attach(LineElement element) {
+        // Only staff elements sit in `elements`; span parentage cannot move an index.
+        if (element instanceof StaffElement) {
+            elementIndexMap = null;
+        }
+
         element.setParentLine(this);
         element.propagateParentLine(this);
     }
 
     /** Clears {@code element}'s line pointer, and those of everything below it. */
     private void detach(LineElement element) {
+        // Only staff elements sit in `elements`; span parentage cannot move an index.
+        // Invalidate above the early return below, so a re-parent cannot skip it.
+        if (element instanceof StaffElement) {
+            elementIndexMap = null;
+        }
+
         // A re-parent that ran attach() first already owns this element — don't
         // clear a pointer that now names a different line.
         if (element.getParentLine() != this) {
@@ -523,13 +566,15 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     public List<StaffElement> getElements() {
-        return elements;
+        return elementsView;
     }
 
     // Returns a sublist of elements from start to end inclusive
     public List<StaffElement> getElements(int start, int end) {
-        // subList is exclusive of the end index, so we add 1
-        return elements.subList(start, end + 1);
+        // subList is exclusive of the end index, so we add 1.
+        // Wrapped per call because the bounds vary: a caller that could reorder or
+        // clear the sublist would move element positions behind the index's back.
+        return Collections.unmodifiableList(elements.subList(start, end + 1));
     }
 
     public void removeElement(int index) {
@@ -685,8 +730,33 @@ public class Line implements LyricRun, SpanLookup {
         return elements.isEmpty();
     }
 
-    public int getElementIndex(StaffElement element) {
-        return elements.indexOf(element);
+    /**
+     * Returns {@code element}'s position in this line, or -1 when it is not in this line.
+     * A null element is not in any line, so it too resolves to -1 — matching
+     * {@code ArrayList.indexOf}, which this replaced.
+     * <p>
+     * Answered from {@link #elementIndexMap}, rebuilt on demand after any element mutation.
+     */
+    public int getElementIndex(@Nullable StaffElement element) {
+        var map = elementIndexMap;
+
+        if (map == null) {
+            var rebuilt = new IdentityHashMap<StaffElement, Integer>(elements.size());
+
+            for (var i = 0; i < elements.size(); i++) {
+                // First wins, matching ArrayList.indexOf: a duplicated element must
+                // resolve to its earliest position, not its latest.
+                rebuilt.putIfAbsent(elements.get(i), i);
+            }
+
+            // Publish only the fully-built map — never a partially-filled one.
+            map = rebuilt;
+            elementIndexMap = rebuilt;
+        }
+
+        var index = map.get(element);
+
+        return index == null ? -1 : index;
     }
 
     /**
@@ -907,8 +977,8 @@ public class Line implements LyricRun, SpanLookup {
         Consumer<? super R> remover,
         boolean absorbAdjacent
     ) {
-        var anchorIdx = elements.indexOf(span.getAnchorElement());
-        var endIdx = elements.indexOf(span.getEndElement());
+        var anchorIdx = getElementIndex(span.getAnchorElement());
+        var endIdx = getElementIndex(span.getEndElement());
 
         // How far past an endpoint an existing span may sit and still be absorbed.
         var reach = absorbAdjacent ? SPAN_ADJACENCY_REACH : 0;
@@ -967,8 +1037,8 @@ public class Line implements LyricRun, SpanLookup {
         // During replay the recorded batch already carries the overlapping-tuplet
         // removals — just add.
         if (!song.isReplaying()) {
-            var anchorIndex = elements.indexOf(tuplet.getAnchorElement());
-            var endIndex = elements.indexOf(tuplet.getEndElement());
+            var anchorIndex = getElementIndex(tuplet.getAnchorElement());
+            var endIndex = getElementIndex(tuplet.getEndElement());
 
             // Remove any existing tuplets that overlap the new range — tracked
             // removals emitted before the addition so undo restores the originals.
@@ -1523,12 +1593,26 @@ public class Line implements LyricRun, SpanLookup {
 
     @Override
     public int anchorIndexOf(Span span) {
-        return span.getAnchorElementIndex();
+        return indexOfEndpoint(span.getAnchorElement());
     }
 
     @Override
     public int endIndexOf(Span span) {
-        return span.getEndElementIndex();
+        return indexOfEndpoint(span.getEndElement());
+    }
+
+    /**
+     * Resolves a span endpoint against <i>this</i> line, returning -1 when the endpoint is
+     * unset or lives in some other line.
+     * <p>
+     * Resolving against the receiver rather than through {@link Span#getAnchorElementIndex()}
+     * matters while a span is transiently cross-line — during a paste or a line split, an
+     * endpoint may already have been reparented. Asking the endpoint's own line would answer
+     * with a position in <i>that</i> line, which no caller of this lookup can tell apart from
+     * a real one.
+     */
+    private int indexOfEndpoint(@Nullable StaffElement endpoint) {
+        return endpoint == null ? -1 : getElementIndex(endpoint);
     }
 
     /**

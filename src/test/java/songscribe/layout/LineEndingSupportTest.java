@@ -294,5 +294,43 @@ class LineEndingSupportTest extends UnitTest {
             // effect (i.e. the one from ending1, which was added first).
             assertThat(effect).isEqualTo(new Ending.EndingEffect.Invalidate(ending1));
         }
+
+        @Test
+        void testFirstEndingUnaffectedReturnsSecondEndingEffect() {
+            // Two disjoint endings. Replacing ending2's anchor leaves ending1 completely
+            // untouched (its checkReplacement call falls through to None because oldElement
+            // is neither its anchor nor its end), so the stream's discard-None step must
+            // actually run before ending2's real effect is returned.
+            //
+            // Layout:
+            //  idx: 0       1       2       3       4       5
+            //       BAR     NOTE    BAR     BAR     NOTE    BAR
+            //       (anchor1)       (end1)  (anchor2)       (end2)
+            var song    = new Song();
+            var line    = song.getLine(0);
+            var anchor1 = new StaffElement(ElementType.SINGLE_BARLINE);
+            var mid1    = new StaffElement(ElementType.CROTCHET);
+            var end1    = new StaffElement(ElementType.SINGLE_BARLINE);
+            var anchor2 = new StaffElement(ElementType.SINGLE_BARLINE);
+            var mid2    = new StaffElement(ElementType.CROTCHET);
+            var end2    = new StaffElement(ElementType.SINGLE_BARLINE);
+            var ending1 = new Ending(anchor1, end1);
+            var ending2 = new Ending(anchor2, end2);
+            song.withoutMutationTracking(() -> {
+                line.addElement(anchor1);
+                line.addElement(mid1);
+                line.addElement(end1);
+                line.addElement(anchor2);
+                line.addElement(mid2);
+                line.addElement(end2);
+                line.addSpan(ending1);
+                line.addSpan(ending2);
+            });
+            var replacement = new StaffElement(ElementType.GRACE_QUAVER);
+
+            var effect = LineEndingSupport.findEndingReplacementEffect(line, 3, replacement);
+
+            assertThat(effect).isEqualTo(new Ending.EndingEffect.Invalidate(ending2));
+        }
     }
 }

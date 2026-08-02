@@ -295,6 +295,121 @@ class LineHairpinMergeTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // mergeOverlappingSpans — absorption predicate branch coverage
+    // -----------------------------------------------------------------------
+
+    /**
+     * {@code mergeOverlappingSpans}'s two absorption predicates are conjunctions:
+     * <ul>
+     *   <li>anchor side: {@code candidateAnchor <= anchorIdx && anchorIdx <= candidateEnd + reach}</li>
+     *   <li>end side: {@code candidateAnchor - reach <= endIdx && endIdx <= candidateEnd}</li>
+     * </ul>
+     * Hairpins absorb adjacent spans too ({@code reach == }
+     * {@value Line#SPAN_ADJACENCY_REACH}), so these cases are placed one element further
+     * apart than the {@link LineBeamTest} equivalents to still land outside the reach.
+     * Each test sets up a candidate that satisfies exactly one half of one conjunction, so
+     * the other half alone must keep it from being absorbed — proving the {@code &&}
+     * cannot be relaxed to {@code ||} without a failure.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class MergePredicateBranchCoverage {
+
+        /**
+         * Anchor side, first half only false: the candidate [3,4] starts after the new
+         * crescendo's anchor (1), so {@code candidateAnchor <= anchorIdx} fails even
+         * though {@code anchorIdx <= candidateEnd + reach} (1 <= 5) holds.
+         */
+        @Test
+        void testCandidateStartingAfterNewAnchorFailsFirstHalfAndIsNotAbsorbed() {
+            var candidate = new Crescendo(line.getElement(IDX_3), line.getElement(IDX_4));
+            var added = new Crescendo(line.getElement(IDX_1), line.getElement(IDX_1));
+
+            song.withoutMutationTracking(() -> line.addCrescendo(candidate));
+            song.withoutMutationTracking(() -> line.addCrescendo(added));
+
+            assertAll(
+                () -> assertThat(line.findSpans(Crescendo.class))
+                    .as("candidate starting after the new crescendo's anchor must not be absorbed")
+                    .hasSize(2),
+                () -> assertThat(added.getAnchorElementIndex())
+                    .as("new crescendo's anchor must stay 1, not shrink toward the candidate's anchor")
+                    .isEqualTo(IDX_1)
+            );
+        }
+
+        /**
+         * Anchor side, second half only false: the candidate [0,2] starts at or before
+         * the new crescendo's anchor (4), so {@code candidateAnchor <= anchorIdx} (0 <= 4)
+         * holds, but {@code anchorIdx <= candidateEnd + reach} (4 <= 3) fails — one element
+         * past what {@code SPAN_ADJACENCY_REACH} would still absorb.
+         */
+        @Test
+        void testCandidateEndingBeforeNewAnchorFailsSecondHalfAndIsNotAbsorbed() {
+            var candidate = new Crescendo(line.getElement(IDX_0), line.getElement(IDX_2));
+            var added = new Crescendo(line.getElement(IDX_4), line.getElement(IDX_4));
+
+            song.withoutMutationTracking(() -> line.addCrescendo(candidate));
+            song.withoutMutationTracking(() -> line.addCrescendo(added));
+
+            assertAll(
+                () -> assertThat(line.findSpans(Crescendo.class))
+                    .as("candidate ending too far before the new crescendo's anchor must not be absorbed")
+                    .hasSize(2),
+                () -> assertThat(added.getAnchorElementIndex())
+                    .as("new crescendo's anchor must stay 4, not widen toward the candidate's anchor")
+                    .isEqualTo(IDX_4)
+            );
+        }
+
+        /**
+         * End side, first half only false: the candidate [3,4] starts too far past the
+         * new crescendo's end (0) for {@code candidateAnchor - reach <= endIdx} (2 <= 0)
+         * to hold, even though {@code endIdx <= candidateEnd} (0 <= 4) does.
+         */
+        @Test
+        void testCandidateStartingAfterNewEndFailsFirstHalfAndIsNotAbsorbed() {
+            var candidate = new Crescendo(line.getElement(IDX_3), line.getElement(IDX_4));
+            var added = new Crescendo(line.getElement(IDX_0), line.getElement(IDX_0));
+
+            song.withoutMutationTracking(() -> line.addCrescendo(candidate));
+            song.withoutMutationTracking(() -> line.addCrescendo(added));
+
+            assertAll(
+                () -> assertThat(line.findSpans(Crescendo.class))
+                    .as("candidate starting too far after the new crescendo's end must not be absorbed")
+                    .hasSize(2),
+                () -> assertThat(added.getEndElementIndex())
+                    .as("new crescendo's end must stay 0, not widen toward the candidate's end")
+                    .isEqualTo(IDX_0)
+            );
+        }
+
+        /**
+         * End side, second half only false: the candidate [0,1] starts at or before the
+         * new crescendo's end (3) for {@code candidateAnchor - reach <= endIdx} (-1 <= 3)
+         * to hold, but {@code endIdx <= candidateEnd} (3 <= 1) fails.
+         */
+        @Test
+        void testCandidateEndingBeforeNewEndFailsSecondHalfAndIsNotAbsorbed() {
+            var candidate = new Crescendo(line.getElement(IDX_0), line.getElement(IDX_1));
+            var added = new Crescendo(line.getElement(IDX_3), line.getElement(IDX_3));
+
+            song.withoutMutationTracking(() -> line.addCrescendo(candidate));
+            song.withoutMutationTracking(() -> line.addCrescendo(added));
+
+            assertAll(
+                () -> assertThat(line.findSpans(Crescendo.class))
+                    .as("candidate ending before the new crescendo's end must not be absorbed")
+                    .hasSize(2),
+                () -> assertThat(added.getEndElementIndex())
+                    .as("new crescendo's end must stay 3, not shrink toward the candidate's end")
+                    .isEqualTo(IDX_3)
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Abutting hairpins — no shared endpoint, merely touching
     // -----------------------------------------------------------------------
 
