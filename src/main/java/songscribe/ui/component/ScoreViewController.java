@@ -587,15 +587,20 @@ public final class ScoreViewController {
         var song = score.getSong();
 
         if (selectionCoordinator.getSelectedTarget() instanceof HitTarget.Lyric(var element, var verse)) {
-            var line = element.getLine();
-            var index = line.getElementIndex(element);
+            var line = element.getParentLine();
 
-            if (index >= 0) {
-                song.withModification(Strings.get(Strings.ACTION_EDIT_OP_DELETE_LYRIC), () -> {
-                    line.modifyElement(index, ElementField.LYRIC, () ->
-                        line.getElement(index).setLyricForVerse(verse, null, false, "", Lyric.Extend.NONE));
-                    line.adjustNeighborsForLyricDeletion(index, verse);
-                });
+            // An element in no line has no index, so there is nothing to delete —
+            // the same outcome as the index guard below.
+            if (line != null) {
+                var index = line.getElementIndex(element);
+
+                if (index >= 0) {
+                    song.withModification(Strings.get(Strings.ACTION_EDIT_OP_DELETE_LYRIC), () -> {
+                        line.modifyElement(index, ElementField.LYRIC, () ->
+                            line.getElement(index).setLyricForVerse(verse, null, false, "", Lyric.Extend.NONE));
+                        line.adjustNeighborsForLyricDeletion(index, verse);
+                    });
+                }
             }
 
             selectionCoordinator.restoreSelectedActionStates();

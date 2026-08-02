@@ -544,6 +544,39 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
                 GRACE_X_SS - (contentWidthSs - idealUnionWidthSs) / 2, within(POSITION_TOLERANCE_SS));
     }
 
+    // A grace note's pairing is something the note itself carries ({@code isPairedGraceNote}),
+    // so columns built from elements that are in no line answer it exactly as attached ones do.
+    // Same fixture and same expectation as the test above, with the elements removed from the
+    // line first — the two read as one question, not as an attached and a detached case.
+    @Test
+    void testColumnsBuiltFromElementsInNoLineAreLaidOutTheSameWay() {
+        var grace = graceQuaver();
+        setLyric(grace, Lyric.Syllabic.SINGLE, MELISMA_SPILLING_SYLLABLE, Lyric.Extend.START);
+        var host = crotchet();
+        setCarrier(host, Lyric.Extend.STOP);
+        addToLine(grace, host);
+        song.withoutMutationTracking(() -> line.removeRange(0, 1));
+
+        // Precondition: the elements really are in no line, so nothing can be asked of one.
+        assertThat(grace.getParentLine()).isNull();
+        assertThat(host.getParentLine()).isNull();
+
+        var widthSs = LYRIC_METRICS.lyricBoxWidthSs(MELISMA_SPILLING_SYLLABLE);
+        var graceCol = graceColumn(grace, GRACE_X_SS, widthSs);
+        var hostCol = normalColumn(host, PACKED_HOST_X_SS + OPTICAL_WIDENING_SS);
+        var spacedUnionWidthSs = hostCol.getNoteheadRightEdgeXSs() - GRACE_X_SS;
+
+        var result = buildLyrics(
+            List.of(graceCol, hostCol), LYRIC_METRICS, false, LINE_WIDTH_SS);
+
+        var graceBox = boxesOf(result, grace).getFirst();
+        var extender = connectorsOfKind(result, LyricConnectorLayout.Kind.EXTENDER).getFirst();
+
+        assertThat((graceBox.xSs() + extender.endXSs()) / 2)
+            .as("the pair is still recognized, so the content straddles the union as spaced")
+            .isCloseTo(GRACE_X_SS + spacedUnionWidthSs / 2, within(POSITION_TOLERANCE_SS));
+    }
+
     // (j) The melisma reaching a host need not be the one its own grace started: LyricRun.syncGraceHostMelisma
     // leaves a host that already carries an extender onward without a STOP of its own, so a melisma can
     // start at one grace, run through its host and past several notes, and stop at a second pair's host.

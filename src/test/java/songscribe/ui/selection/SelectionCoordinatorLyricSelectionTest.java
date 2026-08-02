@@ -125,4 +125,31 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
             .as("isSelected(lyric) on line 0 after selecting a lyric on an unregistered line")
             .isFalse();
     }
+
+    /**
+     * An element removed from its line is in no line at all, so there is no lyric to select
+     * and no line index to activate. The guard has to run before the existing selection is
+     * cleared: placed after, it would leave the user staring at a selection that vanished
+     * for no visible reason.
+     */
+    @Test
+    void testSelectLyricOnAnElementInNoLineLeavesTheExistingSelectionAlone() {
+        var line = detachedLine();
+        var kept = ElementType.CROTCHET.newInstance();
+        var removed = ElementType.CROTCHET.newInstance();
+        line.addElement(kept);
+        line.addElement(removed);
+        var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+        coordinator.selectSingleElement(0, 0);
+
+        line.removeElement(line.getElementIndex(removed));
+        coordinator.selectLyric(removed, 1);
+
+        assertThat(coordinator.hasActiveSelection())
+            .as("the element selection made before the doomed selectLyric call")
+            .isTrue();
+        assertThat(coordinator.getSelectedTarget())
+            .as("no lyric target was selected on an element that is in no line")
+            .isNotEqualTo(new HitTarget.Lyric(removed, 1));
+    }
 }

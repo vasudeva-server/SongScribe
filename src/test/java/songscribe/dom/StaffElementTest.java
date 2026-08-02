@@ -1129,11 +1129,11 @@ class StaffElementTest extends UnitTest {
     }
 
     // ------------------------------------------------------------------
-    // Row 24: setLine — propagates to all attachments + articulations
+    // Row 24: Line.addElement — propagates to all attachments + articulations
     // ------------------------------------------------------------------
 
     @Test
-    void testSetLinePropagatesLineToAllAttachmentsAndArticulations() {
+    void testAddElementPropagatesLineToAllAttachmentsAndArticulations() {
         // Build an element with both an attachment and an articulation before
         // it is placed in a line, so their parentLine starts null.
         var element = new StaffElement(ElementType.CROTCHET);
@@ -1147,11 +1147,106 @@ class StaffElementTest extends UnitTest {
 
         var song = new Song();
         var targetLine = song.getLine(0);
-        // setLine is the internal propagation hook — call it directly to isolate
-        // the propagation behaviour from Line.addElement()
-        element.setLine(targetLine);
+        song.withoutMutationTracking(() -> targetLine.addElement(element));
 
+        assertThat(element.getParentLine()).isSameAs(targetLine);
         assertThat(fermata.getParentLine()).isSameAs(targetLine);
         assertThat(staccato.getParentLine()).isSameAs(targetLine);
+    }
+
+    // ------------------------------------------------------------------
+    // A removed element is detached: no line means no key context, no index
+    // ------------------------------------------------------------------
+
+    /**
+     * Builds a line in the key of one sharp (covering F) holding a single note at
+     * staff position {@code -4} — pitch class F — and returns that note.
+     */
+    private static StaffElement noteInSharpKeyLine(Song song) {
+        var line = song.getLine(0);
+        var note = new StaffElement(ElementType.CROTCHET);
+        note.setStaffPosition(STAFF_POSITION_F5);
+        song.withoutMutationTracking(() -> {
+            line.setKeyType(KeyType.SHARPS);
+            line.setKeyAccidentalCount(KEY_ACCIDENTAL_COUNT_F_ONLY);
+            line.addElement(note);
+        });
+
+        return note;
+    }
+
+    private static void removeFromItsLine(Song song, StaffElement note) {
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.removeElement(line.getElementIndex(note)));
+    }
+
+    @Test
+    void testFindLastAccidentalReturnsNullForARemovedElement() {
+        var song = new Song();
+        var note = noteInSharpKeyLine(song);
+
+        assertThat(note.findLastAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
+
+        removeFromItsLine(song, note);
+
+        // No line, so no key signature and no predecessors to scan.
+        assertThat(note.findLastAccidental()).isNull();
+    }
+
+    @Test
+    void testGetPitchDropsTheKeyAccidentalForARemovedElement() {
+        var song = new Song();
+        var note = noteInSharpKeyLine(song);
+
+        // In the line, the key signature sharpens F5.
+        assertThat(note.getPitch()).isEqualTo(MIDI_F5 + 1);
+
+        removeFromItsLine(song, note);
+
+        // Detached, findLastAccidental() returns null, so the pitch is the unaltered F5.
+        assertThat(note.getPitch()).isEqualTo(MIDI_F5);
+    }
+
+    /**
+     * A tie whose anchor is the line's first element and whose end is its second, so both
+     * endpoint indices are known exactly rather than merely known to be found.
+     */
+    private static Tie tieOverTheFirstTwoElements(Song song, StaffElement anchor) {
+        var end = new StaffElement(ElementType.CROTCHET);
+        song.withoutMutationTracking(() -> song.getLine(0).addElement(end));
+
+        return new Tie(anchor, end);
+    }
+
+    @Test
+    void testAnchorElementIndexIsMinusOneForARemovedAnchor() {
+        var song = new Song();
+        var anchor = noteInSharpKeyLine(song);
+        var tie = tieOverTheFirstTwoElements(song, anchor);
+
+        // Pinned to the exact index, not merely "found": an off-by-one that still
+        // resolves to some element would slip past an isNotEqualTo(-1) check.
+        assertThat(tie.getAnchorElementIndex()).isEqualTo(0);
+
+        removeFromItsLine(song, anchor);
+
+        assertThat(tie.getAnchorElementIndex()).isEqualTo(-1);
+    }
+
+    @Test
+    void testEndElementIndexIsMinusOneForARemovedEndElement() {
+        var song = new Song();
+        var anchor = noteInSharpKeyLine(song);
+        var tie = tieOverTheFirstTwoElements(song, anchor);
+        var end = tie.getEndElement();
+        assertThat(end).isNotNull();
+
+        assertThat(tie.getEndElementIndex()).isEqualTo(1);
+
+        removeFromItsLine(song, end);
+
+        // The end element alone is detached, so only its index goes away.
+        assertThat(tie.getEndElementIndex()).isEqualTo(-1);
+        assertThat(tie.getAnchorElementIndex()).isEqualTo(0);
     }
 }

@@ -361,8 +361,16 @@ public final class SelectionCoordinator {
      * activates that line itself rather than requiring the caller to have done it.
      */
     public void selectLyric(StaffElement element, int verse) {
+        var line = element.getParentLine();
+
+        // Selecting a lyric on an element in no line is meaningless, and there is no
+        // line index to activate. Bail before disturbing the existing selection.
+        if (line == null) {
+            return;
+        }
+
         clearSelection();
-        activeLineIndex = findLineIndex(element.getLine());
+        activeLineIndex = findLineIndex(line);
         select(new HitTarget.Lyric(element, verse));
     }
 
@@ -518,9 +526,11 @@ public final class SelectionCoordinator {
      * <p>
      * One rule covers every {@link HitTarget} variant, rather than one arm per variant.
      * {@link HitTarget#owner()} names the element the target hangs off, and an element that
-     * has been removed from the line has its {@code parentLine} cleared, so walking to the
-     * root of the parent chain and asking which line it belongs to answers for an
-     * articulation on a note, a tie, a hairpin and a note itself alike.
+     * has been removed from the line has its {@code parentLine} cleared — {@link Line#detach}
+     * is what maintains that for a staff element, the way the {@code rangeElements.remove}
+     * sites already do for a span — so walking to the root of the parent chain and asking
+     * which line it belongs to answers for an articulation on a note, a tie, a hairpin and a
+     * note itself alike.
      *
      * @return whether the selection was cleared
      */
@@ -565,24 +575,19 @@ public final class SelectionCoordinator {
      * Returns whether {@code element} still hangs off {@code line}.
      * <p>
      * Sub-elements — an articulation, a fermata — carry no line of their own, so the walk
-     * climbs to the root of the parent chain and asks about that element instead.
-     * <p>
-     * The root is asked in whichever way actually answers for its kind. A span — a tie, a
-     * beam, a hairpin, an ending — has its {@code parentLine} cleared when the line drops it
-     * ({@link Line#removeRangeElement}), so reading the field is enough. A staff element does
-     * <b>not</b>: {@link Line#removeElement} takes it out of the element list and leaves
-     * {@code parentLine} pointing at the line it used to be on, so a removed note would
-     * report itself as live. Its membership in the list is the only honest answer.
+     * climbs to the root of the parent chain and asks about that element instead. Every root
+     * kind — staff element or span — answers through the same field: {@link Line#detach}
+     * clears a staff element's {@code parentLine} when {@code Line.elements} drops it, and the
+     * five {@code rangeElements.remove} sites do the same for spans, so a reference comparison
+     * against {@code line} is enough for either. This replaces an O(n) {@code elements.indexOf}
+     * scan (see {@code Line.getElementIndex}); {@link #revalidateDecorationSelection} runs
+     * after every mutation, so keep the comparison cheap rather than reintroducing that scan.
      */
     private static boolean isOnLine(LineElement element, Line line) {
         var root = element;
 
         for (var parent = root.getParentElement(); parent != null; parent = root.getParentElement()) {
             root = parent;
-        }
-
-        if (root instanceof StaffElement staffElement) {
-            return line.getElementIndex(staffElement) >= 0;
         }
 
         return root.getParentLine() == line;

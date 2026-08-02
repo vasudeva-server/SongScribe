@@ -927,7 +927,12 @@ public final class Song {
      * </ul>
      */
     public void clearTempoIfOrphaned(StaffElement element) {
-        var line = element.getLine();
+        var line = element.getParentLine();
+
+        // An element in no line cannot be the initial tempo anchor, so it orphans nothing.
+        if (line == null) {
+            return;
+        }
 
         if (line.isInitialTempoAnchor(line.getElementIndex(element)) || !hasAnyTempoChange()) {
             setTempo(null);
@@ -1704,9 +1709,8 @@ public final class Song {
      */
     @SuppressWarnings("UnusedReturnValue")
     public static boolean withBeatDefiningEditOn(@Nullable StaffElement owner, Runnable edit) {
-        var line = owner != null ? owner.getLine() : null;
+        var line = owner != null ? owner.getParentLine() : null;
 
-        //noinspection ConstantValue — the line field is unset on a detached element.
         if (owner == null || line == null) {
             edit.run();
             return false;

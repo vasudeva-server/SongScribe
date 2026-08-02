@@ -30,11 +30,13 @@ import java.util.List;
 import java.util.function.Function;
 
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
+import songscribe.layout.NoteGeometry;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
@@ -65,6 +67,15 @@ import songscribe.ui.selection.SelectionCoordinator;
  * because it needs {@link UndoController#resetForTest()}, which is package-private.
  */
 class PasteReconciliationUndoTest extends UnitTest {
+
+    // Pasting runs the fit gate, which measures column extents including accidental width,
+    // and NoteGeometry exits the process rather than guessing when its width tables are
+    // unpopulated. The tables are process-wide, so without this the class only passes when
+    // some other test class in the same run happens to fill them first.
+    @BeforeAll
+    static void initializeNoteGeometry() {
+        NoteGeometry.initializeAccidentalWidths();
+    }
 
     private static final double WIDE_LINE_WIDTH_SS = 500;
 
@@ -256,5 +267,30 @@ class PasteReconciliationUndoTest extends UnitTest {
         assertThat(afterRedo.getFirst().getEndElementIndex())
             .as("and runs to where the destination hairpin ended, again")
             .isEqualTo(LAST_NOTE_INDEX + 1);
+    }
+
+    @Test
+    void testUndoOfAPasteDetachesThePastedCloneAndLeavesSurvivorsAttached() {
+        // Paste adds and removes elements and spans in one operation, so it is the
+        // sharpest test of attach/detach ordering.
+        var notes = threeQuavers();
+
+        pasteOneQuaverInside();
+
+        var pastedClone = line.getElement(INTERIOR_INSERT_INDEX);
+
+        assertThat(pastedClone)
+            .as("precondition: the paste inserts a clone, not one of the fixture notes")
+            .isNotIn(notes);
+        assertThat(pastedClone.getParentLine()).isSameAs(line);
+
+        UndoController.undo();
+
+        assertThat(pastedClone.getParentLine())
+            .as("the undone clone must not keep pointing at the line it left")
+            .isNull();
+        assertThat(notes)
+            .as("every surviving element still points at its real line")
+            .allSatisfy(note -> assertThat(note.getParentLine()).isSameAs(line));
     }
 }

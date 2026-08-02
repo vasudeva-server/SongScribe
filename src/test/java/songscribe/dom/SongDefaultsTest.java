@@ -114,6 +114,29 @@ class SongDefaultsTest extends UnitTest {
 
             assertThat(song.getTempo()).isNotNull();
         }
+
+        // Branch 4: the element has been removed from its line, so it is in no line at all
+        // → nothing is orphaned and the song tempo is left alone. Reached when the tempo
+        // dialog acts on a selection that a delete has already invalidated. Without the
+        // null guard this throws instead, because there is no line to ask for an index.
+        @Test
+        void testKeepsSongTempoWhenElementIsInNoLine() {
+            var song = new Song();
+            var tempo = new Tempo();
+            song.setTempo(tempo);
+            song.withoutMutationTracking(() -> {
+                var firstLine = song.getLine(0);
+                // No tempo change anywhere, so a still-attached element would clear the
+                // tempo — the detached element is the only reason it survives.
+                var note = ElementType.CROTCHET.newInstance();
+                firstLine.addElement(note);
+                firstLine.removeElement(firstLine.getElementIndex(note));
+
+                song.clearTempoIfOrphaned(note);
+            });
+
+            assertThat(song.getTempo()).isSameAs(tempo);
+        }
     }
 
     // -----------------------------------------------------------------------

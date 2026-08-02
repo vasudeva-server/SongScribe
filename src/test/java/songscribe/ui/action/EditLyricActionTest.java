@@ -96,6 +96,25 @@ class EditLyricActionTest extends MainFrameMockTest {
         }
     }
 
+    /**
+     * The selection can name an element a delete has already taken out of the line, and the
+     * command still fires because the enabled state was computed before that. With no line
+     * there is no lyric to open an editor on, and asking for one would throw.
+     */
+    @Test
+    void testActionPerformedDoesNothingWhenTheSelectedElementIsInNoLine() {
+        var line = detachedLine();
+        var note = ElementType.CROTCHET.newInstance();
+        line.addElement(note);
+        line.removeElement(line.getElementIndex(note));
+        when(mockEnv().coordinator().getSingleSelectedElement()).thenReturn(note);
+
+        try (var lyricEditorMock = mockStatic(LyricEditor.class)) {
+            action.actionPerformed(new ActionEvent(this, ActionEvent.ACTION_PERFORMED, "edit-lyric"));
+            lyricEditorMock.verifyNoInteractions();
+        }
+    }
+
     // T26
 
     @Test

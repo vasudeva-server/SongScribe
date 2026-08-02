@@ -866,4 +866,101 @@ class MutationReplayerRoundTripTest extends UnitTest {
             verify(scoreView).setFonts(newFonts);
         }
     }
+
+    // -----------------------------------------------------------------------
+    // Parentage travels with the replay
+    // -----------------------------------------------------------------------
+
+    /**
+     * Undo and redo invert element mutations through the same public API the edit used,
+     * so each inverse must hit the mirrored {@code Line.attach} / {@code Line.detach}.
+     * Nothing throws when it does not — a stale pointer only surfaces much later — so
+     * these assertions are the check.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class ElementParentage {
+
+        @Test
+        void testUndoOfDeletionReattachesAndRedoDetaches() {
+            var song = songWithNotes(3);
+            var line = song.getLine(0);
+            var deleted = line.getElement(1);
+
+            var batch = UndoTestSupport.captureBatch(song, () -> line.removeElement(1));
+            assertThat(deleted.getParentLine()).isNull();
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+
+            UndoTestSupport.replayUndo(scoreView, batch);
+            assertThat(deleted.getParentLine()).isSameAs(line);
+
+            UndoTestSupport.replayRedo(scoreView, batch);
+            assertThat(deleted.getParentLine()).isNull();
+        }
+
+        @Test
+        void testUndoOfRangeDeletionReattachesEveryElementAndRedoDetachesThemAll() {
+            var song = songWithNotes(4);
+            var line = song.getLine(0);
+            var first = line.getElement(1);
+            var second = line.getElement(2);
+
+            var batch = UndoTestSupport.captureBatch(song, () -> line.removeRange(1, 2));
+            assertThat(first.getParentLine()).isNull();
+            assertThat(second.getParentLine()).isNull();
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+
+            UndoTestSupport.replayUndo(scoreView, batch);
+            assertThat(first.getParentLine()).isSameAs(line);
+            assertThat(second.getParentLine()).isSameAs(line);
+
+            UndoTestSupport.replayRedo(scoreView, batch);
+            assertThat(first.getParentLine()).isNull();
+            assertThat(second.getParentLine()).isNull();
+        }
+
+        @Test
+        void testUndoOfReplacementSwapsParentageBackAndRedoSwapsItForward() {
+            var song = songWithNotes(3);
+            var line = song.getLine(0);
+            var replaced = line.getElement(1);
+            var replacement = ElementType.QUAVER.newInstance();
+
+            var batch = UndoTestSupport.captureBatch(song, () -> line.setElement(1, replacement));
+            assertThat(replaced.getParentLine()).isNull();
+            assertThat(replacement.getParentLine()).isSameAs(line);
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+
+            UndoTestSupport.replayUndo(scoreView, batch);
+            assertThat(replaced.getParentLine()).isSameAs(line);
+            assertThat(replacement.getParentLine()).isNull();
+
+            UndoTestSupport.replayRedo(scoreView, batch);
+            assertThat(replaced.getParentLine()).isNull();
+            assertThat(replacement.getParentLine()).isSameAs(line);
+        }
+
+        @Test
+        void testModificationReplayLeavesParentageUntouched() {
+            // ElementModification restores in place via copyStateFrom, which must neither
+            // attach nor detach — the element never leaves the line.
+            var song = songWithNotes(3);
+            var line = song.getLine(0);
+            var modified = line.getElement(1);
+
+            var batch = UndoTestSupport.captureBatch(song, () ->
+                line.modifyElement(1, ElementField.FERMATA, () -> line.getElement(1).setFermata(true)));
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+
+            UndoTestSupport.replayUndo(scoreView, batch);
+            assertThat(modified.getParentLine()).isSameAs(line);
+
+            UndoTestSupport.replayRedo(scoreView, batch);
+            assertThat(modified.getParentLine()).isSameAs(line);
+        }
+    }
 }

@@ -207,9 +207,44 @@ public class Line implements LyricRun {
         );
     }
 
-    public void addElement(StaffElement element) {
-        element.setLine(this);
+    // ========================================================================
+    // Staff element parentage
+    //
+    // attach/detach are the only writers of a staff element's parentLine. Every
+    // mutation of `elements` funnels through one of them, from inside the
+    // applyChange mutator lambda, so parentage moves with the recorded change:
+    //
+    //     addElement(StaffElement) ──────┐
+    //     addElement(int, StaffElement) ─┼──► attach
+    //     setElement ────────────────────┤
+    //                                    │
+    //     setElement ────────────────────┐
+    //     removeElement ─────────────────┼──► detach
+    //     removeRange ───────────────────┘
+    //
+    // Invariant: element.getParentLine() == L ⟺ L.elements contains element,
+    // and null ⟺ the element is in no line at all.
+    // ========================================================================
+
+    /** Points {@code element} and everything below it at this line. */
+    private void attach(StaffElement element) {
         element.setParentLine(this);
+        element.propagateParentLine(this);
+    }
+
+    /** Clears {@code element}'s line pointer, and those of everything below it. */
+    private void detach(StaffElement element) {
+        // A re-parent that ran attach() first already owns this element — don't
+        // clear a pointer that now names a different line.
+        if (element.getParentLine() != this) {
+            return;
+        }
+
+        element.setParentLine(null);
+        element.propagateParentLine(null);
+    }
+
+    public void addElement(StaffElement element) {
         // When the line ends with the auto-maintained terminal, insert the new
         // element before it so the terminal remains the last element.
         var lastIdx = elements.size() - 1;
@@ -219,7 +254,10 @@ public class Line implements LyricRun {
 
         applyChange(
             new ElementInsertion(this, index, element),
-            () -> elements.add(index, element)
+            () -> {
+                attach(element);
+                elements.add(index, element);
+            }
         );
     }
 
@@ -244,9 +282,6 @@ public class Line implements LyricRun {
             throw new IllegalStateException(
                 "FINAL_DOUBLE_BARLINE may only be appended to the last line");
         }
-
-        element.setLine(this);
-        element.setParentLine(this);
 
         // During replay the recorded batch already carries the companion
         // mutations below — re-deriving them would double-apply.
@@ -291,7 +326,10 @@ public class Line implements LyricRun {
 
         applyChange(
             new ElementInsertion(this, index, element),
-            () -> elements.add(index, element)
+            () -> {
+                attach(element);
+                elements.add(index, element);
+            }
         );
     }
 
@@ -322,9 +360,12 @@ public class Line implements LyricRun {
         applyChange(
             new ElementReplacement(this, index, oldElement, element),
             () -> {
-                element.setLine(this);
-                element.setParentLine(this);
+                // Detach first: a self-replace (element == oldElement) would otherwise
+                // end with a live element holding a null parentLine, because detach's
+                // `!= this` guard would see the pointer attach just wrote.
+                detach(oldElement);
                 elements.set(index, element);
+                attach(element);
 
                 // Update stale anchor/end references in surviving range elements so that
                 // getAnchorElementIndex()/getEndElementIndex() remain valid after the swap.
@@ -475,7 +516,10 @@ public class Line implements LyricRun {
 
         applyChange(
             new ElementDeletion(this, index, deleted),
-            () -> elements.remove(index)
+            () -> {
+                detach(deleted);
+                elements.remove(index);
+            }
         );
 
         reanchorInitialTempo(displacedTempo);
@@ -518,7 +562,10 @@ public class Line implements LyricRun {
 
         applyChange(
             new ElementRangeDeletion(this, from, to, deletedElements),
-            () -> elements.subList(from, to + 1).clear()
+            () -> {
+                deletedElements.forEach(this::detach);
+                elements.subList(from, to + 1).clear();
+            }
         );
 
         reanchorInitialTempo(displacedTempo);
@@ -1573,8 +1620,6 @@ public class Line implements LyricRun {
      * Each removal is recorded as its own mutation so replacing a displaced trill is undoable.
      */
     public void addTrill(Trill trill) {
-        trill.setParentLine(this);
-
         for (var overlapping : findTrillsOverlapping(trill.getAnchorElementIndex(), trill.getEndElementIndex())) {
             removeRangeElement(overlapping);
         }

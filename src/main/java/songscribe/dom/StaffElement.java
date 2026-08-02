@@ -26,8 +26,6 @@ import java.util.List;
 import songscribe.error.RuntimeError;
 import songscribe.smufl.SMuFLGlyph;
 
-import com.uber.nullaway.annotations.Initializer;
-
 import org.jspecify.annotations.Nullable;
 
 public class StaffElement extends LineElement implements Cloneable {
@@ -85,9 +83,6 @@ public class StaffElement extends LineElement implements Cloneable {
     protected Direction direction = Direction.DOWN;
     private boolean stemDirectionAuto = true;
 
-    // The line which owns this note
-    protected Line line;
-
     // ========================================================================
     // LineElement hierarchy: articulations and attachments (Phase 3)
     // ========================================================================
@@ -119,9 +114,9 @@ public class StaffElement extends LineElement implements Cloneable {
         // Always copy
         xOffset = source.xOffset;
         dotCount = source.dotCount;
-        line = source.line;
         lyrics.addAll(source.lyrics);
-        setParentLine(source.getParentLine());
+        // The copy is born detached: only Line.attach parents a staff element, so a
+        // copy reports null until a line actually takes it.
 
         // Deep-copy attachments
         for (var attachment : source.attachments) {
@@ -166,15 +161,15 @@ public class StaffElement extends LineElement implements Cloneable {
         dotCount = source.dotCount;
         accidental = source.accidental;
         isAccidentalInParentheses = source.isAccidentalInParentheses;
-        line = source.line;
         direction = source.direction;
         // Give the copy its own Slide instance, so the two elements stay independently
         // identifiable even though a slide carries no state of its own.
         slide = source.slide == null ? null : source.slide.copy();
         stemDirectionAuto = source.stemDirectionAuto;
 
-        // Copy LineElement hierarchy data
-        setParentLine(source.getParentLine());
+        // parentLine is deliberately not copied. Line.attach/detach own it, and
+        // undo replay calls this on a *live* element using a detached snapshot as
+        // the source — copying the snapshot's pointer would orphan the target.
 
         // Deep-copy attachments
         clearAttachments();
@@ -250,8 +245,6 @@ public class StaffElement extends LineElement implements Cloneable {
      */
     public void addArticulation(Articulation articulation) {
         articulation.setOwnerElement(this);
-        articulation.setParentElement(this);
-        articulation.setParentLine(getParentLine());
         articulations.add(articulation);
         addChild(articulation);
     }
@@ -340,7 +333,6 @@ public class StaffElement extends LineElement implements Cloneable {
      */
     public void addAttachment(Attachment attachment) {
         attachment.setOwnerElement(this);
-        attachment.setParentLine(getParentLine());
         attachments.add(attachment);
         addChild(attachment);
     }
@@ -736,24 +728,16 @@ public class StaffElement extends LineElement implements Cloneable {
         return (int) (getDefaultDurationWithDots() * (hasFermata ? 1.5f : 1.0f));
     }
 
-    public Line getLine() {
-        return line;
-    }
-
-    @Initializer
-    public void setLine(Line line) {
-        this.line = line;
-
-        for (var attachment : attachments) {
-            attachment.setParentLine(line);
-        }
-
-        for (var articulation : articulations) {
-            articulation.setParentLine(line);
-        }
-    }
-
     public @Nullable Accidental findLastAccidental() {
+        var line = getParentLine();
+
+        // An element in no line has no key context, so no accidental is in effect.
+        // This is what getPitch() and MusicXML pitch spelling see for a detached
+        // element — a deliberate change from scanning whatever line it last sat in.
+        if (line == null) {
+            return null;
+        }
+
         return findEffectiveAccidental(line, line.getElementIndex(this));
     }
 

@@ -119,7 +119,14 @@ public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
                 element.removeAttachment(attachment);
             }
 
-            element.getLine().getSong().clearTempoIfOrphaned(element);
+            var line = element.getParentLine();
+
+            // An element in no line cannot orphan the song-level tempo.
+            if (line == null) {
+                return;
+            }
+
+            line.getSong().clearTempoIfOrphaned(element);
         });
     }
 }

@@ -218,15 +218,30 @@ public abstract class RangeElement extends LineElement {
     }
 
     /**
+     * The position of {@code element} within the line it is in, or -1 when there is no
+     * such position: the endpoint is unset, or it sits in no line because a removal
+     * detached it ({@link Line#removeElement}).
+     */
+    private static int indexInLine(@Nullable StaffElement element) {
+        if (element == null) {
+            return -1;
+        }
+
+        var line = element.getParentLine();
+
+        if (line == null) {
+            return -1;
+        }
+
+        return line.getElementIndex(element);
+    }
+
+    /**
      * Returns the index of the anchor element within its line.
      * Returns -1 if the anchor element is not set or not in a line.
      */
     public int getAnchorElementIndex() {
-        if (anchorElement == null) {
-            return -1;
-        }
-
-        return anchorElement.getLine().getElementIndex(anchorElement);
+        return indexInLine(anchorElement);
     }
 
     /**
@@ -234,11 +249,7 @@ public abstract class RangeElement extends LineElement {
      * Returns -1 if the end element is not set or not in a line.
      */
     public int getEndElementIndex() {
-        if (endElement == null) {
-            return -1;
-        }
-
-        return endElement.getLine().getElementIndex(endElement);
+        return indexInLine(endElement);
     }
 
     /**

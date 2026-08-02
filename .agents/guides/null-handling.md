@@ -28,14 +28,17 @@ guaranteed to assign the field before any read, mark that method `@Initializer`
 declaration — **no annotation on the field is needed**.
 
 ```java
-protected Line line;                       // no @Nullable, no @SuppressWarnings
+JMenu openRecentMenu;                      // no @Nullable, no @SuppressWarnings
 
 @Initializer
-public void setLine(Line line) {
-    this.line = line;
+JMenu initFileMenu() {
+    openRecentMenu = new JMenu(...);
     ...
 }
 ```
+
+See `MenuController.initFileMenu` (`ui/menu/`) and `FontChooser` for the two live
+uses of this pattern.
 
 **Pattern 2 — `@SuppressWarnings("NullAway.Init")` on the field.** When no single
 method owns initialization — fields populated by a UI builder, reflection, or a

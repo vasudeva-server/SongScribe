@@ -174,6 +174,44 @@ class ScoreViewControllerTest extends UnitTest {
             verify(scoreMock).selectionChanged();
             verify(scoreMock).repaint();
         }
+
+        @Test
+        void testDeleteOnALyricWhoseElementLeftTheLineClearsTheSelectionWithoutDeleting() {
+            // The lyric was selected while the element was in the line; something else then
+            // took the element out — an undo, a delete elsewhere. The keystroke still
+            // arrives. There is no index to delete at, so only the selection is cleared.
+            var song = new Song();
+            var line = song.getLine(0);
+            var element = ElementType.CROTCHET.newInstance();
+            element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "om", Lyric.Extend.NONE);
+            song.withoutMutationTracking(() -> line.addElement(element));
+
+            var selectionCoordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            selectionCoordinator.selectLyric(element, 1);
+
+            song.withoutMutationTracking(() -> line.removeElement(line.getElementIndex(element)));
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.isFocusOwner()).thenReturn(true);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.canDeleteLine()).thenReturn(false);
+
+            var controller = new ScoreViewController(
+                scoreMock,
+                mock(MusicEditOperations.class),
+                selectionCoordinator,
+                mock(ClipboardManager.class)
+            );
+
+            controller.handleDelete();
+
+            assertThat(element.getLyricForVerse(1))
+                .as("nothing was deleted — the element is in no line, so there is no lyric to delete")
+                .isNotNull();
+            assertThat(selectionCoordinator.getSelectedTarget()).isNull();
+            verify(scoreMock).selectionChanged();
+            verify(scoreMock).repaint();
+        }
     }
 
     // -----------------------------------------------------------------------

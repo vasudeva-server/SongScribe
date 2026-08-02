@@ -79,7 +79,13 @@ public final class EditLyricAction extends UIAction {
                 "EditLyricAction fired with no selected element — REQUIRES_SINGLE_SELECTION should have prevented this");
         }
 
-        var line = element.getLine();
+        var line = element.getParentLine();
+
+        // An element in no line has no lyric to edit.
+        if (line == null) {
+            return;
+        }
+
         var targetIndex = LyricTargetResolver.resolveLyricTarget(line, line.getElementIndex(element));
 
         if (targetIndex < 0) {

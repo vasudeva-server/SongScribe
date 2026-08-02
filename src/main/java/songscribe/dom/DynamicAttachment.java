@@ -129,11 +129,10 @@ public class DynamicAttachment extends Attachment {
     public DynamicAttachment(@Nullable StaffElement parent, DynamicType type) {
         this.type = type;
         setAlignment(Alignment.CENTER);
-
-        if (parent != null) {
-            setOwnerElement(parent);
-            setParentLine(parent.getParentLine());
-        }
+        setOwnerElement(parent);
+        // The line pointer is not set here. StaffElement.addAttachment — which every
+        // caller reaches immediately — routes through LineElement.addChild, and that
+        // owns it.
     }
 
     @Override

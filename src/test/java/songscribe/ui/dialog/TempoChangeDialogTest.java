@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 /**
@@ -205,7 +206,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testClearChangeRemovesAttachmentAndCallsClearTempoIfOrphaned() {
-        // A real Line with its backing Song mock is needed so element.getLine() works.
+        // A real Line with its backing Song mock is needed so element.getParentLine() works.
         var song = minimalSongMock();
         var line = new Line(song);
         var element = ElementType.CROTCHET.newInstance();
@@ -236,6 +237,29 @@ class TempoChangeDialogTest extends MainFrameMockTest {
             .as("no attachment present either before or after clearChange")
             .isNull();
         verify(song).clearTempoIfOrphaned(element);
+    }
+
+    @Test
+    void testClearChangeStillRemovesTheAttachmentWhenTheElementIsInNoLine() {
+        // The dialog can outlive the element's place in the score — a delete elsewhere
+        // detaches it while the dialog is open. There is then no line to reach the song
+        // through, and asking for one anyway would throw.
+        var song = minimalSongMock();
+        var line = new Line(song);
+        var element = ElementType.CROTCHET.newInstance();
+        line.addElement(element);
+
+        var attachment = new TempoChangeAttachment(element, new Tempo(80, Duration.CROTCHET, "Largo", true));
+        element.addAttachment(attachment);
+
+        line.removeElement(line.getElementIndex(element));
+
+        dialog.clearChange(element);
+
+        assertThat(element.findAttachment(TempoChangeAttachment.class))
+            .as("the attachment is removed whether or not the element is still in a line")
+            .isNull();
+        verify(song, never()).clearTempoIfOrphaned(element);
     }
 
     // ── Row 30: showForElement — static factory pre-sets selectedElement/selectedLine before showing ──

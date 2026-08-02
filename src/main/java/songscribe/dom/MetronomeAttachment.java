@@ -60,10 +60,9 @@ public abstract class MetronomeAttachment extends Attachment {
     protected MetronomeAttachment(@Nullable StaffElement parent, Alignment alignment) {
         setOwnerElement(parent);
         setAlignment(alignment);
-
-        if (parent != null) {
-            setParentLine(parent.getParentLine());
-        }
+        // The line pointer is not set here. StaffElement.addAttachment — which every
+        // caller reaches immediately — routes through LineElement.addChild, and that
+        // owns it.
     }
 
     /**

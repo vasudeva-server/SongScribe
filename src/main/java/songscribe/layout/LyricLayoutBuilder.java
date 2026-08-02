@@ -377,9 +377,18 @@ public final class LyricLayoutBuilder {
         return HorizontalSpacingCalculator.idealGraceHostUnionWidthSs(grace, hostColumn);
     }
 
+    /**
+     * Whether the column at {@code index} hosts the paired grace note before it —
+     * {@code Line.isHostOfPairedGraceNote} asked of the columns being laid out.
+     * <p>
+     * Asked of the columns, not of a line, because {@code index} is a column index and pairing is
+     * something a grace note carries on its own ({@link StaffElement#isPairedGraceNote}). Reading
+     * it here needs no line, so columns built from elements in no line — a clipboard fragment, a
+     * projected insertion — get the same answer as columns built from a live line.
+     */
     private static boolean isHostOfPairedGraceColumn(List<ElementColumn> columns, int index) {
-        var line = columns.getFirst().getElement().getLine();
-        return line.isHostOfPairedGraceNote(index);
+        return index >= 1 && index <= columns.size()
+            && columns.get(index - 1).getElement().isPairedGraceNote();
     }
 
     /**

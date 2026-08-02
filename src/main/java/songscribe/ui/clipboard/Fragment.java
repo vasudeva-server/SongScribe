@@ -200,11 +200,10 @@ public record Fragment(
      * The accidental {@code original} sounded with at index {@code index} of its own line,
      * or null when it is unpitched.
      *
-     * <p>Resolved against {@code original}, never against its clone: a clone's {@code line}
-     * field still points at the source line, but {@code line.getElementIndex(clone)}
-     * returns −1 because {@link StaffElement} overrides neither {@code equals()} nor
-     * {@code hashCode()}, so {@code clone.findLastAccidental()} would silently skip the
-     * whole scan and return the key signature alone — a wrong answer with no error.
+     * <p>Resolved against {@code original}, never against its clone: a clone is born
+     * detached, so {@code clone.findLastAccidental()} finds no line to scan and returns
+     * null — a wrong answer with no error, and one that says "no accidental" rather than
+     * "unknown".
      */
     private static StaffElement.@Nullable Accidental priorAccidentalOf(
         Line line, StaffElement original, int index) {

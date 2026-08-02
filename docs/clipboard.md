@@ -39,8 +39,8 @@ re-anchored to the clones).
 `IdentityHashMap`) and re-anchors the spans onto those fresh clones, leaving the
 stored fragment untouched. The alternative — inserting the stored fragment's own
 elements — would work for the first paste and then corrupt every subsequent one,
-because a `StaffElement` can only belong to one `Line` at a time (`setLine`/
-`setParentLine`, re-parented by `Line.addElement`). Pasting the same fragment twice
+because a `StaffElement` can only belong to one `Line` at a time (`setParentLine`,
+re-parented by `Line.addElement`). Pasting the same fragment twice
 must produce two paste results that share no instances by identity; `instantiate()`
 is what makes that true by construction rather than by care at each call site.
 
@@ -137,7 +137,7 @@ it inserts, so it can discard an ending the same way they can. Declining leaves 
 score, the selection, and the clipboard untouched.
 
 Inside the bracket, `Line.addElement`'s existing side effects also apply to every
-pasted clone: it re-parents the clone (`setLine`/`setParentLine`) and removes any
+pasted clone: it re-parents the clone (`setParentLine`) and removes any
 ending invalidated by the inserted element's type. Everything else that pasting
 into occupied structure would break is reconciled deliberately — see §3.1.
 
@@ -261,11 +261,10 @@ building them early touches nothing.
 Every fragment clone must be inserted (`line.addElement`) **before** the first
 `line.addRangeElement` call for that paste. `addRangeElement` re-parents only the
 span itself, not its anchor/end elements, and a span's `getAnchorElementIndex()`
-resolves through the anchor's *own* `getLine()`. A span added while its anchors
-still carry the source line's back-reference gets evaluated against the wrong
-line by `addElement`'s invalidation sweep, producing a wrong index or `-1`. The
-implementation inserts every clone in a loop first, then adds every span in a
-second loop.
+resolves through the anchor's *own* `getParentLine()`. A clone is born detached, so
+a span added before its anchors are inserted resolves to `-1`, and `addElement`'s
+invalidation sweep evaluates it against nothing. The implementation inserts every
+clone in a loop first, then adds every span in a second loop.
 
 ---
 

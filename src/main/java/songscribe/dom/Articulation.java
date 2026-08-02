@@ -82,11 +82,9 @@ public class Articulation extends LineElement {
     public Articulation(@Nullable StaffElement parent, ArticulationType type) {
         ownerElement = parent;
         this.type = type;
-
-        if (parent != null) {
-            setParentElement(parent);
-            setParentLine(parent.getParentLine());
-        }
+        // The parent and line pointers are not set here. StaffElement.addArticulation —
+        // which every caller reaches immediately — routes through LineElement.addChild,
+        // and that owns both.
     }
 
     /**

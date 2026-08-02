@@ -44,9 +44,37 @@ import org.jspecify.annotations.Nullable;
 public abstract class LineElement {
 
     /**
-     * Reference to the Line that contains this element. Null only during the construction
-     * window before the element is added to a line via {@code Line.addElement}. Code paths
-     * downstream of {@code Line.addElement} may treat this as non-null.
+     * The line this element is in right now, or {@code null} when it is in no line —
+     * either not yet added, or detached by a removal. Removals maintain it, so this is
+     * the authoritative answer to "is this element live in the document?"; no membership
+     * scan is needed to decide.
+     * <p>
+     * Three kinds of element reach this field three different ways:
+     * <pre>
+     *                          Line
+     *                           │
+     *     ┌─────────────────────┼──────────────────────┐
+     *     │  elements (List&lt;StaffElement&gt;)             │  rangeElements (List&lt;RangeElement&gt;)
+     *     │                                            │
+     *     ▼                                            ▼
+     *   StaffElement                                RangeElement  (tie, beam, tuplet,
+     *     parentLine ◄── Line.attach / Line.detach     parentLine      hairpin, ending, trill)
+     *     │              ONLY writer  ── structural       ▲
+     *     │                                               │
+     *     │  children (List&lt;LineElement&gt;)          five hand-written setParentLine
+     *     ▼                                        pairs at the rangeElements.add /
+     *   Articulation, FermataAttachment, …         .remove sites ── by convention
+     *     parentLine ◄── LineElement.addChild /     (tracked as issue #724)
+     *                    removeChild, and
+     *                    propagateParentLine
+     *                    when the host attaches
+     *                    or detaches
+     * </pre>
+     * For staff elements the invariant is
+     * {@code parentLine == L ⟺ L.elements contains this}, holding at
+     * modification-bracket boundaries. Inside a bracket a re-parent may briefly have
+     * attached to B while A's list still holds the element; {@code Line.detach}'s
+     * {@code != this} guard is what makes that ordering-independent.
      */
     private @Nullable Line parentLine;
 
@@ -131,10 +159,21 @@ public abstract class LineElement {
     }
 
     /**
-     * Sets the Line that contains this element.
+     * Sets the Line that contains this element. For staff elements the only callers are
+     * {@code Line.attach} and {@code Line.detach}; calling it elsewhere breaks the
+     * invariant documented on {@link #parentLine}. Package-private so the compiler
+     * enforces that, rather than leaving it to a reader of this comment.
      */
-    public void setParentLine(@Nullable Line parentLine) {
+    void setParentLine(@Nullable Line parentLine) {
         this.parentLine = parentLine;
+    }
+
+    /** Pushes {@code line} down the child chain; sub-elements have no line of their own. */
+    void propagateParentLine(@Nullable Line line) {
+        for (var child : getChildren()) {
+            child.setParentLine(line);
+            child.propagateParentLine(line);
+        }
     }
 
     /**
@@ -145,9 +184,11 @@ public abstract class LineElement {
     }
 
     /**
-     * Sets the parent element.
+     * Sets the parent element. Package-private alongside {@link #setParentLine}: the
+     * element tree is built by {@link #addChild} / {@link #removeChild}, which own both
+     * pointers together.
      */
-    public void setParentElement(@Nullable LineElement parentElement) {
+    void setParentElement(@Nullable LineElement parentElement) {
         this.parentElement = parentElement;
     }
 
@@ -376,17 +417,6 @@ public abstract class LineElement {
             child.parentElement = null;
             child.parentLine = null;
         }
-    }
-
-    /**
-     * Removes all children.
-     */
-    public void clearChildren() {
-        for (var child : children) {
-            child.parentElement = null;
-        }
-
-        children.clear();
     }
 
     /**

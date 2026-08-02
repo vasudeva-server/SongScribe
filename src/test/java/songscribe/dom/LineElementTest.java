@@ -212,29 +212,6 @@ class LineElementTest extends UnitTest {
     }
 
     // ------------------------------------------------------------------
-    // Row 30: clearChildren
-    // ------------------------------------------------------------------
-
-    /**
-     * Row 30 — clearChildren clears parentElement for every child and empties
-     * the child list.
-     */
-    @Test
-    void testClearChildrenClearsParentElementAndEmptiesList() {
-        var parent = StaffElementFactory.crotchet();
-        var child1 = StaffElementFactory.quaver();
-        var child2 = StaffElementFactory.crotchetRest();
-        parent.addChild(child1);
-        parent.addChild(child2);
-
-        parent.clearChildren();
-
-        assertThat(parent.getChildCount()).isEqualTo(0);
-        assertThat(child1.getParentElement()).isNull();
-        assertThat(child2.getParentElement()).isNull();
-    }
-
-    // ------------------------------------------------------------------
     // Row 31: setMarginSs(double) — uniform margin
     // ------------------------------------------------------------------
 
