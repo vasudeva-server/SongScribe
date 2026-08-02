@@ -86,7 +86,7 @@ public final class EndingRenderer {
 
             // StructuralStacker.stackEndings writes no layout for an ending whose
             // anchor/end note is missing or whose bracket ranges are empty. This loop
-            // iterates the same model collection (findRangeElements(Ending.class)), so a
+            // iterates the same model collection (findSpans(Ending.class)), so a
             // null layout here is an expected incomplete ending, not an error — skip it.
             if (decorationLayout == null) {
                 continue;

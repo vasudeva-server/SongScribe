@@ -167,7 +167,7 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         assertThat(line.effectiveElementCount())
             .as("both quavers were inserted")
             .isEqualTo(2);
-        assertThat(line.findRangeElements(Beam.class))
+        assertThat(line.findSpans(Beam.class))
             .as("inserting two consecutive quavers must not auto-beam them")
             .isEmpty();
     }
@@ -436,7 +436,7 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
             assertThat(line.getElement(0).getType())
                 .as("crotchet replaced with a quaver")
                 .isEqualTo(ElementType.QUAVER);
-            assertThat(line.findRangeElements(Beam.class))
+            assertThat(line.findSpans(Beam.class))
                 .as("replacing a note next to a quaver must not auto-beam them")
                 .isEmpty();
         }

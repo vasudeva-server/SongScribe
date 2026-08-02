@@ -395,7 +395,7 @@ class LineRenderer {
         var beamRenderer = BeamGroupRenderer.getInstance();
         var line = invariants.requireCurrentLine();
 
-        for (var beam : line.findRangeElements(Beam.class)) {
+        for (var beam : line.findSpans(Beam.class)) {
             var anchorIdx = beam.getAnchorElementIndex();
             var endIdx = beam.getEndElementIndex();
             renderWithPreviewShiftIfNeeded(g2, frame, anchorIdx,

@@ -372,7 +372,7 @@ class BeamGroupRendererTest extends UnitTest {
         // beam's own selection can highlight it here.
         var line = lineWith(ElementType.QUAVER, ElementType.QUAVER);
         var beam = new Beam(line.getElement(0), line.getElement(1));
-        line.addRangeElement(beam);
+        line.addSpan(beam);
 
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isSelected(new HitTarget.Beam(beam), 0)).thenReturn(true);
@@ -390,7 +390,7 @@ class BeamGroupRendererTest extends UnitTest {
     void testGetBeamHighlightColor_anotherBeamSelected_returnsNull() {
         var line = lineWith(ElementType.QUAVER, ElementType.QUAVER);
         var beam = new Beam(line.getElement(0), line.getElement(1));
-        line.addRangeElement(beam);
+        line.addSpan(beam);
 
         var otherLine = lineWith(ElementType.QUAVER, ElementType.QUAVER);
         var otherBeam = new Beam(otherLine.getElement(0), otherLine.getElement(1));

@@ -35,8 +35,8 @@ import org.mockito.MockedStatic;
 import songscribe.UnitTest;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.mutation.RangeElementAddition;
-import songscribe.message.mutation.RangeElementRemoval;
+import songscribe.message.mutation.SpanAddition;
+import songscribe.message.mutation.SpanRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
 
 /**
@@ -193,13 +193,14 @@ class LineTrillTest extends UnitTest {
 
             var mutations = captureSingleDidChange().getMutations();
             assertAll(
-                () -> assertThat(line.findRangeElements(Trill.class))
+                () -> assertThat(line.findSpans(Trill.class))
                     .as("the new trill must be the only trill on the line")
                     .containsExactly(trill),
                 () -> assertThat(mutations)
-                    .as("adding a non-overlapping trill records exactly one RangeElementAddition")
+                    .as("adding a non-overlapping trill records exactly one SpanAddition")
                     .singleElement()
-                    .isInstanceOfSatisfying(RangeElementAddition.class,
+                    .isInstanceOfSatisfying(
+                        SpanAddition.class,
                         addition -> assertThat(addition.element()).isSameAs(trill))
             );
         }
@@ -214,17 +215,17 @@ class LineTrillTest extends UnitTest {
 
             var mutations = captureSingleDidChange().getMutations();
             assertAll(
-                () -> assertThat(line.findRangeElements(Trill.class))
+                () -> assertThat(line.findSpans(Trill.class))
                     .as("the overlapping trill must be replaced by the new one")
                     .containsExactly(replacement),
                 () -> assertThat(mutations)
-                    .filteredOn(RangeElementRemoval.class::isInstance)
-                    .extracting(m -> ((RangeElementRemoval) m).element())
+                    .filteredOn(SpanRemoval.class::isInstance)
+                    .extracting(m -> ((SpanRemoval) m).element())
                     .as("the displaced trill must be removed")
                     .containsExactly(existing),
                 () -> assertThat(mutations)
-                    .filteredOn(RangeElementAddition.class::isInstance)
-                    .extracting(m -> ((RangeElementAddition) m).element())
+                    .filteredOn(SpanAddition.class::isInstance)
+                    .extracting(m -> ((SpanAddition) m).element())
                     .as("the replacement trill must be added")
                     .containsExactly(replacement)
             );
@@ -243,11 +244,11 @@ class LineTrillTest extends UnitTest {
             song.withModification(() -> line.addTrill(spanning));
 
             var removed = captureSingleDidChange().getMutations().stream()
-                .filter(RangeElementRemoval.class::isInstance)
-                .map(m -> ((RangeElementRemoval) m).element())
+                .filter(SpanRemoval.class::isInstance)
+                .map(m -> ((SpanRemoval) m).element())
                 .toList();
             assertAll(
-                () -> assertThat(line.findRangeElements(Trill.class))
+                () -> assertThat(line.findSpans(Trill.class))
                     .as("both overlapping trills replaced by the spanning one")
                     .containsExactly(spanning),
                 () -> assertThat(removed)
@@ -286,7 +287,7 @@ class LineTrillTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // removeTrillsOverlapping(a, b) — fires RangeElementRemoval per removed trill
+    // removeTrillsOverlapping(a, b) — fires SpanRemoval per removed trill
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -317,14 +318,14 @@ class LineTrillTest extends UnitTest {
             song.withModification(() -> line.removeTrillsOverlapping(IDX_0, IDX_5));
 
             var removed = captureSingleDidChange().getMutations().stream()
-                .filter(RangeElementRemoval.class::isInstance)
-                .map(m -> ((RangeElementRemoval) m).element())
+                .filter(SpanRemoval.class::isInstance)
+                .map(m -> ((SpanRemoval) m).element())
                 .toList();
             assertAll(
                 () -> assertThat(removed)
                     .as("both trills must be removed")
                     .containsExactlyInAnyOrder(left, right),
-                () -> assertThat(line.findRangeElements(Trill.class))
+                () -> assertThat(line.findSpans(Trill.class))
                     .as("no trills must remain on the line")
                     .isEmpty()
             );
@@ -341,7 +342,7 @@ class LineTrillTest extends UnitTest {
 
             song.withModification(() -> line.removeTrillsOverlapping(IDX_0, IDX_1));
 
-            assertThat(line.findRangeElements(Trill.class))
+            assertThat(line.findSpans(Trill.class))
                 .as("only the trill overlapping [0,1] is removed")
                 .containsExactly(untouched);
         }
@@ -355,7 +356,7 @@ class LineTrillTest extends UnitTest {
 
             song.withModification(() -> line.removeTrillsOverlapping(IDX_1, IDX_2));
 
-            assertThat(line.findRangeElements(Trill.class))
+            assertThat(line.findSpans(Trill.class))
                 .as("range [1,2] touches the trill's end at index 1, so it is removed")
                 .isEmpty();
         }
@@ -369,7 +370,7 @@ class LineTrillTest extends UnitTest {
 
             assertAll(
                 () -> messageCenterMock.verify(() -> MessageCenter.post(any()), never()),
-                () -> assertThat(line.findRangeElements(Trill.class))
+                () -> assertThat(line.findSpans(Trill.class))
                     .as("the non-overlapping trill must remain")
                     .containsExactly(trill)
             );

@@ -29,7 +29,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Beam;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.Song;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
@@ -104,7 +104,7 @@ import songscribe.layout.InsertionSpacingCalculator;
  * lives where drawing already handles it: {@link Line#addCrescendo} and
  * {@link Line#addDiminuendo} absorb an overlapping <em>or adjacent</em> same-type
  * hairpin, and {@code tryInsertFragment} adds pasted spans through
- * {@link Line#addPastedRangeElement}, which routes hairpins to them. A different type
+ * {@link Line#addPastedSpan}, which routes hairpins to them. A different type
  * merges with nothing and the two hairpins stand side by side, again exactly as when
  * drawn. Nothing here needs to know about it.
  *
@@ -140,8 +140,8 @@ import songscribe.layout.InsertionSpacingCalculator;
  *                                until {@link #dropTupletsRejectedByTarget} has run
  */
 public record PasteSpanReconciliation(
-    List<RangeElement> targetSpansToRemove,
-    List<RangeElement> fragmentSpans,
+    List<Span> targetSpansToRemove,
+    List<Span> fragmentSpans,
     List<Tuplet> tupletsRejectedByTarget
 ) {
 
@@ -162,13 +162,13 @@ public record PasteSpanReconciliation(
         Line line,
         int insertIndex,
         InsertionSpacingCalculator.@Nullable DeletedRange deleteRange,
-        List<RangeElement> fragmentSpans
+        List<Span> fragmentSpans
     ) {
         // The first index after the paste region. For a pure insertion the region is
         // empty, so it collapses onto insertIndex itself.
         var firstIndexAfterRegion = deleteRange == null ? insertIndex : deleteRange.end() + 1;
 
-        var toRemove = new ArrayList<RangeElement>();
+        var toRemove = new ArrayList<Span>();
         var dropTuplets = false;
         var dropBeams = false;
         var dropEndings = false;
@@ -177,7 +177,7 @@ public record PasteSpanReconciliation(
         // fragment therefore must not also contribute.
         var keptStraddledHairpinTypes = new HashSet<Class<?>>();
 
-        for (var span : line.getRangeElements()) {
+        for (var span : line.getSpans()) {
             var anchorIndex = span.getAnchorElementIndex();
             var endIndex = span.getEndElementIndex();
 
@@ -214,7 +214,7 @@ public record PasteSpanReconciliation(
             }
         }
 
-        var keptFragmentSpans = new ArrayList<RangeElement>(fragmentSpans.size());
+        var keptFragmentSpans = new ArrayList<Span>(fragmentSpans.size());
 
         for (var span : fragmentSpans) {
             var dropped = (dropTuplets && span instanceof Tuplet)
@@ -272,7 +272,7 @@ public record PasteSpanReconciliation(
             return this;
         }
 
-        var keptSpans = new ArrayList<RangeElement>(fragmentSpans.size());
+        var keptSpans = new ArrayList<Span>(fragmentSpans.size());
         var rejectedTuplets = new ArrayList<Tuplet>();
 
         for (var span : fragmentSpans) {
@@ -338,7 +338,7 @@ public record PasteSpanReconciliation(
      * notes would then be reading two opposite dynamics at once.
      */
     private static boolean fragmentContradictsHairpin(
-        List<RangeElement> fragmentSpans,
+        List<Span> fragmentSpans,
         Hairpin hairpin
     ) {
         for (var span : fragmentSpans) {

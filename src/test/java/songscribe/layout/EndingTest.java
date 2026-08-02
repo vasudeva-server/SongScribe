@@ -85,7 +85,7 @@ class EndingTest extends UnitTest {
             song.withoutMutationTracking(() -> {
                 line.addElement(anchor);
                 line.addElement(end);
-                line.addRangeElement(ending);
+                line.addSpan(ending);
             });
         }
 
@@ -114,7 +114,7 @@ class EndingTest extends UnitTest {
             song.withoutMutationTracking(() -> {
                 line.addElement(anchor);
                 line.addElement(end);
-                line.addRangeElement(built);
+                line.addSpan(built);
             });
 
             return built;
@@ -169,7 +169,7 @@ class EndingTest extends UnitTest {
                 line.addElement(anchor);
                 line.addElement(mid);
                 line.addElement(end);
-                line.addRangeElement(ending);
+                line.addSpan(ending);
             });
 
             assertThat(ending.findRepeatSplitElement(line)).isNull();
@@ -203,7 +203,7 @@ class EndingTest extends UnitTest {
                 line.addElement(anchor);
                 line.addElement(mid);
                 line.addElement(end);
-                line.addRangeElement(ending);
+                line.addSpan(ending);
             });
 
             assertThat(ending.findRepeatSplitElement(line)).isNull();
@@ -232,7 +232,7 @@ class EndingTest extends UnitTest {
                 line.addElement(anchor);
                 line.addElement(mid);
                 line.addElement(end);
-                line.addRangeElement(ending);
+                line.addSpan(ending);
             });
 
             assertThatThrownBy(() -> ending.getSplitIndex(line))
@@ -395,7 +395,7 @@ class EndingTest extends UnitTest {
                 line.addElement(anchor);
                 line.addElement(split);
                 line.addElement(end);
-                line.addRangeElement(ending);
+                line.addSpan(ending);
             });
             // FINAL_DOUBLE_BARLINE at last index (added by Song)
             var terminal = line.getElement(line.elementCount() - 1);
@@ -458,7 +458,7 @@ class EndingTest extends UnitTest {
             line.addElement(anchor);
             line.addElement(mid);
             line.addElement(end);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
 
             var elements = new StaffElement[]{anchor, mid, end};
             var xs = new double[]{10.0, 20.0, 30.0};
@@ -491,7 +491,7 @@ class EndingTest extends UnitTest {
             line.addElement(split);
             line.addElement(note4);
             line.addElement(end);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
 
             var anchorX = 10.0;
             var elements = new StaffElement[]{anchor, note2, split, note4, end};
@@ -526,7 +526,7 @@ class EndingTest extends UnitTest {
             line.addElement(split);
             line.addElement(note4);
             line.addElement(end);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
 
             var anchorX = 10.0;
             var elements = new StaffElement[]{anchor, note2, split, note4, end};
@@ -561,7 +561,7 @@ class EndingTest extends UnitTest {
             line.addElement(split);
             line.addElement(note4);
             line.addElement(end);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
 
             var anchorX = 10.0;
             var elements = new StaffElement[]{anchor, note2, split, note4, end};

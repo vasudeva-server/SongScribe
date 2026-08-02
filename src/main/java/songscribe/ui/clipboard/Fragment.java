@@ -32,13 +32,13 @@ import songscribe.dom.DetachedLyricRun;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.LyricRun;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 
 /**
  * An immutable, self-contained copy of a run of {@link StaffElement}s (and the
- * {@link RangeElement} spans fully contained within it), independent of the
+ * {@link Span} spans fully contained within it), independent of the
  * {@link Line} it was captured from.
  *
  * <p>This is the one place "clone + re-anchor" is defined, used by both capture
@@ -82,11 +82,11 @@ import songscribe.dom.TempoChangeAttachment;
  *                          accidental of its own records that accidental, and one that
  *                          inherits records what it inherited. {@code null} only where the
  *                          element is unpitched (a barline, a breath mark, and so on)
- * @param spans            The {@link RangeElement} spans fully contained within {@code elements}
+ * @param spans            The {@link Span} spans fully contained within {@code elements}
  */
 public record Fragment(
     List<StaffElement> elements, List<StaffElement.@Nullable Accidental> priorAccidentals,
-    List<RangeElement> spans) {
+    List<Span> spans) {
 
     // Defensive copies — the class contract is immutability, and both factories
     // build their lists incrementally before handing them over. priorAccidentals
@@ -106,7 +106,7 @@ public record Fragment(
 
     /**
      * Captures the elements in {@code line} from {@code begin} to {@code end}
-     * (inclusive), along with every {@link RangeElement} fully contained within
+     * (inclusive), along with every {@link Span} fully contained within
      * that range.
      *
      * <p>The captured range is first extended past a trailing breath mark
@@ -160,7 +160,7 @@ public record Fragment(
         new DetachedLyricRun(elements).endDanglingChains();
 
         return new Fragment(
-            elements, priorAccidentals, cloneSpans(line.getRangeElements(), originalToClone));
+            elements, priorAccidentals, cloneSpans(line.getSpans(), originalToClone));
     }
 
     /**
@@ -225,9 +225,9 @@ public record Fragment(
      * keeping only those whose anchor and end are both present in the map — a span
      * with an endpoint outside the captured run cannot be re-anchored and is dropped.
      */
-    private static List<RangeElement> cloneSpans(
-        List<? extends RangeElement> source, Map<StaffElement, ? extends StaffElement> originalToClone) {
-        var clonedSpans = new ArrayList<RangeElement>();
+    private static List<Span> cloneSpans(
+        List<? extends Span> source, Map<StaffElement, ? extends StaffElement> originalToClone) {
+        var clonedSpans = new ArrayList<Span>();
 
         for (var span : source) {
             var anchor = span.getAnchorElement();

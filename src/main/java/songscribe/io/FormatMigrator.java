@@ -41,13 +41,13 @@ import songscribe.dom.ScaleContext;
  * Migrates song data from legacy format (version 1) to new format (version 2).
  * <p>
  * Legacy format stores range data as inline properties (ties, tuplets, crescendo, etc.);
- * the new format stores it as RangeElement objects in Line.rangeElements. Note attachments
+ * the new format stores it as Span objects in Line.spans. Note attachments
  * (tempoChange, fermata, etc.) are read directly into Attachment objects by StaffElementIO
  * and need no separate migration step.
  *
  * <h2>Migration history</h2>
  * <ul>
- *   <li><b>v1 → v2</b>: {@link #migrate} — legacy range data converted to RangeElement
+ *   <li><b>v1 → v2</b>: {@link #migrate} — legacy range data converted to Span
  *       objects.</li>
  *   <li><b>v2.0 → v2.1</b>: {@link #migratePixelsToStaffSpace} — pixel-based position
  *       fields converted to staff-space units.</li>
@@ -110,7 +110,7 @@ public final class FormatMigrator {
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
 
             // Tuplet.verticalPosition (pixel → staff-space conversion)
-            for (var re : line.getRangeElements()) {
+            for (var re : line.getSpans()) {
                 if (re instanceof Tuplet tuplet && tuplet.getVerticalPositionSs() != 0) {
                     tuplet.setVerticalPositionSs(
                         (int) Math.round(tuplet.getVerticalPositionSs() / pps)
@@ -119,7 +119,7 @@ public final class FormatMigrator {
             }
 
             // Hairpin shifts (crescendo + diminuendo)
-            for (var re : line.getRangeElements()) {
+            for (var re : line.getSpans()) {
                 if (re instanceof Hairpin hairpin) {
                     if (hairpin.getX1ShiftSs() != 0 || hairpin.getX2ShiftSs() != 0 || hairpin.getYShiftSs() != 0) {
                         hairpin.setX1ShiftSs(hairpin.getX1ShiftSs() / pps);
@@ -144,8 +144,8 @@ public final class FormatMigrator {
                 note.setXOffsetPx(0);
             }
 
-            // Convert per-instance RangeElement offsets (Ending, Trill)
-            for (var element : line.getRangeElements()) {
+            // Convert per-instance Span offsets (Ending, Trill)
+            for (var element : line.getSpans()) {
                 if (element instanceof Ending ending && ending.getYPositionSs() != 0) {
                     ending.setYPositionSs((int) Math.round(ending.getYPositionSs() / pps));
                 } else if (element instanceof Trill trill && trill.getYPositionSs() != 0) {
@@ -218,7 +218,7 @@ public final class FormatMigrator {
         if (endingOffset != endingDefault) {
             var delta = endingOffset - endingDefault;
 
-            for (var element : line.getRangeElements()) {
+            for (var element : line.getSpans()) {
                 if (element instanceof Ending ending) {
                     ending.setYPositionSs(ending.getYPositionSs() + delta);
                 }
@@ -232,7 +232,7 @@ public final class FormatMigrator {
         if (trillOffset != trillDefault) {
             var delta = trillOffset - trillDefault;
 
-            for (var element : line.getRangeElements()) {
+            for (var element : line.getSpans()) {
                 if (element instanceof Trill trill) {
                     trill.setYPositionSs(trill.getYPositionSs() + delta);
                 }

@@ -38,7 +38,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
@@ -80,7 +80,7 @@ class FragmentTest extends UnitTest {
         // Then instantiates the captured fragment again and asserts the spans re-anchor
         // to a *fresh* set of clones each time.
         private void assertSpanSurvivesCopyAndReanchors(
-            BiFunction<? super StaffElement, ? super StaffElement, ? extends RangeElement> spanFactory
+            BiFunction<? super StaffElement, ? super StaffElement, ? extends Span> spanFactory
         ) {
             var line = detachedLine();
             var noteA = crotchet();
@@ -93,7 +93,7 @@ class FragmentTest extends UnitTest {
             line.addElement(noteD);
 
             var span = spanFactory.apply(noteB, noteC);
-            line.addRangeElement(span);
+            line.addSpan(span);
 
             var fragment = Fragment.capture(line, 0, 3);
 
@@ -170,7 +170,7 @@ class FragmentTest extends UnitTest {
             var noteB = crotchet();
             line.addElement(noteA);
             line.addElement(noteB);
-            line.addRangeElement(new Tie(noteA, noteB));
+            line.addSpan(new Tie(noteA, noteB));
 
             var fragment = Fragment.capture(line, 0, 1);
 
@@ -231,9 +231,9 @@ class FragmentTest extends UnitTest {
             var tie = new Tie(noteA, noteB);
             var beam = new Beam(noteA, noteB);
             var tuplet = new Tuplet(noteA, noteD, TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
-            line.addRangeElement(tie);
-            line.addRangeElement(beam);
-            line.addRangeElement(tuplet);
+            line.addSpan(tie);
+            line.addSpan(beam);
+            line.addSpan(tuplet);
 
             var fragment = Fragment.capture(line, 0, 3);
 
@@ -283,7 +283,7 @@ class FragmentTest extends UnitTest {
             line.addElement(noteC);
             line.addElement(noteD);
             line.addElement(noteE);
-            line.addRangeElement(new Tie(noteB, noteE));
+            line.addSpan(new Tie(noteB, noteE));
 
             var fragment = Fragment.capture(line, 0, 2);
 
@@ -306,7 +306,7 @@ class FragmentTest extends UnitTest {
             line.addElement(noteC);
             line.addElement(noteD);
             line.addElement(noteE);
-            line.addRangeElement(new Tie(noteA, noteC));
+            line.addSpan(new Tie(noteA, noteC));
 
             var fragment = Fragment.capture(line, 2, 4);
 
@@ -327,8 +327,8 @@ class FragmentTest extends UnitTest {
 
             var tieMissingItsEnd = new Tie(noteA, noteB);
             var tieMissingItsAnchor = new Tie(noteA, noteB);
-            line.addRangeElement(tieMissingItsEnd);
-            line.addRangeElement(tieMissingItsAnchor);
+            line.addSpan(tieMissingItsEnd);
+            line.addSpan(tieMissingItsAnchor);
             tieMissingItsEnd.setEndElement(null);
             tieMissingItsAnchor.setAnchorElement(null);
 
@@ -351,7 +351,7 @@ class FragmentTest extends UnitTest {
             line.addElement(noteA);
             line.addElement(noteB);
             line.addElement(noteC);
-            line.addRangeElement(new Ending(noteB, noteC));
+            line.addSpan(new Ending(noteB, noteC));
 
             var fragment = Fragment.capture(line, 0, 1);
 
@@ -394,7 +394,7 @@ class FragmentTest extends UnitTest {
             var grace = pairedGraceNote();
             line.addElement(noteA);
             line.addElement(grace);
-            line.addRangeElement(new Tie(noteA, grace));
+            line.addSpan(new Tie(noteA, grace));
 
             var fragment = Fragment.capture(line, 0, 1);
 

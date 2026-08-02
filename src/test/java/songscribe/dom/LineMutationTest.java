@@ -255,25 +255,25 @@ class LineMutationTest extends UnitTest {
         }
 
         @Test
-        void testInvalidatedRangeElementIsRemoved() {
+        void testInvalidatedSpanIsRemoved() {
             // Tie spans e0 → e2; deleting the anchor (e0) must remove the tie.
             var tie = new Tie(e0, e2);
-            song.withoutMutationTracking(() -> line.addRangeElement(tie));
+            song.withoutMutationTracking(() -> line.addSpan(tie));
 
             song.withModification(() -> line.removeElement(0));
 
-            assertThat(line.getRangeElements()).doesNotContain(tie);
+            assertThat(line.getSpans()).doesNotContain(tie);
         }
 
         @Test
-        void testUnaffectedRangeElementIsPreserved() {
+        void testUnaffectedSpanIsPreserved() {
             // Tie spans e0 → e2; deleting the middle element (e1) must not remove the tie.
             var tie = new Tie(e0, e2);
-            song.withoutMutationTracking(() -> line.addRangeElement(tie));
+            song.withoutMutationTracking(() -> line.addSpan(tie));
 
             song.withModification(() -> line.removeElement(1));
 
-            assertThat(line.getRangeElements()).contains(tie);
+            assertThat(line.getSpans()).contains(tie);
         }
     }
 
@@ -326,25 +326,25 @@ class LineMutationTest extends UnitTest {
         }
 
         @Test
-        void testInvalidatedRangeElementIsRemoved() {
+        void testInvalidatedSpanIsRemoved() {
             // Ending anchored at e3 (index 3), which falls inside the deleted range [2, 5].
             var ending = new Ending(elements.get(3), elements.get(7));
-            song.withoutMutationTracking(() -> line.addRangeElement(ending));
+            song.withoutMutationTracking(() -> line.addSpan(ending));
 
             song.withModification(() -> line.removeRange(2, 5));
 
-            assertThat(line.getRangeElements()).doesNotContain(ending);
+            assertThat(line.getSpans()).doesNotContain(ending);
         }
 
         @Test
-        void testUnaffectedRangeElementIsPreserved() {
+        void testUnaffectedSpanIsPreserved() {
             // Ending spans e0 → e1; deleted range [5, 8] is entirely disjoint.
             var ending = new Ending(elements.get(0), elements.get(1));
-            song.withoutMutationTracking(() -> line.addRangeElement(ending));
+            song.withoutMutationTracking(() -> line.addSpan(ending));
 
             song.withModification(() -> line.removeRange(5, 8));
 
-            assertThat(line.getRangeElements()).contains(ending);
+            assertThat(line.getSpans()).contains(ending);
         }
     }
 
@@ -641,7 +641,7 @@ class LineMutationTest extends UnitTest {
      * Integration tests verifying that the {@link Line} mutation methods
      * ({@code setElement}, {@code addElement(int,…)}, {@code removeElement},
      * {@code removeRange}) remove an {@link Ending} from
-     * {@link Line#getRangeElements()} whenever the corresponding invalidation
+     * {@link Line#getSpans()} whenever the corresponding invalidation
      * predicate returns {@code true}.
      *
      * <p>Canonical line layout (same as {@code EndingInvalidationTest}):
@@ -681,7 +681,7 @@ class LineMutationTest extends UnitTest {
             song.withModification(() ->
                 line.setElement(0, new StaffElement(ElementType.GRACE_QUAVER)));
 
-            assertThat(line.getRangeElements()).doesNotContain(ending);
+            assertThat(line.getSpans()).doesNotContain(ending);
         }
 
         @Test
@@ -690,7 +690,7 @@ class LineMutationTest extends UnitTest {
             song.withModification(() ->
                 line.setElement(0, new StaffElement(ElementType.REPEAT_LEFT)));
 
-            assertThat(line.getRangeElements()).contains(ending);
+            assertThat(line.getSpans()).contains(ending);
         }
 
         @Test
@@ -699,7 +699,7 @@ class LineMutationTest extends UnitTest {
             song.withModification(() ->
                 line.setElement(0, new StaffElement(ElementType.DOUBLE_BARLINE)));
 
-            assertThat(line.getRangeElements()).contains(ending);
+            assertThat(line.getSpans()).contains(ending);
         }
 
         @Test
@@ -708,7 +708,7 @@ class LineMutationTest extends UnitTest {
             song.withModification(() ->
                 line.setElement(0, new StaffElement(ElementType.CROTCHET)));
 
-            assertThat(line.getRangeElements()).contains(ending);
+            assertThat(line.getSpans()).contains(ending);
         }
 
         @Test
@@ -717,7 +717,7 @@ class LineMutationTest extends UnitTest {
             song.withModification(() ->
                 line.setElement(3, new StaffElement(ElementType.SINGLE_BARLINE)));
 
-            assertThat(line.getRangeElements()).doesNotContain(ending);
+            assertThat(line.getSpans()).doesNotContain(ending);
         }
 
         @Test
@@ -728,7 +728,7 @@ class LineMutationTest extends UnitTest {
             song.withModification(() ->
                 line.setElement(3, new StaffElement(ElementType.REPEAT_LEFT_RIGHT)));
 
-            assertThat(line.getRangeElements()).contains(ending);
+            assertThat(line.getSpans()).contains(ending);
         }
 
         @Test
@@ -749,12 +749,12 @@ class LineMutationTest extends UnitTest {
                 line2.addElement(end2);
             });
             var ending2 = new Ending(anchor2, end2);
-            comp2.withoutMutationTracking(() -> line2.addRangeElement(ending2));
+            comp2.withoutMutationTracking(() -> line2.addSpan(ending2));
 
             comp2.withModification(() ->
                 line2.setElement(3, new StaffElement(ElementType.REPEAT_LEFT_RIGHT)));
 
-            assertThat(line2.getRangeElements()).contains(ending2);
+            assertThat(line2.getSpans()).contains(ending2);
         }
 
         @Test
@@ -764,7 +764,7 @@ class LineMutationTest extends UnitTest {
             song.withModification(() ->
                 line.setElement(6, new StaffElement(ElementType.CROTCHET)));
 
-            assertThat(line.getRangeElements()).contains(ending);
+            assertThat(line.getSpans()).contains(ending);
         }
 
         @Test
@@ -773,7 +773,7 @@ class LineMutationTest extends UnitTest {
             song.withModification(() ->
                 line.setElement(6, new StaffElement(ElementType.GRACE_QUAVER)));
 
-            assertThat(line.getRangeElements()).doesNotContain(ending);
+            assertThat(line.getSpans()).doesNotContain(ending);
         }
 
         @Test
@@ -782,7 +782,7 @@ class LineMutationTest extends UnitTest {
             song.withModification(() ->
                 line.setElement(6, new StaffElement(ElementType.DOUBLE_BARLINE)));
 
-            assertThat(line.getRangeElements()).contains(ending);
+            assertThat(line.getSpans()).contains(ending);
         }
 
         // -------------------------------------------------------------------
@@ -795,7 +795,7 @@ class LineMutationTest extends UnitTest {
             song.withModification(() ->
                 line.addElement(2, new StaffElement(ElementType.SINGLE_BARLINE)));
 
-            assertThat(line.getRangeElements()).doesNotContain(ending);
+            assertThat(line.getSpans()).doesNotContain(ending);
         }
 
         @Test
@@ -804,7 +804,7 @@ class LineMutationTest extends UnitTest {
             song.withModification(() ->
                 line.addElement(2, new StaffElement(ElementType.CROTCHET)));
 
-            assertThat(line.getRangeElements()).contains(ending);
+            assertThat(line.getSpans()).contains(ending);
         }
 
         // -------------------------------------------------------------------
@@ -815,11 +815,11 @@ class LineMutationTest extends UnitTest {
         void testSequentialDeleteFirstSpanContentRemovesEndingOnLastNote() {
             // After removing note1 the ending is still present (note2 remains in span).
             song.withModification(() -> line.removeElement(1));
-            assertThat(line.getRangeElements()).contains(ending);
+            assertThat(line.getSpans()).contains(ending);
 
             // note2 has shifted to index 1; removing it empties the first span → ending gone.
             song.withModification(() -> line.removeElement(1));
-            assertThat(line.getRangeElements()).doesNotContain(ending);
+            assertThat(line.getSpans()).doesNotContain(ending);
         }
 
         // -------------------------------------------------------------------
@@ -831,7 +831,7 @@ class LineMutationTest extends UnitTest {
             // Deleting both first-span notes (indices 1–2) at once empties the sub-span
             song.withModification(() -> line.removeRange(1, 2));
 
-            assertThat(line.getRangeElements()).doesNotContain(ending);
+            assertThat(line.getSpans()).doesNotContain(ending);
         }
 
         // -------------------------------------------------------------------
@@ -843,7 +843,7 @@ class LineMutationTest extends UnitTest {
             // Condition 2: deleting the REPEAT_RIGHT that separates first/second sub-spans
             song.withModification(() -> line.removeElement(3));
 
-            assertThat(line.getRangeElements()).doesNotContain(ending);
+            assertThat(line.getSpans()).doesNotContain(ending);
         }
     }
 
@@ -1000,7 +1000,7 @@ class LineMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // setElement updates surviving range element anchor/end references
+    // setElement updates surviving span anchor/end references
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -1019,14 +1019,14 @@ class LineMutationTest extends UnitTest {
             });
 
             var tie = new Tie(originalFirst, second);
-            song.withoutMutationTracking(() -> line.addRangeElement(tie));
+            song.withoutMutationTracking(() -> line.addSpan(tie));
 
             var newFirst = new StaffElement(ElementType.CROTCHET);
             song.withModification(() -> line.setElement(0, newFirst));
 
             // The tie survives (anchor swap does not invalidate it) and its anchor
             // reference is updated to newFirst.
-            assertThat(line.getRangeElements()).contains(tie);
+            assertThat(line.getSpans()).contains(tie);
             assertThat(tie.getAnchorElement())
                 .as("tie anchor should be updated to the replacement element")
                 .isSameAs(newFirst);
@@ -1043,12 +1043,12 @@ class LineMutationTest extends UnitTest {
             });
 
             var tie = new Tie(first, originalEnd);
-            song.withoutMutationTracking(() -> line.addRangeElement(tie));
+            song.withoutMutationTracking(() -> line.addSpan(tie));
 
             var newEnd = new StaffElement(ElementType.CROTCHET);
             song.withModification(() -> line.setElement(1, newEnd));
 
-            assertThat(line.getRangeElements()).contains(tie);
+            assertThat(line.getSpans()).contains(tie);
             assertThat(tie.getEndElement())
                 .as("tie end reference should be updated to the replacement element")
                 .isSameAs(newEnd);
@@ -1966,15 +1966,15 @@ class LineMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // findRangeElementsAt (Row 60)
+    // findSpansAt (Row 60)
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class FindRangeElementsAt {
+    class FindSpansAt {
 
         @Test
-        void testFindRangeElementsAtReturnsElementsCoveringIndex() {
+        void testFindSpansAtReturnsElementsCoveringIndex() {
             // Build a line with two notes and a tie spanning them.
             var e0 = new StaffElement(ElementType.QUAVER);
             var e1 = new StaffElement(ElementType.QUAVER);
@@ -1983,14 +1983,14 @@ class LineMutationTest extends UnitTest {
                 line.addElement(e1);
             });
             var tie = new Tie(e0, e1);
-            song.withoutMutationTracking(() -> line.addRangeElement(tie));
+            song.withoutMutationTracking(() -> line.addSpan(tie));
 
             // Index 0 is covered by the tie (anchor).
-            assertThat(line.findRangeElementsAt(0)).containsExactly(tie);
+            assertThat(line.findSpansAt(0)).containsExactly(tie);
         }
 
         @Test
-        void testFindRangeElementsAtReturnsEmptyForUncoveredIndex() {
+        void testFindSpansAtReturnsEmptyForUncoveredIndex() {
             var e0 = new StaffElement(ElementType.QUAVER);
             var e1 = new StaffElement(ElementType.QUAVER);
             var e2 = new StaffElement(ElementType.QUAVER);
@@ -2001,13 +2001,13 @@ class LineMutationTest extends UnitTest {
             });
             // Tie only spans e0–e1 (indices 0–1); index 2 is outside the span.
             var tie = new Tie(e0, e1);
-            song.withoutMutationTracking(() -> line.addRangeElement(tie));
+            song.withoutMutationTracking(() -> line.addSpan(tie));
 
-            assertThat(line.findRangeElementsAt(2)).isEmpty();
+            assertThat(line.findSpansAt(2)).isEmpty();
         }
 
         @Test
-        void testFindRangeElementsAtReturnsMultipleOverlappingElements() {
+        void testFindSpansAtReturnsMultipleOverlappingElements() {
             // Two ties that both cover index 1: tie1 spans 0–2, tie2 spans 1–2.
             var e0 = new StaffElement(ElementType.QUAVER);
             var e1 = new StaffElement(ElementType.QUAVER);
@@ -2020,11 +2020,11 @@ class LineMutationTest extends UnitTest {
             var tie1 = new Tie(e0, e2);
             var tie2 = new Tie(e1, e2);
             song.withoutMutationTracking(() -> {
-                line.addRangeElement(tie1);
-                line.addRangeElement(tie2);
+                line.addSpan(tie1);
+                line.addSpan(tie2);
             });
 
-            assertThat(line.findRangeElementsAt(1))
+            assertThat(line.findSpansAt(1))
                 .as("index 1 should be covered by both tie1 (0–2) and tie2 (1–2)")
                 .containsExactlyInAnyOrder(tie1, tie2);
         }
@@ -2154,7 +2154,7 @@ class LineMutationTest extends UnitTest {
 
         @Test
         void testReturnsFalseWhenNoEndingsPresent() {
-            // A fresh line with no range elements: insertion of any type is fine.
+            // A fresh line with no spans: insertion of any type is fine.
             assertThat(line.hasEndingInvalidatedByInsertion(0, ElementType.SINGLE_BARLINE))
                 .as("no endings registered means no invalidation possible")
                 .isFalse();

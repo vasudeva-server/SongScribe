@@ -1183,7 +1183,7 @@ class LayoutEngineTest extends UnitTest {
         line.addElement(note1);
         line.addElement(note2);
         var tie = new Tie(note1, note2);
-        line.addRangeElement(tie);
+        line.addSpan(tie);
 
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
@@ -1238,7 +1238,7 @@ class LayoutEngineTest extends UnitTest {
         line.addElement(note1);
         line.addElement(note2);
         var tie = new Tie(note1, note2);
-        line.addRangeElement(tie);
+        line.addSpan(tie);
 
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
@@ -1287,7 +1287,7 @@ class LayoutEngineTest extends UnitTest {
         line.addElement(note1);
         line.addElement(note2);
         var tie = new Tie(note1, note2);
-        line.addRangeElement(tie);
+        line.addSpan(tie);
 
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
@@ -1312,7 +1312,7 @@ class LayoutEngineTest extends UnitTest {
         line.addElement(note1);
         line.addElement(note2);
         var tie = new Tie(note1, note2);
-        line.addRangeElement(tie);
+        line.addSpan(tie);
 
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
@@ -1339,7 +1339,7 @@ class LayoutEngineTest extends UnitTest {
         line.addElement(note1);
         line.addElement(note2);
         var tie = new Tie(note1, note2);
-        line.addRangeElement(tie);
+        line.addSpan(tie);
 
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
@@ -1568,7 +1568,7 @@ class LayoutEngineTest extends UnitTest {
         line.addElement(note1);
         line.addElement(note2);
         var tie = new Tie(note1, note2);
-        line.addRangeElement(tie);
+        line.addSpan(tie);
 
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
@@ -1612,7 +1612,7 @@ class LayoutEngineTest extends UnitTest {
         line.addElement(note1);
         line.addElement(note2);
         var tie = new Tie(note1, note2);
-        line.addRangeElement(tie);
+        line.addSpan(tie);
 
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");
@@ -1651,7 +1651,7 @@ class LayoutEngineTest extends UnitTest {
         line.addElement(note1);
         line.addElement(note2);
         var tie = new Tie(note1, note2);
-        line.addRangeElement(tie);
+        line.addSpan(tie);
 
         var result = require(engine().layout(line), "LayoutResult");
         var tieLayout = require(result.getTieLayout(tie), "TieLayout");

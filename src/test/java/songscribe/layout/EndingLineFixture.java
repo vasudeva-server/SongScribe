@@ -84,7 +84,7 @@ public record EndingLineFixture(
             line.addElement(note4);
             line.addElement(note5);
             line.addElement(end);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
         });
 
         return new EndingLineFixture(song, line, anchor, note1, note2, split, note4, note5, end, ending);
@@ -121,7 +121,7 @@ public record EndingLineFixture(
             line.addElement(note4);
             line.addElement(note5);
             line.addElement(end);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
         });
 
         return new EndingLineFixture(song, line, anchor, note1, note2, split, note4, note5, end, ending);

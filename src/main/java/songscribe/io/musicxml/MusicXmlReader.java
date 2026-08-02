@@ -781,7 +781,7 @@ public final class MusicXmlReader extends DefaultHandler {
 
         spans.resolveSlide(element, markers);
 
-        // Collapse this note's per-note range-span markers into RangeElements,
+        // Collapse this note's per-note range-span markers into Spans,
         // pairing each run's pending anchor with its closing marker.
         spans.resolveBeam(currentLine, element, markers);
         spans.resolveTie(currentLine, element, markers);

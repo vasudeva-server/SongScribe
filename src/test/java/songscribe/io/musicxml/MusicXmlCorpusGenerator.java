@@ -445,12 +445,12 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
             line -> {
                 var single = ElementType.CROTCHET.newInstance();
                 line.addElement(single);
-                line.addRangeElement(new Trill(single));
+                line.addSpan(new Trill(single));
 
                 var multi = addNotes(line, ElementType.CROTCHET, 2);
                 var trill = new Trill(multi.get(0), multi.get(1));
                 trill.setYPositionSs(TRILL_Y_SS);
-                line.addRangeElement(trill);
+                line.addSpan(trill);
             },
             // First/second endings around a repeat.
             line -> {
@@ -462,7 +462,7 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
                 line.addElement(split);
                 line.addElement(ElementType.CROTCHET.newInstance());
                 line.addElement(end);
-                line.addRangeElement(new Ending(anchor, end));
+                line.addSpan(new Ending(anchor, end));
             }
         );
     }

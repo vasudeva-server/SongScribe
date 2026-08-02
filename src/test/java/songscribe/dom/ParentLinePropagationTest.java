@@ -231,7 +231,7 @@ class ParentLinePropagationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Range elements: maintained by the same attach/detach chokepoint, so every
+    // Spans: maintained by the same attach/detach chokepoint, so every
     // add/remove pair keeps the pointer without a hand-written assignment
     // -----------------------------------------------------------------------
 
@@ -298,15 +298,15 @@ class ParentLinePropagationTest extends UnitTest {
         }
 
         @Test
-        void testAddRangeElementAttachesAndRemoveRangeElementDetaches() {
+        void testAddSpanAttachesAndRemoveSpanDetaches() {
             // The untyped path, used directly by spans with no add helper of their own
             // (Ending) and indirectly by those that have one (addTrill delegates here).
             var trill = new Trill(anchor, end);
 
-            song.withoutMutationTracking(() -> line.addRangeElement(trill));
+            song.withoutMutationTracking(() -> line.addSpan(trill));
             assertThat(trill.getParentLine()).isSameAs(line);
 
-            song.withoutMutationTracking(() -> line.removeRangeElement(trill));
+            song.withoutMutationTracking(() -> line.removeSpan(trill));
             assertThat(trill.getParentLine()).isNull();
         }
 

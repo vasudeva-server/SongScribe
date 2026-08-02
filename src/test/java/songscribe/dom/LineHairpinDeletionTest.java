@@ -97,7 +97,7 @@ class LineHairpinDeletionTest extends UnitTest {
 
             song.withModification(() -> line.removeElement(IDX_1));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos)
@@ -124,7 +124,7 @@ class LineHairpinDeletionTest extends UnitTest {
 
             song.withModification(() -> line.removeElement(IDX_3));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos).hasSize(1),
@@ -147,7 +147,7 @@ class LineHairpinDeletionTest extends UnitTest {
 
             song.withModification(() -> line.removeElement(IDX_2));
 
-            assertThat(line.findRangeElements(Crescendo.class))
+            assertThat(line.findSpans(Crescendo.class))
                 .as("a hairpin left with one element must be removed")
                 .isEmpty();
         }
@@ -162,7 +162,7 @@ class LineHairpinDeletionTest extends UnitTest {
 
             song.withModification(() -> line.removeRange(IDX_2, IDX_4));
 
-            assertThat(line.findRangeElements(Crescendo.class))
+            assertThat(line.findSpans(Crescendo.class))
                 .as("a hairpin left with one element must be removed")
                 .isEmpty();
         }
@@ -179,7 +179,7 @@ class LineHairpinDeletionTest extends UnitTest {
 
             song.withModification(() -> line.removeRange(IDX_3, IDX_4));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos).hasSize(1),
@@ -202,7 +202,7 @@ class LineHairpinDeletionTest extends UnitTest {
 
             song.withModification(() -> line.removeElement(IDX_3));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos).hasSize(1),
@@ -223,7 +223,7 @@ class LineHairpinDeletionTest extends UnitTest {
 
             song.withModification(() -> line.removeElement(IDX_2));
 
-            assertThat(line.findRangeElements(Crescendo.class))
+            assertThat(line.findSpans(Crescendo.class))
                 .as("one pitched note cannot carry a hairpin")
                 .isEmpty();
         }
@@ -240,7 +240,7 @@ class LineHairpinDeletionTest extends UnitTest {
 
             song.withModification(() -> line.removeElement(IDX_0));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos).hasSize(1),
@@ -255,12 +255,12 @@ class LineHairpinDeletionTest extends UnitTest {
         void testDeletingAnInteriorElementLeavesARestAnchoredHairpinAlone() {
             song.withoutMutationTracking(() -> line.setElement(IDX_0, new StaffElement(ElementType.CROTCHET_REST)));
             addCrescendo(IDX_0, IDX_3);
-            var crescendo = line.findRangeElements(Crescendo.class).getFirst();
+            var crescendo = line.findSpans(Crescendo.class).getFirst();
             var anchor = crescendo.getAnchorElement();
 
             song.withModification(() -> line.removeElement(IDX_2));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos).containsExactly(crescendo),
@@ -274,13 +274,13 @@ class LineHairpinDeletionTest extends UnitTest {
         @Test
         void testDeletingAnInteriorElementLeavesTheHairpinUntouched() {
             addCrescendo(IDX_0, IDX_3);
-            var crescendo = line.findRangeElements(Crescendo.class).getFirst();
+            var crescendo = line.findSpans(Crescendo.class).getFirst();
             var anchor = crescendo.getAnchorElement();
             var end = crescendo.getEndElement();
 
             song.withModification(() -> line.removeElement(IDX_2));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos)
@@ -313,7 +313,7 @@ class LineHairpinDeletionTest extends UnitTest {
 
             song.withModification(() -> line.removeElement(IDX_2));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos)
@@ -337,7 +337,7 @@ class LineHairpinDeletionTest extends UnitTest {
 
             song.withModification(() -> line.removeRange(IDX_2, IDX_3));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos).hasSize(1),
@@ -354,7 +354,7 @@ class LineHairpinDeletionTest extends UnitTest {
 
             song.withModification(() -> line.removeElement(IDX_2));
 
-            assertThat(line.findRangeElements(Crescendo.class))
+            assertThat(line.findSpans(Crescendo.class))
                 .as("a hairpin still separated from another must stay separate")
                 .hasSize(2);
         }
@@ -368,10 +368,10 @@ class LineHairpinDeletionTest extends UnitTest {
             song.withModification(() -> line.removeElement(IDX_2));
 
             assertAll(
-                () -> assertThat(line.findRangeElements(Crescendo.class))
+                () -> assertThat(line.findSpans(Crescendo.class))
                     .as("the crescendo must survive on its own")
                     .hasSize(1),
-                () -> assertThat(line.findRangeElements(Diminuendo.class))
+                () -> assertThat(line.findSpans(Diminuendo.class))
                     .as("the diminuendo must survive on its own")
                     .hasSize(1)
             );

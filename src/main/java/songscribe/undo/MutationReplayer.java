@@ -52,8 +52,8 @@ import songscribe.message.mutation.LyricsField;
 import songscribe.message.mutation.MetadataChange;
 import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.mutation.RangeElementAddition;
-import songscribe.message.mutation.RangeElementRemoval;
+import songscribe.message.mutation.SpanAddition;
+import songscribe.message.mutation.SpanRemoval;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
@@ -112,8 +112,8 @@ public final class MutationReplayer {
             case LineKeyChange(var line, var field, var oldValue, var _) -> applyKeyField(line, field, oldValue);
             case LineLayoutChange(var line, var field, var oldValue, var _) ->
                 applyLineLayoutField(line, field, oldValue);
-            case RangeElementAddition(var line, var element) -> line.removeRangeElement(element);
-            case RangeElementRemoval(var line, var element) -> line.addRangeElement(element);
+            case SpanAddition(var line, var element) -> line.removeSpan(element);
+            case SpanRemoval(var line, var element) -> line.addSpan(element);
             case BeamingAddition(var line, var beam) -> line.removeBeaming(beam);
             case BeamingRemoval(var line, var beam) -> line.addBeaming(beam);
             case TieAddition(var line, var tie) -> line.removeTie(tie);
@@ -153,8 +153,8 @@ public final class MutationReplayer {
             case LineKeyChange(var line, var field, var _, var newValue) -> applyKeyField(line, field, newValue);
             case LineLayoutChange(var line, var field, var _, var newValue) ->
                 applyLineLayoutField(line, field, newValue);
-            case RangeElementAddition(var line, var element) -> line.addRangeElement(element);
-            case RangeElementRemoval(var line, var element) -> line.removeRangeElement(element);
+            case SpanAddition(var line, var element) -> line.addSpan(element);
+            case SpanRemoval(var line, var element) -> line.removeSpan(element);
             case BeamingAddition(var line, var beam) -> line.addBeaming(beam);
             case BeamingRemoval(var line, var beam) -> line.removeBeaming(beam);
             case TieAddition(var line, var tie) -> line.addTie(tie);

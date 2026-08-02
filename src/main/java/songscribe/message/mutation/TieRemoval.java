@@ -24,7 +24,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Tie;
 
 /**
- * Mutation recording the removal of a tie range element from a line.
+ * Mutation recording the removal of a tie span from a line.
  */
 public record TieRemoval(Line line, Tie tie)
     implements Mutation, LineScopedMutation {

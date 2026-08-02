@@ -318,7 +318,7 @@ class HairpinSelectionTest extends E2ETest {
     }
 
     private List<Hairpin> hairpins() {
-        return onEdt(() -> song().getLine(0).getRangeElements().stream()
+        return onEdt(() -> song().getLine(0).getSpans().stream()
             .filter(Hairpin.class::isInstance)
             .map(Hairpin.class::cast)
             .toList());

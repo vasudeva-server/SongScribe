@@ -189,7 +189,7 @@ final class WedgeResolver {
      * only when non-zero.
      * <p>
      * Added with {@link Line#addCrescendo}/{@link Line#addDiminuendo} rather than the
-     * raw {@code addRangeElement} the other span kinds use, so a file carrying two
+     * raw {@code addSpan} the other span kinds use, so a file carrying two
      * same-type wedges that overlap or merely touch loads as the one hairpin it
      * musically is. Back-to-back wedges of the same type say nothing a single wider
      * wedge does not, so nothing is lost by normalizing them on the way in — and it

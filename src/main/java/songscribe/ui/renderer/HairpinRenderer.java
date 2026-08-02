@@ -128,7 +128,7 @@ public final class HairpinRenderer {
      * Renders all hairpins (crescendo and diminuendo) for a line using layout results.
      * <p>
      * Iterates all {@link Crescendo} and {@link Diminuendo} entries in the layout
-     * (both new range elements and those bridged from legacy intervals during layout).
+     * (both new spans and those bridged from legacy intervals during layout).
      */
     public void renderHairpinsFromLine(
         Graphics2D g2,
@@ -174,6 +174,6 @@ public final class HairpinRenderer {
         double middleLineYSs
     ) {
         return RenderingUtils.hitTestDecoration(
-            line.findRangeElements(Hairpin.class), clickXSs, clickYSs, layoutResult, middleLineYSs);
+            line.findSpans(Hairpin.class), clickXSs, clickYSs, layoutResult, middleLineYSs);
     }
 }

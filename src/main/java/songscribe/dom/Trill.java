@@ -27,9 +27,9 @@ import songscribe.smufl.SMuFLMetadata;
  * Represents a trill marking that can span one or more notes.
  * <p>
  * Trills are always displayed above the staff. Even single-note trills
- * are represented as RangeElements where the anchor and end note are the same.
+ * are represented as Spans where the anchor and end note are the same.
  */
-public class Trill extends RangeElement {
+public class Trill extends Span {
 
     // SMuFL bbox-derived dimensions in staff-space units for the "tr" glyph
     private static final double TRILL_GLYPH_WIDTH_SS;
@@ -64,7 +64,7 @@ public class Trill extends RangeElement {
     }
 
     @Override
-    protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
         var copy = new Trill(newAnchor, newEnd);
         copy.yPositionSs = yPositionSs;
         return copy;

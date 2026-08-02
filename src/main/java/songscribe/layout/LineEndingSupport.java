@@ -33,9 +33,9 @@ public final class LineEndingSupport {
 
     private LineEndingSupport() {}
 
-    /** Returns all {@link Ending} range elements on {@code line}. */
+    /** Returns all {@link Ending} spans on {@code line}. */
     public static List<Ending> findEndings(Line line) {
-        return line.findRangeElements(Ending.class);
+        return line.findSpans(Ending.class);
     }
 
     /** Returns the {@link Ending} that spans {@code elementIndex}, or null if none. */

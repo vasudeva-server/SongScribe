@@ -24,16 +24,16 @@ package songscribe.dom;
  * Represents a beam group connecting a contiguous run of notes.
  * <p>
  * All computed beam geometry lives in LayoutResult.BeamLayout;
- * this class carries only the anchor/end pair inherited from {@link RangeElement}.
+ * this class carries only the anchor/end pair inherited from {@link Span}.
  */
-public class Beam extends RangeElement {
+public class Beam extends Span {
 
     public Beam(StaffElement anchorElement, StaffElement endElement) {
         super(anchorElement, endElement);
     }
 
     @Override
-    protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
         return new Beam(newAnchor, newEnd);
     }
 

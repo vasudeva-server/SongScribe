@@ -84,7 +84,7 @@ return (int) Math.round(ScaleContext.getInstance().ssToPx(getMiddleLineYSs()));
 
 ### Canonical pattern: paired `Ss` / `Px` accessors
 
-Layout elements expose their dimensions in both units. The `Ss` accessor holds the truth; the `Px` accessor is a thin conversion. This pattern is pervasive (`Clef`, `KeySignature`, `Articulation`, `RangeElement`, …) — follow it for any new layout element.
+Layout elements expose their dimensions in both units. The `Ss` accessor holds the truth; the `Px` accessor is a thin conversion. This pattern is pervasive (`Clef`, `KeySignature`, `Articulation`, `Span`, …) — follow it for any new layout element.
 
 ```java
 public double getContentWidthSs() {

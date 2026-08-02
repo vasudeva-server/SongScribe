@@ -37,7 +37,7 @@ import songscribe.dom.Tuplet;
  *
  * <p>Each per-note span is a run over consecutive notes in [anchor, end]. The
  * writer distributes a begin/continue/end (or start/stop) marker per note; the
- * reader re-collapses a maximal marked run into one RangeElement by holding
+ * reader re-collapses a maximal marked run into one Span by holding
  * the run's anchor note in a pending field and pairing it with the closing
  * marker when the next matching note is resolved. The per-note markers
  * themselves come from {@link NoteAccumulator#spanMarkers()}.
@@ -302,7 +302,7 @@ final class RangeSpanResolver {
                     trill.setYPositionSs(pendingTrillYPositionSs);
                 }
 
-                line.addRangeElement(trill);
+                line.addSpan(trill);
                 pendingTrillStart = null;
             } else {
                 LOG.warn("Ignoring <wavy-line type=\"stop\"> with no matching start");

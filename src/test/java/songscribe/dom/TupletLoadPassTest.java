@@ -138,7 +138,7 @@ class TupletLoadPassTest extends UnitTest {
     }
 
     private static int tupletCount(Song song) {
-        return firstLine(song).findRangeElements(Tuplet.class).size();
+        return firstLine(song).findSpans(Tuplet.class).size();
     }
 
     /** Asserts that dropping a tuplet took nothing but the bracket: every note is still there. */

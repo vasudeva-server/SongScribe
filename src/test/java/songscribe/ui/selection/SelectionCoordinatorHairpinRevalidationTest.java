@@ -65,7 +65,7 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
 
         var line = state;
         var hairpin = new Crescendo(line.getElement(0), line.getElement(1));
-        line.addRangeElement(hairpin);
+        line.addSpan(hairpin);
         coordinator.select(new HitTarget.Hairpin(hairpin));
 
         return new Fixture(coordinator, line, hairpin);
@@ -78,7 +78,7 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
             .isEqualTo(new HitTarget.Hairpin(fixture.hairpin()));
 
         // An undo that removed the hairpin, reported on the selected line.
-        fixture.line().removeRangeElement(fixture.hairpin());
+        fixture.line().removeSpan(fixture.hairpin());
 
         fixture.coordinator().songDidChangeReflectSelection(new SongDidChangeNotification(
             List.of(new CrescendoRemoval(fixture.line(), fixture.hairpin())),

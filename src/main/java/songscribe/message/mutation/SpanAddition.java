@@ -21,12 +21,12 @@
 package songscribe.message.mutation;
 
 import songscribe.dom.Line;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 
 /**
- * Mutation recording the removal of a range element from a line.
+ * Mutation recording the addition of a span to a line.
  */
-public record RangeElementRemoval(Line line, RangeElement element)
+public record SpanAddition(Line line, Span element)
     implements Mutation, LineScopedMutation {
 
     @Override

@@ -24,7 +24,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Tie;
 
 /**
- * Mutation recording the addition of a tie range element to a line.
+ * Mutation recording the addition of a tie span to a line.
  */
 public record TieAddition(Line line, Tie tie)
     implements Mutation, LineScopedMutation {

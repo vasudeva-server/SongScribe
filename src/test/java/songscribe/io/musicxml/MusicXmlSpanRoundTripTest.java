@@ -192,14 +192,14 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         var ties = line2.findTies();
 
         assertThat(ties).as("tie count after two-note tie round-trip").hasSize(1);
-        assertRangeElementEquals(ties.getFirst(), 0, 1);
+        assertSpanEquals(ties.getFirst(), 0, 1);
     }
 
     @Test
     void testThreeNoteTieChainRoundTrips() throws Exception {
         // The writer emits stop+start on the interior note (note1) for the two adjacent
         // ties; the reader closes the stop/start pair for each and produces two distinct
-        // Tie range elements — tie ranges never coalesce.
+        // Tie spans — tie ranges never coalesce.
         var song = buildSong(line -> {
             var note0 = ElementType.CROTCHET.newInstance();
             var note1 = ElementType.CROTCHET.newInstance();
@@ -216,8 +216,8 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         var ties = line2.findTies();
 
         assertThat(ties).as("tie count after three-note chain round-trip").hasSize(2);
-        assertRangeElementEquals(ties.get(0), 0, 1);
-        assertRangeElementEquals(ties.get(1), 1, 2);
+        assertSpanEquals(ties.get(0), 0, 1);
+        assertSpanEquals(ties.get(1), 1, 2);
     }
 
     // -------------------------------------------------------------------------
@@ -243,10 +243,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var tuplets = line2.findRangeElements(Tuplet.class);
+        var tuplets = line2.findSpans(Tuplet.class);
 
         assertThat(tuplets).as("tuplet count after triplet round-trip").hasSize(1);
-        assertRangeElementEquals(tuplets.getFirst(), 0, 2, TRIPLET_GRADE, 0);
+        assertSpanEquals(tuplets.getFirst(), 0, 2, TRIPLET_GRADE, 0);
         assertTupletRatio(tuplets.getFirst(), TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
     }
 
@@ -276,7 +276,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             .as("one <normal-dot/> per dot, on each of the %d tupleted notes", TRIPLET_GRADE)
             .isEqualTo(TRIPLET_GRADE * ONE_DOT);
 
-        var tuplets = parse(xml).getLine(0).findRangeElements(Tuplet.class);
+        var tuplets = parse(xml).getLine(0).findSpans(Tuplet.class);
 
         assertThat(tuplets).as("tuplet count after dotted-value round-trip").hasSize(1);
         assertTupletRatio(tuplets.getFirst(), TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.QUAVER, ONE_DOT);
@@ -304,10 +304,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             .as("a septuplet semiquaver's performed <duration>")
             .isEqualTo(Integer.toString(SEPTUPLET_SEMIQUAVER_PERFORMED_TICKS));
 
-        var tuplets = parse(xml).getLine(0).findRangeElements(Tuplet.class);
+        var tuplets = parse(xml).getLine(0).findSpans(Tuplet.class);
 
         assertThat(tuplets).as("tuplet count after septuplet round-trip").hasSize(1);
-        assertRangeElementEquals(tuplets.getFirst(), 0, SEPTUPLET_LAST_INDEX, SEPTUPLET_GRADE, 0);
+        assertSpanEquals(tuplets.getFirst(), 0, SEPTUPLET_LAST_INDEX, SEPTUPLET_GRADE, 0);
         assertTupletRatio(tuplets.getFirst(), SEPTUPLET_GRADE, SEPTUPLET_NORMAL_NOTES,
             ElementType.SEMIQUAVER, NO_DOTS);
     }
@@ -397,7 +397,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             "      <barline location=\"right\"><bar-style>light-heavy</bar-style></barline>\n"
         );
 
-        var tuplets = parse(xml).getLine(0).findRangeElements(Tuplet.class);
+        var tuplets = parse(xml).getLine(0).findSpans(Tuplet.class);
 
         assertThat(tuplets).as("tuplet count read from a <normal-type>-less file").hasSize(1);
         // parse() goes through the whole read seam, so the post-load pass has already
@@ -437,7 +437,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
                 """
         );
 
-        var tuplets = parse(xml).getLine(0).findRangeElements(Tuplet.class);
+        var tuplets = parse(xml).getLine(0).findSpans(Tuplet.class);
 
         assertThat(tuplets).as("tuplet count read from a <normal-type>-carrying file").hasSize(1);
         assertTupletRatio(tuplets.getFirst(), COMPOUND_DUPLET_GRADE, COMPOUND_DUPLET_NORMAL_NOTES,
@@ -460,10 +460,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var tuplets = line2.findRangeElements(Tuplet.class);
+        var tuplets = line2.findSpans(Tuplet.class);
 
         assertThat(tuplets).as("tuplet count after triplet+verticalPos round-trip").hasSize(1);
-        assertRangeElementEquals(tuplets.getFirst(), 0, 2, TRIPLET_GRADE, TUPLET_VERTICAL_POSITION_SS);
+        assertSpanEquals(tuplets.getFirst(), 0, 2, TRIPLET_GRADE, TUPLET_VERTICAL_POSITION_SS);
     }
 
     // #592: a grace note may sit inside a tuplet span without joining it, so it takes no
@@ -490,10 +490,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
         // The reader must re-collapse the span across the gap the skipped grace note leaves.
         var line2 = roundTrip(song).getLine(0);
-        var tuplets = line2.findRangeElements(Tuplet.class);
+        var tuplets = line2.findSpans(Tuplet.class);
 
         assertThat(tuplets).as("tuplet count after grace-in-span round-trip").hasSize(1);
-        assertRangeElementEquals(tuplets.getFirst(), 0, 3, TRIPLET_GRADE, 0);
+        assertSpanEquals(tuplets.getFirst(), 0, 3, TRIPLET_GRADE, 0);
         assertThat(line2.getElement(1).getType().isGraceNote())
             .as("interior grace note survives inside the tuplet span")
             .isTrue();
@@ -517,10 +517,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var tuplets = line2.findRangeElements(Tuplet.class);
+        var tuplets = line2.findSpans(Tuplet.class);
 
         assertThat(tuplets).as("tuplet count after quintuplet round-trip").hasSize(1);
-        assertRangeElementEquals(tuplets.getFirst(), 0, 4, QUINTUPLET_GRADE, 0);
+        assertSpanEquals(tuplets.getFirst(), 0, 4, QUINTUPLET_GRADE, 0);
         assertTupletRatio(tuplets.getFirst(), QUINTUPLET_GRADE, QUINTUPLET_NORMAL_NOTES,
             ElementType.CROTCHET, NO_DOTS);
     }
@@ -545,10 +545,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var tuplets = line2.findRangeElements(Tuplet.class);
+        var tuplets = line2.findSpans(Tuplet.class);
 
         assertThat(tuplets).as("tuplet count after quintuplet+verticalPos round-trip").hasSize(1);
-        assertRangeElementEquals(tuplets.getFirst(), 0, 4, QUINTUPLET_GRADE, TUPLET_VERTICAL_POSITION_SS);
+        assertSpanEquals(tuplets.getFirst(), 0, 4, QUINTUPLET_GRADE, TUPLET_VERTICAL_POSITION_SS);
     }
 
     @Test
@@ -621,15 +621,15 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         var song = buildSong(line -> {
             var note0 = ElementType.CROTCHET.newInstance();
             line.addElement(note0);
-            line.addRangeElement(new Trill(note0));
+            line.addSpan(new Trill(note0));
         });
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var trills = line2.findRangeElements(Trill.class);
+        var trills = line2.findSpans(Trill.class);
 
         assertThat(trills).as("trill count after single-note trill round-trip").hasSize(1);
-        assertRangeElementEquals(trills.getFirst(), 0, 0, 0);
+        assertSpanEquals(trills.getFirst(), 0, 0, 0);
     }
 
     @Test
@@ -641,15 +641,15 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
-            line.addRangeElement(new Trill(note0, note2));
+            line.addSpan(new Trill(note0, note2));
         });
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var trills = line2.findRangeElements(Trill.class);
+        var trills = line2.findSpans(Trill.class);
 
         assertThat(trills).as("trill count after multi-note trill round-trip").hasSize(1);
-        assertRangeElementEquals(trills.getFirst(), 0, 2, 0);
+        assertSpanEquals(trills.getFirst(), 0, 2, 0);
     }
 
     @Test
@@ -659,15 +659,15 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note0);
             var trill = new Trill(note0);
             trill.setYPositionSs(TRILL_Y_POSITION_SS);
-            line.addRangeElement(trill);
+            line.addSpan(trill);
         });
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var trills = line2.findRangeElements(Trill.class);
+        var trills = line2.findSpans(Trill.class);
 
         assertThat(trills).as("trill count after single-note trill+yPos round-trip").hasSize(1);
-        assertRangeElementEquals(trills.getFirst(), 0, 0, TRILL_Y_POSITION_SS);
+        assertSpanEquals(trills.getFirst(), 0, 0, TRILL_Y_POSITION_SS);
     }
 
     @Test
@@ -679,15 +679,15 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note1);
             var trill = new Trill(note0, note1);
             trill.setYPositionSs(TRILL_Y_POSITION_SS);
-            line.addRangeElement(trill);
+            line.addSpan(trill);
         });
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var trills = line2.findRangeElements(Trill.class);
+        var trills = line2.findSpans(Trill.class);
 
         assertThat(trills).as("trill count after multi-note trill+yPos round-trip").hasSize(1);
-        assertRangeElementEquals(trills.getFirst(), 0, 1, TRILL_Y_POSITION_SS);
+        assertSpanEquals(trills.getFirst(), 0, 1, TRILL_Y_POSITION_SS);
     }
 
     // -------------------------------------------------------------------------
@@ -715,15 +715,15 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note1);
             line.addElement(note2);
             line.addElement(note3);
-            line.addRangeElement(new Trill(note1, note2));
+            line.addSpan(new Trill(note1, note2));
         });
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var trills = line2.findRangeElements(Trill.class);
+        var trills = line2.findSpans(Trill.class);
 
         assertThat(trills).as("trill count after mid-line round-trip").hasSize(1);
-        assertRangeElementEquals(trills.getFirst(), 1, 2, "mid-line trill");
+        assertSpanEquals(trills.getFirst(), 1, 2, "mid-line trill");
     }
 
     @Test
@@ -748,7 +748,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(ties).as("tie count after measure-boundary round-trip").hasSize(1);
         // note0 → index 0, SINGLE_BARLINE → index 1, note1 → index 2.
-        assertRangeElementEquals(ties.getFirst(), 0, 2);
+        assertSpanEquals(ties.getFirst(), 0, 2);
     }
 
     @Test
@@ -776,10 +776,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var tuplets = line2.findRangeElements(Tuplet.class);
+        var tuplets = line2.findSpans(Tuplet.class);
 
         assertThat(tuplets).as("tuplet count after measure-boundary round-trip").hasSize(1);
         // note0 → index 0, SINGLE_BARLINE → index 1, note1 → index 2, note2 → index 3.
-        assertRangeElementEquals(tuplets.getFirst(), 0, 3, TRIPLET_GRADE, 0);
+        assertSpanEquals(tuplets.getFirst(), 0, 3, TRIPLET_GRADE, 0);
     }
 }

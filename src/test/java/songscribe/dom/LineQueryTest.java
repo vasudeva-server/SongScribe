@@ -234,7 +234,7 @@ class LineQueryTest extends UnitTest {
             });
 
             var trill = new Trill(e1);
-            song.withoutMutationTracking(() -> line.addRangeElement(trill));
+            song.withoutMutationTracking(() -> line.addSpan(trill));
 
             assertThat(line.getFirstTrill())
                 .as("getFirstTrill should return the anchor index of the earliest trill")

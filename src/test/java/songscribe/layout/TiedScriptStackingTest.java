@@ -138,7 +138,7 @@ class TiedScriptStackingTest extends UnitTest {
             note2.addArticulation(new Articulation(ArticulationType.STACCATO));
 
             if (tied) {
-                line.addRangeElement(new Tie(note1, note2));
+                line.addSpan(new Tie(note1, note2));
             }
 
             var result = require(engine().layout(line), "LayoutResult");
@@ -262,7 +262,7 @@ class TiedScriptStackingTest extends UnitTest {
             note1.addArticulation(accent);
 
             if (tied) {
-                line.addRangeElement(new Tie(note1, note2));
+                line.addSpan(new Tie(note1, note2));
             }
 
             var result = require(engine().layout(line), "LayoutResult");

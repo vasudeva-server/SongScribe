@@ -24,7 +24,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Tuplet;
 
 /**
- * Mutation recording the removal of a tuplet range element from a line.
+ * Mutation recording the removal of a tuplet span from a line.
  */
 public record TupletRemoval(Line line, Tuplet tuplet)
     implements Mutation, LineScopedMutation {

@@ -114,7 +114,7 @@ class TupletLoadParityTest extends UnitTest {
     }
 
     private static List<SurvivingTuplet> survivingTuplets(Song song) {
-        return song.getLine(FIRST_LINE_INDEX).findRangeElements(Tuplet.class).stream()
+        return song.getLine(FIRST_LINE_INDEX).findSpans(Tuplet.class).stream()
             .map(tuplet -> new SurvivingTuplet(
                 tuplet.getAnchorElementIndex(), tuplet.getEndElementIndex(), tuplet.getGrade()))
             .toList();
@@ -205,7 +205,7 @@ class TupletLoadParityTest extends UnitTest {
     }
 
     private static Tuplet assertSingleTuplet(Line line) {
-        var tuplets = line.findRangeElements(Tuplet.class);
+        var tuplets = line.findSpans(Tuplet.class);
 
         if (tuplets.size() != 1) {
             throw new AssertionError("expected exactly one surviving tuplet, got " + tuplets.size());

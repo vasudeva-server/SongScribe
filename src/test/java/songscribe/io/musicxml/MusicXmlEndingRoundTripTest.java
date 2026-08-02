@@ -80,7 +80,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(splitElement);
             line.addElement(ElementType.CROTCHET.newInstance());
             line.addElement(endElement);
-            line.addRangeElement(new Ending(anchorElement, endElement));
+            line.addSpan(new Ending(anchorElement, endElement));
         });
 
         var song2 = roundTrip(song);
@@ -89,7 +89,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();
-        assertRangeElementEquals(ending, 0, 4, "two-bracket REPEAT_LEFT ending");
+        assertSpanEquals(ending, 0, 4, "two-bracket REPEAT_LEFT ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_RIGHT must be at index 2")
             .isEqualTo(2);
@@ -119,7 +119,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(splitElement);
             line.addElement(ElementType.CROTCHET.newInstance());
             line.addElement(endElement);
-            line.addRangeElement(new Ending(anchorElement, endElement));
+            line.addSpan(new Ending(anchorElement, endElement));
         });
 
         var song2 = roundTrip(song);
@@ -128,7 +128,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();
-        assertRangeElementEquals(ending, 0, 4, "REPEAT_LEFT_RIGHT-split ending");
+        assertSpanEquals(ending, 0, 4, "REPEAT_LEFT_RIGHT-split ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_LEFT_RIGHT must be at index 2")
             .isEqualTo(2);
@@ -160,7 +160,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(splitElement);
             line.addElement(ElementType.CROTCHET.newInstance());
             line.addElement(endElement);
-            line.addRangeElement(new Ending(anchorElement, endElement));
+            line.addSpan(new Ending(anchorElement, endElement));
         });
 
         var song2 = roundTrip(song);
@@ -169,7 +169,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();
-        assertRangeElementEquals(ending, 0, 4, "SINGLE_BARLINE-anchored ending");
+        assertSpanEquals(ending, 0, 4, "SINGLE_BARLINE-anchored ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_RIGHT must be at index 2")
             .isEqualTo(2);
@@ -188,7 +188,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(anchorElement);
             line.addElement(ElementType.CROTCHET.newInstance());
             line.addElement(endElement);
-            line.addRangeElement(new Ending(anchorElement, endElement));
+            line.addSpan(new Ending(anchorElement, endElement));
         });
 
         assertThatThrownBy(() -> writeToString(song))
@@ -253,7 +253,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(ElementType.CROTCHET.newInstance());
             line.addElement(splitElement);
             line.addElement(endElement);
-            line.addRangeElement(new Ending(anchorElement, endElement));
+            line.addSpan(new Ending(anchorElement, endElement));
         });
 
         var song2 = roundTrip(song);
@@ -262,7 +262,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();
-        assertRangeElementEquals(ending, 0, 3, "note-terminated ending");
+        assertSpanEquals(ending, 0, 3, "note-terminated ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_RIGHT must be at index 2")
             .isEqualTo(2);
@@ -291,7 +291,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(ElementType.CROTCHET.newInstance());
             line.addElement(splitElement);
             line.addElement(endElement);
-            line.addRangeElement(new Ending(anchorElement, endElement));
+            line.addSpan(new Ending(anchorElement, endElement));
         });
 
         var song2 = roundTrip(song);
@@ -300,7 +300,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();
-        assertRangeElementEquals(ending, 0, 3, "note-anchored, note-terminated ending");
+        assertSpanEquals(ending, 0, 3, "note-anchored, note-terminated ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_RIGHT must be at index 2")
             .isEqualTo(2);
@@ -329,7 +329,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(splitElement);
             line.addElement(endElement);
             line.addElement(ElementType.CROTCHET.newInstance());
-            line.addRangeElement(new Ending(anchorElement, endElement));
+            line.addSpan(new Ending(anchorElement, endElement));
         });
 
         var song2 = roundTrip(song);
@@ -338,7 +338,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();
-        assertRangeElementEquals(ending, 0, 3, "mid-line note-terminated ending");
+        assertSpanEquals(ending, 0, 3, "mid-line note-terminated ending");
         assertThat(ending.getSplitIndex(line2))
             .as("split index: REPEAT_RIGHT must be at index 2")
             .isEqualTo(2);

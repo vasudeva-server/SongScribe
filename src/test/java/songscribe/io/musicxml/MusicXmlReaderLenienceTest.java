@@ -383,7 +383,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
 
         var song = parse(xml);
         assertThat(song.lineCount()).as("parsing completes with one line").isEqualTo(1);
-        assertThat(song.getLine(0).findRangeElements(Beam.class))
+        assertThat(song.getLine(0).findSpans(Beam.class))
             .as("a beam begin with no matching end must build no span")
             .isEmpty();
     }
@@ -424,11 +424,11 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         );
 
         var song = parse(xml);
-        var beams = song.getLine(0).findRangeElements(Beam.class);
+        var beams = song.getLine(0).findSpans(Beam.class);
         assertThat(beams)
             .as("the stale begin must not produce a second beam")
             .hasSize(1);
-        assertRangeElementEquals(beams.getFirst(), SECOND_BEGIN_INDEX, BEAM_END_INDEX,
+        assertSpanEquals(beams.getFirst(), SECOND_BEGIN_INDEX, BEAM_END_INDEX,
             "beam after a superseded begin");
     }
 
@@ -514,7 +514,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
 
         var song = parse(xml);
         assertThat(song.lineCount()).as("parsing completes with one line").isEqualTo(1);
-        assertThat(song.getLine(0).findRangeElements(Trill.class))
+        assertThat(song.getLine(0).findSpans(Trill.class))
             .as("a wavy-line start with no matching stop must build no span")
             .isEmpty();
     }
@@ -587,7 +587,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
 
         var song = parse(xml);
         assertThat(song.lineCount()).as("parsing completes with one line").isEqualTo(1);
-        assertThat(song.getLine(0).findRangeElements(Beam.class))
+        assertThat(song.getLine(0).findSpans(Beam.class))
             .as("a beam end with no pending begin must build no span")
             .isEmpty();
     }
@@ -649,7 +649,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
 
         var song = parse(xml);
         assertThat(song.lineCount()).as("parsing completes with one line").isEqualTo(1);
-        assertThat(song.getLine(0).findRangeElements(Trill.class))
+        assertThat(song.getLine(0).findSpans(Trill.class))
             .as("a wavy-line stop with no pending start must build no span")
             .isEmpty();
     }

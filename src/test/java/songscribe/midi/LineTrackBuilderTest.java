@@ -147,7 +147,7 @@ class LineTrackBuilderTest extends UnitTest {
             line.addElement(element);
         }
 
-        line.addRangeElement(new Tuplet(
+        line.addSpan(new Tuplet(
             line.getElement(0),
             line.getElement(memberTypes.length - 1),
             grade,
@@ -242,7 +242,7 @@ class LineTrackBuilderTest extends UnitTest {
             line.addElement(crotchet());
             line.addElement(crotchet());
             line.addElement(crotchet());
-            line.addRangeElement(Tuplet.withUnresolvedRatio(
+            line.addSpan(Tuplet.withUnresolvedRatio(
                 line.getElement(0), line.getElement(TRIPLET_MEMBER_COUNT - 1), TRIPLET_GRADE));
 
             var result = new LineTrackBuilder(line).getElementDurationWithTuplet(0);

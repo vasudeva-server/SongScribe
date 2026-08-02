@@ -525,7 +525,7 @@ class MutationReplayerRoundTripTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Span (range-element) mutations
+    // Span (span) mutations
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -559,7 +559,7 @@ class MutationReplayerRoundTripTest extends UnitTest {
 
             // A wide beam absorbs both existing beams; the subsumed removals ride the
             // batch and undo restores both originals. Full-serialize equality is not
-            // used here: undo re-adds the two beams in reverse order, so rangeElements'
+            // used here: undo re-adds the two beams in reverse order, so spans'
             // storage order flips (semantically identical). Assert the beam *set*.
             var batch = UndoTestSupport.captureBatch(
                 song, () -> line.addBeaming(new Beam(line.getElement(0), line.getElement(3))));
@@ -648,19 +648,19 @@ class MutationReplayerRoundTripTest extends UnitTest {
         }
 
         @Test
-        void testRangeElementAdditionRoundTrips() {
+        void testSpanAdditionRoundTrips() {
             var song = songWithNotes(2);
             var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.addRangeElement(new Trill(line.getElement(0), line.getElement(1))));
+            assertRoundTrip(song, () -> line.addSpan(new Trill(line.getElement(0), line.getElement(1))));
         }
 
         @Test
-        void testRangeElementRemovalRoundTrips() {
+        void testSpanRemovalRoundTrips() {
             var song = songWithNotes(2);
             var line = song.getLine(0);
             var trill = new Trill(line.getElement(0), line.getElement(1));
-            song.withoutMutationTracking(() -> line.addRangeElement(trill));
-            assertRoundTrip(song, () -> line.removeRangeElement(trill));
+            song.withoutMutationTracking(() -> line.addSpan(trill));
+            assertRoundTrip(song, () -> line.removeSpan(trill));
         }
     }
 
@@ -705,7 +705,7 @@ class MutationReplayerRoundTripTest extends UnitTest {
         }
 
         private static Crescendo soleCrescendoOf(Line line) {
-            return line.getRangeElements().stream()
+            return line.getSpans().stream()
                 .filter(Crescendo.class::isInstance)
                 .map(Crescendo.class::cast)
                 .reduce((first, second) -> {

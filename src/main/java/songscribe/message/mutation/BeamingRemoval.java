@@ -24,7 +24,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Beam;
 
 /**
- * Mutation recording the removal of a beam range element from a line.
+ * Mutation recording the removal of a beam span from a line.
  */
 public record BeamingRemoval(Line line, Beam beam)
     implements Mutation, LineScopedMutation {

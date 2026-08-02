@@ -501,7 +501,7 @@ class ElementColumnBuilderTest extends UnitTest {
     }
 
     // #418 builder tagging (end-to-end): buildColumns tags each column with its beam group via
-    // a real Line + Beam range elements, and two adjacent beam groups receive distinct ids so
+    // a real Line + Beam spans, and two adjacent beam groups receive distinct ids so
     // the spacing calculator keeps them apart.
     @Test
     void testBuildColumnsTagsAdjacentBeamGroupsWithDistinctIds() {

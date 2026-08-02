@@ -833,14 +833,14 @@ public class StaffElement extends LineElement implements Cloneable {
      * {@code equals} nor {@code hashCode}, so a detached clone would otherwise match nothing
      * meaningful.
      *
-     * <p>Filters {@link Line#getRangeElements} in place rather than calling
+     * <p>Filters {@link Line#getSpans} in place rather than calling
      * {@link Line#findTies}, which builds and copies a fresh list of every tie on the line. This
      * runs on paths that repeat: {@link #getPitch} routes here, and the glissando renderer calls
      * it on every repaint while the preview tracker calls it on every mouse move.
      */
     private @Nullable StaffElement tieAnchorBefore(Line targetLine, StaffElement tieEndElement, int scanIndex) {
-        for (var rangeElement : targetLine.getRangeElements()) {
-            if (!(rangeElement instanceof Tie tie) || (tie.getEndElement() != tieEndElement)) {
+        for (var span : targetLine.getSpans()) {
+            if (!(span instanceof Tie tie) || (tie.getEndElement() != tieEndElement)) {
                 continue;
             }
 

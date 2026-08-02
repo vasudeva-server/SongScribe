@@ -227,12 +227,12 @@ class MutationLabelTest extends UnitTest {
     }
 
     @Test
-    void testRangeElementAdditionLabelsRangeElement() {
+    void testSpanAdditionLabelsSpan() {
         var song = songWithNotes(2);
         var line = song.getLine(0);
         assertThat(undoLabelAfter(song,
-            () -> line.addRangeElement(new Trill(line.getElement(0), line.getElement(1)))))
-            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_RANGE_ELEMENT));
+            () -> line.addSpan(new Trill(line.getElement(0), line.getElement(1)))))
+            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_SPAN));
     }
 
     @Test

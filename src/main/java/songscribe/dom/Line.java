@@ -52,8 +52,8 @@ import songscribe.message.mutation.LineKeyChange;
 import songscribe.message.mutation.LineLayoutChange;
 import songscribe.message.mutation.LineLayoutField;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.mutation.RangeElementAddition;
-import songscribe.message.mutation.RangeElementRemoval;
+import songscribe.message.mutation.SpanAddition;
+import songscribe.message.mutation.SpanRemoval;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
@@ -66,8 +66,8 @@ public class Line implements LyricRun {
         new int[]{4, 1, 5, 2, 6, 3, 0},
     };
 
-    /** Range elements (beams, ties, trills, crescendo, diminuendo, tuplets, endings). */
-    private final List<RangeElement> rangeElements = new ArrayList<>();
+    /** Spans (beams, ties, trills, crescendo, diminuendo, tuplets, endings). */
+    private final List<Span> spans = new ArrayList<>();
 
     private final Song song;
     private int keys = 0;
@@ -212,7 +212,7 @@ public class Line implements LyricRun {
     //
     // For the elements held in this line's two lists, attach/detach are the only
     // writers of parentLine. Every mutation of `elements`, and every mutation of
-    // `rangeElements`, funnels through one of them from inside the applyChange
+    // `spans`, funnels through one of them from inside the applyChange
     // mutator lambda, so parentage moves with the recorded change:
     //
     //     addElement(StaffElement) ──┐
@@ -222,7 +222,7 @@ public class Line implements LyricRun {
     //     addBeaming ────────────────┤
     //     addTuplet ─────────────────┤
     //     addHairpin ────────────────┤
-    //     addRangeElement ───────────┘
+    //     addSpan ───────────┘
     //
     //     setElement ────────────────┐
     //     removeElement ─────────────┤
@@ -231,9 +231,9 @@ public class Line implements LyricRun {
     //     removeBeaming ─────────────┤
     //     removeTuplet ──────────────┤
     //     removeHairpin ─────────────┤
-    //     removeRangeElement ────────┘
+    //     removeSpan ────────┘
     //
-    // The rangeElements callers reach attach/detach through appendChild/removeChild,
+    // The spans callers reach attach/detach through appendChild/removeChild,
     // which pair the pointer write with the list mutation it has to accompany.
     //
     // Attachments (articulations, fermatas) live in neither list, so none of this
@@ -264,23 +264,23 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Attaches {@code element} and appends it to {@code rangeElements}. Call from inside
+     * Attaches {@code element} and appends it to {@code spans}. Call from inside
      * an applyChange mutator lambda — the pairing is what keeps parentage moving with the
      * recorded change. The {@code elements} list has no counterpart because every one of
      * its mutations inserts at an index or replaces in place.
      */
-    private void appendChild(RangeElement element) {
+    private void appendChild(Span element) {
         attach(element);
-        rangeElements.add(element);
+        spans.add(element);
     }
 
     /**
-     * Detaches {@code element} and removes it from {@code rangeElements}. Takes the index
+     * Detaches {@code element} and removes it from {@code spans}. Takes the index
      * its caller already located, rather than scanning the list a second time.
      */
-    private void removeChild(RangeElement element, int index) {
+    private void removeChild(Span element, int index) {
         detach(element);
-        rangeElements.remove(index);
+        spans.remove(index);
     }
 
     public void addElement(StaffElement element) {
@@ -334,10 +334,10 @@ public class Line implements LyricRun {
             var insertedType = element.getType();
             // Companion removals precede the primary insertion so reverse-order undo
             // restores the primary element before re-adding dependent spans.
-            var endingsToRemove = rangeElements.stream()
+            var endingsToRemove = spans.stream()
                 .filter(r -> r.isInvalidatedByInsertion(index, insertedType, this))
                 .toList();
-            endingsToRemove.forEach(this::removeInvalidatedRangeElement);
+            endingsToRemove.forEach(this::removeInvalidatedSpan);
 
             // When prepending to a non-empty first line, the previous first element
             // carried the initial tempo — move it to the new first element. The
@@ -390,10 +390,10 @@ public class Line implements LyricRun {
             // Pre-compute before the mutator so findRepeatSplitElement sees the pre-replacement line.
             // Companion removals precede the primary replacement so reverse-order undo
             // restores the primary element before re-adding dependent spans.
-            var endingsToRemove = rangeElements.stream()
+            var endingsToRemove = spans.stream()
                 .filter(r -> r.isInvalidatedByReplacement(oldElement, element, this))
                 .toList();
-            endingsToRemove.forEach(this::removeInvalidatedRangeElement);
+            endingsToRemove.forEach(this::removeInvalidatedSpan);
         }
 
         applyChange(
@@ -406,9 +406,9 @@ public class Line implements LyricRun {
                 elements.set(index, element);
                 attach(element);
 
-                // Update stale anchor/end references in surviving range elements so that
+                // Update stale anchor/end references in surviving spans so that
                 // getAnchorElementIndex()/getEndElementIndex() remain valid after the swap.
-                for (var r : rangeElements) {
+                for (var r : spans) {
                     if (r.getAnchorElement() == oldElement) {
                         r.setAnchorElement(element);
                     }
@@ -543,12 +543,12 @@ public class Line implements LyricRun {
 
             // Companion removals precede the primary deletion so reverse-order undo
             // re-inserts the element before re-adding the spans anchored to it.
-            var invalidated = rangeElements.stream()
+            var invalidated = spans.stream()
                 .filter(r -> !(r instanceof Hairpin))
                 .filter(r -> r.isInvalidatedBy(deletedList)
                     || r.isInvalidatedByDeletion(deletedList, this))
                 .toList();
-            invalidated.forEach(this::removeInvalidatedRangeElement);
+            invalidated.forEach(this::removeInvalidatedSpan);
         }
 
         var displacedTempo = initialTempoBeingRemoved(index);
@@ -589,12 +589,12 @@ public class Line implements LyricRun {
 
             // Companion removals precede the primary deletion so reverse-order undo
             // re-inserts the elements before re-adding the spans anchored to them.
-            var invalidated = rangeElements.stream()
+            var invalidated = spans.stream()
                 .filter(r -> !(r instanceof Hairpin))
                 .filter(r -> r.isInvalidatedBy(deletedElements)
                     || r.isInvalidatedByDeletion(deletedElements, this))
                 .toList();
-            invalidated.forEach(this::removeInvalidatedRangeElement);
+            invalidated.forEach(this::removeInvalidatedSpan);
         }
 
         var displacedTempo = initialTempoBeingRemoved(from);
@@ -817,12 +817,12 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Returns all {@link Beam} range elements whose span overlaps [begin, end] inclusive.
+     * Returns all {@link Beam} spans overlapping [begin, end] inclusive.
      */
     public List<Beam> findBeamsOverlapping(int begin, int end) {
         var result = new ArrayList<Beam>();
 
-        for (var re : rangeElements) {
+        for (var re : spans) {
             if (re instanceof Beam b) {
                 var anchor = b.getAnchorElementIndex();
                 var endIdx = b.getEndElementIndex();
@@ -837,10 +837,10 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Returns true if {@code elementIndex} is the anchor of any {@link Beam} range element.
+     * Returns true if {@code elementIndex} is the anchor of any {@link Beam} span.
      */
     public boolean isStartOfAnyBeam(int elementIndex) {
-        for (var re : rangeElements) {
+        for (var re : spans) {
             if (re instanceof Beam b && b.getAnchorElementIndex() == elementIndex) {
                 return true;
             }
@@ -850,10 +850,10 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Returns true if {@code elementIndex} is the end of any {@link Beam} range element.
+     * Returns true if {@code elementIndex} is the end of any {@link Beam} span.
      */
     public boolean isEndOfAnyBeam(int elementIndex) {
-        for (var re : rangeElements) {
+        for (var re : spans) {
             if (re instanceof Beam b && b.getEndElementIndex() == elementIndex) {
                 return true;
             }
@@ -863,12 +863,12 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Returns the first {@link Tie} range element whose anchor-to-end range includes
+     * Returns the first {@link Tie} span whose anchor-to-end range includes
      * {@code elementIndex}, or {@code null} if the element is not part of any tie.
      */
     @Nullable
     public Tie findTieAt(int elementIndex) {
-        for (var re : rangeElements) {
+        for (var re : spans) {
             if (re instanceof Tie t) {
                 var anchor = t.getAnchorElementIndex();
                 var end = t.getEndElementIndex();
@@ -883,7 +883,7 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Returns the {@link Tie} range element whose anchor is exactly {@code anchorIndex}
+     * Returns the {@link Tie} span whose anchor is exactly {@code anchorIndex}
      * and end is exactly {@code endIndex}, or {@code null} if no tie spans that exact
      * range. Unlike {@link #findTieAt(int)}, this disambiguates chained ties that share
      * an endpoint note — {@code findTieAt} would return whichever overlapping tie comes
@@ -891,7 +891,7 @@ public class Line implements LyricRun {
      */
     @Nullable
     public Tie findExactTie(int anchorIndex, int endIndex) {
-        for (var re : rangeElements) {
+        for (var re : spans) {
             if (re instanceof Tie t
                 && t.getAnchorElementIndex() == anchorIndex
                 && t.getEndElementIndex() == endIndex) {
@@ -914,7 +914,7 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Adds a tie range element. Tie ranges never coalesce — a chain of tied notes is
+     * Adds a tie span. Tie ranges never coalesce — a chain of tied notes is
      * represented as one {@link Tie} per adjacent pair, each rendered as its own arc,
      * even when two ties share an endpoint note.
      */
@@ -923,10 +923,10 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Removes a tie range element that was previously added via {@link #addTie(Tie)}.
+     * Removes a tie span that was previously added via {@link #addTie(Tie)}.
      */
     public void removeTie(Tie tie) {
-        var index = rangeElements.indexOf(tie);
+        var index = spans.indexOf(tie);
 
         if (index < 0) {
             return;
@@ -939,19 +939,19 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Returns an unmodifiable snapshot of all {@link Tie} range elements in this line.
+     * Returns an unmodifiable snapshot of all {@link Tie} spans in this line.
      */
     public List<Tie> findTies() {
-        return findRangeElements(Tie.class);
+        return findSpans(Tie.class);
     }
 
     /**
-     * Returns the first {@link Tuplet} range element whose anchor-to-end range includes
+     * Returns the first {@link Tuplet} span whose anchor-to-end range includes
      * {@code elementIndex}, or {@code null} if the element is not part of any tuplet.
      */
     @Nullable
     public Tuplet findTupletAt(int elementIndex) {
-        for (var re : rangeElements) {
+        for (var re : spans) {
             if (re instanceof Tuplet t) {
                 var anchor = t.getAnchorElementIndex();
                 var end = t.getEndElementIndex();
@@ -966,12 +966,12 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Returns all {@link Tuplet} range elements whose span overlaps [begin, end] inclusive.
+     * Returns all {@link Tuplet} spans overlapping [begin, end] inclusive.
      */
     public List<Tuplet> findTupletsOverlapping(int begin, int end) {
         var result = new ArrayList<Tuplet>();
 
-        for (var re : rangeElements) {
+        for (var re : spans) {
             if (re instanceof Tuplet t) {
                 var anchor = t.getAnchorElementIndex();
                 var endIdx = t.getEndElementIndex();
@@ -986,20 +986,20 @@ public class Line implements LyricRun {
     }
 
     public List<Crescendo> getCrescendos() {
-        return findRangeElements(Crescendo.class);
+        return findSpans(Crescendo.class);
     }
 
     public List<Diminuendo> getDiminuendos() {
-        return findRangeElements(Diminuendo.class);
+        return findSpans(Diminuendo.class);
     }
 
     /**
-     * Returns the first {@link Beam} range element whose anchor-to-end range includes
+     * Returns the first {@link Beam} span whose anchor-to-end range includes
      * {@code elementIndex}, or {@code null} if the element is not part of any beam.
      */
     @Nullable
     public Beam findBeamAt(int elementIndex) {
-        for (var re : rangeElements) {
+        for (var re : spans) {
             if (re instanceof Beam b) {
                 var anchor = b.getAnchorElementIndex();
                 var end = b.getEndElementIndex();
@@ -1048,7 +1048,7 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Adds a beam range element, merging with any existing beams that share endpoints.
+     * Adds a beam span, merging with any existing beams that share endpoints.
      * <p>
      * If an existing beam ends at the new beam's start, or starts at the new beam's end,
      * the spans are merged into a single wider beam. Any beam whose range is fully
@@ -1077,7 +1077,7 @@ public class Line implements LyricRun {
      *                       — ending one element before it, or starting one element after
      *                       — is absorbed too, as opposed to only one that overlaps it
      */
-    private <R extends RangeElement> void mergeOverlappingSpans(
+    private <R extends Span> void mergeOverlappingSpans(
         R span,
         Class<? extends R> type,
         Consumer<? super R> remover,
@@ -1093,7 +1093,7 @@ public class Line implements LyricRun {
         var mergedAnchorIdx = anchorIdx;
         var mergedEndIdx = endIdx;
 
-        for (var re : rangeElements) {
+        for (var re : spans) {
             if (type.isInstance(re)) {
                 var existing = type.cast(re);
                 var existingAnchor = existing.getAnchorElementIndex();
@@ -1119,7 +1119,7 @@ public class Line implements LyricRun {
 
         var finalMergedAnchor = mergedAnchorIdx;
         var finalMergedEnd = mergedEndIdx;
-        var subsumedSpans = rangeElements.stream()
+        var subsumedSpans = spans.stream()
             .filter(re -> type.isInstance(re)
                 && type.cast(re).getAnchorElementIndex() >= finalMergedAnchor
                 && type.cast(re).getEndElementIndex() <= finalMergedEnd)
@@ -1129,10 +1129,10 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Removes a beam range element that was previously added via {@link #addBeaming(Beam)}.
+     * Removes a beam span that was previously added via {@link #addBeaming(Beam)}.
      */
     public void removeBeaming(Beam beam) {
-        var index = rangeElements.indexOf(beam);
+        var index = spans.indexOf(beam);
 
         if (index < 0) {
             return;
@@ -1145,7 +1145,7 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Adds a tuplet range element, replacing any existing tuplet that overlaps the new one.
+     * Adds a tuplet span, replacing any existing tuplet that overlaps the new one.
      * <p>
      * Any existing tuplet whose range overlaps [anchor, end] is removed before the new tuplet
      * is added.
@@ -1166,10 +1166,10 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Removes a tuplet range element that was previously added via {@link #addTuplet(Tuplet)}.
+     * Removes a tuplet span that was previously added via {@link #addTuplet(Tuplet)}.
      */
     public void removeTuplet(Tuplet tuplet) {
-        var index = rangeElements.indexOf(tuplet);
+        var index = spans.indexOf(tuplet);
 
         if (index < 0) {
             return;
@@ -1182,7 +1182,7 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Adds a crescendo hairpin range element.
+     * Adds a crescendo hairpin span.
      * <p>
      * Any existing crescendo whose range overlaps or is adjacent to the new one is
      * absorbed into a single wider hairpin.
@@ -1199,7 +1199,7 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Adds a diminuendo hairpin range element.
+     * Adds a diminuendo hairpin span.
      * <p>
      * Overlap-merge semantics mirror {@link #addCrescendo(Crescendo)}.
      */
@@ -1228,7 +1228,7 @@ public class Line implements LyricRun {
         if (!song.isReplaying()) {
             // A hairpin drawn flush against a same-type one continues it rather than
             // starting a second: one uninterrupted dynamic gesture, one hairpin.
-            mergeOverlappingSpans(hairpin, type, this::removeInvalidatedRangeElement, true);
+            mergeOverlappingSpans(hairpin, type, this::removeInvalidatedSpan, true);
         }
 
         applyChange(mutationFactory.apply(this, hairpin), () -> appendChild(hairpin));
@@ -1241,7 +1241,7 @@ public class Line implements LyricRun {
         H hairpin,
         BiFunction<? super Line, H, ? extends Mutation> mutationFactory
     ) {
-        var index = rangeElements.indexOf(hairpin);
+        var index = spans.indexOf(hairpin);
 
         if (index < 0) {
             return;
@@ -1271,12 +1271,12 @@ public class Line implements LyricRun {
      * than two elements is removed, having no gesture left to show.
      * <p>
      * A reshaped hairpin is expressed as a tracked removal plus a tracked addition of a
-     * copy, since a range element has no modification mutation of its own. Hairpins are
+     * copy, since a span has no modification mutation of its own. Hairpins are
      * therefore excluded from the invalidation pass in {@link #removeElement} and
      * {@link #removeRange}: this method is the whole of their response to a deletion.
      */
     private void adjustHairpinsForDeletion(List<StaffElement> deletedElements) {
-        var hairpins = findRangeElements(Hairpin.class);
+        var hairpins = findSpans(Hairpin.class);
 
         // Every deletion in the app reaches this method, but most songs hold no hairpin
         // at all. Leave before building the survivor bookkeeping, which is a full pass
@@ -1315,7 +1315,7 @@ public class Line implements LyricRun {
             var span = survivingSpanOf(hairpin, anchorIndex, endIndex, survivors, survivorIndices);
 
             if (span == null) {
-                removeInvalidatedRangeElement(hairpin);
+                removeInvalidatedSpan(hairpin);
                 continue;
             }
 
@@ -1521,8 +1521,8 @@ public class Line implements LyricRun {
         // before restoring the originals, and run in reverse list order so undo restores
         // them in the order they were in, leaving the document identical to before.
         var doomed = new ArrayList<>(run.stream().map(HairpinSpan::hairpin).toList());
-        doomed.sort(Comparator.<Hairpin>comparingInt(rangeElements::indexOf).reversed());
-        doomed.forEach(this::removeInvalidatedRangeElement);
+        doomed.sort(Comparator.<Hairpin>comparingInt(spans::indexOf).reversed());
+        doomed.forEach(this::removeInvalidatedSpan);
 
         var reshaped = (Hairpin) first.copy(anchorElement, endElement);
 
@@ -1536,7 +1536,7 @@ public class Line implements LyricRun {
      * Returns true if the given note index falls within any hairpin (crescendo or diminuendo) range.
      */
     public boolean isInHairpinRange(int noteIndex) {
-        for (var re : rangeElements) {
+        for (var re : spans) {
             if (re instanceof Hairpin) {
                 var anchorIdx = re.getAnchorElementIndex();
                 var endIdx = re.getEndElementIndex();
@@ -1604,7 +1604,7 @@ public class Line implements LyricRun {
     }
 
     public int getFirstTrill() {
-        return findRangeElements(Trill.class).stream()
+        return findSpans(Trill.class).stream()
             .mapToInt(Trill::getAnchorElementIndex)
             .filter(i -> i >= 0)
             .min()
@@ -1623,54 +1623,54 @@ public class Line implements LyricRun {
     // =========================================================================
 
     /**
-     * Adds a range element to this line.
+     * Adds a span to this line.
      *
-     * @param element The range element to add
+     * @param element The span to add
      */
-    public void addRangeElement(RangeElement element) {
+    public void addSpan(Span element) {
         applyChange(
-            new RangeElementAddition(this, element),
+            new SpanAddition(this, element),
             () -> appendChild(element)
         );
     }
 
     /**
-     * Adds a trill range element, first removing any existing trill that overlaps the new one.
+     * Adds a trill span, first removing any existing trill that overlaps the new one.
      * Each removal is recorded as its own mutation so replacing a displaced trill is undoable.
      */
     public void addTrill(Trill trill) {
         for (var overlapping : findTrillsOverlapping(trill.getAnchorElementIndex(), trill.getEndElementIndex())) {
-            removeRangeElement(overlapping);
+            removeSpan(overlapping);
         }
 
-        addRangeElement(trill);
+        addSpan(trill);
     }
 
     /**
-     * Removes every trill range element overlapping {@code [beginIndex, endIndex]}.
+     * Removes every trill span overlapping {@code [beginIndex, endIndex]}.
      */
     public void removeTrillsOverlapping(int beginIndex, int endIndex) {
         for (var trill : findTrillsOverlapping(beginIndex, endIndex)) {
-            removeRangeElement(trill);
+            removeSpan(trill);
         }
     }
 
     /**
-     * Finds every trill range element overlapping {@code [beginIndex, endIndex]}.
+     * Finds every trill span overlapping {@code [beginIndex, endIndex]}.
      */
     public List<Trill> findTrillsOverlapping(int beginIndex, int endIndex) {
-        return findRangeElements(Trill.class).stream()
+        return findSpans(Trill.class).stream()
             .filter(trill -> trill.overlaps(beginIndex, endIndex))
             .toList();
     }
 
     /**
-     * Returns whether any trill range element overlaps {@code [beginIndex, endIndex]}.
+     * Returns whether any trill span overlaps {@code [beginIndex, endIndex]}.
      * Cheaper than {@link #findTrillsOverlapping} when only presence matters: it
      * short-circuits and allocates no intermediate lists.
      */
     public boolean hasTrillOverlapping(int beginIndex, int endIndex) {
-        for (var element : rangeElements) {
+        for (var element : spans) {
             if (element instanceof Trill trill && trill.overlaps(beginIndex, endIndex)) {
                 return true;
             }
@@ -1680,21 +1680,21 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Removes a range element from this line.
+     * Removes a span from this line.
      *
-     * @param element The range element to remove
+     * @param element The span to remove
      * @return true if the element was removed
      */
     @SuppressWarnings("UnusedReturnValue")
-    public boolean removeRangeElement(RangeElement element) {
-        var index = rangeElements.indexOf(element);
+    public boolean removeSpan(Span element) {
+        var index = spans.indexOf(element);
 
         if (index < 0) {
             return false;
         }
 
         applyChange(
-            new RangeElementRemoval(this, element),
+            new SpanRemoval(this, element),
             () -> removeChild(element, index)
         );
 
@@ -1702,10 +1702,10 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Removes a range element displaced by another change (invalidated by an
+     * Removes a span displaced by another change (invalidated by an
      * element edit, or subsumed by a span merge) via its typed tracked removal,
      * so the removal emits its proper mutation. A raw
-     * {@code rangeElements.removeIf} would drop the span with no record, making
+     * {@code spans.removeIf} would drop the span with no record, making
      * undo of the enclosing operation lossy.
      * <p>
      * Every branch is a no-op when the span is no longer in this line, so callers
@@ -1713,14 +1713,14 @@ public class Line implements LyricRun {
      * reconciliation in {@code ScoreViewController.tryInsertFragment}) may call it
      * unconditionally.
      */
-    public void removeInvalidatedRangeElement(RangeElement rangeElement) {
-        switch (rangeElement) {
+    public void removeInvalidatedSpan(Span span) {
+        switch (span) {
             case Beam beam -> removeBeaming(beam);
             case Tie tie -> removeTie(tie);
             case Tuplet tuplet -> removeTuplet(tuplet);
             case Crescendo crescendo -> removeCrescendo(crescendo);
             case Diminuendo diminuendo -> removeDiminuendo(diminuendo);
-            default -> removeRangeElement(rangeElement);
+            default -> removeSpan(span);
         }
     }
 
@@ -1734,31 +1734,31 @@ public class Line implements LyricRun {
      * guaranteed no same-kind overlap survives the paste, so the other adders'
      * displacement logic has nothing left to resolve.
      */
-    public void addPastedRangeElement(RangeElement rangeElement) {
-        switch (rangeElement) {
+    public void addPastedSpan(Span span) {
+        switch (span) {
             case Crescendo crescendo -> addCrescendo(crescendo);
             case Diminuendo diminuendo -> addDiminuendo(diminuendo);
-            default -> addRangeElement(rangeElement);
+            default -> addSpan(span);
         }
     }
 
     /**
-     * Returns an unmodifiable view of the range elements in this line.
+     * Returns an unmodifiable view of the spans in this line.
      */
-    public List<RangeElement> getRangeElements() {
-        return Collections.unmodifiableList(rangeElements);
+    public List<Span> getSpans() {
+        return Collections.unmodifiableList(spans);
     }
 
     /**
-     * Finds all range elements that include the specified element index.
+     * Finds all spans that include the specified element index.
      *
      * @param elementIndex The element index to search for
-     * @return List of range elements containing the element
+     * @return List of spans containing the element
      */
-    public List<RangeElement> findRangeElementsAt(int elementIndex) {
-        var result = new ArrayList<RangeElement>();
+    public List<Span> findSpansAt(int elementIndex) {
+        var result = new ArrayList<Span>();
 
-        for (var element : rangeElements) {
+        for (var element : spans) {
             var start = element.getAnchorElementIndex();
             var end = element.getEndElementIndex();
 
@@ -1771,16 +1771,16 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Finds range elements of a specific type.
+     * Finds spans of a specific type.
      *
-     * @param type The class of range element to find
-     * @return List of range elements of the specified type
+     * @param type The class of span to find
+     * @return List of spans of the specified type
      */
     @SuppressWarnings("unchecked")
-    public <T extends RangeElement> List<T> findRangeElements(Class<T> type) {
+    public <T extends Span> List<T> findSpans(Class<T> type) {
         var result = new ArrayList<T>();
 
-        for (var element : rangeElements) {
+        for (var element : spans) {
             if (type.isInstance(element)) {
                 result.add((T) element);
             }
@@ -1791,14 +1791,14 @@ public class Line implements LyricRun {
 
     /**
      * Returns true if deleting {@code deletedElements} would remove any Ending in this line.
-     * Checks both {@link RangeElement#isInvalidatedBy} (anchor/end deleted) and
-     * {@link RangeElement#isInvalidatedByDeletion} (subclass-specific conditions).
+     * Checks both {@link Span#isInvalidatedBy} (anchor/end deleted) and
+     * {@link Span#isInvalidatedByDeletion} (subclass-specific conditions).
      * <p>
      * {@code deletedElements} must reflect the pre-deletion line state.
      */
     public boolean hasEndingInvalidatedByDeletion(List<StaffElement> deletedElements) {
-        return rangeElements.stream()
-            .filter(RangeElement::requiresInvalidationConfirm)
+        return spans.stream()
+            .filter(Span::requiresInvalidationConfirm)
             .anyMatch(r -> r.isInvalidatedBy(deletedElements) ||
                            r.isInvalidatedByDeletion(deletedElements, this));
     }
@@ -1810,7 +1810,7 @@ public class Line implements LyricRun {
      * Call before {@link #addElement(int, StaffElement)}.
      */
     public boolean hasEndingInvalidatedByInsertion(int insertedIndex, ElementType insertedType) {
-        return rangeElements.stream()
+        return spans.stream()
             .anyMatch(r -> r.isInvalidatedByInsertion(insertedIndex, insertedType, this));
     }
 

@@ -39,7 +39,7 @@ import songscribe.dom.CollisionRegion;
 import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
@@ -329,7 +329,7 @@ public final class LayoutResult {
      * <p>
      * Used by renderers to iterate all elements of a specific type (e.g., all Trills,
      * all Crescendos) in a single pass, regardless of whether they originated from
-     * new range elements or were bridged from legacy flags during layout.
+     * new spans or were bridged from legacy flags during layout.
      *
      * @param type The element type to filter by
      * @return List of matching entries (element + layout)
@@ -366,26 +366,26 @@ public final class LayoutResult {
     }
 
     /**
-     * Finds the decoration layout for a range element with the given anchor element and type.
+     * Finds the decoration layout for a span with the given anchor element and type.
      * <p>
-     * Used by renderers that need to look up layout results for range elements
-     * but don't have direct access to the range element object created during layout.
+     * Used by renderers that need to look up layout results for spans
+     * but don't have direct access to the span object created during layout.
      *
      * @param anchorElement    The anchor (start) element of the range
-     * @param rangeElementType The type of range element to find
+     * @param spanType The type of span to find
      * @return The decoration layout if found, null otherwise
      */
-    public @Nullable DecorationLayout findRangeElementDecorationLayout(
+    public @Nullable DecorationLayout findSpanDecorationLayout(
         StaffElement anchorElement,
-        Class<? extends RangeElement> rangeElementType) {
+        Class<? extends Span> spanType) {
 
         for (var entry : decorationLayouts.entrySet()) {
             var element = entry.getKey();
 
-            if (rangeElementType.isInstance(element)) {
-                var rangeElement = (RangeElement) element;
+            if (spanType.isInstance(element)) {
+                var span = (Span) element;
 
-                if (rangeElement.getAnchorElement() == anchorElement) {
+                if (span.getAnchorElement() == anchorElement) {
                     return entry.getValue();
                 }
             }

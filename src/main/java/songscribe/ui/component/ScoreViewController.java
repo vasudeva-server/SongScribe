@@ -702,7 +702,7 @@ public final class ScoreViewController {
             }
 
             case HitTarget.Ending(var ending) ->
-                line.withModification(OpNames.deleteEndingLabel(), () -> line.removeRangeElement(ending));
+                line.withModification(OpNames.deleteEndingLabel(), () -> line.removeSpan(ending));
 
             case HitTarget.Hairpin(var hairpin) ->
                 line.withModification(OpNames.deleteHairpinLabel(hairpin), () -> {
@@ -1078,7 +1078,7 @@ public final class ScoreViewController {
         // Drop the destination spans this paste lands inside before anything moves,
         // while their anchor/end indices still resolve against the pre-paste line.
         for (var span : reconciliation.targetSpansToRemove()) {
-            line.removeInvalidatedRangeElement(span);
+            line.removeInvalidatedSpan(span);
         }
 
         // Capture the successor and its target X before any mutation: the trailing
@@ -1114,12 +1114,12 @@ public final class ScoreViewController {
         line.repairNeighborsBeforeInsertion(insertAt);
 
         // Hard ordering constraint: every clone must be inserted before the first
-        // addPastedRangeElement. Adding a span re-parents only the span, not its
+        // addPastedSpan. Adding a span re-parents only the span, not its
         // anchor/end, and getAnchorElementIndex() resolves through the anchor's
         // own getLine() — a span added while its anchors still carry the source
         // line's back-reference makes addElement's isInvalidatedByInsertion sweep
         // evaluate it against the wrong line, yielding a wrong index or -1. The
-        // hairpin merge in addPastedRangeElement reads those same indices, so it
+        // hairpin merge in addPastedSpan reads those same indices, so it
         // would mis-measure what to absorb for exactly the same reason.
         //
         // line.addElement additionally drops endings invalidated by the inserted
@@ -1163,10 +1163,10 @@ public final class ScoreViewController {
         }
 
         // A pasted hairpin flush against a same-type hairpin already on the line is
-        // merged into it by addPastedRangeElement, the same rule that applies when
+        // merged into it by addPastedSpan, the same rule that applies when
         // the user draws one there; every other kind is added verbatim.
         for (var span : reconciliation.fragmentSpans()) {
-            line.addPastedRangeElement(span);
+            line.addPastedSpan(span);
         }
 
         return FragmentInsertOutcome.INSERTED;

@@ -24,7 +24,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Beam;
 
 /**
- * Mutation recording the addition of a beam range element to a line.
+ * Mutation recording the addition of a beam span to a line.
  */
 public record BeamingAddition(Line line, Beam beam)
     implements Mutation, LineScopedMutation {

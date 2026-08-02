@@ -41,12 +41,12 @@ class LineIsInHairpinRangeTest extends UnitTest {
 
     /** Adds a crescendo from index {@code a} to {@code b} inclusive. */
     private static void addCrescendo(Line line, int a, int b) {
-        line.addRangeElement(new Crescendo(line.getElement(a), line.getElement(b)));
+        line.addSpan(new Crescendo(line.getElement(a), line.getElement(b)));
     }
 
     /** Adds a diminuendo from index {@code a} to {@code b} inclusive. */
     private static void addDiminuendo(Line line, int a, int b) {
-        line.addRangeElement(new Diminuendo(line.getElement(a), line.getElement(b)));
+        line.addSpan(new Diminuendo(line.getElement(a), line.getElement(b)));
     }
 
     @Test

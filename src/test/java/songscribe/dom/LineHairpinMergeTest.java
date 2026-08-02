@@ -88,7 +88,7 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addCrescendo(new Crescendo(line.getElement(IDX_2), line.getElement(IDX_4))));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos)
@@ -115,7 +115,7 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addCrescendo(new Crescendo(line.getElement(IDX_1), line.getElement(IDX_2))));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos)
@@ -142,8 +142,8 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addCrescendo(new Crescendo(line.getElement(IDX_2), line.getElement(IDX_4))));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
-            var diminuendos = line.findRangeElements(Diminuendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
+            var diminuendos = line.findSpans(Diminuendo.class);
 
             assertAll(
                 () -> assertThat(crescendos)
@@ -184,7 +184,7 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addCrescendo(new Crescendo(line.getElement(IDX_2), line.getElement(IDX_4))));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos)
@@ -220,7 +220,7 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addDiminuendo(new Diminuendo(line.getElement(IDX_2), line.getElement(IDX_4))));
 
-            var diminuendos = line.findRangeElements(Diminuendo.class);
+            var diminuendos = line.findSpans(Diminuendo.class);
 
             assertAll(
                 () -> assertThat(diminuendos)
@@ -247,7 +247,7 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addDiminuendo(new Diminuendo(line.getElement(IDX_1), line.getElement(IDX_2))));
 
-            var diminuendos = line.findRangeElements(Diminuendo.class);
+            var diminuendos = line.findSpans(Diminuendo.class);
 
             assertAll(
                 () -> assertThat(diminuendos)
@@ -274,8 +274,8 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addDiminuendo(new Diminuendo(line.getElement(IDX_2), line.getElement(IDX_4))));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
-            var diminuendos = line.findRangeElements(Diminuendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
+            var diminuendos = line.findSpans(Diminuendo.class);
 
             assertAll(
                 () -> assertThat(crescendos)
@@ -318,7 +318,7 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addCrescendo(new Crescendo(line.getElement(IDX_2), line.getElement(IDX_4))));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos)
@@ -341,7 +341,7 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addCrescendo(new Crescendo(line.getElement(IDX_0), line.getElement(IDX_1))));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos)
@@ -364,7 +364,7 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addDiminuendo(new Diminuendo(line.getElement(IDX_2), line.getElement(IDX_4))));
 
-            var diminuendos = line.findRangeElements(Diminuendo.class);
+            var diminuendos = line.findSpans(Diminuendo.class);
 
             assertAll(
                 () -> assertThat(diminuendos)
@@ -388,10 +388,10 @@ class LineHairpinMergeTest extends UnitTest {
                 line.addDiminuendo(new Diminuendo(line.getElement(IDX_2), line.getElement(IDX_4))));
 
             assertAll(
-                () -> assertThat(line.findRangeElements(Crescendo.class))
+                () -> assertThat(line.findSpans(Crescendo.class))
                     .as("crescendo must survive alongside the abutting diminuendo")
                     .hasSize(1),
-                () -> assertThat(line.findRangeElements(Diminuendo.class))
+                () -> assertThat(line.findSpans(Diminuendo.class))
                     .as("a crescendo swelling straight into a diminuendo is two hairpins")
                     .hasSize(1)
             );
@@ -409,7 +409,7 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addCrescendo(new Crescendo(line.getElement(IDX_3), line.getElement(IDX_4))));
 
-            assertThat(line.findRangeElements(Crescendo.class))
+            assertThat(line.findSpans(Crescendo.class))
                 .as("a plain note between two crescendos keeps them separate")
                 .hasSize(2);
         }
@@ -433,7 +433,7 @@ class LineHairpinMergeTest extends UnitTest {
             song.withoutMutationTracking(() ->
                 line.addCrescendo(new Crescendo(line.getElement(IDX_2), line.getElement(IDX_2))));
 
-            var crescendos = line.findRangeElements(Crescendo.class);
+            var crescendos = line.findSpans(Crescendo.class);
 
             assertAll(
                 () -> assertThat(crescendos)

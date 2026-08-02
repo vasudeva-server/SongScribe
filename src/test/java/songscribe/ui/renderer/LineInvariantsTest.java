@@ -82,7 +82,7 @@ class LineInvariantsTest extends UnitTest {
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
         line.addElement(ElementType.CROTCHET.newInstance());
-        line.addRangeElement(new Tie(line.getElement(0), line.getElement(2)));
+        line.addSpan(new Tie(line.getElement(0), line.getElement(2)));
         return line;
     }
 

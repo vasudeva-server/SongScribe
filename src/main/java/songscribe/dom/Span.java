@@ -29,10 +29,10 @@ import songscribe.engraving.SMuFLConstants;
 /**
  * Abstract base class for elements that span multiple elements.
  * <p>
- * Range elements include ties, trills, crescendo/diminuendo hairpins,
+ * Spans include ties, trills, crescendo/diminuendo hairpins,
  * tuplet brackets, and first/second endings.
  * <p>
- * Each range element has:
+ * Each span has:
  * <ul>
  *   <li>An anchor element (first element in the range)</li>
  *   <li>Methods to determine the range extent</li>
@@ -40,15 +40,15 @@ import songscribe.engraving.SMuFLConstants;
  * <p>
  * Concrete subclasses will be implemented in Phase 4.
  */
-public abstract class RangeElement extends LineElement {
+public abstract class Span extends LineElement {
 
     /**
-     * Creates a range element spanning from anchor to end element.
+     * Creates a span reaching from the anchor element to the end element.
      *
      * @param anchorElement The first element in the range
      * @param endElement    The last element in the range
      */
-    protected RangeElement(StaffElement anchorElement, StaffElement endElement) {
+    protected Span(StaffElement anchorElement, StaffElement endElement) {
         this.anchorElement = anchorElement;
         this.endElement = endElement;
     }
@@ -107,14 +107,14 @@ public abstract class RangeElement extends LineElement {
     }
 
     /**
-     * Returns whether this range element is invalidated by the given deletion.
+     * Returns whether this span is invalidated by the given deletion.
      * <p>
-     * A range element is invalidated when its anchor or end element is among the deleted elements,
+     * A span is invalidated when its anchor or end element is among the deleted elements,
      * because the range can no longer be rendered without both endpoints. Subclasses may override
      * this method if their invalidation condition is more nuanced.
      *
      * @param deletedElements the elements that were removed from the line
-     * @return {@code true} if this range element should be removed as a result of the deletion
+     * @return {@code true} if this span should be removed as a result of the deletion
      */
     public boolean isInvalidatedBy(List<StaffElement> deletedElements) {
         return deletedElements.contains(anchorElement) || deletedElements.contains(endElement);
@@ -122,14 +122,14 @@ public abstract class RangeElement extends LineElement {
 
     /**
      * Returns true if inserting an element of {@code insertedType} at {@code insertedIndex}
-     * invalidates this range element. Default is false; subclasses may override.
+     * invalidates this span. Default is false; subclasses may override.
      */
     public boolean isInvalidatedByInsertion(int insertedIndex, ElementType insertedType, Line line) {
         return false;
     }
 
     /**
-     * Returns true if deleting the given elements invalidates this range element beyond what
+     * Returns true if deleting the given elements invalidates this span beyond what
      * {@link #isInvalidatedBy} already detects. Default is false; subclasses may override.
      */
     public boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
@@ -138,15 +138,15 @@ public abstract class RangeElement extends LineElement {
 
     /**
      * Returns true if replacing {@code oldElement} with {@code newElement} invalidates
-     * this range element. Default is false; subclasses may override.
+     * this span. Default is false; subclasses may override.
      */
     public boolean isInvalidatedByReplacement(StaffElement oldElement, StaffElement newElement, Line line) {
         return false;
     }
 
     /**
-     * Returns whether removing this range element as a side effect of an edit warrants a
-     * user confirmation prompt. Default is false: range elements such as beams, ties, and
+     * Returns whether removing this span as a side effect of an edit warrants a
+     * user confirmation prompt. Default is false: spans such as beams, ties, and
      * tuplets are removed silently. Subclasses may override (endings do, since their loss
      * is significant enough to confirm first).
      */
@@ -155,15 +155,15 @@ public abstract class RangeElement extends LineElement {
     }
 
     /**
-     * Returns whether this range element is above the staff.
+     * Returns whether this span is above the staff.
      */
     public boolean isAbove() {
-        // By default, range elements are above the staff. Subclasses can override this if needed.
+        // By default, spans are above the staff. Subclasses can override this if needed.
         return true;
     }
 
     /**
-     * Returns the width of this range element in staff-space units.
+     * Returns the width of this span in staff-space units.
      * <p>
      * Computed as the distance from the anchor element's X position to the
      * right edge of the end element, all in staff spaces.
@@ -253,7 +253,7 @@ public abstract class RangeElement extends LineElement {
     }
 
     /**
-     * Returns whether this range element overlaps the inclusive element index
+     * Returns whether this span overlaps the inclusive element index
      * range {@code [begin, end]}.
      */
     public boolean overlaps(int begin, int end) {
@@ -268,19 +268,19 @@ public abstract class RangeElement extends LineElement {
     }
 
     /**
-     * Creates a copy of this range element anchored to the given elements, carrying over
+     * Creates a copy of this span anchored to the given elements, carrying over
      * all {@link LineElement}-level user state (offsets, margins, position).
      * <p>
      * This is the single place LineElement-level state is copied, so a new subclass cannot
      * forget it. Subclasses carry their own subclass-specific state in {@link #createCopy}.
-     * Does not set {@code parentLine} — {@code Line.addRangeElement} does that on insert —
+     * Does not set {@code parentLine} — {@code Line.addSpan} does that on insert —
      * and does not copy derived caches.
      *
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy
-     * @return A new range element of the same concrete type as this one
+     * @return A new span of the same concrete type as this one
      */
-    public final RangeElement copy(StaffElement newAnchor, StaffElement newEnd) {
+    public final Span copy(StaffElement newAnchor, StaffElement newEnd) {
         var copy = createCopy(newAnchor, newEnd);
         copy.setUserXOffsetSs(getUserXOffsetSs());
         copy.setUserYOffsetSs(getUserYOffsetSs());
@@ -290,12 +290,12 @@ public abstract class RangeElement extends LineElement {
     }
 
     /**
-     * Creates a new instance of this range element's concrete subclass, anchored to the
+     * Creates a new instance of this span's concrete subclass, anchored to the
      * given elements and carrying over any subclass-specific state. Called only by
      * {@link #copy}, which layers on the shared {@link LineElement}-level state.
      *
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy
      */
-    protected abstract RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd);
+    protected abstract Span createCopy(StaffElement newAnchor, StaffElement newEnd);
 }

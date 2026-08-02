@@ -187,7 +187,7 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
                 line.addElement(StaffElementFactory.crotchet());
             }
 
-            line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(3)));
+            line.addSpan(new Crescendo(line.getElement(0), line.getElement(3)));
             var selection = new ElementSelection(line, 1, 1);
 
             when(mockEnv().score().getSelectionSize()).thenReturn(1);
@@ -209,7 +209,7 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
                 line.addElement(StaffElementFactory.crotchet());
             }
 
-            line.addRangeElement(new Diminuendo(line.getElement(0), line.getElement(3)));
+            line.addSpan(new Diminuendo(line.getElement(0), line.getElement(3)));
             var selection = new ElementSelection(line, 1, 1);
 
             when(mockEnv().score().getSelectionSize()).thenReturn(1);
@@ -234,7 +234,7 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
                 line.addElement(StaffElementFactory.crotchet());
             }
 
-            line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(3)));
+            line.addSpan(new Crescendo(line.getElement(0), line.getElement(3)));
             var selection = new ElementSelection(line, 0, 0);
 
             when(mockEnv().score().getSelectionSize()).thenReturn(1);
@@ -256,7 +256,7 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
                 line.addElement(StaffElementFactory.crotchet());
             }
 
-            line.addRangeElement(new Crescendo(line.getElement(0), line.getElement(3)));
+            line.addSpan(new Crescendo(line.getElement(0), line.getElement(3)));
             var selection = new ElementSelection(line, 3, 3);
 
             when(mockEnv().score().getSelectionSize()).thenReturn(1);

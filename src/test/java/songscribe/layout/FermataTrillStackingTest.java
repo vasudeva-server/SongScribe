@@ -39,9 +39,6 @@ import songscribe.dom.ArticulationType;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.layout.ElementColumn;
-import songscribe.layout.LayoutResult;
-import songscribe.layout.NoteGeometry;
 import songscribe.layout.stacking.NoteAttachedStacker;
 import songscribe.layout.stacking.VerticalStackingCalculator;
 
@@ -189,7 +186,7 @@ class FermataTrillStackingTest extends UnitTest {
             var line = detachedLine();
             line.addElement(note);
             var trill = new Trill(note);
-            line.addRangeElement(trill);
+            line.addSpan(trill);
 
             var result = stackColumns(List.of(columnFor(note)), line);
 
@@ -208,7 +205,7 @@ class FermataTrillStackingTest extends UnitTest {
             var line = detachedLine();
             line.addElement(note);
             var trill = new Trill(note);
-            line.addRangeElement(trill);
+            line.addSpan(trill);
 
             var result = stackColumns(List.of(columnFor(note)), line);
 
@@ -227,7 +224,7 @@ class FermataTrillStackingTest extends UnitTest {
             var line = detachedLine();
             line.addElement(note);
             var trill = new Trill(note);
-            line.addRangeElement(trill);
+            line.addSpan(trill);
 
             var result = stackColumns(List.of(columnFor(note)), line);
 
@@ -250,7 +247,7 @@ class FermataTrillStackingTest extends UnitTest {
             line.addElement(note1);
             line.addElement(note2);
             var trill = new Trill(note1, note2);
-            line.addRangeElement(trill);
+            line.addSpan(trill);
 
             var col1 = columnFor(note1, NOTE_X_SS);
             var col2 = columnFor(note2, NOTE2_X_SS);
@@ -301,7 +298,7 @@ class FermataTrillStackingTest extends UnitTest {
             var line = detachedLine();
             line.addElement(note);
             var trill = new Trill(note);
-            line.addRangeElement(trill);
+            line.addSpan(trill);
 
             var result = stackColumns(List.of(columnFor(note)), line);
 

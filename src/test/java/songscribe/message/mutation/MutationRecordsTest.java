@@ -52,7 +52,7 @@ import songscribe.dom.Song;
 import songscribe.dom.Tuplet;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Ending;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.Tie;
 
 class MutationRecordsTest extends UnitTest {
@@ -346,16 +346,16 @@ class MutationRecordsTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class RangeElementMutations {
+    class UntypedSpanMutations {
 
         @Test
-        void testRangeElementAdditionExposesFields() {
+        void testSpanAdditionExposesFields() {
             var line = detachedLine();
-            RangeElement element = new Ending(
+            Span element = new Ending(
                 ElementType.CROTCHET.newInstance(),
                 ElementType.CROTCHET.newInstance()
             );
-            var mutation = new RangeElementAddition(line, element);
+            var mutation = new SpanAddition(line, element);
 
             assertThat(mutation.line()).isSameAs(line);
             assertThat(mutation.element()).isSameAs(element);
@@ -363,13 +363,13 @@ class MutationRecordsTest extends UnitTest {
         }
 
         @Test
-        void testRangeElementRemovalExposesFields() {
+        void testSpanRemovalExposesFields() {
             var line = detachedLine();
-            RangeElement element = new Ending(
+            Span element = new Ending(
                 ElementType.CROTCHET.newInstance(),
                 ElementType.CROTCHET.newInstance()
             );
-            var mutation = new RangeElementRemoval(line, element);
+            var mutation = new SpanRemoval(line, element);
 
             assertThat(mutation.line()).isSameAs(line);
             assertThat(mutation.element()).isSameAs(element);
@@ -413,7 +413,7 @@ class MutationRecordsTest extends UnitTest {
             "ElementModification", "ElementReplacement",
             "LineInsertion", "LineDeletion",
             "LineKeyChange", "LineLayoutChange",
-            "RangeElementAddition", "RangeElementRemoval",
+            "SpanAddition", "SpanRemoval",
             "BeamingAddition", "BeamingRemoval",
             "TieAddition", "TieRemoval",
             "TupletAddition", "TupletRemoval",

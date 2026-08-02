@@ -28,7 +28,7 @@ Elements are laid out in tiers. Each tier's stacking pass reads and writes into 
 2. **Articulations** (staccato, then accent) — stacked opposite the stem
 3. **Tuplet brackets** (if present) — derive their ceiling from note tips and the articulations above, rather than querying the skyline; other tiers clear the bracket's reserved footprint
 4. **Fermata** — stacked per note column
-5. **Trill** — a range element, stacked per line *after* fermata, so it clears whatever fermata already reserved
+5. **Trill** — a span, stacked per line *after* fermata, so it clears whatever fermata already reserved
 6. **Dynamics**: hairpins (crescendo/diminuendo) first, then text dynamics (p, f, mf, …)
 7. **First/second endings** — bracket can contain elements nested inside
 8. **Tempo**, then **beat change** — same mechanism, separate margin constants
@@ -174,7 +174,7 @@ The fermata is placed `FERMATA_PADDING_SS` above whatever is already reserved in
 1. **Position**: Always above the staff (same as fermata)
 2. **Margin**: `TRILL_SCRIPT_PADDING_SS` = `0.40 ss` at the anchor (first) note, or `TRILL_SPANNER_PADDING_SS` = `0.70 ss` at subsequent notes in a multi-note range — not a single uniform margin
 3. **Collision detection**: Uses the cumulative skyline, with the glyph's actual outline (not a flat box) via `ShapeProfile`
-4. **Range element**: Each note in the trill's range contributes its own required clearance; the whole span seats at the most outward requirement across the range — "positioning itself above the highest bounding box in the span," per the original rule
+4. **Span**: Each note in the trill's range contributes its own required clearance; the whole span seats at the most outward requirement across the range — "positioning itself above the highest bounding box in the span," per the original rule
 
 **Note**: Trills stack *above* (further out than) fermatas — `NoteAttachedStacker.stackOuterScripts()` stacks fermata for every column first, then trills for the line, so a trill always clears whatever fermata already reserved in its columns.
 
@@ -187,7 +187,7 @@ The fermata is placed `FERMATA_PADDING_SS` above whatever is already reserved in
 **Range dynamics** (crescendo, diminuendo hairpins):
 1. **Position**: Always above the staff
 2. **Margin**: `HAIRPIN_MARGIN_SS` = `1.0 ss` (single margin, not separate top/bottom values)
-3. **Range element**: Like trills, each note in the span demands its own clearance; the hairpin seats at the most outward requirement
+3. **Span**: Like trills, each note in the span demands its own clearance; the hairpin seats at the most outward requirement
 4. **Collision detection**: Uses the cumulative skyline
 5. **Stacked before text dynamics** within the structural tier (`StructuralStacker.stackRemaining()` runs hairpins, then text dynamics, then endings) — so, where they overlap in X, text dynamics end up outside hairpins, both of which end up outside fermata/trill
 6. **Coordination with non-range dynamics**: Not automatically implemented. `Hairpin` only exposes manual, user-driven endpoint offsets (`x1ShiftSs`, `x2ShiftSs`, `yShiftSs`), applied post-layout with no collision re-run. There is no code that automatically draws a hairpin endpoint just outside an adjacent text dynamic's margin — a user must set the shift explicitly.

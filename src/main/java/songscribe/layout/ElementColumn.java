@@ -27,7 +27,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Lyric;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.engraving.Staff;
 
@@ -650,17 +650,17 @@ public final class ElementColumn {
     // ==========================================================================
 
     /**
-     * Resolves a {@link RangeElement} span's anchor and end elements to their columns, or {@code null}
-     * when either endpoint is unset ({@link RangeElement#getAnchorElement} /
-     * {@link RangeElement#getEndElement}) or either has no column in {@code columnsByElement}.
+     * Resolves a {@link Span} span's anchor and end elements to their columns, or {@code null}
+     * when either endpoint is unset ({@link Span#getAnchorElement} /
+     * {@link Span#getEndElement}) or either has no column in {@code columnsByElement}.
      *
-     * @param span              the range element to resolve
+     * @param span              the span to resolve
      * @param columnsByElement  element-to-column lookup for the line being laid out
      * @return the resolved endpoints and their columns, or {@code null} if the span cannot be placed
      */
     @Nullable
     public static SpanColumns resolveSpan(
-        RangeElement span, Map<StaffElement, ElementColumn> columnsByElement) {
+        Span span, Map<StaffElement, ElementColumn> columnsByElement) {
         var anchor = span.getAnchorElement();
         var end = span.getEndElement();
 
@@ -679,7 +679,7 @@ public final class ElementColumn {
     }
 
     /**
-     * A {@link RangeElement} span's anchor and end elements together with their resolved columns.
+     * A {@link Span} span's anchor and end elements together with their resolved columns.
      * Returned by {@link #resolveSpan}.
      */
     public record SpanColumns(

@@ -54,10 +54,10 @@ public abstract class LineElement {
      *                          Line
      *                           │
      *     ┌─────────────────────┼──────────────────────┐
-     *     │  elements (List&lt;StaffElement&gt;)             │  rangeElements (List&lt;RangeElement&gt;)
+     *     │  elements (List&lt;StaffElement&gt;)             │  spans (List&lt;Span&gt;)
      *     │                                            │
      *     ▼                                            ▼
-     *   StaffElement                                RangeElement  (tie, beam, tuplet,
+     *   StaffElement                                Span  (tie, beam, tuplet,
      *     parentLine ◄── Line.attach / Line.detach     parentLine      hairpin, ending, trill)
      *     │              ONLY writer  ── structural       ▲
      *     │                                               │

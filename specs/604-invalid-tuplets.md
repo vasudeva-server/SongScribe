@@ -203,14 +203,14 @@ Redundancy is a property of **derivation**, not of the tuplet. When `M` is deriv
 
 ### Model
 
-`dom/Tuplet.java` extends `RangeElement` and stores exactly one tuplet-specific field beyond the bracket offset:
+`dom/Tuplet.java` extends `Span` and stores exactly one tuplet-specific field beyond the bracket offset:
 
 - `grade` (`:75`) — the printed number. No `M`, no `V`.
 - `verticalPositionSs` (`:76`) — user Y-offset.
 - `createCopy` (`:91`) copies `grade` and `verticalPositionSs`.
-- `getElementCount()` (`:98`) overrides `RangeElement.getElementCount()` (`:94`, documented "the number of elements in this range") to return `grade` instead. It has **no production callers** — only `TupletTest:99` and `:108` pin the behavior.
+- `getElementCount()` (`:98`) overrides `Span.getElementCount()` (`:94`, documented "the number of elements in this range") to return `grade` instead. It has **no production callers** — only `TupletTest:99` and `:108` pin the behavior.
 
-`StaffElement` has no tuplet field; membership is derived by scanning `Line.rangeElements` (`findTupletAt`, `dom/Line.java:1708`).
+`StaffElement` has no tuplet field; membership is derived by scanning `Line.spans` (`findTupletAt`, `dom/Line.java:1708`).
 
 Durations: `ElementType` carries `defaultDuration` in PPQ ticks (`PPQ = 96`, `midi/MidiSequenceBuilder.java:48`); `StaffElement.getDefaultDurationWithDots()` (`:707`) applies `DOTTED_DURATION = {1.0f, 1.5f, 1.75f}`; `getDuration()` (`:711`) additionally multiplies by 1.5 for a fermata. The shortest value is a 32nd (12 ticks).
 
@@ -302,7 +302,7 @@ The constructor takes `N`, `M`, and `V`. There is no setter-only path to a half-
 
 **Delete the `getElementCount()` override** (`:98`) and its two tests (`TupletTest:99`, `:108`). It contradicts the base contract, has no production callers, and becomes a trap once `getNormalNotes()` sits beside it.
 
-`Tuplet.toIndexString()` (`:263`) needs **no** new fields. It is reached via `LineIO.rangeElementsToString` (`:171`) from `LineIO`'s write at `:126`, called only by `SongIO.writeSong`, whose sole production caller is `uiconverter/ConvertAction.java:161` — the batch UIConverter, which round-trips `.mssw` → `.mssw` before converting. The post-load pass re-derives `M` and `V` for every `.mssw` file regardless.
+`Tuplet.toIndexString()` (`:263`) needs **no** new fields. It is reached via `LineIO.spansToString` (`:171`) from `LineIO`'s write at `:126`, called only by `SongIO.writeSong`, whose sole production caller is `uiconverter/ConvertAction.java:161` — the batch UIConverter, which round-trips `.mssw` → `.mssw` before converting. The post-load pass re-derives `M` and `V` for every `.mssw` file regardless.
 
 ### 2. Beat resolution — extend `Song.getTempoAt`
 

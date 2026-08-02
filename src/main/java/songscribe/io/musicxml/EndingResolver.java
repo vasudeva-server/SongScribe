@@ -172,7 +172,7 @@ final class EndingResolver {
             return;
         }
 
-        currentLine.addRangeElement(ending);
+        currentLine.addSpan(ending);
     }
 
     private void clearPendingEnding() {

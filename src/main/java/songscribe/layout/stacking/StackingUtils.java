@@ -28,7 +28,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.dom.CollisionRegion;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.LineElement;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
 import songscribe.engraving.LineThickness;
@@ -624,12 +624,12 @@ public final class StackingUtils {
     }
 
     /**
-     * Checks whether a range span is already covered by an existing range element.
+     * Checks whether a range span is already covered by an existing span.
      */
     public static boolean isRangeCovered(
         StaffElement startNote,
         StaffElement endNote,
-        List<? extends RangeElement> existingElements) {
+        List<? extends Span> existingElements) {
 
         for (var element : existingElements) {
             if (element.getAnchorElement() == startNote && element.getEndElement() == endNote) {

@@ -105,7 +105,7 @@ class TupletRendererTest extends UnitTest {
 
     /**
      * Builds a two-note line with a tuplet spanning both notes (grade 3).
-     * If {@code addBeam} is true, a Beam range element covering both notes is added,
+     * If {@code addBeam} is true, a Beam span covering both notes is added,
      * making allBeamed=true.
      */
     private static LineInvariants buildInvariantsWithTuplet(boolean isUpper, boolean addBeam) {
@@ -118,11 +118,11 @@ class TupletRendererTest extends UnitTest {
         line.addElement(end);
 
         if (addBeam) {
-            line.addRangeElement(new Beam(anchor, end));
+            line.addSpan(new Beam(anchor, end));
         }
 
         var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
-        line.addRangeElement(tuplet);
+        line.addSpan(tuplet);
 
         // decorLayout.xSs() = 1.0, decorLayout.widthSs() = 4.0
         var decorLayout = new LayoutResult.DecorationLayout(1.0, -2.0, 4.0, 1.0, 0.0);
@@ -155,7 +155,7 @@ class TupletRendererTest extends UnitTest {
         line.addElement(end);
 
         var tuplet = Tuplet.withUnresolvedRatio(anchor, end, TRIPLET_GRADE);
-        line.addRangeElement(tuplet);
+        line.addSpan(tuplet);
 
         var layoutResult = LayoutResult.builder()
             .putDecorationLayout(tuplet, new LayoutResult.DecorationLayout(
@@ -315,7 +315,7 @@ class TupletRendererTest extends UnitTest {
         line.addElement(anchor);
         line.addElement(end);
         var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
-        line.addRangeElement(tuplet);
+        line.addSpan(tuplet);
 
         // LayoutResult has no entry for this tuplet — getDecorationLayout returns null
         var layoutResult = LayoutResult.builder().build();
@@ -358,11 +358,11 @@ class TupletRendererTest extends UnitTest {
         line.addElement(end);
 
         if (addBeam) {
-            line.addRangeElement(new Beam(anchor, end));
+            line.addSpan(new Beam(anchor, end));
         }
 
         var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
-        line.addRangeElement(tuplet);
+        line.addSpan(tuplet);
 
         // decorLayout.xSs() = 1.0 (anchorXSs), decorLayout.widthSs() = 4.0
         var decorLayout = new LayoutResult.DecorationLayout(1.0, -2.0, dySs, 4.0, 1.0, 0.0, List.of());
@@ -535,7 +535,7 @@ class TupletRendererTest extends UnitTest {
         line.addElement(anchor);
         line.addElement(end);
         var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
-        line.addRangeElement(tuplet);
+        line.addSpan(tuplet);
 
         var decorLayout = new LayoutResult.DecorationLayout(1.0, -2.0, 4.0, 1.0, 0.0);
         var layoutResult = LayoutResult.builder()
@@ -569,7 +569,7 @@ class TupletRendererTest extends UnitTest {
         line.addElement(anchor);
         line.addElement(end);
         var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
-        line.addRangeElement(tuplet);
+        line.addSpan(tuplet);
 
         var decorLayout = new LayoutResult.DecorationLayout(1.0, -2.0, 4.0, 1.0, 0.0);
         var layoutResult = LayoutResult.builder()

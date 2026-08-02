@@ -98,15 +98,15 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
             song.withoutMutationTracking(() -> {
                 var note = ElementType.CROTCHET.newInstance();
                 line.addElement(note);
-                line.addRangeElement(new Trill(note));
+                line.addSpan(new Trill(note));
             });
 
             replaceAt(0, ElementType.CROTCHET.newInstance());
 
-            // Trill range element should remain attached to the replacement note at index 0
+            // Trill span should remain attached to the replacement note at index 0
             var replacedNote = line.getElement(0);
-            var trills = line.findRangeElements(Trill.class);
-            assertThat(trills).as("trill range element preserved").hasSize(1);
+            var trills = line.findSpans(Trill.class);
+            assertThat(trills).as("trill span preserved").hasSize(1);
             assertThat(trills.getFirst().getAnchorElement())
                 .as("trill anchor points to replaced element").isEqualTo(replacedNote);
         }
@@ -122,7 +122,7 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
                 .as("no spurious dynamic attachment").isNull();
             assertThat(element.findAttachment(FermataAttachment.class))
                 .as("no spurious fermata").isNull();
-            assertThat(line.findRangeElements(Trill.class)).as("no spurious trill").isEmpty();
+            assertThat(line.findSpans(Trill.class)).as("no spurious trill").isEmpty();
             assertThat(element.getArticulations()).as("no spurious articulations").isEmpty();
         }
     }

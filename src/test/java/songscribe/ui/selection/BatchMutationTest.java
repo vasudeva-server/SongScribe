@@ -152,7 +152,7 @@ class BatchMutationTest extends MainFrameMockTest {
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
-        assertThat(line.findRangeElements(Beam.class).isEmpty()).isTrue();
+        assertThat(line.findSpans(Beam.class).isEmpty()).isTrue();
     }
 
     @Test
@@ -233,7 +233,7 @@ class BatchMutationTest extends MainFrameMockTest {
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
         assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
-        assertThat(line.findRangeElements(Beam.class).isEmpty()).isTrue();
+        assertThat(line.findSpans(Beam.class).isEmpty()).isTrue();
     }
 
     // -- Song mutation bracket is opened --
@@ -459,7 +459,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
         var tie = new Tie(line.getElement(0), line.getElement(1));
-        line.addRangeElement(tie);
+        line.addSpan(tie);
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
@@ -490,7 +490,7 @@ class BatchMutationTest extends MainFrameMockTest {
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
-        assertThat(line.findRangeElements(Tuplet.class)).isEmpty();
+        assertThat(line.findSpans(Tuplet.class)).isEmpty();
     }
 
     @Test
@@ -509,7 +509,7 @@ class BatchMutationTest extends MainFrameMockTest {
         ReflectionTestHelper.selectNote(coordinator, 2);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
 
-        assertThat(line.findRangeElements(Tuplet.class)).isEmpty();
+        assertThat(line.findSpans(Tuplet.class)).isEmpty();
     }
 
     @Test

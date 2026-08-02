@@ -51,7 +51,7 @@ import songscribe.message.mutation.DiminuendoAddition;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.mutation.RangeElementAddition;
+import songscribe.message.mutation.SpanAddition;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
@@ -115,8 +115,8 @@ class MusicEditOperationsMutationTest extends UnitTest {
      * real LineInsertion notification on the unobserved bus), creates a coordinator and
      * operations wrapper, then starts mocking MessageCenter.
      *
-     * <p>Range elements (beams, ties, etc.) that require no modification bracket may be added
-     * to {@code env.line()} directly via {@code line.addRangeElement} after this call.
+     * <p>Spans (beams, ties, etc.) that require no modification bracket may be added
+     * to {@code env.line()} directly via {@code line.addSpan} after this call.
      */
     private Env setupEnv(StaffElement... elements) {
         var line = new Line(song);
@@ -308,7 +308,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var e0 = env.line().getElement(0);
         var e1 = env.line().getElement(1);
         env.line().getSong().withoutMutationTracking(
-            () -> env.line().addRangeElement(new Tie(e0, e1)));
+            () -> env.line().addSpan(new Tie(e0, e1)));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
         env.operations().toggleTie();
 
@@ -345,7 +345,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var beginNote = env.line().getElement(0);
         var endNote = env.line().getElement(2);
         env.line().getSong().withoutMutationTracking(
-            () -> env.line().addRangeElement(new Tie(beginNote, endNote)));
+            () -> env.line().addSpan(new Tie(beginNote, endNote)));
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
         env.operations().toggleTie();
 
@@ -434,7 +434,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         env.operations().toggleTuplet(grade, env.operations().canToggleTuplet());
 
         verifyNoDidChange();
-        var tuplets = env.line().findRangeElements(Tuplet.class);
+        var tuplets = env.line().findSpans(Tuplet.class);
         assertThat(tuplets).as("the tuplet survives re-picking its own grade").hasSize(1);
         assertThat(tuplets.getFirst().getGrade()).isEqualTo(grade);
     }
@@ -552,7 +552,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     private static List<Crescendo> crescendosOf(Line line) {
-        return line.getRangeElements().stream()
+        return line.getSpans().stream()
             .filter(Crescendo.class::isInstance)
             .map(Crescendo.class::cast)
             .toList();
@@ -802,7 +802,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var line = env.line();
         // Add an existing Ending spanning the same range so hasOverlap fires.
         song.withoutMutationTracking(
-            () -> line.addRangeElement(new Ending(line.getElement(1), line.getElement(6))));
+            () -> line.addSpan(new Ending(line.getElement(1), line.getElement(6))));
         ReflectionTestHelper.selectRange(env.coordinator(), 1, 6);
         assertThat(env.operations().canMakeFirstSecondEnding().isValid())
             .as("canMakeFirstSecondEnding() must return invalid when selection overlaps an existing ending")
@@ -1049,9 +1049,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @Test
-    void testMakeFirstSecondEndingWithExtendSpanEmitsOnlyRangeElementAdditionWithExtendedBounds() {
+    void testMakeFirstSecondEndingWithExtendSpanEmitsOnlySpanAdditionWithExtendedBounds() {
         // EXTEND_SPAN: the preceding element is already a barline that should be included
-        // in the span. No new element is inserted; only one RangeElementAddition is emitted,
+        // in the span. No new element is inserted; only one SpanAddition is emitted,
         // and its Ending spans from the extended start (the barline index) to the original end.
         //
         // Layout: [SINGLE_BARLINE(0), CROTCHET(1), CROTCHET(2), CROTCHET(3)]
@@ -1065,10 +1065,10 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var mutations = notification.getMutations();
         assertThat(mutations).as("only one mutation emitted for EXTEND_SPAN path").hasSize(1);
         assertThat(mutations.getFirst())
-            .as("mutation is a RangeElementAddition")
-            .isInstanceOf(RangeElementAddition.class);
+            .as("mutation is a SpanAddition")
+            .isInstanceOf(SpanAddition.class);
 
-        var rangeAddition = (RangeElementAddition) mutations.getFirst();
+        var rangeAddition = (SpanAddition) mutations.getFirst();
         assertThat(rangeAddition.element()).as("added element is an Ending").isInstanceOf(Ending.class);
         var ending = (Ending) rangeAddition.element();
         assertThat(ending.getAnchorElementIndex())
@@ -1394,7 +1394,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @Test
-    void testMakeFirstSecondEndingWithNoteAnchorEmitsOnlyRangeElementAddition() {
+    void testMakeFirstSecondEndingWithNoteAnchorEmitsOnlySpanAddition() {
         // #306: Four notes [n0..n3], selection begins on a note (no leading barline).
         // Result: NONE action at index 0, ending over [0..3]. No barline is inserted —
         // the Ending anchors directly at the note.
@@ -1407,9 +1407,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
-        assertThat(mutations.getFirst()).isInstanceOf(RangeElementAddition.class);
+        assertThat(mutations.getFirst()).isInstanceOf(SpanAddition.class);
 
-        var rangeAddition = (RangeElementAddition) mutations.getFirst();
+        var rangeAddition = (SpanAddition) mutations.getFirst();
         assertThat(rangeAddition.element()).isInstanceOf(Ending.class);
 
         var ending = (Ending) rangeAddition.element();
@@ -1422,10 +1422,10 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     @Test
-    void testMakeFirstSecondEndingWithExistingLeadingBarlineEmitsOnlyRangeElementAddition() {
+    void testMakeFirstSecondEndingWithExistingLeadingBarlineEmitsOnlySpanAddition() {
         // Selection already starts with a single barline [barline, n1, n2, n3].
         // Result: NONE action at index 0, ending over [0..3].
-        // No barline should be inserted — only the Ending range element is added.
+        // No barline should be inserted — only the Ending span is added.
         var env = setupEnv(ElementType.SINGLE_BARLINE.newInstance(), crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectNote(env.coordinator(), 0);
         var result = EndingValidationResult.valid(EndingValidationResult.PrecedingAction.NONE, 0, 3);
@@ -1434,9 +1434,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
-        assertThat(mutations.getFirst()).isInstanceOf(RangeElementAddition.class);
+        assertThat(mutations.getFirst()).isInstanceOf(SpanAddition.class);
 
-        var rangeAddition = (RangeElementAddition) mutations.getFirst();
+        var rangeAddition = (SpanAddition) mutations.getFirst();
         assertThat(rangeAddition.element()).isInstanceOf(Ending.class);
     }
 

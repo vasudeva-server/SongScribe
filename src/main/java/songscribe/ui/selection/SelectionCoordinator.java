@@ -527,10 +527,9 @@ public final class SelectionCoordinator {
      * One rule covers every {@link HitTarget} variant, rather than one arm per variant.
      * {@link HitTarget#owner()} names the element the target hangs off, and an element that
      * has been removed from the line has its {@code parentLine} cleared — {@link Line#detach}
-     * is what maintains that for a staff element, the way the {@code rangeElements.remove}
-     * sites already do for a span — so walking to the root of the parent chain and asking
-     * which line it belongs to answers for an articulation on a note, a tie, a hairpin and a
-     * note itself alike.
+     * maintains that for staff elements and spans alike — so walking to the root of the
+     * parent chain and asking which line it belongs to answers for an articulation on a
+     * note, a tie, a hairpin and a note itself alike.
      *
      * @return whether the selection was cleared
      */
@@ -577,9 +576,8 @@ public final class SelectionCoordinator {
      * Sub-elements — an articulation, a fermata — carry no line of their own, so the walk
      * climbs to the root of the parent chain and asks about that element instead. Every root
      * kind — staff element or span — answers through the same field: {@link Line#detach}
-     * clears a staff element's {@code parentLine} when {@code Line.elements} drops it, and the
-     * five {@code rangeElements.remove} sites do the same for spans, so a reference comparison
-     * against {@code line} is enough for either. This replaces an O(n) {@code elements.indexOf}
+     * clears {@code parentLine} whichever of Line's two lists drops the element, so a
+     * reference comparison against {@code line} is enough for either. This replaces an O(n) {@code elements.indexOf}
      * scan (see {@code Line.getElementIndex}); {@link #revalidateDecorationSelection} runs
      * after every mutation, so keep the comparison cheap rather than reintroducing that scan.
      */

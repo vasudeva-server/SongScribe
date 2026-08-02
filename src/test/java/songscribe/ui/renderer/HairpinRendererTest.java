@@ -205,17 +205,17 @@ class HairpinRendererTest extends UnitTest {
             HIT_X_SS, HIT_LAYOUT_Y_SS, HIT_WIDTH_SS, HIT_HEIGHT_SS, HIT_MARGIN_SS);
     }
 
-    /** A detached line paired with the single hairpin it carries as a range element. */
+    /** A detached line paired with the single hairpin it carries as a span. */
     private record LineWithHairpin(Line line, Hairpin hairpin) {}
 
     /**
-     * Builds a detached two-note line carrying a crescendo as a range element, so
-     * {@code hitTestHairpin}'s scan over {@link Line#getRangeElements()} can find it.
+     * Builds a detached two-note line carrying a crescendo as a span, so
+     * {@code hitTestHairpin}'s scan over {@link Line#getSpans()} can find it.
      */
     private LineWithHairpin lineWithCrescendo() {
         var line = twoNoteLine();
         var crescendo = new Crescendo(line.getElement(0), line.getElement(1));
-        line.addRangeElement(crescendo);
+        line.addSpan(crescendo);
         return new LineWithHairpin(line, crescendo);
     }
 
@@ -223,7 +223,7 @@ class HairpinRendererTest extends UnitTest {
     private LineWithHairpin lineWithDiminuendo() {
         var line = twoNoteLine();
         var diminuendo = new Diminuendo(line.getElement(0), line.getElement(1));
-        line.addRangeElement(diminuendo);
+        line.addSpan(diminuendo);
         return new LineWithHairpin(line, diminuendo);
     }
 
@@ -337,8 +337,8 @@ class HairpinRendererTest extends UnitTest {
         var line = twoNoteLine();
         var unlaidOut = new Crescendo(line.getElement(0), line.getElement(1));
         var laidOut = new Diminuendo(line.getElement(0), line.getElement(1));
-        line.addRangeElement(unlaidOut);
-        line.addRangeElement(laidOut);
+        line.addSpan(unlaidOut);
+        line.addSpan(laidOut);
 
         var result = hitTest(X_INSIDE_BOX_SS, Y_INSIDE_BOX_SS, line, layoutResultFor(laidOut));
 

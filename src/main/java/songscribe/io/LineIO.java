@@ -34,7 +34,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.Song;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
@@ -108,22 +108,22 @@ public final class LineIO {
             Double.toString(line.getLyricsYPosSs())
         );
 
-        var beams = line.findRangeElements(Beam.class);
+        var beams = line.findSpans(Beam.class);
 
         if (!beams.isEmpty()) {
-            XML.writeValue(pw, XML_BEAMINGS, rangeElementsToString(beams));
+            XML.writeValue(pw, XML_BEAMINGS, spansToString(beams));
         }
 
         var ties = line.findTies();
 
         if (!ties.isEmpty()) {
-            XML.writeValue(pw, XML_TIES, rangeElementsToString(ties));
+            XML.writeValue(pw, XML_TIES, spansToString(ties));
         }
 
-        var tuplets = line.findRangeElements(Tuplet.class);
+        var tuplets = line.findSpans(Tuplet.class);
 
         if (!tuplets.isEmpty()) {
-            XML.writeValue(pw, XML_TUPLETS, rangeElementsToString(tuplets));
+            XML.writeValue(pw, XML_TUPLETS, spansToString(tuplets));
         }
 
         var endings = LineEndingSupport.findEndings(line);
@@ -132,26 +132,26 @@ public final class LineIO {
             XML.writeValue(
                 pw,
                 XML_FSENDINGS,
-                rangeElementsToString(endings)
+                spansToString(endings)
             );
         }
 
         var crescendos = line.getCrescendos();
 
         if (!crescendos.isEmpty()) {
-            XML.writeValue(pw, XML_CRESCENDO, rangeElementsToString(crescendos));
+            XML.writeValue(pw, XML_CRESCENDO, spansToString(crescendos));
         }
 
         var diminuendos = line.getDiminuendos();
 
         if (!diminuendos.isEmpty()) {
-            XML.writeValue(pw, XML_DIMINUENDO, rangeElementsToString(diminuendos));
+            XML.writeValue(pw, XML_DIMINUENDO, spansToString(diminuendos));
         }
 
-        var trills = line.findRangeElements(Trill.class);
+        var trills = line.findSpans(Trill.class);
 
         if (!trills.isEmpty()) {
-            XML.writeValue(pw, XML_TRILLS, rangeElementsToString(trills));
+            XML.writeValue(pw, XML_TRILLS, spansToString(trills));
         }
 
         pw.println("      <" + XML_NOTES + '>');
@@ -164,7 +164,7 @@ public final class LineIO {
         pw.println("    </" + XML_LINE + '>');
     }
 
-    static String rangeElementsToString(List<? extends RangeElement> elements) {
+    static String spansToString(List<? extends Span> elements) {
         var sb = new StringBuilder(27);
 
         for (var element : elements) {
@@ -307,7 +307,7 @@ public final class LineIO {
         }
 
         /**
-         * Creates {@link Beam} range elements from the parsed beam index pairs.
+         * Creates {@link Beam} spans from the parsed beam index pairs.
          * Called at end-of-line after all elements have been loaded.
          */
         private void createBeamsFromPending(Line line) throws SAXException {
@@ -316,14 +316,14 @@ public final class LineIO {
 
                 var anchorElement = line.getElement(pair[0]);
                 var endElement = line.getElement(pair[1]);
-                line.addRangeElement(new Beam(anchorElement, endElement));
+                line.addSpan(new Beam(anchorElement, endElement));
             }
 
             pendingBeamPairs.clear();
         }
 
         /**
-         * Creates {@link Tie} range elements from the parsed tie index pairs.
+         * Creates {@link Tie} spans from the parsed tie index pairs.
          * Called at end-of-line after all elements have been loaded.
          */
         private void createTiesFromPendingPairs(Line line) throws SAXException {
@@ -333,18 +333,18 @@ public final class LineIO {
                 var anchorElement = line.getElement(pair[0]);
                 var endElement = line.getElement(pair[1]);
                 var tie = new Tie(anchorElement, endElement);
-                line.addRangeElement(tie);
+                line.addSpan(tie);
             }
 
             pendingTiePairs.clear();
         }
 
         /**
-         * Creates {@link Crescendo} range elements from the parsed crescendo data.
+         * Creates {@link Crescendo} spans from the parsed crescendo data.
          * Called at end-of-line after all elements have been loaded.
          * <p>
          * Added through {@link Line#addCrescendo} rather than the raw
-         * {@code addRangeElement} the other span kinds use, so a legacy file's two
+         * {@code addSpan} the other span kinds use, so a legacy file's two
          * same-type hairpins that overlap or merely touch migrate to the one hairpin
          * they musically are.
          */
@@ -367,7 +367,7 @@ public final class LineIO {
         }
 
         /**
-         * Creates {@link Diminuendo} range elements from the parsed diminuendo data.
+         * Creates {@link Diminuendo} spans from the parsed diminuendo data.
          * Called at end-of-line after all elements have been loaded. Merge semantics
          * mirror {@link #createCrescendosFromPending}.
          */
@@ -433,7 +433,7 @@ public final class LineIO {
         }
 
         /**
-         * Creates {@link Tuplet} range elements from the pending tuplet data.
+         * Creates {@link Tuplet} spans from the pending tuplet data.
          * Called at end-of-line after all elements have been loaded.
          */
         private void createTupletsFromPending(Line line) throws SAXException {
@@ -456,7 +456,7 @@ public final class LineIO {
                 }
 
                 tuplet.setVerticalPositionSs(verticalPositionSs);
-                line.addRangeElement(tuplet);
+                line.addSpan(tuplet);
             }
 
             pendingTupletData.clear();
@@ -606,7 +606,7 @@ public final class LineIO {
         }
 
         /**
-         * Creates Ending range elements from the parsed fsendings index pairs.
+         * Creates Ending spans from the parsed fsendings index pairs.
          * Called at end-of-line after all elements have been loaded.
          */
         private void createEndingsFromPendingPairs(Line line) throws SAXException {
@@ -626,14 +626,14 @@ public final class LineIO {
                     continue;
                 }
 
-                line.addRangeElement(ending);
+                line.addSpan(ending);
             }
 
             pendingEndingPairs.clear();
         }
 
         /**
-         * Creates Trill range elements from the pending trill index pairs.
+         * Creates Trill spans from the pending trill index pairs.
          * Called at end-of-line after all elements have been loaded.
          * Handles both new {@code <trills>} data and legacy per-element trill flags (already
          * coalesced into contiguous runs by {@link #accumulateLegacyTrillFlag}).
@@ -646,7 +646,7 @@ public final class LineIO {
                 var endElement = line.getElement(pair[1]);
                 var trill = new Trill(anchorElement, endElement);
                 trill.setYPositionSs(pair[2]);
-                line.addRangeElement(trill);
+                line.addSpan(trill);
             }
 
             pendingTrillPairs.clear();

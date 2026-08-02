@@ -39,7 +39,7 @@ import songscribe.dom.Song;
 import songscribe.dom.Trill;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.mutation.RangeElementAddition;
+import songscribe.message.mutation.SpanAddition;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.MainFrame;
@@ -129,7 +129,7 @@ class TrillActionTest extends UnitTest {
             final var selectionBeginIndex = 5;
             final var selectionEndIndex = 10;
             var line = lineOf(notesUpTo(selectionEndIndex));
-            line.addRangeElement(
+            line.addSpan(
                 new Trill(line.getElement(trillAnchorIndex), line.getElement(trillEndIndex))
             );
             selectRange(line, selectionBeginIndex, selectionEndIndex);
@@ -146,7 +146,7 @@ class TrillActionTest extends UnitTest {
             final var selectionBeginIndex = 8;
             final var selectionEndIndex = 10;
             var line = lineOf(notesUpTo(selectionEndIndex));
-            line.addRangeElement(
+            line.addSpan(
                 new Trill(line.getElement(trillAnchorIndex), line.getElement(trillEndIndex))
             );
             selectRange(line, selectionBeginIndex, selectionEndIndex);
@@ -171,7 +171,7 @@ class TrillActionTest extends UnitTest {
         void testSingleNoteSelectionOverlappingSingleNoteTrillIsChecked() {
             final var trillIndex = 5;
             var line = lineOf(notesUpTo(trillIndex));
-            line.addRangeElement(new Trill(line.getElement(trillIndex)));
+            line.addSpan(new Trill(line.getElement(trillIndex)));
             selectRange(line, trillIndex, trillIndex);
 
             fireSelectionChange();
@@ -189,7 +189,7 @@ class TrillActionTest extends UnitTest {
             final var selectionBeginIndex = 5;
             final var selectionEndIndex = 10;
             var line = lineOf(notesUpTo(selectionEndIndex));
-            line.addRangeElement(
+            line.addSpan(
                 new Trill(line.getElement(trillAnchorIndex), line.getElement(trillEndIndex))
             );
             selectRange(line, selectionBeginIndex, selectionEndIndex);
@@ -207,7 +207,7 @@ class TrillActionTest extends UnitTest {
             final var selectionBeginIndex = 5;
             final var selectionEndIndex = 10;
             var line = lineOf(notesUpTo(selectionEndIndex));
-            line.addRangeElement(
+            line.addSpan(
                 new Trill(line.getElement(trillAnchorIndex), line.getElement(trillEndIndex))
             );
             selectRange(line, selectionBeginIndex, selectionEndIndex);
@@ -223,7 +223,7 @@ class TrillActionTest extends UnitTest {
             final var selectionBeginIndex = 3;
             final var selectionEndIndex = 7;
             var line = lineOf(notesUpTo(selectionEndIndex));
-            line.addRangeElement(
+            line.addSpan(
                 new Trill(line.getElement(selectionBeginIndex), line.getElement(selectionEndIndex))
             );
             selectRange(line, selectionBeginIndex, selectionEndIndex);
@@ -342,7 +342,7 @@ class TrillActionTest extends UnitTest {
 
             action.actionPerformed(clickEvent());
 
-            var trills = line.findRangeElements(Trill.class);
+            var trills = line.findSpans(Trill.class);
             assertThat(trills).hasSize(1);
             var trill = trills.getFirst();
             assertThat(trill.getAnchorElementIndex()).isEqualTo(selectionBeginIndex);
@@ -362,7 +362,7 @@ class TrillActionTest extends UnitTest {
 
             action.actionPerformed(clickEvent());
 
-            var trills = line.findRangeElements(Trill.class);
+            var trills = line.findSpans(Trill.class);
             assertThat(trills).hasSize(1);
             var trill = trills.getFirst();
             assertThat(trill.getAnchorElementIndex()).isEqualTo(firstPitchedIndex);
@@ -379,15 +379,15 @@ class TrillActionTest extends UnitTest {
 
             action.actionPerformed(clickEvent());
 
-            assertThat(line.findRangeElements(Trill.class)).isEmpty();
+            assertThat(line.findSpans(Trill.class)).isEmpty();
         }
 
         // Adding a trill must fire exactly one SongDidChangeNotification carrying a
-        // single RangeElementAddition, so a check is one undo step. Uses a real Song
+        // single SpanAddition, so a check is one undo step. Uses a real Song
         // (the mock-Song CheckAction tests above suspend mutation tracking and cannot
         // observe notifications).
         @Test
-        void testCheckingFiresOneSongDidChangeWithRangeElementAddition() {
+        void testCheckingFiresOneSongDidChangeWithSpanAddition() {
             final var selectionBeginIndex = 1;
             final var selectionEndIndex = 3;
             var elementCount = selectionEndIndex + 1;
@@ -413,12 +413,12 @@ class TrillActionTest extends UnitTest {
                     .as("the single post must be a SongDidChangeNotification")
                     .isInstanceOf(SongDidChangeNotification.class);
                 assertThat(((SongDidChangeNotification) captor.getValue()).getMutations())
-                    .as("a check must record exactly one RangeElementAddition")
+                    .as("a check must record exactly one SpanAddition")
                     .singleElement()
-                    .isInstanceOf(RangeElementAddition.class);
+                    .isInstanceOf(SpanAddition.class);
             }
 
-            assertThat(line.findRangeElements(Trill.class)).hasSize(1);
+            assertThat(line.findSpans(Trill.class)).hasSize(1);
         }
     }
 
@@ -444,10 +444,10 @@ class TrillActionTest extends UnitTest {
             Arrays.fill(types, ElementType.CROTCHET);
 
             var line = lineOf(types);
-            line.addRangeElement(
+            line.addSpan(
                 new Trill(line.getElement(trill1AnchorIndex), line.getElement(trill1EndIndex))
             );
-            line.addRangeElement(
+            line.addSpan(
                 new Trill(line.getElement(trill2AnchorIndex), line.getElement(trill2EndIndex))
             );
             selectRange(line, selectionBeginIndex, selectionEndIndex);
@@ -455,7 +455,7 @@ class TrillActionTest extends UnitTest {
 
             action.actionPerformed(clickEvent());
 
-            assertThat(line.findRangeElements(Trill.class)).isEmpty();
+            assertThat(line.findSpans(Trill.class)).isEmpty();
         }
 
         // Guards against an overly-greedy predicate that removes every trill on the
@@ -470,19 +470,19 @@ class TrillActionTest extends UnitTest {
             Arrays.fill(types, ElementType.CROTCHET);
 
             var line = lineOf(types);
-            line.addRangeElement(
+            line.addSpan(
                 new Trill(line.getElement(trill1AnchorIndex), line.getElement(trill1EndIndex))
             );
             var nonOverlappingTrill = new Trill(
                 line.getElement(nonOverlappingAnchorIndex), line.getElement(nonOverlappingEndIndex)
             );
-            line.addRangeElement(nonOverlappingTrill);
+            line.addSpan(nonOverlappingTrill);
             selectRange(line, selectionBeginIndex, selectionEndIndex);
             action.setSelected(false);
 
             action.actionPerformed(clickEvent());
 
-            assertThat(line.findRangeElements(Trill.class)).containsExactly(nonOverlappingTrill);
+            assertThat(line.findSpans(Trill.class)).containsExactly(nonOverlappingTrill);
         }
 
         // Confirms the multi-range removal is batched into a single
@@ -499,10 +499,10 @@ class TrillActionTest extends UnitTest {
                     line.addElement(ElementType.CROTCHET.newInstance());
                 }
 
-                line.addRangeElement(
+                line.addSpan(
                     new Trill(line.getElement(trill1AnchorIndex), line.getElement(trill1EndIndex))
                 );
-                line.addRangeElement(
+                line.addSpan(
                     new Trill(line.getElement(trill2AnchorIndex), line.getElement(trill2EndIndex))
                 );
             });
@@ -523,7 +523,7 @@ class TrillActionTest extends UnitTest {
                     .isInstanceOf(SongDidChangeNotification.class);
             }
 
-            assertThat(line.findRangeElements(Trill.class)).isEmpty();
+            assertThat(line.findSpans(Trill.class)).isEmpty();
         }
     }
 }

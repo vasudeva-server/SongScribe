@@ -47,7 +47,7 @@ import songscribe.dom.StaffElement;
 class LineEndingSupportTest extends UnitTest {
 
     // -----------------------------------------------------------------------
-    // Row 25 — findEndings() extracts Ending range elements
+    // Row 25 — findEndings() extracts Ending spans
     // -----------------------------------------------------------------------
 
     @Nested
@@ -97,8 +97,8 @@ class LineEndingSupportTest extends UnitTest {
                 line.addElement(anchor2);
                 line.addElement(mid2);
                 line.addElement(end2);
-                line.addRangeElement(ending1);
-                line.addRangeElement(ending2);
+                line.addSpan(ending1);
+                line.addSpan(ending2);
             });
 
             var result = LineEndingSupport.findEndings(line);
@@ -145,7 +145,7 @@ class LineEndingSupportTest extends UnitTest {
                     line.addElement(new StaffElement(ElementType.CROTCHET));
                 }
                 line.addElement(endEl);
-                line.addRangeElement(ending);
+                line.addSpan(ending);
             });
             return List.of(ending);
         }
@@ -342,8 +342,8 @@ class LineEndingSupportTest extends UnitTest {
                 line.addElement(anchor);
                 line.addElement(mid);
                 line.addElement(end);
-                line.addRangeElement(ending1);
-                line.addRangeElement(ending2);
+                line.addSpan(ending1);
+                line.addSpan(ending2);
             });
             var replacement = new StaffElement(ElementType.GRACE_QUAVER);
 

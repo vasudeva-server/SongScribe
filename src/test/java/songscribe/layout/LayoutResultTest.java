@@ -466,9 +466,9 @@ class LayoutResultTest extends UnitTest {
             .isCloseTo(BELOW_CONTENT_DELTA_SS, within(TOLERANCE));
     }
 
-    // findRangeElementDecorationLayout returns the layout whose range matches anchor AND type.
+    // findSpanDecorationLayout returns the layout whose range matches anchor AND type.
     @Test
-    void testFindRangeElementDecorationLayoutMatchesAnchorAndType() {
+    void testFindSpanDecorationLayoutMatchesAnchorAndType() {
         var anchor = ElementType.CROTCHET.newInstance();
         var trill = new Trill(anchor);
         var layout = sampleDecorationLayout();
@@ -476,12 +476,12 @@ class LayoutResultTest extends UnitTest {
             .putDecorationLayout(trill, layout)
             .build();
 
-        assertThat(result.findRangeElementDecorationLayout(anchor, Trill.class)).isSameAs(layout);
+        assertThat(result.findSpanDecorationLayout(anchor, Trill.class)).isSameAs(layout);
     }
 
     // A different anchor element finds no range decoration.
     @Test
-    void testFindRangeElementDecorationLayoutReturnsNullForUnmatchedAnchor() {
+    void testFindSpanDecorationLayoutReturnsNullForUnmatchedAnchor() {
         var anchor = ElementType.CROTCHET.newInstance();
         var otherAnchor = ElementType.CROTCHET.newInstance();
         var trill = new Trill(anchor);
@@ -489,19 +489,19 @@ class LayoutResultTest extends UnitTest {
             .putDecorationLayout(trill, sampleDecorationLayout())
             .build();
 
-        assertThat(result.findRangeElementDecorationLayout(otherAnchor, Trill.class)).isNull();
+        assertThat(result.findSpanDecorationLayout(otherAnchor, Trill.class)).isNull();
     }
 
     // A range type the stored element is not an instance of finds no decoration.
     @Test
-    void testFindRangeElementDecorationLayoutReturnsNullForUnmatchedType() {
+    void testFindSpanDecorationLayoutReturnsNullForUnmatchedType() {
         var anchor = ElementType.CROTCHET.newInstance();
         var trill = new Trill(anchor);
         var result = LayoutResult.builder()
             .putDecorationLayout(trill, sampleDecorationLayout())
             .build();
 
-        assertThat(result.findRangeElementDecorationLayout(anchor, Tuplet.class)).isNull();
+        assertThat(result.findSpanDecorationLayout(anchor, Tuplet.class)).isNull();
     }
 
     // ==========================================================================

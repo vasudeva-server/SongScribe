@@ -7,7 +7,7 @@ A `StaffElement` stores its owning line twice:
 
 | Field | Declared | Meaning today |
 | --- | --- | --- |
-| `LineElement.parentLine` | `LineElement.java:51`, `@Nullable` | Set on add, nulled on removal **for range elements only** |
+| `LineElement.parentLine` | `LineElement.java:51`, `@Nullable` | Set on add, nulled on removal **for spans only** |
 | `StaffElement.line` | `StaffElement.java:89`, non-null, `protected` | Set on add, never nulled |
 
 They can never disagree. Every write site assigns both from the same source:
@@ -38,15 +38,15 @@ Two consequences already visible in the tree:
                          Line
                           │
     ┌─────────────────────┼──────────────────────┐
-    │  elements (List<StaffElement>)             │  rangeElements (List<RangeElement>)
+    │  elements (List<StaffElement>)             │  spans (List<Span>)
     │                                            │
     ▼                                            ▼
-  StaffElement                                RangeElement  (tie, beam, tuplet,
+  StaffElement                                Span  (tie, beam, tuplet,
     parentLine ◄── Line.attach / Line.detach     parentLine      hairpin, ending, trill)
     │              ONLY writer  ── structural       ▲
     │                                               │
     │  children (List<LineElement>)          five hand-written setParentLine
-    ▼                                        pairs at the rangeElements.add /
+    ▼                                        pairs at the spans.add /
   Articulation, FermataAttachment, …         .remove sites ── by convention
     parentLine ◄── LineElement.addChild /     (out of scope — see issue #724)
                    removeChild, and
@@ -61,7 +61,7 @@ Two consequences already visible in the tree:
   `!= this` guard in detach is what makes that ordering-independent.
 ```
 
-**Non-goal:** `RangeElement` parentage is already correct — all five `rangeElements.remove` sites null `parentLine`. This plan does not change span handling; it brings staff elements up to the same standard. Routing spans through `attach`/`detach` as well is tracked as **issue #724**.
+**Non-goal:** `Span` parentage is already correct — all five `spans.remove` sites null `parentLine`. This plan does not change span handling; it brings staff elements up to the same standard. Routing spans through `attach`/`detach` as well is tracked as **issue #724**.
 
 > **Since superseded.** Issue #724 has landed: the five span add/remove pairs now
 > route through `Line.attach`/`Line.detach` like staff elements, via the
@@ -101,7 +101,7 @@ Strictly sequential. Phase 2 before Phase 1 would make `getLine()` and `getParen
 
 * * *
 ## ✅ Phase 1: Collapse the Duplicate Pointer
-**Status:** Complete **BlockedBy:** — **Files:** src/main/java/songscribe/dom/StaffElement.java, src/main/java/songscribe/dom/LineElement.java, src/main/java/songscribe/dom/Line.java, src/main/java/songscribe/dom/RangeElement.java, src/main/java/songscribe/dom/Song.java, src/main/java/songscribe/layout/LyricLayoutBuilder.java, src/main/java/songscribe/ui/dialog/TempoChangeDialog.java, src/main/java/songscribe/ui/selection/SelectionCoordinator.java, src/main/java/songscribe/ui/component/ScoreViewController.java, src/main/java/songscribe/ui/action/EditLyricAction.java, src/test/java/songscribe/dom/StaffElementTest.java, docs/clipboard.md **Recommended model/effort:** Opus 5, medium effort — mechanical, but the call sites span five subsystems and each one gains a null branch that is unreachable until Phase 2, so "what should this do when detached" has to be answered correctly now rather than discovered later.
+**Status:** Complete **BlockedBy:** — **Files:** src/main/java/songscribe/dom/StaffElement.java, src/main/java/songscribe/dom/LineElement.java, src/main/java/songscribe/dom/Line.java, src/main/java/songscribe/dom/Span.java, src/main/java/songscribe/dom/Song.java, src/main/java/songscribe/layout/LyricLayoutBuilder.java, src/main/java/songscribe/ui/dialog/TempoChangeDialog.java, src/main/java/songscribe/ui/selection/SelectionCoordinator.java, src/main/java/songscribe/ui/component/ScoreViewController.java, src/main/java/songscribe/ui/action/EditLyricAction.java, src/test/java/songscribe/dom/StaffElementTest.java, docs/clipboard.md **Recommended model/effort:** Opus 5, medium effort — mechanical, but the call sites span five subsystems and each one gains a null branch that is unreachable until Phase 2, so "what should this do when detached" has to be answered correctly now rather than discovered later.
 
 **Behavior-preserving.** After this phase a staff element's `parentLine` is still never nulled and copies still inherit it; the point is that there is only one field left to make honest in Phase 2. Nothing in this phase may change _when_ or _whether_ a pointer is written — only which field holds it.
 ### Tasks
@@ -143,8 +143,8 @@ public void propagateParentLine(@Nullable Line line) {
   | File | Line | Method | Null default |
   | --- | --- | --- | --- |
   | `dom/StaffElement.java` | `:734` | `findLastAccidental` | **Return `null`.** See the note below — this one changes an exported value. |
-  | `dom/RangeElement.java` | `:228` | `getAnchorElementIndex` | Return `-1`, with a comment that a detached anchor has no index |
-  | `dom/RangeElement.java` | `:240` | `getEndElementIndex` | Return `-1`, same comment |
+  | `dom/Span.java` | `:228` | `getAnchorElementIndex` | Return `-1`, with a comment that a detached anchor has no index |
+  | `dom/Span.java` | `:240` | `getEndElementIndex` | Return `-1`, same comment |
   | `dom/Song.java` | `:929` | `clearTempoIfOrphaned` | Early return — an element in no line can orphan nothing |
   | `dom/Song.java` | `:1706` | `withBeatDefiningEditOn` | No new branch: `owner != null ? owner.getParentLine() : null` already handles it |
   | `layout/LyricLayoutBuilder.java` | `:381` | `isHostOfPairedGraceColumn` | ~~Return `false`, falling back to `idealGraceHostUnionWidthSs`~~ — **superseded.** After `2cf80684` (`LyricRun`) moved the pairing rule onto `StaffElement.isPairedGraceNote()`, the method reads the pairing off the column's own element and needs no line, so there is no null branch and no fallback. Issue #723 is moot |
@@ -159,7 +159,7 @@ Use a null guard, **not** `Objects.requireNonNull` — this project forbids it (
 
 `findLastAccidental` **is the one that matters.** It feeds `getPitch()` (`StaffElement.java:641`) and MusicXML export (`io/musicxml/PitchSpelling.java:170`). Today a detached element scans a stale line and falls back to _that line's_ key signature; returning `null` means "no accidental found". The new answer is the correct one — an element in no line has no key context — but it is a different exported `<pitch>`, so state it in a comment at the call site. Phase 2 tests it. Get this one wrong and a wrong `<pitch>` is written into a saved MusicXML file with no error and no visible symptom — the only default in this plan that corrupts a document rather than the UI.
 
-**Do not restructure** `RangeElement.getAnchorElementIndex` **/** `getEndElementIndex` **while you are in there.** Both resolve their endpoint with an `elements.indexOf` scan, and consolidating that across the ~14 call sites that repeat it is tracked as **issue #722**. Add the guard and nothing else.
+**Do not restructure** `Span.getAnchorElementIndex` **/** `getEndElementIndex` **while you are in there.** Both resolve their endpoint with an `elements.indexOf` scan, and consolidating that across the ~14 call sites that repeat it is tracked as **issue #722**. Add the guard and nothing else.
 
 7. Rework `StaffElementTest.testSetLinePropagatesLineToAllAttachmentsAndArticulations` (`:1130-1155`). Rename it — the method it names is gone — to something like `testAddElementPropagatesLineToAllAttachmentsAndArticulations`, and establish parentage the way production does, through `Line.addElement`, as `ParentLinePropagationTest.addToLine` (`:51`) already does. Do not add a test-only setter to keep the old call working.
   
@@ -255,7 +255,7 @@ It becomes: null means the element is not in any line — either not yet added, 
   
 - `getPitch()` returns the value that follows from that, documented in the test.
   
-- `RangeElement.getAnchorElementIndex()` returns `-1` for a detached anchor.
+- `Span.getAnchorElementIndex()` returns `-1` for a detached anchor.
   
 
 **In** `PasteReconciliationUndoTest`**:** after paste-then-undo, every pasted clone has a null `parentLine` and every surviving element points at its real line.

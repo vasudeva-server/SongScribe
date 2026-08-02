@@ -26,7 +26,7 @@ import songscribe.dom.ScaleContext;
  * Load-time carrier for the four line-level Y position fields that exist only in pre-Phase 11
  * (format v1) documents. Populated by {@link LineIO.LineReader} during XML parsing and consumed
  * by {@link FormatMigrator#migrateLineLevelOffsets} to redistribute the offsets onto per-instance
- * attachment and range-element objects. Discarded after migration completes.
+ * attachment and span objects. Discarded after migration completes.
  */
 record LegacyLineOffsets(int tempoChangeYPosPx, int beatChangeYPosPx, int firstSecondEndingYPosPx, int trillYPosPx) {
 

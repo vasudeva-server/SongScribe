@@ -185,7 +185,7 @@ class EndingConfirmsTest extends UnitTest {
             }
 
             assertThat(env.line().elementCount()).isEqualTo(8);
-            assertThat(env.line().getRangeElements()).contains(env.ending());
+            assertThat(env.line().getSpans()).contains(env.ending());
         }
 
         @Test
@@ -198,7 +198,7 @@ class EndingConfirmsTest extends UnitTest {
             env.coordinator().applyActionToSelection(SINGLE_BARLINE_ACTION, true, null);
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
-            assertThat(env.line().getRangeElements()).contains(env.ending());
+            assertThat(env.line().getSpans()).contains(env.ending());
         }
     }
 
@@ -223,7 +223,7 @@ class EndingConfirmsTest extends UnitTest {
             }
 
             assertThat(env.line().elementCount()).isEqualTo(7);
-            assertThat(env.line().getRangeElements()).doesNotContain(env.ending());
+            assertThat(env.line().getSpans()).doesNotContain(env.ending());
         }
 
         @Test
@@ -238,7 +238,7 @@ class EndingConfirmsTest extends UnitTest {
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
-            assertThat(env.line().getRangeElements()).doesNotContain(env.ending());
+            assertThat(env.line().getSpans()).doesNotContain(env.ending());
         }
     }
 
@@ -259,7 +259,7 @@ class EndingConfirmsTest extends UnitTest {
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
-            assertThat(env.line().getRangeElements()).contains(env.ending());
+            assertThat(env.line().getSpans()).contains(env.ending());
         }
 
         @Test
@@ -271,7 +271,7 @@ class EndingConfirmsTest extends UnitTest {
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
-            assertThat(env.line().getRangeElements()).contains(env.ending());
+            assertThat(env.line().getSpans()).contains(env.ending());
         }
     }
 
@@ -295,7 +295,7 @@ class EndingConfirmsTest extends UnitTest {
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.REPEAT_LEFT);
-            assertThat(env.line().getRangeElements()).contains(env.ending());
+            assertThat(env.line().getSpans()).contains(env.ending());
         }
 
         @Test
@@ -310,7 +310,7 @@ class EndingConfirmsTest extends UnitTest {
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_LEFT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
-            assertThat(env.line().getRangeElements()).contains(env.ending());
+            assertThat(env.line().getSpans()).contains(env.ending());
         }
 
         @Test
@@ -325,7 +325,7 @@ class EndingConfirmsTest extends UnitTest {
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
-            assertThat(env.line().getRangeElements()).contains(env.ending());
+            assertThat(env.line().getSpans()).contains(env.ending());
         }
 
         @Test
@@ -340,7 +340,7 @@ class EndingConfirmsTest extends UnitTest {
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
-            assertThat(env.line().getRangeElements()).contains(env.ending());
+            assertThat(env.line().getSpans()).contains(env.ending());
         }
 
         @Test
@@ -355,7 +355,7 @@ class EndingConfirmsTest extends UnitTest {
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_LEFT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
-            assertThat(env.line().getRangeElements()).contains(env.ending());
+            assertThat(env.line().getSpans()).contains(env.ending());
         }
     }
 

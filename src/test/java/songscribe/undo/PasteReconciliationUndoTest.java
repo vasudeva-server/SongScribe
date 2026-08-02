@@ -41,7 +41,7 @@ import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.message.MessageCenter;
@@ -135,7 +135,7 @@ class PasteReconciliationUndoTest extends UnitTest {
      * carrying the spans {@code spansOver} builds over that one pasted note.
      */
     private void pasteOneQuaverInside(
-        Function<? super StaffElement, ? extends List<RangeElement>> spansOver
+        Function<? super StaffElement, ? extends List<Span>> spansOver
     ) {
         var pastedNote = ElementType.QUAVER.newInstance();
         var clipboardManager = new ClipboardManager();
@@ -171,17 +171,17 @@ class PasteReconciliationUndoTest extends UnitTest {
     void testUndoRestoresTheBeamTheReconciliationDiscarded() {
         var notes = threeQuavers();
         var destinationBeam = new Beam(notes.getFirst(), notes.getLast());
-        song.withoutMutationTracking(() -> line.addRangeElement(destinationBeam));
+        song.withoutMutationTracking(() -> line.addSpan(destinationBeam));
 
         pasteOneQuaverInside();
 
-        assertThat(line.getRangeElements())
+        assertThat(line.getSpans())
             .as("precondition: the straddled beam is discarded by the paste")
             .isEmpty();
 
         UndoController.undo();
 
-        assertThat(line.getRangeElements())
+        assertThat(line.getSpans())
             .as("one undo restores the discarded beam, not just the elements")
             .containsExactly(destinationBeam);
         assertThat(destinationBeam.getEndElementIndex())
@@ -190,7 +190,7 @@ class PasteReconciliationUndoTest extends UnitTest {
 
         UndoController.redo();
 
-        assertThat(line.getRangeElements())
+        assertThat(line.getSpans())
             .as("one redo discards the beam again, not just re-inserts the elements")
             .isEmpty();
     }
@@ -201,7 +201,7 @@ class PasteReconciliationUndoTest extends UnitTest {
         // element, so undo must put the span back where it was.
         var notes = threeQuavers();
         var destinationHairpin = new Crescendo(notes.getFirst(), notes.getLast());
-        song.withoutMutationTracking(() -> line.addRangeElement(destinationHairpin));
+        song.withoutMutationTracking(() -> line.addSpan(destinationHairpin));
 
         pasteOneQuaverInside();
 
@@ -211,12 +211,12 @@ class PasteReconciliationUndoTest extends UnitTest {
 
         UndoController.undo();
 
-        assertThat(line.getRangeElements()).containsExactly(destinationHairpin);
+        assertThat(line.getSpans()).containsExactly(destinationHairpin);
         assertThat(destinationHairpin.getEndElementIndex()).isEqualTo(LAST_NOTE_INDEX);
 
         UndoController.redo();
 
-        assertThat(line.getRangeElements())
+        assertThat(line.getSpans())
             .as("one redo restores the paste's widened hairpin, not just the elements")
             .containsExactly(destinationHairpin);
         assertThat(destinationHairpin.getEndElementIndex())
@@ -232,23 +232,23 @@ class PasteReconciliationUndoTest extends UnitTest {
         var notes = threeQuavers();
         var destinationHairpin =
             new Crescendo(notes.get(INTERIOR_INSERT_INDEX), notes.get(LAST_NOTE_INDEX));
-        song.withoutMutationTracking(() -> line.addRangeElement(destinationHairpin));
+        song.withoutMutationTracking(() -> line.addSpan(destinationHairpin));
 
         pasteOneQuaverInside(pastedNote -> List.of(new Crescendo(pastedNote, pastedNote)));
 
-        assertThat(line.getRangeElements())
+        assertThat(line.getSpans())
             .as("precondition: the abutting hairpins merge into exactly one")
             .hasSize(1);
-        assertThat(line.getRangeElements().getFirst().getAnchorElementIndex())
+        assertThat(line.getSpans().getFirst().getAnchorElementIndex())
             .as("the merged hairpin starts on the pasted note")
             .isEqualTo(INTERIOR_INSERT_INDEX);
-        assertThat(line.getRangeElements().getFirst().getEndElementIndex())
+        assertThat(line.getSpans().getFirst().getEndElementIndex())
             .as("and runs to where the destination hairpin ended")
             .isEqualTo(LAST_NOTE_INDEX + 1);
 
         UndoController.undo();
 
-        assertThat(line.getRangeElements())
+        assertThat(line.getSpans())
             .as("one undo restores the destination hairpin and discards the pasted one")
             .containsExactly(destinationHairpin);
         assertThat(destinationHairpin.getAnchorElementIndex()).isEqualTo(INTERIOR_INSERT_INDEX);
@@ -256,7 +256,7 @@ class PasteReconciliationUndoTest extends UnitTest {
 
         UndoController.redo();
 
-        var afterRedo = line.getRangeElements();
+        var afterRedo = line.getSpans();
 
         assertThat(afterRedo)
             .as("one redo re-merges the hairpins the paste originally fused")

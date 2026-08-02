@@ -228,7 +228,7 @@ public final class Song {
      * <p>
      * <ul>
      *   <li>Version 1: Legacy format (inline range data, inline Note attachments)</li>
-     *   <li>Version 2: LineElement format (RangeElement objects, Attachment objects)</li>
+     *   <li>Version 2: LineElement format (Span objects, Attachment objects)</li>
      * </ul>
      * <p>
      * Note: This is distinct from the IO file format version (SongIO.IO_MAJOR_VERSION).

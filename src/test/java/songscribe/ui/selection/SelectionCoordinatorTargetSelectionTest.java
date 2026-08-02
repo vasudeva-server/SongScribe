@@ -480,7 +480,7 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
         coordinator.activateLine(LINE_0);
 
         var ending = makeEnding(lineA);
-        lineA.addRangeElement(ending);
+        lineA.addSpan(ending);
         coordinator.select(new HitTarget.Ending(ending));
 
         // What LineComponent.setLine does when line B is rebuilt: re-register at the same index.
@@ -514,7 +514,7 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
         coordinator.activateLine(LINE_0);
 
         var ending = makeEnding(lineA);
-        lineA.addRangeElement(ending);
+        lineA.addSpan(ending);
         coordinator.select(new HitTarget.Ending(ending));
 
         coordinator.selectLyric(lyricNote, LYRIC_VERSE);
@@ -592,7 +592,7 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
     void testRevalidateDecorationSelectionKeepsEndingWhenStillOnLine() {
         var line = twoNoteLine();
         var ending = makeEnding(line);
-        line.addRangeElement(ending);
+        line.addSpan(ending);
         var coordinator = coordinatorFor(line);
         coordinator.select(new HitTarget.Ending(ending));
 
@@ -605,12 +605,12 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
     void testRevalidateDecorationSelectionClearsEndingWhenNoLongerOnLine() {
         var line = twoNoteLine();
         var ending = makeEnding(line);
-        line.addRangeElement(ending);
+        line.addSpan(ending);
         var coordinator = coordinatorFor(line);
         coordinator.select(new HitTarget.Ending(ending));
 
         // Simulates an undo/redo that removed the ending without clearing the selection.
-        line.removeRangeElement(ending);
+        line.removeSpan(ending);
 
         assertThat(coordinator.revalidateDecorationSelection()).isTrue();
         assertThat(coordinator.getSelectedTarget()).isNull();
@@ -620,7 +620,7 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
     void testRevalidateDecorationSelectionKeepsHairpinWhenStillOnLine() {
         var line = twoNoteLine();
         var hairpin = makeHairpin(line);
-        line.addRangeElement(hairpin);
+        line.addSpan(hairpin);
         var coordinator = coordinatorFor(line);
         coordinator.select(new HitTarget.Hairpin(hairpin));
 
@@ -633,12 +633,12 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
     void testRevalidateDecorationSelectionClearsHairpinWhenNoLongerOnLine() {
         var line = twoNoteLine();
         var hairpin = makeHairpin(line);
-        line.addRangeElement(hairpin);
+        line.addSpan(hairpin);
         var coordinator = coordinatorFor(line);
         coordinator.select(new HitTarget.Hairpin(hairpin));
 
         // Simulates an undo/redo that removed the hairpin without clearing the selection.
-        line.removeRangeElement(hairpin);
+        line.removeSpan(hairpin);
 
         assertThat(coordinator.revalidateDecorationSelection()).isTrue();
         assertThat(coordinator.getSelectedTarget()).isNull();

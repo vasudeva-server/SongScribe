@@ -29,7 +29,7 @@ paste (`instantiate`) go through it:
 ```
 
 `Fragment` is an immutable record: `elements()` (the cloned `StaffElement`s, in
-order) and `spans()` (the `RangeElement`s fully contained within them, already
+order) and `spans()` (the `Span`s fully contained within them, already
 re-anchored to the clones).
 
 ### Why the stored fragment is never inserted
@@ -46,7 +46,7 @@ is what makes that true by construction rather than by care at each call site.
 
 ### Span containment
 
-A `RangeElement` (`Tie`, `Beam`, `Tuplet`, `Trill`, `Crescendo`/`Diminuendo`, and
+A `Span` (`Tie`, `Beam`, `Tuplet`, `Trill`, `Crescendo`/`Diminuendo`, and
 `layout.Ending`) is captured **iff both its anchor and end element are in the
 copied set** — i.e. both are keys of the clone map built while copying elements.
 This one rule implements "fully contained spans survive, partially-overlapping
@@ -54,7 +54,7 @@ spans are dropped" and, as a side effect, automatically drops any span touching 
 element that boundary normalization excluded (the orphan grace note below): if
 that element isn't a clone-map key, no span anchored to it can pass the
 containment check either. A surviving span is stored as `span.copy(clonedAnchor,
-clonedEnd)` — `RangeElement.copy` is the template method that carries
+clonedEnd)` — `Span.copy` is the template method that carries
 subclass-specific state (e.g. `Tuplet.grade`, `Trill.yPositionSs`) plus the
 shared `LineElement` user-offset/margin state, without copying derived caches
 like `Ending.bracketRanges`.
@@ -191,15 +191,15 @@ lives where drawing already handles it. `Line.addCrescendo`/`addDiminuendo` abso
 overlapping **or adjacent** same-type hairpin (`mergeOverlappingSpans` takes an
 `absorbAdjacent` reach: `true` for hairpins, `false` for beams, since two beam groups
 written back to back are two deliberate groupings). `tryInsertFragment` adds pasted
-spans through `Line.addPastedRangeElement`, which routes hairpins to those two adders
-and everything else to the raw `addRangeElement`, so a pasted hairpin landing flush
+spans through `Line.addPastedSpan`, which routes hairpins to those two adders
+and everything else to the raw `addSpan`, so a pasted hairpin landing flush
 against a same-type one continues it instead of restarting it. A different type merges
 with nothing and the two stand side by side, again exactly as when drawn.
 
 **Reading merges too.** Two same-type hairpins back to back say nothing a single
 wider one does not, so that state is not one the model holds — however it arises.
 `WedgeResolver` and legacy `LineIO` therefore add hairpins through
-`addCrescendo`/`addDiminuendo` rather than the raw `addRangeElement` every other span
+`addCrescendo`/`addDiminuendo` rather than the raw `addSpan` every other span
 kind in both readers uses, so a file another program wrote (or an old `.mssw`)
 normalizes on the way in. The upshot is a single invariant with no exceptions: a
 hairpin never abuts or overlaps a same-type hairpin, whether the user drew it, pasted
@@ -237,15 +237,15 @@ through the straddle branch, where one side or the other is always dropped.
 
 `NoSameKindOverlapSurvives` in `PasteSpanReconciliationTest` asserts this per kind
 independently of which side each rule favours, so a future kind added to the switch
-with the wrong policy — or added to `RangeElement` and forgotten here — fails a test
+with the wrong policy — or added to `Span` and forgotten here — fails a test
 rather than shipping a malformed score. Note that the invariant is what makes it safe
-for `addPastedRangeElement` to add every non-hairpin pasted span with the raw
-`line.addRangeElement`, bypassing the overlap-merge and displacement logic in
+for `addPastedSpan` to add every non-hairpin pasted span with the raw
+`line.addSpan`, bypassing the overlap-merge and displacement logic in
 `addTuplet`/`addBeaming`/`addTrill`: there is by then no overlap left for those to
 resolve. Hairpins are the exception, and only because they must handle *abutment*,
 which the invariant says nothing about — abutting spans do not overlap.
 
-Removals go through `Line.removeInvalidatedRangeElement`, the typed dispatcher that
+Removals go through `Line.removeInvalidatedSpan`, the typed dispatcher that
 emits each span's proper tracked mutation, so a single undo restores every span this
 step discarded. Every branch of it is a no-op on a span already gone from the line,
 which is what makes `addElement`'s now-redundant tuplet removal harmless rather than
@@ -259,7 +259,7 @@ building them early touches nothing.
 ### Hard ordering constraint inside `tryInsertFragment`
 
 Every fragment clone must be inserted (`line.addElement`) **before** the first
-`line.addRangeElement` call for that paste. `addRangeElement` re-parents only the
+`line.addSpan` call for that paste. `addSpan` re-parents only the
 span itself, not its anchor/end elements, and a span's `getAnchorElementIndex()`
 resolves through the anchor's *own* `getParentLine()`. A clone is born detached, so
 a span added before its anchors are inserted resolves to `-1`, and `addElement`'s

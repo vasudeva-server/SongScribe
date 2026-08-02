@@ -27,7 +27,7 @@ package songscribe.dom;
  * a gradual change in volume. The user can adjust the horizontal endpoints
  * and vertical position.
  */
-public abstract sealed class Hairpin extends RangeElement
+public abstract sealed class Hairpin extends Span
         permits Crescendo, Diminuendo {
 
     /**
@@ -62,7 +62,7 @@ public abstract sealed class Hairpin extends RangeElement
     protected abstract Hairpin createHairpin(StaffElement newAnchor, StaffElement newEnd);
 
     @Override
-    protected final RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+    protected final Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
         var copy = createHairpin(newAnchor, newEnd);
         copy.x1ShiftSs = x1ShiftSs;
         copy.x2ShiftSs = x2ShiftSs;

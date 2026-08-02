@@ -234,10 +234,10 @@ class LineIOTest extends UnitTest {
 
             // Wire parent line so getAnchorElementIndex/getEndElementIndex resolve correctly
             for (var beam : beams) {
-                elements.addRangeElement(beam);
+                elements.addSpan(beam);
             }
 
-            var result = LineIO.rangeElementsToString(elements.findRangeElements(Beam.class));
+            var result = LineIO.spansToString(elements.findSpans(Beam.class));
 
             assertThat(result).isEqualTo("0,1;2,3;");
         }
@@ -254,9 +254,9 @@ class LineIOTest extends UnitTest {
         void testZeroYPosOmitsYPos() throws Exception {
             var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
             var trill = new Trill(elements.getElement(0), elements.getElement(1));
-            elements.addRangeElement(trill);
+            elements.addSpan(trill);
 
-            var result = LineIO.rangeElementsToString(elements.findRangeElements(Trill.class));
+            var result = LineIO.spansToString(elements.findSpans(Trill.class));
 
             // yPositionSs == 0 → omitted; format: anchor,end;
             assertThat(result).isEqualTo("0,1;");
@@ -268,9 +268,9 @@ class LineIOTest extends UnitTest {
             var trill = new Trill(elements.getElement(0), elements.getElement(1));
             final var Y_POS = 3;
             trill.setYPositionSs(Y_POS);
-            elements.addRangeElement(trill);
+            elements.addSpan(trill);
 
-            var result = LineIO.rangeElementsToString(elements.findRangeElements(Trill.class));
+            var result = LineIO.spansToString(elements.findSpans(Trill.class));
 
             // yPositionSs != 0 → included; format: anchor,end,yPos;
             assertThat(result).isEqualTo("0,1,3;");
@@ -303,7 +303,7 @@ class LineIOTest extends UnitTest {
                 TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             elements.addTuplet(tuplet);
 
-            var result = LineIO.rangeElementsToString(elements.findRangeElements(Tuplet.class));
+            var result = LineIO.spansToString(elements.findSpans(Tuplet.class));
 
             // verticalPositionSs == 0 → omitted; format: anchor,end,grade;
             assertThat(result).isEqualTo("0,2,3;");
@@ -323,7 +323,7 @@ class LineIOTest extends UnitTest {
             tuplet.setVerticalPositionSs(VERT_POS);
             elements.addTuplet(tuplet);
 
-            var result = LineIO.rangeElementsToString(elements.findRangeElements(Tuplet.class));
+            var result = LineIO.spansToString(elements.findSpans(Tuplet.class));
 
             // verticalPositionSs != 0 → included; format: anchor,end,grade,vertPos;
             assertThat(result).isEqualTo("0,2,3,4;");
@@ -341,9 +341,9 @@ class LineIOTest extends UnitTest {
         void testAllShiftsZeroOmitsShifts() throws Exception {
             var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
             var crescendo = new Crescendo(elements.getElement(0), elements.getElement(1));
-            elements.addRangeElement(crescendo);
+            elements.addSpan(crescendo);
 
-            var result = LineIO.rangeElementsToString(elements.findRangeElements(Crescendo.class));
+            var result = LineIO.spansToString(elements.findSpans(Crescendo.class));
 
             assertThat(result).isEqualTo("0,1;");
         }
@@ -358,9 +358,9 @@ class LineIOTest extends UnitTest {
             diminuendo.setX1ShiftSs(X1);
             diminuendo.setX2ShiftSs(X2);
             diminuendo.setYShiftSs(Y);
-            elements.addRangeElement(diminuendo);
+            elements.addSpan(diminuendo);
 
-            var result = LineIO.rangeElementsToString(elements.findRangeElements(Diminuendo.class));
+            var result = LineIO.spansToString(elements.findSpans(Diminuendo.class));
 
             // All three shift fields written when any is non-zero
             assertThat(result).isEqualTo("0,1," + X1 + ',' + X2 + ',' + Y + ';');
@@ -378,9 +378,9 @@ class LineIOTest extends UnitTest {
         void testProducesAnchorEndPair() throws Exception {
             var elements = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
             var ending = new Ending(elements.getElement(0), elements.getElement(1));
-            elements.addRangeElement(ending);
+            elements.addSpan(ending);
 
-            var result = LineIO.rangeElementsToString(elements.findRangeElements(Ending.class));
+            var result = LineIO.spansToString(elements.findSpans(Ending.class));
 
             // Serialized as anchor,end; pairs only.
             assertThat(result).isEqualTo("0,1;");
@@ -623,9 +623,9 @@ class LineIOTest extends UnitTest {
         void testBeamRoundTripPreservesAnchorAndEnd() throws Exception {
             var elements = lineWith(ElementType.QUAVER, ElementType.QUAVER, ElementType.QUAVER);
             var beam = new Beam(elements.getElement(0), elements.getElement(2));
-            elements.addRangeElement(beam);
+            elements.addSpan(beam);
 
-            var serialized = LineIO.rangeElementsToString(elements.findRangeElements(Beam.class));
+            var serialized = LineIO.spansToString(elements.findSpans(Beam.class));
 
             // Feed into a reader with matching notes to reconstruct
             var reader = buildReaderWithNotes(ElementType.QUAVER, ElementType.QUAVER, ElementType.QUAVER);
@@ -732,7 +732,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            assertThat(parsedLine.findRangeElements(Tie.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Tie.class)).hasSize(1);
         }
     }
 
@@ -758,7 +758,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var tuplets = parsedLine.findRangeElements(Tuplet.class);
+            var tuplets = parsedLine.findSpans(Tuplet.class);
             assertThat(tuplets).hasSize(1);
             assertThat(tuplets.getFirst().getGrade()).isEqualTo(EXPECTED_GRADE);
         }
@@ -788,7 +788,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var tuplets = parsedLine.findRangeElements(Tuplet.class);
+            var tuplets = parsedLine.findSpans(Tuplet.class);
             assertThat(tuplets).hasSize(1);
             assertThat(tuplets.getFirst().getGrade()).isEqualTo(QUINTUPLET_GRADE);
         }
@@ -817,7 +817,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var tuplets = parsedLine.findRangeElements(Tuplet.class);
+            var tuplets = parsedLine.findSpans(Tuplet.class);
             assertThat(tuplets).hasSize(1);
             assertThat(tuplets.getFirst().getVerticalPositionSs()).isEqualTo(VERT_POS);
         }
@@ -928,7 +928,7 @@ class LineIOTest extends UnitTest {
 
                 assertThat(parsedLine).isNotNull();
 
-                var tuplets = parsedLine.findRangeElements(Tuplet.class);
+                var tuplets = parsedLine.findSpans(Tuplet.class);
                 assertThat(tuplets).hasSize(1);
                 assertThat(tuplets.getFirst().getGrade()).isEqualTo(DEFAULT_GRADE);
 
@@ -956,7 +956,7 @@ class LineIOTest extends UnitTest {
 
                 assertThat(parsedLine).isNotNull();
 
-                var tuplets = parsedLine.findRangeElements(Tuplet.class);
+                var tuplets = parsedLine.findSpans(Tuplet.class);
                 assertThat(tuplets).hasSize(1);
                 assertThat(tuplets.getFirst().getVerticalPositionSs()).isEqualTo(DEFAULT_VERT_POS);
 
@@ -990,7 +990,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var crescendos = parsedLine.findRangeElements(Crescendo.class);
+            var crescendos = parsedLine.findSpans(Crescendo.class);
             assertThat(crescendos).hasSize(1);
             var c = crescendos.getFirst();
             assertThat(c.getX1ShiftSs()).isEqualTo(0.0);
@@ -1023,7 +1023,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var crescendos = parsedLine.findRangeElements(Crescendo.class);
+            var crescendos = parsedLine.findSpans(Crescendo.class);
             assertThat(crescendos).hasSize(1);
             var c = crescendos.getFirst();
             assertThat(c.getX1ShiftSs()).isEqualTo(X1_SHIFT);
@@ -1056,7 +1056,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var diminuendos = parsedLine.findRangeElements(Diminuendo.class);
+            var diminuendos = parsedLine.findSpans(Diminuendo.class);
             assertThat(diminuendos).hasSize(1);
             var d = diminuendos.getFirst();
             assertThat(d.getX1ShiftSs()).isEqualTo(0.0);
@@ -1077,7 +1077,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var diminuendos = parsedLine.findRangeElements(Diminuendo.class);
+            var diminuendos = parsedLine.findSpans(Diminuendo.class);
             assertThat(diminuendos).hasSize(1);
             var d = diminuendos.getFirst();
             assertThat(d.getX1ShiftSs()).isEqualTo(X1_SHIFT);
@@ -1107,7 +1107,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var crescendos = parsedLine.findRangeElements(Crescendo.class);
+            var crescendos = parsedLine.findSpans(Crescendo.class);
             assertThat(crescendos).hasSize(1);
             var c = crescendos.getFirst();
             assertThat(c.getX1ShiftSs()).isEqualTo(0.0);
@@ -1133,7 +1133,7 @@ class LineIOTest extends UnitTest {
 
                 assertThat(parsedLine).isNotNull();
 
-                var crescendos = parsedLine.findRangeElements(Crescendo.class);
+                var crescendos = parsedLine.findSpans(Crescendo.class);
                 assertThat(crescendos).hasSize(1);
                 var c = crescendos.getFirst();
                 assertThat(c.getX1ShiftSs()).isEqualTo(0.0);
@@ -1179,7 +1179,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var endings = parsedLine.findRangeElements(Ending.class);
+            var endings = parsedLine.findSpans(Ending.class);
             // Both batches survive — 2 endings total
             assertThat(endings).hasSize(2);
             assertThat(endings.get(0).getAnchorElementIndex()).isEqualTo(0);
@@ -1209,7 +1209,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var trills = parsedLine.findRangeElements(Trill.class);
+            var trills = parsedLine.findSpans(Trill.class);
             assertThat(trills).hasSize(1);
             assertThat(trills.getFirst().getAnchorElementIndex()).isEqualTo(0);
             assertThat(trills.getFirst().getEndElementIndex()).isEqualTo(2);
@@ -1230,7 +1230,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var trills = parsedLine.findRangeElements(Trill.class);
+            var trills = parsedLine.findSpans(Trill.class);
             assertThat(trills).hasSize(1);
             assertThat(trills.getFirst().getYPositionSs()).isEqualTo(Y_POS);
         }
@@ -1282,7 +1282,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var trills = parsedLine.findRangeElements(Trill.class);
+            var trills = parsedLine.findSpans(Trill.class);
             assertThat(trills).hasSize(1);
             assertThat(trills.getFirst().getAnchorElementIndex()).isEqualTo(2);
             assertThat(trills.getFirst().getEndElementIndex()).isEqualTo(4);
@@ -1297,7 +1297,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            var trills = parsedLine.findRangeElements(Trill.class);
+            var trills = parsedLine.findSpans(Trill.class);
             assertThat(trills).hasSize(2);
             assertThat(trills.get(0).getAnchorElementIndex()).isEqualTo(2);
             assertThat(trills.get(0).getEndElementIndex()).isEqualTo(2);
@@ -1315,7 +1315,7 @@ class LineIOTest extends UnitTest {
 
         @Test
         void testAllCreateMethodsInvokedOnLineClose() throws Exception {
-            // Full start/chars/end sequence with all range element types:
+            // Full start/chars/end sequence with all span types:
             // beam, tie, tuplet, crescendo, diminuendo, trill, ending.
             // Notes occupy indices 0-4 with valid ranges for all types; a trailing
             // REPEAT_RIGHT(5) + CROTCHET(6) give the ending a split so it survives the
@@ -1343,13 +1343,13 @@ class LineIOTest extends UnitTest {
             assertThat(parsedLine).isNotNull();
 
             assertThat(parsedLine.elementCount()).isEqualTo(ELEMENT_COUNT);
-            assertThat(parsedLine.findRangeElements(Beam.class)).hasSize(1);
-            assertThat(parsedLine.findRangeElements(Tie.class)).hasSize(1);
-            assertThat(parsedLine.findRangeElements(Tuplet.class)).hasSize(1);
-            assertThat(parsedLine.findRangeElements(Crescendo.class)).hasSize(1);
-            assertThat(parsedLine.findRangeElements(Diminuendo.class)).hasSize(1);
-            assertThat(parsedLine.findRangeElements(Trill.class)).hasSize(1);
-            assertThat(parsedLine.findRangeElements(Ending.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Beam.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Tie.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Tuplet.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Crescendo.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Diminuendo.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Trill.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Ending.class)).hasSize(1);
         }
     }
 
@@ -1406,7 +1406,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            assertThat(parsedLine.findRangeElements(Ending.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Ending.class)).hasSize(1);
         }
     }
 
@@ -1459,7 +1459,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            assertThat(parsedLine.findRangeElements(Trill.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Trill.class)).hasSize(1);
         }
     }
 
@@ -1505,7 +1505,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            assertThat(parsedLine.findRangeElements(Crescendo.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Crescendo.class)).hasSize(1);
         }
     }
 
@@ -1551,7 +1551,7 @@ class LineIOTest extends UnitTest {
 
             assertThat(parsedLine).isNotNull();
 
-            assertThat(parsedLine.findRangeElements(Diminuendo.class)).hasSize(1);
+            assertThat(parsedLine.findSpans(Diminuendo.class)).hasSize(1);
         }
     }
 

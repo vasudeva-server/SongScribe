@@ -214,11 +214,11 @@ class LineTieTest extends UnitTest {
         }
 
         /**
-         * {@link Line#findTies()} must not include non-tie range elements.
+         * {@link Line#findTies()} must not include non-tie spans.
          */
         @Test
-        void testFindTiesExcludesNonTieRangeElements() {
-            // Add a beam (a non-tie range element) alongside a tie; findTies must return only the tie.
+        void testFindTiesExcludesNonTieSpans() {
+            // Add a beam (a non-tie span) alongside a tie; findTies must return only the tie.
             var tieOnly = new Tie(line.getElement(IDX_0), line.getElement(IDX_1));
             song.withoutMutationTracking(() -> {
                 line.addTie(tieOnly);

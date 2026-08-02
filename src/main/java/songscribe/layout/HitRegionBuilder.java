@@ -40,7 +40,6 @@ import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.engraving.LineThickness;
@@ -463,7 +462,7 @@ public final class HitRegionBuilder {
      * a separate shape per beam.
      */
     private static void addBeams(Line line, LayoutResult layoutResult, HitRegistry.Builder builder) {
-        for (var beam : line.findRangeElements(Beam.class)) {
+        for (var beam : line.findSpans(Beam.class)) {
             var beamLayout = layoutResult.getBeamLayout(beam);
 
             if (beamLayout == null) {

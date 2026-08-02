@@ -284,7 +284,7 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
         // Back-to-back crescendos say nothing a single wider one does not, so they are
         // not a state the model holds: addCrescendo merges them however they arise —
         // drawn, pasted, or read back from a file another program wrote. Building this
-        // fixture therefore needs the raw addRangeElement to get two wedges into the
+        // fixture therefore needs the raw addSpan to get two wedges into the
         // XML at all; what the round-trip asserts is that reading them merges them.
         var song = buildSong(line -> {
             var note0 = ElementType.CROTCHET.newInstance();
@@ -295,8 +295,8 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note1);
             line.addElement(note2);
             line.addElement(note3);
-            line.addRangeElement(new Crescendo(note0, note1));
-            line.addRangeElement(new Crescendo(note2, note3));
+            line.addSpan(new Crescendo(note0, note1));
+            line.addSpan(new Crescendo(note2, note3));
         });
 
         var song2 = roundTrip(song);

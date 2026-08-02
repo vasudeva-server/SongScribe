@@ -73,13 +73,13 @@ public final class TieRenderer {
     // ==========================================================================
 
     /**
-     * Renders a tie for the given {@link Tie} range element.
+     * Renders a tie for the given {@link Tie} span.
      * <p>
      * Reads pre-computed geometry from {@link LayoutResult.TieLayout}. If no
      * layout was computed for this tie, the method returns without rendering.
      *
      * @param g2  Graphics context (staff-space coordinate system)
-     * @param tie The tie range element
+     * @param tie The tie span
      * @param ctx Render context
      */
     public void renderTie(

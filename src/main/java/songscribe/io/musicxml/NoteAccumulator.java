@@ -94,7 +94,7 @@ import songscribe.io.LegacyAccidentals;
  * ratio + relative-y, {@code trillStart}/{@code trillStop} + relative-y) are this note's raw
  * markers; {@link #spanMarkers()} snapshots them for {@link RangeSpanResolver}
  * to pair with the run's pending anchor and build the
- * {@code Beam}/{@code Tie}/{@code Tuplet}/{@code Trill} RangeElements.
+ * {@code Beam}/{@code Tie}/{@code Tuplet}/{@code Trill} Spans.
  */
 final class NoteAccumulator {
 
@@ -513,7 +513,7 @@ final class NoteAccumulator {
      * trillStop} + relative-y, {@code slideType}),
      * snapshotted by {@link #spanMarkers()} for {@link RangeSpanResolver} to
      * pair with the run's pending anchor and build the
-     * {@code Beam}/{@code Tie}/{@code Tuplet}/{@code Trill}/glissando RangeElements.
+     * {@code Beam}/{@code Tie}/{@code Tuplet}/{@code Trill}/glissando Spans.
      */
     record SpanMarkers(
         @Nullable String slideType,

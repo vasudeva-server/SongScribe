@@ -551,7 +551,7 @@ class MidiSequenceBuilderTest extends UnitTest {
         line.addElement(note2nd);      // index 4
         line.addElement(endBarline);   // index 5 (end)
 
-        line.addRangeElement(new Ending(startBarline, endBarline));
+        line.addSpan(new Ending(startBarline, endBarline));
         return line;
     }
 
@@ -576,7 +576,7 @@ class MidiSequenceBuilderTest extends UnitTest {
         line.addElement(note2nd);         // index 3
         line.addElement(repeatRight);     // index 4 (end)
 
-        line.addRangeElement(new Ending(repeatLeft, repeatRight));
+        line.addSpan(new Ending(repeatLeft, repeatRight));
         return line;
     }
 
@@ -610,7 +610,7 @@ class MidiSequenceBuilderTest extends UnitTest {
         line.addElement(note2ndC);      // index 7
         line.addElement(endBarline);    // index 8 (end)
 
-        line.addRangeElement(new Ending(startBarline, endBarline));
+        line.addSpan(new Ending(startBarline, endBarline));
         return line;
     }
 
@@ -652,8 +652,8 @@ class MidiSequenceBuilderTest extends UnitTest {
         line.addElement(note2ndB);     // index 10
         line.addElement(barlineBEnd);  // index 11 (end B)
 
-        line.addRangeElement(new Ending(barlineA, barlineAEnd));
-        line.addRangeElement(new Ending(barlineB, barlineBEnd));
+        line.addSpan(new Ending(barlineA, barlineAEnd));
+        line.addSpan(new Ending(barlineB, barlineBEnd));
         return line;
     }
 

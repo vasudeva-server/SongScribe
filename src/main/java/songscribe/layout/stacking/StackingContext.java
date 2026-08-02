@@ -102,7 +102,7 @@ public class StackingContext {
     }
 
     /**
-     * Builds a map from StaffElement to its ElementColumn for range element lookups.
+     * Builds a map from StaffElement to its ElementColumn for span lookups.
      */
     private static Map<StaffElement, ElementColumn> buildColumnMap(List<ElementColumn> columns) {
         var map = new HashMap<StaffElement, ElementColumn>(columns.size());

@@ -97,10 +97,10 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var beams = line2.findRangeElements(Beam.class);
+        var beams = line2.findSpans(Beam.class);
 
         assertThat(beams).as("beam count after round-trip").hasSize(1);
-        assertRangeElementEquals(beams.getFirst(), 0, 1);
+        assertSpanEquals(beams.getFirst(), 0, 1);
     }
 
     @Test
@@ -119,10 +119,10 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var beams = line2.findRangeElements(Beam.class);
+        var beams = line2.findSpans(Beam.class);
 
         assertThat(beams).as("beam count after round-trip").hasSize(1);
-        assertRangeElementEquals(beams.getFirst(), 0, 3);
+        assertSpanEquals(beams.getFirst(), 0, 3);
     }
 
     @Test
@@ -144,11 +144,11 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var beams = line2.findRangeElements(Beam.class);
+        var beams = line2.findSpans(Beam.class);
 
         assertThat(beams).as("beam count after round-trip").hasSize(2);
-        assertRangeElementEquals(beams.get(0), 0, 1, "first beam");
-        assertRangeElementEquals(beams.get(1), 2, 3, "second beam");
+        assertSpanEquals(beams.get(0), 0, 1, "first beam");
+        assertSpanEquals(beams.get(1), 2, 3, "second beam");
     }
 
     // -------------------------------------------------------------------------
@@ -350,10 +350,10 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var beams = line2.findRangeElements(Beam.class);
+        var beams = line2.findSpans(Beam.class);
 
         assertThat(beams).as("beam count after grace-in-group round-trip").hasSize(1);
-        assertRangeElementEquals(beams.getFirst(), 0, 2);
+        assertSpanEquals(beams.getFirst(), 0, 2);
         assertThat(line2.getElement(1).getType().isGraceNote())
             .as("interior grace note survives inside the beam group")
             .isTrue();

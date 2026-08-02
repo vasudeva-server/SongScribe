@@ -90,7 +90,7 @@ class EndingRendererTest extends UnitTest {
         line.addElement(split);
         line.addElement(note2);
         var ending = new Ending(note1, note2);
-        line.addRangeElement(ending);
+        line.addSpan(ending);
         // Exact geometry does not matter for these tests (only Y-translation is asserted),
         // so every element maps to an identical stub column with a note-head-width extent.
         EndingBracketGeometry.computeBracketRanges(ending, line, e -> new ElementColumn(
@@ -370,8 +370,8 @@ class EndingRendererTest extends UnitTest {
 
         var firstEnding = new Ending(note1, note2);
         var secondEnding = new Ending(note1, note2);
-        line.addRangeElement(firstEnding);
-        line.addRangeElement(secondEnding);
+        line.addSpan(firstEnding);
+        line.addSpan(secondEnding);
 
         // Identical geometry for both, so the point falls inside each one's box.
         var decoration = new LayoutResult.DecorationLayout(

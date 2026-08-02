@@ -165,7 +165,7 @@ class SystemTierStackingTest extends UnitTest {
 
             // Add a hairpin in the structural layer
             var crescendo = new Crescendo(note1, note2);
-            setupTest(() -> line.addRangeElement(crescendo));
+            setupTest(() -> line.addSpan(crescendo));
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -293,7 +293,7 @@ class SystemTierStackingTest extends UnitTest {
             populate(line, note2);
 
             var crescendo = new Crescendo(note1, note2);
-            setupTest(() -> line.addRangeElement(crescendo));
+            setupTest(() -> line.addSpan(crescendo));
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -474,7 +474,7 @@ class SystemTierStackingTest extends UnitTest {
             populate(line, note2);
 
             var crescendo = new Crescendo(note1, note2);
-            setupTest(() -> line.addRangeElement(crescendo));
+            setupTest(() -> line.addSpan(crescendo));
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),

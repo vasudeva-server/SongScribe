@@ -26,7 +26,7 @@ package songscribe.dom;
  * Ties connect exactly two elements and are rendered as a curved arc.
  * The placement (above or below) depends on the stem direction of the elements.
  */
-public class Tie extends RangeElement {
+public class Tie extends Span {
 
     /**
      * Arc height of a tie curve.
@@ -44,7 +44,7 @@ public class Tie extends RangeElement {
     }
 
     @Override
-    protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
         return new Tie(newAnchor, newEnd);
     }
 

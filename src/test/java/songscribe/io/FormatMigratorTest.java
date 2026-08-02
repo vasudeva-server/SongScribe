@@ -190,7 +190,7 @@ class FormatMigratorTest extends UnitTest {
             var line = lineWith(ElementType.CROTCHET);
             var note = line.getElement(0);
             var ending = new Ending(note, note);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
 
             var nonDefaultEndingPx = ScaleContext.ssToRoundedPx(Line.ENDING_DEFAULT_Y_SS) + ENDING_OFFSET_DELTA_PX;
             var offsets = Map.of(line, offsetsWithEnding(nonDefaultEndingPx));
@@ -209,7 +209,7 @@ class FormatMigratorTest extends UnitTest {
             var line = lineWith(ElementType.CROTCHET);
             var note = line.getElement(0);
             var trill = new Trill(note);
-            line.addRangeElement(trill);
+            line.addSpan(trill);
 
             var nonDefaultTrillPx = ScaleContext.ssToRoundedPx(Line.TRILL_DEFAULT_Y_SS) + TRILL_OFFSET_DELTA_PX;
             var offsets = Map.of(line, offsetsWithTrill(nonDefaultTrillPx));
@@ -252,7 +252,7 @@ class FormatMigratorTest extends UnitTest {
             line.addElement(end);
             var tuplet = Tuplet.withUnresolvedRatio(anchor, end, TUPLET_GRADE);
             tuplet.setVerticalPositionSs(NON_ZERO_TUPLET_VERTICAL_POS_SS);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             FormatMigrator.migratePixelsToStaffSpace(List.of(line));
 
@@ -272,7 +272,7 @@ class FormatMigratorTest extends UnitTest {
             line.addElement(end);
             var tuplet = Tuplet.withUnresolvedRatio(anchor, end, TUPLET_GRADE);
             // verticalPositionSs defaults to 0 — no set needed
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             FormatMigrator.migratePixelsToStaffSpace(List.of(line));
 
@@ -291,7 +291,7 @@ class FormatMigratorTest extends UnitTest {
             hairpin.setX1ShiftSs(NON_ZERO_HAIRPIN_X1_SHIFT_SS);
             hairpin.setX2ShiftSs(NON_ZERO_HAIRPIN_X2_SHIFT_SS);
             hairpin.setYShiftSs(NON_ZERO_HAIRPIN_Y_SHIFT_SS);
-            line.addRangeElement(hairpin);
+            line.addSpan(hairpin);
 
             FormatMigrator.migratePixelsToStaffSpace(List.of(line));
 
@@ -341,7 +341,7 @@ class FormatMigratorTest extends UnitTest {
             line.addElement(end);
             var ending = new Ending(anchor, end);
             ending.setYPositionSs(NON_ZERO_ENDING_Y_POSITION_SS);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
 
             FormatMigrator.migratePixelsToStaffSpace(List.of(line));
 
@@ -359,7 +359,7 @@ class FormatMigratorTest extends UnitTest {
             line.addElement(anchor);
             var trill = new Trill(anchor);
             trill.setYPositionSs(NON_ZERO_TRILL_Y_POSITION_SS);
-            line.addRangeElement(trill);
+            line.addSpan(trill);
 
             FormatMigrator.migratePixelsToStaffSpace(List.of(line));
 

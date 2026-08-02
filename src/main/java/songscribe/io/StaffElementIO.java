@@ -341,7 +341,7 @@ public final class StaffElementIO {
         private Where where;
 
         // True when the current element had a legacy <trill> tag.
-        // LineIO.LineReader reads this after each note and coalesces runs into Trill range elements.
+        // LineIO.LineReader reads this after each note and coalesces runs into Trill spans.
         private boolean trillFlagged = false;
 
         // True once any element read by this reader named a retired accidental that was
@@ -628,7 +628,7 @@ public final class StaffElementIO {
                         || lastTag.equals(XML_FORCE_SYLLABLE)) {
                         // Obsolete per-element nudge fields — silently discarded.
                     } else if (lastTag.equals(XML_TRILL)) {
-                        // Legacy per-element trill tag — record the flag; LineIO coalesces into Trill range elements.
+                        // Legacy per-element trill tag — record the flag; LineIO coalesces into Trill spans.
                         trillFlagged = true;
                     } else if (lastTag.equals(XML_FERMATA)) {
                         element.addAttachment(new FermataAttachment(element));

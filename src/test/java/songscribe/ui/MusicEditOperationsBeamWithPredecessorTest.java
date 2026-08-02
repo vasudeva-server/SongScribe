@@ -141,9 +141,9 @@ class MusicEditOperationsBeamWithPredecessorTest extends UnitTest {
             () -> line.addBeaming(new Beam(line.getElement(anchorIndex), line.getElement(endIndex))));
     }
 
-    /** The line's beam spans as [anchor, end] index pairs, in range-element order. */
+    /** The line's beam spans as [anchor, end] index pairs, in span order. */
     private static List<List<Integer>> beamSpans(Line line) {
-        return line.getRangeElements().stream()
+        return line.getSpans().stream()
             .filter(Beam.class::isInstance)
             .map(Beam.class::cast)
             .map(b -> List.of(b.getAnchorElementIndex(), b.getEndElementIndex()))
@@ -402,7 +402,7 @@ class MusicEditOperationsBeamWithPredecessorTest extends UnitTest {
         void testTieBlocksAddingABeam() {
             var line = lineOf(quaver(), quaver());
             song.withoutMutationTracking(
-                () -> line.addRangeElement(new Tie(line.getElement(0), line.getElement(1))));
+                () -> line.addSpan(new Tie(line.getElement(0), line.getElement(1))));
 
             assertThat(MusicEditOperations.toggleBeamWithPredecessor(line, 1))
                 .as("beaming may not connect what a tie already connects")
@@ -414,7 +414,7 @@ class MusicEditOperationsBeamWithPredecessorTest extends UnitTest {
         void testTieDoesNotBlockBreakingABeam() {
             var line = lineOf(quaver(), quaver(), quaver());
             song.withoutMutationTracking(() -> {
-                line.addRangeElement(new Tie(line.getElement(1), line.getElement(THIRD_INDEX)));
+                line.addSpan(new Tie(line.getElement(1), line.getElement(THIRD_INDEX)));
                 line.addBeaming(new Beam(line.getElement(0), line.getElement(THIRD_INDEX)));
             });
 

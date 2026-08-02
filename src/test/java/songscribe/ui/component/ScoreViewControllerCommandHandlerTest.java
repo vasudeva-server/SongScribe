@@ -55,7 +55,7 @@ import songscribe.message.mutation.CrescendoAddition;
 import songscribe.message.mutation.DiminuendoAddition;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
-import songscribe.message.mutation.RangeElementAddition;
+import songscribe.message.mutation.SpanAddition;
 import songscribe.message.mutation.TieAddition;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
@@ -374,8 +374,8 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
-        assertThat(notification.getMutations().getFirst()).isInstanceOf(RangeElementAddition.class);
-        assertThat(((RangeElementAddition) notification.getMutations().getFirst()).element())
+        assertThat(notification.getMutations().getFirst()).isInstanceOf(SpanAddition.class);
+        assertThat(((SpanAddition) notification.getMutations().getFirst()).element())
             .isInstanceOf(Ending.class);
     }
 

@@ -59,10 +59,10 @@ set the modified flag).
 **Complete-emission invariant:** *every* state change made inside a modification
 bracket must be recorded as a `Mutation` in that bracket's batch. Undo replays the
 recorded batch mechanically, so an untracked side change (e.g. a raw
-`rangeElements.removeIf`) is invisible to undo and makes the round-trip lossy. When
+`spans.removeIf`) is invisible to undo and makes the round-trip lossy. When
 a helper must drop dependent state (invalidated endings, spans anchored to a deleted
 element, spans subsumed by a merge), it routes each removal through the typed tracked
-helper (`removeBeaming`/`removeTie`/… — `Line.removeInvalidatedRangeElement`
+helper (`removeBeaming`/`removeTie`/… — `Line.removeInvalidatedSpan`
 dispatches) so the proper removal mutation lands in the batch.
 
 **Companion-ordering rule:** companion mutations that *remove* dependent state
@@ -111,14 +111,14 @@ withModification(() -> applyChange(new MetadataChange(field, current, newValue),
 
 `Line` helpers (`addElement`, `removeElement`, `removeRange`,
 `replaceElement`, `modifyElement`, `add/remove{Beaming,Tie,Tuplet,Crescendo,Diminuendo}`,
-`add/removeRangeElement`) wrap `applyChange` with clone snapshots and
+`add/removeSpan`) wrap `applyChange` with clone snapshots and
 bookkeeping (interval shifting, range-element invalidation, initial-tempo attachment).
 The span helpers are the thinnest pattern to copy when adding one. Note that the
 mutator both attaches parentage and mutates the list. For the elements held in
 `Line`'s two lists, `Line.attach`/`Line.detach` are the only writers of
 `parentLine`, and running them inside the mutator is what makes parentage move
 with the recorded change. `appendChild`/`removeChild` pair the two steps for the
-`rangeElements` list:
+`spans` list:
 
 ```java
 applyChange(new BeamingAddition(this, beam), () -> appendChild(beam));

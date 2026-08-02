@@ -82,7 +82,7 @@ class HairpinActionStateTest extends UnitTest {
         /** Adds a crescendo spanning [anchor, end] without going through the merge logic. */
         Crescendo addCrescendo(int anchor, int end) {
             var hairpin = new Crescendo(line.getElement(anchor), line.getElement(end));
-            line.addRangeElement(hairpin);
+            line.addSpan(hairpin);
             return hairpin;
         }
 
@@ -90,7 +90,7 @@ class HairpinActionStateTest extends UnitTest {
         @SuppressWarnings("UnusedReturnValue")
         Diminuendo addDiminuendo(int anchor, int end) {
             var hairpin = new Diminuendo(line.getElement(anchor), line.getElement(end));
-            line.addRangeElement(hairpin);
+            line.addSpan(hairpin);
             return hairpin;
         }
 

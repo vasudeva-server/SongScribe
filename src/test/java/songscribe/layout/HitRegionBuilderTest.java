@@ -212,8 +212,8 @@ class HitRegionBuilderTest extends UnitTest {
             line.addElement(tupletNote1);
             line.addElement(tupletNote2);
             line.addElement(endBarline);
-            line.addRangeElement(ending);
-            line.addRangeElement(hairpin);
+            line.addSpan(ending);
+            line.addSpan(hairpin);
             line.addTie(tie);
             line.addBeaming(beam);
             line.addTrill(trill);

@@ -129,7 +129,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var crescendo = new Crescendo(note1, note2);
-            line.addRangeElement(crescendo);
+            line.addSpan(crescendo);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -152,7 +152,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var diminuendo = new Diminuendo(note1, note2);
-            line.addRangeElement(diminuendo);
+            line.addSpan(diminuendo);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -174,7 +174,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var crescendo = new Crescendo(note1, note2);
-            line.addRangeElement(crescendo);
+            line.addSpan(crescendo);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -198,7 +198,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var crescendo = new Crescendo(note1, note2);
-            line.addRangeElement(crescendo);
+            line.addSpan(crescendo);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -231,8 +231,8 @@ class StructuralTierStackingTest extends UnitTest {
             // overlaps the crescendo's reservation, so the diminuendo stacks above it.
             var crescendo = new Crescendo(note1, note2);
             var diminuendo = new Diminuendo(note2, note3);
-            line.addRangeElement(crescendo);
-            line.addRangeElement(diminuendo);
+            line.addSpan(crescendo);
+            line.addSpan(diminuendo);
 
             var result = stackColumns(
                 List.of(
@@ -266,7 +266,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var crescendo = new Crescendo(note1, note2);
-            line.addRangeElement(crescendo);
+            line.addSpan(crescendo);
 
             var result = stackDirectly(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
@@ -288,7 +288,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var diminuendo = new Diminuendo(note1, note2);
-            line.addRangeElement(diminuendo);
+            line.addSpan(diminuendo);
 
             var result = stackDirectly(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
@@ -306,7 +306,7 @@ class StructuralTierStackingTest extends UnitTest {
     class TupletStacking {
 
         @Test
-        void testTupletRangeElementPositionedAboveStaff() {
+        void testTupletSpanPositionedAboveStaff() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();
@@ -314,7 +314,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -336,7 +336,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -364,7 +364,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -392,9 +392,9 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
             var trill = new Trill(note1, note2);
-            line.addRangeElement(trill);
+            line.addSpan(trill);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -424,7 +424,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note3);
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note3, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var result = stackColumns(
                 List.of(
@@ -478,7 +478,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -504,7 +504,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var result = stackDirectly(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
@@ -532,7 +532,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
             tuplet.setEndElement(null);
 
             var result = stackDirectly(
@@ -550,7 +550,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             // note2's column is omitted, so columnsByElement.get(endNote) resolves to null.
             var result = stackDirectly(List.of(columnFor(note1, NOTE1_X_SS)), line);
@@ -570,7 +570,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var result = stackDirectly(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
@@ -589,10 +589,10 @@ class StructuralTierStackingTest extends UnitTest {
             var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
-            line.addRangeElement(new Beam(note1, note2));
+            line.addSpan(new Beam(note1, note2));
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var result = stackDirectly(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
@@ -613,10 +613,10 @@ class StructuralTierStackingTest extends UnitTest {
             var line = detachedLine();
             line.addElement(note1);
             line.addElement(note2);
-            line.addRangeElement(new Beam(note1, note2));
+            line.addSpan(new Beam(note1, note2));
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, 3);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var result = stackDirectly(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
@@ -692,7 +692,7 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
 
             var crescendo = new Crescendo(note1, note2);
-            line.addRangeElement(crescendo);
+            line.addSpan(crescendo);
 
             var result = stackColumns(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)),
@@ -802,7 +802,7 @@ class StructuralTierStackingTest extends UnitTest {
 
             var crescendo = new Crescendo(note1, note2);
             crescendo.setAnchorElement(null);  // trigger null guard
-            line.addRangeElement(crescendo);
+            line.addSpan(crescendo);
 
             var result = stackDirectly(
                 List.of(columnFor(note1, NOTE1_X_SS), columnFor(note2, NOTE2_X_SS)), line);
@@ -824,7 +824,7 @@ class StructuralTierStackingTest extends UnitTest {
             var columns = addSplitEndingElements(line, note1, note2);
 
             var ending = new Ending(note1, note2);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
 
             var result = stackColumns(columns, line);
 
@@ -843,7 +843,7 @@ class StructuralTierStackingTest extends UnitTest {
             var columns = addSplitEndingElements(line, note1, note2);
 
             var ending = new Ending(note1, note2);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
 
             var result = stackColumns(columns, line);
 
@@ -864,10 +864,10 @@ class StructuralTierStackingTest extends UnitTest {
             var columns = addSplitEndingElements(line, note1, note2);
 
             var crescendo = new Crescendo(note1, note2);
-            line.addRangeElement(crescendo);
+            line.addSpan(crescendo);
 
             var ending = new Ending(note1, note2);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
 
             var result = stackColumns(columns, line);
 
@@ -883,14 +883,14 @@ class StructuralTierStackingTest extends UnitTest {
         }
 
         @Test
-        void testEndingRangeElementProducesDecorationLayout() {
+        void testEndingSpanProducesDecorationLayout() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();
             var columns = addSplitEndingElements(line, note1, note2);
 
             var ending = new Ending(note1, note2);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
 
             var result = stackColumns(columns, line);
 
@@ -918,10 +918,10 @@ class StructuralTierStackingTest extends UnitTest {
             var columns = addSplitEndingElements(line, note1, note2);
 
             var crescendo = new Crescendo(note1, note2);
-            line.addRangeElement(crescendo);
+            line.addSpan(crescendo);
 
             var ending = new Ending(note1, note2);
-            line.addRangeElement(ending);
+            line.addSpan(ending);
 
             var result = stackColumns(columns, line);
 

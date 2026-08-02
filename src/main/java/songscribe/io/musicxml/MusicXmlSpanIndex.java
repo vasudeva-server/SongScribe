@@ -23,13 +23,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import org.jspecify.annotations.Nullable;
-import songscribe.dom.Beam;
-import songscribe.dom.ElementType;
-import songscribe.dom.Hairpin;
-import songscribe.dom.Line;
-import songscribe.dom.Tie;
-import songscribe.dom.Trill;
-import songscribe.dom.Tuplet;
+import songscribe.dom.*;
 import songscribe.layout.BeamMath;
 import songscribe.layout.LineEndingSupport;
 
@@ -161,8 +155,8 @@ final class MusicXmlSpanIndex {
      *
      * <p>For each of the six span types, this method calls the line accessor
      * once and resolves every span's anchor/end element index exactly once
-     * via {@link songscribe.dom.RangeElement#getAnchorElementIndex()} /
-     * {@link songscribe.dom.RangeElement#getEndElementIndex()}.
+     * via {@link Span#getAnchorElementIndex()} /
+     * {@link Span#getEndElementIndex()}.
      * The element loop can then do O(1) lookups instead of calling
      * {@code indexOf} (O(n)) per element per span.
      *
@@ -188,7 +182,7 @@ final class MusicXmlSpanIndex {
         // Beams: pre-compute per-note, per-level beam values for every note
         // in the group [anchor, end].  A single-note beam (anchor == end)
         // is degenerate and produces no <beam> output.
-        for (var beam : line.findRangeElements(Beam.class)) {
+        for (var beam : line.findSpans(Beam.class)) {
             var anchorIdx = beam.getAnchorElementIndex();
             var endIdx = beam.getEndElementIndex();
 
@@ -227,7 +221,7 @@ final class MusicXmlSpanIndex {
         }
 
         // Tuplets: set the span reference on every note in the group [anchor, end].
-        for (var tuplet : line.findRangeElements(Tuplet.class)) {
+        for (var tuplet : line.findSpans(Tuplet.class)) {
             var anchorIdx = tuplet.getAnchorElementIndex();
             var endIdx = tuplet.getEndElementIndex();
 
@@ -250,7 +244,7 @@ final class MusicXmlSpanIndex {
         }
 
         // Trills: set the span reference on every note in the group [anchor, end].
-        for (var trill : line.findRangeElements(Trill.class)) {
+        for (var trill : line.findSpans(Trill.class)) {
             var anchorIdx = trill.getAnchorElementIndex();
             var endIdx = trill.getEndElementIndex();
 

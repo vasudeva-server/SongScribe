@@ -1019,7 +1019,7 @@ public final class MusicEditOperations {
             // with no element insertion.
             var startElement = line.getElement(start);
             var endElement = line.getElement(end);
-            line.addRangeElement(new Ending(startElement, endElement));
+            line.addSpan(new Ending(startElement, endElement));
         });
     }
 

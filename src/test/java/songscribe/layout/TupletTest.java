@@ -240,10 +240,10 @@ class TupletTest extends UnitTest {
             var note2 = createNote(0, upper);
             line.addElement(note1);
             line.addElement(note2);
-            line.addRangeElement(new Beam(note1, note2));
+            line.addSpan(new Beam(note1, note2));
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, TRIPLET_GRADE);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
             return tuplet;
         }
 
@@ -272,7 +272,7 @@ class TupletTest extends UnitTest {
             line.addElement(note2);
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note2, TRIPLET_GRADE);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             assertThat(tuplet.isNumberOnly(line)).isFalse();
         }
@@ -288,10 +288,10 @@ class TupletTest extends UnitTest {
             line.addElement(note3);
 
             // Beam covers the anchor (index 0) but not the tuplet end (index 2).
-            line.addRangeElement(new Beam(note1, note2));
+            line.addSpan(new Beam(note1, note2));
 
             var tuplet = Tuplet.withUnresolvedRatio(note1, note3, TRIPLET_GRADE);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             assertThat(tuplet.isNumberOnly(line)).isFalse();
         }

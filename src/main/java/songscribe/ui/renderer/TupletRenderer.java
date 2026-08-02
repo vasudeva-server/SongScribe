@@ -75,7 +75,7 @@ public final class TupletRenderer {
     // ==========================================================================
 
     /**
-     * Renders all tuplets for a line by iterating {@link Tuplet} range elements
+     * Renders all tuplets for a line by iterating {@link Tuplet} spans
      * and reading pre-computed positions from {@link LayoutResult.DecorationLayout}.
      */
     public void renderTupletsFromLine(
@@ -86,7 +86,7 @@ public final class TupletRenderer {
     ) {
         var layoutResult = invariants.getLayoutResult();
 
-        for (var tuplet : line.findRangeElements(Tuplet.class)) {
+        for (var tuplet : line.findSpans(Tuplet.class)) {
             var decorLayout = layoutResult.getDecorationLayout(tuplet);
 
             // StructuralStacker.stackSpanElement writes no layout for a tuplet whose

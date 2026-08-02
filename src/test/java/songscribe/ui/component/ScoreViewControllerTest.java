@@ -640,7 +640,7 @@ class ScoreViewControllerTest extends UnitTest {
             });
 
             var ending = new Ending(noteA, noteB);
-            song.withoutMutationTracking(() -> line.addRangeElement(ending));
+            song.withoutMutationTracking(() -> line.addSpan(ending));
 
             var scoreMock = mock(ScoreView.class);
             when(scoreMock.getSong()).thenReturn(song);
@@ -732,7 +732,7 @@ class ScoreViewControllerTest extends UnitTest {
             });
 
             var hairpin = hairpinFactory.apply(noteA, noteB);
-            song.withoutMutationTracking(() -> line.addRangeElement(hairpin));
+            song.withoutMutationTracking(() -> line.addSpan(hairpin));
 
             var scoreMock = mock(ScoreView.class);
             when(scoreMock.getSong()).thenReturn(song);
@@ -742,7 +742,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             controller.handleDelete();
 
-            assertThat(line.getRangeElements())
+            assertThat(line.getSpans())
                 .as("the selected hairpin is gone from the line")
                 .doesNotContain(hairpin);
             // Without a mutation bracket the deletion would be invisible to undo: the
@@ -1168,7 +1168,7 @@ class ScoreViewControllerTest extends UnitTest {
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
                 line.addElement(noteB);
-                line.addRangeElement(new Ending(noteA, noteB));
+                line.addSpan(new Ending(noteA, noteB));
             });
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -1197,7 +1197,7 @@ class ScoreViewControllerTest extends UnitTest {
             // Nothing was deleted — both notes and the Ending remain.
             assertThat(line.getElement(0)).isSameAs(noteA);
             assertThat(line.getElement(1)).isSameAs(noteB);
-            assertThat(line.getRangeElements()).hasSize(1);
+            assertThat(line.getSpans()).hasSize(1);
         }
 
         // #614: a paste-replace deletes before it inserts, so it can discard an ending
@@ -1213,7 +1213,7 @@ class ScoreViewControllerTest extends UnitTest {
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
                 line.addElement(noteB);
-                line.addRangeElement(ending);
+                line.addSpan(ending);
             });
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -1246,7 +1246,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             assertThat(line.getElement(0)).isSameAs(noteA);
             assertThat(line.getElement(1)).isSameAs(noteB);
-            assertThat(line.getRangeElements())
+            assertThat(line.getSpans())
                 .as("the declined confirm leaves the ending in place")
                 .containsExactly(ending);
             assertThat(clipboardManager.getFragment())
@@ -2809,7 +2809,7 @@ class ScoreViewControllerTest extends UnitTest {
             var controller = buildController(song, clipboardManager);
 
             song.withModification(() -> controller.tryInsertFragment(line, 0, null));
-            var firstSpans = List.copyOf(line.getRangeElements());
+            var firstSpans = List.copyOf(line.getSpans());
             var firstAnchor = line.getElement(0);
             var firstEnd = line.getElement(1);
 
@@ -2820,8 +2820,8 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(secondAnchor).isNotSameAs(firstAnchor);
             assertThat(secondEnd).isNotSameAs(firstEnd);
 
-            assertThat(line.getRangeElements()).hasSize(2);
-            var secondSpan = line.getRangeElements().stream()
+            assertThat(line.getSpans()).hasSize(2);
+            var secondSpan = line.getSpans().stream()
                 .filter(span -> !firstSpans.contains(span))
                 .findFirst()
                 .orElseThrow();
@@ -2849,8 +2849,8 @@ class ScoreViewControllerTest extends UnitTest {
 
             song.withModification(() -> controller.tryInsertFragment(line, 1, null));
 
-            assertThat(line.getRangeElements()).hasSize(1);
-            var span = line.getRangeElements().getFirst();
+            assertThat(line.getSpans()).hasSize(1);
+            var span = line.getSpans().getFirst();
             assertThat(span.getAnchorElementIndex()).isEqualTo(1);
             assertThat(span.getEndElementIndex()).isEqualTo(2);
         }
@@ -2933,7 +2933,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = song.getLine(0);
             var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
             var destinationEnding = new Ending(notes.getFirst(), notes.getLast());
-            song.withoutMutationTracking(() -> line.addRangeElement(destinationEnding));
+            song.withoutMutationTracking(() -> line.addSpan(destinationEnding));
 
             // Plain notes, so nothing invalidates the destination ending on content
             // grounds and the straddle rule is the only thing acting on the endings.
@@ -2957,7 +2957,7 @@ class ScoreViewControllerTest extends UnitTest {
                 endingConfirmsMock.verifyNoInteractions();
             }
 
-            assertThat(line.getRangeElements())
+            assertThat(line.getSpans())
                 .as("the destination ending wins; the pasted one is dropped")
                 .containsExactly(destinationEnding);
             assertThat(line.elementCount())
@@ -2998,7 +2998,7 @@ class ScoreViewControllerTest extends UnitTest {
                 endingConfirmsMock.verify(() -> EndingConfirms.confirmInvalidation(any()));
             }
 
-            assertThat(line.getRangeElements())
+            assertThat(line.getSpans())
                 .as("destination invalidated by the pasted barlines, pasted ending dropped by the straddle rule")
                 .isEmpty();
         }
@@ -3011,7 +3011,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = song.getLine(0);
             var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
             var destinationEnding = new Ending(notes.getFirst(), notes.getLast());
-            song.withoutMutationTracking(() -> line.addRangeElement(destinationEnding));
+            song.withoutMutationTracking(() -> line.addSpan(destinationEnding));
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
@@ -3030,7 +3030,7 @@ class ScoreViewControllerTest extends UnitTest {
                 endingConfirmsMock.verifyNoInteractions();
             }
 
-            assertThat(line.getRangeElements()).containsExactly(destinationEnding);
+            assertThat(line.getSpans()).containsExactly(destinationEnding);
             assertThat(destinationEnding.getEndElementIndex())
                 .as("an ending bracket covering a few extra notes is still valid notation")
                 .isEqualTo(DESTINATION_NOTE_COUNT + 1);
@@ -3045,7 +3045,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = song.getLine(0);
             var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
             var destinationEnding = new Ending(notes.getFirst(), notes.getLast());
-            song.withoutMutationTracking(() -> line.addRangeElement(destinationEnding));
+            song.withoutMutationTracking(() -> line.addSpan(destinationEnding));
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
@@ -3063,7 +3063,7 @@ class ScoreViewControllerTest extends UnitTest {
                 endingConfirmsMock.verify(() -> EndingConfirms.confirmInvalidation(any()));
             }
 
-            assertThat(line.getRangeElements())
+            assertThat(line.getSpans())
                 .as("a barline pasted into the ending's interior invalidates it")
                 .isEmpty();
         }
@@ -3094,7 +3094,7 @@ class ScoreViewControllerTest extends UnitTest {
                 endingConfirmsMock.verify(() -> EndingConfirms.confirmInvalidation(any()));
             }
 
-            assertThat(line.getRangeElements())
+            assertThat(line.getSpans())
                 .as("a repeat pasted into the first span invalidates the ending")
                 .isEmpty();
         }
@@ -3125,7 +3125,7 @@ class ScoreViewControllerTest extends UnitTest {
                 endingConfirmsMock.verify(() -> EndingConfirms.confirmInvalidation(any()));
             }
 
-            assertThat(line.getRangeElements())
+            assertThat(line.getSpans())
                 .as("the ending cannot survive a second repeat in its first sub-span")
                 .isEmpty();
         }
@@ -3138,7 +3138,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = song.getLine(0);
             var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
             var destinationEnding = new Ending(notes.getFirst(), notes.getLast());
-            song.withoutMutationTracking(() -> line.addRangeElement(destinationEnding));
+            song.withoutMutationTracking(() -> line.addSpan(destinationEnding));
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
@@ -3158,7 +3158,7 @@ class ScoreViewControllerTest extends UnitTest {
             }
 
             assertThat(outcome[0]).isEqualTo(ScoreViewController.FragmentInsertOutcome.CANCELLED);
-            assertThat(line.getRangeElements())
+            assertThat(line.getSpans())
                 .as("the declined confirm leaves the ending in place")
                 .containsExactly(destinationEnding);
             assertThat(line.elementCount())
@@ -3177,7 +3177,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = song.getLine(0);
             var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
             song.withoutMutationTracking(() ->
-                line.addRangeElement(new Ending(notes.getFirst(), notes.getLast())));
+                line.addSpan(new Ending(notes.getFirst(), notes.getLast())));
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
@@ -3203,7 +3203,7 @@ class ScoreViewControllerTest extends UnitTest {
             var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
             var endingAnchor = notes.getFirst();
             song.withoutMutationTracking(() ->
-                line.addRangeElement(new Ending(endingAnchor, notes.getLast())));
+                line.addSpan(new Ending(endingAnchor, notes.getLast())));
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
@@ -3238,7 +3238,7 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(line.getElement(0).getType())
                 .as("the pasted barline landed at the replaced index")
                 .isEqualTo(ElementType.SINGLE_BARLINE);
-            assertThat(line.getRangeElements())
+            assertThat(line.getSpans())
                 .as("the ending was removed as a consequence of its anchor's deletion")
                 .isEmpty();
             assertThat(line.elementCount())
@@ -3255,7 +3255,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = song.getLine(0);
             var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
             var destinationBeam = new Beam(notes.get(1), notes.get(4));
-            song.withoutMutationTracking(() -> line.addRangeElement(destinationBeam));
+            song.withoutMutationTracking(() -> line.addSpan(destinationBeam));
 
             var pastedFirst = ElementType.QUAVER.newInstance();
             var pastedSecond = ElementType.QUAVER.newInstance();
@@ -3275,7 +3275,7 @@ class ScoreViewControllerTest extends UnitTest {
             song.withModification(
                 () -> controller.tryInsertFragment(line, INTERIOR_INSERT_INDEX, deleteRange));
 
-            assertThat(line.getRangeElements())
+            assertThat(line.getSpans())
                 .as("a partially replaced beam group loses its beam, and the pasted beam with it")
                 .isEmpty();
             assertThat(line.getElement(1))
@@ -3299,7 +3299,7 @@ class ScoreViewControllerTest extends UnitTest {
             var song = wideSong();
             var line = song.getLine(0);
             var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
-            song.withoutMutationTracking(() -> line.addRangeElement(new Beam(notes.get(1), notes.get(4))));
+            song.withoutMutationTracking(() -> line.addSpan(new Beam(notes.get(1), notes.get(4))));
 
             var pastedFirst = ElementType.QUAVER.newInstance();
             var pastedSecond = ElementType.QUAVER.newInstance();
@@ -3313,8 +3313,8 @@ class ScoreViewControllerTest extends UnitTest {
 
             song.withModification(() -> controller.tryInsertFragment(line, 1, deleteRange));
 
-            assertThat(line.getRangeElements()).hasSize(1);
-            var survivingBeam = line.getRangeElements().getFirst();
+            assertThat(line.getSpans()).hasSize(1);
+            var survivingBeam = line.getSpans().getFirst();
             assertThat(survivingBeam.getAnchorElement())
                 .as("the surviving beam is the pasted one, anchored to its own clones")
                 .isSameAs(line.getElement(1));
@@ -3336,7 +3336,7 @@ class ScoreViewControllerTest extends UnitTest {
                 line.addElement(beamStart);
                 line.addElement(beamMiddle);
                 line.addElement(beamEnd);
-                line.addRangeElement(destinationBeam);
+                line.addSpan(destinationBeam);
             });
 
             var pastedFirst = ElementType.QUAVER.newInstance();
@@ -3351,7 +3351,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             song.withModification(() -> controller.tryInsertFragment(line, 1, null));
 
-            assertThat(line.getRangeElements())
+            assertThat(line.getSpans())
                 .as("both the straddled destination beam and the pasted beam are gone")
                 .isEmpty();
         }
@@ -3369,7 +3369,7 @@ class ScoreViewControllerTest extends UnitTest {
                 line.addElement(hairpinStart);
                 line.addElement(hairpinMiddle);
                 line.addElement(hairpinEnd);
-                line.addRangeElement(destinationHairpin);
+                line.addSpan(destinationHairpin);
             });
 
             var pastedFirst = ElementType.CROTCHET.newInstance();
@@ -3384,7 +3384,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             song.withModification(() -> controller.tryInsertFragment(line, 1, null));
 
-            assertThat(line.getRangeElements()).containsExactly(destinationHairpin);
+            assertThat(line.getSpans()).containsExactly(destinationHairpin);
             assertThat(destinationHairpin.getEndElementIndex())
                 .as("the surviving hairpin now covers the pasted notes too")
                 .isEqualTo(4);
@@ -3409,7 +3409,7 @@ class ScoreViewControllerTest extends UnitTest {
                 line.addElement(noteB);
                 line.addElement(noteC);
                 line.addElement(noteD);
-                line.addRangeElement(new Tie(noteA, noteB));
+                line.addSpan(new Tie(noteA, noteB));
             });
 
             var elementCountBeforeCut = line.effectiveElementCount();
@@ -3469,8 +3469,8 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(restoredLyric.text()).as("the lyric text survived the round trip").isEqualTo("la");
             assertThat(restoredLyric.syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
 
-            assertThat(line.getRangeElements()).hasSize(1);
-            var restoredSpan = line.getRangeElements().getFirst();
+            assertThat(line.getSpans()).hasSize(1);
+            var restoredSpan = line.getSpans().getFirst();
             assertThat(restoredSpan.getAnchorElement())
                 .as("the tie survived the round trip, re-anchored to the fresh clones")
                 .isSameAs(restoredAnchor);
@@ -3529,8 +3529,8 @@ class ScoreViewControllerTest extends UnitTest {
                 .as("no successor to sever against either")
                 .isEqualTo(Lyric.Syllabic.END);
 
-            assertThat(line.getRangeElements()).hasSize(1);
-            var pastedSpan = line.getRangeElements().getFirst();
+            assertThat(line.getSpans()).hasSize(1);
+            var pastedSpan = line.getSpans().getFirst();
             assertThat(pastedSpan.getAnchorElement())
                 .as("the pasted tie survives reconciliation with no destination span to compete with")
                 .isSameAs(line.getElement(0));

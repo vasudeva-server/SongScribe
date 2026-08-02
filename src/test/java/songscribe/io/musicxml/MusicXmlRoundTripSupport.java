@@ -35,7 +35,7 @@ import org.xml.sax.InputSource;
 import songscribe.Constants;
 import songscribe.UnitTest;
 import songscribe.dom.Line;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.Trill;
@@ -182,7 +182,7 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // Range-Spans: assertRangeElementEquals helpers
+    // Range-Spans: assertSpanEquals helpers
     //
     // These helpers compare a reloaded span to expected values field-by-field
     // without adding equals()/hashCode() to span classes or StaffElement, which
@@ -193,8 +193,8 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
     // Trill.yPositionSs).  The context string names the case in failure output.
     // -------------------------------------------------------------------------
 
-    protected static void assertRangeElementEquals(
-            RangeElement actual, int expectedAnchor, int expectedEnd, String context) {
+    protected static void assertSpanEquals(
+            Span actual, int expectedAnchor, int expectedEnd, String context) {
         assertThat(actual.getAnchorElementIndex())
             .as("%s: anchor index", context)
             .isEqualTo(expectedAnchor);
@@ -203,19 +203,19 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
             .isEqualTo(expectedEnd);
     }
 
-    protected static void assertRangeElementEquals(
-            RangeElement actual, int expectedAnchor, int expectedEnd) {
-        assertRangeElementEquals(actual, expectedAnchor, expectedEnd, "span");
+    protected static void assertSpanEquals(
+            Span actual, int expectedAnchor, int expectedEnd) {
+        assertSpanEquals(actual, expectedAnchor, expectedEnd, "span");
     }
 
     /**
      * Asserts anchor/end indices plus the {@link Tuplet}-specific fields
      * {@code grade} and {@code verticalPositionSs}. Used by Range-Spans 6b.
      */
-    protected static void assertRangeElementEquals(
+    protected static void assertSpanEquals(
             Tuplet actual, int expectedAnchor, int expectedEnd,
             int expectedGrade, int expectedVerticalPositionSs) {
-        assertRangeElementEquals(actual, expectedAnchor, expectedEnd, "tuplet");
+        assertSpanEquals(actual, expectedAnchor, expectedEnd, "tuplet");
         assertThat(actual.getGrade())
             .as("tuplet: grade")
             .isEqualTo(expectedGrade);
@@ -228,9 +228,9 @@ abstract class MusicXmlRoundTripSupport extends UnitTest {
      * Asserts anchor/end indices plus the {@link Trill}-specific field
      * {@code yPositionSs}. Used by Range-Spans 6b.
      */
-    protected static void assertRangeElementEquals(
+    protected static void assertSpanEquals(
             Trill actual, int expectedAnchor, int expectedEnd, int expectedYPositionSs) {
-        assertRangeElementEquals(actual, expectedAnchor, expectedEnd, "trill");
+        assertSpanEquals(actual, expectedAnchor, expectedEnd, "trill");
         assertThat(actual.getYPositionSs())
             .as("trill: yPositionSs")
             .isEqualTo(expectedYPositionSs);

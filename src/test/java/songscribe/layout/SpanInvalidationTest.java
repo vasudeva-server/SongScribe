@@ -31,7 +31,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 import songscribe.dom.*;
 
-class RangeElementInvalidationTest extends UnitTest {
+class SpanInvalidationTest extends UnitTest {
 
     // -----------------------------------------------------------------------
     // Factory
@@ -39,19 +39,19 @@ class RangeElementInvalidationTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @FunctionalInterface
-    interface RangeElementFactory {
+    interface SpanFactory {
 
-        RangeElement create(StaffElement anchor, StaffElement end);
+        Span create(StaffElement anchor, StaffElement end);
     }
 
-    static Stream<Arguments> rangeElementFactories() {
+    static Stream<Arguments> spanFactories() {
         return Stream.of(
-            Arguments.of("Tie",        (RangeElementFactory) Tie::new),
-            Arguments.of("Trill",      (RangeElementFactory) Trill::new),
-            Arguments.of("Tuplet",     (RangeElementFactory) (a, e) -> Tuplet.withUnresolvedRatio(a, e, 3)),
-            Arguments.of("Crescendo",  (RangeElementFactory) Crescendo::new),
-            Arguments.of("Diminuendo", (RangeElementFactory) Diminuendo::new),
-            Arguments.of("Ending",     (RangeElementFactory) Ending::new)
+            Arguments.of("Tie",        (SpanFactory) Tie::new),
+            Arguments.of("Trill",      (SpanFactory) Trill::new),
+            Arguments.of("Tuplet",     (SpanFactory) (a, e) -> Tuplet.withUnresolvedRatio(a, e, 3)),
+            Arguments.of("Crescendo",  (SpanFactory) Crescendo::new),
+            Arguments.of("Diminuendo", (SpanFactory) Diminuendo::new),
+            Arguments.of("Ending",     (SpanFactory) Ending::new)
         );
     }
 
@@ -60,8 +60,8 @@ class RangeElementInvalidationTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @ParameterizedTest(name = "{0}: anchor deleted → invalidated")
-    @MethodSource("rangeElementFactories")
-    void testAnchorDeletedInvalidates(String name, RangeElementFactory factory) {
+    @MethodSource("spanFactories")
+    void testAnchorDeletedInvalidates(String name, SpanFactory factory) {
         var anchor = new StaffElement(ElementType.QUAVER);
         var end = new StaffElement(ElementType.QUAVER);
         var element = factory.create(anchor, end);
@@ -70,8 +70,8 @@ class RangeElementInvalidationTest extends UnitTest {
     }
 
     @ParameterizedTest(name = "{0}: end deleted → invalidated")
-    @MethodSource("rangeElementFactories")
-    void testEndDeletedInvalidates(String name, RangeElementFactory factory) {
+    @MethodSource("spanFactories")
+    void testEndDeletedInvalidates(String name, SpanFactory factory) {
         var anchor = new StaffElement(ElementType.QUAVER);
         var end = new StaffElement(ElementType.QUAVER);
         var element = factory.create(anchor, end);
@@ -80,8 +80,8 @@ class RangeElementInvalidationTest extends UnitTest {
     }
 
     @ParameterizedTest(name = "{0}: both endpoints deleted → invalidated")
-    @MethodSource("rangeElementFactories")
-    void testBothDeletedInvalidates(String name, RangeElementFactory factory) {
+    @MethodSource("spanFactories")
+    void testBothDeletedInvalidates(String name, SpanFactory factory) {
         var anchor = new StaffElement(ElementType.QUAVER);
         var end = new StaffElement(ElementType.QUAVER);
         var element = factory.create(anchor, end);
@@ -90,8 +90,8 @@ class RangeElementInvalidationTest extends UnitTest {
     }
 
     @ParameterizedTest(name = "{0}: only middle elements deleted → not invalidated")
-    @MethodSource("rangeElementFactories")
-    void testMiddleDeletedNotInvalidates(String name, RangeElementFactory factory) {
+    @MethodSource("spanFactories")
+    void testMiddleDeletedNotInvalidates(String name, SpanFactory factory) {
         var anchor = new StaffElement(ElementType.QUAVER);
         var middle1 = new StaffElement(ElementType.QUAVER);
         var middle2 = new StaffElement(ElementType.QUAVER);
@@ -102,8 +102,8 @@ class RangeElementInvalidationTest extends UnitTest {
     }
 
     @ParameterizedTest(name = "{0}: unrelated element deleted → not invalidated")
-    @MethodSource("rangeElementFactories")
-    void testExternalDeletedNotInvalidates(String name, RangeElementFactory factory) {
+    @MethodSource("spanFactories")
+    void testExternalDeletedNotInvalidates(String name, SpanFactory factory) {
         var anchor = new StaffElement(ElementType.QUAVER);
         var end = new StaffElement(ElementType.QUAVER);
         var external = new StaffElement(ElementType.QUAVER);

@@ -24,15 +24,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
-import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
-import songscribe.dom.Tie;
+import songscribe.dom.*;
 
 /**
- * Tests for {@link songscribe.dom.RangeElement#getElementCount()}.
+ * Tests for {@link Span#getElementCount()}.
  */
-class RangeElementTest extends UnitTest {
+class SpanTest extends UnitTest {
 
     // Number of notes placed between anchor and end (inclusive) in the normal case
     private static final int ELEMENT_COUNT_THREE = 3;

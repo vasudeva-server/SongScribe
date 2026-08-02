@@ -813,7 +813,7 @@ class StackingUtilsTest extends UnitTest {
 
     @Test
     void testIsRangeCoveredReturnsTrueWhenExactMatchExists() {
-        // An existing RangeElement with the same anchor and end identity → covered.
+        // An existing Span with the same anchor and end identity → covered.
         var startNote = mock(StaffElement.class);
         var endNote = mock(StaffElement.class);
         var trill = new Trill(startNote, endNote);

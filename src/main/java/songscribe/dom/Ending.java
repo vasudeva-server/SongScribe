@@ -33,7 +33,7 @@ import songscribe.engraving.SMuFLConstants;
  * Endings are the "1." and "2." brackets drawn above the staff to indicate
  * which measures to play on each repetition. They can span multiple measures.
  */
-public class Ending extends RangeElement {
+public class Ending extends Span {
 
     /**
      * Height of volta bracket tick marks in staff-space units.
@@ -112,7 +112,7 @@ public class Ending extends RangeElement {
     }
 
     @Override
-    protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
         var copy = new Ending(newAnchor, newEnd);
         copy.yPositionSs = yPositionSs;
         return copy;
@@ -219,7 +219,7 @@ public class Ending extends RangeElement {
 
     /**
      * Returns true if deleting the given elements invalidates this ending beyond what
-     * {@link RangeElement#isInvalidatedBy} already detects.
+     * {@link Span#isInvalidatedBy} already detects.
      * <p>
      * Must be called on the <em>pre-deletion</em> line state so indices are stable.
      * Checks:

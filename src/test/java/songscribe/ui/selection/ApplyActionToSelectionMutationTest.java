@@ -373,7 +373,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
         line.getSong().withoutMutationTracking(
-            () -> line.addRangeElement(new Tie(line.getElement(0), line.getElement(1))));
+            () -> line.addSpan(new Tie(line.getElement(0), line.getElement(1))));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
         coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
@@ -492,7 +492,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3));
         capturedMutations.clear();
         line.getSong().withoutMutationTracking(
-            () -> line.addRangeElement(new Tie(line.getElement(0), line.getElement(1))));
+            () -> line.addSpan(new Tie(line.getElement(0), line.getElement(1))));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
         coordinator.applyActionToSelection(SHARP_ACTION, true, null);

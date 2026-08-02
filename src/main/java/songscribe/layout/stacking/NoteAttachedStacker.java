@@ -751,13 +751,13 @@ public class NoteAttachedStacker {
     /**
      * Stacks all trills for the line.
      * <p>
-     * Processes {@link Trill} range elements from {@code line.findRangeElements(Trill.class)}.
+     * Processes {@link Trill} spans from {@code line.findSpans(Trill.class)}.
      * Multi-note trills reserve the full horizontal span so subsequent layers clear them.
      */
     private void stackTrills(StaffExtents outerExtents, LayoutResult.Builder builder) {
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
-        var trills = line.findRangeElements(Trill.class);
+        var trills = line.findSpans(Trill.class);
 
         for (var trill : trills) {
             stackSingleTrill(trill, outerExtents, columnsByElement, builder);
@@ -765,7 +765,7 @@ public class NoteAttachedStacker {
     }
 
     /**
-     * Stacks a single trill range element.
+     * Stacks a single trill span.
      * <p>
      * Unlike hairpins and endings, trills allow a missing or same-as-anchor end note
      * (single-note trill), defaulting endX to the anchor X.

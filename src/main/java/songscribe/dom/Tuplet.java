@@ -37,7 +37,7 @@ import songscribe.util.MyFontUtils;
  * The tuplet bracket is typically placed above if stems point down,
  * below if stems point up.
  */
-public class Tuplet extends RangeElement {
+public class Tuplet extends Span {
 
     /** Inward shortening at each bracket endpoint (LilyPond: -0.2ss). */
     public static final double ARM_EXTENSION_SS = 0.2;  // 1.6px
@@ -147,7 +147,7 @@ public class Tuplet extends RangeElement {
     }
 
     @Override
-    protected RangeElement createCopy(StaffElement newAnchor, StaffElement newEnd) {
+    protected Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
         // Undo/redo round-trips through here, so every field must be carried over —
         // including the unresolved state, which must copy as unresolved.
         Tuplet copy;

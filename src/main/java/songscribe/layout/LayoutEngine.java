@@ -476,7 +476,7 @@ public class LayoutEngine {
 
         var debugBeams = LogUtils.isTracingBeams(LOG);
 
-        for (var beam : line.findRangeElements(Beam.class)) {
+        for (var beam : line.findSpans(Beam.class)) {
             var beamStart = beam.getAnchorElementIndex();
             var beamEnd = beam.getEndElementIndex();
             var direction = groupStemDirection(line, beamStart, beamEnd);
@@ -569,7 +569,7 @@ public class LayoutEngine {
         Line line,
         List<ElementColumn> columns,
         LayoutResult.Builder builder) {
-        var beams = line.findRangeElements(Beam.class);
+        var beams = line.findSpans(Beam.class);
         var elementToColumn = elementToColumnMap(columns);
 
         for (var beam : beams) {

@@ -39,7 +39,7 @@ import songscribe.layout.ElementColumn;
 import songscribe.dom.Ending;
 import songscribe.layout.EndingBracketGeometry;
 import songscribe.layout.LayoutResult;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.layout.StaffExtents;
 import songscribe.dom.Tuplet;
 import songscribe.layout.NoteGeometry;
@@ -145,7 +145,7 @@ public class StructuralStacker {
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 
-        for (var tuplet : line.findRangeElements(Tuplet.class)) {
+        for (var tuplet : line.findSpans(Tuplet.class)) {
             var spanColumns = ElementColumn.resolveSpan(tuplet, columnsByElement);
 
             if (spanColumns == null) {
@@ -384,14 +384,14 @@ public class StructuralStacker {
     record ScriptObstacle(double topYSs, double centerXSs) {}
 
     /**
-     * Collects the spanned {@link ElementColumn}s of a range element in reading order, skipping
+     * Collects the spanned {@link ElementColumn}s of a span in reading order, skipping
      * rest columns. Leading, trailing, and interior rests are all excluded so the resulting list
      * holds only pitched tips — the outer entries are the non-rest end columns (mirroring
      * LilyPond's {@code get_bounds}).
      */
     static List<ElementColumn> collectNonRestSpannedColumns(
         Line line,
-        RangeElement element,
+        Span element,
         Map<StaffElement, ElementColumn> columnsByElement) {
 
         var columns = new ArrayList<ElementColumn>();
@@ -520,11 +520,11 @@ public class StructuralStacker {
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 
-        for (var crescendo : line.findRangeElements(Crescendo.class)) {
+        for (var crescendo : line.findSpans(Crescendo.class)) {
             stackSpanElement(crescendo, crescendo.getContentHeightSs(), HAIRPIN_MARGIN_SS, columnsByElement, builder);
         }
 
-        for (var diminuendo : line.findRangeElements(Diminuendo.class)) {
+        for (var diminuendo : line.findSpans(Diminuendo.class)) {
             stackSpanElement(diminuendo, diminuendo.getContentHeightSs(), HAIRPIN_MARGIN_SS, columnsByElement, builder);
         }
     }
@@ -569,7 +569,7 @@ public class StructuralStacker {
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResult.Builder builder) {
 
-        for (var ending : line.findRangeElements(Ending.class)) {
+        for (var ending : line.findSpans(Ending.class)) {
             var anchor = ending.getAnchorElement();
 
             if (anchor == null || ending.getEndElement() == null) {
@@ -622,11 +622,11 @@ public class StructuralStacker {
     /**
      * Stacks a span element (hairpin, tuplet) that requires both anchor and end notes.
      * <p>
-     * Resolves anchor/end columns, computes span width via the range element,
+     * Resolves anchor/end columns, computes span width via the span,
      * and delegates to {@link StackingUtils#stackAbove}.
      */
     private void stackSpanElement(
-        RangeElement element,
+        Span element,
         double heightSs,
         double marginSs,
         Map<StaffElement, ElementColumn> columnsByElement,

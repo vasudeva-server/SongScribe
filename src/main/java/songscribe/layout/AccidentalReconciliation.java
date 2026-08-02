@@ -30,7 +30,7 @@ import java.util.Set;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
@@ -199,7 +199,7 @@ public final class AccidentalReconciliation {
      *                                 context" is deliberately <em>not</em> encoded as a list of
      *                                 nulls — null already means "sounded unaltered there", which
      *                                 is a different claim.
-     * @param insertedSpans            The fragment's own range elements (its ties), which are not
+     * @param insertedSpans            The fragment's own spans (its ties), which are not
      *                                 yet on the destination line; the tie exclusion needs them,
      *                                 so that a note arriving already tied is left alone
      */
@@ -209,7 +209,7 @@ public final class AccidentalReconciliation {
         InsertionSpacingCalculator.@Nullable DeletedRange deleteRange,
         List<StaffElement> inserted,
         List<StaffElement.@Nullable Accidental> insertedPriorAccidentals,
-        List<RangeElement> insertedSpans
+        List<Span> insertedSpans
     ) {
         // Written out rather than compact: NullAway does not carry the type-use @Nullable
         // annotations from the record header onto the synthesized canonical constructor, so
@@ -220,7 +220,7 @@ public final class AccidentalReconciliation {
             InsertionSpacingCalculator.@Nullable DeletedRange deleteRange,
             List<StaffElement> inserted,
             List<StaffElement.@Nullable Accidental> insertedPriorAccidentals,
-            List<RangeElement> insertedSpans) {
+            List<Span> insertedSpans) {
 
             if (!insertedPriorAccidentals.isEmpty() && (insertedPriorAccidentals.size() != inserted.size())) {
                 throw new IllegalArgumentException(
@@ -519,7 +519,7 @@ public final class AccidentalReconciliation {
     private static List<AccidentalChange> reconcileSequence(
         Line line,
         List<ProjectedElement> sequence,
-        List<RangeElement> insertedSpans,
+        List<Span> insertedSpans,
         int startPosition,
         RestatementRemoval removal) {
 
@@ -707,7 +707,7 @@ public final class AccidentalReconciliation {
      * the inserted fragment's, which are not on the line yet. Non-tie spans (slurs and the like)
      * carry no accidental and are ignored.
      */
-    private static List<Tie> collectTies(Line line, List<RangeElement> insertedSpans) {
+    private static List<Tie> collectTies(Line line, List<Span> insertedSpans) {
         var ties = new ArrayList<>(line.findTies());
 
         for (var span : insertedSpans) {

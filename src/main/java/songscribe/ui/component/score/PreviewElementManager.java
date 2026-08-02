@@ -1986,7 +1986,7 @@ public final class PreviewElementManager {
             beam = line.findBeamAt(elementIndex);
         }
 
-        // Remove all tie range elements touching this element
+        // Remove all tie spans touching this element
         var tie = line.findTieAt(elementIndex);
 
         while (tie != null) {

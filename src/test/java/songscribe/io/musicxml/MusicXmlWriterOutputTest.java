@@ -757,11 +757,11 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
             line.addBeaming(new Beam(quaver0, quaver1));
             line.addCrescendo(new Crescendo(quaver0, quaver1));
             line.addTie(new Tie(crotchet0, crotchet1));
-            line.addRangeElement(new Trill(crotchet0, crotchet1));
+            line.addSpan(new Trill(crotchet0, crotchet1));
             line.addTuplet(new Tuplet(triplet0, triplet2, ALL_SPAN_TUPLET_GRADE, ALL_SPAN_TUPLET_NORMAL_NOTES,
                 ElementType.CROTCHET, NO_DOTS));
             line.addDiminuendo(new Diminuendo(triplet0, triplet2));
-            line.addRangeElement(new Ending(endingAnchor, endingEnd));
+            line.addSpan(new Ending(endingAnchor, endingEnd));
         });
 
         var xml = writeToString(song);

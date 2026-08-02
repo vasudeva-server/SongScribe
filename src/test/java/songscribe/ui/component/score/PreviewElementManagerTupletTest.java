@@ -57,7 +57,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
     }
 
     private void addTriplet(int start, int end) {
-        // Add directly to rangeElements via song.withoutMutationTracking to bypass
+        // Add directly to spans via song.withoutMutationTracking to bypass
         // the modification bracket requirement.
         song.withoutMutationTracking(() -> line.addTuplet(
             Tuplet.withUnresolvedRatio(line.getElement(start), line.getElement(end), TRIPLET_SIZE)));
@@ -87,7 +87,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(line.findRangeElements(Tuplet.class)).isEmpty();
+            assertThat(line.findSpans(Tuplet.class)).isEmpty();
         }
 
         /**
@@ -108,7 +108,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(line.findRangeElements(Tuplet.class)).isEmpty();
+            assertThat(line.findSpans(Tuplet.class)).isEmpty();
         }
 
         /**
@@ -125,7 +125,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(line.findRangeElements(Tuplet.class)).isNotEmpty();
+            assertThat(line.findSpans(Tuplet.class)).isNotEmpty();
             assertThat(line.findTupletAt(0)).isNotNull();
         }
     }
@@ -154,7 +154,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(line.findRangeElements(Tuplet.class)).isEmpty();
+            assertThat(line.findSpans(Tuplet.class)).isEmpty();
         }
 
         /**
@@ -173,7 +173,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.handleClick(lc);
 
-            assertThat(line.findRangeElements(Tuplet.class)).isNotEmpty();
+            assertThat(line.findSpans(Tuplet.class)).isNotEmpty();
             assertThat(line.findTupletAt(0)).isNotNull();
         }
     }

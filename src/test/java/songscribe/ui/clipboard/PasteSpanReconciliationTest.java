@@ -45,7 +45,7 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
@@ -119,7 +119,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testTupletStraddledByInsertionIsRemovedAndDropsFragmentTuplets() {
             var line = sixNoteLine();
             var tuplet = tupletOver(line);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var notes = fragmentNotes();
             var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
@@ -138,7 +138,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testBeamStraddledByInsertionIsRemovedAndDropsFragmentBeams() {
             var line = sixNoteLine();
             var beam = new Beam(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(beam);
+            line.addSpan(beam);
 
             var notes = fragmentNotes();
             var fragmentBeam = new Beam(notes.get(0), notes.get(1));
@@ -154,7 +154,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testTieStraddledByInsertionIsRemovedButFragmentTieSurvives() {
             var line = sixNoteLine();
             var tie = new Tie(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(tie);
+            line.addSpan(tie);
 
             var notes = fragmentNotes();
             var fragmentTie = new Tie(notes.get(0), notes.get(1));
@@ -172,7 +172,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testTrillStraddledByInsertionIsRemovedButFragmentTrillSurvives() {
             var line = sixNoteLine();
             var trill = new Trill(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(trill);
+            line.addSpan(trill);
 
             var notes = fragmentNotes();
             var fragmentTrill = new Trill(notes.get(0), notes.get(1));
@@ -188,7 +188,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testHairpinStraddledByInsertionIsKeptAndDropsFragmentHairpin() {
             var line = sixNoteLine();
             var hairpin = new Crescendo(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(hairpin);
+            line.addSpan(hairpin);
 
             var notes = fragmentNotes();
             var fragmentHairpin = new Crescendo(notes.get(0), notes.get(1));
@@ -206,7 +206,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testStraddledBeamDoesNotDropAnUnrelatedFragmentTuplet() {
             var line = sixNoteLine();
             var beam = new Beam(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(beam);
+            line.addSpan(beam);
 
             var notes = fragmentNotes();
             var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
@@ -234,7 +234,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testInsertionAtSpanAnchorLeavesSpanAlone() {
             var line = sixNoteLine();
             var beam = new Beam(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(beam);
+            line.addSpan(beam);
 
             var notes = fragmentNotes();
             var fragmentBeam = new Beam(notes.get(0), notes.get(1));
@@ -252,7 +252,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testInsertionPastSpanEndLeavesSpanAlone() {
             var line = sixNoteLine();
             var beam = new Beam(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(beam);
+            line.addSpan(beam);
 
             var notes = fragmentNotes();
             var fragmentBeam = new Beam(notes.get(0), notes.get(1));
@@ -268,7 +268,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testFullyReplacedSpanIsLeftToTheDeletionSweepAndFragmentSpanSurvives() {
             var line = sixNoteLine();
             var tuplet = tupletOver(line);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var notes = fragmentNotes();
             var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
@@ -290,7 +290,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testPartialReplacementLeavingBothEndpointsStraddlesAndRemovesTheSpan() {
             var line = sixNoteLine();
             var tuplet = tupletOver(line);
-            line.addRangeElement(tuplet);
+            line.addSpan(tuplet);
 
             var notes = fragmentNotes();
             var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
@@ -312,7 +312,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         void testHairpinFullyReplacedKeepsTheFragmentHairpin() {
             var line = sixNoteLine();
             var hairpin = new Crescendo(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(hairpin);
+            line.addSpan(hairpin);
 
             var notes = fragmentNotes();
             var fragmentHairpin = new Crescendo(notes.get(0), notes.get(1));
@@ -348,12 +348,12 @@ class PasteSpanReconciliationTest extends UnitTest {
          * <em>which</em> one survives, this one pins down that not both do.
          */
         private void assertAtMostOneSurvives(
-            BiFunction<? super StaffElement, ? super StaffElement, ? extends RangeElement> spanFactory
+            BiFunction<? super StaffElement, ? super StaffElement, ? extends Span> spanFactory
         ) {
             var line = sixNoteLine();
             var destinationSpan =
                 spanFactory.apply(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(destinationSpan);
+            line.addSpan(destinationSpan);
 
             var notes = fragmentNotes();
             var fragmentSpan = spanFactory.apply(notes.get(0), notes.get(1));
@@ -414,12 +414,12 @@ class PasteSpanReconciliationTest extends UnitTest {
         DIMINUENDO(Diminuendo::new, false, false),
         ENDING(Ending::new, false, false);
 
-        private final BiFunction<? super StaffElement, ? super StaffElement, ? extends RangeElement> factory;
+        private final BiFunction<? super StaffElement, ? super StaffElement, ? extends Span> factory;
         private final boolean destinationRemovedOnStraddle;
         private final boolean fragmentKeptOnStraddle;
 
         SpanKind(
-            BiFunction<? super StaffElement, ? super StaffElement, ? extends RangeElement> factory,
+            BiFunction<? super StaffElement, ? super StaffElement, ? extends Span> factory,
             boolean destinationRemovedOnStraddle,
             boolean fragmentKeptOnStraddle
         ) {
@@ -428,7 +428,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             this.fragmentKeptOnStraddle = fragmentKeptOnStraddle;
         }
 
-        RangeElement create(StaffElement anchor, StaffElement end) {
+        Span create(StaffElement anchor, StaffElement end) {
             return factory.apply(anchor, end);
         }
     }
@@ -509,7 +509,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         var line = sixNoteLine();
         var destinationSpan =
             kind.create(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-        line.addRangeElement(destinationSpan);
+        line.addSpan(destinationSpan);
 
         var notes = fragmentNotes();
         var fragmentSpan = kind.create(notes.get(0), notes.get(1));
@@ -543,8 +543,8 @@ class PasteSpanReconciliationTest extends UnitTest {
             var destinationTuplet = tupletOver(line);
             var destinationBeam =
                 new Beam(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(destinationTuplet);
-            line.addRangeElement(destinationBeam);
+            line.addSpan(destinationTuplet);
+            line.addSpan(destinationBeam);
 
             var notes = fragmentNotes();
             var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
@@ -569,7 +569,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var line = sixNoteLine();
             var destinationHairpin =
                 new Crescendo(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(destinationHairpin);
+            line.addSpan(destinationHairpin);
 
             var notes = fragmentNotes();
             var fragmentHairpin = new Diminuendo(notes.get(0), notes.get(1));
@@ -589,7 +589,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var line = sixNoteLine();
             var destinationHairpin =
                 new Crescendo(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(destinationHairpin);
+            line.addSpan(destinationHairpin);
 
             var notes = fragmentNotes();
             var fragmentCrescendo = new Crescendo(notes.get(0), notes.get(0));
@@ -608,7 +608,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var line = sixNoteLine();
             var destinationHairpin =
                 new Diminuendo(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(destinationHairpin);
+            line.addSpan(destinationHairpin);
 
             var notes = fragmentNotes();
             var fragmentHairpin = new Diminuendo(notes.get(0), notes.get(1));
@@ -627,7 +627,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var line = sixNoteLine();
             var destinationBeam =
                 new Beam(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(destinationBeam);
+            line.addSpan(destinationBeam);
 
             var notes = fragmentNotes();
             var fragmentBeam = new Beam(notes.get(0), notes.get(1));
@@ -647,8 +647,8 @@ class PasteSpanReconciliationTest extends UnitTest {
             var line = sixNoteLine();
             var before = new Beam(line.getElement(0), line.getElement(1));
             var after = new Beam(line.getElement(3), line.getElement(4));
-            line.addRangeElement(before);
-            line.addRangeElement(after);
+            line.addSpan(before);
+            line.addSpan(after);
 
             var notes = fragmentNotes();
             var fragmentBeam = new Beam(notes.get(0), notes.get(1));
@@ -664,7 +664,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var line = sixNoteLine();
             var destinationBeam =
                 new Beam(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
-            line.addRangeElement(destinationBeam);
+            line.addSpan(destinationBeam);
 
             var result = PasteSpanReconciliation.reconcile(
                 line, INTERIOR_INDEX, null, List.of());
@@ -729,7 +729,7 @@ class PasteSpanReconciliationTest extends UnitTest {
          * straddle rule left.
          */
         private PasteSpanReconciliation paste(
-            Line line, int insertIndex, List<? extends StaffElement> notes, List<RangeElement> spans
+            Line line, int insertIndex, List<? extends StaffElement> notes, List<Span> spans
         ) {
             var reconciliation = PasteSpanReconciliation.reconcile(line, insertIndex, null, spans);
 
@@ -854,7 +854,7 @@ class PasteSpanReconciliationTest extends UnitTest {
                     line.addElement(crotchet());
                 }
 
-                line.addRangeElement(tupletOver(line));
+                line.addSpan(tupletOver(line));
             });
 
             var notes = List.of(crotchet(), crotchet(), crotchet());

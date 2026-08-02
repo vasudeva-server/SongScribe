@@ -38,7 +38,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
-import songscribe.dom.RangeElement;
+import songscribe.dom.Span;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
@@ -135,7 +135,7 @@ class AccidentalReconciliationTest extends UnitTest {
     }
 
     /**
-     * A paste with no deletion, carrying the fragment's own range elements — the ties that came
+     * A paste with no deletion, carrying the fragment's own spans — the ties that came
      * with it and are not on the destination line yet.
      */
     private static AccidentalReconciliation.InsertionRegion pasteWithSpans(
@@ -143,7 +143,7 @@ class AccidentalReconciliationTest extends UnitTest {
         int insertIndex,
         List<StaffElement> inserted,
         List<StaffElement.@Nullable Accidental> priorAccidentals,
-        List<RangeElement> insertedSpans) {
+        List<Span> insertedSpans) {
 
         return new AccidentalReconciliation.InsertionRegion(
             line, insertIndex, null, inserted, priorAccidentals, insertedSpans);
@@ -591,7 +591,7 @@ class AccidentalReconciliationTest extends UnitTest {
             var line = lineOf(first, second);
 
             if (tied) {
-                line.addRangeElement(new Tie(first, second));
+                line.addSpan(new Tie(first, second));
             }
 
             return line;
@@ -641,7 +641,7 @@ class AccidentalReconciliationTest extends UnitTest {
             var first = note(A_STAFF_POSITION, StaffElement.Accidental.FLAT);
             var second = note(A_STAFF_POSITION, StaffElement.Accidental.NATURAL);
             var line = lineOf(first, second);
-            line.addRangeElement(new Tie(first, second));
+            line.addSpan(new Tie(first, second));
 
             var accidentalChanges = AccidentalReconciliation.reconcileModification(
                 line, toggle(FIRST_NOTE, null, A_STAFF_POSITION));
@@ -659,7 +659,7 @@ class AccidentalReconciliationTest extends UnitTest {
             var first = note(A_STAFF_POSITION, StaffElement.Accidental.FLAT);
             var second = note(A_STAFF_POSITION);
             var line = lineOf(first, ElementType.SINGLE_BARLINE.newInstance(), second);
-            line.addRangeElement(new Tie(first, second));
+            line.addSpan(new Tie(first, second));
 
             var accidentalChanges = AccidentalReconciliation.reconcileModification(
                 line, toggle(FIRST_NOTE, null, A_STAFF_POSITION));
@@ -676,7 +676,7 @@ class AccidentalReconciliationTest extends UnitTest {
             var first = note(A_STAFF_POSITION, StaffElement.Accidental.FLAT);
             var second = note(A_STAFF_POSITION);
             var line = lineOf(first, second);
-            line.addRangeElement(new Tie(first, second));
+            line.addSpan(new Tie(first, second));
 
             var accidentalChanges = AccidentalReconciliation.reconcile(new AccidentalReconciliation.InsertionRegion(
                 line, FIRST_NOTE, new InsertionSpacingCalculator.DeletedRange(FIRST_NOTE, FIRST_NOTE),

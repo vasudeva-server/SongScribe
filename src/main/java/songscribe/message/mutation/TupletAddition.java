@@ -24,7 +24,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Tuplet;
 
 /**
- * Mutation recording the addition of a tuplet range element to a line.
+ * Mutation recording the addition of a tuplet span to a line.
  */
 public record TupletAddition(Line line, Tuplet tuplet)
     implements Mutation, LineScopedMutation {
