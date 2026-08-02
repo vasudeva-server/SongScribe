@@ -22,7 +22,6 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.atLeastOnce;
@@ -80,7 +79,6 @@ class NoteDragHandlerTest extends UnitTest {
     private MockedStatic<MidiController> midiControllerMock;
     private MockedStatic<PlayThread> playThreadStaticMock;
     private MockedConstruction<PlayThread> playThreadConstruction;
-    private MockedStatic<ScaleContext> scaleContextMock;
 
     // Instance mocks
     private LineComponent lc;
@@ -93,11 +91,10 @@ class NoteDragHandlerTest extends UnitTest {
     // the screen-Y delta that yields a specific target position.
     private int pressOriginalSp;
 
-    // Mouse coordinates used by press/drag events. X is arbitrary; screen-Y values differ
-    // so the handler sees a non-zero delta on drag.
+    // Mouse coordinates used by press/drag events. X is arbitrary; the drag events dragToPosition
+    // builds offset their screen Y from PRESS_SCREEN_Y so the handler sees a real delta.
     private static final int MOUSE_X = 100;
     private static final int PRESS_SCREEN_Y = 100;
-    private static final int DRAG_SCREEN_Y = 50;
 
     @BeforeEach
     void setUp() {
@@ -107,7 +104,6 @@ class NoteDragHandlerTest extends UnitTest {
         midiControllerMock = mockStatic(MidiController.class);
         playThreadStaticMock = mockStatic(PlayThread.class);
         playThreadConstruction = mockConstruction(PlayThread.class);
-        scaleContextMock = mockStatic(ScaleContext.class);
 
         midiControllerMock.when(MidiController::isPlaying).thenReturn(false);
 
@@ -128,7 +124,6 @@ class NoteDragHandlerTest extends UnitTest {
 
     @AfterEach
     void tearDown() {
-        scaleContextMock.close();
         playThreadConstruction.close();
         playThreadStaticMock.close();
         midiControllerMock.close();
@@ -695,17 +690,19 @@ class NoteDragHandlerTest extends UnitTest {
     }
 
     /**
-     * Simulates a drag to the given staff position. The handler computes the new position
-     * from the screen-Y delta between press and drag; this helper mocks
-     * {@code ScaleContext.pxToSs} to return the staff-space delta that maps to the
-     * requested target position.
+     * Simulates a drag to the given staff position. The handler derives the new position from
+     * the screen-Y delta between press and drag, converting it through the view scale, so this
+     * helper works out the pixel delta that really does mean this many staff positions and puts
+     * the drag event there. The view is at {@link ViewScale#IDENTITY}, so the only factor
+     * involved is the fixed document scale.
      */
     private void dragToPosition(int targetPositionSp) {
         var deltaSp = targetPositionSp - pressOriginalSp;
         var deltaYSs = deltaSp * Staff.STAFF_POSITION_OFFSET_SS;
-        scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble())).thenReturn(deltaYSs);
+        var deltaYPx = (int) Math.round(deltaYSs * ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE);
 
-        var event = mouseEvent(lc, MouseEvent.MOUSE_DRAGGED, MOUSE_X, DRAG_SCREEN_Y, MouseEvent.BUTTON1);
+        var event = mouseEvent(
+            lc, MouseEvent.MOUSE_DRAGGED, MOUSE_X, PRESS_SCREEN_Y + deltaYPx, MouseEvent.BUTTON1);
         handler.handleDrag(event);
     }
 

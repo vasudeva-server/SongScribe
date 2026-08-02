@@ -147,49 +147,6 @@ class ViewScaleTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // toDocumentPoint / toViewPoint
-    // -------------------------------------------------------------------------
-
-    @Nested
-    class PointConversions {
-
-        @Test
-        void testToDocumentPointDividesByZoomFactor() {
-            var viewScale = new ViewScale();
-            viewScale.setZoomPercent(200);
-
-            var documentPoint = viewScale.toDocumentPoint(new Point(100, 60));
-
-            assertThat(documentPoint).isEqualTo(new Point(50, 30));
-        }
-
-        @Test
-        void testToViewPointMultipliesByZoomFactor() {
-            var viewScale = new ViewScale();
-            viewScale.setZoomPercent(200);
-
-            var viewPoint = viewScale.toViewPoint(new Point(50, 30));
-
-            assertThat(viewPoint).isEqualTo(new Point(100, 60));
-        }
-
-        @Test
-        void testPointRoundTripsAtNonDefaultZoom() {
-            var viewScale = new ViewScale();
-            viewScale.setZoomPercent(150);
-            var original = new Point(77, 41);
-
-            var roundTripped = viewScale.toViewPoint(viewScale.toDocumentPoint(original));
-
-            // toDocumentPoint/toViewPoint round to the nearest integer pixel at each step,
-            // so the round trip is exact only when the intermediate division/multiplication
-            // lands on whole pixels; assert closeness rather than exact equality.
-            assertThat(roundTripped.x).isCloseTo(original.x, within(1));
-            assertThat(roundTripped.y).isCloseTo(original.y, within(1));
-        }
-    }
-
-    // -------------------------------------------------------------------------
     // zoomedFont
     // -------------------------------------------------------------------------
 

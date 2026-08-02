@@ -34,7 +34,7 @@ import songscribe.layout.AccidentalReconciliation;
 import songscribe.ui.Mode;
 import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
-import songscribe.dom.ScaleContext;
+import songscribe.dom.ViewPx;
 import songscribe.engraving.Staff;
 import songscribe.hit.HitTarget;
 import songscribe.ui.playback.MidiController;
@@ -199,9 +199,9 @@ class NoteDragHandler {
         // a change to aboveStaffSs (which shifts the staff within the line component) nor
         // a reposition of the line component within its parent can perturb the mapping.
         var deltaYPx = e.getYOnScreen() - dragPressScreenYPx;
-        // The screen-Y delta is in view pixels; divide by the zoom factor to reach document
-        // pixels before the fixed-scale ss conversion, so a drag tracks on-screen motion 1:1.
-        var deltaYSs = ScaleContext.pxToSs(deltaYPx / lc.getViewScale().factor());
+        // The screen-Y delta is in view pixels; the view scale folds the zoom factor and the
+        // fixed document scale into a single conversion, so a drag tracks on-screen motion 1:1.
+        var deltaYSs = lc.getViewScale().toSs(new ViewPx(deltaYPx)).value();
         var deltaSp = Staff.ssToSp(deltaYSs);
         var newPositionSp = originalDragStaffPositionSp + deltaSp;
 

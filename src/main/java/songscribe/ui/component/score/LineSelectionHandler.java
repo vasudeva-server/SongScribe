@@ -38,7 +38,7 @@ import songscribe.ui.OptionDialogs;
 import songscribe.ui.Mode;
 import songscribe.layout.ElementHitGeometry;
 import songscribe.layout.HorizontalSpacingCalculator;
-import songscribe.dom.ScaleContext;
+import songscribe.ui.ViewScale;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlayThread;
 
@@ -94,20 +94,21 @@ class LineSelectionHandler {
     // ======================================================================
 
     /**
-     * Hit-tests the given point against everything clickable on this line, or {@code null}
-     * if the point lands on nothing.
+     * Hit-tests the given point, in view pixels, against everything clickable on this line,
+     * or {@code null} if the point lands on nothing.
      * <p>
-     * The point must already be in document pixels. This differs from the
-     * {@code …ViewPoint} helpers below, which take view pixels and convert internally.
+     * A single press needs more than one answer about the same point — whether it landed on
+     * the staff lines, and whether it landed on an ending. Callers should run this once and
+     * examine the result rather than asking several times about the same point.
      */
-    @Nullable HitTarget hitTest(Point point) {
+    @Nullable HitTarget hitTestViewPoint(Point viewPoint) {
         var registry = readyRegistry();
 
         if (registry == null) {
             return null;
         }
 
-        return registry.hitTest(layoutXSs(point), layoutYSs(point));
+        return registry.hitTest(layoutXSs(viewPoint), layoutYSs(viewPoint));
     }
 
     /**
@@ -131,28 +132,31 @@ class LineSelectionHandler {
         return ready.layoutResult().getHitRegistry();
     }
 
-    /** The X of a document-pixel point in the registry's line-local staff spaces. */
-    private static double layoutXSs(Point pointPx) {
-        return ScaleContext.pxToSs(pointPx.getX());
+    /**
+     * A view-pixel distance in staff spaces at the view's current zoom.
+     * <p>
+     * Goes straight from view pixels to staff spaces through {@link ViewScale#toSs}, the same
+     * conversion {@code PreviewElementManager.trackMouse} uses on the mouse position. Nothing
+     * downstream wants an intermediate document-pixel value: the registry's regions and the
+     * element hit rects are both staff spaces, so rounding through whole document pixels on
+     * the way would only cost precision — half a document pixel, which the zoom multiplies
+     * back into visible slop.
+     */
+    private double toSs(int viewPx) {
+        return lc.getViewScale().toSs(new ViewPx(viewPx)).value();
+    }
+
+    /** The X of a view-pixel point in the registry's line-local staff spaces. */
+    private double layoutXSs(Point viewPoint) {
+        return toSs(viewPoint.x);
     }
 
     /**
-     * The Y of a document-pixel point in the registry's layout space, whose origin is the
+     * The Y of a view-pixel point in the registry's layout space, whose origin is the
      * staff midline rather than the top of this component.
      */
-    private double layoutYSs(Point pointPx) {
-        return ScaleContext.pxToSs(pointPx.getY()) - lc.getMiddleLineYSs();
-    }
-
-    /**
-     * Hit-tests a point given in view pixels, converting it to document pixels first.
-     * <p>
-     * A single press needs more than one answer about the same point — whether it landed on
-     * the staff lines, and whether it landed on an ending. Callers should run this once and
-     * examine the result rather than asking several times about the same point.
-     */
-    @Nullable HitTarget hitTestViewPoint(Point viewPoint) {
-        return hitTest(lc.getViewScale().toDocumentPoint(viewPoint));
+    private double layoutYSs(Point viewPoint) {
+        return toSs(viewPoint.y) - lc.getMiddleLineYSs();
     }
 
     /**
@@ -172,8 +176,7 @@ class LineSelectionHandler {
             return null;
         }
 
-        var docPoint = lc.getViewScale().toDocumentPoint(viewPoint);
-        var hover = registry.hitTestHover(layoutXSs(docPoint), layoutYSs(docPoint));
+        var hover = registry.hitTestHover(layoutXSs(viewPoint), layoutYSs(viewPoint));
 
         if (hover instanceof HitTarget.Lyric lyric) {
             return lyric;
@@ -203,8 +206,7 @@ class LineSelectionHandler {
      * anywhere in it.
      */
     boolean isWithinHeaderX(Point viewPoint) {
-        var docPoint = lc.getViewScale().toDocumentPoint(viewPoint);
-        return isWithinHeaderXSs(ScaleContext.pxToSs(docPoint.x));
+        return isWithinHeaderXSs(layoutXSs(viewPoint));
     }
 
     // ======================================================================
@@ -217,8 +219,6 @@ class LineSelectionHandler {
         dragStart.setLocation(e.getPoint());
         dragRectangle.setBounds(0, 0, 0, 0);
 
-        // The caller hit-tests in document pixels; the drag rectangle stays in view pixels
-        // (below) because it is a pixel-space overlay rendered outside the staff-space transform.
         pressTarget = hitTarget;
 
         var range = lc.getScoreView().getSelectionCoordinator().getRange();
@@ -330,7 +330,9 @@ class LineSelectionHandler {
 
         dragging = true;
 
-        // Clamp coordinates to component bounds
+        // Clamp coordinates to component bounds. The rectangle stays in view pixels because it
+        // is a pixel-space overlay rendered outside the staff-space transform; the sweep that
+        // reads it converts to staff spaces itself.
         var x = Math.clamp(e.getX(), 0, lc.getWidth() - 1);
         var y = Math.clamp(e.getY(), 0, lc.getHeight() - 1);
 
@@ -576,16 +578,14 @@ class LineSelectionHandler {
         var coordinator = scoreView.getSelectionCoordinator();
         coordinator.activateLine(lc.getLineIndex());
 
-        // Convert the view-pixel drag rect to document pixels (honoring the current zoom),
-        // then to staff spaces on the fixed document scale, and finally to layout space by
-        // moving the Y origin from the top of this component to the staff midline — the space
-        // the element hit rects are built in.
-        var viewScale = lc.getViewScale();
+        // Convert the view-pixel drag rect to staff spaces (honoring the current zoom), then
+        // to layout space by moving the Y origin from the top of this component to the staff
+        // midline — the space the element hit rects are built in.
         var dragRectSs = new Rectangle2D.Double(
-            ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.x)).value()),
-            ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.y)).value()) - lc.getMiddleLineYSs(),
-            ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.width)).value()),
-            ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(dragRect.height)).value())
+            toSs(dragRect.x),
+            toSs(dragRect.y) - lc.getMiddleLineYSs(),
+            toSs(dragRect.width),
+            toSs(dragRect.height)
         );
         var helper = new Rectangle2D.Double();
         var begin = -1;

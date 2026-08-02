@@ -1123,28 +1123,28 @@ public final class PreviewElementManager {
 
         cursorDidMove(e);
 
-        // Convert the view-pixel event coordinates to document pixels at this single choke
-        // point. Both the real path (LineComponent.mouseMoved) and the synthetic path
-        // (restorePreviewElement) funnel through here, so the ss math below stays on the
-        // fixed document scale.
+        // Convert the view-pixel event coordinates to staff spaces at this single choke point.
+        // Both the real path (LineComponent.mouseMoved) and the synthetic path
+        // (restorePreviewElement) funnel through here, so everything below works in staff
+        // spaces and never sees the zoom factor again.
         var viewScale = lc.getViewScale();
-        var mouseYss = ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(e.getY())).value());
+        var mouseYSs = viewScale.toSs(new ViewPx(e.getY())).value();
 
         // In grace mode, lock the x-position to the host note slot
         var graceModeManager = EditModeManager.getGraceModeManager();
         var inGraceMode = graceModeManager.isInProgress();
-        double mouseXss;
+        double mouseXSs;
 
         if (inGraceMode) {
-            mouseXss = graceModeManager.getLockedInsertionXSs();
+            mouseXSs = graceModeManager.getLockedInsertionXSs();
         } else {
-            mouseXss = ScaleContext.pxToSs(viewScale.toDocPx(new ViewPx(e.getX())).value());
+            mouseXSs = viewScale.toSs(new ViewPx(e.getX())).value();
         }
 
-        currentMouseXSs = mouseXss;
+        currentMouseXSs = mouseXSs;
 
         // Calculate Y position from mouse (in staff-space coordinates)
-        var staffPosition = calculateStaffPositionFromMouse(mouseYss, lc.getMiddleLineYSs());
+        var staffPosition = calculateStaffPositionFromMouse(mouseYSs, lc.getMiddleLineYSs());
 
         if (!isValidStaffPosition(staffPosition)) {
             // Mouse is outside valid range, clear insertion note if on this line
@@ -1174,12 +1174,12 @@ public final class PreviewElementManager {
         // breath mark between the pair, with the glissando pointing at it instead of the host.
         var xIndex = inGraceMode
             ? graceModeManager.getHostInsertionIndex()
-            : layoutResult.findInsertionIndex(mouseXss, line);
+            : layoutResult.findInsertionIndex(mouseXSs, line);
 
         // In grace mode the locked x coincides with an existing note that will be
         // shifted (not replaced), so suppress the element-at-x match to avoid
         // painting it red as if it were the replacement target.
-        var elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXss, line);
+        var elementAtX = inGraceMode ? -1 : layoutResult.findElementAtXSs(mouseXSs, line);
 
         // Suppress preview over the song's auto-maintained terminal (unless the
         // active preview element can legally replace it — exemption in isPositionBlockedByTerminal).
@@ -1666,12 +1666,12 @@ public final class PreviewElementManager {
     /**
      * Calculates the staff position from a mouse Y coordinate.
      *
-     * @param mouseYss      Mouse Y coordinate in staff-space units
+     * @param mouseYSs      Mouse Y coordinate in staff-space units
      * @param middleLineYSs Y coordinate of the middle staff line in staff-space units
      * @return Staff position
      */
-    static int calculateStaffPositionFromMouse(double mouseYss, double middleLineYSs) {
-        return Staff.ssToSp(mouseYss - middleLineYSs);
+    static int calculateStaffPositionFromMouse(double mouseYSs, double middleLineYSs) {
+        return Staff.ssToSp(mouseYSs - middleLineYSs);
     }
 
     /**

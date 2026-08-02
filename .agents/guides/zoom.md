@@ -33,8 +33,6 @@ ViewPx toViewPx(Ss ss)        Ss → ViewPx, folding in ScaleContext.DEFAULT_PIX
 Ss     toSs(ViewPx viewPx)    inverse
 ViewPx toViewPx(DocPx docPx)  DocPx → ViewPx, folding in factor() only
 DocPx  toDocPx(ViewPx viewPx) inverse
-Point  toDocumentPoint(Point) 2D convenience for mouse input
-Point  toViewPoint(Point)     2D convenience for the reverse
 Font   zoomedFont(Font base)  scales a font's point size by factor(); identity shortcut at 100%
 ```
 
@@ -128,9 +126,12 @@ Typed units (`Ss`, `DocPx`, `ViewPx`) exist to guard **seams** — layout, measu
 
 This is a deliberate performance boundary: typed records are cheap but not free, and the paint path runs every frame. Introducing a typed seam there would be a correctness no-op with a needless allocation cost — flag it in review.
 
-## Mouse input: view→document boundary conversion
+## Mouse input: converting out of view pixels at the entry point
 
-Mouse events arrive in `ViewPx` (on-screen coordinates). Hit-testing, drag handlers, and the DOM's `*Px` getters all operate in document space (`ScaleContext`-fixed, effectively `DocPx`). Convert **once**, at the event entry point — `getViewScale().toDocumentPoint(...)` on the incoming `Point` (or a synthesized `MouseEvent`, as `PreviewElementManager` does) — so everything downstream (`ElementHitTest`, `LineSelectionHandler`, `NoteDragHandler`, `GraceModeManager`, `VerticalAdjustment`/`HorizontalAdjustment`) works in unchanged document px without re-deriving the zoom factor at every step.
+Mouse events arrive in `ViewPx` (on-screen coordinates). Convert **once**, at the event entry point, so nothing downstream re-derives the zoom factor. Which regime you convert *to* depends on what the consumer works in:
+
+- **Staff spaces** — `getViewScale().toSs(new ViewPx(...))`. This is the path for anything that answers questions against layout geometry, and it is the common case: `LineSelectionHandler`'s hit-testing entry points and its rubber-band sweep, `PreviewElementManager.trackMouse`, `PasteModeManager.updateTarget`, and `NoteDragHandler.handleDrag` (which converts a screen-Y *delta* rather than an absolute point, but through the same call). Do not route these through document pixels first — an intermediate whole-document-pixel step rounds to the nearest pixel, and since the destination is a `double` staff-space value that rounding buys nothing and costs up to half a document pixel, which the zoom then magnifies on screen.
+- **Document pixels** — `getViewScale().toDocPx(new ViewPx(...))`, for the rarer consumers that genuinely work in the DOM's `*Px` regime: `GraceModeManager`'s host-note lookup, and `ScoreView`'s page/export sizing.
 
 ## `roundedPx()` vs `ceilPx()` at the page seam
 

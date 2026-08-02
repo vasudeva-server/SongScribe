@@ -22,11 +22,10 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.description;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -41,11 +40,9 @@ import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
@@ -73,6 +70,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.hit.HitRegistry;
 import songscribe.ui.selection.Selection;
 import songscribe.hit.HitTarget;
+import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
@@ -93,8 +91,13 @@ import songscribe.ui.selection.SelectionCoordinator;
  *
  * <p>{@code calculateLineSelectionFromDrag} is tested through
  * {@link LineSelectionHandler#handleDrag} (its only caller), using a real {@link Song} /
- * {@link Line} and an identity {@link ScaleContext} so the drag-rect/element-rect intersection
- * can be verified numerically.
+ * {@link Line}, with mouse coordinates built from staff spaces through {@link #viewPx} so the
+ * drag-rect/element-rect intersection can be verified numerically.
+ *
+ * <p>Unless a test calls {@link #givenZoomedView}, the component reports
+ * {@link ViewScale#IDENTITY} — 100% zoom, where the zoom factor is 1.0 and therefore invisible
+ * to the arithmetic. The two tests that do call it are the only ones that can tell a correctly
+ * applied zoom factor from a dropped one.
  */
 class LineSelectionHandlerTest extends UnitTest {
 
@@ -106,13 +109,11 @@ class LineSelectionHandlerTest extends UnitTest {
     private static final double MIDDLE_LINE_Y_SS = 5.0;
 
     /**
-     * A document-pixel Y that lands exactly on the staff midline, and therefore on layout
-     * Y = 0. With the identity scale these tests install, pixels and staff spaces are the
-     * same number.
+     * A view-pixel Y that lands exactly on the staff midline, and therefore on layout Y = 0.
      */
-    private static final int MIDLINE_Y_PX = (int) MIDDLE_LINE_Y_SS;
+    private static final int MIDLINE_Y_PX = viewPx(MIDDLE_LINE_Y_SS);
 
-    /** A document-pixel X at the left edge of the line, on layout X = 0. */
+    /** A view-pixel X at the left edge of the line, on layout X = 0. */
     private static final int ORIGIN_X_PX = 0;
 
     /** Side of a hand-built test hit region, in staff spaces. */
@@ -130,8 +131,6 @@ class LineSelectionHandlerTest extends UnitTest {
     /** Point size of the lyric font the end-to-end fixtures' real {@link LayoutEngine} needs. */
     private static final int END_TO_END_LYRIC_FONT_SIZE_PX = 12;
 
-    private MockedStatic<ScaleContext> scaleContextMock;
-
     private LineComponent lc;
     private ScoreView mockScoreView;
     private LayoutResult mockLayout;
@@ -139,8 +138,6 @@ class LineSelectionHandlerTest extends UnitTest {
 
     @BeforeEach
     void setUp() {
-        scaleContextMock = mockStatic(ScaleContext.class);
-
         lc = mock(LineComponent.class);
         mockScoreView = mock(ScoreView.class);
         mockLayout = mock(LayoutResult.class);
@@ -150,19 +147,10 @@ class LineSelectionHandlerTest extends UnitTest {
         when(lc.getLine()).thenReturn(null);
         when(lc.getMiddleLineYSs()).thenReturn(MIDDLE_LINE_Y_SS);
 
-        // Identity scale, so a point's pixel coordinates read directly as staff spaces.
-        scaleContextMock.when(() -> ScaleContext.pxToSs(anyDouble()))
-            .thenAnswer(inv -> inv.getArgument(0));
-
         // Nothing is clickable until a test registers something.
         when(mockLayout.getHitRegistry()).thenReturn(HitRegistry.EMPTY);
 
         handler = new LineSelectionHandler(lc);
-    }
-
-    @AfterEach
-    void tearDown() {
-        scaleContextMock.close();
     }
 
     // -------------------------------------------------------------------------
@@ -242,14 +230,14 @@ class LineSelectionHandlerTest extends UnitTest {
             var ending = newEnding();
             givenClickableAtOrigin(new HitTarget.Ending(ending), HitPriority.ENDING, false);
 
-            assertThat(handler.hitTest(originPoint())).isEqualTo(new HitTarget.Ending(ending));
+            assertThat(handler.hitTestViewPoint(originPoint())).isEqualTo(new HitTarget.Ending(ending));
         }
 
         @Test
         void testPointOutsideEveryRegionResolvesToNull() {
             givenClickableAtOrigin(new HitTarget.Ending(newEnding()), HitPriority.ENDING, false);
 
-            assertThat(handler.hitTest(new Point(ORIGIN_X_PX, Y_FAR_FROM_MIDLINE_PX))).isNull();
+            assertThat(handler.hitTestViewPoint(new Point(ORIGIN_X_PX, Y_FAR_FROM_MIDLINE_PX))).isNull();
         }
 
         /**
@@ -263,11 +251,33 @@ class LineSelectionHandlerTest extends UnitTest {
             var ending = newEnding();
             givenClickableAtOrigin(new HitTarget.Ending(ending), HitPriority.ENDING, false);
 
-            assertThat(handler.hitTest(new Point(ORIGIN_X_PX, MIDLINE_Y_PX)))
+            assertThat(handler.hitTestViewPoint(new Point(ORIGIN_X_PX, MIDLINE_Y_PX)))
                 .as("a point on the midline maps to layout Y = 0")
                 .isEqualTo(new HitTarget.Ending(ending));
-            assertThat(handler.hitTest(new Point(ORIGIN_X_PX, 0)))
+            assertThat(handler.hitTestViewPoint(new Point(ORIGIN_X_PX, 0)))
                 .as("a point at the top of the component is above the region")
+                .isNull();
+        }
+
+        /**
+         * At 100% zoom the zoom factor is 1.0, so a conversion that dropped it, inverted it or
+         * squared it would answer exactly as a correct one does. Zooming to 200% separates them:
+         * the region now sits at twice the view pixel, and the pixel it occupied at 100% no
+         * longer reaches it. Without this the user-visible failure — clicks landing on a
+         * neighbouring note, or on nothing, whenever the score is zoomed — would go unnoticed.
+         */
+        @Test
+        void testAtNonDefaultZoomAPointResolvesAgainstTheZoomedGeometry() {
+            var ending = newEnding();
+            givenClickableAtOrigin(new HitTarget.Ending(ending), HitPriority.ENDING, false);
+            givenZoomedView();
+
+            assertThat(handler.hitTestViewPoint(
+                new Point(ORIGIN_X_PX, zoomedViewPx(MIDDLE_LINE_Y_SS))))
+                .as("zoomed 2x, the midline sits at twice the view pixel")
+                .isEqualTo(new HitTarget.Ending(ending));
+            assertThat(handler.hitTestViewPoint(new Point(ORIGIN_X_PX, MIDLINE_Y_PX)))
+                .as("the pixel the midline occupied at 100% is now above the region")
                 .isNull();
         }
 
@@ -276,7 +286,7 @@ class LineSelectionHandlerTest extends UnitTest {
             givenClickableAtOrigin(new HitTarget.Ending(newEnding()), HitPriority.ENDING, false);
             when(lc.readyLayout()).thenReturn(null);
 
-            assertThat(handler.hitTest(originPoint())).isNull();
+            assertThat(handler.hitTestViewPoint(originPoint())).isNull();
         }
 
         // Each half of the readiness guard is checked on its own, because a test that nulls
@@ -286,7 +296,7 @@ class LineSelectionHandlerTest extends UnitTest {
             givenClickableAtOrigin(new HitTarget.Ending(newEnding()), HitPriority.ENDING, false);
             when(lc.getLine()).thenReturn(null);
 
-            assertThat(handler.hitTest(originPoint())).isNull();
+            assertThat(handler.hitTestViewPoint(originPoint())).isNull();
         }
 
         /**
@@ -296,9 +306,13 @@ class LineSelectionHandlerTest extends UnitTest {
          */
         @Test
         void testTheLayoutIsMadeReadyBeforeTheRegistryIsRead() {
-            handler.hitTest(originPoint());
+            handler.hitTestViewPoint(originPoint());
 
-            verify(lc).readyLayout();
+            // Ordered, not just "both happened": a handler that read a stale registry first and
+            // refreshed the layout afterwards would satisfy two unordered verifications.
+            var inOrder = inOrder(lc, mockLayout);
+            inOrder.verify(lc).readyLayout();
+            inOrder.verify(mockLayout).getHitRegistry();
         }
     }
 
@@ -391,6 +405,90 @@ class LineSelectionHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // isWithinHeaderX
+    // -------------------------------------------------------------------------
+
+    /**
+     * The header is the clef and key signature at the left of the staff. Nothing can be
+     * inserted there, so edit mode uses this query to suppress the insertion preview and
+     * click-to-insert while the pointer is over it. Get it wrong and a user in edit mode sees
+     * the preview note drawn on top of the clef, or clicks just past the clef and nothing
+     * appears.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class IsWithinHeaderX {
+
+        /**
+         * How far either side of the header's right edge the probes sit. A whole staff space is
+         * comfortably more than the half-pixel that rounding a probe to a whole view pixel can
+         * move it, so neither probe can drift across the edge it is meant to be on.
+         */
+        private static final double EDGE_MARGIN_SS = 1;
+
+        /** A Y below the staff entirely, around where the lyric row sits. */
+        private static final int Y_WELL_BELOW_STAFF_PX = 1000;
+
+        private double headerRightEdgeSs = 0;
+
+        @BeforeEach
+        void configureCommonStubs() {
+            headerRightEdgeSs = HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(givenLine());
+        }
+
+        @Test
+        void testAnXInsideTheHeaderIsWithinIt() {
+            var insideXPx = viewPx(headerRightEdgeSs - EDGE_MARGIN_SS);
+
+            assertThat(handler.isWithinHeaderX(new Point(insideXPx, MIDLINE_Y_PX))).isTrue();
+        }
+
+        @Test
+        void testAnXPastTheHeadersRightEdgeIsNotWithinIt() {
+            var outsideXPx = viewPx(headerRightEdgeSs + EDGE_MARGIN_SS);
+
+            assertThat(handler.isWithinHeaderX(new Point(outsideXPx, MIDLINE_Y_PX))).isFalse();
+        }
+
+        /**
+         * The header owns its whole column, unlike the registry's staff-line region, which is
+         * bounded vertically too. A point level with the lyrics, far below the staff, is still
+         * in the header if its X is.
+         */
+        @Test
+        void testTheAnswerIgnoresY() {
+            var insideXPx = viewPx(headerRightEdgeSs - EDGE_MARGIN_SS);
+
+            assertThat(handler.isWithinHeaderX(new Point(insideXPx, 0)))
+                .as("at the top of the component")
+                .isTrue();
+            assertThat(handler.isWithinHeaderX(new Point(insideXPx, Y_WELL_BELOW_STAFF_PX)))
+                .as("far below the staff")
+                .isTrue();
+        }
+
+        /**
+         * The X is converted through the view scale like every other mouse query, so the same
+         * on-screen pixel means half the staff spaces at 200% zoom. A pixel that is past the
+         * header at 100% is inside it once zoomed in — which is what a user sees: the clef
+         * occupies twice the screen width, and the dead zone has to follow it.
+         */
+        @Test
+        void testAtNonDefaultZoomTheHeaderCoversTwiceTheScreenWidth() {
+            var pastEdgeAtIdentityPx = viewPx(headerRightEdgeSs + EDGE_MARGIN_SS);
+            givenZoomedView();
+
+            assertThat(handler.isWithinHeaderX(new Point(pastEdgeAtIdentityPx, MIDLINE_Y_PX)))
+                .as("zoomed 2x, that pixel is only half as far along the staff")
+                .isTrue();
+            assertThat(handler.isWithinHeaderX(
+                new Point(zoomedViewPx(headerRightEdgeSs + EDGE_MARGIN_SS), MIDLINE_Y_PX)))
+                .as("the zoomed pixel for the same staff-space position is still outside")
+                .isFalse();
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // calculateLineSelectionFromDrag — tested through handleDrag
     // -------------------------------------------------------------------------
 
@@ -399,8 +497,8 @@ class LineSelectionHandlerTest extends UnitTest {
     class CalculateLineSelectionFromDrag {
 
         // Three notes assigned distinct X positions via a mocked LayoutResult.
-        // The drag rect (in px, converted 1:1 to ss) spans X=[0,30], Y=[0,30] before the
-        // midline shift. Only element 0 at X=10 falls within; X=50 and X=90 do not.
+        // The drag rect spans X=[0,DRAG_TARGET_SS], Y=[0,DRAG_TARGET_SS] before the midline
+        // shift. Only element 0 at X=10 falls within; X=50 and X=90 do not.
         private static final double ELEMENT_0_X_SS = 10;
         private static final double ELEMENT_1_X_SS = 50;
         private static final double ELEMENT_2_X_SS = 90;
@@ -408,6 +506,13 @@ class LineSelectionHandlerTest extends UnitTest {
         /** Both elements of the two-element fixture, at X positions inside the drag rect. */
         private static final double NEAR_X_SS = 5;
         private static final double FAR_X_SS = 15;
+
+        /**
+         * A drag corner between {@link #NEAR_X_SS} and {@link #FAR_X_SS}, for the zoomed drag
+         * below: a sweep that reaches exactly this far catches the near element and not the far
+         * one, so a conversion that ignored the zoom factor would visibly over-reach.
+         */
+        private static final double BETWEEN_ELEMENTS_X_SS = 10;
 
         private static final int COMPONENT_SIZE_PX = 1000;
 
@@ -491,6 +596,29 @@ class LineSelectionHandlerTest extends UnitTest {
         }
 
         /**
+         * The rubber band sweeps staff spaces, not pixels, so at 200% zoom a drag to a given
+         * on-screen corner covers half the staff spaces it would at 100%.
+         * <p>
+         * The corner used here lands between the two elements, so a correct conversion selects
+         * only the near one. A conversion that dropped the zoom factor would read the same pixel
+         * as twice the distance and drag the far element in as well — which is what a user
+         * zoomed in would see: a rubber band that grabs notes it visibly never touched.
+         */
+        @Test
+        void testAtNonDefaultZoomTheDragSweepsTheStaffSpacesItCovers() {
+            givenZoomedView();
+            positionElement(0, NEAR_X_SS);
+            positionElement(1, FAR_X_SS);
+
+            pressAt(pressEvent(ORIGIN_X_PX, 0));
+            handler.handleDrag(dragEvent(
+                zoomedViewPx(BETWEEN_ELEMENTS_X_SS), zoomedViewPx(DRAG_TARGET_SS)));
+
+            assertThat(selectedRange().begin()).isEqualTo(0);
+            assertThat(selectedRange().end()).isEqualTo(0);
+        }
+
+        /**
          * A drag that starts on a note anchors there, so extending afterwards grows the
          * selection from the note the user grabbed rather than from whichever end happens to
          * be nearer.
@@ -543,8 +671,7 @@ class LineSelectionHandlerTest extends UnitTest {
             positionElement(1, ELEMENT_1_X_SS);
             positionElement(2, ELEMENT_2_X_SS);
 
-            // Pixels convert 1:1 to staff spaces here, so this drags down element 0's own column.
-            var elementColumnXPx = (int) ELEMENT_0_X_SS;
+            var elementColumnXPx = viewPx(ELEMENT_0_X_SS);
 
             pressAt(pressEvent(elementColumnXPx, 0));
             handler.handleDrag(dragEvent(elementColumnXPx, DRAG_TARGET_Y));
@@ -796,12 +923,6 @@ class LineSelectionHandlerTest extends UnitTest {
          */
         @BeforeEach
         void layOutOneOfEveryHitTargetKind() {
-            // This class's default ScaleContext mock stubs only pxToSs, to the identity scale
-            // other tests in this file rely on. A real LayoutEngine needs the rest of
-            // ScaleContext too (font metrics, ssToPx), so this fixture swaps in the real class.
-            scaleContextMock.close();
-            scaleContextMock = mockStatic(ScaleContext.class, CALLS_REAL_METHODS);
-
             var song = new Song();
             song.setLineWidthSs(UNCONSTRAINED_LINE_WIDTH_SS);
             line = song.getLine(0);
@@ -964,11 +1085,6 @@ class LineSelectionHandlerTest extends UnitTest {
 
         @BeforeEach
         void layOutAGraceNoteGlissando() {
-            // See EndToEndClickResolution.layOutOneOfEveryHitTargetKind for why the real
-            // ScaleContext replaces this class's default identity stub here.
-            scaleContextMock.close();
-            scaleContextMock = mockStatic(ScaleContext.class, CALLS_REAL_METHODS);
-
             var song = new Song();
             song.setLineWidthSs(UNCONSTRAINED_LINE_WIDTH_SS);
             var line = song.getLine(0);
@@ -1327,8 +1443,48 @@ class LineSelectionHandlerTest extends UnitTest {
     // Helpers
     // -------------------------------------------------------------------------
 
-    private static final int DRAG_TARGET_X = 30;
-    private static final int DRAG_TARGET_Y = 30;
+    /**
+     * The far corner of the rubber-band drags, in staff spaces. Large enough to enclose the
+     * fixtures' element X positions, which are chosen relative to it.
+     */
+    private static final double DRAG_TARGET_SS = 30;
+
+    private static final int DRAG_TARGET_X = viewPx(DRAG_TARGET_SS);
+    private static final int DRAG_TARGET_Y = viewPx(DRAG_TARGET_SS);
+
+    /**
+     * The view-pixel coordinate a staff-space position sits at, at the default 100% zoom.
+     * <p>
+     * The handler converts mouse points through {@link ViewScale#toSs}, which folds the fixed
+     * document scale in itself, so these tests have to feed it honest pixels rather than
+     * treating one pixel as one staff space.
+     */
+    private static int viewPx(double ss) {
+        return (int) Math.round(ss * ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE);
+    }
+
+    /** The zoom the non-default-zoom tests install. Doubling keeps the pixel arithmetic exact. */
+    private static final int ZOOMED_PERCENT = 200;
+
+    /**
+     * Points the component at a view zoomed to {@link #ZOOMED_PERCENT}, in place of the
+     * {@link ViewScale#IDENTITY} every other test runs at. A fresh instance, never
+     * {@code IDENTITY} — that one is shared and documented as read-only.
+     */
+    private void givenZoomedView() {
+        var viewScale = new ViewScale();
+        viewScale.setZoomPercent(ZOOMED_PERCENT);
+        when(lc.getViewScale()).thenReturn(viewScale);
+    }
+
+    /**
+     * The view-pixel coordinate a staff-space position sits at once {@link #givenZoomedView}
+     * has doubled the zoom. Written as a doubling rather than as a percentage division so the
+     * expected value never routes through the production arithmetic it is checking.
+     */
+    private static int zoomedViewPx(double ss) {
+        return viewPx(ss) * 2;
+    }
 
     private MouseEvent pressEvent(int x, int y) {
         // Use the 10-arg constructor that sets xAbs/yAbs (screen coords) so
@@ -1346,10 +1502,11 @@ class LineSelectionHandlerTest extends UnitTest {
     }
 
     /**
-     * A document-pixel point at the real, laid-out center of {@code target}'s own region in
-     * {@code registry}, converted with the real {@link ScaleContext#ssToPx} — the end-to-end
-     * fixtures swap in the real {@link ScaleContext} in place of this class's default identity
-     * scale stub, so a real {@link LayoutEngine} layout can run.
+     * A view-pixel point at the real, laid-out center of {@code target}'s own region in
+     * {@code registry}, converted with {@link ScaleContext#ssToPx}. The end-to-end fixtures run
+     * a real {@link LayoutEngine} layout, and every test in this class runs at
+     * {@link ViewScale#IDENTITY}, so the document pixels {@code ssToPx} produces are the view
+     * pixels the handler expects.
      */
     private Point realPressPointFor(HitRegistry registry, HitTarget target) {
         var boundsSs = regionFor(registry, target).shapeSs().getBounds2D();

@@ -92,25 +92,6 @@ public final class ViewScale {
         return new DocPx(viewPx.value() / factor());
     }
 
-    /**
-     * Converts an on-screen (view-pixel) point to a document-pixel point, so
-     * downstream hit-testing operates in the zoom-independent document space.
-     */
-    public Point toDocumentPoint(Point viewPoint) {
-        return new Point(
-            toDocPx(new ViewPx(viewPoint.x)).roundedPx(),
-            toDocPx(new ViewPx(viewPoint.y)).roundedPx()
-        );
-    }
-
-    /** Converts a document-pixel point to an on-screen (view-pixel) point. */
-    public Point toViewPoint(Point documentPoint) {
-        return new Point(
-            toViewPx(new DocPx(documentPoint.x)).roundedPx(),
-            toViewPx(new DocPx(documentPoint.y)).roundedPx()
-        );
-    }
-
     /** Returns {@code baseFont} scaled by the current zoom factor. */
     public Font zoomedFont(Font baseFont) {
         var zoomFactor = factor();
