@@ -37,24 +37,32 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import javax.swing.JOptionPane;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.jspecify.annotations.Nullable;
 import org.mockito.MockedStatic;
 
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.UnitTest;
+import songscribe.dom.Articulation;
+import songscribe.dom.ArticulationType;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
+import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.hit.HitTarget;
 import songscribe.layout.NoteGeometry;
@@ -64,6 +72,7 @@ import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
+import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.Ending;
@@ -613,6 +622,63 @@ class ScoreViewControllerTest extends UnitTest {
         }
 
         /**
+         * The kinds that became selectable with the hit registry but that Delete must leave
+         * alone. A tie, beam, tuplet and trill are toggled off by their own actions; an
+         * accidental belongs to its note; an articulation and an attachment are removed through
+         * the palette that added them.
+         */
+        private static Stream<Named<Function<StaffElement, HitTarget>>> undeletableTargets() {
+            return Stream.of(
+                Named.of("tie", note -> new HitTarget.Tie(new Tie(note, note))),
+                Named.of("beam", note -> new HitTarget.Beam(new Beam(note, note))),
+                Named.of("trill", note -> new HitTarget.Trill(new Trill(note, note))),
+                Named.of("accidental", HitTarget.Accidental::new),
+                Named.of("articulation",
+                    note -> new HitTarget.Articulation(new Articulation(ArticulationType.STACCATO))),
+                Named.of("attachment",
+                    note -> new HitTarget.Attachment(new FermataAttachment())));
+        }
+
+        /**
+         * Delete with one of these selected must do nothing at all — in particular it must not
+         * fall through to deleting the whole staff line, which is what the next branch of
+         * handleDelete does when nothing else claims the keystroke. Losing a line because the
+         * user pressed Delete with a tie selected would be the worst outcome here.
+         */
+        @ParameterizedTest
+        @MethodSource("undeletableTargets")
+        void testHandleDeleteLeavesTheLineIntactForKindsItDoesNotDelete(
+            Function<? super StaffElement, ? extends HitTarget> makeTarget
+        ) {
+            var song = new Song();
+            var line = song.getLine(0);
+            var noteA = crotchet();
+            var noteB = crotchet();
+
+            song.withoutMutationTracking(() -> {
+                line.addElement(noteA);
+                line.addElement(noteB);
+            });
+
+            var elementCountBefore = line.elementCount();
+            var lineCountBefore = song.lineCount();
+
+            var scoreMock = mock(ScoreView.class);
+            when(scoreMock.getSong()).thenReturn(song);
+            when(scoreMock.canDeleteLine()).thenReturn(true);
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+            ReflectionTestHelper.selectTarget(coordinator, makeTarget.apply(noteA));
+            var controller = buildController(song, coordinator, scoreMock);
+
+            controller.handleDelete();
+
+            assertThat(song.lineCount())
+                .as("the staff line must survive").isEqualTo(lineCountBefore);
+            assertThat(line.elementCount())
+                .as("no element may be removed").isEqualTo(elementCountBefore);
+        }
+
+        /**
          * Builds a two-note line carrying {@code hairpin}, selects the hairpin, deletes it
          * through the controller, and returns the song so the caller can assert on it.
          */
@@ -975,8 +1041,13 @@ class ScoreViewControllerTest extends UnitTest {
         void testHandleCopyIsNoOpWhenTheSelectionIsATarget() {
             // A line is active but what is selected on it is a target, not a range: the guard
             // must prevent any copy. Without it, handleCopy would read a range that is not there.
+            //
+            // getSelectedTarget is stubbed as well as getRange. handleCopy only reads getRange,
+            // so stubbing that alone would leave this indistinguishable from the no-selection
+            // test below — it would pass without a target ever being selected.
             var coordinatorMock = mock(SelectionCoordinator.class);
             when(coordinatorMock.getRange()).thenReturn(null);
+            when(coordinatorMock.getSelectedTarget()).thenReturn(new HitTarget.StaffLine());
 
             var clipboardManager = new ClipboardManager();
             var controller = new ScoreViewController(
@@ -1901,7 +1972,10 @@ class ScoreViewControllerTest extends UnitTest {
         void testHandleSelectAllElementsIsNoOpWhenNoActiveSelection() {
             var scoreMock = mock(ScoreView.class);
             var coordinatorMock = mock(SelectionCoordinator.class);
-            when(coordinatorMock.getRange()).thenReturn(null);
+            // The guard reads getActiveLine, not getRange. Stubbed explicitly even though null is
+            // Mockito's default, so the test states which call it depends on rather than passing
+            // by accident.
+            when(coordinatorMock.getActiveLine()).thenReturn(null);
 
             var controller = new ScoreViewController(
                 scoreMock,

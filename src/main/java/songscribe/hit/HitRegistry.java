@@ -21,7 +21,6 @@
 package songscribe.hit;
 
 import java.awt.Shape;
-import java.awt.geom.Rectangle2D;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -112,28 +111,6 @@ public final class HitRegistry {
      */
     public @Nullable HitTarget hitTestHover(double xSs, double layoutYSs) {
         return resolve(xSs, layoutYSs, true);
-    }
-
-    /**
-     * Every target whose region overlaps the given rectangle, in <b>unspecified order</b>.
-     *
-     * <p>The order is deliberately not guaranteed. The caller is the drag-rectangle
-     * path, which filters and iterates without caring about order, and it runs on every
-     * drag event — imposing an order nobody reads would cost a sort per event.
-     *
-     * @param rectSs the rectangle to test, in layout space
-     * @return the matching targets, unordered; possibly empty, never {@code null}
-     */
-    public List<HitTarget> intersecting(Rectangle2D rectSs) {
-        var targets = new ArrayList<HitTarget>();
-
-        for (var region : regions) {
-            if (region.shapeSs().intersects(rectSs)) {
-                targets.add(region.target());
-            }
-        }
-
-        return targets;
     }
 
     /**

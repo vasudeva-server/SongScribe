@@ -174,6 +174,10 @@ public final class SlideRenderer {
      * Delegates to {@link LineInvariants#getElementColor(int)} for the common edit-mode /
      * playback / selection checks on the owner note, and only when the note contributes no
      * color of its own does the slide's own selection state show through.
+     * <p>
+     * A connecting glissando joins two notes and belongs to both, so selecting the note it
+     * lands on colors it as well as selecting the note it leaves. A fall has no target note
+     * and never picks up the following element's selection.
      *
      * @param note      the note the slide hangs off, which is what a click on the slide selects
      * @param noteIndex that note's index on the line
@@ -185,11 +189,21 @@ public final class SlideRenderer {
     ) {
         var color = invariants.getElementColor(noteIndex);
 
-        if (color != Color.BLACK) {
+        if (!LineInvariants.isDefaultColor(color)) {
             return color;
         }
 
-        return invariants.colorFor(new HitTarget.Slide(note), noteIndex);
+        var slideColor = invariants.colorFor(new HitTarget.Slide(note), noteIndex);
+
+        if (!LineInvariants.isDefaultColor(slideColor)) {
+            return slideColor;
+        }
+
+        if (note.hasGlissando() && invariants.isElementRangeSelected(noteIndex + 1)) {
+            return invariants.getSelectionColor();
+        }
+
+        return Color.BLACK;
     }
 
     /**

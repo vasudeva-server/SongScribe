@@ -202,29 +202,38 @@ public final class ReflectionTestHelper {
     }
 
     /**
+     * Selects {@code target} on the coordinator's active line, snapshotting the action states
+     * first as the production selection path does.
+     * <p>
+     * The one entry point for selecting anything a click can address; the named helpers below
+     * are conveniences over it for the kinds tests reach for most.
+     */
+    public static void selectTarget(SelectionCoordinator coordinator, HitTarget target) {
+        coordinator.saveActionStates();
+        requireActiveLine(coordinator);
+        coordinator.select(target);
+    }
+
+    /**
      * Selects the glissando owned by the element at the given index.
      */
     public static void selectGlissando(SelectionCoordinator coordinator, int elementIndex) {
-        coordinator.saveActionStates();
-        coordinator.select(new HitTarget.Slide(activeLine(coordinator).getElement(elementIndex)));
+        selectTarget(
+            coordinator, new HitTarget.Slide(activeLine(coordinator).getElement(elementIndex)));
     }
 
     /**
      * Selects the given ending on the coordinator's active line.
      */
     public static void selectEnding(SelectionCoordinator coordinator, Ending ending) {
-        coordinator.saveActionStates();
-        requireActiveLine(coordinator);
-        coordinator.select(new HitTarget.Ending(ending));
+        selectTarget(coordinator, new HitTarget.Ending(ending));
     }
 
     /**
      * Selects the given hairpin on the coordinator's active line.
      */
     public static void selectHairpin(SelectionCoordinator coordinator, Hairpin hairpin) {
-        coordinator.saveActionStates();
-        requireActiveLine(coordinator);
-        coordinator.select(new HitTarget.Hairpin(hairpin));
+        selectTarget(coordinator, new HitTarget.Hairpin(hairpin));
     }
 
     /**

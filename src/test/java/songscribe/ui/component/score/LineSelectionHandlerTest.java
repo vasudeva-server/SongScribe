@@ -511,6 +511,47 @@ class LineSelectionHandlerTest extends UnitTest {
 
             assertThat(selectedRange().anchor()).isEqualTo(1);
         }
+
+        /**
+         * Dragging straight along the staff, with Y never changing, still sweeps.
+         * <p>
+         * Held exactly constant the rectangle would have no height, and a rectangle with no
+         * height overlaps nothing whatever it is tested against — so the sweep would find no
+         * elements and clear the selection rather than making one. Dragging along a staff line
+         * is an ordinary gesture, and it only takes a mouse that reports the same Y twice.
+         */
+        @Test
+        void testPerfectlyHorizontalDragStillSelectsTheElementsItSweeps() {
+            positionElement(0, NEAR_X_SS);
+            positionElement(1, FAR_X_SS);
+
+            pressAt(pressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
+            handler.handleDrag(dragEvent(DRAG_TARGET_X, MIDLINE_Y_PX));
+
+            assertThat(selectedRange().begin()).isEqualTo(0);
+            assertThat(selectedRange().end()).isEqualTo(1);
+        }
+
+        /**
+         * The vertical counterpart: a drag straight down a single X, which has no width for the
+         * same reason. Run down the X of element 0, it sweeps that element and no other.
+         */
+        @Test
+        void testPerfectlyVerticalDragStillSelectsTheElementUnderIt() {
+            register(threeNoteLine());
+            positionElement(0, ELEMENT_0_X_SS);
+            positionElement(1, ELEMENT_1_X_SS);
+            positionElement(2, ELEMENT_2_X_SS);
+
+            // Pixels convert 1:1 to staff spaces here, so this drags down element 0's own column.
+            var elementColumnXPx = (int) ELEMENT_0_X_SS;
+
+            pressAt(pressEvent(elementColumnXPx, 0));
+            handler.handleDrag(dragEvent(elementColumnXPx, DRAG_TARGET_Y));
+
+            assertThat(selectedRange().begin()).isEqualTo(0);
+            assertThat(selectedRange().end()).isEqualTo(0);
+        }
     }
 
     // -------------------------------------------------------------------------

@@ -64,7 +64,9 @@ record HitRegion(Shape shapeSs, HitTarget target, int priority) {}
 
 - `HitTarget` is the sealed vocabulary — essentially today's `HitResult` payloads, promoted out of the UI layer so layout can produce them.
   
-- `Shape` rather than `Rectangle2D`, so a glissando strip or hairpin wedge can be its true outline. Needed for both `contains` (click) and `intersects` — the drag-rectangle path in `LineSelectionHandler` already needs the unexpanded rect via `buildElementHitRect(..., expandToMinimum = false)`.
+- `Shape` rather than `Rectangle2D`, so a glissando strip or hairpin wedge can be its true outline, tested with `contains` on click.
+
+  The drag-rectangle path in `LineSelectionHandler` does **not** query the registry. The registry stores every element rect expanded to a minimum clickable size, whereas a rubber band should catch exactly what it visually covers, so the two want different geometry from the same element. Both go through `ElementHitGeometry.elementHitRectSs`, which takes an `expandToMinimum` flag — one function, so the two rects cannot drift. Drag selection therefore still walks the line's elements itself, and as before this refactor it catches notes only, not decorations.
   
 - **Registration happens at layout, never at render.** Registering at render is what the slide cache does today, and it means a hit test before the first paint returns nothing, the registry must be invalidated on every repaint including repaints caused by selection, and — as §1.2 shows — the render-time values get read by unrelated consumers like the MusicXML writer.
   
@@ -100,6 +102,16 @@ Two shapes are exact and two are deliberately coarse:
 - **Ties and slurs** use the bounding box, which over-covers: the box of an arc contains the notes it spans and a large empty region above them. That over-coverage is wanted, not tolerated — a slur is a thin curve and hard to click precisely, so the box gives it a generous target, and clicking the empty space under an arc selects the slur. The overlaps that would otherwise be wrong are resolved by ordering: articulations and decorations outrank slurs in priority (so corner overlaps go to the articulation), and the area tiebreak hands note heads to the note.
   
 - **Beams** use the bounding box of all beams in a single beam group, not per-beam shapes.
+### 2.2a A same-pitch glissando is no longer a state the document may hold
+A decision taken alongside the work above, recorded here because it changes editing behavior and is *not* required by hit testing.
+
+Before: a glissando joining two notes at the same pitch stayed in the document and was simply not drawn (`SlideRenderer` returned early). Moving either note off that pitch brought it back.
+
+Now: a pitch shift that lands two glissando-connected notes on one pitch removes the glissando from the model, in the same undo step as the shift. Undo restores it; moving the note back does not.
+
+The reasoning is that a glissando with no distance to traverse is not a thing the document should be able to contain — the slide tool already refuses to create one, so allowing a pitch shift to produce one made the model's rules depend on how the state was reached. `Line.isSamePitchAsFollower` is the single definition of that condition, and every caller — the slide tool, the pitch shift, layout, and render — now asks it.
+
+Hit testing did not force this. Layout withholds geometry for a same-pitch glissando either way, so nothing would have been clickable. The two changes are independent and this one is a product decision.
 ### 2.3 Draw selection by recoloring at the draw site
 Make the selection _be_ a `HitTarget`:
 

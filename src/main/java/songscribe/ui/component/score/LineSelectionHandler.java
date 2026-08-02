@@ -55,6 +55,13 @@ import songscribe.ui.playback.PlayThread;
  */
 class LineSelectionHandler {
 
+    /**
+     * Smallest width and height a live drag rectangle may have, in view pixels. A drag rectangle
+     * is never allowed below this while dragging; it is only ever 0×0 when no drag is in
+     * progress.
+     */
+    private static final int MIN_DRAG_EXTENT_PX = 1;
+
     private final LineComponent lc;
 
     private boolean dragging = false;
@@ -327,11 +334,16 @@ class LineSelectionHandler {
         var x = Math.clamp(e.getX(), 0, lc.getWidth() - 1);
         var y = Math.clamp(e.getY(), 0, lc.getHeight() - 1);
 
+        // Never smaller than one pixel on either side while a drag is live. A drag along the
+        // staff can hold Y exactly constant, and a rectangle with no height sweeps nothing at
+        // all: Rectangle2D.intersects rejects an empty rectangle outright, whatever it is tested
+        // against. The sweep would then find no elements and clear the selection instead of
+        // extending it, so a perfectly straight drag would undo itself.
         dragRectangle.setBounds(
             Math.min(dragStart.x, x),
             Math.min(dragStart.y, y),
-            Math.abs(dragStart.x - x),
-            Math.abs(dragStart.y - y)
+            Math.max(MIN_DRAG_EXTENT_PX, Math.abs(dragStart.x - x)),
+            Math.max(MIN_DRAG_EXTENT_PX, Math.abs(dragStart.y - y))
         );
 
         calculateLineSelectionFromDrag(dragRectangle);

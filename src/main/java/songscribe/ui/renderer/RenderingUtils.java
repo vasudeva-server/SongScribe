@@ -170,7 +170,7 @@ public final class RenderingUtils {
     ) {
         var targetColor = invariants.colorFor(target, frame.currentElementIndex());
 
-        if (!targetColor.equals(ELEMENT_COLOR)) {
+        if (!LineInvariants.isDefaultColor(targetColor)) {
             return targetColor;
         }
 
@@ -341,31 +341,6 @@ public final class RenderingUtils {
             }
             g2.drawString(glyph.asString(), (float) xSs, (float) ySs);
         }
-    }
-
-    /**
-     * Returns the X position that centers a glyph of the given width over the notehead
-     * of the specified element.
-     * <p>
-     * The glyph's visual left edge is at {@code origin + bboxLeft}, so centering
-     * the visual content requires offsetting by {@code bboxLeft}.
-     * <p>
-     * Uses the notehead-only width (excluding flag extent) so ornaments stay centered over the
-     * notehead regardless of note duration or stem direction (noteheads are not shifted by stem
-     * direction — see {@link NoteGeometry#getNoteheadXOffsetSs}).
-     *
-     * @param layoutXSs     the layout X position (left edge of the note column)
-     * @param note          the note whose notehead center is used
-     * @param glyphBBoxLeft the glyph's bounding box left edge (x offset from origin)
-     * @param glyphWidthSs  the width of the glyph to center (bBox right - left)
-     * @return the X coordinate for drawing
-     */
-    static double centeredGlyphX(
-        double layoutXSs, StaffElement note,
-        double glyphBBoxLeft, double glyphWidthSs) {
-
-        return layoutXSs + NoteGeometry.getNoteheadCenterXSs(note)
-            - glyphBBoxLeft - glyphWidthSs / 2.0;
     }
 
     /**

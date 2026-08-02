@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.within;
 import java.awt.Font;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,6 +45,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Lyric;
+import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
@@ -51,6 +53,7 @@ import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.engraving.LineThickness;
 import songscribe.font.DocumentFonts;
 import songscribe.hit.HitPriority;
 import songscribe.hit.HitRegion;
@@ -63,10 +66,18 @@ import songscribe.hit.HitTarget;
  * adds: an articulation, the five concrete attachment subtypes, an accidental, a tie, a beam
  * group, a trill, and a tuplet.
  * <p>
- * Each test locates the region registered for a target and probes a point that is inside that
+ * Most tests locate the region registered for a target and probe a point that is inside that
  * region's own shape, rather than asserting coordinates. The coordinates are layout details that
  * shift whenever spacing changes; what must hold is that the region exists, addresses the right
  * object, and wins the point it covers.
+ * <p>
+ * That probe is derived from the region under test, so on its own it cannot tell a correctly
+ * placed region from an oversized or displaced one — it establishes reachability, not geometry.
+ * For most kinds the shape is a rect the layout already computed, so there is no separate
+ * arithmetic to get wrong. The two that do have their own arithmetic — the tie's bounding box and
+ * the beam group's box — are pinned by {@code testTieRegionCoversItsWholeCurve} and
+ * {@code testBeamRegionSpansEveryNoteInTheGroupAndIsAsDeepAsTheBeam}, which assert relationships
+ * that hold at any spacing instead of fixed coordinates.
  */
 class HitRegionBuilderTest extends UnitTest {
 
@@ -124,6 +135,7 @@ class HitRegionBuilderTest extends UnitTest {
     private Trill trill;
     private Tuplet tuplet;
     private Tuplet numberOnlyTuplet;
+    private LayoutResult layoutResult;
     private HitRegistry registry;
 
     /**
@@ -219,7 +231,8 @@ class HitRegionBuilderTest extends UnitTest {
             accidentalNote.setAccidental(StaffElement.Accidental.SHARP);
         });
 
-        registry = engine().layout(line).getHitRegistry();
+        layoutResult = engine().layout(line);
+        registry = layoutResult.getHitRegistry();
     }
 
     /** A stem-up crotchet at the given staff position, so its column extents are deterministic. */
@@ -329,6 +342,95 @@ class HitRegionBuilderTest extends UnitTest {
         assertRegionWinsItsOwnCenter(new HitTarget.Beam(beam));
     }
 
+    /**
+     * The bottom-right corner of a note head's rect must select the note.
+     * <p>
+     * It would not without the inclusive-edge margin: {@code Rectangle2D.contains} counts the
+     * right and bottom edges as outside, so a rect stops one pixel column and row short of the
+     * extent it was measured from, and the last of the glyph is unclickable.
+     */
+    @Test
+    void testTheFarCornerOfANoteHeadStillSelectsIt() {
+        // The nominal rect, rebuilt from the same geometry the registry was fed rather than read
+        // back off the region — reading it back would move the probe along with the margin and
+        // the test could never fail.
+        var nominalSs = new Rectangle2D.Double();
+        ElementHitGeometry.elementHitRectSs(
+            layoutResult.getElementXSs(sourceNote), sourceNote, nominalSs, true);
+
+        assertThat(registry.hitTest(nominalSs.getMaxX(), nominalSs.getMaxY()))
+            .as("the bottom-right corner of the note's own extent")
+            .isEqualTo(new HitTarget.Element(sourceNote));
+    }
+
+    // The two shapes below are the ones whose bounds come from real arithmetic rather than a
+    // rect the layout already produced, so "a region exists and wins its own center" would hold
+    // even if that arithmetic were wrong. These pin relationships that must be true of the shape
+    // whatever the spacing is, so they do not hard-code coordinates.
+
+    @Test
+    void testTieRegionCoversItsWholeCurve() {
+        var tieLayout = layoutResult.getTieLayout(tie);
+
+        if (tieLayout == null) {
+            throw new AssertionError("the fixture's tie was not laid out");
+        }
+
+        var boundsSs = regionFor(new HitTarget.Tie(tie)).shapeSs().getBounds2D();
+
+        // A tie's hit shape is the bounding box of its curve, so every point that defines the
+        // curve has to fall within it. A box built from too few of them — dropping an endpoint,
+        // or using the inner control points instead of the outer ones — would leave part of the
+        // drawn arc unclickable.
+        //
+        // Covering is asserted on the coordinates rather than with Rectangle2D.contains, which
+        // treats the right and bottom edges as outside. The curve's endpoints are exactly the
+        // extremes of its own bounding box, so contains() rejects them by definition.
+        assertCoveredBy(boundsSs, tieLayout.startXSs(), tieLayout.startYSs(), "start point");
+        assertCoveredBy(boundsSs, tieLayout.endXSs(), tieLayout.endYSs(), "end point");
+        assertCoveredBy(boundsSs, tieLayout.cp1XSs(), tieLayout.cp1YSs(), "first control point");
+        assertCoveredBy(boundsSs, tieLayout.cp2XSs(), tieLayout.cp2YSs(), "second control point");
+    }
+
+    /** Asserts {@code boundsSs} covers the point, counting its edges as covered. */
+    private static void assertCoveredBy(
+        Rectangle2D boundsSs, double xSs, double ySs, String what) {
+
+        assertThat(xSs)
+            .as("the tie's %s is within its hit box horizontally", what)
+            .isBetween(boundsSs.getMinX(), boundsSs.getMaxX());
+        assertThat(ySs)
+            .as("the tie's %s is within its hit box vertically", what)
+            .isBetween(boundsSs.getMinY(), boundsSs.getMaxY());
+    }
+
+    @Test
+    void testBeamRegionSpansEveryNoteInTheGroupAndIsAsDeepAsTheBeam() {
+        var beamLayout = layoutResult.getBeamLayout(beam);
+
+        if (beamLayout == null) {
+            throw new AssertionError("the fixture's beam was not laid out");
+        }
+
+        var boundsSs = regionFor(new HitTarget.Beam(beam)).shapeSs().getBounds2D();
+
+        // One region for the whole group, so every note it beams must fall within its X span.
+        // A per-note or first-note-only box would leave the rest of the beam unclickable.
+        for (var beamedNote : beamLayout.stems().keySet()) {
+            var noteXSs = layoutResult.getElementXSs(beamedNote);
+            assertThat(noteXSs)
+                .as("beamed note at x=%s is within the group's hit box", noteXSs)
+                .isBetween(boundsSs.getMinX(), boundsSs.getMaxX());
+        }
+
+        // The box spans the drawn beam from its outer edge to the inner edge of the deepest
+        // sub-beam, so it is at least one beam thick. Dropping the thickness term would collapse
+        // a level-one beam's box to the zero-height line through its outer edge.
+        assertThat(boundsSs.getHeight())
+            .as("the beam's hit box is at least as deep as the beam it covers")
+            .isGreaterThanOrEqualTo(LineThickness.BEAM_THICKNESS_SS);
+    }
+
     @Test
     void testTrillRegistersATrillTarget() {
         assertRegionWinsItsOwnCenter(new HitTarget.Trill(trill));
@@ -347,14 +449,24 @@ class HitRegionBuilderTest extends UnitTest {
     // A tuplet with no bracket is drawn as a bare number, and only the number is clickable. The
     // reserved box it comes from spans the whole anchor-to-end run, so registering that box
     // unchanged would hand every click in the empty space above the beam to the tuplet.
+    //
+    // The expected size is the number's ink plus the one-pixel inclusive-edge margin every
+    // rectangular region carries, which is what keeps the number's last pixel column and row
+    // clickable. The margin is a constant width, so it cannot grow the region back toward the
+    // reserved run this test exists to rule out.
     @Test
     void testNumberOnlyTupletRegionIsTheNumbersInkAlone() {
         var boundsSs = regionFor(new HitTarget.Tuplet(numberOnlyTuplet)).shapeSs().getBounds2D();
+        var marginSs = ScaleContext.pxToSs(HitRegionBuilder.INCLUSIVE_EDGE_MARGIN_PX);
 
         assertThat(boundsSs.getWidth())
-            .isCloseTo(Tuplet.numberInkWidthSs(TRIPLET_GRADE), within(INK_WIDTH_TOLERANCE_SS));
+            .isCloseTo(
+                Tuplet.numberInkWidthSs(TRIPLET_GRADE) + marginSs,
+                within(INK_WIDTH_TOLERANCE_SS));
         assertThat(boundsSs.getHeight())
-            .isCloseTo(Tuplet.TUPLET_NUMBER_INK_HEIGHT_SS, within(INK_WIDTH_TOLERANCE_SS));
+            .isCloseTo(
+                Tuplet.TUPLET_NUMBER_INK_HEIGHT_SS + marginSs,
+                within(INK_WIDTH_TOLERANCE_SS));
     }
 
     // A bracket reaches past the notes it spans at both ends, so its region is wider than the
@@ -405,18 +517,39 @@ class HitRegionBuilderTest extends UnitTest {
     // reproduces the old LineSelectionHandler hit-tester cascade verbatim.
     @Test
     void testSixOriginalKindsResolveInPriorityOrder() {
-        var overlapRegistry = HitRegistry.builder()
-            .add(UNIT_SQUARE_SS, new HitTarget.StaffLine(), HitPriority.STAFF_LINE, false)
-            .add(UNIT_SQUARE_SS, new HitTarget.Ending(ending), HitPriority.ENDING, false)
-            .add(UNIT_SQUARE_SS, new HitTarget.Hairpin(hairpin), HitPriority.HAIRPIN, false)
-            .add(UNIT_SQUARE_SS, new HitTarget.Slide(sourceNote), HitPriority.SLIDE, false)
-            .add(UNIT_SQUARE_SS, new HitTarget.Element(sourceNote), HitPriority.ELEMENT, false)
-            .add(UNIT_SQUARE_SS, new HitTarget.Lyric(sourceNote, Lyric.FIRST_VERSE), HitPriority.LYRIC, false)
-            .build();
-        var pointInsideAllSix = centerOf(UNIT_SQUARE_SS);
+        // Ranked highest first. Registering all six and asserting only the winner would prove
+        // nothing about the five below it — a HAIRPIN/ENDING swap would still pass. So each kind
+        // is removed once it has won, and the next must take over, walking the whole chain.
+        var rankedHighestFirst = List.of(
+            new HitTarget.Lyric(sourceNote, Lyric.FIRST_VERSE),
+            new HitTarget.Element(sourceNote),
+            new HitTarget.Slide(sourceNote),
+            new HitTarget.Hairpin(hairpin),
+            new HitTarget.Ending(ending),
+            new HitTarget.StaffLine());
+        var priorityByRank = List.of(
+            HitPriority.LYRIC,
+            HitPriority.ELEMENT,
+            HitPriority.SLIDE,
+            HitPriority.HAIRPIN,
+            HitPriority.ENDING,
+            HitPriority.STAFF_LINE);
+        var probe = centerOf(UNIT_SQUARE_SS);
 
-        assertThat(overlapRegistry.hitTest(pointInsideAllSix.getX(), pointInsideAllSix.getY()))
-            .isEqualTo(new HitTarget.Lyric(sourceNote, Lyric.FIRST_VERSE));
+        for (var winnerRank = 0; winnerRank < rankedHighestFirst.size(); winnerRank++) {
+            var builder = HitRegistry.builder();
+
+            // Everything from the expected winner down, all on the same square.
+            for (var rank = winnerRank; rank < rankedHighestFirst.size(); rank++) {
+                builder.add(
+                    UNIT_SQUARE_SS, rankedHighestFirst.get(rank), priorityByRank.get(rank), false);
+            }
+
+            assertThat(builder.build().hitTest(probe.getX(), probe.getY()))
+                .as("with the %d higher-ranked kinds removed, the next one down must win",
+                    winnerRank)
+                .isEqualTo(rankedHighestFirst.get(winnerRank));
+        }
     }
 
     // ARTICULATION and ATTACHMENT deliberately outrank TIE (see HitPriority), because a tie's

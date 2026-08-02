@@ -710,8 +710,28 @@ public final class ScoreViewController {
                     }
                 });
 
-            default -> {
-                // Nothing to delete; see the method documentation.
+            // Nothing to delete. Listed one per kind rather than folded into a `default` arm so
+            // that adding a selectable kind fails to compile here and forces the question of
+            // what Delete should do with it. A `default` would answer "nothing" silently, which
+            // is the failure mode SelectionCoordinator.isSelected avoids for the same reason.
+            //
+            // A tie, beam, tuplet and trill are toggled off by their own actions, never deleted;
+            // an accidental belongs to its note; an articulation and an attachment are removed
+            // through the palette that added them; a grace glissando is not selectable; the
+            // staff line and a lyric are handled by handleDelete before it reaches here. A note
+            // is selected as an index range rather than a target, so it never arrives here at
+            // all — the range branch in handleDelete owns it.
+            case HitTarget.Element _,
+                 HitTarget.Tie _,
+                 HitTarget.Beam _,
+                 HitTarget.Tuplet _,
+                 HitTarget.Trill _,
+                 HitTarget.Accidental _,
+                 HitTarget.Articulation _,
+                 HitTarget.Attachment _,
+                 HitTarget.GraceGlissando _,
+                 HitTarget.StaffLine _,
+                 HitTarget.Lyric _ -> {
             }
         }
     }

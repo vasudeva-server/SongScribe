@@ -113,6 +113,12 @@ public final class HitRegionBuilder {
      */
     private static final double SLIDE_HIT_THICKNESS_PX = 8.0;
 
+    /**
+     * How far a rectangular hit region's right and bottom edges reach past the extent they name,
+     * in pixels. See {@link #addRegion} for why they have to.
+     */
+    static final double INCLUSIVE_EDGE_MARGIN_PX = 1.0;
+
     private HitRegionBuilder() {
     }
 
@@ -174,7 +180,7 @@ public final class HitRegionBuilder {
             var rectSs = new Rectangle2D.Double();
             ElementHitGeometry.elementHitRectSs(
                 layoutResult.getElementXSs(element), element, rectSs, true);
-            builder.add(rectSs, new HitTarget.Element(element), HitPriority.ELEMENT, false);
+            addRegion(builder, rectSs, new HitTarget.Element(element), HitPriority.ELEMENT, false);
         }
     }
 
@@ -201,7 +207,7 @@ public final class HitRegionBuilder {
         for (var element : line.getElements()) {
             for (var box : layoutResult.getLyricBoxes(element)) {
                 var rectSs = new Rectangle2D.Double(box.xSs(), rowTopYSs, box.widthSs(), rowHeightSs);
-                builder.add(
+                addRegion(builder, 
                     rectSs, new HitTarget.Lyric(element, box.verseIndex()), HitPriority.LYRIC, true);
             }
         }
@@ -209,7 +215,7 @@ public final class HitRegionBuilder {
 
     private static void addHairpins(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var entry : layoutResult.<Hairpin>getDecorationLayoutsByType(Hairpin.class)) {
-            builder.add(
+            addRegion(builder, 
                 decorationHitRectSs(entry.getValue()),
                 new HitTarget.Hairpin(entry.getKey()),
                 HitPriority.HAIRPIN,
@@ -219,7 +225,7 @@ public final class HitRegionBuilder {
 
     private static void addEndings(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var entry : layoutResult.<Ending>getDecorationLayoutsByType(Ending.class)) {
-            builder.add(
+            addRegion(builder, 
                 decorationHitRectSs(entry.getValue()),
                 new HitTarget.Ending(entry.getKey()),
                 HitPriority.ENDING,
@@ -253,7 +259,7 @@ public final class HitRegionBuilder {
 
             // A fall is one glyph that cannot overlap anything else, so its drawn box is exact.
             if (fallBoundsSs != null) {
-                builder.add(fallBoundsSs, target, HitPriority.SLIDE, false);
+                addRegion(builder, fallBoundsSs, target, HitPriority.SLIDE, false);
                 continue;
             }
 
@@ -263,14 +269,14 @@ public final class HitRegionBuilder {
                 continue;
             }
 
-            builder.add(glissandoStripSs(glissando), target, HitPriority.SLIDE, false);
+            addRegion(builder, glissandoStripSs(glissando), target, HitPriority.SLIDE, false);
         }
     }
 
     /** Registers each articulation's expanded hit rect. */
     private static void addArticulations(LayoutResult layoutResult, HitRegistry.Builder builder) {
         for (var entry : layoutResult.<Articulation>getDecorationLayoutsByType(Articulation.class)) {
-            builder.add(
+            addRegion(builder, 
                 decorationHitRectSs(entry.getValue()),
                 new HitTarget.Articulation(entry.getKey()),
                 HitPriority.ARTICULATION,
@@ -307,7 +313,7 @@ public final class HitRegionBuilder {
         HitRegistry.Builder builder) {
 
         for (var entry : layoutResult.<T>getDecorationLayoutsByType(type)) {
-            builder.add(
+            addRegion(builder, 
                 decorationInkRectSs(entry.getValue()),
                 new HitTarget.Attachment(entry.getKey()),
                 HitPriority.ATTACHMENT,
@@ -342,7 +348,7 @@ public final class HitRegionBuilder {
                 layout.ySs(),
                 rightXSs - glyphLeftXSs,
                 layout.heightSs() + layout.marginSs());
-            builder.add(rectSs, new HitTarget.Trill(trill), HitPriority.TRILL, false);
+            addRegion(builder, rectSs, new HitTarget.Trill(trill), HitPriority.TRILL, false);
         }
     }
 
@@ -388,7 +394,7 @@ public final class HitRegionBuilder {
                 continue;
             }
 
-            builder.add(shapeSs, new HitTarget.Tuplet(tuplet), HitPriority.TUPLET, false);
+            addRegion(builder, shapeSs, new HitTarget.Tuplet(tuplet), HitPriority.TUPLET, false);
         }
     }
 
@@ -426,7 +432,7 @@ public final class HitRegionBuilder {
                 noteCenterYSs + boundsSs.topSs(),
                 boundsSs.widthSs(),
                 boundsSs.botSs() - boundsSs.topSs());
-            builder.add(rectSs, new HitTarget.Accidental(element), HitPriority.ACCIDENTAL, false);
+            addRegion(builder, rectSs, new HitTarget.Accidental(element), HitPriority.ACCIDENTAL, false);
         }
     }
 
@@ -448,7 +454,7 @@ public final class HitRegionBuilder {
                 continue;
             }
 
-            builder.add(tieBoundsSs(tieLayout), new HitTarget.Tie(tie), HitPriority.TIE, false);
+            addRegion(builder, tieBoundsSs(tieLayout), new HitTarget.Tie(tie), HitPriority.TIE, false);
         }
     }
 
@@ -464,7 +470,7 @@ public final class HitRegionBuilder {
                 continue;
             }
 
-            builder.add(
+            addRegion(builder, 
                 beamGroupRectSs(line, beam, beamLayout, layoutResult),
                 new HitTarget.Beam(beam),
                 HitPriority.BEAM,
@@ -485,7 +491,7 @@ public final class HitRegionBuilder {
             -STAFF_HIT_RADIUS_SS,
             headerRightEdgeSs,
             2 * STAFF_HIT_RADIUS_SS);
-        builder.add(rectSs, new HitTarget.StaffLine(), HitPriority.STAFF_LINE, false);
+        addRegion(builder, rectSs, new HitTarget.StaffLine(), HitPriority.STAFF_LINE, false);
     }
 
     // ==========================================================================
@@ -662,20 +668,66 @@ public final class HitRegionBuilder {
      * end. See {@link #addTies} for why the inner curve's control points are excluded.
      */
     private static Rectangle2D.Double tieBoundsSs(LayoutResult.TieLayout tieLayout) {
-        var minXSs = Math.min(
-            Math.min(tieLayout.startXSs(), tieLayout.cp1XSs()),
-            Math.min(tieLayout.cp2XSs(), tieLayout.endXSs()));
-        var maxXSs = Math.max(
-            Math.max(tieLayout.startXSs(), tieLayout.cp1XSs()),
-            Math.max(tieLayout.cp2XSs(), tieLayout.endXSs()));
-        var minYSs = Math.min(
-            Math.min(tieLayout.startYSs(), tieLayout.cp1YSs()),
-            Math.min(tieLayout.cp2YSs(), tieLayout.endYSs()));
-        var maxYSs = Math.max(
-            Math.max(tieLayout.startYSs(), tieLayout.cp1YSs()),
-            Math.max(tieLayout.cp2YSs(), tieLayout.endYSs()));
+        return boundingBoxSs(
+            tieLayout.startXSs(), tieLayout.startYSs(),
+            tieLayout.cp1XSs(), tieLayout.cp1YSs(),
+            tieLayout.cp2XSs(), tieLayout.cp2YSs(),
+            tieLayout.endXSs(), tieLayout.endYSs());
+    }
 
-        return new Rectangle2D.Double(minXSs, minYSs, maxXSs - minXSs, maxYSs - minYSs);
+    /**
+     * Registers {@code shapeSs}, extending a rectangle's right and bottom edges so the extent it
+     * names is fully clickable.
+     * <p>
+     * {@code Rectangle2D.contains} is half-open: the left and top edges count as inside, the
+     * right and bottom as outside. Coordinates fall between pixels, so a rect of width {@code w}
+     * starting at {@code x} covers the pixels from {@code x} up to but not including
+     * {@code x + w} — one column short of the glyph it was measured from, and one row short at
+     * the bottom. Extending the far edges by a pixel restores that column and row.
+     * <p>
+     * Every registration goes through here so no rect can miss it. Non-rectangular shapes pass
+     * through untouched: a closed path has no single pair of far edges to extend, and the two
+     * that exist — a glissando strip and a sloped tuplet bracket — are generous shapes already.
+     */
+    private static void addRegion(
+        HitRegistry.Builder builder,
+        Shape shapeSs,
+        HitTarget target,
+        int priority,
+        boolean hoverTestable) {
+
+        builder.add(inclusiveOf(shapeSs), target, priority, hoverTestable);
+    }
+
+    /** @see #addRegion */
+    private static Shape inclusiveOf(Shape shapeSs) {
+        if (!(shapeSs instanceof Rectangle2D rectSs)) {
+            return shapeSs;
+        }
+
+        var marginSs = ScaleContext.pxToSs(INCLUSIVE_EDGE_MARGIN_PX);
+
+        return new Rectangle2D.Double(
+            rectSs.getX(),
+            rectSs.getY(),
+            rectSs.getWidth() + marginSs,
+            rectSs.getHeight() + marginSs);
+    }
+
+    /**
+     * The smallest rectangle containing every given point.
+     *
+     * @param coordsSs the points as alternating x, y values in staff spaces; at least one point,
+     *                 so an even count of at least two values
+     */
+    private static Rectangle2D.Double boundingBoxSs(double... coordsSs) {
+        var boundsSs = new Rectangle2D.Double(coordsSs[0], coordsSs[1], 0, 0);
+
+        for (var i = 2; i < coordsSs.length; i += 2) {
+            boundsSs.add(coordsSs[i], coordsSs[i + 1]);
+        }
+
+        return boundsSs;
     }
 
     /**
@@ -721,14 +773,12 @@ public final class HitRegionBuilder {
             + (levelCount - 1) * LineThickness.beamTranslationSs(beamLayout.thickeningSs());
         var innerOffsetSs = beamLayout.stemsUp() ? totalDepthSs : -totalDepthSs;
 
-        var minYSs = Math.min(
-            Math.min(outerStartYSs, outerEndYSs),
-            Math.min(outerStartYSs + innerOffsetSs, outerEndYSs + innerOffsetSs));
-        var maxYSs = Math.max(
-            Math.max(outerStartYSs, outerEndYSs),
-            Math.max(outerStartYSs + innerOffsetSs, outerEndYSs + innerOffsetSs));
-
-        return new Rectangle2D.Double(minXSs, minYSs, widthSs, maxYSs - minYSs);
+        // The four corners: each end of the outer edge, and each end of the deepest inner edge.
+        return boundingBoxSs(
+            minXSs, outerStartYSs,
+            maxXSs, outerEndYSs,
+            minXSs, outerStartYSs + innerOffsetSs,
+            maxXSs, outerEndYSs + innerOffsetSs);
     }
 
     private static HitTarget slideTarget(StaffElement note) {

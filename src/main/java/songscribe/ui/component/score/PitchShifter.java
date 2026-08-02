@@ -408,9 +408,7 @@ public final class PitchShifter {
                 var idx = entry.index();
                 var element = line.getElement(idx);
 
-                if (element.getType().isGraceNote()
-                        && idx + 1 < line.elementCount()
-                        && element.getPitch() == line.getElement(idx + 1).getPitch()) {
+                if (element.getType().isGraceNote() && line.isSamePitchAsFollower(idx)) {
                     // Grace note shifted to the same pitch as its following note — remove the grace note
                     OptionDialogs.showWarningMessage(
                             null,
@@ -421,10 +419,12 @@ public final class PitchShifter {
                     removedIndices.add(idx);
                 } else if (!element.getType().isGraceNote()) {
                     // Host note shifted to the same pitch as its preceding grace note — remove the grace note
+                    // The preceding grace note sits immediately before idx, so asking whether it
+                    // matches its follower asks about this element. A negative index reads as
+                    // no match, which covers "no preceding grace note".
                     var graceIdx = line.precedingGraceNoteIndex(idx);
 
-                    if (graceIdx >= 0
-                            && line.getElement(graceIdx).getPitch() == element.getPitch()) {
+                    if (line.isSamePitchAsFollower(graceIdx)) {
                         OptionDialogs.showWarningMessage(
                                 null,
                                 Strings.ALERT_TITLE_GRACE_NOTE_WARNING,

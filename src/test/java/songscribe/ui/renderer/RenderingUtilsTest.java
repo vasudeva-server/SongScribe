@@ -169,25 +169,6 @@ class RenderingUtilsTest extends UnitTest {
         );
     }
 
-    // centeredGlyphX — arithmetic: layoutX + noteheadCenter - bboxLeft - glyphWidth/2
-    @Test
-    void testCenteredGlyphXComputesCorrectArithmetic() {
-        var note = new StaffElement(ElementType.CROTCHET);
-        note.setUpper(true);
-        var layoutXSs = 10.0;
-        var glyphBBoxLeft = -0.1;
-        var glyphWidthSs = 0.8;
-
-        var type = note.getType();
-        var noteheadCenterXSs =
-            type.getElementCenterXSs() + NoteGeometry.getNoteheadXOffsetSs(type, note.getDirection());
-        var expected = layoutXSs + noteheadCenterXSs - glyphBBoxLeft - glyphWidthSs / 2.0;
-
-        var actual = RenderingUtils.centeredGlyphX(layoutXSs, note, glyphBBoxLeft, glyphWidthSs);
-
-        assertThat(actual).isCloseTo(expected, within(1e-9));
-    }
-
     // stemCenterXOffsetSs — all 4 branches: minim-up, minim-down, black-up, black-down
     @Test
     void testStemCenterXOffsetSsMinimUp() {

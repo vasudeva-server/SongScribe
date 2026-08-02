@@ -321,7 +321,7 @@ class LineRenderer {
     Color getElementColor(int elementIndex, LineInvariants invariants) {
         var color = invariants.getElementColor(elementIndex);
 
-        if (color != Color.BLACK) {
+        if (!LineInvariants.isDefaultColor(color)) {
             return color;
         }
 

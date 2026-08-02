@@ -35,6 +35,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import songscribe.UnitTest;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
+import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
@@ -42,6 +43,9 @@ import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.dom.Tie;
+import songscribe.dom.Trill;
+import songscribe.dom.Tuplet;
 import songscribe.hit.HitTarget;
 import songscribe.ui.component.ScoreView;
 
@@ -111,14 +115,38 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
         return line;
     }
 
+    /** Three notes in the time of two, undotted — the shape of the fixture's tuplet. */
+    private static final int TRIPLET_GRADE = 3;
+    private static final int TRIPLET_NORMAL_NOTES = 2;
+    private static final int NO_DOTS = 0;
+
     /**
      * Every decoration kind, as a factory over a line holding at least two elements, so
      * that a test covering all of them adds no branch of its own.
+     * <p>
+     * "Decoration" here means whatever {@link SelectionCoordinator#hasDecorationSelection}
+     * counts as one — every target except the staff line and a lyric, both of which are
+     * answered elsewhere. The list must stay complete: the tests below derive their cases from
+     * it, including the pairwise replacement test, so a kind missing from here is a kind
+     * nothing checks.
      */
     private static final List<Named<Function<Line, HitTarget>>> DECORATION_KINDS = List.of(
         Named.of("slide", line -> new HitTarget.Slide(line.getElement(0))),
         Named.of("ending", line -> new HitTarget.Ending(makeEnding(line))),
-        Named.of("hairpin", line -> new HitTarget.Hairpin(makeHairpin(line)))
+        Named.of("hairpin", line -> new HitTarget.Hairpin(makeHairpin(line))),
+        Named.of("articulation",
+            line -> new HitTarget.Articulation(new Articulation(ArticulationType.STACCATO))),
+        Named.of("attachment", line -> new HitTarget.Attachment(new FermataAttachment())),
+        Named.of("accidental", line -> new HitTarget.Accidental(line.getElement(0))),
+        Named.of("tie", line -> new HitTarget.Tie(new Tie(line.getElement(0), line.getElement(1)))),
+        Named.of("beam",
+            line -> new HitTarget.Beam(new Beam(line.getElement(0), line.getElement(1)))),
+        Named.of("trill",
+            line -> new HitTarget.Trill(new Trill(line.getElement(0), line.getElement(1)))),
+        Named.of("tuplet", line -> new HitTarget.Tuplet(new Tuplet(
+            line.getElement(0), line.getElement(1),
+            TRIPLET_GRADE, TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS))),
+        Named.of("grace glissando", line -> new HitTarget.GraceGlissando(line.getElement(0)))
     );
 
     private static Stream<Named<Function<Line, HitTarget>>> decorationKinds() {

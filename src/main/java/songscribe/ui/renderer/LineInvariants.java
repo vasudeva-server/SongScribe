@@ -252,6 +252,20 @@ public final class LineInvariants {
     // ==========================================================================
 
     /**
+     * Returns whether {@code color} is the one every colour lookup here falls back to when
+     * nothing applies — no playback, no selection, no hover.
+     * <p>
+     * Callers ask this to decide whether a lookup contributed anything, so that a renderer can
+     * fall through to its own colour choice. One predicate rather than a comparison written out
+     * at each site: those comparisons were split between reference equality and
+     * {@code equals}, which agree only because the fallback is a shared constant. Naming the
+     * question keeps that a detail of this class instead of something five call sites rely on.
+     */
+    public static boolean isDefaultColor(Color color) {
+        return color.equals(Color.BLACK);
+    }
+
+    /**
      * Returns the rendering color for the element at the given index.
      * <p>
      * Covers playback highlighting, selection, and hover (replaced-element) highlighting.
@@ -378,12 +392,14 @@ public final class LineInvariants {
     /**
      * Returns whether the element at {@code elementIndex} on this line reads as selected.
      * <p>
-     * The index is resolved to the element it names so the question can be asked as a
-     * {@link HitTarget}, which is the only selection query the provider exposes. Selecting a
-     * single note collapses the index range onto it, so this answers for both a click on one
-     * note and a drag across several.
+     * Asks the provider by index rather than by {@link HitTarget}. Selecting a single note
+     * collapses the index range onto it, so this answers for both a click on one note and a
+     * drag across several.
+     * <p>
+     * Package-private because {@code SlideRenderer} needs the same answer for the note a
+     * connecting glissando lands on.
      */
-    private boolean isElementRangeSelected(int elementIndex) {
+    boolean isElementRangeSelected(int elementIndex) {
         if (selectionProvider == null
                 || currentLine == null
                 || elementIndex < 0
@@ -391,8 +407,7 @@ public final class LineInvariants {
             return false;
         }
 
-        return selectionProvider.isSelected(
-            new HitTarget.Element(currentLine.getElement(elementIndex)), lineIndex);
+        return selectionProvider.isElementRangeSelected(elementIndex, lineIndex);
     }
 
     /**

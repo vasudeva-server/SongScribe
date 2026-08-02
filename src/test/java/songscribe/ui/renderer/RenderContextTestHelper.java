@@ -70,14 +70,37 @@ final class RenderContextTestHelper {
      * {@code selectedElementIndex} of {@code line} as selected on line 0, and makes
      * {@code line} the builder's current line.
      * <p>
-     * The line is required because an element's color is resolved by naming the element as a
-     * {@link songscribe.hit.HitTarget}, so the index has to be mapped back to the element
-     * sitting at it.
+     * Both selection queries are stubbed because a note can be asked about either way, and a
+     * real selection answers both: by index, which is how a drawn element asks, and by
+     * {@link songscribe.hit.HitTarget}, which is how a caller holding only the element asks.
+     * Stubbing one alone would make the mock report a state the real coordinator cannot be in.
+     * <p>
+     * The line is required so the index can be mapped to the element sitting at it.
      */
     static void enableSelection(LineInvariants.Builder builder, Line line, int selectedElementIndex) {
+        enableRangeSelection(builder, line, selectedElementIndex, selectedElementIndex);
+    }
+
+    /**
+     * The multi-element form of {@link #enableSelection}: reports every element in
+     * {@code beginIndex..endIndex} as selected on line 0, and makes {@code line} the builder's
+     * current line.
+     * <p>
+     * Takes a contiguous range rather than a set of indices because that is the only shape a
+     * real selection has. A mock that reported scattered elements as selected would put the
+     * code under test in a state the coordinator cannot produce.
+     */
+    static void enableRangeSelection(
+        LineInvariants.Builder builder, Line line, int beginIndex, int endIndex) {
+
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isSelected(
-            new HitTarget.Element(line.getElement(selectedElementIndex)), 0)).thenReturn(true);
+
+        for (var i = beginIndex; i <= endIndex; i++) {
+            when(selectionProvider.isSelected(new HitTarget.Element(line.getElement(i)), 0))
+                .thenReturn(true);
+            when(selectionProvider.isElementRangeSelected(i, 0)).thenReturn(true);
+        }
+
         builder.setCurrentLine(line).setSelectionProvider(selectionProvider);
     }
 }

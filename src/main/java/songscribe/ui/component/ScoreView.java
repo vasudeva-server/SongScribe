@@ -632,6 +632,11 @@ public final class ScoreView
     }
 
     @Override
+    public boolean isElementRangeSelected(int elementIndex, int lineIndex) {
+        return selectionCoordinator.isElementRangeSelected(elementIndex, lineIndex);
+    }
+
+    @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
 

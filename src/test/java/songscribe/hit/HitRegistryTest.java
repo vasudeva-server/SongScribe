@@ -64,11 +64,6 @@ class HitRegistryTest extends UnitTest {
 
     private static final double INNER_SIZE_SS = 2.0;
 
-    /** A square far away from the other three, overlapping none of them. */
-    private static final double FAR_ORIGIN_SS = 30.0;
-
-    private static final double FAR_SIZE_SS = 2.0;
-
     /** Diagonal point inside all three concentric squares. */
     private static final double IN_ALL_SS = 4.0;
 
@@ -81,10 +76,8 @@ class HitRegistryTest extends UnitTest {
     /** Diagonal point outside every fixture square. */
     private static final double OUTSIDE_SS = 20.0;
 
-    /** A small drag rectangle straddling the inner and outer squares. */
-    private static final double DRAG_ORIGIN_SS = 4.0;
-
-    private static final double DRAG_SIZE_SS = 2.0;
+    /** How far either side of an edge the boundary tests probe: well inside one square unit. */
+    private static final double EDGE_PROBE_SS = 0.01;
 
     private static final int FIRST_VERSE = 0;
 
@@ -218,31 +211,57 @@ class HitRegistryTest extends UnitTest {
     }
 
     @Nested
-    class Intersecting {
+    class Boundaries {
 
-        private HitRegistry scatteredRegistry() {
-            return HitRegistry.builder()
-                .add(outerSs(), staffLineTarget, HitPriority.STAFF_LINE, false)
-                .add(innerSs(), lyricTarget, HitPriority.LYRIC, true)
-                .add(squareSs(FAR_ORIGIN_SS, FAR_SIZE_SS), elementTarget, HitPriority.ELEMENT, false)
+        /**
+         * A click exactly on a region's edge. Java shapes treat the top and left edges as inside
+         * and the bottom and right edges as outside, and the registry inherits that by asking
+         * {@code Shape.contains}.
+         * <p>
+         * This is the raw rule for a shape handed straight to the registry, which is what this
+         * test builds. Regions produced by {@code HitRegionBuilder} do not read this way at their
+         * nominal edges: it extends every rectangle's right and bottom by a pixel precisely so
+         * the extent a region names stays clickable despite this rule.
+         */
+        @Test
+        void testEdgePointsFollowShapeContainsSemantics() {
+            var registry = HitRegistry.builder()
+                .add(innerSs(), lyricTarget, HitPriority.LYRIC, false)
                 .build();
+            var box = innerSs();
+
+            assertThat(registry.hitTest(box.getMinX(), box.getMinY()))
+                .as("the top-left corner is inside")
+                .isEqualTo(lyricTarget);
+            assertThat(registry.hitTest(box.getMaxX(), box.getMaxY()))
+                .as("the bottom-right corner is outside")
+                .isNull();
+            assertThat(registry.hitTest(box.getMinX(), box.getMaxY()))
+                .as("the bottom edge is outside")
+                .isNull();
+            assertThat(registry.hitTest(box.getMaxX(), box.getMinY()))
+                .as("the right edge is outside")
+                .isNull();
         }
 
+        /**
+         * Just inside and just outside the same edge, so the test would catch a region built one
+         * whole unit too large or too small rather than only an exactly-on-the-line answer.
+         */
         @Test
-        void testIntersectingReturnsEveryOverlappingTargetAndOmitsTheRest() {
-            var overlapping = scatteredRegistry()
-                .intersecting(squareSs(DRAG_ORIGIN_SS, DRAG_SIZE_SS));
+        void testPointsStraddlingAnEdgeResolveOnOppositeSides() {
+            var registry = HitRegistry.builder()
+                .add(innerSs(), lyricTarget, HitPriority.LYRIC, false)
+                .build();
+            var box = innerSs();
+            var midYSs = box.getCenterY();
 
-            // The contract is unordered, so membership is all that may be asserted.
-            assertThat(overlapping).containsExactlyInAnyOrder(staffLineTarget, lyricTarget);
-        }
-
-        @Test
-        void testIntersectingReturnsEmptyWhenRectangleOverlapsNothing() {
-            var overlapping = scatteredRegistry()
-                .intersecting(squareSs(OUTSIDE_SS, FAR_SIZE_SS));
-
-            assertThat(overlapping).isEmpty();
+            assertThat(registry.hitTest(box.getMinX() + EDGE_PROBE_SS, midYSs))
+                .as("just inside the left edge")
+                .isEqualTo(lyricTarget);
+            assertThat(registry.hitTest(box.getMinX() - EDGE_PROBE_SS, midYSs))
+                .as("just outside the left edge")
+                .isNull();
         }
     }
 
@@ -256,7 +275,6 @@ class HitRegistryTest extends UnitTest {
             assertThat(registry.regions()).isEmpty();
             assertThat(registry.hitTest(IN_ALL_SS, IN_ALL_SS)).isNull();
             assertThat(registry.hitTestHover(IN_ALL_SS, IN_ALL_SS)).isNull();
-            assertThat(registry.intersecting(outerSs())).isEmpty();
         }
 
         @Test

@@ -198,8 +198,12 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     ) {
         var noteX = resolveNoteXSs(g2, element, invariants, frame);
 
-        // Place half a staff space above the top staff line
-        var breathY = invariants.getMiddleLineYSs() - 2.5;
+        // Derived from the element's staff position — half a staff space above the top staff
+        // line — rather than written out again here. The hit rect is built from that same staff
+        // position, so deriving both from it is what keeps the clickable area on the glyph; the
+        // two were once separate numbers and drifted a full staff space apart.
+        var breathY = NoteGeometry.noteStaffPositionToCoordinateSs(
+            element.getStaffPosition(), invariants.getMiddleLineYSs());
 
         RenderingUtils.drawBravuraGlyph(
             g2,
@@ -471,7 +475,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             var accidentalColor = invariants.colorFor(
                 new HitTarget.Accidental(note), frame.currentElementIndex());
 
-            if (!accidentalColor.equals(Color.BLACK)) {
+            if (!LineInvariants.isDefaultColor(accidentalColor)) {
                 g2.setColor(accidentalColor);
             }
 

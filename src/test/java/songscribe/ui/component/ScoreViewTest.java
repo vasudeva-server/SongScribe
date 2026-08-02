@@ -1163,7 +1163,21 @@ class ScoreViewTest extends UnitTest {
         void testDoesNothingWithAMultiElementSelection() {
             // The menu command is disabled unless exactly one element is selected; Return
             // must not silently pick one note out of a range the user never singled out.
-            scoreView.getSelectionCoordinator().selectRange(INDEX_NORMAL, INDEX_HOST);
+            //
+            // selectRange acts on the active line and does nothing when none is active, and
+            // registerLine in setUp does not activate one. Without activateLine this test would
+            // select nothing at all and become a duplicate of the no-selection test above.
+            var coordinator = scoreView.getSelectionCoordinator();
+            coordinator.activateLine(0);
+            coordinator.selectRange(INDEX_NORMAL, INDEX_HOST);
+
+            var range = coordinator.getRange();
+
+            if (range == null) {
+                throw new AssertionError("the multi-element selection this test needs was not made");
+            }
+
+            assertThat(range.size()).isGreaterThan(1);
 
             try (var lyricEditor = mockStatic(LyricEditor.class)) {
                 scoreView.editLyricOnSelection();
@@ -1174,8 +1188,9 @@ class ScoreViewTest extends UnitTest {
 
         @Test
         void testDoesNothingWithAWholeLineSelected() {
-            // A selected staff line reports itself as a selection spanning every element,
-            // so this is the multi-element guard seen through the other gesture that hits it.
+            // Selecting the staff line stores a target rather than an index range, so this takes
+            // the "not a range" path into the guard rather than the multi-element one — the other
+            // way the editor can be asked to open with no single element named.
             scoreView.getSelectionCoordinator().select(new HitTarget.StaffLine());
 
             try (var lyricEditor = mockStatic(LyricEditor.class)) {

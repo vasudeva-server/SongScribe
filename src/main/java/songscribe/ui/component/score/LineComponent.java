@@ -84,6 +84,23 @@ public class LineComponent extends ScoreComponent
          * @return true if that exact target is selected
          */
         boolean isSelected(HitTarget target, int lineIndex);
+
+        /**
+         * Returns whether the element at {@code elementIndex} falls inside the selected
+         * index range.
+         * <p>
+         * The one question {@link #isSelected} cannot answer cheaply. An index range is not
+         * something a click addresses — it is the other shape a selection can take — so it has
+         * no {@link HitTarget} of its own. Every caller here is drawing an element and already
+         * holds its index; asking through {@link #isSelected} would wrap that index into a
+         * target only for the answer to derive it back by scanning the line, once per drawn
+         * element on every repaint.
+         *
+         * @param elementIndex The element's index on the line
+         * @param lineIndex    The line index
+         * @return true if that element falls inside the selected range
+         */
+        boolean isElementRangeSelected(int elementIndex, int lineIndex);
     }
 
     // ==========================================================================

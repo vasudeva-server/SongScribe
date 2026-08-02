@@ -109,13 +109,9 @@ class TieRendererTest extends UnitTest {
         // Selecting the start note (index 0) should return the selection color
         var tie = makeTie();
         var builder = baseBuilder(tie);
-        var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isSelected(new HitTarget.Element(lineOf(tie).getElement(0)), 0))
-            .thenReturn(true);
-        builder.setSelectionProvider(selectionProvider);
-        var invariants = builder.build();
+        RenderContextTestHelper.enableSelection(builder, lineOf(tie), 0);
 
-        assertThat(RENDERER.determineTieColor(tie, invariants)).isEqualTo(SELECTION_COLOR);
+        assertThat(RENDERER.determineTieColor(tie, builder.build())).isEqualTo(SELECTION_COLOR);
     }
 
     @Test
@@ -123,13 +119,9 @@ class TieRendererTest extends UnitTest {
         // If start note is not selected but end note is, the end color is used
         var tie = makeTie();
         var builder = baseBuilder(tie);
-        var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isSelected(new HitTarget.Element(lineOf(tie).getElement(1)), 0))
-            .thenReturn(true);
-        builder.setSelectionProvider(selectionProvider);
-        var invariants = builder.build();
+        RenderContextTestHelper.enableSelection(builder, lineOf(tie), 1);
 
-        assertThat(RENDERER.determineTieColor(tie, invariants)).isEqualTo(SELECTION_COLOR);
+        assertThat(RENDERER.determineTieColor(tie, builder.build())).isEqualTo(SELECTION_COLOR);
     }
 
     @Test
@@ -137,16 +129,10 @@ class TieRendererTest extends UnitTest {
         // Both notes selected: start-note color is returned first (start-takes-priority)
         var tie = makeTie();
         var builder = baseBuilder(tie);
-        var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isSelected(new HitTarget.Element(lineOf(tie).getElement(0)), 0))
-            .thenReturn(true);
-        when(selectionProvider.isSelected(new HitTarget.Element(lineOf(tie).getElement(1)), 0))
-            .thenReturn(true);
-        builder.setSelectionProvider(selectionProvider);
-        var invariants = builder.build();
+        RenderContextTestHelper.enableRangeSelection(builder, lineOf(tie), 0, 1);
 
         // determineTieColor checks start first; start is non-BLACK, so it returns immediately
-        assertThat(RENDERER.determineTieColor(tie, invariants)).isEqualTo(SELECTION_COLOR);
+        assertThat(RENDERER.determineTieColor(tie, builder.build())).isEqualTo(SELECTION_COLOR);
     }
 
     @Test

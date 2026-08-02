@@ -435,8 +435,10 @@ public class LayoutEngine {
      * The hit registry is the last thing layout computes, because it reads every other layout
      * map — columns, lyric boxes, decorations, slides — and so needs them all finished. It reads
      * them from a built result rather than from the builder, which keeps the geometry formulas
-     * (the lyric row's midline offset above all) in the one place that already owns them.
-     * Building twice is safe and cheap: {@code build()} is a pure snapshot of the builder.
+     * (the lyric row's midline offset above all) in the one place that already owns them. The
+     * registry is then attached to that same result, which shares its maps rather than copying
+     * them again — {@code build()} deep-copies every layout map, so calling it twice per line
+     * would double that work on every layout.
      */
     private LayoutResult buildLayoutResult(
         List<ElementColumn> columns,
@@ -449,9 +451,9 @@ public class LayoutEngine {
         }
 
         var geometry = builder.build();
-        builder.setHitRegistry(HitRegionBuilder.build(line, geometry, lyricRenderMetrics));
 
-        return builder.build();
+        return geometry.withHitRegistry(
+            HitRegionBuilder.build(line, geometry, lyricRenderMetrics));
     }
 
     /**
@@ -568,13 +570,7 @@ public class LayoutEngine {
         List<ElementColumn> columns,
         LayoutResult.Builder builder) {
         var beams = line.findRangeElements(Beam.class);
-
-        // Build an element→column map for fast X lookups inside the loop.
-        var elementToColumn = new HashMap<StaffElement, ElementColumn>(columns.size() * 2);
-
-        for (var column : columns) {
-            elementToColumn.put(column.getElement(), column);
-        }
+        var elementToColumn = elementToColumnMap(columns);
 
         for (var beam : beams) {
             var beamStart = beam.getAnchorElementIndex();
@@ -839,12 +835,7 @@ public class LayoutEngine {
             return;
         }
 
-        // Build an element → column map for fast X lookups.
-        var elementToColumn = new HashMap<StaffElement, ElementColumn>(columns.size() * 2);
-
-        for (var column : columns) {
-            elementToColumn.put(column.getElement(), column);
-        }
+        var elementToColumn = elementToColumnMap(columns);
 
         for (var span : ties) {
             var spanColumns = ElementColumn.resolveSpan(span, elementToColumn);
@@ -947,12 +938,7 @@ public class LayoutEngine {
         List<ElementColumn> columns,
         LayoutResult.Builder builder) {
 
-        // Build an element → column map for fast X lookups, as calculateTies does.
-        var elementToColumn = new HashMap<StaffElement, ElementColumn>(columns.size() * 2);
-
-        for (var column : columns) {
-            elementToColumn.put(column.getElement(), column);
-        }
+        var elementToColumn = elementToColumnMap(columns);
 
         // The auto-maintained terminal barline can own no slide, so the effective count is enough.
         var elementCount = line.effectiveElementCount();
@@ -992,6 +978,21 @@ public class LayoutEngine {
 
             builder.putSlideLayout(note, LayoutResult.SlideLayout.ofGlissando(endpoints));
         }
+    }
+
+    /**
+     * Indexes {@code columns} by the element each one lays out, so the passes that walk spans —
+     * beams, ties, slides — can look a note's column up directly instead of scanning the list
+     * once per element they touch.
+     */
+    private static Map<StaffElement, ElementColumn> elementToColumnMap(List<ElementColumn> columns) {
+        var elementToColumn = new HashMap<StaffElement, ElementColumn>(columns.size() * 2);
+
+        for (var column : columns) {
+            elementToColumn.put(column.getElement(), column);
+        }
+
+        return elementToColumn;
     }
 
     /**

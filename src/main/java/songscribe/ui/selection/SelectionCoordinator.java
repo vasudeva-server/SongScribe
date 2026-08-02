@@ -442,6 +442,10 @@ public final class SelectionCoordinator {
         return switch (target) {
             case HitTarget.Element(var element) -> {
                 var range = getRange();
+
+                // The index has to be derived here because the caller supplied only the element.
+                // Callers that already hold the index use isElementRangeSelected directly, which
+                // skips this scan.
                 yield range != null && range.contains(range.line().getElementIndex(element));
             }
             case HitTarget.Lyric _ -> isSelectedTarget(target);
@@ -458,6 +462,29 @@ public final class SelectionCoordinator {
             case HitTarget.Trill _ -> isSelectedTarget(target);
             case HitTarget.Tuplet _ -> isSelectedTarget(target);
         };
+    }
+
+    /**
+     * Returns whether the element at {@code elementIndex} on the line at {@code lineIndex} falls
+     * inside the selected index range.
+     * <p>
+     * Separate from {@link #isSelected} because a range is not a thing a click addresses — it is
+     * the other selection shape (see {@link Selection}) — and because every caller that draws an
+     * element already holds its index. Routing those callers through {@link #isSelected} would
+     * mean wrapping the index into a {@link HitTarget.Element} only for the answer to derive it
+     * back by scanning the line, once per drawn element on every repaint.
+     *
+     * @param elementIndex the element's index on the line; out of range yields false
+     * @param lineIndex    the line the element sits on
+     */
+    public boolean isElementRangeSelected(int elementIndex, int lineIndex) {
+        if (activeLineIndex != lineIndex || elementIndex < 0) {
+            return false;
+        }
+
+        var range = getRange();
+
+        return range != null && range.contains(elementIndex);
     }
 
     private boolean isSelectedTarget(HitTarget target) {

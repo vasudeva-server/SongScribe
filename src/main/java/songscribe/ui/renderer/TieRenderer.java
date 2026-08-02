@@ -126,19 +126,19 @@ public final class TieRenderer {
     Color determineTieColor(Tie tie, LineInvariants invariants) {
         var startColor = invariants.getElementColor(tie.getAnchorElementIndex());
 
-        if (startColor != Color.BLACK) {
+        if (!LineInvariants.isDefaultColor(startColor)) {
             return startColor;
         }
 
         var endColor = invariants.getElementColor(tie.getEndElementIndex());
 
-        if (endColor != Color.BLACK) {
+        if (!LineInvariants.isDefaultColor(endColor)) {
             return endColor;
         }
 
         var tieColor = invariants.colorFor(new HitTarget.Tie(tie), LineInvariants.NO_ELEMENT_INDEX);
 
-        if (tieColor != Color.BLACK) {
+        if (!LineInvariants.isDefaultColor(tieColor)) {
             return tieColor;
         }
 

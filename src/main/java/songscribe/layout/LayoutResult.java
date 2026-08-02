@@ -130,7 +130,6 @@ public final class LayoutResult {
         HitRegistry hitRegistry) {
         this.elementColumns = Map.copyOf(elementColumns);
         this.beamLayouts = Map.copyOf(beamLayouts);
-        var stemLayouts1 = Map.copyOf(stemLayouts);
 
         var mergedStems = new HashMap<>(stemLayouts);
 
@@ -157,6 +156,41 @@ public final class LayoutResult {
         this.hasTrailingLyricContinuation = hasTrailingLyricContinuation;
         this.overflowsStaffWidth = overflowsStaffWidth;
         this.hitRegistry = hitRegistry;
+    }
+
+    /**
+     * Copies {@code source}, replacing only its hit registry. Every other field is already
+     * immutable, so the copy shares them instead of duplicating them.
+     */
+    private LayoutResult(LayoutResult source, HitRegistry hitRegistry) {
+        elementColumns = source.elementColumns;
+        beamLayouts = source.beamLayouts;
+        allStemLayouts = source.allStemLayouts;
+        tieLayouts = source.tieLayouts;
+        decorationLayouts = source.decorationLayouts;
+        slideLayouts = source.slideLayouts;
+        clef = source.clef;
+        keySignature = source.keySignature;
+        contentAboveStaffSs = source.contentAboveStaffSs;
+        contentBelowStaffSs = source.contentBelowStaffSs;
+        lyricBoxes = source.lyricBoxes;
+        lyricConnectors = source.lyricConnectors;
+        hasTrailingLyricContinuation = source.hasTrailingLyricContinuation;
+        overflowsStaffWidth = source.overflowsStaffWidth;
+        this.hitRegistry = hitRegistry;
+    }
+
+    /**
+     * Returns this result carrying {@code hitRegistry} in place of its own.
+     * <p>
+     * The hit registry is the last thing layout computes: it reads the finished columns, lyric
+     * boxes, decorations, ties and slides, and the derived accessors that own their geometry
+     * formulas, so it cannot be assembled until everything else is done. Attaching it to a
+     * built result preserves that ordering without laying the line out — or copying its maps —
+     * a second time.
+     */
+    LayoutResult withHitRegistry(HitRegistry hitRegistry) {
+        return new LayoutResult(this, hitRegistry);
     }
 
     // ==========================================================================
@@ -1010,7 +1044,6 @@ public final class LayoutResult {
         private final List<LyricConnectorLayout> lyricConnectors;
         private boolean hasTrailingLyricContinuation = false;
         private boolean overflowsStaffWidth = false;
-        private HitRegistry hitRegistry = HitRegistry.EMPTY;
 
         public Builder() {
             elementColumns = new HashMap<>();
@@ -1054,17 +1087,6 @@ public final class LayoutResult {
          */
         public Builder putElementColumn(StaffElement element, ElementColumn column) {
             elementColumns.put(element, column);
-            return this;
-        }
-
-        /**
-         * Sets the line's hit registry.
-         *
-         * @param hitRegistry Every clickable area of the line, in layout space
-         * @return This builder for chaining
-         */
-        public Builder setHitRegistry(HitRegistry hitRegistry) {
-            this.hitRegistry = hitRegistry;
             return this;
         }
 
@@ -1274,7 +1296,9 @@ public final class LayoutResult {
                 lyricConnectors,
                 hasTrailingLyricContinuation,
                 overflowsStaffWidth,
-                hitRegistry
+                // The registry is built from a finished result and attached with
+                // withHitRegistry, so a freshly built one has nothing clickable yet.
+                HitRegistry.EMPTY
             );
         }
     }

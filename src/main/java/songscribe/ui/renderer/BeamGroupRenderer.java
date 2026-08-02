@@ -134,7 +134,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
             var beamColor = invariants.colorFor(
                 new HitTarget.Beam(beam), LineInvariants.NO_ELEMENT_INDEX);
 
-            if (beamColor != Color.BLACK) {
+            if (!LineInvariants.isDefaultColor(beamColor)) {
                 return beamColor;
             }
         }

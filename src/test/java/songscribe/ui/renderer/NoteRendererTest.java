@@ -162,6 +162,41 @@ class NoteRendererTest extends UnitTest {
         assertThat(NoteRenderer.getNoteHeadChar(ElementType.CROTCHET)).isEqualTo(expected);
     }
 
+    /**
+     * A breath mark's clickable rect is built from its staff position, so the glyph has to be
+     * drawn at the Y that staff position implies or the two come apart. They did once: the
+     * renderer held its own copy of the offset and the enum's staff position disagreed with it by
+     * a full staff space, leaving the click target off the glyph. Deriving both from the one
+     * constant is what fixes it, and this fails if a literal offset is ever written back in.
+     */
+    @Test
+    void testBreathMarkIsDrawnAtTheYItsStaffPositionImplies() {
+        var line = detachedLine();
+        var breathMark = ElementType.BREATH_MARK.newInstance();
+        line.addElement(breathMark);
+
+        var invariants = RenderContextTestHelper.newContext(new Song())
+            .setCurrentLine(line)
+            .build();
+
+        var g2 = spy(RenderContextTestHelper.realG2());
+        var drawnYSs = new ArrayList<Float>();
+        doAnswer(invocation -> {
+            drawnYSs.add(invocation.getArgument(2));
+            return null;
+        }).when(g2).drawString(anyString(), anyFloat(), anyFloat());
+
+        NoteRenderer.getInstance().render(
+            invariants, ElementFrame.LINE_LEVEL.withElement(0, 0.0), breathMark, g2);
+
+        var expectedYSs = (float) NoteGeometry.noteStaffPositionToCoordinateSs(
+            breathMark.getStaffPosition(), invariants.getMiddleLineYSs());
+
+        assertThat(drawnYSs)
+            .as("the breath mark glyph's baseline Y")
+            .containsExactly(expectedYSs);
+    }
+
     // ==========================================================================
     // computeBaseStemGeometry (row 3)
     // ==========================================================================

@@ -144,17 +144,10 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testSelectedElementReturnsSelectionColor() {
         var line = lineWith(ElementType.CROTCHET);
-        var selectionProvider = mock(LineComponent.SelectionProvider.class);
-        when(selectionProvider.isSelected(new HitTarget.Element(line.getElement(0)), 0))
-            .thenReturn(true);
+        var builder = seededBuilder().setSelectionColor(Color.RED);
+        RenderContextTestHelper.enableSelection(builder, line, 0);
 
-        var invariants = seededBuilder()
-            .setCurrentLine(line)
-            .setSelectionProvider(selectionProvider)
-            .setSelectionColor(Color.RED)
-            .build();
-
-        assertThat(invariants.getElementColor(0)).isEqualTo(Color.RED);
+        assertThat(builder.build().getElementColor(0)).isEqualTo(Color.RED);
     }
 
     // requireCurrentLine — returns line when set

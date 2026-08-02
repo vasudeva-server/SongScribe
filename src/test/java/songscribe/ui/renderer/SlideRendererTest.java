@@ -304,6 +304,66 @@ class SlideRendererTest extends UnitTest {
     }
 
     // ======================================================================
+    // determineSlideColor — a connecting glissando belongs to both notes it
+    // joins, so the note it lands on colors it too
+    // ======================================================================
+
+    /** A two-element line: the first note carries {@code slide}, the second is its neighbour. */
+    private Line slidePairLine(StaffElement owner) {
+        var neighbour = ElementType.CROTCHET.newInstance();
+        neighbour.setStaffPosition(2);
+        var line = detachedLine();
+        line.addElement(owner);
+        line.addElement(neighbour);
+        return line;
+    }
+
+    @Test
+    void testDetermineSlideColor_glissandoTargetNoteSelected_returnsSelectionColor() {
+        // The glissando is drawn from note 0; selecting note 1 — the note it lands on — must
+        // color it, exactly as selecting note 0 does. Without this the user selects one end of
+        // a glissando and the line stays black.
+        var source = ElementType.CROTCHET.newInstance();
+        source.setGlissando();
+        var builder = baseBuilder();
+        RenderContextTestHelper.enableSelection(builder, slidePairLine(source), 1);
+
+        var color = RENDERER.determineSlideColor(source, 0, builder.build());
+
+        assertThat(color).isEqualTo(ScoreView.getSelectionColor());
+    }
+
+    @Test
+    void testDetermineSlideColor_fallDoesNotInheritFollowingNoteSelection() {
+        // A fall is a standalone trailing glyph with no target note, so the element after its
+        // host is an unrelated neighbour and must not color it.
+        var host = ElementType.CROTCHET.newInstance();
+        host.setFall();
+        var builder = baseBuilder();
+        RenderContextTestHelper.enableSelection(builder, slidePairLine(host), 1);
+
+        var color = RENDERER.determineSlideColor(host, 0, builder.build());
+
+        assertThat(color).isEqualTo(Color.BLACK);
+    }
+
+    @Test
+    void testDetermineSlideColor_glissandoWithNeitherEndSelected_returnsBlack() {
+        // The companion to the two above: with nothing selected the glissando is black, so those
+        // tests are pinning the selection and not something that colors it unconditionally.
+        var source = ElementType.CROTCHET.newInstance();
+        source.setGlissando();
+        var invariants = baseBuilder()
+            .setCurrentLine(slidePairLine(source))
+            .setSelectionProvider(mock(LineComponent.SelectionProvider.class))
+            .build();
+
+        var color = RENDERER.determineSlideColor(source, 0, invariants);
+
+        assertThat(color).isEqualTo(Color.BLACK);
+    }
+
+    // ======================================================================
     // SlideGeometry.noteContextAt — the wiring the renderer's previews rely on
     // ======================================================================
 
