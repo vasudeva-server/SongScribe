@@ -257,7 +257,7 @@ public abstract class Span extends LineElement {
      * range {@code [begin, end]}.
      */
     public boolean overlaps(int begin, int end) {
-        return getAnchorElementIndex() <= end && getEndElementIndex() >= begin;
+        return matches(overlapping(begin, end));
     }
 
     /**
@@ -265,6 +265,54 @@ public abstract class Span extends LineElement {
      */
     public String toIndexString() {
         return getAnchorElementIndex() + "," + getEndElementIndex() + ';';
+    }
+
+    /**
+     * A test on a span's resolved anchor and end element indices.
+     * <p>
+     * Both indices are {@code -1} when the corresponding endpoint is unset or its element
+     * sits in no line, so a predicate that cares about that must guard for it explicitly.
+     */
+    @FunctionalInterface
+    public interface IndexPredicate {
+        boolean test(int anchorIndex, int endIndex);
+    }
+
+    /**
+     * A predicate matching a span whose anchor-to-end range includes {@code elementIndex}.
+     * <p>
+     * Guarded: a span with an unresolvable endpoint ({@code -1}) contains nothing, so a
+     * half-detached span is never reported as covering an element.
+     */
+    public static IndexPredicate containing(int elementIndex) {
+        return (anchorIndex, endIndex) ->
+            anchorIndex >= 0 && endIndex >= 0 && anchorIndex <= elementIndex && elementIndex <= endIndex;
+    }
+
+    /**
+     * A predicate matching a span overlapping the inclusive element index range
+     * {@code [begin, end]}.
+     * <p>
+     * Deliberately <em>not</em> guarded against unresolvable endpoints ({@code -1}): the trill
+     * sweeps in {@link Line#addTrill} and {@link Line#removeTrillsOverlapping} rely on a
+     * half-detached span still being found so it can be cleaned up.
+     */
+    public static IndexPredicate overlapping(int begin, int end) {
+        return (anchorIndex, endIndex) -> anchorIndex <= end && endIndex >= begin;
+    }
+
+    /**
+     * A predicate matching a span whose anchor and end are exactly the given indices.
+     */
+    public static IndexPredicate exactly(int anchorIndex, int endIndex) {
+        return (spanAnchorIndex, spanEndIndex) -> spanAnchorIndex == anchorIndex && spanEndIndex == endIndex;
+    }
+
+    /**
+     * Returns whether {@code predicate} accepts this span's resolved endpoint indices.
+     */
+    public boolean matches(IndexPredicate predicate) {
+        return predicate.test(getAnchorElementIndex(), getEndElementIndex());
     }
 
     /**

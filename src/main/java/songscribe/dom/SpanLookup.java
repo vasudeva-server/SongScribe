@@ -1,0 +1,233 @@
+/*
+    SongScribe song notation program
+    Copyright (C) Sri Chinmoy Centres International
+
+    This file is part of SongScribe.
+
+    SongScribe is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 3 of the License, or
+    (at your option) any later version.
+
+    SongScribe is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+package songscribe.dom;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import org.jspecify.annotations.Nullable;
+
+/**
+ * Every span query expressed over three accessors, so the "iterate spans, filter by type,
+ * resolve both endpoint indices, compare" loop exists in exactly one place.
+ * <p>
+ * An implementor supplies only the spans to query and how each span's endpoints resolve to
+ * positions; {@link #findSpans(Class, Span.IndexPredicate)} and
+ * {@link #findFirstSpan(Class, Span.IndexPredicate)} are the only methods here that iterate,
+ * and every typed query below delegates to one of them with a {@link Span.IndexPredicate}.
+ */
+public interface SpanLookup {
+
+    /** The spans to query, in line order. */
+    List<Span> getSpans();
+
+    /** The anchor element's position in the line, or -1 when unresolvable. */
+    int anchorIndexOf(Span span);
+
+    /** The end element's position in the line, or -1 when unresolvable. */
+    int endIndexOf(Span span);
+
+    // --- the only two methods that iterate ---------------------------------
+
+    /**
+     * Returns every span of {@code type} whose resolved endpoint indices satisfy {@code matches}.
+     */
+    default <T extends Span> List<T> findSpans(Class<T> type, Span.IndexPredicate matches) {
+        var result = new ArrayList<T>();
+
+        for (var span : getSpans()) {
+            if (type.isInstance(span) && matches.test(anchorIndexOf(span), endIndexOf(span))) {
+                result.add(type.cast(span));
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Returns the first span of {@code type} whose resolved endpoint indices satisfy
+     * {@code matches}, or {@code null} if there is none. Short-circuits on the first match
+     * and allocates nothing.
+     */
+    default <T extends Span> @Nullable T findFirstSpan(Class<T> type, Span.IndexPredicate matches) {
+        for (var span : getSpans()) {
+            if (type.isInstance(span) && matches.test(anchorIndexOf(span), endIndexOf(span))) {
+                return type.cast(span);
+            }
+        }
+
+        return null;
+    }
+
+    // --- expressed via those two -------------------------------------------
+
+    /**
+     * Returns every span of {@code type}, whatever its endpoints resolve to.
+     */
+    default <T extends Span> List<T> findSpans(Class<T> type) {
+        return findSpans(type, (anchorIndex, endIndex) -> true);
+    }
+
+    /**
+     * Returns whether any span of {@code type} satisfies {@code matches}.
+     */
+    default boolean hasSpan(Class<? extends Span> type, Span.IndexPredicate matches) {
+        return findFirstSpan(type, matches) != null;
+    }
+
+    // --- typed queries -----------------------------------------------------
+
+    /**
+     * Returns all {@link Beam} spans overlapping [begin, end] inclusive.
+     */
+    default List<Beam> findBeamsOverlapping(int begin, int end) {
+        return findSpans(Beam.class, Span.overlapping(begin, end));
+    }
+
+    /**
+     * Returns the first {@link Beam} span whose anchor-to-end range includes
+     * {@code elementIndex}, or {@code null} if the element is not part of any beam.
+     */
+    default @Nullable Beam findBeamAt(int elementIndex) {
+        return findFirstSpan(Beam.class, Span.containing(elementIndex));
+    }
+
+    /**
+     * Returns true if one and the same {@link Beam} covers both {@code firstIndex} and
+     * {@code secondIndex}.
+     */
+    default boolean sameBeamAt(int firstIndex, int secondIndex) {
+        var beamAtFirst = findBeamAt(firstIndex);
+
+        //noinspection ObjectEquality
+        return beamAtFirst != null && beamAtFirst == findBeamAt(secondIndex);
+    }
+
+    /**
+     * Returns all {@link Tie} spans in this line.
+     */
+    default List<Tie> findTies() {
+        return findSpans(Tie.class);
+    }
+
+    /**
+     * Returns the first {@link Tie} span whose anchor-to-end range includes
+     * {@code elementIndex}, or {@code null} if the element is not part of any tie.
+     */
+    default @Nullable Tie findTieAt(int elementIndex) {
+        return findFirstSpan(Tie.class, Span.containing(elementIndex));
+    }
+
+    /**
+     * Returns the {@link Tie} span whose anchor is exactly {@code anchorIndex}
+     * and end is exactly {@code endIndex}, or {@code null} if no tie spans that exact
+     * range. Unlike {@link #findTieAt(int)}, this disambiguates chained ties that share
+     * an endpoint note — {@code findTieAt} would return whichever overlapping tie comes
+     * first, not necessarily the one matching a specific selection.
+     */
+    default @Nullable Tie findExactTie(int anchorIndex, int endIndex) {
+        return findFirstSpan(Tie.class, Span.exactly(anchorIndex, endIndex));
+    }
+
+    /**
+     * Returns true if one and the same {@link Tie} covers both {@code firstIndex} and
+     * {@code secondIndex}.
+     */
+    default boolean sameTieAt(int firstIndex, int secondIndex) {
+        var tieAtFirst = findTieAt(firstIndex);
+
+        //noinspection ObjectEquality
+        return tieAtFirst != null && tieAtFirst == findTieAt(secondIndex);
+    }
+
+    /**
+     * Returns the first {@link Tuplet} span whose anchor-to-end range includes
+     * {@code elementIndex}, or {@code null} if the element is not part of any tuplet.
+     */
+    default @Nullable Tuplet findTupletAt(int elementIndex) {
+        return findFirstSpan(Tuplet.class, Span.containing(elementIndex));
+    }
+
+    /**
+     * Returns all {@link Tuplet} spans overlapping [begin, end] inclusive.
+     */
+    default List<Tuplet> findTupletsOverlapping(int begin, int end) {
+        return findSpans(Tuplet.class, Span.overlapping(begin, end));
+    }
+
+    /**
+     * Returns all {@link Crescendo} spans in this line.
+     */
+    default List<Crescendo> getCrescendos() {
+        return findSpans(Crescendo.class);
+    }
+
+    /**
+     * Returns all {@link Diminuendo} spans in this line.
+     */
+    default List<Diminuendo> getDiminuendos() {
+        return findSpans(Diminuendo.class);
+    }
+
+    /**
+     * Returns true if the given note index falls within any hairpin (crescendo or diminuendo) range.
+     */
+    default boolean isInHairpinRange(int noteIndex) {
+        return hasSpan(Hairpin.class, Span.containing(noteIndex));
+    }
+
+    /**
+     * Finds every trill span overlapping {@code [beginIndex, endIndex]}.
+     */
+    default List<Trill> findTrillsOverlapping(int beginIndex, int endIndex) {
+        return findSpans(Trill.class, Span.overlapping(beginIndex, endIndex));
+    }
+
+    /**
+     * Returns whether any trill span overlaps {@code [beginIndex, endIndex]}.
+     * Cheaper than {@link #findTrillsOverlapping} when only presence matters: it
+     * short-circuits and allocates no intermediate lists.
+     */
+    default boolean hasTrillOverlapping(int beginIndex, int endIndex) {
+        return hasSpan(Trill.class, Span.overlapping(beginIndex, endIndex));
+    }
+
+    /**
+     * Returns all {@link Ending} spans in this line.
+     */
+    default List<Ending> findEndings() {
+        return findSpans(Ending.class);
+    }
+
+    /**
+     * Returns the {@link Ending} that spans {@code elementIndex}, or null if none.
+     */
+    default @Nullable Ending findEndingAt(int elementIndex) {
+        return findFirstSpan(Ending.class, Span.containing(elementIndex));
+    }
+
+    /**
+     * Returns true if {@code elementIndex} falls inside any ending.
+     */
+    default boolean isInsideAnyEnding(int elementIndex) {
+        return hasSpan(Ending.class, Span.containing(elementIndex));
+    }
+}

@@ -23,7 +23,6 @@ package songscribe.ui;
 import module java.desktop;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.HashSet;
@@ -43,7 +42,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Ending;
-import songscribe.layout.LineEndingSupport;
+import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
@@ -508,24 +507,8 @@ public final class MusicEditOperations {
         var scanEnd = range.end() + Line.SPAN_ADJACENCY_REACH;
 
         return new HairpinScan(
-            nearbySpans(line.getCrescendos(), scanBegin, scanEnd),
-            nearbySpans(line.getDiminuendos(), scanBegin, scanEnd));
-    }
-
-    /**
-     * Returns the spans in {@code spans} that overlap the inclusive range
-     * {@code [scanBegin, scanEnd]}.
-     */
-    private static <H extends Hairpin> List<H> nearbySpans(List<? extends H> spans, int scanBegin, int scanEnd) {
-        var nearby = new ArrayList<H>();
-
-        for (var span : spans) {
-            if (span.overlaps(scanBegin, scanEnd)) {
-                nearby.add(span);
-            }
-        }
-
-        return nearby;
+            line.findSpans(Crescendo.class, Span.overlapping(scanBegin, scanEnd)),
+            line.findSpans(Diminuendo.class, Span.overlapping(scanBegin, scanEnd)));
     }
 
     /**
@@ -691,7 +674,6 @@ public final class MusicEditOperations {
         var spanEnd = end;
 
         for (var hairpin : sameType) {
-            // Each index accessor scans the line for the element, so read them once.
             var anchorIndex = hairpin.getAnchorElementIndex();
             var endIndex = hairpin.getEndElementIndex();
 
@@ -882,10 +864,8 @@ public final class MusicEditOperations {
 
     // Returns true if any element in the selection range overlaps an existing ending span.
     private boolean hasOverlap(Line line, int begin, int end) {
-        var endings = LineEndingSupport.findEndings(line);
-
         for (var i = begin; i <= end; i++) {
-            if (LineEndingSupport.isInsideAnyEnding(endings, i)) {
+            if (line.isInsideAnyEnding(i)) {
                 return true;
             }
         }

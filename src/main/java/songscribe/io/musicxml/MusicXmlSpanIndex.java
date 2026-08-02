@@ -25,7 +25,6 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 import songscribe.dom.*;
 import songscribe.layout.BeamMath;
-import songscribe.layout.LineEndingSupport;
 
 /**
  * Per-element-index span precompute for {@link MusicXmlWriter}'s line-driven
@@ -290,7 +289,7 @@ final class MusicXmlSpanIndex {
         //   - SINGLE_BARLINE anchor / terminal end / split stop → right barline
         //   - split [2 start]     → forward (left) barline    → left bucket
         // getSplitIndex() throws if an ending has no split (should never happen).
-        for (var ending : LineEndingSupport.findEndings(line)) {
+        for (var ending : line.findEndings()) {
             var anchorIdx = ending.getAnchorElementIndex();
             var endIdx = ending.getEndElementIndex();
 

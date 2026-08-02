@@ -40,7 +40,6 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.dom.Ending;
-import songscribe.layout.LineEndingSupport;
 
 public final class LineIO {
 
@@ -126,7 +125,7 @@ public final class LineIO {
             XML.writeValue(pw, XML_TUPLETS, spansToString(tuplets));
         }
 
-        var endings = LineEndingSupport.findEndings(line);
+        var endings = line.findEndings();
 
         if (!endings.isEmpty()) {
             XML.writeValue(

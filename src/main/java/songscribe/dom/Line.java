@@ -59,7 +59,7 @@ import songscribe.message.mutation.TieRemoval;
 import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 
-public class Line implements LyricRun {
+public class Line implements LyricRun, SpanLookup {
 
     private static final int[][] FLAT_SHARP_ORDINAL = new int[][]{
         new int[]{0, 3, 6, 2, 5, 1, 4},
@@ -68,6 +68,13 @@ public class Line implements LyricRun {
 
     /** Spans (beams, ties, trills, crescendo, diminuendo, tuplets, endings). */
     private final List<Span> spans = new ArrayList<>();
+
+    /**
+     * Live unmodifiable view of {@link #spans}, held once rather than wrapped per call:
+     * every {@link SpanLookup} query iterates {@link #getSpans()}, and the wrapper tracks
+     * later mutations of {@code spans} anyway.
+     */
+    private final List<Span> spansView = Collections.unmodifiableList(spans);
 
     private final Song song;
     private int keys = 0;
@@ -817,103 +824,6 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Returns all {@link Beam} spans overlapping [begin, end] inclusive.
-     */
-    public List<Beam> findBeamsOverlapping(int begin, int end) {
-        var result = new ArrayList<Beam>();
-
-        for (var re : spans) {
-            if (re instanceof Beam b) {
-                var anchor = b.getAnchorElementIndex();
-                var endIdx = b.getEndElementIndex();
-
-                if (anchor <= end && endIdx >= begin) {
-                    result.add(b);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Returns true if {@code elementIndex} is the anchor of any {@link Beam} span.
-     */
-    public boolean isStartOfAnyBeam(int elementIndex) {
-        for (var re : spans) {
-            if (re instanceof Beam b && b.getAnchorElementIndex() == elementIndex) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Returns true if {@code elementIndex} is the end of any {@link Beam} span.
-     */
-    public boolean isEndOfAnyBeam(int elementIndex) {
-        for (var re : spans) {
-            if (re instanceof Beam b && b.getEndElementIndex() == elementIndex) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Returns the first {@link Tie} span whose anchor-to-end range includes
-     * {@code elementIndex}, or {@code null} if the element is not part of any tie.
-     */
-    @Nullable
-    public Tie findTieAt(int elementIndex) {
-        for (var re : spans) {
-            if (re instanceof Tie t) {
-                var anchor = t.getAnchorElementIndex();
-                var end = t.getEndElementIndex();
-
-                if (anchor >= 0 && end >= 0 && anchor <= elementIndex && elementIndex <= end) {
-                    return t;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Returns the {@link Tie} span whose anchor is exactly {@code anchorIndex}
-     * and end is exactly {@code endIndex}, or {@code null} if no tie spans that exact
-     * range. Unlike {@link #findTieAt(int)}, this disambiguates chained ties that share
-     * an endpoint note — {@code findTieAt} would return whichever overlapping tie comes
-     * first, not necessarily the one matching a specific selection.
-     */
-    @Nullable
-    public Tie findExactTie(int anchorIndex, int endIndex) {
-        for (var re : spans) {
-            if (re instanceof Tie t
-                && t.getAnchorElementIndex() == anchorIndex
-                && t.getEndElementIndex() == endIndex) {
-                return t;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Returns true if one and the same {@link Tie} covers both {@code firstIndex} and
-     * {@code secondIndex}.
-     */
-    public boolean sameTieAt(int firstIndex, int secondIndex) {
-        var tieAtFirst = findTieAt(firstIndex);
-
-        //noinspection ObjectEquality
-        return tieAtFirst != null && tieAtFirst == findTieAt(secondIndex);
-    }
-
-    /**
      * Adds a tie span. Tie ranges never coalesce — a chain of tied notes is
      * represented as one {@link Tie} per adjacent pair, each rendered as its own arc,
      * even when two ties share an endpoint note.
@@ -936,92 +846,6 @@ public class Line implements LyricRun {
             new TieRemoval(this, tie),
             () -> removeChild(tie, index)
         );
-    }
-
-    /**
-     * Returns an unmodifiable snapshot of all {@link Tie} spans in this line.
-     */
-    public List<Tie> findTies() {
-        return findSpans(Tie.class);
-    }
-
-    /**
-     * Returns the first {@link Tuplet} span whose anchor-to-end range includes
-     * {@code elementIndex}, or {@code null} if the element is not part of any tuplet.
-     */
-    @Nullable
-    public Tuplet findTupletAt(int elementIndex) {
-        for (var re : spans) {
-            if (re instanceof Tuplet t) {
-                var anchor = t.getAnchorElementIndex();
-                var end = t.getEndElementIndex();
-
-                if (anchor >= 0 && end >= 0 && anchor <= elementIndex && elementIndex <= end) {
-                    return t;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Returns all {@link Tuplet} spans overlapping [begin, end] inclusive.
-     */
-    public List<Tuplet> findTupletsOverlapping(int begin, int end) {
-        var result = new ArrayList<Tuplet>();
-
-        for (var re : spans) {
-            if (re instanceof Tuplet t) {
-                var anchor = t.getAnchorElementIndex();
-                var endIdx = t.getEndElementIndex();
-
-                if (anchor <= end && endIdx >= begin) {
-                    result.add(t);
-                }
-            }
-        }
-
-        return result;
-    }
-
-    public List<Crescendo> getCrescendos() {
-        return findSpans(Crescendo.class);
-    }
-
-    public List<Diminuendo> getDiminuendos() {
-        return findSpans(Diminuendo.class);
-    }
-
-    /**
-     * Returns the first {@link Beam} span whose anchor-to-end range includes
-     * {@code elementIndex}, or {@code null} if the element is not part of any beam.
-     */
-    @Nullable
-    public Beam findBeamAt(int elementIndex) {
-        for (var re : spans) {
-            if (re instanceof Beam b) {
-                var anchor = b.getAnchorElementIndex();
-                var end = b.getEndElementIndex();
-
-                if (anchor >= 0 && end >= 0 && anchor <= elementIndex && elementIndex <= end) {
-                    return b;
-                }
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Returns true if one and the same {@link Beam} covers both {@code firstIndex} and
-     * {@code secondIndex}.
-     */
-    public boolean sameBeamAt(int firstIndex, int secondIndex) {
-        var beamAtFirst = findBeamAt(firstIndex);
-
-        //noinspection ObjectEquality
-        return beamAtFirst != null && beamAtFirst == findBeamAt(secondIndex);
     }
 
     /**
@@ -1089,25 +913,18 @@ public class Line implements LyricRun {
         // How far past an endpoint an existing span may sit and still be absorbed.
         var reach = absorbAdjacent ? SPAN_ADJACENCY_REACH : 0;
 
-        // Expand bounds to absorb adjacent/overlapping spans.
-        var mergedAnchorIdx = anchorIdx;
-        var mergedEndIdx = endIdx;
-
-        for (var re : spans) {
-            if (type.isInstance(re)) {
-                var existing = type.cast(re);
-                var existingAnchor = existing.getAnchorElementIndex();
-                var existingEnd = existing.getEndElementIndex();
-
-                if (existingAnchor <= anchorIdx && anchorIdx <= existingEnd + reach) {
-                    mergedAnchorIdx = Math.min(mergedAnchorIdx, existingAnchor);
-                }
-
-                if (existingAnchor - reach <= endIdx && endIdx <= existingEnd) {
-                    mergedEndIdx = Math.max(mergedEndIdx, existingEnd);
-                }
-            }
-        }
+        // Expand bounds to absorb adjacent/overlapping spans. Both must be resolved before
+        // the setters below, which mutate the very indices these predicates read.
+        var mergedAnchorIdx = findSpans(type, (anchor, end) -> anchor <= anchorIdx && anchorIdx <= end + reach)
+            .stream()
+            .mapToInt(Span::getAnchorElementIndex)
+            .min()
+            .orElse(anchorIdx);
+        var mergedEndIdx = findSpans(type, (anchor, end) -> anchor - reach <= endIdx && endIdx <= end)
+            .stream()
+            .mapToInt(Span::getEndElementIndex)
+            .max()
+            .orElse(endIdx);
 
         if (mergedAnchorIdx != anchorIdx) {
             span.setAnchorElement(elements.get(mergedAnchorIdx));
@@ -1117,14 +934,10 @@ public class Line implements LyricRun {
             span.setEndElement(elements.get(mergedEndIdx));
         }
 
-        var finalMergedAnchor = mergedAnchorIdx;
-        var finalMergedEnd = mergedEndIdx;
-        var subsumedSpans = spans.stream()
-            .filter(re -> type.isInstance(re)
-                && type.cast(re).getAnchorElementIndex() >= finalMergedAnchor
-                && type.cast(re).getEndElementIndex() <= finalMergedEnd)
-            .map(type::cast)
-            .toList();
+        var subsumedSpans = findSpans(
+            type,
+            (anchor, end) -> anchor >= mergedAnchorIdx && end <= mergedEndIdx
+        );
         subsumedSpans.forEach(remover);
     }
 
@@ -1533,24 +1346,6 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Returns true if the given note index falls within any hairpin (crescendo or diminuendo) range.
-     */
-    public boolean isInHairpinRange(int noteIndex) {
-        for (var re : spans) {
-            if (re instanceof Hairpin) {
-                var anchorIdx = re.getAnchorElementIndex();
-                var endIdx = re.getEndElementIndex();
-
-                if (anchorIdx >= 0 && endIdx >= 0 && anchorIdx <= noteIndex && noteIndex <= endIdx) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * Returns true if any element in the inclusive range {@code [begin, end]} is a
      * repeat or a barline other than {@link ElementType#SINGLE_BARLINE}.
      * <p>
@@ -1656,30 +1451,6 @@ public class Line implements LyricRun {
     }
 
     /**
-     * Finds every trill span overlapping {@code [beginIndex, endIndex]}.
-     */
-    public List<Trill> findTrillsOverlapping(int beginIndex, int endIndex) {
-        return findSpans(Trill.class).stream()
-            .filter(trill -> trill.overlaps(beginIndex, endIndex))
-            .toList();
-    }
-
-    /**
-     * Returns whether any trill span overlaps {@code [beginIndex, endIndex]}.
-     * Cheaper than {@link #findTrillsOverlapping} when only presence matters: it
-     * short-circuits and allocates no intermediate lists.
-     */
-    public boolean hasTrillOverlapping(int beginIndex, int endIndex) {
-        for (var element : spans) {
-            if (element instanceof Trill trill && trill.overlaps(beginIndex, endIndex)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
      * Removes a span from this line.
      *
      * @param element The span to remove
@@ -1745,48 +1516,19 @@ public class Line implements LyricRun {
     /**
      * Returns an unmodifiable view of the spans in this line.
      */
+    @Override
     public List<Span> getSpans() {
-        return Collections.unmodifiableList(spans);
+        return spansView;
     }
 
-    /**
-     * Finds all spans that include the specified element index.
-     *
-     * @param elementIndex The element index to search for
-     * @return List of spans containing the element
-     */
-    public List<Span> findSpansAt(int elementIndex) {
-        var result = new ArrayList<Span>();
-
-        for (var element : spans) {
-            var start = element.getAnchorElementIndex();
-            var end = element.getEndElementIndex();
-
-            if (elementIndex >= start && elementIndex <= end) {
-                result.add(element);
-            }
-        }
-
-        return result;
+    @Override
+    public int anchorIndexOf(Span span) {
+        return span.getAnchorElementIndex();
     }
 
-    /**
-     * Finds spans of a specific type.
-     *
-     * @param type The class of span to find
-     * @return List of spans of the specified type
-     */
-    @SuppressWarnings("unchecked")
-    public <T extends Span> List<T> findSpans(Class<T> type) {
-        var result = new ArrayList<T>();
-
-        for (var element : spans) {
-            if (type.isInstance(element)) {
-                result.add((T) element);
-            }
-        }
-
-        return result;
+    @Override
+    public int endIndexOf(Span span) {
+        return span.getEndElementIndex();
     }
 
     /**

@@ -27,7 +27,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
-import songscribe.layout.LineEndingSupport;
 
 // -------------------------------------------------------------------------
 // Range-Spans Phase 7b: ending round-trip tests
@@ -85,7 +84,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var endings = LineEndingSupport.findEndings(line2);
+        var endings = line2.findEndings();
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();
@@ -124,7 +123,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var endings = LineEndingSupport.findEndings(line2);
+        var endings = line2.findEndings();
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();
@@ -165,7 +164,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var endings = LineEndingSupport.findEndings(line2);
+        var endings = line2.findEndings();
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();
@@ -223,7 +222,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         var song = parse(xml);
         var line = song.getLine(0);
 
-        assertThat(LineEndingSupport.findEndings(line))
+        assertThat(line.findEndings())
             .as("a split-less ending must be dropped on import")
             .isEmpty();
         assertThat(line.getElements())
@@ -258,7 +257,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var endings = LineEndingSupport.findEndings(line2);
+        var endings = line2.findEndings();
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();
@@ -296,7 +295,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var endings = LineEndingSupport.findEndings(line2);
+        var endings = line2.findEndings();
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();
@@ -334,7 +333,7 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song2 = roundTrip(song);
         var line2 = song2.getLine(0);
-        var endings = LineEndingSupport.findEndings(line2);
+        var endings = line2.findEndings();
 
         assertThat(endings).as("ending count").hasSize(1);
         var ending = endings.getFirst();

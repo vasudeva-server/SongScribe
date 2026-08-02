@@ -32,7 +32,6 @@ import songscribe.dom.Beam;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Trill;
-import songscribe.layout.LineEndingSupport;
 
 /**
  * Reader robustness cases: lenient handling of dangling/stray markers, unknown
@@ -564,7 +563,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
 
         var song = parse(xml);
         assertThat(song.lineCount()).as("parsing completes with one line").isEqualTo(1);
-        assertThat(LineEndingSupport.findEndings(song.getLine(0)))
+        assertThat(song.getLine(0).findEndings())
             .as("an ending start with no number=2 stop must build no span")
             .isEmpty();
     }
@@ -698,7 +697,7 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
 
         var song = parse(xml);
         assertThat(song.lineCount()).as("parsing completes with one line").isEqualTo(1);
-        assertThat(LineEndingSupport.findEndings(song.getLine(0)))
+        assertThat(song.getLine(0).findEndings())
             .as("an ending stop with no matching start must build no span")
             .isEmpty();
     }

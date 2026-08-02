@@ -21,20 +21,21 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
-
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
+import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 
 /**
- * Unit tests for {@link LineEndingSupport}: findEndings, findEndingAt, isInsideAnyEnding,
- * isStartOfAnyEnding, isEndOfAnyEnding, and findEndingReplacementEffect.
+ * Unit tests for {@link LineEndingSupport#findEndingReplacementEffect}, and for
+ * {@link songscribe.dom.Line}'s ending queries ({@code findEndings}, {@code findEndingAt},
+ * {@code isInsideAnyEnding}) that moved onto {@link songscribe.dom.SpanLookup} in the
+ * span-index-resolution refactor.
  *
  * <p>Primary canonical line layout (from {@link EndingLineFixture}):
  * <pre>
@@ -47,7 +48,7 @@ import songscribe.dom.StaffElement;
 class LineEndingSupportTest extends UnitTest {
 
     // -----------------------------------------------------------------------
-    // Row 25 — findEndings() extracts Ending spans
+    // Row 25 — line.findEndings() extracts Ending spans
     // -----------------------------------------------------------------------
 
     @Nested
@@ -59,7 +60,7 @@ class LineEndingSupportTest extends UnitTest {
             var line = song.getLine(0);
             song.withoutMutationTracking(() -> line.addElement(new StaffElement(ElementType.CROTCHET)));
 
-            var result = LineEndingSupport.findEndings(line);
+            var result = line.findEndings();
 
             assertThat(result).isEmpty();
         }
@@ -68,7 +69,7 @@ class LineEndingSupportTest extends UnitTest {
         void testOneEndingOnLineReturnsThatEnding() {
             var fixture = EndingLineFixture.primary();
 
-            var result = LineEndingSupport.findEndings(fixture.line());
+            var result = fixture.line().findEndings();
 
             assertThat(result).hasSize(1);
             assertThat(result.getFirst()).isSameAs(fixture.ending());
@@ -101,7 +102,7 @@ class LineEndingSupportTest extends UnitTest {
                 line.addSpan(ending2);
             });
 
-            var result = LineEndingSupport.findEndings(line);
+            var result = line.findEndings();
 
             assertThat(result).hasSize(2);
             assertThat(result).containsExactlyInAnyOrder(ending1, ending2);
@@ -109,11 +110,11 @@ class LineEndingSupportTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Row 26 — findEndingAt(List, int) span inclusion and boundary comparators
+    // Row 26 — line.findEndingAt(int) span inclusion and boundary comparators
     // -----------------------------------------------------------------------
 
     @Nested
-    class FindEndingAtList {
+    class FindEndingAt {
 
         // Ending spans [3, 7] in an 8-element line (anchor index 3, end index 7).
         // Indices chosen to be distinct from 0/1 to expose off-by-one errors at both edges.
@@ -125,8 +126,8 @@ class LineEndingSupportTest extends UnitTest {
         private static final int AT_END        = END_IDX;          // 7 — inclusive end
         private static final int AFTER_END     = END_IDX + 1;      // 8 — outside right
 
-        /** Builds a list containing a single ending whose anchor/end indices are ANCHOR_IDX..END_IDX. */
-        private List<Ending> oneEndingList() {
+        /** Builds a line whose single ending's anchor/end indices are ANCHOR_IDX..END_IDX. */
+        private Line oneEndingLine() {
             // Build: [BAR, NOTE, NOTE, BAR(anchor), NOTE, NOTE, NOTE, BAR(end)]
             var song = new Song();
             var line = song.getLine(0);
@@ -147,45 +148,49 @@ class LineEndingSupportTest extends UnitTest {
                 line.addElement(endEl);
                 line.addSpan(ending);
             });
-            return List.of(ending);
+            return line;
         }
 
         @Test
-        void testEmptyListReturnsNull() {
-            assertThat(LineEndingSupport.findEndingAt(List.of(), AT_START)).isNull();
+        void testNoEndingsReturnsNull() {
+            var song = new Song();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(new StaffElement(ElementType.CROTCHET)));
+
+            assertThat(line.findEndingAt(AT_START)).isNull();
         }
 
         @Test
         void testIndexBeforeStartReturnsNull() {
-            assertThat(LineEndingSupport.findEndingAt(oneEndingList(), BEFORE_START)).isNull();
+            assertThat(oneEndingLine().findEndingAt(BEFORE_START)).isNull();
         }
 
         @Test
         void testIndexAtStartReturnsEnding() {
-            var endings = oneEndingList();
-            assertThat(LineEndingSupport.findEndingAt(endings, AT_START)).isSameAs(endings.getFirst());
+            var line = oneEndingLine();
+            assertThat(line.findEndingAt(AT_START)).isSameAs(line.findEndings().getFirst());
         }
 
         @Test
         void testIndexInsideReturnsEnding() {
-            var endings = oneEndingList();
-            assertThat(LineEndingSupport.findEndingAt(endings, INSIDE)).isSameAs(endings.getFirst());
+            var line = oneEndingLine();
+            assertThat(line.findEndingAt(INSIDE)).isSameAs(line.findEndings().getFirst());
         }
 
         @Test
         void testIndexAtEndReturnsEnding() {
-            var endings = oneEndingList();
-            assertThat(LineEndingSupport.findEndingAt(endings, AT_END)).isSameAs(endings.getFirst());
+            var line = oneEndingLine();
+            assertThat(line.findEndingAt(AT_END)).isSameAs(line.findEndings().getFirst());
         }
 
         @Test
         void testIndexAfterEndReturnsNull() {
-            assertThat(LineEndingSupport.findEndingAt(oneEndingList(), AFTER_END)).isNull();
+            assertThat(oneEndingLine().findEndingAt(AFTER_END)).isNull();
         }
     }
 
     // -----------------------------------------------------------------------
-    // Row 28 — isInsideAnyEnding null-safe
+    // Row 28 — line.isInsideAnyEnding null-safe
     // -----------------------------------------------------------------------
 
     @Nested
@@ -198,89 +203,25 @@ class LineEndingSupportTest extends UnitTest {
         @Test
         void testIndexInsideEndingReturnsTrue() {
             var fixture = EndingLineFixture.primary();
-            var endings = LineEndingSupport.findEndings(fixture.line());
 
-            assertThat(LineEndingSupport.isInsideAnyEnding(endings, INSIDE_IDX)).isTrue();
+            assertThat(fixture.line().isInsideAnyEnding(INSIDE_IDX)).isTrue();
         }
 
         @Test
         void testIndexOutsideEndingReturnsFalse() {
             var fixture = EndingLineFixture.primary();
-            var endings = LineEndingSupport.findEndings(fixture.line());
 
-            assertThat(LineEndingSupport.isInsideAnyEnding(endings, OUTSIDE_IDX)).isFalse();
+            assertThat(fixture.line().isInsideAnyEnding(OUTSIDE_IDX)).isFalse();
         }
 
         @Test
-        void testEmptyEndingsListReturnsFalse() {
-            // Null-safety: empty list must not throw and must return false
-            assertThat(LineEndingSupport.isInsideAnyEnding(List.of(), INSIDE_IDX)).isFalse();
-        }
-    }
+        void testNoEndingsReturnsFalse() {
+            // Null-safety: a line with no endings must not throw and must return false
+            var song = new Song();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(new StaffElement(ElementType.CROTCHET)));
 
-    // -----------------------------------------------------------------------
-    // Row 29 — isStartOfAnyEnding anchor equality
-    // -----------------------------------------------------------------------
-
-    @Nested
-    class IsStartOfAnyEnding {
-
-        // Primary fixture: anchor is at index 0, end is at index 6.
-        private static final int ANCHOR_IDX  = 0;
-        private static final int INTERIOR_IDX = 3;  // inside but not at start
-
-        @Test
-        void testIndexEqualsAnchorReturnsTrue() {
-            var fixture = EndingLineFixture.primary();
-            var endings = LineEndingSupport.findEndings(fixture.line());
-
-            assertThat(LineEndingSupport.isStartOfAnyEnding(endings, ANCHOR_IDX)).isTrue();
-        }
-
-        @Test
-        void testIndexInsideButNotStartReturnsFalse() {
-            var fixture = EndingLineFixture.primary();
-            var endings = LineEndingSupport.findEndings(fixture.line());
-
-            assertThat(LineEndingSupport.isStartOfAnyEnding(endings, INTERIOR_IDX)).isFalse();
-        }
-
-        @Test
-        void testEmptyEndingsListReturnsFalse() {
-            assertThat(LineEndingSupport.isStartOfAnyEnding(List.of(), ANCHOR_IDX)).isFalse();
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Row 30 — isEndOfAnyEnding end equality
-    // -----------------------------------------------------------------------
-
-    @Nested
-    class IsEndOfAnyEnding {
-
-        // Primary fixture: end element is at index 6, anchor is at index 0.
-        private static final int END_IDX      = 6;
-        private static final int INTERIOR_IDX = 3;   // inside but not the end
-
-        @Test
-        void testIndexEqualsEndElementReturnsTrue() {
-            var fixture = EndingLineFixture.primary();
-            var endings = LineEndingSupport.findEndings(fixture.line());
-
-            assertThat(LineEndingSupport.isEndOfAnyEnding(endings, END_IDX)).isTrue();
-        }
-
-        @Test
-        void testIndexInsideButNotEndReturnsFalse() {
-            var fixture = EndingLineFixture.primary();
-            var endings = LineEndingSupport.findEndings(fixture.line());
-
-            assertThat(LineEndingSupport.isEndOfAnyEnding(endings, INTERIOR_IDX)).isFalse();
-        }
-
-        @Test
-        void testEmptyEndingsListReturnsFalse() {
-            assertThat(LineEndingSupport.isEndOfAnyEnding(List.of(), END_IDX)).isFalse();
+            assertThat(line.isInsideAnyEnding(INSIDE_IDX)).isFalse();
         }
     }
 

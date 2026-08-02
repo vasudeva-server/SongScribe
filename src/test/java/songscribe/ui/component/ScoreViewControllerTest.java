@@ -78,7 +78,6 @@ import songscribe.font.DocumentFonts;
 import songscribe.dom.Ending;
 import songscribe.layout.EndingLineFixture;
 import songscribe.layout.InsertionSpacingCalculator;
-import songscribe.layout.LineEndingSupport;
 import songscribe.message.Message;
 import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.InsertLineCommand;
@@ -650,7 +649,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             controller.handleDelete();
 
-            assertThat(LineEndingSupport.findEndings(line)).doesNotContain(ending);
+            assertThat(line.findEndings()).doesNotContain(ending);
             // The removal must be recorded as a mutation so undo restores the ending.
             assertThat(song.isModified()).isTrue();
             // The deleted ending must not stay selected, or Delete would remain enabled while

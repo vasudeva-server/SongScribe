@@ -31,7 +31,6 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Tempo;
 import songscribe.dom.Ending;
-import songscribe.layout.LineEndingSupport;
 import songscribe.ui.playback.MidiMetaMessageTypes;
 
 
@@ -135,7 +134,7 @@ public class MidiSequenceBuilder {
                 var lineEnd = (i == endLine && endNote >= 0) ? endNote : line.effectiveElementCount() - 1;
 
                 var builder = new LineTrackBuilder(line);
-                var endings = LineEndingSupport.findEndings(line);
+                var endings = line.findEndings();
                 TrackPosition result;
 
                 if (endings.isEmpty()) {
@@ -206,14 +205,13 @@ public class MidiSequenceBuilder {
             var line = lines.get(lineIndex);
             var noteCount = line.elementCount();
             var builder = new LineTrackBuilder(line);
-            var endings = LineEndingSupport.findEndings(line);
 
             for (var noteIndex = (lineIndex == startLine ? startNote : 0); noteIndex < noteCount; noteIndex++) {
                 var note = line.getElement(noteIndex);
                 var noteType = note.getType();
 
                 // Resolve the ending covering this element once; reused below.
-                var ending = LineEndingSupport.findEndingAt(endings, noteIndex);
+                var ending = line.findEndingAt(noteIndex);
 
                 // The closing REPEAT_RIGHT of a secondary (REPEAT_LEFT_RIGHT-split) ending
                 // must not start a spurious third pass, so exclude it from the repeat-marker

@@ -20,84 +20,14 @@
 
 package songscribe.layout;
 
-import java.util.List;
-
-import org.jspecify.annotations.Nullable;
-
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 
-/** Static helpers for querying {@link Ending} elements on a {@link Line}. */
+/** Checks the effect of replacing an element on {@link Ending} spans in a {@link Line}. */
 public final class LineEndingSupport {
 
     private LineEndingSupport() {}
-
-    /** Returns all {@link Ending} spans on {@code line}. */
-    public static List<Ending> findEndings(Line line) {
-        return line.findSpans(Ending.class);
-    }
-
-    /** Returns the {@link Ending} that spans {@code elementIndex}, or null if none. */
-    public static @Nullable Ending findEndingAt(List<? extends Ending> endings, int elementIndex) {
-        for (var ending : endings) {
-            var start = ending.getAnchorElementIndex();
-            var end = ending.getEndElementIndex();
-
-            if (elementIndex >= start && elementIndex <= end) {
-                return ending;
-            }
-        }
-
-        return null;
-    }
-
-    /** Returns the {@link Ending} that spans {@code elementIndex}, or null if none. */
-    public static @Nullable Ending findEndingAt(Line line, int elementIndex) {
-        return findEndingAt(findEndings(line), elementIndex);
-    }
-
-    /** Returns true if {@code elementIndex} falls inside any ending. */
-    public static boolean isInsideAnyEnding(List<? extends Ending> endings, int elementIndex) {
-        return findEndingAt(endings, elementIndex) != null;
-    }
-
-    /** Returns true if {@code elementIndex} falls inside any ending on {@code line}. */
-    public static boolean isInsideAnyEnding(Line line, int elementIndex) {
-        return isInsideAnyEnding(findEndings(line), elementIndex);
-    }
-
-    /** Returns true if {@code elementIndex} is the anchor of any ending. */
-    public static boolean isStartOfAnyEnding(List<? extends Ending> endings, int elementIndex) {
-        for (var ending : endings) {
-            if (ending.getAnchorElementIndex() == elementIndex) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /** Returns true if {@code elementIndex} is the anchor of any ending on {@code line}. */
-    public static boolean isStartOfAnyEnding(Line line, int elementIndex) {
-        return isStartOfAnyEnding(findEndings(line), elementIndex);
-    }
-
-    /** Returns true if {@code elementIndex} is the end of any ending. */
-    public static boolean isEndOfAnyEnding(List<? extends Ending> endings, int elementIndex) {
-        for (var ending : endings) {
-            if (ending.getEndElementIndex() == elementIndex) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /** Returns true if {@code elementIndex} is the end of any ending on {@code line}. */
-    public static boolean isEndOfAnyEnding(Line line, int elementIndex) {
-        return isEndOfAnyEnding(findEndings(line), elementIndex);
-    }
 
     /**
      * Returns the effect of replacing the element at {@code index} with {@code newElement}
@@ -111,7 +41,7 @@ public final class LineEndingSupport {
     ) {
         var oldElement = line.getElement(index);
 
-        return findEndings(line).stream()
+        return line.findEndings().stream()
             .map(e -> e.checkReplacement(oldElement, newElement, line))
             .filter(e -> !(e instanceof Ending.EndingEffect.None))
             .findFirst()

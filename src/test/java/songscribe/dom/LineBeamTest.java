@@ -230,66 +230,6 @@ class LineBeamTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // isStartOfAnyBeam / isEndOfAnyBeam (row 28)
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class IsStartOrEndOfAnyBeam {
-
-        @BeforeEach
-        void addBeam() {
-            // Beam [1,3]
-            song.withoutMutationTracking(() ->
-                line.addBeaming(new Beam(line.getElement(IDX_1), line.getElement(IDX_3))));
-        }
-
-        @Test
-        void testIsStartOfAnyBeamReturnsTrueForAnchorIndex() {
-            assertThat(line.isStartOfAnyBeam(IDX_1))
-                .as("index 1 is the beam anchor")
-                .isTrue();
-        }
-
-        @Test
-        void testIsStartOfAnyBeamReturnsFalseForNonAnchorIndex() {
-            assertAll(
-                () -> assertThat(line.isStartOfAnyBeam(IDX_0))
-                    .as("index 0 is not the anchor of any beam")
-                    .isFalse(),
-                () -> assertThat(line.isStartOfAnyBeam(IDX_3))
-                    .as("index 3 is the end, not the anchor")
-                    .isFalse(),
-                () -> assertThat(line.isStartOfAnyBeam(IDX_2))
-                    .as("index 2 is interior, not the anchor")
-                    .isFalse()
-            );
-        }
-
-        @Test
-        void testIsEndOfAnyBeamReturnsTrueForEndIndex() {
-            assertThat(line.isEndOfAnyBeam(IDX_3))
-                .as("index 3 is the beam end")
-                .isTrue();
-        }
-
-        @Test
-        void testIsEndOfAnyBeamReturnsFalseForNonEndIndex() {
-            assertAll(
-                () -> assertThat(line.isEndOfAnyBeam(IDX_4))
-                    .as("index 4 is beyond the beam end")
-                    .isFalse(),
-                () -> assertThat(line.isEndOfAnyBeam(IDX_1))
-                    .as("index 1 is the anchor, not the end")
-                    .isFalse(),
-                () -> assertThat(line.isEndOfAnyBeam(IDX_2))
-                    .as("index 2 is interior, not the end")
-                    .isFalse()
-            );
-        }
-    }
-
-    // -----------------------------------------------------------------------
     // findBeamsOverlapping (row 30)
     // -----------------------------------------------------------------------
 

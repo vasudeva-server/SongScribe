@@ -32,7 +32,6 @@ import songscribe.dom.Ending;
 import songscribe.hit.HitTarget;
 import songscribe.layout.EndingBracketGeometry;
 import songscribe.layout.LayoutResult;
-import songscribe.layout.LineEndingSupport;
 import songscribe.engraving.LineThickness;
 import songscribe.shape.EndingBracketShape;
 import songscribe.util.GraphicUtils;
@@ -81,7 +80,7 @@ public final class EndingRenderer {
         int lineIndex,
         LineInvariants invariants
     ) {
-        for (var ending : LineEndingSupport.findEndings(line)) {
+        for (var ending : line.findEndings()) {
             var decorationLayout = invariants.getLayoutResult().getDecorationLayout(ending);
 
             // StructuralStacker.stackEndings writes no layout for an ending whose
@@ -127,7 +126,7 @@ public final class EndingRenderer {
         double middleLineYSs
     ) {
         return RenderingUtils.hitTestDecoration(
-            LineEndingSupport.findEndings(line), clickXSs, clickYSs, layoutResult, middleLineYSs);
+            line.findEndings(), clickXSs, clickYSs, layoutResult, middleLineYSs);
     }
 
     /**
