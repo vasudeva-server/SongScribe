@@ -49,7 +49,6 @@ import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.dom.Ending;
 import songscribe.layout.InsertionSpacingCalculator;
-import songscribe.layout.LineEndingSupport;
 import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
@@ -577,9 +576,9 @@ public final class SelectionCoordinator {
      * climbs to the root of the parent chain and asks about that element instead. Every root
      * kind — staff element or span — answers through the same field: {@link Line#detach}
      * clears {@code parentLine} whichever of Line's two lists drops the element, so a
-     * reference comparison against {@code line} is enough for either. This replaces an O(n) {@code elements.indexOf}
-     * scan (see {@code Line.getElementIndex}); {@link #revalidateDecorationSelection} runs
-     * after every mutation, so keep the comparison cheap rather than reintroducing that scan.
+     * reference comparison against {@code line} is enough for either — and it answers for a
+     * span, which {@code Line.getElementIndex} cannot. {@link #revalidateDecorationSelection}
+     * runs after every mutation, so keep the comparison to this one field read.
      */
     private static boolean isOnLine(LineElement element, Line line) {
         var root = element;
@@ -1041,7 +1040,7 @@ public final class SelectionCoordinator {
                 }
 
                 var replacement = replaceable.createReplacement(element, true);
-                var effect = LineEndingSupport.findEndingReplacementEffect(line, i, replacement);
+                var effect = line.findEndingReplacementEffect(i, replacement);
                 Ending.EndingEffect compensation = Ending.EndingEffect.None.INSTANCE;
 
                 switch (effect) {

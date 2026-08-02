@@ -58,7 +58,12 @@ public class Tie extends Span {
         return Math.max(1.0, endXSs - anchorXSs);
     }
 
-    @Override
+    /**
+     * Returns whether this tie arcs above its notes rather than below them.
+     * <p>
+     * Declared here rather than on {@link Span} because a tie is the only span whose side is
+     * a computed property — every other span's side is fixed by its own geometry.
+     */
     public boolean isAbove() {
         // isAbove and arcSign share one convention: arcSign < 0 == arc bulges up == tie above.
         return arcSign() < 0;

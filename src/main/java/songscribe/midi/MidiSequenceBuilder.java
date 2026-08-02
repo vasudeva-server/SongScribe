@@ -26,9 +26,12 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Span;
 import songscribe.dom.Tempo;
 import songscribe.dom.Ending;
 import songscribe.ui.playback.MidiMetaMessageTypes;
@@ -175,6 +178,26 @@ public class MidiSequenceBuilder {
     }
 
     /**
+     * Returns the first ending in {@code endings} covering {@code elementIndex}, or null when
+     * none does — {@link Line#findEndingAt} against a list already narrowed to one line's
+     * endings, so a per-note call does not re-walk that line's every span.
+     * <p>
+     * {@code endings} must be {@code line}'s own, since the positions are resolved against
+     * {@code line}.
+     */
+    private static @Nullable Ending endingCovering(Line line, List<Ending> endings, int elementIndex) {
+        var covers = Span.containing(elementIndex);
+
+        for (var ending : endings) {
+            if (covers.test(line.anchorIndexOf(ending), line.endIndexOf(ending))) {
+                return ending;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Builds a MIDI sequence with repeat handling.
      * This implements the same logic as the old ScoreView.addLineToTrack method.
      *
@@ -206,12 +229,17 @@ public class MidiSequenceBuilder {
             var noteCount = line.elementCount();
             var builder = new LineTrackBuilder(line);
 
+            // Hoisted out of the note loop: asking the line per note would re-filter its
+            // whole span list — every beam, tie, tuplet, trill and hairpin included — once
+            // for every note in the song.
+            var endings = line.findEndings();
+
             for (var noteIndex = (lineIndex == startLine ? startNote : 0); noteIndex < noteCount; noteIndex++) {
                 var note = line.getElement(noteIndex);
                 var noteType = note.getType();
 
                 // Resolve the ending covering this element once; reused below.
-                var ending = line.findEndingAt(noteIndex);
+                var ending = endingCovering(line, endings, noteIndex);
 
                 // The closing REPEAT_RIGHT of a secondary (REPEAT_LEFT_RIGHT-split) ending
                 // must not start a spurious third pass, so exclude it from the repeat-marker

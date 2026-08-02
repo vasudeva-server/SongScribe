@@ -2,7 +2,10 @@
 
 **Reviewed:** 2026-08-02 **Branch:** `722-index-resolution` (base: `develop`)
 **Plan under review:** [span-index-resolution.md](span-index-resolution.md) — step 1 of #722
-**Status: RE-DISPOSITIONED 2026-08-02 against `plans/element-index-resolution.md`.**
+**Status: RESOLVED 2026-08-02.** Re-dispositioned twice — first against
+`plans/element-index-resolution.md`, then again by a second review covering all three
+commits on the branch. Everything here is closed except finding 8 (settled as leave-alone),
+finding 7 (to be discarded), and the deliberately-kept half of finding 10.
 
 The review was originally parked pending #725 (the `SpanIndex` snapshot). **#725 is
 closed as not planned.** What landed instead was
@@ -10,47 +13,68 @@ closed as not planned.** What landed instead was
 became O(1) via a lazily-built identity map invalidated at the `attach`/`detach`
 chokepoint, plus the `SpanLookup` fast path and receiver-relative endpoint accessors.
 
-Each finding below now carries a **Disposition** line. Two things changed wholesale:
+Each finding below carries a **Disposition** line. Two things changed wholesale at the
+first re-disposition:
 
-- **Nine findings are closed** by that plan — 1, 5, 9, 13, 14, 15, 16, 17, 18, with 6
+- **Nine findings were closed** by that plan — 1, 5, 9, 13, 14, 15, 16, 17, 18, with 6
   closed only in its implementation half.
 - **The linear scan four findings were premised on no longer exists.** Findings 7, 10,
   11 and 12 all argued from `getElementIndex` being `elements.indexOf(...)`. It is a
-  hash lookup now, so their cost arguments are void and each needs re-deciding on
+  hash lookup now, so their cost arguments are void and each needed re-deciding on
   readability grounds alone. Finding 7 in particular must **not** be applied as
   written — restoring that comment would install a false statement.
 
-Findings 2 and 3 were each deferred for a reason that no longer holds; both are now
-actionable. See their dispositions.
+The second review then closed 2, 3, 4, 6's Javadoc half, 11, 12 and 19, and fixed half of
+10. See the note under the disposition summary for the three places it corrects what is
+written below.
 
 ## Disposition summary
 
 | # | Finding | Disposition |
 | --- | --- | --- |
 | 1 | `Span.overlaps` dead code | ✅ Closed — deleted |
-| 2 | `LineInvariants` hand-rolls containment | ⬜ Open — deferral reason void, now actionable |
-| 3 | `FormatMigrator` type-filter loops | ⬜ Open — blocker gone; legacy-path caveat stands |
-| 4 | `LineEndingSupport` one-method class | ⬜ Open — question for the user |
+| 2 | `LineInvariants` hand-rolls containment | ✅ Closed — uses `Span.containing` |
+| 3 | `FormatMigrator` type-filter loops | ✅ Closed — all five converted |
+| 4 | `LineEndingSupport` one-method class | ✅ Closed — folded into `Line` |
 | 5 | `getSpans()` ordering claim | ✅ Closed — reworded |
-| 6 | Accessors ignore the receiver | ◐ Half — implementation fixed, interface Javadoc not |
-| 7 | Deleted comment | ⚠️ **Do not apply as written** — premise false |
+| 6 | Accessors ignore the receiver | ✅ Closed — contract now on the interface |
+| 7 | Deleted comment | ⚠️ **Do not apply as written** — premise false; six siblings fixed |
 | 8 | Does the interface earn its place | ⬜ Open — new rationale, same answer: leave alone |
 | 9 | Unfiltered query discards work | ✅ Closed — own loop + parity test |
-| 10 | Merge re-resolves positions | ⬜ Open — readability only, cost argument void |
-| 11 | `hasOverlap` lost its hoist | ⬜ Open — near-zero |
-| 12 | MIDI loop lost its hoist | ⬜ Open — near-zero, nothing coming to absorb it |
+| 10 | Merge re-resolves positions | ◐ Half — resolution made consistent, three passes kept |
+| 11 | `hasOverlap` lost its hoist | ✅ Closed — hoist restored |
+| 12 | MIDI loop lost its hoist | ✅ Closed — hoist restored |
 | 13 | Guard half untested | ✅ Closed — `EndDetached` group |
 | 14 | `exactly` can't tell and from or | ✅ Closed — third tie |
 | 15 | Test name overclaims | ✅ Closed — deleted as redundant |
 | 16 | Filtering step never filters | ✅ Closed — unaffected-first-ending case |
 | 17 | Touching ties untested | ✅ Closed — shared-endpoint case |
 | 18 | Merge predicates half-exercised | ✅ Closed — branch coverage groups |
-| 19 | Three `Span` methods uncovered | ◐ Partial — `isAbove()` unverified |
+| 19 | Three `Span` methods uncovered | ✅ Closed — `isAbove()` moved to `Tie` |
 
-Nine closed, two partial, seven open, one to be discarded. Of the seven open, none is
-a correctness defect: findings 2, 3 and 4 are maintenance choices, 8 is settled as
-leave-alone, and 10, 11 and 12 are readability observations whose performance
-rationale no longer holds.
+Seventeen closed, one partial, one settled as leave-alone, one to be discarded. Nothing
+open is a correctness defect.
+
+**Re-dispositioned again 2026-08-02**, by a second review covering all three commits on the
+branch rather than `375da061` alone. Three corrections to what is written below:
+
+- **Finding 2's proposed fix was wrong.** It suggested routing the playback-highlight check
+  through `findFirstSpan(Tie.class, Span.containing(...))`. That asks "is this note inside
+  *any* tie"; the code asks "is this note inside *the sounding* tie". Those differ on a line
+  with more than one tie. The fix applied drives `Span.containing` directly instead.
+- **Finding 7's warning was right and did not go far enough.** It treated the falsified
+  premise as one stale comment. Six others said the same false thing and are now corrected:
+  `MusicXmlSpanIndex` (class and `buildSpanIndex`), `MusicXmlWriter:220`,
+  `RenderingUtils:117`, `LineInvariants:340` and `SelectionCoordinator:580`.
+- **Finding 19's open half resolved the other way.** `Span.isAbove()` was uncovered because
+  `Tie` overrides it and `Tie` is the only type it is ever called on — the base body answered
+  nothing. It was moved onto `Tie` rather than given a test.
+
+Findings the first review could not have had, since they arrive with the two later commits,
+are recorded in the second review's report: the six stale comments above, mixed endpoint
+resolution in `mergeOverlappingSpans` and the hairpin-extend loop, a dead null check in
+`Line.indexOfEndpoint`, per-element index rebuilds on the paste path (recorded as out of
+scope in `element-index-resolution.md`), and three test findings.
 
 ## Baseline at time of review
 
@@ -132,12 +156,14 @@ will not inherit any future correction to the shared one.
 caller to `Span.matches`, which also resolves through the span's own parent line
 and so bypasses the seam #725 depends on. Leave this to #725, or leave it alone.
 
-**Disposition: OPEN, and the deferral reason is void.** `Span.matches` was deleted
-(finding 1), so the fix it warned against is no longer expressible. The remaining
-route is a `SpanLookup` receiver —
-`line.findFirstSpan(Tie.class, Span.containing(elementIndex))` or equivalent — which
-resolves against the receiving line rather than the span's own parent. That is now
-the *preferred* shape, not a bypass. Small and actionable.
+**Disposition: CLOSED.** The method now reads
+`Span.containing(elementIndex).test(anchorIndex, endIndex)`, picking up the shared guard
+against unresolvable endpoints that the hand-written version lacked.
+
+Note the route this finding originally proposed —
+`line.findFirstSpan(Tie.class, Span.containing(elementIndex))` — would have been a behavior
+change, not a refactor: it asks whether the note is inside *any* tie, where the method asks
+whether it is inside *the sounding* tie.
 
 ### 3. Five loops in the legacy migration code hand-roll type filtering
 `src/main/java/songscribe/io/FormatMigrator.java`, in the methods converting old
@@ -151,11 +177,9 @@ Two caveats. This is the legacy `.mssw` read path, which `AGENTS.md` marks as
 migration-only. And converting them today would make them *slower*, because of
 finding 9. Sequence after that fix, or skip.
 
-**Disposition: OPEN, and the blocker is gone.** Finding 9 is fixed —
-`findSpans(Class)` now filters by type and resolves no positions — so converting
-these loops no longer costs anything. The legacy-path caveat stands on its own: this
-is `.mssw` migration code, so "skip" remains defensible. Decide on maintenance
-grounds, not performance.
+**Disposition: CLOSED.** All five converted to `line.findSpans(Class)`. The one loop that
+handled two types through an `if`/`else if` became two loops, which is behavior-identical
+since no span is both an `Ending` and a `Trill`.
 
 ### 4. `LineEndingSupport` is now a class holding one static method
 `src/main/java/songscribe/layout/LineEndingSupport.java`
@@ -168,8 +192,10 @@ Raised as a question, not a defect. The remaining method is not a plain index
 lookup — it walks every ending and returns the first non-trivial effect — so it
 does not obviously belong on `SpanLookup`. Leaving it as-is is defensible.
 
-**Disposition: OPEN, unchanged.** Recorded again in `element-index-resolution.md`'s
-out-of-scope section. Still a question for the user, not a defect.
+**Disposition: CLOSED.** The remaining method became `Line.findEndingReplacementEffect(int,
+StaffElement)`, sitting beside the other ending-invalidation queries; the class was deleted
+and its two callers now go through the line. Its test moved to
+`src/test/java/songscribe/dom/LineEndingTest.java`, which by then tested only `Line`.
 
 ---
 
@@ -209,17 +235,17 @@ the other line's answer rather than failing.
 receiver, and which returns `-1` for a foreign span. **State the contract in the
 interface Javadoc so both implementations are held to the same rule.**
 
-**Disposition: HALF CLOSED.** Phase 7 fixed the implementation: `Line.anchorIndexOf`
+**Disposition: CLOSED.** Phase 7 fixed the implementation: `Line.anchorIndexOf`
 / `endIndexOf` now resolve through `getElementIndex` against the receiving line and
 return -1 for an endpoint belonging to another line, pinned by
 `SpanLookupTest.CrossLineEndpoints`.
 
-The Javadoc half is **still open**. `SpanLookup.java:42-46` says only "The anchor
-element's position in the line, or -1 when unresolvable" — it does not state that the
-position is relative to *the receiver*, nor that a foreign endpoint yields -1. #725
-is closed so there is no second implementor coming, but cross-line ties (#493) make
-these two methods return directional sentinels, so the contract needs stating before
-that work starts.
+The Javadoc half closed in the second review. `SpanLookup.anchorIndexOf` now states that
+the position is relative to the receiver, that a foreign or unset endpoint yields -1, and
+why no query routes through `Span.getAnchorElementIndex()`; `endIndexOf` points at it.
+`Line`'s overrides carry no Javadoc of their own, so the contract has exactly one home —
+which is what cross-line ties (#493) will extend when these two begin returning directional
+sentinels.
 
 ### 7. A true and newly-relevant comment was deleted
 `src/main/java/songscribe/ui/MusicEditOperations.java:676`, in the loop that
@@ -243,6 +269,14 @@ The underlying observation survives in weaker form: two locals still sit there w
 no stated reason. But hoisting a hash lookup out of a loop needs no justification, so
 the honest resolution is probably to leave the code alone and write nothing, or to
 inline the locals. Re-decide on readability; the performance argument is void.
+
+**The lesson generalized.** The second review searched for the same falsified premise
+elsewhere and found it written down six more times, in five files: `MusicXmlSpanIndex`
+(class Javadoc and `buildSpanIndex`), `MusicXmlWriter:220`, `RenderingUtils:117`,
+`LineInvariants:340` and `SelectionCoordinator:580`. Two of them justified a whole
+precompute class on the cost of a lookup that is now a hash get — a reader trusting them
+could conclude the class is pointless and delete it. All six are corrected to give the
+reason that is still true. The one comment this finding was about remains deleted.
 
 ### 8. Whether the interface earns its place — no action
 One reviewer argued that since `Line` is the only implementor and the three
@@ -337,16 +371,20 @@ style. Genuine trade-off; needs a decision.
 **Not covered by #725**, whose snapshot is for read-only passes and explicitly
 excludes the editing paths.
 
-**Disposition: OPEN, but the cost argument is void.** The two direct
-`elements.indexOf(...)` calls at the top of the method were switched to
-`getElementIndex`, so every resolution here is a hash get. "Roughly six linear scans
-per same-type span" is now roughly six hash gets, on a line with a handful of beams.
+**Disposition: HALF CLOSED.** The cost argument was void — the two direct
+`elements.indexOf(...)` calls at the top of the method were switched to `getElementIndex`,
+so "roughly six linear scans per same-type span" is roughly six hash gets.
 
-The structural observation stands — three queries each re-resolve positions, and two
-re-resolve in their `.mapToInt(...)` a position just discarded inside the query. That
-is a readability and duplication argument now, and the fix still trades the predicate
-style back for a loop. **Genuine trade-off; needs a decision — but not a performance
-one.**
+The second review found a second, separate problem in the same expressions and fixed it: the
+`.mapToInt(...)` steps called `Span::getAnchorElementIndex` / `Span::getEndElementIndex`,
+which resolve through whichever line the endpoint currently belongs to, while the filtering
+step beside them resolved through the receiving line. They now both use `this::anchorIndexOf`
+/ `this::endIndexOf`. Beams and hairpins never go cross-line, so the two routes could not
+have disagreed; this is the method no longer doing one thing two ways.
+
+**The three-pass structure was left as it is,** by decision: collapsing it would trade the
+predicate style back for a loop in the one place the refactor showed that style off, to
+remove repeated derivation that costs nothing.
 
 ### 11. `hasOverlap` lost its hoisted lookup
 `src/main/java/songscribe/ui/MusicEditOperations.java:866` — checks whether a
@@ -364,10 +402,10 @@ reasoned about, not because a difference is expected.
 
 **Not covered by #725** — editing path.
 
-**Disposition: OPEN, near-zero.** The lost hoist now costs a walk of the line's span
-list (5-10 spans, cheap `instanceof` checks) per iteration instead of a pre-filtered
-list. Reported originally because the hoisting was deliberate and its removal was not
-reasoned about — that remains the only reason to act.
+**Disposition: CLOSED.** The hoist is restored: `hasOverlap` now iterates the line's endings
+outermost, resolving each one's bounds once, and tests the selection's indices against them
+with `Span.containing`. Magnitude was and remains near-zero; it was fixed because the hoist
+had been deliberate and its removal was never a decision.
 
 ### 12. The MIDI note loop lost the same hoist
 `src/main/java/songscribe/midi/MidiSequenceBuilder.java:205`
@@ -377,8 +415,13 @@ Same shape and same near-zero magnitude as finding 11.
 **Covered by #725**, which lists `MidiSequenceBuilder:209` in its call-site
 inventory.
 
-**Disposition: OPEN.** #725 is closed, so nothing is coming to absorb this. Same
-near-zero magnitude as finding 11 and the same sole rationale.
+**Disposition: CLOSED.** The second review rated this higher than "near-zero" and it was
+fixed. The regression was not only the lost pre-filter: `line.findEndingAt(noteIndex)` walks
+the line's *entire* span list — beams, ties, tuplets, trills, hairpins — testing each one's
+type, once per note in the song, where the old code searched a short endings-only list. The
+endings are hoisted back out of the note loop and a file-local `endingCovering` helper
+searches them. Still not perceptible (this runs at playback start and export, not on repaint),
+but it was a mechanical regression with a clean fix.
 
 ---
 
@@ -503,8 +546,14 @@ review.
 **Disposition: PARTIALLY CLOSED.** Phase 6 added a `GetContentWidthPx` group to
 `LineTieTest` exercising `getContentWidthPx()` as a `ssToPx(getContentWidthSs())`
 wrapper with a non-default pixels-per-staff-space. `getContentWidthSs()` is exercised
-at `StructuralTierStackingTest:735`. **`isAbove()` was not verified and may still be
-uncovered** — re-check with `./scripts/coverage.sh unit` before acting.
+at `StructuralTierStackingTest:735`.
+
+**`isAbove()` closed the other way.** It was indeed uncovered, but a test was the wrong
+answer: `Tie` overrides it and `Tie` is the only type anything calls it on — the sole
+production caller is the MusicXML notation writer asking a tie which way its arc bulges — so
+`Span`'s base body (`return true`) answered a question nobody asks. It was moved onto `Tie`
+and deleted from `Span`, which the existing `LayoutEngineTest` and `TieTest` cases already
+cover.
 
 ---
 

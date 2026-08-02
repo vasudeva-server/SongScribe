@@ -32,6 +32,7 @@ import songscribe.hit.HitTarget;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.Line;
+import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.ui.ViewScale;
@@ -337,8 +338,8 @@ public final class LineInvariants {
      * {@link #isElementHovered}), and only {@link HitTarget.Element} and
      * {@link HitTarget.Accidental} consult them. Every other variant ignores the argument —
      * pass {@link #NO_ELEMENT_INDEX}. Every call site that draws the two variants that do
-     * use it already has the index from its own loop, so deriving it here would cost a
-     * linear scan per drawn element for nothing.
+     * use it already has the index from its own loop, so deriving it here would repeat a
+     * lookup the caller has already done, for nothing.
      *
      * @param target       the thing being drawn, as a click would address it
      * @param elementIndex the owning element's index, or {@link #NO_ELEMENT_INDEX}
@@ -462,8 +463,8 @@ public final class LineInvariants {
      */
     public boolean isElementInPlayingTie(int elementIndex) {
         return playingTieSpan != null
-                && playingTieSpan.getAnchorElementIndex() <= elementIndex
-                && elementIndex <= playingTieSpan.getEndElementIndex();
+                && Span.containing(elementIndex).test(
+                    playingTieSpan.getAnchorElementIndex(), playingTieSpan.getEndElementIndex());
     }
 
     /**

@@ -28,10 +28,10 @@ import songscribe.layout.BeamMath;
 
 /**
  * Per-element-index span precompute for {@link MusicXmlWriter}'s line-driven
- * measure loop. {@link #buildSpanIndex} resolves every span's anchor/end
- * element index exactly once per line, so the measure loop can do O(1)
- * lookups instead of calling {@code getAnchorElementIndex()} (O(n)) per
- * element per span.
+ * measure loop. {@link #buildSpanIndex} walks each span type once per line and
+ * buckets every span onto the element indices it touches, so the measure loop
+ * can read one array slot per element instead of scanning the line's whole span
+ * list — every beam, tie, tuplet, trill, hairpin and ending — for every element.
  */
 final class MusicXmlSpanIndex {
 
@@ -153,11 +153,9 @@ final class MusicXmlSpanIndex {
      * Builds the per-element-index span marker array for {@code line}.
      *
      * <p>For each of the six span types, this method calls the line accessor
-     * once and resolves every span's anchor/end element index exactly once
-     * via {@link Span#getAnchorElementIndex()} /
-     * {@link Span#getEndElementIndex()}.
-     * The element loop can then do O(1) lookups instead of calling
-     * {@code indexOf} (O(n)) per element per span.
+     * once and buckets every span onto the element indices it touches. The
+     * element loop can then read one array slot per element, rather than
+     * re-filtering the line's whole span list for every element it writes.
      *
      * <p>Bucket rules:
      * <ul>

@@ -509,10 +509,31 @@ it.
   at the cost of a snapshot-lifetime contract reaching roughly 25 files. Revisit only if
   phase 8's numbers show the remaining iteration matters.
 
+- **Per-element rebuilds when a run of insertions alternates with a lookup.** The paste loop
+  at `src/main/java/songscribe/ui/component/ScoreViewController.java:1131` inserts one element
+  per iteration. `Line.addElement(int, StaffElement)` calls `findTupletAt(index)` first, which
+  resolves positions and so rebuilds the map — and then `attach` discards it again. So pasting
+  N notes onto a line that holds **any** tuplet rebuilds the map N times and reuses it never.
+  The same happens when the pasted element is a barline or repeat and the line holds an ending
+  (`Ending.isInvalidatedByInsertion` is the only other insertion-path resolver). Pasting plain
+  notes onto a line with neither resolves nothing and rebuilds nothing.
+
+  Not an algorithmic regression: the old `indexOf` scan was also O(line length) per insertion.
+  What is worse is the constant — a rebuild allocates a map and boxes an `Integer` per element
+  where the scan compared references — so on a line with exactly one tuplet the new path costs
+  several times more per insertion, and comes out ahead once a line has several spans. Phase
+  8's session measured 68 rebuilds against 78,358 lookups, so this pattern is rare in practice;
+  that session may not have included a large paste.
+
+  Fixing it means letting a run of insertions invalidate once rather than per element, which
+  changes the insertion path's contract and belongs with whoever owns paste — not here.
+
 From the parked review at `plans/span-index-resolution-review.md`:
 
-- **Finding 4** — `src/main/java/songscribe/layout/LineEndingSupport.java` is now a class
-  holding one static method. Raised as a question, not a defect.
+- ~~**Finding 4** — `src/main/java/songscribe/layout/LineEndingSupport.java` is now a class
+  holding one static method.~~ Resolved in review: the one method became
+  `Line.findEndingReplacementEffect`, the class was deleted, and its test moved to
+  `src/test/java/songscribe/dom/LineEndingTest.java`.
 
 - `src/main/java/songscribe/ui/clipboard/PasteSpanReconciliation.java:180` — one pass over
   five span types with different side effects per type; converting it would mean a fourth

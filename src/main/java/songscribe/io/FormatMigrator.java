@@ -110,8 +110,8 @@ public final class FormatMigrator {
             line.setLyricsYPosSs(line.getLyricsYPosSs() / pps);
 
             // Tuplet.verticalPosition (pixel → staff-space conversion)
-            for (var re : line.getSpans()) {
-                if (re instanceof Tuplet tuplet && tuplet.getVerticalPositionSs() != 0) {
+            for (var tuplet : line.findSpans(Tuplet.class)) {
+                if (tuplet.getVerticalPositionSs() != 0) {
                     tuplet.setVerticalPositionSs(
                         (int) Math.round(tuplet.getVerticalPositionSs() / pps)
                     );
@@ -119,13 +119,11 @@ public final class FormatMigrator {
             }
 
             // Hairpin shifts (crescendo + diminuendo)
-            for (var re : line.getSpans()) {
-                if (re instanceof Hairpin hairpin) {
-                    if (hairpin.getX1ShiftSs() != 0 || hairpin.getX2ShiftSs() != 0 || hairpin.getYShiftSs() != 0) {
-                        hairpin.setX1ShiftSs(hairpin.getX1ShiftSs() / pps);
-                        hairpin.setX2ShiftSs(hairpin.getX2ShiftSs() / pps);
-                        hairpin.setYShiftSs(hairpin.getYShiftSs() / pps);
-                    }
+            for (var hairpin : line.findSpans(Hairpin.class)) {
+                if (hairpin.getX1ShiftSs() != 0 || hairpin.getX2ShiftSs() != 0 || hairpin.getYShiftSs() != 0) {
+                    hairpin.setX1ShiftSs(hairpin.getX1ShiftSs() / pps);
+                    hairpin.setX2ShiftSs(hairpin.getX2ShiftSs() / pps);
+                    hairpin.setYShiftSs(hairpin.getYShiftSs() / pps);
                 }
             }
 
@@ -145,10 +143,14 @@ public final class FormatMigrator {
             }
 
             // Convert per-instance Span offsets (Ending, Trill)
-            for (var element : line.getSpans()) {
-                if (element instanceof Ending ending && ending.getYPositionSs() != 0) {
+            for (var ending : line.findSpans(Ending.class)) {
+                if (ending.getYPositionSs() != 0) {
                     ending.setYPositionSs((int) Math.round(ending.getYPositionSs() / pps));
-                } else if (element instanceof Trill trill && trill.getYPositionSs() != 0) {
+                }
+            }
+
+            for (var trill : line.findSpans(Trill.class)) {
+                if (trill.getYPositionSs() != 0) {
                     trill.setYPositionSs((int) Math.round(trill.getYPositionSs() / pps));
                 }
             }
@@ -218,10 +220,8 @@ public final class FormatMigrator {
         if (endingOffset != endingDefault) {
             var delta = endingOffset - endingDefault;
 
-            for (var element : line.getSpans()) {
-                if (element instanceof Ending ending) {
-                    ending.setYPositionSs(ending.getYPositionSs() + delta);
-                }
+            for (var ending : line.findSpans(Ending.class)) {
+                ending.setYPositionSs(ending.getYPositionSs() + delta);
             }
         }
 
@@ -232,10 +232,8 @@ public final class FormatMigrator {
         if (trillOffset != trillDefault) {
             var delta = trillOffset - trillDefault;
 
-            for (var element : line.getSpans()) {
-                if (element instanceof Trill trill) {
-                    trill.setYPositionSs(trill.getYPositionSs() + delta);
-                }
+            for (var trill : line.findSpans(Trill.class)) {
+                trill.setYPositionSs(trill.getYPositionSs() + delta);
             }
         }
     }

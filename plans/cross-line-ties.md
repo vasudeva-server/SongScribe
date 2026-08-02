@@ -186,7 +186,7 @@ spanAnchorIndex == anchorIndex && spanEndIndex == endIndex
 **Status:** Pending **BlockedBy:** 1, 2 **Files:** src/main/java/songscribe/dom/Line.java, src/test/java/songscribe/dom/SpanLookupTest.java **Recommended model/effort:** Opus 4.8, high — every span query in the app reads these two methods, and the merge arithmetic silently misreads a sentinel
 
 ### Context this phase needs
-`Line.anchorIndexOf` (`:1595`) and `endIndexOf` (`:1600`) both resolve through a private `indexOfEndpoint(@Nullable StaffElement)` that returns `NOT_IN_LINE` for any endpoint not in this line, with no direction.
+`Line.anchorIndexOf` and `endIndexOf` are each a single call to `getElementIndex(span.getAnchorElement())` / `getElementIndex(span.getEndElement())`. `getElementIndex` is `@Nullable`-accepting and returns `NOT_IN_LINE` for a null element and for any element not in this line, with no direction. The contract those two implement is stated on `SpanLookup.anchorIndexOf` — extend it there when the sentinels gain direction, not only on the `Line` overrides.
 
 `mergeOverlappingSpans` (`:972`) reads both accessors at `:978-979` and then computes `end + reach` and `anchor - reach` at `:986` and `:991`. `reach` is `0` for beams and `SPAN_ADJACENCY_REACH` for hairpins. Ties never merge, but these predicates receive sentinels as soon as the accessors can return them.
 

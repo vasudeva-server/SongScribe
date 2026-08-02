@@ -58,7 +58,6 @@ import songscribe.ui.edit.GraceModeManager;
 import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.dom.Ending;
-import songscribe.layout.LineEndingSupport;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.ScaleContext;
@@ -2003,7 +2002,7 @@ public final class PreviewElementManager {
 
         // Check whether replacing this element would affect a first-second ending,
         // and show the appropriate confirmation dialog if so.
-        var endingEffect = LineEndingSupport.findEndingReplacementEffect(line, elementIndex, replacement);
+        var endingEffect = line.findEndingReplacementEffect(elementIndex, replacement);
 
         switch (endingEffect) {
             case Ending.EndingEffect.Invalidate _ -> {

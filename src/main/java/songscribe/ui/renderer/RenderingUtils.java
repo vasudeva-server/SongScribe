@@ -114,8 +114,8 @@ public final class RenderingUtils {
     /**
      * Returns the rendering color for a decoration attached to {@code element}.
      * <p>
-     * Uses {@link ElementFrame#currentElementIndex()} when set (avoids
-     * a linear scan), otherwise falls back to {@code line.getElementIndex(element)}.
+     * Uses {@link ElementFrame#currentElementIndex()} when set, since the drawing loop
+     * already has it; otherwise falls back to {@code line.getElementIndex(element)}.
      * <p>
      * Returns the preview element color when the element is not found in the current
      * line (index &lt; 0): the element is the insertion preview, so its decorations

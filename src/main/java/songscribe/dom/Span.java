@@ -155,14 +155,6 @@ public abstract class Span extends LineElement {
     }
 
     /**
-     * Returns whether this span is above the staff.
-     */
-    public boolean isAbove() {
-        // By default, spans are above the staff. Subclasses can override this if needed.
-        return true;
-    }
-
-    /**
      * Returns the width of this span in staff-space units.
      * <p>
      * Computed as the distance from the anchor element's X position to the

@@ -97,10 +97,12 @@ public class Line implements LyricRun, SpanLookup {
      * overrides {@code equals}/{@code hashCode}, and an override added later must not silently
      * change what an element's position means.
      * <p>
-     * {@code volatile} for safe publication: the map is shared mutable state where the bare
-     * list was not, and {@code IdentityHashMap}'s internal table is not {@code final}, so a
-     * reader on another thread could otherwise see a non-null reference to a map whose
-     * contents are not yet visible.
+     * {@code volatile} is cheap insurance, not a concurrency guarantee. Nothing reads a
+     * {@code Line} off the event thread today; were something to, this would keep a reader
+     * from seeing a non-null reference to a map whose contents are not yet visible, since
+     * {@code IdentityHashMap}'s internal table is not {@code final}. It would not make such a
+     * reader safe — {@link #elements} is a plain {@code ArrayList}, so a rebuild racing a
+     * structural change was never safe and this field does not change that.
      *
      * <pre>
      *   elements written  ──► attach/detach(StaffElement) ──► elementIndexMap = null
@@ -305,6 +307,10 @@ public class Line implements LyricRun, SpanLookup {
 
         // A re-parent that ran attach() first already owns this element — don't
         // clear a pointer that now names a different line.
+        //
+        // No caller reaches this return today: every re-parent detaches before it attaches,
+        // setElement (:452) deliberately so. It is kept because the cost of being wrong here
+        // is a live element with no line, and untestable — a test cannot reach it either.
         if (element.getParentLine() != this) {
             return;
         }
@@ -984,15 +990,16 @@ public class Line implements LyricRun, SpanLookup {
         var reach = absorbAdjacent ? SPAN_ADJACENCY_REACH : 0;
 
         // Expand bounds to absorb adjacent/overlapping spans. Both must be resolved before
-        // the setters below, which mutate the very indices these predicates read.
+        // the setters below, which mutate the very indices these predicates read. Positions
+        // come from this line throughout — the same route the predicates above resolve by.
         var mergedAnchorIdx = findSpans(type, (anchor, end) -> anchor <= anchorIdx && anchorIdx <= end + reach)
             .stream()
-            .mapToInt(Span::getAnchorElementIndex)
+            .mapToInt(this::anchorIndexOf)
             .min()
             .orElse(anchorIdx);
         var mergedEndIdx = findSpans(type, (anchor, end) -> anchor - reach <= endIdx && endIdx <= end)
             .stream()
-            .mapToInt(Span::getEndElementIndex)
+            .mapToInt(this::endIndexOf)
             .max()
             .orElse(endIdx);
 
@@ -1593,26 +1600,12 @@ public class Line implements LyricRun, SpanLookup {
 
     @Override
     public int anchorIndexOf(Span span) {
-        return indexOfEndpoint(span.getAnchorElement());
+        return getElementIndex(span.getAnchorElement());
     }
 
     @Override
     public int endIndexOf(Span span) {
-        return indexOfEndpoint(span.getEndElement());
-    }
-
-    /**
-     * Resolves a span endpoint against <i>this</i> line, returning -1 when the endpoint is
-     * unset or lives in some other line.
-     * <p>
-     * Resolving against the receiver rather than through {@link Span#getAnchorElementIndex()}
-     * matters while a span is transiently cross-line — during a paste or a line split, an
-     * endpoint may already have been reparented. Asking the endpoint's own line would answer
-     * with a position in <i>that</i> line, which no caller of this lookup can tell apart from
-     * a real one.
-     */
-    private int indexOfEndpoint(@Nullable StaffElement endpoint) {
-        return endpoint == null ? -1 : getElementIndex(endpoint);
+        return getElementIndex(span.getEndElement());
     }
 
     /**
@@ -1627,6 +1620,23 @@ public class Line implements LyricRun, SpanLookup {
             .filter(Span::requiresInvalidationConfirm)
             .anyMatch(r -> r.isInvalidatedBy(deletedElements) ||
                            r.isInvalidatedByDeletion(deletedElements, this));
+    }
+
+    /**
+     * Returns the effect of replacing the element at {@code index} with {@code newElement}
+     * on any ending in this line. Returns {@link Ending.EndingEffect.None} if no ending
+     * is affected.
+     * <p>
+     * Call before {@link #setElement} to determine whether a confirmation dialog is needed.
+     */
+    public Ending.EndingEffect findEndingReplacementEffect(int index, StaffElement newElement) {
+        var oldElement = getElement(index);
+
+        return findEndings().stream()
+            .map(ending -> ending.checkReplacement(oldElement, newElement, this))
+            .filter(effect -> !(effect instanceof Ending.EndingEffect.None))
+            .findFirst()
+            .orElse(Ending.EndingEffect.None.INSTANCE);
     }
 
     /**

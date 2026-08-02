@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 */
-package songscribe.layout;
+package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -25,17 +25,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
-import songscribe.dom.Ending;
-import songscribe.dom.Line;
-import songscribe.dom.Song;
-import songscribe.dom.StaffElement;
+import songscribe.layout.EndingLineFixture;
 
 /**
- * Unit tests for {@link LineEndingSupport#findEndingReplacementEffect}, and for
- * {@link songscribe.dom.Line}'s ending queries ({@code findEndings}, {@code findEndingAt},
- * {@code isInsideAnyEnding}) that moved onto {@link songscribe.dom.SpanLookup} in the
- * span-index-resolution refactor.
+ * Unit tests for {@link Line}'s ending queries — {@code findEndings}, {@code findEndingAt} and
+ * {@code isInsideAnyEnding}, which moved onto {@link SpanLookup} in the span-index-resolution
+ * refactor — and for {@link Line#findEndingReplacementEffect}.
  *
  * <p>Primary canonical line layout (from {@link EndingLineFixture}):
  * <pre>
@@ -45,7 +40,7 @@ import songscribe.dom.StaffElement;
  * </pre>
  * Ending spans [0, 6] inclusive.
  */
-class LineEndingSupportTest extends UnitTest {
+class LineEndingTest extends UnitTest {
 
     // -----------------------------------------------------------------------
     // Row 25 — line.findEndings() extracts Ending spans
@@ -241,7 +236,7 @@ class LineEndingSupportTest extends UnitTest {
             song.withoutMutationTracking(() -> line.addElement(note));
             var replacement = new StaffElement(ElementType.SINGLE_BARLINE);
 
-            var effect = LineEndingSupport.findEndingReplacementEffect(line, 0, replacement);
+            var effect = line.findEndingReplacementEffect(0, replacement);
 
             assertThat(effect).isEqualTo(Ending.EndingEffect.None.INSTANCE);
         }
@@ -257,7 +252,7 @@ class LineEndingSupportTest extends UnitTest {
             // (#306: content, barline, and repeat types are now all allowed anchors).
             var replacement = new StaffElement(ElementType.GRACE_QUAVER);
 
-            var effect = LineEndingSupport.findEndingReplacementEffect(line, 0, replacement);
+            var effect = line.findEndingReplacementEffect(0, replacement);
 
             assertThat(effect).isEqualTo(new Ending.EndingEffect.Invalidate(ending));
         }
@@ -288,7 +283,7 @@ class LineEndingSupportTest extends UnitTest {
             });
             var replacement = new StaffElement(ElementType.GRACE_QUAVER);
 
-            var effect = LineEndingSupport.findEndingReplacementEffect(line, 0, replacement);
+            var effect = line.findEndingReplacementEffect(0, replacement);
 
             // Both endings produce Invalidate; we only require the first non-None
             // effect (i.e. the one from ending1, which was added first).
@@ -328,7 +323,7 @@ class LineEndingSupportTest extends UnitTest {
             });
             var replacement = new StaffElement(ElementType.GRACE_QUAVER);
 
-            var effect = LineEndingSupport.findEndingReplacementEffect(line, 3, replacement);
+            var effect = line.findEndingReplacementEffect(3, replacement);
 
             assertThat(effect).isEqualTo(new Ending.EndingEffect.Invalidate(ending2));
         }

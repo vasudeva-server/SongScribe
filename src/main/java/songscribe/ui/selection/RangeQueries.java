@@ -26,6 +26,7 @@ import java.util.stream.IntStream;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Span;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
 
@@ -204,8 +205,8 @@ public final class RangeQueries {
         }
 
         var coversExisting = (firstTuplet != null)
-            && (beginIndex == firstTuplet.getAnchorElementIndex())
-            && (endIndex == firstTuplet.getEndElementIndex());
+            && Span.exactly(beginIndex, endIndex).test(
+                firstTuplet.getAnchorElementIndex(), firstTuplet.getEndElementIndex());
 
         // A strict sub-range of a tuplet has no creation decision to offer: making a tuplet
         // of it would silently destroy the tuplet it sits inside. The tuplet is still

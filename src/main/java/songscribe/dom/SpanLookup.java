@@ -39,10 +39,23 @@ public interface SpanLookup {
     /** The spans to query, in the order they were added. */
     List<Span> getSpans();
 
-    /** The anchor element's position in the line, or -1 when unresolvable. */
+    /**
+     * The anchor element's position <i>in this lookup's own line</i>, or -1 when the anchor is
+     * unset or belongs to another line.
+     * <p>
+     * Every query below resolves endpoints through this method and {@link #endIndexOf}, never
+     * through {@link Span#getAnchorElementIndex()}, which answers from whichever line the
+     * endpoint currently belongs to. The difference shows while a span is transiently
+     * cross-line — during a paste or a line split an endpoint may already have been reparented
+     * — and -1 is the answer a lookup asked about its own line owes its callers, since a
+     * position in some other line is indistinguishable from a real one.
+     */
     int anchorIndexOf(Span span);
 
-    /** The end element's position in the line, or -1 when unresolvable. */
+    /**
+     * The end element's position <i>in this lookup's own line</i>, or -1 when the end is unset
+     * or belongs to another line. See {@link #anchorIndexOf} for why the receiver decides.
+     */
     int endIndexOf(Span span);
 
     // --- the only three methods that iterate --------------------------------

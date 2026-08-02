@@ -22,25 +22,17 @@ package songscribe.dom;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertAll;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
-
-import net.engio.mbassy.listener.Handler;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.message.MessageCenter;
 import songscribe.message.mutation.Mutation;
-import songscribe.message.notification.SongDidChangeNotification;
-import songscribe.ui.component.ScoreView;
-import songscribe.undo.MutationReplayer;
+import songscribe.undo.UndoTestSupport;
 
 /**
  * Unit tests for {@link Line#getElementIndex}, which answers from a lazily-built position
@@ -196,6 +188,29 @@ class LineElementIndexTest extends UnitTest {
         assertIndicesConsistent(line);
     }
 
+    @Test
+    void testDuplicatedElementResolvesToItsEarliestPosition() {
+        // The index is built with putIfAbsent so a repeated element answers with its first
+        // position, matching the list scan this replaced; a forward put would answer with its
+        // last. Ordinary editing cannot produce a duplicate, which is why nothing else here
+        // covers it — and why one word could silently reverse the rule.
+        //
+        // Deliberately not followed by assertIndicesConsistent: the whole point is that the
+        // later occurrence does not resolve to its own position.
+        var repeated = line.getElement(REPLACE_IDX);
+
+        song.withoutMutationTracking(() -> line.addElement(repeated));
+
+        assertAll(
+            () -> assertThat(line.getElements().get(TERMINAL_IDX))
+                .as("the duplicate really is in the line a second time")
+                .isSameAs(repeated),
+            () -> assertThat(line.getElementIndex(repeated))
+                .as("a repeated element resolves to its earliest position, not its latest")
+                .isEqualTo(REPLACE_IDX)
+        );
+    }
+
     // -----------------------------------------------------------------------
     // Undo/redo replay through the same paths
     // -----------------------------------------------------------------------
@@ -208,7 +223,7 @@ class LineElementIndexTest extends UnitTest {
         void testUndoAndRedoOfAnInsertKeepIndicesConsistent() {
             var shifted = line.getElement(INSERT_IDX);
             var inserted = new StaffElement(ElementType.CROTCHET);
-            var batch = captureBatch(() -> song.withModification(() -> line.addElement(INSERT_IDX, inserted)));
+            var batch = captureBatch(() -> line.addElement(INSERT_IDX, inserted));
 
             assertIndicesConsistent(line);
 
@@ -239,7 +254,7 @@ class LineElementIndexTest extends UnitTest {
         void testUndoAndRedoOfARangeDeletionKeepIndicesConsistent() {
             var removedElements = List.copyOf(line.getElements(RANGE_FROM, RANGE_TO));
             var following = line.getElement(RANGE_TO + 1);
-            var batch = captureBatch(() -> song.withModification(() -> line.removeRange(RANGE_FROM, RANGE_TO)));
+            var batch = captureBatch(() -> line.removeRange(RANGE_FROM, RANGE_TO));
 
             assertIndicesConsistent(line);
 
@@ -301,8 +316,9 @@ class LineElementIndexTest extends UnitTest {
 
         @Test
         void testSelfReplaceLeavesTheElementAtItsPosition() {
-            // A self-replace detaches and re-attaches the same element, so it exercises
-            // detach's early return — the reason invalidation sits above that return.
+            // A self-replace detaches and re-attaches the same element. It does not reach
+            // detach's early return: setElement detaches first precisely so that guard sees
+            // the element still pointing here. Nothing in the codebase reaches that return.
             var element = line.getElement(REPLACE_IDX);
 
             song.withoutMutationTracking(() -> line.setElement(REPLACE_IDX, element));
@@ -342,56 +358,18 @@ class LineElementIndexTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Batch capture and replay (this package cannot see songscribe.undo's helper)
+    // Batch capture and replay — the real undo/redo protocol, from the shared helper
     // -----------------------------------------------------------------------
 
-    private static List<Mutation> captureBatch(Runnable edit) {
-        var captured = new ArrayList<List<Mutation>>();
-        var listener = new Object() {
-            @Handler(priority = Integer.MAX_VALUE)
-            void onSongDidChange(SongDidChangeNotification notification) {
-                captured.add(notification.getMutations());
-            }
-        };
-
-        MessageCenter.subscribe(listener);
-
-        try {
-            edit.run();
-        } finally {
-            MessageCenter.unsubscribe(listener);
-        }
-
-        assertThat(captured).as("the edit must post exactly one batch").hasSize(1);
-
-        return captured.getFirst();
+    private List<Mutation> captureBatch(Runnable edit) {
+        return UndoTestSupport.captureBatch(song, edit);
     }
 
-    private ScoreView scoreView() {
-        var scoreView = mock(ScoreView.class);
-        when(scoreView.getSong()).thenReturn(song);
-        return scoreView;
-    }
-
-    /** Replays {@code batch} in reverse order inside a bracket, exactly as undo does. */
     private void replayUndo(List<? extends Mutation> batch) {
-        var scoreView = scoreView();
-
-        song.withModification(() -> song.withReplay(() -> {
-            for (var i = batch.size() - 1; i >= 0; i--) {
-                MutationReplayer.applyUndo(scoreView, batch.get(i));
-            }
-        }));
+        UndoTestSupport.replayUndo(UndoTestSupport.scoreViewFor(song), batch);
     }
 
-    /** Replays {@code batch} in forward order inside a bracket, exactly as redo does. */
     private void replayRedo(List<? extends Mutation> batch) {
-        var scoreView = scoreView();
-
-        song.withModification(() -> song.withReplay(() -> {
-            for (var mutation : batch) {
-                MutationReplayer.applyRedo(scoreView, mutation);
-            }
-        }));
+        UndoTestSupport.replayRedo(UndoTestSupport.scoreViewFor(song), batch);
     }
 }

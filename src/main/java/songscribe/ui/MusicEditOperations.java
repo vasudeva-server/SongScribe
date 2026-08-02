@@ -505,10 +505,11 @@ public final class MusicEditOperations {
         var line = range.line();
         var scanBegin = range.begin() - Line.SPAN_ADJACENCY_REACH;
         var scanEnd = range.end() + Line.SPAN_ADJACENCY_REACH;
+        var nearby = Span.overlapping(scanBegin, scanEnd);
 
         return new HairpinScan(
-            line.findSpans(Crescendo.class, Span.overlapping(scanBegin, scanEnd)),
-            line.findSpans(Diminuendo.class, Span.overlapping(scanBegin, scanEnd)));
+            line.findSpans(Crescendo.class, nearby),
+            line.findSpans(Diminuendo.class, nearby));
     }
 
     /**
@@ -863,10 +864,18 @@ public final class MusicEditOperations {
     }
 
     // Returns true if any element in the selection range overlaps an existing ending span.
+    // Endings outermost so each one's bounds are resolved once: asking the line per index
+    // would re-filter its whole span list — beams, ties, tuplets and hairpins included —
+    // and re-resolve every ending, on every iteration.
     private boolean hasOverlap(Line line, int begin, int end) {
-        for (var i = begin; i <= end; i++) {
-            if (line.isInsideAnyEnding(i)) {
-                return true;
+        for (var ending : line.findEndings()) {
+            var anchorIndex = line.anchorIndexOf(ending);
+            var endIndex = line.endIndexOf(ending);
+
+            for (var i = begin; i <= end; i++) {
+                if (Span.containing(i).test(anchorIndex, endIndex)) {
+                    return true;
+                }
             }
         }
 

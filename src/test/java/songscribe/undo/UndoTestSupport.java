@@ -56,13 +56,13 @@ import songscribe.undo.MutationReplayer;
  * the save format is value-based (no element identity, no timestamps), so two songs
  * that serialize identically hold the same document state.
  */
-final class UndoTestSupport {
+public final class UndoTestSupport {
 
     private UndoTestSupport() {
     }
 
     /** Serializes a song to its native XML form for value-based deep comparison. */
-    static String serialize(Song song) {
+    public static String serialize(Song song) {
         var stringWriter = new StringWriter();
         var printWriter = new PrintWriter(stringWriter);
         SongIO.writeSong(song, DocumentFonts.defaultFonts(), printWriter);
@@ -75,7 +75,7 @@ final class UndoTestSupport {
      * batch from the resulting notification. Throws if the edit recorded nothing
      * (which would indicate a broken test setup, not a passing no-op).
      */
-    static List<Mutation> captureBatch(Song song, Runnable edit) {
+    public static List<Mutation> captureBatch(Song song, Runnable edit) {
         var captured = new ArrayList<List<Mutation>>();
 
         // Highest priority so this capture handler runs before any other subscriber on
@@ -107,7 +107,7 @@ final class UndoTestSupport {
     }
 
     /** A mock {@link ScoreView} whose {@code getSong()} returns {@code song}. */
-    static ScoreView scoreViewFor(Song song) {
+    public static ScoreView scoreViewFor(Song song) {
         var scoreView = mock(ScoreView.class);
         when(scoreView.getSong()).thenReturn(song);
         return scoreView;
@@ -117,7 +117,7 @@ final class UndoTestSupport {
      * Replays {@code batch} in reverse (undo) order inside a bracket and replay mode,
      * exactly as {@link UndoController#undo()} does.
      */
-    static void replayUndo(ScoreView scoreView, List<? extends Mutation> batch) {
+    public static void replayUndo(ScoreView scoreView, List<? extends Mutation> batch) {
         var song = scoreView.getSong();
         song.withModification(() -> song.withReplay(() -> {
             for (var i = batch.size() - 1; i >= 0; i--) {
@@ -130,7 +130,7 @@ final class UndoTestSupport {
      * Replays {@code batch} in forward (redo) order inside a bracket and replay mode,
      * exactly as {@link UndoController#redo()} does.
      */
-    static void replayRedo(ScoreView scoreView, List<? extends Mutation> batch) {
+    public static void replayRedo(ScoreView scoreView, List<? extends Mutation> batch) {
         var song = scoreView.getSong();
         song.withModification(() -> song.withReplay(() -> {
             for (var mutation : batch) {
@@ -140,7 +140,7 @@ final class UndoTestSupport {
     }
 
     /** Adds {@code count} crotchets to {@code line} without recording mutations. */
-    static void addCrotchets(Song song, Line line, int count) {
+    public static void addCrotchets(Song song, Line line, int count) {
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < count; i++) {
                 line.addElement(ElementType.CROTCHET.newInstance());

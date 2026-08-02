@@ -216,10 +216,10 @@ public final class MusicXmlWriter {
             var elements = line.getElements();
             var lastElement = elements.isEmpty() ? null : elements.getLast();
 
-            // Build the per-element span index once per line. Anchor/end indices
-            // for all six span types are resolved here so the element loop can do
-            // O(1) lookups instead of calling getAnchorElementIndex() (ArrayList.indexOf,
-            // O(n)) per element per span.
+            // Build the per-element span index once per line. All six span types are
+            // bucketed onto the element indices they touch here, so the element loop
+            // reads one array slot per element instead of re-filtering the line's whole
+            // span list for every element it writes.
             var spanIndex = MusicXmlSpanIndex.buildSpanIndex(line);
 
             // A note-terminated ending end (issue #306) whose boundary note is the
