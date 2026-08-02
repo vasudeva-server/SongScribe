@@ -28,8 +28,10 @@ import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 
+import songscribe.dom.DetachedLyricRun;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.LyricRun;
 import songscribe.dom.RangeElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
@@ -50,6 +52,8 @@ import songscribe.dom.TempoChangeAttachment;
  *                     ├─ resolve each element's effective accidental against the ORIGINAL
  *                     ├─ FINAL_DOUBLE_BARLINE → DOUBLE_BARLINE
  *                     ├─ drop the tempo at the initial-tempo anchor (song's first element)
+ *                     ├─ DetachedLyricRun.endDanglingChains — every syllabic or melisma
+ *                     │  chain leaving the run ends inside it
  *                     └─ span kept iff BOTH endpoints ∈ map keys
  *                           └─ span.copy(map[anchor], map[end])
  *
@@ -115,6 +119,11 @@ public record Fragment(
      * starts at the song's first element. Repeats are copied verbatim, with no balance
      * validation.
      *
+     * <p>The captured lyrics are then repaired as a run of their own
+     * ({@link LyricRun#endDanglingChains}): a word hyphenated across the
+     * boundary ends at the boundary, and a melisma that crosses it is closed or dropped, so
+     * a paste can never join the copied syllables to whatever they land next to.
+     *
      * @param line  The line to capture from
      * @param begin The index of the first element to capture
      * @param end   The index of the last element to capture
@@ -143,6 +152,12 @@ public record Fragment(
             elements.add(clone);
             priorAccidentals.add(priorAccidentalOf(line, original, i));
         }
+
+        // A lyric chain says "the syllable next to me continues this word" by position, so a
+        // chain crossing either end of the capture would, once pasted, say it about whatever
+        // element now sits there. The clones are a run of their own now, and this ends every
+        // chain inside it — the same repair an edit runs, applied to the same lyrics.
+        new DetachedLyricRun(elements).endDanglingChains();
 
         return new Fragment(
             elements, priorAccidentals, cloneSpans(line.getRangeElements(), originalToClone));

@@ -507,6 +507,18 @@ public class StaffElement extends LineElement implements Cloneable {
         return slide instanceof Glissando;
     }
 
+    /**
+     * Whether this element is a grace note paired with the note that follows it — a grace
+     * note carrying a connecting {@link Glissando}. The pairing is what the element itself
+     * can say about it, and it says so whether or not a following note is actually there;
+     * the containing run adds only a bounds check on the grace note's own index (see
+     * {@link LyricRun#isPairedGraceNote}). A caller that needs the host to work with checks
+     * for one itself, as {@link LyricRun#syncGraceHostMelisma} does.
+     */
+    public boolean isPairedGraceNote() {
+        return getType().isGraceNote() && hasGlissando();
+    }
+
     public void setGlissando() {
         slide = new Glissando();
     }
@@ -534,15 +546,26 @@ public class StaffElement extends LineElement implements Cloneable {
             : Direction.DOWN;
     }
 
-    /** Returns the lyric for the given verse number, or null if none is set. */
-    public @Nullable Lyric getLyricForVerse(int verse) {
-        for (var lyric : lyrics) {
-            if (lyric.verse() == verse) {
-                return lyric;
+    /**
+     * Returns the position of the given verse's lyric in {@link #lyrics}, or -1 if none is
+     * set. The single place the verse lookup is written: {@link #getLyricForVerse} reads the
+     * lyric off it, and the chain repairs in {@link LyricRun} — which have to rewrite a
+     * lyric in place, and so need its position rather than its value — go through it too.
+     */
+    public int indexOfLyricForVerse(int verse) {
+        for (var i = 0; i < lyrics.size(); i++) {
+            if (lyrics.get(i).verse() == verse) {
+                return i;
             }
         }
 
-        return null;
+        return -1;
+    }
+
+    /** Returns the lyric for the given verse number, or null if none is set. */
+    public @Nullable Lyric getLyricForVerse(int verse) {
+        var index = indexOfLyricForVerse(verse);
+        return index < 0 ? null : lyrics.get(index);
     }
 
     /**

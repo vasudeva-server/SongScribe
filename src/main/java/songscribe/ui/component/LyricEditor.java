@@ -46,6 +46,7 @@ import songscribe.message.notification.ZoomDidChangeNotification;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.LyricRun;
 import songscribe.dom.Ss;
 import songscribe.dom.StaffElement;
 import songscribe.ui.FlatLafKey;
@@ -468,7 +469,7 @@ public final class LyricEditor extends MyJTextField {
      * apart if the {@link CommitKind}/{@link Lyric.Extend} mapping ever changes.
      *
      * <p>The write itself does not use this — it passes {@code kind} and {@code extend} straight
-     * to {@link Line#writeLyricForVerse(int, int, String, Lyric.Extend, boolean, boolean)}, which
+     * to {@link LyricRun#writeLyricForVerse(int, int, String, Lyric.Extend, boolean, boolean)}, which
      * applies the same mapping to decide the stored syllabic and compound flag.
      *
      * <p><b>Assumed by {@code wantsContinues}:</b> a non-{@link CommitKind#WORD_FINAL} commit
@@ -1229,7 +1230,7 @@ public final class LyricEditor extends MyJTextField {
     /**
      * Ends the hyphenated word that ran through this element, called when the user clears the
      * placeholder standing for its hyphen. Making the predecessor word-final also drops the
-     * continuation from the syllable that followed, via {@link Line#setSyllableBoundary}.
+     * continuation from the syllable that followed, via {@link LyricRun#setSyllableBoundary}.
      *
      * <p>Must be called inside an open modification bracket.
      */
@@ -1273,7 +1274,7 @@ public final class LyricEditor extends MyJTextField {
 
     /**
      * Writes the editor's current text into the active element's lyric for {@link #activeVerse}
-     * via {@link Line#writeLyricForVerse(int, int, String, Lyric.Extend, boolean, boolean)}, which
+     * via {@link LyricRun#writeLyricForVerse(int, int, String, Lyric.Extend, boolean, boolean)}, which
      * derives the syllabic from chain context and propagates to the next lyric-bearing element
      * where needed. Every commit therefore produces exactly one {@code ElementModification} for
      * this element, plus at most one more for the following syllable when it has to be

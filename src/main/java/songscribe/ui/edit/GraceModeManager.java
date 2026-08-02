@@ -32,6 +32,7 @@ import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementInsertion;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.LyricRun;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.ui.OptionDialogs;
@@ -199,7 +200,7 @@ public final class GraceModeManager {
      * it does with mutation tracking suspended: a repair made there would be applied but never
      * recorded, so undo could not put back the broken lyric chain or the stripped glissando.
      * Grace mode re-runs the repairs inside the bracket that makes the pairing undoable — see
-     * {@link Line#repairNeighborsAfterUntrackedInsertion}.
+     * {@link LyricRun#repairNeighborsAfterUntrackedInsertion}.
      *
      * <p>Asking and taking are one call because they must never come apart: a caller that
      * skipped the repairs without recording that it had would drop them silently, with undo

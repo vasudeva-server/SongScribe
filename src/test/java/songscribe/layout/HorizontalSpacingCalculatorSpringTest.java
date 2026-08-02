@@ -231,7 +231,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     }
 
     /**
-     * A grace column whose element starts the pair's own melisma, as {@code Line.syncGraceHostMelisma}
+     * A grace column whose element starts the pair's own melisma, as {@code LyricRun.syncGraceHostMelisma}
      * writes it. Pair it with {@link #melismaHostColumn()} — the spacing path reads both lyrics
      * before it reserves anything for the extender. The lyric goes on the column too, since that is
      * where the spacing path reads it from: the element holds every verse and cannot say which one

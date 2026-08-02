@@ -161,7 +161,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
         element.lyrics.add(new Lyric(1, text, extend, syllabic, false));
     }
 
-    /** Text-less melisma carrier, as {@code Line.syncGraceHostMelisma} writes onto a grace's host. */
+    /** Text-less melisma carrier, as {@code LyricRun.syncGraceHostMelisma} writes onto a grace's host. */
     private static void setCarrier(StaffElement element, Lyric.Extend extend) {
         element.lyrics.add(new Lyric(1, "", extend, null, false));
     }
@@ -544,7 +544,7 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
                 GRACE_X_SS - (contentWidthSs - idealUnionWidthSs) / 2, within(POSITION_TOLERANCE_SS));
     }
 
-    // (j) The melisma reaching a host need not be the one its own grace started: Line.syncGraceHostMelisma
+    // (j) The melisma reaching a host need not be the one its own grace started: LyricRun.syncGraceHostMelisma
     // leaves a host that already carries an extender onward without a STOP of its own, so a melisma can
     // start at one grace, run through its host and past several notes, and stop at a second pair's host.
     // Dropping a self-spanning syllable's melisma belongs only to the pair that started it — applied here

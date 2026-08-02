@@ -758,7 +758,7 @@ public final class HorizontalSpacingCalculator {
 
     /**
      * Returns whether a grace–host pair carries the melisma of its own that
-     * {@code Line.syncGraceHostMelisma} maintains: the grace starts one and the host stops it. A
+     * {@code LyricRun.syncGraceHostMelisma} maintains: the grace starts one and the host stops it. A
      * hyphenated grace syllable draws a hyphen to the next syllable instead, and a host that carries
      * the melisma onward ({@link Lyric.Extend#CONTINUE}) ends it somewhere past the pair, so neither
      * is the pair's own.

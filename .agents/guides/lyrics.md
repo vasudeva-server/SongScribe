@@ -55,6 +55,39 @@ Switching the active verse therefore means rebuilding the columns. A layout pass
 does this anyway, and tests that exercise a second verse must do the same rather
 than reusing columns built for the first.
 
+## Chain repair lives on `LyricRun`, not on `Line`
+
+Two chains run through a verse's lyrics, both stored on the individual syllables
+rather than as spans: the **syllabic chain** (`Lyric.Syllabic` + `compound()`,
+which draws the hyphens) and the **melisma chain** (`Lyric.Extend`: a `START`,
+text-less `CONTINUE` carriers, a closing `STOP`). Because a member names its
+neighbors only by position, every edit that changes who a syllable's neighbors
+are has to repair both.
+
+Those rules — `adjustSyllablesForNeighborChange`, `adjustExtendsForDeletion`,
+`backfillSyllabic`, `setSyllableBoundary`, `writeLyricForVerse`,
+`syncGraceHostMelisma` and the rest — live on the `LyricRun` interface.
+`Line implements LyricRun`, so every existing `line.someRepair(...)` call site is
+unchanged; a run with no line uses `DetachedLyricRun`.
+
+Only three things differ between the two, and they are all the interface leaves
+abstract: how to reach an element (`getElement`), how many elements count
+(`elementCount` and `effectiveElementCount` — a `Line` excludes its auto-maintained
+terminal barline, a detached run has nothing to exclude), and what to do with a
+repair once applied (`modifyElement`). `Line` records an `ElementModification` so it
+can be undone; `DetachedLyricRun` records nothing, because a detached run is in no
+document. Everything else, `isPairedGraceNote` included, is a `default` method
+written once in terms of those.
+
+**Adding a repair:** put it on `LyricRun`, route every write through
+`modifyElement`, and it works on both. Never reach into `element.lyrics` from a
+call site — the write would escape the mutation bracket and undo would not see it.
+
+`LyricRun.endDanglingChains()` is the entry point for a run lifted out of a longer
+one (`Fragment.capture`): it ends every chain that would otherwise point at an
+element the run no longer contains. It is composed from the deletion repairs, since
+"everything around this run is gone" is exactly what a deletion produces.
+
 ## One row, always
 
 The lyrics band is one row deep, whatever the song carries. `LayoutResult` has a

@@ -37,6 +37,7 @@ import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Lyric;
 import songscribe.dom.RangeElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
@@ -48,6 +49,8 @@ import songscribe.dom.Ending;
 
 class FragmentTest extends UnitTest {
 
+
+    private static final int VERSE = Lyric.FIRST_VERSE;
 
     /** A triplet: three notes in the time of two of its written value. */
     private static final int TRIPLET_GRADE = 3;
@@ -476,6 +479,99 @@ class FragmentTest extends UnitTest {
             assertThat(fragment.elements().get(0).getType()).isEqualTo(ElementType.CROTCHET);
             assertThat(fragment.elements().get(0)).isNotSameAs(host);
             assertThat(fragment.elements().get(1).getType()).isEqualTo(ElementType.CROTCHET);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Lyric chains that would reach outside the captured run (#708)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class LyricChains {
+
+        // "A-mi": one hyphenated word spread over two notes.
+        private Line hyphenatedWord() {
+            var line = detachedLine();
+            var first = crotchet();
+            var second = crotchet();
+            first.lyrics.add(new Lyric(VERSE, "A", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
+            second.lyrics.add(new Lyric(VERSE, "mi", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
+            line.addElement(first);
+            line.addElement(second);
+            return line;
+        }
+
+        private Lyric capturedLyric(Fragment fragment, int index) {
+            var lyric = fragment.elements().get(index).getLyricForVerse(VERSE);
+            assertThat(lyric).isNotNull();
+            return lyric;
+        }
+
+        @Test
+        void testCapturingTheFirstSyllableAloneEndsItsWordWithoutTouchingTheSourceLine() {
+            // The issue: pasted before some other BEGIN syllable, a captured BEGIN draws a
+            // hyphen joining the two, connecting a word the user never copied.
+            var line = hyphenatedWord();
+
+            var fragment = Fragment.capture(line, 0, 0);
+
+            assertThat(capturedLyric(fragment, 0).syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(capturedLyric(fragment, 0).text()).isEqualTo("A");
+
+            var sourceLyric = line.getElement(0).getLyricForVerse(VERSE);
+            assertThat(sourceLyric).isNotNull();
+            assertThat(sourceLyric.syllabic())
+                .as("the repair belongs to the clones — copying must not edit the song")
+                .isEqualTo(Lyric.Syllabic.BEGIN);
+        }
+
+        @Test
+        void testCapturingTheSecondSyllableAloneDropsItsWordContinuation() {
+            var line = hyphenatedWord();
+
+            var fragment = Fragment.capture(line, 1, 1);
+
+            assertThat(capturedLyric(fragment, 0).syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
+            assertThat(capturedLyric(fragment, 0).text()).isEqualTo("mi");
+        }
+
+        @Test
+        void testCapturingTheWholeWordKeepsTheHyphenBetweenItsSyllables() {
+            var line = hyphenatedWord();
+
+            var fragment = Fragment.capture(line, 0, 1);
+
+            assertThat(capturedLyric(fragment, 0).syllabic()).isEqualTo(Lyric.Syllabic.BEGIN);
+            assertThat(capturedLyric(fragment, 1).syllabic()).isEqualTo(Lyric.Syllabic.END);
+        }
+
+        @Test
+        void testCapturingAHostWithoutItsGraceNoteDropsTheOrphanMelismaCarrier() {
+            // [G(paired, "la" START), host(STOP carrier), C] captured from the host onward:
+            // the host's carrier sustains a melisma whose START stayed behind.
+            var line = detachedLine();
+            var grace = pairedGraceNote();
+            var host = crotchet();
+            var noteC = crotchet();
+            grace.lyrics.add(new Lyric(VERSE, "la", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
+            host.lyrics.add(new Lyric(VERSE, "", Lyric.Extend.STOP, null, false));
+            line.addElement(grace);
+            line.addElement(host);
+            line.addElement(noteC);
+
+            var fragment = Fragment.capture(line, 1, 2);
+
+            assertThat(fragment.elements()).hasSize(2);
+            assertThat(fragment.elements().getFirst().getLyricForVerse(VERSE))
+                .as("an extender with no START left in the run must not be pasted")
+                .isNull();
+
+            var sourceHostLyric = line.getElement(1).getLyricForVerse(VERSE);
+            assertThat(sourceHostLyric).isNotNull();
+            assertThat(sourceHostLyric.extend())
+                .as("the source line's own melisma is intact")
+                .isEqualTo(Lyric.Extend.STOP);
         }
     }
 

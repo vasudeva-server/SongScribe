@@ -507,7 +507,7 @@ public final class LyricLayoutBuilder {
          * a reader to see. The melisma stays in the model either way — this decides only whether it
          * is drawn.
          * <p>
-         * The melisma reaching this host need not be this pair's own: {@code Line.syncGraceHostMelisma}
+         * The melisma reaching this host need not be this pair's own: {@code LyricRun.syncGraceHostMelisma}
          * leaves a host alone when it already carries an extender onward, so a melisma can start at
          * one grace, run through its host and several notes, and stop at a second grace's host.
          * {@link #syllableSpansGraceHostUnion} describes the grace the melisma <em>started</em> at, so
