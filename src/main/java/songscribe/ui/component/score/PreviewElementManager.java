@@ -1977,29 +1977,6 @@ public final class PreviewElementManager {
             replacement.setDirection(previewElement.getDirection());
         }
 
-        // Remove all beam spans touching this element — the new element type may differ
-        var beam = line.findBeamAt(elementIndex);
-
-        while (beam != null) {
-            line.removeBeaming(beam);
-            beam = line.findBeamAt(elementIndex);
-        }
-
-        // Remove all tie spans touching this element
-        var tie = line.findTieAt(elementIndex);
-
-        while (tie != null) {
-            line.removeTie(tie);
-            tie = line.findTieAt(elementIndex);
-        }
-
-        // Remove any containing tuplet if the duration type or dot count changes —
-        // the replacement would make the tuplet rhythmically invalid.
-        if (existing.getType() != previewType
-                || existing.getDotCount() != replacement.getDotCount()) {
-            line.removeOverlappingTuplets(elementIndex, elementIndex);
-        }
-
         // Check whether replacing this element would affect a first-second ending,
         // and show the appropriate confirmation dialog if so.
         var endingEffect = line.findEndingReplacementEffect(elementIndex, replacement);
@@ -2031,6 +2008,27 @@ public final class PreviewElementManager {
         // setElement so the scan still reads the pre-replacement line, and because undo replays a
         // step in reverse — the accidentals come back last, once the old element is back.
         AccidentalRestatements.commitAllLines(decision);
+
+        // The beam sweep goes here rather than earlier, next to the element's own preparation:
+        // a confirm above can still turn the user away, and a cancelled replacement that had
+        // already stripped the beam would leave the bracket holding a removal with nothing to
+        // justify it — the user says no and loses the beam anyway. Below the last bail-out, and
+        // above setElement so reverse-order undo restores the old element before re-adding what
+        // hung off it.
+        //
+        // Ties and tuplets are not swept here: setElement removes exactly the ones the
+        // replacement invalidates, via Tie.isInvalidatedByReplacement and
+        // Tuplet.isInvalidatedByReplacement. Only the beam still needs a hand, because its
+        // repair is not a yes-or-no question — the select-mode path trims a beam to its
+        // beamable middle rather than dropping it, which a removal hook cannot express.
+
+        // Every beam touching this element — the new element type may not be beamable at all.
+        var beam = line.findBeamAt(elementIndex);
+
+        while (beam != null) {
+            line.removeBeaming(beam);
+            beam = line.findBeamAt(elementIndex);
+        }
 
         // Replace the element entirely (line.setElement marks the song modified)
         line.setElement(elementIndex, replacement);

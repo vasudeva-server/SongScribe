@@ -132,6 +132,12 @@ import songscribe.layout.InsertionSpacingCalculator;
  * necessarily carries that ending's own barlines, so in practice that rule usually
  * removes the destination ending too, and the paste is confirmed on those terms.
  *
+ * <p>That per-clone sweep in {@link Line#addElement} is not ending-specific:
+ * {@code Tie.isInvalidatedByInsertion} rides it too, so a clone landing between two
+ * tied notes drops the destination tie. It cannot disagree with the straddle rule
+ * above, which has already removed any tie the paste lands inside of — by the time
+ * the clones go in there is no such tie left for the sweep to find.
+ *
  * @param targetSpansToRemove     Spans on the destination line to remove before inserting
  * @param fragmentSpans           The fragment's spans that should still be added
  * @param tupletsRejectedByTarget The pasted tuplets the destination rejected, named

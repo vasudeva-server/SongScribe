@@ -390,10 +390,10 @@ public class Line implements LyricRun, SpanLookup {
             var insertedType = element.getType();
             // Companion removals precede the primary insertion so reverse-order undo
             // restores the primary element before re-adding dependent spans.
-            var endingsToRemove = spans.stream()
+            var invalidatedSpans = spans.stream()
                 .filter(r -> r.isInvalidatedByInsertion(index, insertedType, this))
                 .toList();
-            endingsToRemove.forEach(this::removeInvalidatedSpan);
+            invalidatedSpans.forEach(this::removeInvalidatedSpan);
 
             // When prepending to a non-empty first line, the previous first element
             // carried the initial tempo — move it to the new first element. The
@@ -446,10 +446,10 @@ public class Line implements LyricRun, SpanLookup {
             // Pre-compute before the mutator so findRepeatSplitElement sees the pre-replacement line.
             // Companion removals precede the primary replacement so reverse-order undo
             // restores the primary element before re-adding dependent spans.
-            var endingsToRemove = spans.stream()
+            var invalidatedSpans = spans.stream()
                 .filter(r -> r.isInvalidatedByReplacement(oldElement, element, this))
                 .toList();
-            endingsToRemove.forEach(this::removeInvalidatedSpan);
+            invalidatedSpans.forEach(this::removeInvalidatedSpan);
         }
 
         applyChange(
@@ -1643,10 +1643,15 @@ public class Line implements LyricRun, SpanLookup {
      * Returns true if inserting an element of {@code insertedType} at {@code insertedIndex}
      * would remove any Ending in this line.
      * <p>
+     * Only spans whose loss warrants a prompt are consulted, matching
+     * {@link #hasEndingInvalidatedByDeletion}: a tie an insertion displaces goes silently,
+     * so it must not raise the ending confirm.
+     * <p>
      * Call before {@link #addElement(int, StaffElement)}.
      */
     public boolean hasEndingInvalidatedByInsertion(int insertedIndex, ElementType insertedType) {
         return spans.stream()
+            .filter(Span::requiresInvalidationConfirm)
             .anyMatch(r -> r.isInvalidatedByInsertion(insertedIndex, insertedType, this));
     }
 

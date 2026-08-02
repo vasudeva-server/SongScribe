@@ -272,7 +272,7 @@ The sweep that will call the override is `Line.java:388`, which passes `(inserte
 
 3. Use the existing grace-host helpers for the line B boundary rather than testing `index == 0`.
 
-4. Add `TieInsertionInvalidationTest` covering the same-line case as well as the cross-line one: inserting a note between two tied notes removes the tie; inserting a rest removes it; inserting a barline or repeat leaves it; inserting outside the endpoints leaves it; for a cross-line tie, appending a note to line A or inserting one at the head of line B removes it from **both** lines, and a barline in either position leaves it; undo restores it into both.
+4. Add `TieInvalidationTest` covering the same-line case as well as the cross-line one: inserting a note between two tied notes removes the tie; inserting a rest removes it; inserting a barline or repeat leaves it; inserting outside the endpoints leaves it; for a cross-line tie, appending a note to line A or inserting one at the head of line B removes it from **both** lines, and a barline in either position leaves it; undo restores it into both.
 
 5. Gate: `./scripts/compile.sh` (SUCCESS), then `./scripts/test.sh unit` (green — this changes same-line tie behavior, so any existing test that inserts near a tie may move).
 

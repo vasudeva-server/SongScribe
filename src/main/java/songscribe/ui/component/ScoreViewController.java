@@ -1122,12 +1122,13 @@ public final class ScoreViewController {
         // hairpin merge in addPastedSpan reads those same indices, so it
         // would mis-measure what to absorb for exactly the same reason.
         //
-        // line.addElement additionally drops endings invalidated by the inserted
-        // element types — the ending's own barline/repeat-aware rule, which is more
-        // precise than the straddle test PasteSpanReconciliation applies to the
-        // other span kinds, so endings are left to it. Its tuplet removal is now
-        // redundant (the reconciliation above already removed a straddled tuplet)
-        // but harmless: findTupletAt finds nothing.
+        // line.addElement additionally drops the spans the inserted element types
+        // invalidate, each by its own rule: the ending's barline/repeat-aware one,
+        // which is more precise than the straddle test PasteSpanReconciliation
+        // applies to the other span kinds, so endings are left to it; and the tie's
+        // separator rule. Its tuplet and tie removals are now redundant (the
+        // reconciliation above already removed a straddled tuplet or tie) but
+        // harmless: findTupletAt finds nothing, and no tie is left to invalidate.
         for (var k = 0; k < cloneCount; k++) {
             var clone = clones.get(k);
             clone.setXOffsetPx(ScaleContext.ssToRoundedPx(result.cloneXPositionsSs().get(k)));

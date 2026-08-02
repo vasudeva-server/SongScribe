@@ -286,6 +286,51 @@ public class Tuplet extends Span {
         return false;
     }
 
+    /**
+     * Returns true if replacing {@code oldElement} with {@code newElement} rewrites a written
+     * duration this tuplet was built on, leaving the group rhythmically invalid. A replacement
+     * outside the bracket leaves it alone (refs #726).
+     *
+     * <p>Only a replacement touching a duration-carrying element counts. A tuplet may contain a
+     * barline or a breath mark, which contribute no time to the group, so swapping one of those
+     * for another non-duration element cannot unbalance it — the same distinction
+     * {@link Line#modifyElement} already draws with {@link ElementField#DURATION_AFFECTING}.
+     *
+     * <p>Past that gate, any change of element type or dot count drops the group. That is
+     * deliberately broader than "the written duration changed": a note swapped for a rest of the
+     * same value keeps the group's total time but can starve it of the non-rest notes
+     * {@link #hasValidSpan} demands, so it goes too. The user re-brackets what they meant.
+     * <p>
+     * Must be called on the <em>pre-replacement</em> line state, while {@code oldElement} is
+     * still in the line.
+     *
+     * @param oldElement the element being replaced (still in the line at call time)
+     * @param newElement the element that will replace it
+     * @param line       the owning line (pre-replacement state)
+     */
+    @Override
+    public boolean isInvalidatedByReplacement(
+        StaffElement oldElement, StaffElement newElement, Line line
+    ) {
+        var oldType = oldElement.getType();
+        var newType = newElement.getType();
+
+        if (!oldType.isDuration() && !newType.isDuration()) {
+            return false;
+        }
+
+        var anchorIndex = getAnchorElementIndex();
+        var endIndex = getEndElementIndex();
+        var replacedIndex = line.getElementIndex(oldElement);
+
+        if (anchorIndex < 0 || endIndex < 0
+                || replacedIndex < anchorIndex || replacedIndex > endIndex) {
+            return false;
+        }
+
+        return oldType != newType || oldElement.getDotCount() != newElement.getDotCount();
+    }
+
     @Override
     public double getSpanWidthSs(double anchorXSs, double endXSs) {
         return Math.max(1.0, endXSs - anchorXSs);

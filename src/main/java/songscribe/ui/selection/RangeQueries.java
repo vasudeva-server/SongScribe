@@ -24,9 +24,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.IntStream;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
+import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
 
@@ -114,17 +114,6 @@ public final class RangeQueries {
     }
 
     /**
-     * Returns whether {@code type} may sit between two tied notes.
-     *
-     * <p>Non-duration elements take no time, so the notes on either side stay adjacent in
-     * the music even though an element separates them on the staff. A final double barline
-     * is the exception: it ends the piece, so nothing may sound across it (refs #527).
-     */
-    private static boolean isTieSeparator(ElementType type) {
-        return type.isNonDuration() && type != ElementType.FINAL_DOUBLE_BARLINE;
-    }
-
-    /**
      * Returns whether the range can toggle a tie.
      *
      * <p>A tie joins two notes of the same pitch, which may be adjacent or separated by a
@@ -149,7 +138,7 @@ public final class RangeQueries {
         }
 
         if (selectionSize == TIE_SELECTION_SIZE_WITH_SEPARATOR
-            && !isTieSeparator(line.getElement(begin + 1).getType())) {
+            && !Tie.isLegalSeparator(line.getElement(begin + 1).getType())) {
             return false;
         }
 

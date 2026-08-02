@@ -1177,11 +1177,13 @@ public final class SelectionCoordinator {
 
     // Validates beam and tuplet spans after batch element replacement.
     //
-    // Tie repair is omitted: under the invariants enforced by the call site,
-    // no reachable replacement can invalidate an existing tie. The replacement
-    // preserves pitch and rest-ness; grace notes are disabled in select mode
-    // via Flag.DISABLE_IN_SELECT_MODE; and ElementModifiable actions do not
-    // touch element type.
+    // Tie repair is omitted because Line.setElement already does it, on every
+    // path: Tie.isInvalidatedByReplacement removes exactly the ties a replacement
+    // makes illegal. Independently, no replacement reachable from this call site
+    // can invalidate a tie in the first place — the replacement preserves pitch
+    // and rest-ness, grace notes are disabled in select mode via
+    // Flag.DISABLE_IN_SELECT_MODE, and ElementModifiable actions do not touch
+    // element type — so nothing here relies on that second argument holding.
     private void validateSpans(Line line, int begin, int end) {
         repairBeamings(line, begin, end);
         line.removeOverlappingTuplets(begin, end);
