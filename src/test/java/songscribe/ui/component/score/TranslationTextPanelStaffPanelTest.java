@@ -721,20 +721,26 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
         return Staff.MIN_BELOW_STAFF_SS + (lineIndex + 1) * CONTENT_HEADROOM_SS;
     }
 
-    /**
-     * The lyrics band every test line reserves. No line carries a lyric, so each still
-     * reserves the one row of measured font ink every line gets.
-     */
-    private static double lyricsBandHeightSs() {
-        return LineSpacing.LYRICS_ROW_MARGIN_SS + LYRIC_RENDER_METRICS.lyricBoxHeightSs();
+    /** The layout result test line {@code lineIndex} stands for. */
+    private static LayoutResult layoutResultFor(int lineIndex) {
+        return LayoutResult.builder()
+            .setContentAboveStaffSs(contentAboveStaffSs(lineIndex))
+            .setContentBelowStaffSs(contentBelowStaffSs(lineIndex))
+            .build();
     }
 
+    // A line's own reach above and below its midline is LayoutResult's arithmetic, verified in
+    // LayoutResultTest. These ask it rather than restating it: a local copy of the formula was
+    // silently wrong the moment LayoutResult started crediting a line that has nothing below its
+    // staff with an inset, and would have gone on agreeing only because no fixture here is
+    // empty below the staff. What these tests are for is how the panel stacks those numbers,
+    // which is untouched by asking for them instead of recomputing them.
     private static double aboveMidlineSs(int lineIndex) {
-        return Staff.STAFF_HALF_SS + contentAboveStaffSs(lineIndex);
+        return layoutResultFor(lineIndex).aboveMidlineSs();
     }
 
     private static double belowMidlineSs(int lineIndex) {
-        return Staff.STAFF_HALF_SS + contentBelowStaffSs(lineIndex) + lyricsBandHeightSs();
+        return layoutResultFor(lineIndex).belowMidlineSs(LYRIC_RENDER_METRICS);
     }
 
     /** The uniform midline-to-midline distance for {@code lineCount} test lines. */
@@ -788,10 +794,7 @@ class TranslationTextPanelStaffPanelTest extends UnitTest {
 
             var lineComponent = linePanel.getLineComponent();
             lineComponent.setScoreView(scoreView);
-            lineComponent.layoutResult = LayoutResult.builder()
-                .setContentAboveStaffSs(contentAboveStaffSs(i))
-                .setContentBelowStaffSs(contentBelowStaffSs(i))
-                .build();
+            lineComponent.layoutResult = layoutResultFor(i);
             // Clean, so ensureAllLineLayouts() finds nothing to recompute.
             lineComponent.layoutDirty = false;
         }

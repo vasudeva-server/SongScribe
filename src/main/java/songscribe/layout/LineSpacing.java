@@ -51,6 +51,23 @@ public final class LineSpacing {
     public static final double LYRICS_ROW_MARGIN_SS = 0.75;  // 6px
 
     /**
+     * The below-staff extent a line is credited with when nothing on it reaches below the staff
+     * at all, so its lyrics clear the staff bottom by {@link #LYRICS_ROW_MARGIN_SS} plus this
+     * rather than by the margin alone.
+     * <p>
+     * What the lyric row sits under decides how close it may sit. Note ink — a stem, a notehead,
+     * a downward tie — is thin and intermittent, and lyrics tolerate it at the bare margin. The
+     * staff bottom is a hard rule running the full width of the line, and at that same margin it
+     * reads as cramped. A line with nothing below its staff has only that rule beneath it, so the
+     * row is pushed down by this much more.
+     * <p>
+     * The step is deliberately abrupt rather than a floor on the anchor: a note dipping slightly
+     * below the staff puts its lyrics nearer the staff bottom than a line with no dip at all, and
+     * that is correct, because by then the row is clearing note ink rather than the rule.
+     */
+    public static final double EMPTY_BELOW_STAFF_LYRIC_INSET_SS = 0.5;  // 4px
+
+    /**
      * The least a line component may reach above its own staff midline: half the staff plus
      * the full legal staff-position range above it.
      * <p>

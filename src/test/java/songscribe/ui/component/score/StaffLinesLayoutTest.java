@@ -109,20 +109,26 @@ class StaffLinesLayoutTest extends UnitTest {
         return new LineExtents(Staff.MIN_ABOVE_STAFF_SS, Staff.MIN_BELOW_STAFF_SS + extraSs);
     }
 
-    /**
-     * The lyrics band every test line reserves. No test line carries a lyric, so each still
-     * reserves the one row of measured font ink every line gets.
-     */
-    private static double lyricsBandHeightSs() {
-        return LineSpacing.LYRICS_ROW_MARGIN_SS + LYRIC_RENDER_METRICS.lyricBoxHeightSs();
+    /** The layout result {@code extents} stands for — the same one the test panel installs. */
+    private static LayoutResult layoutResultFor(LineExtents extents) {
+        return LayoutResult.builder()
+            .setContentAboveStaffSs(extents.contentAboveStaffSs())
+            .setContentBelowStaffSs(extents.contentBelowStaffSs())
+            .build();
     }
 
+    // A line's own reach above and below its midline is LayoutResult's arithmetic, verified in
+    // LayoutResultTest. These ask it rather than restating it: a local copy of the formula was
+    // silently wrong the moment LayoutResult started crediting a line that has nothing below its
+    // staff with an inset, and would have gone on agreeing only because no fixture here is
+    // empty below the staff. What these tests are for is the stacking StaffLinesLayout does
+    // with those two numbers, which is untouched by asking for them instead of recomputing them.
     private static double aboveMidlineSs(LineExtents extents) {
-        return Staff.STAFF_HALF_SS + extents.contentAboveStaffSs();
+        return layoutResultFor(extents).aboveMidlineSs();
     }
 
     private static double belowMidlineSs(LineExtents extents) {
-        return Staff.STAFF_HALF_SS + extents.contentBelowStaffSs() + lyricsBandHeightSs();
+        return layoutResultFor(extents).belowMidlineSs(LYRIC_RENDER_METRICS);
     }
 
     /** The uniform midline-to-midline distance the formula produces for {@code lines}. */
@@ -202,10 +208,7 @@ class StaffLinesLayoutTest extends UnitTest {
                 lineComponent.layoutResult = null;
             } else {
                 lineComponent.setScoreView(scoreView);
-                lineComponent.layoutResult = LayoutResult.builder()
-                    .setContentAboveStaffSs(extents.contentAboveStaffSs())
-                    .setContentBelowStaffSs(extents.contentBelowStaffSs())
-                    .build();
+                lineComponent.layoutResult = layoutResultFor(extents);
             }
 
             // Clean, so ensureAllLineLayouts() finds nothing to recompute.

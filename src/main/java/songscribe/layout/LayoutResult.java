@@ -106,7 +106,7 @@ public final class LayoutResult {
      *                           spaces, and also the staff top's Y position within the line's local
      *                           coordinate frame
      * @param contentBelowStaffSs True extent of this line's content below the staff bottom, in staff
-     *                           spaces; the anchor for placing this line's lyrics
+     *                           spaces. Never negative; a line with nothing below its staff passes 0
      * @param overflowsStaffWidth True when the line's content could not fit the staff width even at
      *                           its collision floors, so the columns were placed on those floors and
      *                           the tail of the line runs past the staff and is clipped
@@ -469,13 +469,38 @@ public final class LayoutResult {
     }
 
     /**
-     * Returns the true extent of this line's content below the staff bottom, in staff spaces.
+     * Returns the true extent of this line's content below the staff bottom, in staff spaces:
+     * the maximum distance below the staff bottom that anything on this line reaches.
+     * Unfloored: a line with nothing below its staff returns 0.
      * <p>
-     * This is the lyric-positioning anchor: the maximum distance below the staff bottom that
-     * anything on this line reaches. Unfloored: a line with nothing below its staff returns 0.
+     * This is a <em>spacing</em> value, not the lyric anchor — a line with nothing below its
+     * staff still holds its lyrics an inset clear of the staff bottom, so the row is placed
+     * against {@link #lyricAnchorBelowStaffSs} rather than against this.
      */
     public double getContentBelowStaffSs() {
         return contentBelowStaffSs;
+    }
+
+    /**
+     * Returns the below-staff extent the lyric row is anchored to, in staff spaces:
+     * {@link #getContentBelowStaffSs} when this line has any below-staff content, and
+     * {@link LineSpacing#EMPTY_BELOW_STAFF_LYRIC_INSET_SS} when it has none.
+     * <p>
+     * Every consumer that positions or reserves space for the lyric row must use this rather
+     * than the raw extent — the drawn baseline, the hit-test row, and the line's own height all
+     * hang off it, and anchoring only some of them here would leave the clickable row somewhere
+     * other than the text.
+     * <p>
+     * Private so those three stay the only consumers: this and {@link #getContentBelowStaffSs}
+     * return different numbers for the same-sounding quantity, and nothing outside this class
+     * should have to know which one it wants.
+     */
+    private double lyricAnchorBelowStaffSs() {
+        if (contentBelowStaffSs > 0.0) {
+            return contentBelowStaffSs;
+        }
+
+        return LineSpacing.EMPTY_BELOW_STAFF_LYRIC_INSET_SS;
     }
 
     /**
@@ -490,9 +515,13 @@ public final class LayoutResult {
     /**
      * Returns the distance from this line's staff midline to the bottom of its component,
      * in staff spaces, including its own lyrics band.
+     * <p>
+     * Built on {@link #lyricAnchorBelowStaffSs} so the height reserved matches where the row is
+     * actually drawn: on a line with nothing below its staff the row sits an extra inset down,
+     * and the line has to grow by the same amount or the lyrics fall outside their own bounds.
      */
     public double belowMidlineSs(LyricRenderMetrics lyricRenderMetrics) {
-        return Staff.STAFF_HALF_SS + contentBelowStaffSs + lyricsBandHeightSs(lyricRenderMetrics);
+        return Staff.STAFF_HALF_SS + lyricAnchorBelowStaffSs() + lyricsBandHeightSs(lyricRenderMetrics);
     }
 
     /**
@@ -584,15 +613,16 @@ public final class LayoutResult {
 
     /**
      * Returns the baseline Y of this line's lyric row within its local coordinate frame, in staff
-     * spaces. Driven by this line's own below-staff content, so lyrics hug each line individually
-     * rather than a song-wide maximum.
+     * spaces. Driven by this line's own below-staff content — see
+     * {@link #lyricAnchorBelowStaffSs} — so lyrics hug each line individually rather than a
+     * song-wide maximum.
      * <p>
      * There is one such row per line, not one per verse: the song shows a single verse at a time,
      * so whichever verse is active sits on this baseline.
      */
     public double lyricBaselineYSsInLine(LyricRenderMetrics lyricRenderMetrics) {
         return staffBottomYSsInLine()
-            + contentBelowStaffSs
+            + lyricAnchorBelowStaffSs()
             + lyricRenderMetrics.staffToLyricsGapSs();
     }
 
@@ -639,7 +669,7 @@ public final class LayoutResult {
     // baseline LyricTextRenderer draws at. Anchoring this on contentAboveStaffSs instead put
     // the clickable row above the visible text on any line short enough to hit the floor.
     double lyricAreaBaseYSs() {
-        return staffBottomYSsInLine() + contentBelowStaffSs + LineSpacing.LYRICS_ROW_MARGIN_SS;
+        return staffBottomYSsInLine() + lyricAnchorBelowStaffSs() + LineSpacing.LYRICS_ROW_MARGIN_SS;
     }
 
     /**
@@ -1104,8 +1134,13 @@ public final class LayoutResult {
 
         /**
          * Sets the true extent of this line's content below the staff bottom.
+         * <p>
+         * Must never be negative. A line with nothing below its staff sets 0, which is what
+         * {@link #lyricAnchorBelowStaffSs} keys off to inset the lyric row; a negative value
+         * would slip past that check and place the row above the staff bottom.
          *
-         * @param contentBelowStaffSs Distance below the staff bottom in staff-space units
+         * @param contentBelowStaffSs Distance below the staff bottom in staff-space units,
+         *                            zero or greater
          * @return This builder for chaining
          */
         public Builder setContentBelowStaffSs(double contentBelowStaffSs) {

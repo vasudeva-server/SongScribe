@@ -57,6 +57,25 @@ class LineHeightTest extends UnitTest {
     // The second language a song's lyrics can be written in.
     private static final int SECOND_VERSE = 2;
 
+    /**
+     * A4 in treble clef: the second space up from the bottom line, measured in half staff-space
+     * units down from the middle line. Well clear of the staff bottom for a stemless note.
+     */
+    private static final int SECOND_SPACE_SP = 1;
+
+    /**
+     * The distance from the staff bottom to the lyric ink top on a line with nothing below its
+     * staff: the lyric row margin plus the empty-line inset, as those are currently chosen.
+     * <p>
+     * Deliberately a literal rather than
+     * {@code LYRICS_ROW_MARGIN_SS + EMPTY_BELOW_STAFF_LYRIC_INSET_SS}: composing it from the same
+     * constants the production code uses would move both sides of the assertion together, and the
+     * test would still pass with the inset set to zero. The cost of that is this literal — it is
+     * the one place in the suite that pins the inset's actual value, so changing either constant
+     * means changing it here too.
+     */
+    private static final double EXPECTED_EMPTY_LINE_LYRIC_GAP_SS = 1.25;
+
     private static final Font LYRICS_FONT = new Font("Dialog", Font.PLAIN, 12);
 
     /**
@@ -81,9 +100,17 @@ class LineHeightTest extends UnitTest {
         return new LayoutEngine(LYRIC_METRICS, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
     }
 
-    /** The measured height a line of the given content extents must report. */
-    private static double expectedLineHeightSs(double aboveStaffSs, double belowStaffSs) {
-        return Staff.STAFF_HEIGHT_SS + aboveStaffSs + belowStaffSs + LYRICS_BAND_HEIGHT_SS;
+    /**
+     * The measured height a line of the given content extents must report.
+     *
+     * @param aboveStaffSs            the measured content extent above the staff top
+     * @param lyricAnchorBelowStaffSs the extent the lyric row hangs off, which is the measured
+     *                                below-staff content only when there is some — a line with
+     *                                none anchors on
+     *                                {@link LineSpacing#EMPTY_BELOW_STAFF_LYRIC_INSET_SS}
+     */
+    private static double expectedLineHeightSs(double aboveStaffSs, double lyricAnchorBelowStaffSs) {
+        return Staff.STAFF_HEIGHT_SS + aboveStaffSs + lyricAnchorBelowStaffSs + LYRICS_BAND_HEIGHT_SS;
     }
 
     /**
@@ -179,9 +206,14 @@ class LineHeightTest extends UnitTest {
             .describedAs("a high note must not extend content below the staff")
             .isCloseTo(0.0, within(TOLERANCE));
 
+        // Nothing below the staff, so the lyric row anchors on the empty-line inset rather than
+        // on the measured zero, and the line is that much taller than its content alone.
         assertThat(result.lineHeightSs(LYRIC_METRICS))
             .describedAs("line height reflects the extended above-staff content")
-            .isCloseTo(expectedLineHeightSs(expectedAboveStaffSs, 0.0), within(TOLERANCE));
+            .isCloseTo(
+                expectedLineHeightSs(
+                    expectedAboveStaffSs, LineSpacing.EMPTY_BELOW_STAFF_LYRIC_INSET_SS),
+                within(TOLERANCE));
     }
 
     @Test
@@ -221,6 +253,70 @@ class LineHeightTest extends UnitTest {
         assertThat(result.lineHeightSs(LYRIC_METRICS))
             .describedAs("line height reflects the extended below-staff content")
             .isCloseTo(expectedLineHeightSs(0.0, expectedBelowStaffSs), within(TOLERANCE));
+    }
+
+    /**
+     * A whole note on the second space carries no stem and no ledger lines, so the lowest ink on
+     * the line is the staff bottom itself. With no descending content to separate the two, the
+     * lyric row drops by the empty-line inset on top of its usual margin.
+     */
+    @Test
+    void testALineWithNothingBelowTheStaffInsetsItsLyricRow() {
+        var song = new Song();
+        var line = song.getLine(0);
+        var note = ElementType.SEMIBREVE.newInstance();
+        note.setStaffPosition(SECOND_SPACE_SP);
+        note.lyrics.add(
+            new Lyric(Lyric.FIRST_VERSE, "Āñ", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
+        addNote(song, line, note);
+
+        var result = require(engine().layout(line, true), "LayoutResult");
+
+        // Fixture precondition: without this the test would pass on a line that simply has
+        // below-staff content measuring zero for some unrelated reason.
+        assertThat(result.getContentBelowStaffSs())
+            .describedAs("a stemless note inside the staff must not extend content below it")
+            .isCloseTo(0.0, within(TOLERANCE));
+
+        assertThat(result.lyricAreaBaseYSs() - result.staffBottomYSsInLine())
+            .describedAs("the lyric ink top clears the staff bottom by margin plus inset")
+            .isCloseTo(EXPECTED_EMPTY_LINE_LYRIC_GAP_SS, within(TOLERANCE));
+
+        // The line must reserve the room it just pushed the row into, or the lyrics fall outside
+        // their own bounds — the whole point of anchoring height and baseline on the same extent.
+        assertThat(result.lineHeightSs(LYRIC_METRICS))
+            .describedAs("the reserved height covers the inset row")
+            .isCloseTo(
+                Staff.STAFF_HEIGHT_SS
+                    + result.getContentAboveStaffSs()
+                    + EXPECTED_EMPTY_LINE_LYRIC_GAP_SS
+                    + LyricRenderMetrics.fontHeightSs(LYRICS_FONT),
+                within(TOLERANCE));
+    }
+
+    /**
+     * The counterpart: a line that does carry below-staff content already has that content
+     * separating the staff from the lyrics, so it keeps the bare margin and no inset.
+     */
+    @Test
+    void testALineWithContentBelowTheStaffKeepsTheBareMargin() {
+        var song = new Song();
+        var line = song.getLine(0);
+
+        addNote(song, line, crotchet(Staff.MAX_STAFF_POSITION_SP));
+
+        var result = require(engine().layout(line, true), "LayoutResult");
+
+        var belowStaffSs = result.getContentBelowStaffSs();
+
+        // Fixture precondition: the note must actually reach below the staff.
+        assertThat(belowStaffSs)
+            .describedAs("the fixture must place content below the staff")
+            .isGreaterThan(0.0);
+
+        assertThat(result.lyricAreaBaseYSs() - result.staffBottomYSsInLine())
+            .describedAs("the lyric ink top clears the below-staff content by the bare margin")
+            .isCloseTo(belowStaffSs + LineSpacing.LYRICS_ROW_MARGIN_SS, within(TOLERANCE));
     }
 
     // Verses are languages, not stacked rows: a song holding its lyrics in two languages lays out

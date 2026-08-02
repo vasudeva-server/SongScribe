@@ -201,6 +201,51 @@ class LayoutResultTest extends UnitTest {
         assertThat(result.lyricBaselineYSsInLine(metrics)).isCloseTo(expectedBaselineSs, within(TOLERANCE));
     }
 
+    // The empty-line inset is a step, not a floor: a line whose content dips only slightly below
+    // the staff keeps that shallow dip and is NOT raised to the inset, because by then the lyrics
+    // are clearing note ink rather than the staff rule. Without this test, rewriting the anchor as
+    // Math.max(content, inset) would pass the whole suite and silently lose that distinction.
+    @Test
+    void testAShallowBelowStaffExtentKeepsItsOwnValueRatherThanTheInset() {
+        var result = LayoutResult.builder()
+            .setContentBelowStaffSs(SHALLOW_BELOW_CONTENT_SS)
+            .build();
+
+        // Precondition: the dip has to be shallower than the inset, or a floor and a step give the
+        // same answer and this test cannot tell them apart.
+        assertThat(SHALLOW_BELOW_CONTENT_SS)
+            .as("the fixture dip must be shallower than the empty-line inset")
+            .isLessThan(LineSpacing.EMPTY_BELOW_STAFF_LYRIC_INSET_SS);
+
+        assertThat(result.lyricAreaBaseYSs() - result.staffBottomYSsInLine())
+            .as("a shallow dip anchors the lyric row on itself, not on the empty-line inset")
+            .isCloseTo(SHALLOW_BELOW_CONTENT_SS + LineSpacing.LYRICS_ROW_MARGIN_SS, within(TOLERANCE));
+    }
+
+    // The line's height, the clickable lyric row and the painted text must all hang off the same
+    // anchor. The other two are covered elsewhere; this covers the painted text, so a baseline that
+    // went back to reading the raw below-staff extent cannot slip through leaving the visible
+    // lyrics an inset above the row reserved for them.
+    //
+    // The expected value is composed from the inset rather than spelling out a number, so this
+    // catches the baseline ignoring the anchor but not the inset itself being the wrong size —
+    // LineHeightTest.EXPECTED_EMPTY_LINE_LYRIC_GAP_SS is what pins the value.
+    @Test
+    void testAnEmptyLinesLyricBaselineDropsByTheInset() {
+        var result = LayoutResult.builder().build();
+        var metrics = testLyricMetrics();
+
+        assertThat(result.getContentBelowStaffSs())
+            .as("the fixture must have nothing below its staff, or the inset never applies")
+            .isCloseTo(0.0, within(TOLERANCE));
+
+        assertThat(result.lyricBaselineYSsInLine(metrics) - result.staffBottomYSsInLine())
+            .as("the painted baseline drops by the inset, matching the row reserved for it")
+            .isCloseTo(
+                LineSpacing.EMPTY_BELOW_STAFF_LYRIC_INSET_SS + ANCHOR_STAFF_TO_LYRICS_GAP_SS,
+                within(TOLERANCE));
+    }
+
     // The lyrics band is the visual row margin plus one measured row — reserved before the line
     // carries any lyric, so typing one does not re-space the song, and never more than one, so a
     // song holding a second language is no taller than one that does not.
@@ -251,18 +296,39 @@ class LayoutResultTest extends UnitTest {
     }
 
     // The painted extents floor a line's bounds so Swing never clips its staff or ledger lines,
-    // even though the measured extents that drive inter-line spacing stay unfloored.
+    // even though the measured extents that drive inter-line spacing stay unfloored. This covers
+    // the headroom half; the test below covers the half beneath the midline, which needs a
+    // different fixture to observe the floor at all.
     @Test
-    void testPaintedExtentsFloorAnEmptyLineAtTheMinimumLineHeight() {
+    void testAnEmptyLinesHeadroomIsFlooredSoLedgerLinesAreNotClipped() {
         var result = LayoutResult.builder().build();
-        var metrics = testLyricMetrics();
 
-        // Precondition: with no content this line's measured reach is inside both floors.
+        // Precondition: with no content this line's measured headroom is inside its floor, so the
+        // floor is what the assertion below observes. Font-independent — an empty line reaches
+        // exactly one staff-half up, well short of the ledger-line allowance.
         assertThat(result.aboveMidlineSs()).isLessThan(LineSpacing.MIN_ABOVE_MIDLINE_SS);
-        assertThat(result.belowMidlineSs(metrics)).isLessThan(LineSpacing.MIN_BELOW_MIDLINE_SS);
 
         assertThat(result.paintAboveMidlineSs())
+            .as("an empty line's headroom is floored so its ledger lines are not clipped")
             .isCloseTo(LineSpacing.MIN_ABOVE_MIDLINE_SS, within(TOLERANCE));
+    }
+
+    // Below the midline the real lyrics font gives an empty line a reserved band that already
+    // exceeds MIN_BELOW_MIDLINE_SS, so with that font the floor is never what wins and no
+    // assertion can observe it. Hence the deliberately tiny band here: it keeps the line's reach
+    // inside the floor, so the painted extent must land on the floor exactly, and a floor that
+    // stopped being applied fails this test.
+    @Test
+    void testAnEmptyLineWhoseBandFitsPaintsAtExactlyTheMinimumHeight() {
+        var result = LayoutResult.builder().build();
+        var metrics = smallBandLyricMetrics();
+
+        // Precondition: the injected font has to be small enough to keep the whole band — inset,
+        // margin and row — inside the floor, or this asserts nothing about flooring.
+        assertThat(result.belowMidlineSs(metrics))
+            .as("the small-band font must keep the line's reach inside the below floor")
+            .isLessThan(LineSpacing.MIN_BELOW_MIDLINE_SS);
+
         assertThat(result.paintBelowMidlineSs(metrics))
             .isCloseTo(LineSpacing.MIN_BELOW_MIDLINE_SS, within(TOLERANCE));
         assertThat(result.paintLineHeightSs(metrics))
@@ -1169,6 +1235,8 @@ class LayoutResultTest extends UnitTest {
 
     private static final double ABOVE_STAFF_SS = 1.5;
     private static final double BELOW_CONTENT_SS = 0.75;
+    /** A dip below the staff too shallow to reach the empty-line lyric inset. */
+    private static final double SHALLOW_BELOW_CONTENT_SS = 0.1;
     private static final double ABOVE_STAFF_DELTA_SS = 2.0;
     private static final double BELOW_CONTENT_DELTA_SS = 0.5;
 
@@ -1195,7 +1263,13 @@ class LayoutResultTest extends UnitTest {
     // baselines and lyric row bands can be derived by hand.
 
     private static final double ANCHOR_ABOVE_STAFF_SS = 1.0;
-    private static final double ANCHOR_BELOW_CONTENT_SS = 0.5;
+    /**
+     * Must differ from {@link LineSpacing#EMPTY_BELOW_STAFF_LYRIC_INSET_SS}. A line with content
+     * below its staff anchors its lyrics on that content; a line without anchors on the inset.
+     * Setting this to the inset makes both cases produce the same number, and the tests below can
+     * no longer tell an anchor that reads the content from one that ignores it.
+     */
+    private static final double ANCHOR_BELOW_CONTENT_SS = 1.5;
     private static final double ANCHOR_STAFF_TO_LYRICS_GAP_SS = 0.25;
     private static final double ANCHOR_BOX_X_SS = 3.0;
     private static final double ANCHOR_BOX_WIDTH_SS = 2.0;
@@ -1204,8 +1278,8 @@ class LayoutResultTest extends UnitTest {
     private static final double MISS_MARGIN_SS = 0.5;
     // ANCHOR_ABOVE_STAFF_SS is below the painted floor, so the staff bottom sits at
     // (Staff.MIN_ABOVE_STAFF_SS + Staff.STAFF_HEIGHT_SS), not at the measured content:
-    //   (3.0 + 4.0) + ANCHOR_BELOW_CONTENT_SS + ANCHOR_STAFF_TO_LYRICS_GAP_SS = 7.0 + 0.5 + 0.25
-    private static final double EXPECTED_VERSE_1_BASELINE_SS = 7.75;
+    //   (3.0 + 4.0) + ANCHOR_BELOW_CONTENT_SS + ANCHOR_STAFF_TO_LYRICS_GAP_SS = 7.0 + 1.5 + 0.25
+    private static final double EXPECTED_VERSE_1_BASELINE_SS = 8.75;
 
     private static LayoutResult.Builder anchorLayoutBuilder() {
         return LayoutResult.builder()
@@ -1215,6 +1289,22 @@ class LayoutResultTest extends UnitTest {
 
     private static LyricRenderMetrics testLyricMetrics() {
         var lyricsFont = DocumentFonts.defaultFonts().getLyricsFont();
+        return new LyricRenderMetrics(
+            lyricsFont, lyricsFont, 0.0, 0.0, ANCHOR_STAFF_TO_LYRICS_GAP_SS);
+    }
+
+    /** Point size small enough that a lyric row fits inside the below-midline floor. */
+    private static final int SMALL_BAND_FONT_SIZE = 6;
+
+    /**
+     * Metrics whose lyric row is deliberately tiny, so an empty line's band stays inside the
+     * painted floor and the flooring behavior can be asserted exactly. The real lyrics font is
+     * too tall for that once the empty-line inset is added.
+     */
+    private static LyricRenderMetrics smallBandLyricMetrics() {
+        var lyricsFont = DocumentFonts.defaultFonts()
+            .getLyricsFont()
+            .deriveFont((float) SMALL_BAND_FONT_SIZE);
         return new LyricRenderMetrics(
             lyricsFont, lyricsFont, 0.0, 0.0, ANCHOR_STAFF_TO_LYRICS_GAP_SS);
     }
