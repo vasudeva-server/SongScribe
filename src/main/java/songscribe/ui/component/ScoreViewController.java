@@ -78,7 +78,6 @@ import songscribe.ui.MusicEditOperations;
 import songscribe.ui.MusicEditOperations.HairpinResolution;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
-import songscribe.ui.action.InsertLineAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.PreviewElementManager;
 import songscribe.ui.clipboard.Fragment;
@@ -191,22 +190,20 @@ public final class ScoreViewController {
 
     @Handler
     public void handleInsertLine(InsertLineCommand message) {
-        var shift = message.getShift();
         var song = score.getSong();
+        var line = new Line(song);
 
-        if ((selectionCoordinator.getSelectedLine() != -1) || (shift == InsertLineAction.ADD)) {
-            var index = (shift >= 0)
-                ? (selectionCoordinator.getSelectedLine() + shift)
-                : InsertLineAction.ADD;
-            song.addLine(index, new Line(song));
-            score.deselect();
-        } else {
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.ALERT_TITLE_LINE_ERROR,
-                Strings.ERROR_LINE_NO_SELECTION
-            );
+        // The two relative variants are disabled without a line selection,
+        // so selectedLine is only read where it is known to be valid.
+        var selectedLine = selectionCoordinator.getSelectedLine();
+
+        switch (message.getType()) {
+            case ADD_AT_END -> song.addLine(line);
+            case INSERT_BEFORE -> song.addLine(selectedLine, line);
+            case INSERT_AFTER -> song.addLine(selectedLine + 1, line);
         }
+
+        score.deselect();
     }
 
     @Handler

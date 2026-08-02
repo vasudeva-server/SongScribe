@@ -32,6 +32,7 @@ import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.InsertLineCommand;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mockStatic;
@@ -59,7 +60,35 @@ class InsertLineActionTest extends MainFrameMockTest {
         assertThat(action.getActionCommand()).isEqualTo("insert-line-after");
     }
 
-    // Row 15: actionPerformed dispatches InsertLineCommand(shift) for all three variants
+    // Accelerators — all three are Return with the menu shortcut key, distinguished
+    // by Shift (before) and Alt (after)
+
+    @Test
+    void testAddLineAcceleratorIsMenuShortcutReturn() {
+        var action = InsertLineAction.createAddLineAction(mainFrame());
+        assertThat(action.getAccelerator())
+            .isEqualTo(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, UIUtils.MENU_SHORTCUT_MASK));
+    }
+
+    @Test
+    void testInsertLineBeforeAcceleratorAddsShift() {
+        var action = InsertLineAction.createInsertLineBeforeAction(mainFrame());
+        assertThat(action.getAccelerator()).isEqualTo(
+            KeyStroke.getKeyStroke(
+                KeyEvent.VK_ENTER,
+                UIUtils.MENU_SHORTCUT_MASK | InputEvent.SHIFT_DOWN_MASK));
+    }
+
+    @Test
+    void testInsertLineAfterAcceleratorAddsAlt() {
+        var action = InsertLineAction.createInsertLineAfterAction(mainFrame());
+        assertThat(action.getAccelerator()).isEqualTo(
+            KeyStroke.getKeyStroke(
+                KeyEvent.VK_ENTER,
+                UIUtils.MENU_SHORTCUT_MASK | InputEvent.ALT_DOWN_MASK));
+    }
+
+    // Row 15: actionPerformed dispatches InsertLineCommand(type) for all three variants
 
     private MockedStatic<MessageCenter> messageCenterMock;
 
@@ -74,35 +103,35 @@ class InsertLineActionTest extends MainFrameMockTest {
     }
 
     @Test
-    void testAddLineActionPerformedPostsInsertLineCommandWithAddShift() {
+    void testAddLineActionPerformedPostsInsertLineCommandWithAddAtEnd() {
         var action = InsertLineAction.createAddLineAction(mainFrame());
         action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "add-line"));
 
         var captor = ArgumentCaptor.forClass(InsertLineCommand.class);
         messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
-        assertThat(captor.getValue().getShift()).isEqualTo(InsertLineAction.ADD);
+        assertThat(captor.getValue().getType()).isEqualTo(InsertLineAction.Type.ADD_AT_END);
     }
 
     @Test
-    void testInsertLineBeforeActionPerformedPostsInsertLineCommandWithShiftZero() {
+    void testInsertLineBeforeActionPerformedPostsInsertLineCommandWithInsertBefore() {
         var action = InsertLineAction.createInsertLineBeforeAction(mainFrame());
         action.actionPerformed(
             new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "insert-line-before"));
 
         var captor = ArgumentCaptor.forClass(InsertLineCommand.class);
         messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
-        assertThat(captor.getValue().getShift()).isZero();
+        assertThat(captor.getValue().getType()).isEqualTo(InsertLineAction.Type.INSERT_BEFORE);
     }
 
     @Test
-    void testInsertLineAfterActionPerformedPostsInsertLineCommandWithShiftOne() {
+    void testInsertLineAfterActionPerformedPostsInsertLineCommandWithInsertAfter() {
         var action = InsertLineAction.createInsertLineAfterAction(mainFrame());
         action.actionPerformed(
             new ActionEvent(action, ActionEvent.ACTION_PERFORMED, "insert-line-after"));
 
         var captor = ArgumentCaptor.forClass(InsertLineCommand.class);
         messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
-        assertThat(captor.getValue().getShift()).isEqualTo(1);
+        assertThat(captor.getValue().getType()).isEqualTo(InsertLineAction.Type.INSERT_AFTER);
     }
 
     // updateEnabledState — add-line is always enabled; before/after require a line selection

@@ -21,16 +21,17 @@
 package songscribe.message.command;
 
 import songscribe.message.Message;
+import songscribe.ui.action.InsertLineAction;
 
 public class InsertLineCommand extends Message {
 
-    private final int shift;
+    private final InsertLineAction.Type type;
 
-    public InsertLineCommand(int shift) {
-        this.shift = shift;
+    public InsertLineCommand(InsertLineAction.Type type) {
+        this.type = type;
     }
 
-    public int getShift() {
-        return shift;
+    public InsertLineAction.Type getType() {
+        return type;
     }
 }

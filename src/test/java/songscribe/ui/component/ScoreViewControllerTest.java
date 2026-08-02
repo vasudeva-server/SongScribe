@@ -2020,36 +2020,34 @@ class ScoreViewControllerTest extends UnitTest {
         }
 
         @Test
-        void testHandleInsertLineInsertsAtSelectedLineIndexPlusShift() {
-            // selectedLine == 1, shift == 1 → index = 1 + 1 = 2
+        void testHandleInsertLineBeforeInsertsAtSelectedLineIndex() {
             when(coordinatorMock.getSelectedLine()).thenReturn(1);
 
-            controller.handleInsertLine(new InsertLineCommand(1));
+            controller.handleInsertLine(new InsertLineCommand(InsertLineAction.Type.INSERT_BEFORE));
+
+            verify(songMock).addLine(eq(1), any(Line.class));
+            verify(scoreMock).deselect();
+        }
+
+        @Test
+        void testHandleInsertLineAfterInsertsAfterSelectedLineIndex() {
+            when(coordinatorMock.getSelectedLine()).thenReturn(1);
+
+            controller.handleInsertLine(new InsertLineCommand(InsertLineAction.Type.INSERT_AFTER));
 
             verify(songMock).addLine(eq(2), any(Line.class));
             verify(scoreMock).deselect();
         }
 
         @Test
-        void testHandleInsertLineWithAddShiftInsertsAtEndRegardlessOfSelection() {
-            // shift == ADD forces end-of-song insertion even without a line selected
+        void testHandleInsertLineWithAddAtEndAppendsRegardlessOfSelection() {
+            // ADD_AT_END appends even without a line selected
             when(coordinatorMock.getSelectedLine()).thenReturn(-1);
 
-            controller.handleInsertLine(new InsertLineCommand(InsertLineAction.ADD));
+            controller.handleInsertLine(new InsertLineCommand(InsertLineAction.Type.ADD_AT_END));
 
-            verify(songMock).addLine(eq(InsertLineAction.ADD), any(Line.class));
+            verify(songMock).addLine(any(Line.class));
             verify(scoreMock).deselect();
-        }
-
-        @Test
-        void testHandleInsertLineShowsErrorWhenNoLineSelectedAndShiftIsNotAdd() {
-            // No line selected and shift != ADD → error dialog (suppressed in tests),
-            // addLine must NOT be called.
-            when(coordinatorMock.getSelectedLine()).thenReturn(-1);
-
-            controller.handleInsertLine(new InsertLineCommand(0));
-
-            verify(songMock, never()).addLine(anyInt(), any(Line.class));
         }
     }
 
