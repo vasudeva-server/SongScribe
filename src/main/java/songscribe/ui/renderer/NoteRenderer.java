@@ -116,33 +116,22 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
     // ==========================================================================
 
     /**
-     * Resolves the device-pixel-snapped X coordinate for a note, using the first
-     * available source in priority order:
-     * <ol>
-     *   <li>Override X from context (insertion note preview)</li>
-     *   <li>Layout result position (laid-out song notes)</li>
-     *   <li>Note's own {@code xPos} (fallback)</li>
-     * </ol>
+     * Selects the X coordinate for a note, preferring the frame's override X
+     * (insertion note preview) over the layout result position (laid-out song
+     * notes). The value is returned exactly as-is — no device-pixel snapping is
+     * applied here.
      */
     private static double resolveNoteXSs(
-        Graphics2D g2,
         StaffElement note,
         LineInvariants invariants,
         ElementFrame frame
     ) {
-        double noteX;
-
         if (frame.hasOverrideElementX()) {
-            noteX = frame.overrideElementXSs();
-        } else {
-            noteX = invariants.getLayoutResult().getElementXSs(note);
+            return frame.overrideElementXSs();
         }
 
-        return noteX;
+        return invariants.getLayoutResult().getElementXSs(note);
     }
-
-
-
 
     @Override
     public void render(
@@ -173,7 +162,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         // Note: Don't set color here - respect the color set by the caller
         // (e.g., blue for insertion notes, black for song notes)
         try (var _ = GraphicsState.save(g2, TRANSFORM, FONT)) {
-            var noteX = resolveNoteXSs(g2, element, invariants, frame);
+            var noteX = resolveNoteXSs(element, invariants, frame);
             var noteY = RenderingUtils.noteStaffPositionToCoordinateSs(element.getStaffPosition(), invariants.getMiddleLineYSs());
 
             g2.translate(noteX, noteY);
@@ -196,7 +185,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         LineInvariants invariants,
         ElementFrame frame
     ) {
-        var noteX = resolveNoteXSs(g2, element, invariants, frame);
+        var noteX = resolveNoteXSs(element, invariants, frame);
 
         // Derived from the element's staff position — half a staff space above the top staff
         // line — rather than written out again here. The hit rect is built from that same staff
