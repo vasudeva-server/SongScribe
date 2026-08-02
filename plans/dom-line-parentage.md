@@ -61,7 +61,13 @@ Two consequences already visible in the tree:
   `!= this` guard in detach is what makes that ordering-independent.
 ```
 
-**Non-goal:** `RangeElement` parentage is already correct — all five `rangeElements.remove` sites null `parentLine` (`Line.java:1892`, `:2103`, `:2145`, `:2222`, `:2674`). This plan does not change span handling; it brings staff elements up to the same standard. Routing spans through `attach`/`detach` as well is tracked as **issue #724**.
+**Non-goal:** `RangeElement` parentage is already correct — all five `rangeElements.remove` sites null `parentLine`. This plan does not change span handling; it brings staff elements up to the same standard. Routing spans through `attach`/`detach` as well is tracked as **issue #724**.
+
+> **Since superseded.** Issue #724 has landed: the five span add/remove pairs now
+> route through `Line.attach`/`Line.detach` like staff elements, via the
+> `appendChild`/`removeChild` helpers, and there are no hand-written
+> `setParentLine` sites left. The diagram above and the non-goal describe the
+> state this plan started from, not the current code.
 ## What makes this safe
 Every mutation of `Line.elements` is already funnelled. There are exactly five, all in `Line.java`, all inside an `applyChange` mutator lambda:
 

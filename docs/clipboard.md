@@ -39,8 +39,8 @@ re-anchored to the clones).
 `IdentityHashMap`) and re-anchors the spans onto those fresh clones, leaving the
 stored fragment untouched. The alternative — inserting the stored fragment's own
 elements — would work for the first paste and then corrupt every subsequent one,
-because a `StaffElement` can only belong to one `Line` at a time (`setParentLine`,
-re-parented by `Line.addElement`). Pasting the same fragment twice
+because a `StaffElement` can only belong to one `Line` at a time (`Line.attach`,
+reached via `Line.addElement`). Pasting the same fragment twice
 must produce two paste results that share no instances by identity; `instantiate()`
 is what makes that true by construction rather than by care at each call site.
 
@@ -137,7 +137,7 @@ it inserts, so it can discard an ending the same way they can. Declining leaves 
 score, the selection, and the clipboard untouched.
 
 Inside the bracket, `Line.addElement`'s existing side effects also apply to every
-pasted clone: it re-parents the clone (`setParentLine`) and removes any
+pasted clone: it re-parents the clone (`Line.attach`) and removes any
 ending invalidated by the inserted element's type. Everything else that pasting
 into occupied structure would break is reconciled deliberately — see §3.1.
 

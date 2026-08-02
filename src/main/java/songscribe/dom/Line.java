@@ -208,32 +208,51 @@ public class Line implements LyricRun {
     }
 
     // ========================================================================
-    // Staff element parentage
+    // Line element parentage
     //
-    // attach/detach are the only writers of a staff element's parentLine. Every
-    // mutation of `elements` funnels through one of them, from inside the
-    // applyChange mutator lambda, so parentage moves with the recorded change:
+    // For the elements held in this line's two lists, attach/detach are the only
+    // writers of parentLine. Every mutation of `elements`, and every mutation of
+    // `rangeElements`, funnels through one of them from inside the applyChange
+    // mutator lambda, so parentage moves with the recorded change:
     //
-    //     addElement(StaffElement) ──────┐
-    //     addElement(int, StaffElement) ─┼──► attach
-    //     setElement ────────────────────┤
-    //                                    │
-    //     setElement ────────────────────┐
-    //     removeElement ─────────────────┼──► detach
-    //     removeRange ───────────────────┘
+    //     addElement(StaffElement) ──┐
+    //     addElement(int, …) ────────┤
+    //     setElement ────────────────┤
+    //     addTie ────────────────────┼──► attach
+    //     addBeaming ────────────────┤
+    //     addTuplet ─────────────────┤
+    //     addHairpin ────────────────┤
+    //     addRangeElement ───────────┘
     //
-    // Invariant: element.getParentLine() == L ⟺ L.elements contains element,
-    // and null ⟺ the element is in no line at all.
+    //     setElement ────────────────┐
+    //     removeElement ─────────────┤
+    //     removeRange ───────────────┤
+    //     removeTie ─────────────────┼──► detach
+    //     removeBeaming ─────────────┤
+    //     removeTuplet ──────────────┤
+    //     removeHairpin ─────────────┤
+    //     removeRangeElement ────────┘
+    //
+    // The rangeElements callers reach attach/detach through appendChild/removeChild,
+    // which pair the pointer write with the list mutation it has to accompany.
+    //
+    // Attachments (articulations, fermatas) live in neither list, so none of this
+    // covers them: LineElement.addChild/removeChild own their parentLine, and
+    // propagateParentLine is what carries a host element's line down to them.
+    //
+    // Invariant, for an element in one of this line's two lists:
+    // element.getParentLine() == L ⟺ that list of L contains the element, and
+    // null ⟺ the element is in no line at all.
     // ========================================================================
 
     /** Points {@code element} and everything below it at this line. */
-    private void attach(StaffElement element) {
+    private void attach(LineElement element) {
         element.setParentLine(this);
         element.propagateParentLine(this);
     }
 
     /** Clears {@code element}'s line pointer, and those of everything below it. */
-    private void detach(StaffElement element) {
+    private void detach(LineElement element) {
         // A re-parent that ran attach() first already owns this element — don't
         // clear a pointer that now names a different line.
         if (element.getParentLine() != this) {
@@ -242,6 +261,26 @@ public class Line implements LyricRun {
 
         element.setParentLine(null);
         element.propagateParentLine(null);
+    }
+
+    /**
+     * Attaches {@code element} and appends it to {@code rangeElements}. Call from inside
+     * an applyChange mutator lambda — the pairing is what keeps parentage moving with the
+     * recorded change. The {@code elements} list has no counterpart because every one of
+     * its mutations inserts at an index or replaces in place.
+     */
+    private void appendChild(RangeElement element) {
+        attach(element);
+        rangeElements.add(element);
+    }
+
+    /**
+     * Detaches {@code element} and removes it from {@code rangeElements}. Takes the index
+     * its caller already located, rather than scanning the list a second time.
+     */
+    private void removeChild(RangeElement element, int index) {
+        detach(element);
+        rangeElements.remove(index);
     }
 
     public void addElement(StaffElement element) {
@@ -880,8 +919,7 @@ public class Line implements LyricRun {
      * even when two ties share an endpoint note.
      */
     public void addTie(Tie tie) {
-        tie.setParentLine(this);
-        applyChange(new TieAddition(this, tie), () -> rangeElements.add(tie));
+        applyChange(new TieAddition(this, tie), () -> appendChild(tie));
     }
 
     /**
@@ -896,10 +934,7 @@ public class Line implements LyricRun {
 
         applyChange(
             new TieRemoval(this, tie),
-            () -> {
-                rangeElements.remove(index);
-                tie.setParentLine(null);
-            }
+            () -> removeChild(tie, index)
         );
     }
 
@@ -1020,8 +1055,6 @@ public class Line implements LyricRun {
      * covered by the merged result is removed.
      */
     public void addBeaming(Beam beam) {
-        beam.setParentLine(this);
-
         // During replay the recorded BeamingAddition already carries the merged
         // span and the batch carries the subsumed-beam removals — just add.
         if (!song.isReplaying()) {
@@ -1030,7 +1063,7 @@ public class Line implements LyricRun {
             mergeOverlappingSpans(beam, Beam.class, this::removeBeaming, false);
         }
 
-        applyChange(new BeamingAddition(this, beam), () -> rangeElements.add(beam));
+        applyChange(new BeamingAddition(this, beam), () -> appendChild(beam));
     }
 
     /**
@@ -1107,10 +1140,7 @@ public class Line implements LyricRun {
 
         applyChange(
             new BeamingRemoval(this, beam),
-            () -> {
-                rangeElements.remove(index);
-                beam.setParentLine(null);
-            }
+            () -> removeChild(beam, index)
         );
     }
 
@@ -1121,8 +1151,6 @@ public class Line implements LyricRun {
      * is added.
      */
     public void addTuplet(Tuplet tuplet) {
-        tuplet.setParentLine(this);
-
         // During replay the recorded batch already carries the overlapping-tuplet
         // removals — just add.
         if (!song.isReplaying()) {
@@ -1134,7 +1162,7 @@ public class Line implements LyricRun {
             removeOverlappingTuplets(anchorIndex, endIndex);
         }
 
-        applyChange(new TupletAddition(this, tuplet), () -> rangeElements.add(tuplet));
+        applyChange(new TupletAddition(this, tuplet), () -> appendChild(tuplet));
     }
 
     /**
@@ -1149,10 +1177,7 @@ public class Line implements LyricRun {
 
         applyChange(
             new TupletRemoval(this, tuplet),
-            () -> {
-                rangeElements.remove(index);
-                tuplet.setParentLine(null);
-            }
+            () -> removeChild(tuplet, index)
         );
     }
 
@@ -1198,8 +1223,6 @@ public class Line implements LyricRun {
         BiFunction<? super Line, ? super H, ? extends Mutation> mutationFactory,
         Class<? extends H> type
     ) {
-        hairpin.setParentLine(this);
-
         // During replay the recorded addition already carries the merged span
         // and the batch carries the absorbed-hairpin removals — just add.
         if (!song.isReplaying()) {
@@ -1208,7 +1231,7 @@ public class Line implements LyricRun {
             mergeOverlappingSpans(hairpin, type, this::removeInvalidatedRangeElement, true);
         }
 
-        applyChange(mutationFactory.apply(this, hairpin), () -> rangeElements.add(hairpin));
+        applyChange(mutationFactory.apply(this, hairpin), () -> appendChild(hairpin));
     }
 
     /**
@@ -1226,10 +1249,7 @@ public class Line implements LyricRun {
 
         applyChange(
             mutationFactory.apply(this, hairpin),
-            () -> {
-                rangeElements.remove(index);
-                hairpin.setParentLine(null);
-            }
+            () -> removeChild(hairpin, index)
         );
     }
 
@@ -1608,10 +1628,9 @@ public class Line implements LyricRun {
      * @param element The range element to add
      */
     public void addRangeElement(RangeElement element) {
-        element.setParentLine(this);
         applyChange(
             new RangeElementAddition(this, element),
-            () -> rangeElements.add(element)
+            () -> appendChild(element)
         );
     }
 
@@ -1676,10 +1695,7 @@ public class Line implements LyricRun {
 
         applyChange(
             new RangeElementRemoval(this, element),
-            () -> {
-                rangeElements.remove(index);
-                element.setParentLine(null);
-            }
+            () -> removeChild(element, index)
         );
 
         return true;

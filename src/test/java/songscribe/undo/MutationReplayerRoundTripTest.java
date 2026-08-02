@@ -944,6 +944,49 @@ class MutationReplayerRoundTripTest extends UnitTest {
         }
 
         @Test
+        void testUndoOfSpanAdditionDetachesAndRedoReattaches() {
+            // Spans ride the same attach/detach chokepoint as staff elements, but the
+            // round-trip tests above compare serialized MusicXML, which never records
+            // parentLine — so only an identity assertion can catch a replay that puts a
+            // span back in the list without attaching it.
+            var song = songWithNotes(2);
+            var line = song.getLine(0);
+            var tie = new Tie(line.getElement(0), line.getElement(1));
+
+            var batch = UndoTestSupport.captureBatch(song, () -> line.addTie(tie));
+            assertThat(tie.getParentLine()).isSameAs(line);
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+
+            UndoTestSupport.replayUndo(scoreView, batch);
+            assertThat(tie.getParentLine()).isNull();
+
+            UndoTestSupport.replayRedo(scoreView, batch);
+            assertThat(tie.getParentLine()).isSameAs(line);
+        }
+
+        @Test
+        void testUndoOfSpanRemovalReattachesAndRedoDetaches() {
+            // Beams take the merge path on the way to attach, so they exercise a
+            // different route into the chokepoint than the tie above.
+            var song = songWithNotes(2);
+            var line = song.getLine(0);
+            var beam = new Beam(line.getElement(0), line.getElement(1));
+            song.withoutMutationTracking(() -> line.addBeaming(beam));
+
+            var batch = UndoTestSupport.captureBatch(song, () -> line.removeBeaming(beam));
+            assertThat(beam.getParentLine()).isNull();
+
+            var scoreView = UndoTestSupport.scoreViewFor(song);
+
+            UndoTestSupport.replayUndo(scoreView, batch);
+            assertThat(beam.getParentLine()).isSameAs(line);
+
+            UndoTestSupport.replayRedo(scoreView, batch);
+            assertThat(beam.getParentLine()).isNull();
+        }
+
+        @Test
         void testModificationReplayLeavesParentageUntouched() {
             // ElementModification restores in place via copyStateFrom, which must neither
             // attach nor detach — the element never leaves the line.

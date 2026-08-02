@@ -231,6 +231,101 @@ class ParentLinePropagationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // Range elements: maintained by the same attach/detach chokepoint, so every
+    // add/remove pair keeps the pointer without a hand-written assignment
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class WhenSpanAddedOrRemoved {
+
+        private static final int TRIPLET_GRADE = 3;
+
+        private StaffElement anchor;
+        private StaffElement end;
+
+        @BeforeEach
+        void addSpanEndpoints() {
+            anchor = ElementType.QUAVER.newInstance();
+            end = ElementType.QUAVER.newInstance();
+            addToLine(line, anchor);
+            addToLine(line, end);
+        }
+
+        @Test
+        void testAddTieAttachesAndRemoveTieDetaches() {
+            var tie = new Tie(anchor, end);
+
+            song.withoutMutationTracking(() -> line.addTie(tie));
+            assertThat(tie.getParentLine()).isSameAs(line);
+
+            song.withoutMutationTracking(() -> line.removeTie(tie));
+            assertThat(tie.getParentLine()).isNull();
+        }
+
+        @Test
+        void testAddBeamingAttachesAndRemoveBeamingDetaches() {
+            var beam = new Beam(anchor, end);
+
+            song.withoutMutationTracking(() -> line.addBeaming(beam));
+            assertThat(beam.getParentLine()).isSameAs(line);
+
+            song.withoutMutationTracking(() -> line.removeBeaming(beam));
+            assertThat(beam.getParentLine()).isNull();
+        }
+
+        @Test
+        void testAddTupletAttachesAndRemoveTupletDetaches() {
+            var tuplet = Tuplet.withUnresolvedRatio(anchor, end, TRIPLET_GRADE);
+
+            song.withoutMutationTracking(() -> line.addTuplet(tuplet));
+            assertThat(tuplet.getParentLine()).isSameAs(line);
+
+            song.withoutMutationTracking(() -> line.removeTuplet(tuplet));
+            assertThat(tuplet.getParentLine()).isNull();
+        }
+
+        @Test
+        void testAddHairpinAttachesAndRemoveHairpinDetaches() {
+            // Crescendo and diminuendo share addHairpin/removeHairpin — one covers both.
+            var hairpin = new Crescendo(anchor, end);
+
+            song.withoutMutationTracking(() -> line.addCrescendo(hairpin));
+            assertThat(hairpin.getParentLine()).isSameAs(line);
+
+            song.withoutMutationTracking(() -> line.removeCrescendo(hairpin));
+            assertThat(hairpin.getParentLine()).isNull();
+        }
+
+        @Test
+        void testAddRangeElementAttachesAndRemoveRangeElementDetaches() {
+            // The untyped path, used directly by spans with no add helper of their own
+            // (Ending) and indirectly by those that have one (addTrill delegates here).
+            var trill = new Trill(anchor, end);
+
+            song.withoutMutationTracking(() -> line.addRangeElement(trill));
+            assertThat(trill.getParentLine()).isSameAs(line);
+
+            song.withoutMutationTracking(() -> line.removeRangeElement(trill));
+            assertThat(trill.getParentLine()).isNull();
+        }
+
+        @Test
+        void testAttachingASpanToAnotherLineBeforeRemovalWins() {
+            // The `!= this` guard in detach, for spans: a re-parent that attached to
+            // line2 first must survive the removal from the original line.
+            var line2 = new Line(song);
+            var tie = new Tie(anchor, end);
+
+            song.withoutMutationTracking(() -> line.addTie(tie));
+            song.withoutMutationTracking(() -> line2.addTie(tie));
+            song.withoutMutationTracking(() -> line.removeTie(tie));
+
+            assertThat(tie.getParentLine()).isSameAs(line2);
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Copies are born detached; Line.attach is the only writer
     // -----------------------------------------------------------------------
 

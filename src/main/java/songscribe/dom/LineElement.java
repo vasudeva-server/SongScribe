@@ -49,7 +49,7 @@ public abstract class LineElement {
      * the authoritative answer to "is this element live in the document?"; no membership
      * scan is needed to decide.
      * <p>
-     * Three kinds of element reach this field three different ways:
+     * Three kinds of element reach this field, the first two the same way:
      * <pre>
      *                          Line
      *                           │
@@ -61,17 +61,17 @@ public abstract class LineElement {
      *     parentLine ◄── Line.attach / Line.detach     parentLine      hairpin, ending, trill)
      *     │              ONLY writer  ── structural       ▲
      *     │                                               │
-     *     │  children (List&lt;LineElement&gt;)          five hand-written setParentLine
-     *     ▼                                        pairs at the rangeElements.add /
-     *   Articulation, FermataAttachment, …         .remove sites ── by convention
-     *     parentLine ◄── LineElement.addChild /     (tracked as issue #724)
+     *     │  children (List&lt;LineElement&gt;)                 └── Line.attach / Line.detach
+     *     ▼                                                    ONLY writer ── structural
+     *   Articulation, FermataAttachment, …
+     *     parentLine ◄── LineElement.addChild /
      *                    removeChild, and
      *                    propagateParentLine
      *                    when the host attaches
      *                    or detaches
      * </pre>
-     * For staff elements the invariant is
-     * {@code parentLine == L ⟺ L.elements contains this}, holding at
+     * For elements in either of Line's two lists the invariant is
+     * {@code parentLine == L ⟺ that list of L contains this}, holding at
      * modification-bracket boundaries. Inside a bracket a re-parent may briefly have
      * attached to B while A's list still holds the element; {@code Line.detach}'s
      * {@code != this} guard is what makes that ordering-independent.
@@ -159,10 +159,10 @@ public abstract class LineElement {
     }
 
     /**
-     * Sets the Line that contains this element. For staff elements the only callers are
-     * {@code Line.attach} and {@code Line.detach}; calling it elsewhere breaks the
-     * invariant documented on {@link #parentLine}. Package-private so the compiler
-     * enforces that, rather than leaving it to a reader of this comment.
+     * Sets the Line that contains this element. For elements in either of Line's two
+     * lists the only callers are {@code Line.attach} and {@code Line.detach}; calling it
+     * elsewhere breaks the invariant documented on {@link #parentLine}. Package-private
+     * so the compiler enforces that, rather than leaving it to a reader of this comment.
      */
     void setParentLine(@Nullable Line parentLine) {
         this.parentLine = parentLine;

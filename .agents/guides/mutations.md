@@ -113,11 +113,19 @@ withModification(() -> applyChange(new MetadataChange(field, current, newValue),
 `replaceElement`, `modifyElement`, `add/remove{Beaming,Tie,Tuplet,Crescendo,Diminuendo}`,
 `add/removeRangeElement`) wrap `applyChange` with clone snapshots and
 bookkeeping (interval shifting, range-element invalidation, initial-tempo attachment).
-The span helpers are the thinnest pattern to copy when adding one:
+The span helpers are the thinnest pattern to copy when adding one. Note that the
+mutator both attaches parentage and mutates the list. For the elements held in
+`Line`'s two lists, `Line.attach`/`Line.detach` are the only writers of
+`parentLine`, and running them inside the mutator is what makes parentage move
+with the recorded change. `appendChild`/`removeChild` pair the two steps for the
+`rangeElements` list:
 
 ```java
-applyChange(new BeamingAddition(this, span), () -> beamings.addSpan(span));
+applyChange(new BeamingAddition(this, beam), () -> appendChild(beam));
 ```
+
+(Attachments — articulations, fermatas — are in neither list, so this does not
+apply to them; `LineElement.addChild`/`removeChild` own their `parentLine`.)
 
 For any new mutation pattern that doesn't require a caller-supplied snapshot, add a
 helper to `Line`.
