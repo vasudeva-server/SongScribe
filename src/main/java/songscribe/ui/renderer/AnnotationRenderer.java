@@ -72,7 +72,7 @@ public final class AnnotationRenderer implements ElementRenderer<StaffElement> {
 
         var annotationFont = invariants.getAnnotationFont();
 
-        try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
+        try (var _ = GraphicsState.save(g2, FONT, COLOR)) {
             g2.setFont(ScaleContext.scaleFont(annotationFont));
             // The annotation is selectable on its own, so the color is keyed on the attachment
             // rather than on the note it hangs off.

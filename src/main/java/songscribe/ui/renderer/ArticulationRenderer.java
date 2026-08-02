@@ -102,7 +102,7 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
             layoutResult = invariants.getLayoutResult();
         }
 
-        try (var ignored = GraphicsState.save(g2, COLOR)) {
+        try (var _ = GraphicsState.save(g2, COLOR)) {
             var above = NoteAttachedStacker.articulationDirection(element).isUp();
 
             for (var articulation : element.getArticulations()) {

@@ -75,7 +75,7 @@ public final class LyricTextRenderer implements ElementRenderer<StaffElement> {
         var viewPxPerSs = invariants.getViewPixelsPerStaffSpace();
         var yPx = (int) Math.round(layoutResult.lyricBaselineYSsInLine(lyricRenderMetrics) * viewPxPerSs);
 
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT, TRANSFORM)) {
+        try (var _ = GraphicsState.save(g2, COLOR, FONT, TRANSFORM)) {
             // Strip the staff-space → pixel transform (which also carries the current
             // zoom factor) so this renderer goes through the same rasterization path
             // JTextField uses: a font drawn at integer logical-pixel coordinates rather

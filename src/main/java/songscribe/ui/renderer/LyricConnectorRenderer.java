@@ -101,7 +101,7 @@ public final class LyricConnectorRenderer {
         var editedVerse = invariants.getActivelyEditedVerse();
         var ySs = layoutResult.lyricBaselineYSsInLine(lyricRenderMetrics);
 
-        try (var ignored = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
+        try (var _ = GraphicsState.save(g2, COLOR, STROKE, FONT)) {
             g2.setFont(lyricRenderMetrics.scaledLyricsFont());
             g2.setStroke(EXTENDER_STROKE);
 

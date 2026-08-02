@@ -117,7 +117,7 @@ public final class TrillRenderer {
         var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.ORNAMENT_TRILL);
         var y = trillTopYSs + bbox.height();
 
-        try (var ignored = GraphicsState.save(g2, COLOR)) {
+        try (var _ = GraphicsState.save(g2, COLOR)) {
             g2.setColor(color);
             RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.ORNAMENT_TRILL, xSs, y, true);
 
@@ -179,7 +179,7 @@ public final class TrillRenderer {
 
         var segments = Math.max(1, (int) Math.round(length / WIGGLE_SEGMENT_WIDTH_SS));
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
+        try (var _ = GraphicsState.save(g2, TRANSFORM, FONT, COLOR)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
             g2.setColor(color);
             g2.translate(x1, y);

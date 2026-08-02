@@ -449,7 +449,7 @@ public final class SlideRenderer {
         double middleLineYSs,
         Color color
     ) {
-        try (var ignored = GraphicsState.save(g2, COLOR)) {
+        try (var _ = GraphicsState.save(g2, COLOR)) {
             g2.setColor(color);
             GraphicUtils.drawRoundedLine(g2,
                 endpoints.startXSs(),
@@ -485,7 +485,7 @@ public final class SlideRenderer {
         var glyphYSs = RenderingUtils.layoutYToComponentYSs(
             boundsSs.getY() - bbox.top(), middleLineYSs);
 
-        try (var ignored = GraphicsState.save(g2, COLOR)) {
+        try (var _ = GraphicsState.save(g2, COLOR)) {
             g2.setColor(color);
             RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.BRASS_FALL_LIP_SHORT, glyphXSs, glyphYSs, true);
         }

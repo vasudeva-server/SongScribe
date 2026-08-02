@@ -99,7 +99,7 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
 
         var noteX = resolveBarXSs(g2, element, invariants, frame);
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM)) {
+        try (var _ = GraphicsState.save(g2, TRANSFORM)) {
             g2.translate(noteX, invariants.getMiddleLineYSs());
             renderBarLineOrRepeat(g2, noteType, invariants);
         }
@@ -211,7 +211,7 @@ public final class BarRenderer implements ElementRenderer<StaffElement> {
      * @param xSs Left edge X coordinate for the dots in staff spaces
      */
     private static void drawRepeatDots(Graphics2D g2, double xSs) {
-        try (var ignored = GraphicsState.save(g2, FONT)) {
+        try (var _ = GraphicsState.save(g2, FONT)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
             g2.drawString(
                 SMuFLGlyph.REPEAT_DOTS.asString(),

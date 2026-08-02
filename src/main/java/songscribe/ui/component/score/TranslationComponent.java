@@ -73,7 +73,7 @@ public class TranslationComponent extends ScoreComponent {
 
         double maxWidth = 0;
 
-        try (var ignored = GraphicsState.save(
+        try (var _ = GraphicsState.save(
             g2,
             GraphicsState.Property.FONT
         )) {
@@ -104,7 +104,7 @@ public class TranslationComponent extends ScoreComponent {
             return;
         }
 
-        try (var ignored = GraphicsState.save(
+        try (var _ = GraphicsState.save(
             g2,
             GraphicsState.Property.FONT,
             GraphicsState.Property.COLOR

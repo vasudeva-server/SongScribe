@@ -105,7 +105,7 @@ public final class HairpinRenderer {
         Graphics2D g2,
         LineInvariants invariants
     ) {
-        try (var ignored = GraphicsState.save(g2, COLOR, STROKE)) {
+        try (var _ = GraphicsState.save(g2, COLOR, STROKE)) {
             // A hairpin belongs to no single note, so it has no owner whose color it could take.
             g2.setColor(RenderingUtils.decorationColor(
                 new HitTarget.Hairpin(hairpin), null, invariants, ElementFrame.LINE_LEVEL));

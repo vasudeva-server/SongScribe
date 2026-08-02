@@ -345,7 +345,7 @@ public final class BeamGroupRenderer implements ElementRenderer<LineElement> {
         beam.lineTo(firstX + blotRadiusSs, firstInnerY - towardInnerSs);
         beam.closePath();
 
-        try (var ignored = GraphicsState.save(g2, CLIP, COLOR, STROKE)) {
+        try (var _ = GraphicsState.save(g2, CLIP, COLOR, STROKE)) {
             if (type != BeamType.FULL) {
                 var clip = beam.getBounds2D();
                 var x1 = (type == BeamType.ATTACH_LEFT)

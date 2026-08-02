@@ -62,7 +62,7 @@ public class FootnotesComponent extends ScoreComponent {
             return;
         }
 
-        try (var ignored = GraphicsState.save(
+        try (var _ = GraphicsState.save(
             g2,
             GraphicsState.Property.FONT,
             GraphicsState.Property.COLOR

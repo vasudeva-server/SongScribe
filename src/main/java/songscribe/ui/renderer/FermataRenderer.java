@@ -112,7 +112,7 @@ public final class FermataRenderer implements ElementRenderer<StaffElement> {
 
         var y = RenderingUtils.glyphOriginYFromLayoutTop(fermataTopYSs, SMuFLGlyph.FERMATA_ABOVE);
 
-        try (var ignored = GraphicsState.save(g2, COLOR)) {
+        try (var _ = GraphicsState.save(g2, COLOR)) {
             RenderingUtils.applyDecorationColor(
                 g2, new HitTarget.Attachment(fermata), element, invariants, frame);
             RenderingUtils.drawBravuraGlyph(g2, SMuFLGlyph.FERMATA_ABOVE, x, y, true);

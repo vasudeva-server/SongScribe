@@ -123,7 +123,7 @@ public abstract class BaseTitleComponent extends ScoreComponent {
         // it here. On the score the component is transparent (opaque == false);
         // the settings-dialog preview makes it opaque to paint the page color.
         if (isOpaque()) {
-            try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+            try (var _ = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
                 g2.setColor(getBackground());
                 g2.fillRect(0, 0, getWidth(), getHeight());
             }
@@ -135,7 +135,7 @@ public abstract class BaseTitleComponent extends ScoreComponent {
             return;
         }
 
-        try (var ignored = GraphicsState.save(
+        try (var _ = GraphicsState.save(
             g2,
             GraphicsState.Property.FONT,
             GraphicsState.Property.COLOR

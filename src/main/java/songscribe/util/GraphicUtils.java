@@ -414,7 +414,7 @@ public final class GraphicUtils {
 
         path.lineTo(endSs.getX(), endSs.getY());
 
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.STROKE)) {
+        try (var _ = GraphicsState.save(g2, GraphicsState.Property.STROKE)) {
             g2.setStroke(new BasicStroke(
                 (float) thicknessSs, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
             g2.draw(path);

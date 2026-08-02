@@ -139,7 +139,7 @@ public final class InsertionMarkerOverlay extends LineOverlayComponent {
         var topYSs = boundsSs.getMinY();
         var bottomYSs = boundsSs.getMaxY();
 
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+        try (var _ = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
             g2.setColor(ScoreView.getPreviewElementColor());
             GraphicUtils.drawRoundedLine(g2, xSs, topYSs, xSs, bottomYSs, INSERTION_POINT_THICKNESS_SS);
         }

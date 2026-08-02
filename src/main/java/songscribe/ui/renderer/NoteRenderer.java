@@ -172,7 +172,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         // Standard note rendering (including grace notes)
         // Note: Don't set color here - respect the color set by the caller
         // (e.g., blue for insertion notes, black for song notes)
-        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
+        try (var _ = GraphicsState.save(g2, TRANSFORM, FONT)) {
             var noteX = resolveNoteXSs(g2, element, invariants, frame);
             var noteY = RenderingUtils.noteStaffPositionToCoordinateSs(element.getStaffPosition(), invariants.getMiddleLineYSs());
 
@@ -238,7 +238,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
         // Adjust x position for lower stem notes
         var noteHeadXPosSs = NoteGeometry.getNoteheadXOffsetSs(noteType, direction);
 
-        try (var ignored = GraphicsState.save(g2, FONT)) {
+        try (var _ = GraphicsState.save(g2, FONT)) {
             g2.setFont(noteType.isGraceNote() ? RenderingUtils.GRACE_NOTE_FONT : RenderingUtils.MUSIC_FONT);
             g2.drawString(glyph.asString(), noteHeadXPosSs, 0f);
         }
@@ -392,7 +392,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             flagFont = RenderingUtils.MUSIC_FONT;
         }
 
-        try (var ignored = GraphicsState.save(g2, FONT)) {
+        try (var _ = GraphicsState.save(g2, FONT)) {
             g2.setFont(flagFont);
             g2.drawString(flagGlyph.asString(), flagX, flagY);
         }
@@ -412,7 +412,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
             return;
         }
 
-        try (var ignored = GraphicsState.save(g2, FONT)) {
+        try (var _ = GraphicsState.save(g2, FONT)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
             var dotStr = SMuFLGlyph.AUGMENTATION_DOT.asString();
             NoteGeometry.forEachDotPosition(
@@ -471,7 +471,7 @@ public final class NoteRenderer implements ElementRenderer<StaffElement> {
 
         var accidentalGlyph = accidental.glyph();
 
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
             var accidentalColor = invariants.colorFor(
                 new HitTarget.Accidental(note), frame.currentElementIndex());
 

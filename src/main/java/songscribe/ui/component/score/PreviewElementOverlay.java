@@ -123,7 +123,7 @@ public final class PreviewElementOverlay extends RecordedInkOverlay {
 
     @Override
     protected void renderOverlay(Graphics2D g2) {
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR, GraphicsState.Property.TRANSFORM)) {
+        try (var _ = GraphicsState.save(g2, GraphicsState.Property.COLOR, GraphicsState.Property.TRANSFORM)) {
             // The renderers deliberately never set a color, so the recorded ink is monochrome
             // and the preview color is applied once, here.
             g2.setColor(ScoreView.getPreviewElementColor());

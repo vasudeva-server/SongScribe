@@ -101,7 +101,7 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
             xSs = drawDurationEquals(g2, tempo.getTempoType(), xSs, setup.ySs(), setup.attrFont(), color);
         }
 
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(ScaleContext.scaleFont(setup.attrFont()));
             g2.setColor(color);
             g2.drawString(tempoBuilder.toString(), (float) xSs, (float) textBaselineYSs);

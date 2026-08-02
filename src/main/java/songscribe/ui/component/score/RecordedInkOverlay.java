@@ -133,7 +133,7 @@ public abstract class RecordedInkOverlay extends LineOverlayComponent {
      */
     @Override
     protected void renderOverlay(Graphics2D g2) {
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+        try (var _ = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
             // The renderers deliberately never set a color, so the recorded ink is monochrome and
             // the preview color is applied once, here.
             g2.setColor(ScoreView.getPreviewElementColor());

@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
  * <p>
  * Usage:
  * <pre>
- * try (var ignored = GraphicsState.save(g2, Property.COLOR, Property.STROKE)) {
+ * try (var _ = GraphicsState.save(g2, Property.COLOR, Property.STROKE)) {
  *     g2.setColor(Color.RED);
  *     g2.setStroke(new BasicStroke(2f));
  *     // ... render ...

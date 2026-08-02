@@ -512,7 +512,7 @@ public class LineComponent extends ScoreComponent
             throw unexpectedNullLayout();
         }
 
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+        try (var _ = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
             g2.scale(scale, scale);
             lineRenderer.render(g2);
         }

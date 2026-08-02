@@ -94,7 +94,7 @@ public final class TieRenderer {
             return;
         }
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM, COLOR, STROKE)) {
+        try (var _ = GraphicsState.save(g2, TRANSFORM, COLOR, STROKE)) {
             g2.translate(0, invariants.getMiddleLineYSs());
             g2.setColor(determineTieColor(tie, invariants));
 

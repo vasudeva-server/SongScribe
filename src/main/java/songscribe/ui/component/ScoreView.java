@@ -642,7 +642,7 @@ public final class ScoreView
 
         var graphics2d = (Graphics2D) g;
 
-        try (var ignored = GraphicsState.save(
+        try (var _ = GraphicsState.save(
             graphics2d,
             GraphicsState.Property.COLOR
         )) {

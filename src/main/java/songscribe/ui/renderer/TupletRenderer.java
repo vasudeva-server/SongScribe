@@ -180,7 +180,7 @@ public final class TupletRenderer {
 
         var thicknessSs = LineThickness.TUPLET_BRACKET_SS;
 
-        try (var ignored = GraphicsState.save(g2, COLOR)) {
+        try (var _ = GraphicsState.save(g2, COLOR)) {
             // A tuplet spans notes rather than hanging off one, so it has no owner whose color it
             // could take: it is plain black unless it is itself the selection.
             g2.setColor(RenderingUtils.decorationColor(

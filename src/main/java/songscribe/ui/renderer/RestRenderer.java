@@ -152,7 +152,7 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
         var noteX = resolveRestXSs(g2, element, invariants, frame);
         var noteY = calculateRestYSs(element, invariants.getMiddleLineYSs());
 
-        try (var ignored = GraphicsState.save(g2, TRANSFORM, FONT)) {
+        try (var _ = GraphicsState.save(g2, TRANSFORM, FONT)) {
             g2.translate(noteX, noteY);
             g2.setFont(RenderingUtils.MUSIC_FONT);
             // Note: Don't set color here - respect the color set by the caller
@@ -207,7 +207,7 @@ public final class RestRenderer implements ElementRenderer<StaffElement> {
         }
 
         // Draw augmentation dots using SMuFL glyph
-        try (var ignored = GraphicsState.save(g2, FONT)) {
+        try (var _ = GraphicsState.save(g2, FONT)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
             float dotX = firstDotX;
 

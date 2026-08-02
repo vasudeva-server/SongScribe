@@ -60,7 +60,7 @@ public abstract class LyricsComponent extends ScoreComponent {
             return 0;
         }
 
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.FONT)) {
+        try (var _ = GraphicsState.save(g2, GraphicsState.Property.FONT)) {
             g2.setFont(zoomedFont(getLyricsFont()));
             return GraphicUtils.getTextBlockWidth(lyrics, g2);
         }
@@ -78,7 +78,7 @@ public abstract class LyricsComponent extends ScoreComponent {
             return;
         }
 
-        try (var ignored = GraphicsState.save(
+        try (var _ = GraphicsState.save(
             g2,
             GraphicsState.Property.FONT,
             GraphicsState.Property.COLOR

@@ -152,7 +152,7 @@ public final class EndingRenderer {
 
         var thicknessSs = LineThickness.VOLTA_BRACKET_SS;
 
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(color);
 
             // Bracket as a single path so the top corners join cleanly: up the left leg, across

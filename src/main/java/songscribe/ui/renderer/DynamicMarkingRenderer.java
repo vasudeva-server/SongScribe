@@ -104,7 +104,7 @@ public final class DynamicMarkingRenderer implements ElementRenderer<StaffElemen
         var x = decorationLayout.xSs() - dynamicBBox.left();
         var y = RenderingUtils.glyphOriginYFromLayoutTop(dynamicTopYSs, glyph);
 
-        try (var ignored = GraphicsState.save(g2, COLOR)) {
+        try (var _ = GraphicsState.save(g2, COLOR)) {
             // The dynamic is selectable on its own, so the color is keyed on the attachment
             // rather than on the note it hangs off.
             RenderingUtils.applyDecorationColor(

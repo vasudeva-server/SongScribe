@@ -200,7 +200,7 @@ class LineRenderer {
             && selectionProvider.isSelected(new HitTarget.StaffLine(), lineIndex);
         var layoutResult = invariants.getLayoutResult();
 
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+        try (var _ = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
             // Red says this line holds more than the staff can show, so the tail of its content is
             // clipped (refs #696). Selection still wins: it is the transient state the user is
             // acting on, and the red returns the moment the line is deselected.
@@ -263,7 +263,7 @@ class LineRenderer {
         var line = invariants.requireCurrentLine();
         var layoutResult = invariants.getLayoutResult();
 
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+        try (var _ = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
             for (var i = 0; i < line.elementCount(); i++) {
                 var element = line.getElement(i);
 
@@ -375,7 +375,7 @@ class LineRenderer {
                 continue;
             }
 
-            try (var ignored = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
+            try (var _ = GraphicsState.save(g2, GraphicsState.Property.COLOR)) {
                 g2.setColor(ScoreView.getPreviewElementColor());
                 SlideRenderer.getInstance().renderPreviewGlissando(g2, i, line, invariants);
             }
@@ -433,7 +433,7 @@ class LineRenderer {
         Runnable render
     ) {
         if (frame.hasPreviewShift() && spanStart >= frame.previewShiftFromIndex()) {
-            try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+            try (var _ = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
                 g2.translate(frame.previewShiftSs(), 0);
                 render.run();
             }
@@ -539,7 +539,7 @@ class LineRenderer {
 
         var layoutResult = invariants.getLayoutResult();
 
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+        try (var _ = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
             var attachmentShiftActive = false;
 
             for (var i = 0; i < line.elementCount(); i++) {
@@ -650,7 +650,7 @@ class LineRenderer {
                 Math.max(0, right - left), Math.max(0, bottom - top),
                 arcPx, arcPx);
 
-        try (var ignored = GraphicsState.save(g2, GraphicsState.Property.STROKE, GraphicsState.Property.COLOR)) {
+        try (var _ = GraphicsState.save(g2, GraphicsState.Property.STROKE, GraphicsState.Property.COLOR)) {
             g2.setStroke(new BasicStroke((float) strokeWidthPx));
             g2.setColor(ScoreView.getSelectionColor());
             g2.draw(roundRect);

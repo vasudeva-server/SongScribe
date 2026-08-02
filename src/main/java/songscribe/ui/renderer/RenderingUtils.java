@@ -334,7 +334,7 @@ public final class RenderingUtils {
         double ySs,
         boolean preserveColor
     ) {
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(MUSIC_FONT);
             if (!preserveColor) {
                 g2.setColor(ELEMENT_COLOR);

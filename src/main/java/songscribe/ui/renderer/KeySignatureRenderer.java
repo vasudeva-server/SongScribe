@@ -120,7 +120,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
             return;
         }
 
-        try (var ignored = GraphicsState.save(g2, FONT, COLOR)) {
+        try (var _ = GraphicsState.save(g2, FONT, COLOR)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
             g2.setColor(RenderingUtils.ELEMENT_COLOR);
 
@@ -244,7 +244,7 @@ public final class KeySignatureRenderer implements ElementRenderer<KeySignature>
             return;
         }
 
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setFont(RenderingUtils.MUSIC_FONT);
             g2.setColor(RenderingUtils.ELEMENT_COLOR);
 

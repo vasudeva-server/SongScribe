@@ -137,7 +137,7 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         var glyphOriginYSs = ySs - SMuFLMetadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
         var textBaselineYSs = ySs + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
 
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(color);
 
             g2.setFont(TEMPO_NOTE_FONT);
@@ -184,7 +184,7 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         var metGlyph = requireMetronomeGlyph(note.getType());
         var glyphOriginYSs = ySs - SMuFLMetadata.requireBBox(metGlyph).top() * MetronomeAttachment.NOTE_SCALE;
 
-        try (var ignored = GraphicsState.save(g2, COLOR, FONT)) {
+        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
             g2.setColor(color);
             g2.setFont(TEMPO_NOTE_FONT);
             g2.drawString(metGlyph.asString(), (float) xSs, (float) glyphOriginYSs);

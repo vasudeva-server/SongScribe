@@ -77,7 +77,7 @@ public record DisplayList(List<Drawable> drawables) {
 
         @Override
         public void paint(Graphics2D g2) {
-            try (var ignored = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
+            try (var _ = GraphicsState.save(g2, GraphicsState.Property.TRANSFORM)) {
                 g2.transform(placement);
                 g2.drawGlyphVector(glyphVector, 0, 0);
             }
