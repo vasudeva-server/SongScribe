@@ -1,6 +1,35 @@
 MANDATORY: Use `serena` `jet_brains_*` tools for all Java exploration and refactoring. Fall back to Grep/Read/Glob only when a `jet_brains_*` tool returns no results, the file is not Java, or the IDE connection is unavailable.
 
-Finding callers/usages is covered by this rule: any "who calls X", "where is X used", "find references to X" task MUST start with `jet_brains_find_referencing_symbols`, never `grep`/`rg`.
+## Usages queries — the rule fires on the operation, not on how the task was phrased
+
+If you are about to determine **the set of places a symbol is used**, that is a usages query and it MUST start with `jet_brains_find_referencing_symbols`. This holds no matter what the surrounding task is called. It is still a usages query when you are:
+
+- verifying a claim in a plan, an issue, or a code comment
+- sizing a change or building an impact list
+- checking whether something is safe to delete or rename
+- confirming an assumption you are about to state as fact
+- "just checking quickly" before moving on
+
+The trigger is the operation. Do not wait for the words "who calls X" or "find references to X" — you will not think in those words most of the time you are doing it.
+
+### These count as violations
+
+```
+rg -n "getFoo\("               # matching a call shape
+rg -n "getFoo\(\)" src/main/java/    # scoped to one tree "just to check"
+rg -ln "extends Foo" src/
+grep -rn "myMethod" .
+```
+
+The scoped form is the most dangerous, because it looks deliberate rather than partial.
+
+### What `rg` actually costs you
+
+- **It searches only the paths you name, so it silently omits everything else — usually the tests.** The result looks complete and is not. A plan built on it can break test files it never mentions.
+- **It matches text, not types.** It cannot tell you a call site's receiver type, so you end up inferring types by eye from surrounding lines — which is the exact judgment the type-aware tool exists to make for you.
+- It counts comments, Javadoc and string literals as calls.
+
+`jet_brains_find_referencing_symbols` searches the whole project and reports the enclosing symbol and kind for each hit.
 
 When spawning a fresh subagent (with `subagent_type`), add this at top of its prompt:
 
