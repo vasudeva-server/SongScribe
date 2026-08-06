@@ -59,7 +59,7 @@ import static org.mockito.Mockito.times;
  * {@code extractLyricsTitle}, {@code validateLineWidthText},
  * {@code canonicalKeySelectionFrom}, and {@code applyMusicTabChanges}.
  *
- * <p>Row 19: {@link SongSettingsDialog.KeyCellRenderer#SELECTIONS} — 15
+ * <p>Row 19: {@link SongSettingsKeyCellRenderer#SELECTIONS} — 15
  * entries in canonical order — is fully covered below.
  *
  * <p>The title field's empty-value guard (a {@link songscribe.ui.component.NonEmptyGuard}
@@ -499,7 +499,7 @@ class SongSettingsDialogTest extends UnitTest {
          */
         @Test
         void testDayDisabledWhenYearInvalid() {
-            assertThat(SongSettingsDialog.DateInputRow.dayEnabled(false, 6))
+            assertThat(SongSettingsDateInputRow.dayEnabled(false, 6))
                 .as("day disabled when year is invalid")
                 .isFalse();
         }
@@ -510,7 +510,7 @@ class SongSettingsDialogTest extends UnitTest {
          */
         @Test
         void testDayDisabledWhenMonthIsZero() {
-            assertThat(SongSettingsDialog.DateInputRow.dayEnabled(true, 0))
+            assertThat(SongSettingsDateInputRow.dayEnabled(true, 0))
                 .as("day disabled when month is 0")
                 .isFalse();
         }
@@ -520,7 +520,7 @@ class SongSettingsDialogTest extends UnitTest {
          */
         @Test
         void testDayEnabledWhenYearValidAndMonthSelected() {
-            assertThat(SongSettingsDialog.DateInputRow.dayEnabled(true, 6))
+            assertThat(SongSettingsDateInputRow.dayEnabled(true, 6))
                 .as("day enabled when year valid and month selected")
                 .isTrue();
         }
@@ -530,7 +530,7 @@ class SongSettingsDialogTest extends UnitTest {
          */
         @Test
         void testDayDisabledWhenBothYearInvalidAndMonthZero() {
-            assertThat(SongSettingsDialog.DateInputRow.dayEnabled(false, 0))
+            assertThat(SongSettingsDateInputRow.dayEnabled(false, 0))
                 .as("day disabled when year invalid and month 0")
                 .isFalse();
         }
@@ -546,14 +546,14 @@ class SongSettingsDialogTest extends UnitTest {
 
         @Test
         void testSelectionsHasExactly15Entries() {
-            assertThat(SongSettingsDialog.KeyCellRenderer.SELECTIONS)
+            assertThat(SongSettingsKeyCellRenderer.SELECTIONS)
                 .as("1 no-accidentals + 7 flats + 7 sharps = 15 entries")
                 .hasSize(EXPECTED_SELECTION_COUNT);
         }
 
         @Test
         void testFirstEntryIsNoAccidentals() {
-            var first = SongSettingsDialog.KeyCellRenderer.SELECTIONS.getFirst();
+            var first = SongSettingsKeyCellRenderer.SELECTIONS.getFirst();
 
             assertThat(first.keyType())
                 .as("first entry has FLATS type (canonical no-accidentals)")
@@ -566,7 +566,7 @@ class SongSettingsDialogTest extends UnitTest {
         @Test
         void testFlatEntriesAreInOrderAfterNoAccidentals() {
             // Entries 1–7 must be FLATS with counts 1..7 in ascending order.
-            var selections = SongSettingsDialog.KeyCellRenderer.SELECTIONS;
+            var selections = SongSettingsKeyCellRenderer.SELECTIONS;
 
             for (var i = 1; i <= MAX_ACCIDENTALS; i++) {
                 var sel = selections.get(i);
@@ -582,7 +582,7 @@ class SongSettingsDialogTest extends UnitTest {
         @Test
         void testSharpEntriesAreInOrderAfterFlats() {
             // Entries 8–14 must be SHARPS with counts 1..7 in ascending order.
-            var selections = SongSettingsDialog.KeyCellRenderer.SELECTIONS;
+            var selections = SongSettingsKeyCellRenderer.SELECTIONS;
             var sharpStart = MAX_ACCIDENTALS + 1;
 
             for (var i = 0; i < MAX_ACCIDENTALS; i++) {
