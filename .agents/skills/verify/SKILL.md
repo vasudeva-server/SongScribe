@@ -6,12 +6,10 @@ disable-model-invocation: true
 
 ## Do not use the generic `/verify` skill for SongScribe
 
-Per `.agents/rules/development.md`, never invoke the `/run` or `/verify`
-skill in this project — via the Skill tool or otherwise — even if it appears
-to match the task. This project has no headless/browser automation surface
-(SongScribe is a native macOS Swing desktop app), so `/verify`'s
-drive-and-screenshot flow cannot be carried out here and should not be
-attempted.
+This project has no headless/browser automation surface (SongScribe is a
+native macOS Swing desktop app), so `/verify`'s drive-and-screenshot flow
+cannot be carried out here and should not be attempted — see
+`.agents/rules/development.md`.
 
 See `.agents/skills/run/SKILL.md` for how to launch the app.
 

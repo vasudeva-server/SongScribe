@@ -8,11 +8,8 @@ disable-model-invocation: true
 
 SongScribe is a native Swing desktop app (not a CLI, server, TUI, Electron,
 or browser-driven app), so the generic `/run` skill's discovery/launch
-patterns do not apply and should not be attempted.
-
-Per `.agents/rules/development.md`, never invoke the `/run` or `/verify`
-skill in this project — via the Skill tool or otherwise — even if it appears
-to match the task. Use the plain scripts below directly via Bash instead.
+patterns do not apply and should not be attempted. Use the plain scripts
+below directly via Bash instead — see `.agents/rules/development.md`.
 
 ## Launching the app
 

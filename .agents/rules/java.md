@@ -125,3 +125,26 @@ private static int lastMouseScreenXPx = 0;
 private static @Nullable Consumer<? super String> publicationErrorProbe = null;
 private static boolean overflowWarningShown = false;
 ```
+
+## Javadoc References to Constants
+
+Never write a named constant's raw literal value in a Javadoc comment — the doc silently rots the moment the constant changes.
+
+Prefer `{@value}`, which inlines the real value at render time, so the reader still sees the number without it being duplicated in the source:
+
+- Same class: `{@value #MAX_ZOOM_PERCENT}`
+- Another class: `{@value ViewScale#MAX_ZOOM_PERCENT}`
+
+Use `{@link ClassName#CONSTANT_NAME}` when the prose refers to the constant *as a thing* rather than quoting its value ("clamped by {@link ViewScale#MAX_ZOOM_PERCENT}"), or when `{@value}` is not legal.
+
+`{@value}` only works on a *constant variable* — `static final` of a primitive or `String` type, initialized with a compile-time constant expression. It does not work on `static final Color`, `Dimension`, arrays, enums, or anything computed at runtime; those must use `{@link}`.
+
+Exception: illustrating an example calculation/formula, where literals are needed to show the math — reference the constant elsewhere in the same doc if possible.
+
+## Spelling
+
+Use the American spelling "center" (and its variants: "centered", "centering") in comments and identifiers, not the British spelling "centre" and its variants.
+
+## Generated Files
+
+Never edit files in `build/generated-sources/`.

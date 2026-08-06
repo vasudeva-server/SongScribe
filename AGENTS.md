@@ -28,7 +28,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 
 ### Required Reading by Task
 
-**MANDATORY:** If a task touches anything involving any of the areas below — even tangentially — read the linked guide first. Default to reading: a defensive read of a short guide is far cheaper than scanning the codebase to infer patterns, and inferred patterns are often wrong because the conventions are not always visible at the call site. Do not rely on prior knowledge; these subsystems have project-specific conventions that override language and framework defaults.
+**MANDATORY:** If a task touches any area below — even tangentially — read the linked guide first; these subsystems have project-specific conventions that override language and framework defaults.
 
 - **User-facing strings** (new, changed, moved, or referenced): [Strings](.agents/guides/strings.md).
 - **Lyrics or verses** — syllables, hyphen chains, melismas, the lyric editor, or anything indexed by verse: [Lyrics and Verses](.agents/guides/lyrics.md).
@@ -43,10 +43,5 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **File-based logging**: [Logging](.agents/guides/logging.md). If the user says, "check the log", read this guide to know where to look.
 - **Nullability** — `@Nullable`, `@NullMarked`, NullAway suppressions, deferred-init fields, `requireXxx()` accessors, or reacting to an unexpected null: [Null Handling](.agents/guides/null-handling.md).
 - **Creating a new singleton class**: [Singletons](.agents/guides/singletons.md).
-- **Third-party API documentation lookup**: [Context7](.agents/guides/context7.md) — use context7 rather than web search.
 - **SMuFL glyph names, codepoints, or ranges**: look up at `https://w3c.github.io/smufl/latest/index.html?search=<search terms>`.
 - **LilyPond source**: If the user mentions LilyPond source, it is found at ~/Developer/projects/lilypond/lily/.
-
-The guides above trigger on *what a task touches*. One guide triggers on *how hard a task is*, independent of subsystem, iff the current model is NOT fable:
-
-- **Before any ambiguous, multi-phase, or irreversible task** — design work, migrations, debugging with no obvious cause, or anything touching deletes, pushes, or external systems — read [Fable Reasoning Manual](.agents/guides/fable-reasoning-manual.md) first. It is procedure, not philosophy: request decomposition, risk localization, verification by re-derivation, and a pre-send checklist. Skip it for routine, single-step, reversible work.
