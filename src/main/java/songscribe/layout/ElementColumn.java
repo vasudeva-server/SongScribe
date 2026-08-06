@@ -33,7 +33,6 @@ import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.engraving.Staff;
-import songscribe.layout.LayoutResult.TieLayout.OpenSide;
 
 /**
  * The fundamental horizontal spacing unit in the engraving system.

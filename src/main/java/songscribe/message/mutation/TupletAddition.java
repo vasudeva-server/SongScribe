@@ -21,16 +21,22 @@
 package songscribe.message.mutation;
 
 import songscribe.dom.Line;
+import songscribe.dom.Span;
 import songscribe.dom.Tuplet;
 
 /**
  * Mutation recording the addition of a tuplet span to a line.
  */
 public record TupletAddition(Line line, Tuplet tuplet)
-    implements Mutation, LineScopedMutation {
+    implements Mutation, LineScopedMutation, SpanMutation {
 
     @Override
     public Line getLine() {
         return line;
+    }
+
+    @Override
+    public Span getSpan() {
+        return tuplet;
     }
 }

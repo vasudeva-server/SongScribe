@@ -21,16 +21,22 @@
 package songscribe.message.mutation;
 
 import songscribe.dom.Line;
+import songscribe.dom.Span;
 import songscribe.dom.Tie;
 
 /**
  * Mutation recording the removal of a tie span from a line.
  */
 public record TieRemoval(Line line, Tie tie)
-    implements Mutation, LineScopedMutation {
+    implements Mutation, LineScopedMutation, SpanMutation {
 
     @Override
     public Line getLine() {
         return line;
+    }
+
+    @Override
+    public Span getSpan() {
+        return tie;
     }
 }

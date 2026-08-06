@@ -782,5 +782,59 @@ class SpanLookupTest extends UnitTest {
                     .isEqualTo(new SpanBound.At(1))
             );
         }
+
+        @Test
+        void testEndpointsMoreThanOneLineApartResolveToAbsentRatherThanADirection() {
+            // Built non-adjacent rather than pulled apart afterwards: the removal sweep only
+            // runs on a line insertion or deletion, so nothing has ever checked the tie a
+            // reader hands over. The MusicXML reader holds one pending tie start for a whole
+            // part, so a file whose <tied> start and stop are separated by a complete line
+            // produces exactly this. Read as a direction, each line would draw half an arc
+            // running off its edge toward a line of unrelated music.
+            var lineC = new Line(crossSong);
+
+            crossSong.withoutMutationTracking(() -> {
+                crossSong.addLine(lineC);
+
+                for (var i = 0; i < LINE_NOTE_COUNT; i++) {
+                    lineC.addElement(new StaffElement(ElementType.CROTCHET));
+                }
+            });
+
+            // A note of line A that the adjacent tie built by setUp does not touch, so the
+            // coverage assertions below can only be answered by the skipping tie.
+            var skippingAnchorElement = lineA.getElement(0);
+            var farEndElement = lineC.getElement(0);
+            var skippingTie = new Tie(skippingAnchorElement, farEndElement);
+            crossSong.withoutMutationTracking(() -> lineA.addTie(skippingTie));
+
+            assertAll(
+                // Precondition: both lines hold it, so both would otherwise draw their half.
+                () -> assertThat(lineA.getSpans())
+                    .as("the anchor's line holds the skipping tie")
+                    .contains(skippingTie),
+                () -> assertThat(lineC.getSpans())
+                    .as("the end's line holds the same skipping tie")
+                    .contains(skippingTie),
+
+                () -> assertThat(lineA.endIndexOf(skippingTie))
+                    .as("an endpoint two lines away is not off this line's right edge")
+                    .isEqualTo(SpanBound.ABSENT),
+                () -> assertThat(lineC.anchorIndexOf(skippingTie))
+                    .as("an endpoint two lines back is not off this line's left edge")
+                    .isEqualTo(SpanBound.ABSENT),
+                () -> assertThat(lineA.findTieAt(lineA.getElementIndex(skippingAnchorElement)))
+                    .as("neither half covers anything, so neither is drawn")
+                    .isNull(),
+                () -> assertThat(lineC.findTieAt(lineC.getElementIndex(farEndElement)))
+                    .as("neither half covers anything, so neither is drawn")
+                    .isNull(),
+
+                // The adjacent tie built by setUp shares line A and must keep its direction.
+                () -> assertThat(lineA.endIndexOf(crossTie))
+                    .as("the genuinely adjacent tie still exits through line A's right edge")
+                    .isEqualTo(SpanBound.AFTER_LINE)
+            );
+        }
     }
 }

@@ -402,12 +402,7 @@ public final class PitchShifter {
             return;
         }
 
-        for (var tie : elementLine.findTies()) {
-            //noinspection ObjectEquality
-            if (tie.getAnchorElement() != element && tie.getEndElement() != element) {
-                continue;
-            }
-
+        for (var tie : elementLine.findTiesTouching(element)) {
             queueTieSpan(tie, pending);
         }
     }

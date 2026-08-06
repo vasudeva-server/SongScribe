@@ -36,15 +36,23 @@ import songscribe.dom.Tie;
 import songscribe.hit.HitTarget;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.OpenSide;
 import songscribe.ui.action.Actions;
-import songscribe.ui.action.UIAction;
 
 /**
  * The whole-application gate for a tie whose two notes sit in different lines (issue #493,
  * phase 13 task 4). Every rule this exercises is already unit-tested in isolation; what only
- * the real Swing pipeline can show is that the wiring between those rules holds — a click
- * reaching the enable predicate, the toggle reaching both lines' span lists, the mutation
- * reaching a repaint that lays out both halves, and undo putting both halves back.
+ * the real Swing pipeline can show is that the wiring between those rules holds.
+ *
+ * <p>Deliberately four tests, one per piece of wiring that has no unit-level equivalent: real
+ * clicks reaching the enable predicate, a real repaint laying out a half on each line, real
+ * hit geometry resolving a click on either half to the same tie, and a line-header click
+ * deleting a line the tie reaches into. What each of those does to the <em>model</em> — the
+ * toggle, the insertion and deletion sweeps, the pitch-shift group — is covered by
+ * {@code CrossLineTieToggleTest}, {@code TieInvalidationTest},
+ * {@code CrossLineTieDeletionTest}, {@code CrossLineTieLineStructureTest} and
+ * {@code NoteDragHandlerTest.CrossLineTieDrag}, which prove the same rules in milliseconds.
+ * Restating them here buys nothing and costs an approval-gated run, so please do not.
  *
  * <p>The failure being guarded against is a <b>half-tie</b>: one line holding a tie the other
  * has dropped, which draws as an arc running off the edge to nothing. Every assertion here
@@ -88,15 +96,6 @@ class CrossLineTieTest extends E2ETest {
     /** Staff position of both endpoint notes (G4) in the fixture. */
     private static final int BOUNDARY_STAFF_POSITION = 2;
 
-    /** Where the endpoints are dragged to, to prove the partner note follows across the break. */
-    private static final int SHIFTED_STAFF_POSITION = 0;
-
-    /** Staff position for the note inserted between the endpoints; any pitch will do. */
-    private static final int INSERTED_NOTE_STAFF_POSITION = 4;
-
-    /** {@code Actions.BARLINE_ACTIONS} is {double, single}. */
-    private static final int SINGLE_BARLINE_ACTION_INDEX = 1;
-
     /**
      * Half the header width, in staff spaces, is inside the region
      * {@code HitRegionBuilder.addStaffLine} registers for a whole-line selection — the only
@@ -106,9 +105,9 @@ class CrossLineTieTest extends E2ETest {
 
     /**
      * The two notes the tie joins, captured when it is created. Assertions compare against
-     * these rather than against a fixed index: inserting at the head of the end line shifts
-     * the end note along without changing which notes the tie joins, and which notes it joins
-     * is the thing being asserted.
+     * these rather than against a fixed index, because which notes the tie joins is the thing
+     * being asserted and an edit can move either of them to a different index without
+     * changing that.
      */
     private @Nullable StaffElement tiedAnchor = null;
     private @Nullable StaffElement tiedEnd = null;
@@ -154,30 +153,6 @@ class CrossLineTieTest extends E2ETest {
     }
 
     @Test
-    void testTogglingFromTheAnchorLineCreatesOneTieHeldByBothLines() {
-        createTieFrom(ANCHOR_LINE, ANCHOR_INDEX);
-
-        assertOneTieHeldByBothLines("toggled from the anchor line");
-    }
-
-    @Test
-    void testTogglingFromTheEndLineCreatesTheSameCrossLineTie() {
-        createTieFrom(END_LINE, END_INDEX);
-
-        assertOneTieHeldByBothLines("toggled from the end line");
-    }
-
-    @Test
-    void testTogglingASecondTimeRemovesTheTieFromBothLines() {
-        createTieFrom(ANCHOR_LINE, ANCHOR_INDEX);
-
-        triggerAction(Actions.TOGGLE_TIE_ACTION);
-        layOutBothLines();
-
-        assertNoTieOnEitherLine("toggled off");
-    }
-
-    @Test
     void testBothLinesLayOutTheirOwnHalfOfTheArc() {
         createTieFrom(ANCHOR_LINE, ANCHOR_INDEX);
 
@@ -191,10 +166,10 @@ class CrossLineTieTest extends E2ETest {
         assertAll(
             () -> assertThat(anchorHalf.openSide())
                 .as("the anchor line's half runs off its right edge")
-                .isEqualTo(LayoutResult.TieLayout.OpenSide.END),
+                .isEqualTo(OpenSide.END),
             () -> assertThat(endHalf.openSide())
                 .as("the end line's half enters from its left edge")
-                .isEqualTo(LayoutResult.TieLayout.OpenSide.START)
+                .isEqualTo(OpenSide.START)
         );
     }
 
@@ -212,61 +187,6 @@ class CrossLineTieTest extends E2ETest {
 
         clickAt(tieHalfClickPoint(END_LINE, tie));
         assertBothHalvesReportSelected(tie, "clicked the end line's half");
-    }
-
-    // -- Editing between the endpoints --
-
-    @Test
-    void testInsertingANoteBetweenTheEndpointsRemovesTheTieFromBothLines() {
-        createTieFrom(ANCHOR_LINE, ANCHOR_INDEX);
-        insertBeforeTheEndNote(Actions.QUARTER_NOTE_ACTION, INSERTED_NOTE_STAFF_POSITION);
-
-        assertNoTieOnEitherLine("a note inserted between the endpoints");
-
-        undo();
-
-        assertOneTieHeldByBothLines("undo of the inserted note");
-    }
-
-    @Test
-    void testInsertingABarlineBetweenTheEndpointsKeepsTheTieInBothLines() {
-        createTieFrom(ANCHOR_LINE, ANCHOR_INDEX);
-        insertBeforeTheEndNote(
-            Actions.BARLINE_ACTIONS[SINGLE_BARLINE_ACTION_INDEX], BOUNDARY_STAFF_POSITION);
-
-        // A barline is a legal separator: it may sit between two tied notes without breaking
-        // the tie, cross-line or not.
-        assertOneTieHeldByBothLines("a barline inserted between the endpoints");
-    }
-
-    // -- Deleting an endpoint --
-
-    @Test
-    void testDeletingTheAnchorNoteRemovesTheTieFromBothLines() {
-        createTieFrom(ANCHOR_LINE, ANCHOR_INDEX);
-        deleteElement(ANCHOR_LINE, ANCHOR_INDEX);
-
-        assertThat(song().getLine(ANCHOR_LINE).elementCount())
-            .as("the anchor note was deleted").isEqualTo(ANCHOR_LINE_ELEMENT_COUNT - 1);
-        assertNoTieOnEitherLine("the anchor note deleted");
-
-        undo();
-
-        assertOneTieHeldByBothLines("undo of the deleted anchor note");
-    }
-
-    @Test
-    void testDeletingTheEndNoteRemovesTheTieFromBothLines() {
-        createTieFrom(ANCHOR_LINE, ANCHOR_INDEX);
-        deleteElement(END_LINE, END_INDEX);
-
-        assertThat(song().getLine(END_LINE).elementCount())
-            .as("the end note was deleted").isEqualTo(END_LINE_ELEMENT_COUNT - 1);
-        assertNoTieOnEitherLine("the end note deleted");
-
-        undo();
-
-        assertOneTieHeldByBothLines("undo of the deleted end note");
     }
 
     // -- Deleting a whole line --
@@ -295,36 +215,6 @@ class CrossLineTieTest extends E2ETest {
 
         assertThat(song().lineCount()).as("undo restored the end line").isEqualTo(2);
         assertOneTieHeldByBothLines("undo of the deleted end line");
-    }
-
-    // -- Pitch shift across the break --
-
-    @Test
-    void testDraggingEitherEndpointMovesItsPartnerInTheOtherLine() {
-        createTieFrom(ANCHOR_LINE, ANCHOR_INDEX);
-
-        enterSelectMode();
-        clickAt(noteScreenPosition(ANCHOR_LINE, ANCHOR_INDEX));
-        dragNote(ANCHOR_LINE, ANCHOR_INDEX, SHIFTED_STAFF_POSITION);
-        layOutBothLines();
-
-        assertAll(
-            () -> assertThat(anchorNote().getStaffPosition())
-                .as("the dragged anchor moved").isEqualTo(SHIFTED_STAFF_POSITION),
-            () -> assertThat(endNote().getStaffPosition())
-                .as("the end note in the other line followed").isEqualTo(SHIFTED_STAFF_POSITION)
-        );
-
-        undo();
-        layOutBothLines();
-
-        assertAll(
-            () -> assertThat(anchorNote().getStaffPosition())
-                .as("undo restored the anchor").isEqualTo(BOUNDARY_STAFF_POSITION),
-            () -> assertThat(endNote().getStaffPosition())
-                .as("undo restored the end note too").isEqualTo(BOUNDARY_STAFF_POSITION)
-        );
-        assertOneTieHeldByBothLines("undo of the pitch shift");
     }
 
     // -- Model helpers --
@@ -371,38 +261,6 @@ class CrossLineTieTest extends E2ETest {
             () -> assertThat(tiedEnd).as("the new tie's end is the end line's first note")
                 .isSameAs(endNote())
         );
-    }
-
-    /**
-     * Inserts an element of the given type immediately before the tie's end note, which is
-     * between the two tied notes in document order.
-     * <p>
-     * The head of the end line rather than the tail of the anchor line, because the anchor
-     * line is full — which is the only reason the tie reaches the next line at all. There is
-     * no room past its last note to click. Appending to a full line is covered at the model
-     * level by {@code TieInvalidationTest}, where no click has to land anywhere.
-     */
-    private void insertBeforeTheEndNote(UIAction elementTypeAction, int staffPositionSp) {
-        var countBefore = song().getLine(END_LINE).elementCount();
-
-        enterEditMode();
-        selectDuration(elementTypeAction);
-        clickAt(insertionPointBefore(END_LINE, END_INDEX, staffPositionSp));
-        layOutBothLines();
-
-        assertThat(song().getLine(END_LINE).elementCount())
-            .as("the element was inserted at the head of the end line")
-            .isEqualTo(countBefore + 1);
-        assertThat(song().getLine(END_LINE).getElement(END_INDEX))
-            .as("it landed before the end note, not after it")
-            .isNotSameAs(tiedEnd);
-    }
-
-    private void deleteElement(int lineIndex, int index) {
-        enterSelectMode();
-        clickAt(noteScreenPosition(lineIndex, index));
-        robot.pressAndReleaseKey(KeyEvent.VK_DELETE);
-        layOutBothLines();
     }
 
     private void undo() {
@@ -533,15 +391,6 @@ class CrossLineTieTest extends E2ETest {
                 .as("%s: anchor element", label).isSameAs(tiedAnchor),
             () -> assertThat(tie.getEndElement())
                 .as("%s: end element", label).isSameAs(tiedEnd)
-        );
-    }
-
-    private void assertNoTieOnEitherLine(String label) {
-        assertAll(
-            () -> assertThat(song().getLine(ANCHOR_LINE).findTies())
-                .as("%s: anchor line must not keep half a tie", label).isEmpty(),
-            () -> assertThat(song().getLine(END_LINE).findTies())
-                .as("%s: end line must not keep half a tie", label).isEmpty()
         );
     }
 

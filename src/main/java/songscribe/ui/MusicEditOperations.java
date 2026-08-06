@@ -281,9 +281,10 @@ public final class MusicEditOperations {
      * {@code Span.exactly}/{@code findExactTie} can never match a cross-line half — only an
      * {@code At} bound can equal a queried index, and a cross-line half's far bound is always
      * {@link SpanBound#BEFORE_LINE} or {@link SpanBound#AFTER_LINE} — so add-versus-remove is
-     * decided by identity against the two real endpoints instead. That also keeps this from
-     * ever mistaking a same-line tie that merely ends on the boundary note (a chained tie) for
-     * the boundary tie itself: such a tie's elements never equal {@code boundaryTie}'s.
+     * decided by {@link Line#findTieBetween}, which matches the two real endpoints by identity
+     * instead. That also keeps this from ever mistaking a same-line tie that merely ends on
+     * the boundary note (a chained tie) for the boundary tie itself: such a tie's elements
+     * never equal {@code boundaryTie}'s.
      */
     private void toggleBoundaryTie(Line line, int index) {
         var boundaryTie = RangeQueries.boundaryTieAt(line, index);
@@ -292,14 +293,7 @@ public final class MusicEditOperations {
             return;
         }
 
-        Tie existingTie = null;
-
-        for (var tie : line.findTies()) {
-            if (tie.getAnchorElement() == boundaryTie.anchor() && tie.getEndElement() == boundaryTie.end()) {
-                existingTie = tie;
-                break;
-            }
-        }
+        var existingTie = line.findTieBetween(boundaryTie.anchor(), boundaryTie.end());
 
         if (existingTie == null) {
             line.addTie(new Tie(boundaryTie.anchor(), boundaryTie.end()));

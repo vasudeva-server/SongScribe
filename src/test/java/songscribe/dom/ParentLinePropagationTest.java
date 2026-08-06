@@ -318,8 +318,12 @@ class ParentLinePropagationTest extends UnitTest {
             assertThat(tie.getParentLine()).isNull();
             assertThat(tie.isIn(line)).isTrue();
             assertThat(tie.isIn(line2)).isFalse();
-            assertThat(line.getSpans()).contains(tie);
-            assertThat(line2.getSpans()).contains(tie);
+
+            // containsOnlyOnce, not contains: line2's add names line as the tie's other line
+            // — both endpoints are there — so line would gain a second copy of a tie it
+            // already holds, and a single removal could never take it back out.
+            assertThat(line.getSpans()).containsOnlyOnce(tie);
+            assertThat(line2.getSpans()).containsOnlyOnce(tie);
         }
     }
 

@@ -22,6 +22,7 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import net.engio.mbassy.listener.Handler;
@@ -51,19 +52,7 @@ import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.MetadataChange;
-import songscribe.message.mutation.BeamingAddition;
-import songscribe.message.mutation.BeamingRemoval;
-import songscribe.message.mutation.CrescendoAddition;
-import songscribe.message.mutation.CrescendoRemoval;
-import songscribe.message.mutation.DiminuendoAddition;
-import songscribe.message.mutation.DiminuendoRemoval;
-import songscribe.message.mutation.Mutation;
-import songscribe.message.mutation.SpanAddition;
-import songscribe.message.mutation.SpanRemoval;
-import songscribe.message.mutation.TieAddition;
-import songscribe.message.mutation.TieRemoval;
-import songscribe.message.mutation.TupletAddition;
-import songscribe.message.mutation.TupletRemoval;
+import songscribe.message.mutation.SpanMutation;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
@@ -430,12 +419,19 @@ public final class ScoreViewController {
         } else if (hasLineLayoutMutation(message)) {
             var staffPanel = mainPanel.getStaffPanel();
             var targetLine = message.getLine();
+            var spans = mutatedSpans(message);
 
             for (var linePanel : staffPanel.getLinePanels()) {
                 var line = linePanel.getLine();
 
-                if (targetLine == null || line == targetLine || spanMutationReaches(message, line)) {
+                if (targetLine == null || line == targetLine || spanReaches(spans, line)) {
                     linePanel.getLineComponent().invalidateLayout();
+
+                    // With no span in the notification the named line is the only one that can
+                    // match, so the panels after it have nothing left to be checked against.
+                    if (targetLine != null && spans.isEmpty()) {
+                        break;
+                    }
                 }
             }
         }
@@ -450,8 +446,39 @@ public final class ScoreViewController {
     }
 
     /**
-     * Returns whether any span this notification's mutations name has an endpoint in
-     * {@code line}, making {@code line} one of the lines that draws it.
+     * Every span this notification's mutations name, in the order the mutations were
+     * recorded, or an empty list when none of them names one.
+     * <p>
+     * Collected once for the whole panel loop rather than re-derived per panel: the loop runs
+     * over every line on screen, and a single paste bundles dozens of mutations. An empty
+     * result is also what lets that loop stop at the line the notification names.
+     * <p>
+     * Every mutation carrying a span answers, not only the tie ones, so the answer matches
+     * the question {@link #spanReaches} asks. Only a tie can straddle a line boundary today,
+     * which is what makes the others no-ops rather than optional: a beam, tuplet or hairpin
+     * resolves to the one line it is in, and {@link Span#isIn} then reports that line alone —
+     * the same line the mutation already named. Including them costs nothing and means a span
+     * type that later gains a second line is drawn on both.
+     */
+    private static List<Span> mutatedSpans(SongDidChangeNotification message) {
+        List<Span> spans = null;
+
+        for (var mutation : message.getMutations()) {
+            if (mutation instanceof SpanMutation spanMutation) {
+                if (spans == null) {
+                    spans = new ArrayList<>();
+                }
+
+                spans.add(spanMutation.getSpan());
+            }
+        }
+
+        return spans == null ? List.of() : spans;
+    }
+
+    /**
+     * Returns whether any of {@code spans} has an endpoint in {@code line}, making
+     * {@code line} one of the lines that draws it.
      * <p>
      * A line-scoped mutation names one line, which for almost every span is the only line
      * whose rendering it changes. A tie whose two notes sit in different lines is the
@@ -465,45 +492,14 @@ public final class ScoreViewController {
      * over spans in general because the question — which lines does this span reach — has the
      * same answer for all of them, not because the others are expected to.
      */
-    private static boolean spanMutationReaches(SongDidChangeNotification message, Line line) {
-        for (var mutation : message.getMutations()) {
-            var span = mutatedSpan(mutation);
-
-            if (span != null && span.isIn(line)) {
+    private static boolean spanReaches(List<Span> spans, Line line) {
+        for (var span : spans) {
+            if (span.isIn(line)) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    /**
-     * The span {@code mutation} names, or null when it names none.
-     * <p>
-     * Every mutation that carries a span is listed, not only the tie ones, so the answer
-     * matches the question {@link #spanMutationReaches} asks. Only a tie can straddle a line
-     * boundary today, which is what makes the others no-ops rather than optional: a beam,
-     * tuplet or hairpin resolves to the one line it is in, and {@link Span#isIn} then reports
-     * that line alone — the same line the mutation already named. Listing them costs nothing
-     * and means a span type that later gains a second line is drawn on both without this
-     * method being the thing that quietly refused to notice.
-     */
-    private static @Nullable Span mutatedSpan(Mutation mutation) {
-        return switch (mutation) {
-            case TieAddition(var _, var tie) -> tie;
-            case TieRemoval(var _, var tie) -> tie;
-            case BeamingAddition(var _, var beam) -> beam;
-            case BeamingRemoval(var _, var beam) -> beam;
-            case TupletAddition(var _, var tuplet) -> tuplet;
-            case TupletRemoval(var _, var tuplet) -> tuplet;
-            case CrescendoAddition(var _, var crescendo) -> crescendo;
-            case CrescendoRemoval(var _, var crescendo) -> crescendo;
-            case DiminuendoAddition(var _, var diminuendo) -> diminuendo;
-            case DiminuendoRemoval(var _, var diminuendo) -> diminuendo;
-            case SpanAddition(var _, var span) -> span;
-            case SpanRemoval(var _, var span) -> span;
-            default -> null;
-        };
     }
 
     /**

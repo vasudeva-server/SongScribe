@@ -21,16 +21,22 @@
 package songscribe.message.mutation;
 
 import songscribe.dom.Line;
+import songscribe.dom.Span;
 import songscribe.dom.Diminuendo;
 
 /**
  * Mutation recording the removal of a diminuendo hairpin from a line.
  */
 public record DiminuendoRemoval(Line line, Diminuendo diminuendo)
-    implements Mutation, LineScopedMutation {
+    implements Mutation, LineScopedMutation, SpanMutation {
 
     @Override
     public Line getLine() {
         return line;
+    }
+
+    @Override
+    public Span getSpan() {
+        return diminuendo;
     }
 }

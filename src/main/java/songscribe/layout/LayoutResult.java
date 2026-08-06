@@ -1445,31 +1445,6 @@ public final class LayoutResult {
         OpenSide openSide) {
 
         /**
-         * Which end of a tie's arc terminates at the staff edge instead of at a notehead.
-         * <p>
-         * A tie whose two notes sit in different lines is laid out once per line, and each line
-         * draws only its own half: the half with the anchor note runs off the right edge, the
-         * half with the end note enters from the left edge. Following LilyPond
-         * ({@code tie-configuration.cc get_untransformed_bezier}), an open half is still a
-         * complete arc over its own width — it rises from the baseline and returns to it at the
-         * open end — so the geometry above describes it in full and nothing downstream has to
-         * reconstruct the missing side. What the open side does say is that this arc's
-         * termination is a staff edge, which is why it is recorded here rather than inferred
-         * from the geometry.
-         */
-        public enum OpenSide {
-
-            /** Both ends meet a notehead in this line: an ordinary, whole tie. */
-            NONE,
-
-            /** The start end runs to this line's left edge; the anchor note is in an earlier line. */
-            START,
-
-            /** The end end runs to this line's right edge; the end note is in a later line. */
-            END
-        }
-
-        /**
          * Creates a whole tie, both of whose ends meet a notehead in the line being laid out.
          *
          * @see OpenSide#NONE

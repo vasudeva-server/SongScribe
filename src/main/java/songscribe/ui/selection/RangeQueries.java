@@ -98,11 +98,21 @@ public final class RangeQueries {
             return null;
         }
 
-        if (!candidate.anchor().getType().isPitchedNote() || !candidate.end().getType().isPitchedNote()) {
-            return null;
-        }
+        return canBeTied(candidate.anchor(), candidate.end()) ? candidate : null;
+    }
 
-        return candidate.anchor().getPitch() == candidate.end().getPitch() ? candidate : null;
+    /**
+     * Returns whether two notes are eligible to be joined by a tie at all: both are pitched
+     * notes, and they share a pitch.
+     * <p>
+     * The only statement of that rule. Both paths that offer a tie ask — {@link #canToggleTie}
+     * for a pair selected within one line, {@link #boundaryTieAt} for a pair straddling a line
+     * break — and a rule written twice is a rule that changes in one place only.
+     */
+    private static boolean canBeTied(StaffElement anchor, StaffElement end) {
+        return anchor.getType().isPitchedNote()
+            && end.getType().isPitchedNote()
+            && anchor.getPitch() == end.getPitch();
     }
 
     /** The element a tie entering {@code line} from the previous line ends on. */
@@ -238,19 +248,12 @@ public final class RangeQueries {
         var line = range.line();
         var begin = range.begin();
         var end = range.end();
-        var beginNote = line.getElement(begin);
-        var endNote = line.getElement(end);
-
-        if (!beginNote.getType().isPitchedNote() || !endNote.getType().isPitchedNote()) {
+        if (!canBeTied(line.getElement(begin), line.getElement(end))) {
             return false;
         }
 
         if (selectionSize == TIE_SELECTION_SIZE_WITH_SEPARATOR
             && !Tie.isLegalSeparator(line.getElement(begin + 1).getType())) {
-            return false;
-        }
-
-        if (beginNote.getPitch() != endNote.getPitch()) {
             return false;
         }
 

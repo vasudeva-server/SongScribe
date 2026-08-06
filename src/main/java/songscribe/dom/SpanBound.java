@@ -122,6 +122,19 @@ public sealed interface SpanBound {
     boolean atOrAfter(int queryIndex);
 
     /**
+     * Whether this bound names element {@code queryIndex} of the asking line exactly. Only an
+     * {@link At} can: a bound off either edge of that line, or with no position at all, names
+     * no element in it and so equals no queried index.
+     * <p>
+     * Being at or before a position and at or after the same one leaves only being at it, so
+     * this is the conjunction of the two predicates above rather than a third case for each
+     * implementation to get right on its own.
+     */
+    default boolean isAt(int queryIndex) {
+        return atOrBefore(queryIndex) && atOrAfter(queryIndex);
+    }
+
+    /**
      * Whether this bound names no position at all, as opposed to a position off one edge of
      * the asking line. Two callers ask. {@link Span#overlapping} must keep reporting a span
      * whose anchor no longer resolves, so the removal sweeps can still find it and clean it

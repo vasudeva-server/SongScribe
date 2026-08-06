@@ -339,13 +339,19 @@ public class Line implements LyricRun, SpanLookup {
      * mutator lambda, so the list write moves with the recorded change. The {@code elements}
      * list has no counterpart because every one of its mutations inserts at an index or
      * replaces in place.
+     * <p>
+     * The other line only gains the span if it is not already holding it. A span whose two
+     * endpoints share a line, added to a <em>different</em> line, names its own line as the
+     * other one and would otherwise land there twice — one copy from wherever it was first
+     * added, one from here — leaving {@link #removeChild}, which takes out a single copy per
+     * list, unable to get rid of it.
      */
     private void appendChild(Span element) {
         spans.add(element);
 
         var otherLine = otherLineOf(element);
 
-        if (otherLine != null) {
+        if (otherLine != null && !otherLine.spans.contains(element)) {
             otherLine.spans.add(element);
         }
     }
@@ -1676,11 +1682,22 @@ public class Line implements LyricRun, SpanLookup {
      * <p>
      * Direction for an endpoint in another line comes from where the two lines actually sit in
      * the song, not from which endpoint is being asked about: an anchor is not necessarily
-     * behind us just because it is the earlier of the pair. {@link Song#removeLine} leaves a
-     * deleted line's elements pointing at it, so an endpoint can name a line the song no
-     * longer holds; that has no earlier-or-later answer and resolves to
-     * {@link SpanBound#ABSENT}, which stops this half drawing rather than sending it off an
-     * edge toward nothing.
+     * behind us just because it is the earlier of the pair.
+     * <p>
+     * Only the two neighbours get a direction. A span reaching further than that describes a
+     * jump nothing can draw — the two halves would run off opposite edges of lines with a
+     * whole line of unrelated music between them, each pointing at nothing — so it resolves
+     * to {@link SpanBound#ABSENT}, which stops this half drawing at all.
+     * {@link Song#removeSpansBetweenNonAdjacentLines} drops such a span when an insertion or
+     * deletion is what broke adjacency, but nothing checks adjacency when a span is created:
+     * the MusicXML reader carries one pending tie start across a whole part, so a file whose
+     * {@code <tied>} start and stop are separated by a complete line produces one. This is the
+     * single place every query, layout, export and render path resolves an endpoint through,
+     * so it is the one place that has to say no.
+     * <p>
+     * {@link Song#removeLine} leaves a deleted line's elements pointing at it, so an endpoint
+     * can also name a line the song no longer holds; that has no position at all and is
+     * likewise {@link SpanBound#ABSENT}.
      * <p>
      * Only a cross-line endpoint pays for the two {@link Song#indexOfLine} scans, and only
      * ties are ever cross-line.
@@ -1704,11 +1721,17 @@ public class Line implements LyricRun, SpanLookup {
         var thisLineIndex = song.indexOfLine(this);
         var endpointLineIndex = song.indexOfLine(endpointLine);
 
+        // Guarded before the distance is taken: a line the song no longer holds reports -1,
+        // which would otherwise sit one away from line 0 and read as an adjacent neighbour.
         if (thisLineIndex < 0 || endpointLineIndex < 0) {
             return SpanBound.ABSENT;
         }
 
-        return endpointLineIndex < thisLineIndex ? SpanBound.BEFORE_LINE : SpanBound.AFTER_LINE;
+        return switch (endpointLineIndex - thisLineIndex) {
+            case -1 -> SpanBound.BEFORE_LINE;
+            case 1 -> SpanBound.AFTER_LINE;
+            default -> SpanBound.ABSENT;
+        };
     }
 
     /**

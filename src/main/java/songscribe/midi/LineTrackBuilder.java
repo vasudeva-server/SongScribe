@@ -25,7 +25,6 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Line;
-import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
@@ -318,8 +317,8 @@ public class LineTrackBuilder {
                 // wrong place, silently. Only an At bound names a position in this line, which
                 // is what suppresses the note-on for a note tied in from the previous line and
                 // the note-off for a note tied out into the next one.
-                var strikesNote = tieSpan == null || isAt(line.anchorIndexOf(tieSpan), elementIndex);
-                var releasesNote = tieSpan == null || isAt(line.endIndexOf(tieSpan), elementIndex);
+                var strikesNote = tieSpan == null || line.anchorIndexOf(tieSpan).isAt(elementIndex);
+                var releasesNote = tieSpan == null || line.endIndexOf(tieSpan).isAt(elementIndex);
 
                 if (strikesNote) {
                     slideHelper.createPendingResets(track, trackTicks, 0);
@@ -351,15 +350,6 @@ public class LineTrackBuilder {
         }
 
         return trackTicks;
-    }
-
-    /**
-     * Returns whether {@code bound} names element {@code elementIndex} of the line that
-     * resolved it. An endpoint off either edge of that line names no element in it, so it
-     * never equals a queried index.
-     */
-    private static boolean isAt(SpanBound bound, int elementIndex) {
-        return bound instanceof SpanBound.At(var index) && index == elementIndex;
     }
 
     /**

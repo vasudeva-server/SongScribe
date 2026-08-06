@@ -45,7 +45,6 @@ import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.layout.ElementColumn.TieColumns;
-import songscribe.layout.LayoutResult.TieLayout.OpenSide;
 import songscribe.layout.stacking.VerticalStackingCalculator;
 import songscribe.shape.BezierBow;
 import songscribe.util.LogUtils;

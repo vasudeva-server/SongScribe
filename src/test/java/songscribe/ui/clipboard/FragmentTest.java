@@ -46,7 +46,6 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.dom.Ending;
-import songscribe.dom.Song;
 
 class FragmentTest extends UnitTest {
 
@@ -436,47 +435,12 @@ class FragmentTest extends UnitTest {
         }
     }
 
-    // -----------------------------------------------------------------------
-    // A paste landing at a line boundary needs no Fragment-level special
-    // case: it reaches a pre-existing cross-line tie through the ordinary
-    // insertion rule, like any other insertion between two tied notes
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class PasteAcrossLineBoundary {
-
-        @Test
-        void testPastingRightAfterTheAnchorOfACrossLineTieRemovesIt() {
-            var song = new Song();
-            var firstLine = song.getLine(0);
-            var secondLine = new Line(song);
-            var anchorNote = crotchet();
-            var endNote = crotchet();
-            var crossLineTie = new Tie(anchorNote, endNote);
-
-            song.withoutMutationTracking(() -> {
-                firstLine.addElement(anchorNote);
-                song.addLine(secondLine);
-                secondLine.addElement(endNote);
-                firstLine.addTie(crossLineTie);
-            });
-
-            assertThat(firstLine.getSpans()).containsOnlyOnce(crossLineTie);
-            assertThat(secondLine.getSpans()).containsOnlyOnce(crossLineTie);
-
-            // A small, independent fragment to paste — plain content, no spans of its own.
-            var pasted = Fragment.capture(lineWith(ElementType.CROTCHET), 0, 0).instantiate();
-
-            // Landing right after the anchor, the only element firstLine has, lands between
-            // the tie's two notes exactly like an insertion in the middle of a same-line tie.
-            song.withModification(
-                () -> firstLine.addElement(firstLine.elementCount(), pasted.elements().getFirst()));
-
-            assertThat(firstLine.getSpans()).doesNotContain(crossLineTie);
-            assertThat(secondLine.getSpans()).doesNotContain(crossLineTie);
-        }
-    }
+    // A paste landing at a line boundary needs no Fragment-level special case, so nothing
+    // about it is tested here. It reaches a pre-existing cross-line tie through the ordinary
+    // insertion rule, and the whole path — reconciliation declining to judge the tie, then
+    // the insertion sweep dropping it — is driven through a real paste by
+    // ScoreViewControllerTest.TryInsertFragment
+    // .testPastingAtTheEndOfALineRemovesTheCrossLineTieItLandsInside.
 
     // -----------------------------------------------------------------------
     // Boundary normalization

@@ -35,6 +35,7 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.ui.MusicEditOperations;
+import songscribe.undo.UndoTestSupport;
 
 /**
  * Unit tests for the cross-line tie toggle (#493): enabling the tie command when a single
@@ -287,5 +288,62 @@ class CrossLineTieToggleTest extends UnitTest {
             .as("tie removed from the first line").isNull();
         assertThat(fixture.secondLine().findTieAt(SECOND_LINE_BOUNDARY_INDEX))
             .as("tie removed from the second line").isNull();
+    }
+
+    @Test
+    void testUndoAndRedoOfAToggledCrossLineTieKeepBothLinesInStep() {
+        // The toggle path, not Line.addTie: a single selected element goes through
+        // MusicEditOperations.toggleBoundaryTie, which is where the mutation this replays is
+        // recorded. A defect recording it against one line only leaves the far line holding
+        // the tie after an undo, and holding it twice after the redo — neither of which the
+        // forward-only assertions above can see.
+        var fixture = twoLineFixture(
+            createNote(STAFF_POSITION_B, true), createNote(STAFF_POSITION_B, true));
+        var song = fixture.song();
+        var firstLine = fixture.firstLine();
+        var secondLine = fixture.secondLine();
+
+        selectSingle(fixture.coordinator(), firstLine, FIRST_LINE_BOUNDARY_INDEX);
+
+        var batch = UndoTestSupport.captureBatch(song, () -> fixture.operations().toggleTie());
+        var tie = firstLine.findTieAt(FIRST_LINE_BOUNDARY_INDEX);
+
+        assertThat(tie).as("the toggle created the tie").isNotNull();
+        assertThat(secondLine.getSpans()).as("and put it in the far line too").containsOnlyOnce(tie);
+
+        var scoreView = UndoTestSupport.scoreViewFor(song);
+
+        UndoTestSupport.replayUndo(scoreView, batch);
+        assertThat(firstLine.getSpans()).as("undo takes it out of the anchor's line").doesNotContain(tie);
+        assertThat(secondLine.getSpans()).as("undo takes it out of the end's line too").doesNotContain(tie);
+
+        UndoTestSupport.replayRedo(scoreView, batch);
+        assertThat(firstLine.getSpans()).as("redo puts back exactly one copy").containsOnlyOnce(tie);
+        assertThat(secondLine.getSpans()).as("redo puts back exactly one copy").containsOnlyOnce(tie);
+    }
+
+    @Test
+    void testUndoOfARemovedCrossLineTieRestoresItIntoBothLines() {
+        var fixture = twoLineFixture(
+            createNote(STAFF_POSITION_B, true), createNote(STAFF_POSITION_B, true));
+        var song = fixture.song();
+        var firstLine = fixture.firstLine();
+        var secondLine = fixture.secondLine();
+
+        selectSingle(fixture.coordinator(), firstLine, FIRST_LINE_BOUNDARY_INDEX);
+        song.withoutMutationTracking(() -> fixture.operations().toggleTie());
+
+        var tie = firstLine.findTieAt(FIRST_LINE_BOUNDARY_INDEX);
+        assertThat(tie).as("precondition: the tie the second toggle will remove").isNotNull();
+
+        var batch = UndoTestSupport.captureBatch(song, () -> fixture.operations().toggleTie());
+
+        assertThat(firstLine.getSpans()).as("the second toggle removed it").doesNotContain(tie);
+        assertThat(secondLine.getSpans()).as("from both lines").doesNotContain(tie);
+
+        UndoTestSupport.replayUndo(UndoTestSupport.scoreViewFor(song), batch);
+
+        assertThat(firstLine.getSpans()).as("undo restores exactly one copy").containsOnlyOnce(tie);
+        assertThat(secondLine.getSpans()).as("undo restores exactly one copy").containsOnlyOnce(tie);
     }
 }

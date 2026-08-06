@@ -177,8 +177,8 @@ class CrossLineTieLayoutTest extends UnitTest {
         var anchorHalf = tieLayoutFor(fixture.firstLine(), fixture.tie());
         var endHalf = tieLayoutFor(fixture.secondLine(), fixture.tie());
 
-        assertThat(anchorHalf.openSide()).isEqualTo(LayoutResult.TieLayout.OpenSide.END);
-        assertThat(endHalf.openSide()).isEqualTo(LayoutResult.TieLayout.OpenSide.START);
+        assertThat(anchorHalf.openSide()).isEqualTo(OpenSide.END);
+        assertThat(endHalf.openSide()).isEqualTo(OpenSide.START);
 
         // slur_shape's control points put both ends of every half back on the baseline —
         // (0,0)...(w,0) in LilyPond's own coordinates — so the open end meets the staff edge

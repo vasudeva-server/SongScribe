@@ -33,9 +33,13 @@ import songscribe.dom.Tie;
 
 /**
  * Round-trip tests for a tie whose anchor and end sit in different lines
- * (issue #493, phase 12). {@link MusicXmlNotationsWriter} already writes
- * ties as per-note {@code <tied>} markers rather than an index pair, so the
- * write side needs no cross-line-specific handling. The read side collapses
+ * (issue #493, phase 12). {@link MusicXmlNotationsWriter} writes ties as
+ * per-note {@code <tied>} markers rather than an index pair, so it emits
+ * whatever the per-note marker table hands it; the cross-line handling on
+ * the write side is one step earlier, where {@code MusicXmlSpanIndex} buckets
+ * each endpoint into that table only if it resolves to a position in the line
+ * being written. Both lines hold a cross-line tie, so without that a single
+ * tie would emit a start and a stop in each of them. The read side collapses
  * a pending {@code <tied type="start">} with the next matching
  * {@code type="stop"} via {@link RangeSpanResolver#resolveTie}, then hands
  * the built {@link Tie} to {@code Line.addTie}, which reaches

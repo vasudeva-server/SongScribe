@@ -31,8 +31,13 @@ import org.jspecify.annotations.Nullable;
  * <p>
  * An implementor supplies only the spans to query and how each span's endpoints resolve to
  * positions; {@link #findSpans(Class, Span.IndexPredicate)}, {@link #findFirstSpan(Class,
- * Span.IndexPredicate)}, and {@link #findSpans(Class)} are the only methods here that iterate,
- * and every typed query below delegates to one of them with a {@link Span.IndexPredicate}.
+ * Span.IndexPredicate)}, and {@link #findSpans(Class)} are the only methods here that iterate
+ * over positions, and every typed query stated in terms of an index delegates to one of them
+ * with a {@link Span.IndexPredicate}.
+ * <p>
+ * {@link #findTiesTouching} is the one exception, and iterates itself: it matches on the
+ * endpoint elements rather than on where they resolve to, which is the only question a
+ * cross-line tie can answer about itself in both of its lines (#493).
  */
 public interface SpanLookup {
 
@@ -60,7 +65,7 @@ public interface SpanLookup {
      */
     SpanBound endIndexOf(Span span);
 
-    // --- the only three methods that iterate --------------------------------
+    // --- the only three methods that iterate over positions -----------------
 
     /**
      * Returns every span of {@code type} whose resolved endpoint indices satisfy {@code matches}.
@@ -173,6 +178,49 @@ public interface SpanLookup {
      */
     default @Nullable Tie findExactTie(int anchorIndex, int endIndex) {
         return findFirstSpan(Tie.class, Span.exactly(anchorIndex, endIndex));
+    }
+
+    /**
+     * Returns the {@link Tie} whose two endpoints are exactly the elements {@code anchor} and
+     * {@code end}, or {@code null} if there is none.
+     * <p>
+     * The identity counterpart of {@link #findExactTie}, and the only way to ask for a
+     * cross-line tie: that tie's far bound is a direction rather than a position, so it can
+     * never equal a queried index and no index predicate can name it (#493). Identity also
+     * keeps a chained tie that merely ends on one of the two notes from being mistaken for
+     * this one, which is what {@code findExactTie} uses both indices for.
+     */
+    default @Nullable Tie findTieBetween(StaffElement anchor, StaffElement end) {
+        for (var tie : findTiesTouching(anchor)) {
+            //noinspection ObjectEquality
+            if (tie.getEndElement() == end) {
+                return tie;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Returns every {@link Tie} in this lookup that has {@code element} as one of its two
+     * endpoint elements, in the order the ties were added.
+     * <p>
+     * The one method here that matches on endpoint elements rather than on resolved indices,
+     * so it is the one that iterates without going through the three above — see
+     * {@link #findTieBetween} for why an index predicate cannot answer this.
+     */
+    default List<Tie> findTiesTouching(StaffElement element) {
+        var result = new ArrayList<Tie>();
+
+        for (var span : getSpans()) {
+            //noinspection ObjectEquality
+            if (span instanceof Tie tie
+                && (tie.getAnchorElement() == element || tie.getEndElement() == element)) {
+                result.add(tie);
+            }
+        }
+
+        return result;
     }
 
     /**

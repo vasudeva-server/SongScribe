@@ -573,11 +573,13 @@ class NoteDragHandlerTest extends UnitTest {
     /**
      * Dragging one endpoint of a tie that crosses a line break pulls the partner note in the
      * adjacent line into the drag group, so the group holds an index that only means something
-     * in a line the drag handler is not attached to. Every step of the release has to resolve
-     * each entry against its own line — indexing them all into the dragged line reads past the
-     * end of the shorter one — and every line the drag moved a note on has to be re-laid out,
-     * because a line's tie geometry lives in its cached layout: repaint alone redraws the note
-     * head at its new pitch with the tie still curving to where it used to be.
+     * in a line the drag handler is not attached to. Every step of the release resolves each
+     * entry against the line that entry names, and every line the drag moved a note on is
+     * re-laid out, because a line's tie geometry lives in its cached layout: repaint alone
+     * redraws the note head at its new pitch with the tie still curving to where it used to be.
+     * <p>
+     * The fixture is built to make a regression from the first of those loud rather than
+     * subtle — see {@link #FIRST_LINE_NOTE_COUNT}.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -588,8 +590,9 @@ class NoteDragHandlerTest extends UnitTest {
 
         /**
          * The first line is deliberately longer than the second, so the tie anchor's index in it
-         * is past the end of the second line's element list. That is what turns "resolved against
-         * the wrong line" from a silently wrong note into an out-of-bounds read.
+         * is past the end of the second line's element list. Nothing indexes an entry into the
+         * wrong line today; the point of the mismatch is that if anything ever starts to, it
+         * reads out of bounds and fails outright instead of quietly moving the wrong note.
          */
         private static final int FIRST_LINE_NOTE_COUNT = 4;
 

@@ -2425,11 +2425,12 @@ class ScoreViewControllerTest extends UnitTest {
 
         @Test
         void testSongDidChangeInvalidatesBothLinesWhenARemovedTieStraddledThem() {
-            // The mirror case, and the reason the far line is found through the tie's endpoint
-            // elements rather than through Span.isIn: by the time this notification is handled
-            // the removal has already taken the tie out of both lines' span lists, so asking
-            // either line whether it holds the tie answers no. The endpoints still name their
-            // lines.
+            // The mirror case, and the reason the far line is found through Span.isIn — which
+            // derives parentage from where the endpoint elements sit — rather than by asking
+            // each line whether its span list holds the tie, the way SelectionCoordinator
+            // .isOnLine does. By the time this notification is handled the removal has already
+            // taken the tie out of both lists, so the list answers no for both lines. The
+            // endpoints still name their lines.
             var tie = new Tie(targetLine.getElement(1), otherLine.getElement(0));
             controller.songDidChange(
                 new SongDidChangeNotification(List.of(new TieRemoval(targetLine, tie)), new Song())
@@ -3419,6 +3420,64 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(destinationHairpin.getEndElementIndex())
                 .as("the surviving hairpin now covers the pasted notes too")
                 .isEqualTo(4);
+        }
+
+        @Test
+        void testPastingAtTheEndOfALineRemovesTheCrossLineTieItLandsInside() {
+            // The handoff between the two halves of the cross-line paste contract, which are
+            // covered separately and nowhere together: PasteSpanReconciliation declines to
+            // judge a tie whose endpoints are not both in the destination line, and the sweep
+            // inside Line.addElement is what actually resolves it against the receiving line
+            // and drops it. Appending past the last element is how something lands between a
+            // cross-line tie's two notes at all (#493), so if either half stopped doing its
+            // part the tie would survive a paste that came between the notes it joins.
+            var song = wideSong();
+            var firstLine = song.getLine(0);
+            var secondLine = new Line(song);
+            var anchorNote = ElementType.CROTCHET.newInstance();
+            var endNote = ElementType.CROTCHET.newInstance();
+            var crossLineTie = new Tie(anchorNote, endNote);
+
+            song.withoutMutationTracking(() -> {
+                firstLine.addElement(anchorNote);
+                song.addLine(secondLine);
+                secondLine.addElement(endNote);
+                firstLine.addTie(crossLineTie);
+            });
+
+            assertThat(firstLine.getSpans())
+                .as("precondition: the anchor's line holds the tie")
+                .containsOnlyOnce(crossLineTie);
+            assertThat(secondLine.getSpans())
+                .as("precondition: the end's line holds the same tie")
+                .containsOnlyOnce(crossLineTie);
+
+            // Captured from its own song so the fragment carries nothing of the destination.
+            var sourceSong = wideSong();
+            var sourceLine = sourceSong.getLine(0);
+            sourceSong.withoutMutationTracking(
+                () -> sourceLine.addElement(ElementType.CROTCHET.newInstance()));
+
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(Fragment.capture(sourceLine, 0, 0));
+            var controller = buildController(song, clipboardManager);
+            var elementCountBeforePaste = firstLine.elementCount();
+
+            var outcome = song.withModificationResult(
+                () -> controller.tryInsertFragment(firstLine, elementCountBeforePaste, null));
+
+            assertThat(outcome)
+                .as("the paste itself went through")
+                .isEqualTo(ScoreViewController.FragmentInsertOutcome.INSERTED);
+            assertThat(firstLine.elementCount())
+                .as("the pasted note landed after the tie's anchor")
+                .isEqualTo(elementCountBeforePaste + 1);
+            assertThat(firstLine.getSpans())
+                .as("the tie is gone from the anchor's line")
+                .doesNotContain(crossLineTie);
+            assertThat(secondLine.getSpans())
+                .as("and from the end's line with it")
+                .doesNotContain(crossLineTie);
         }
 
         @Test
