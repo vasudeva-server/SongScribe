@@ -4,14 +4,23 @@ GitHub repo: `vasudeva-server/SongScribe`
 
 ### Non-obvious Packages
 
+Every top-level package under `songscribe/` has a `package-info.java` describing its role — read that before inferring a package's purpose from its name.
+
 - smufl/ — SMuFL glyph registry: codepoints, names, and font-metric lookups
 - io/ — `io/musicxml/` (`MusicXmlWriter`/`MusicXmlReader`) is the **current** storage mechanism; `SongIO` and the other legacy-format classes in `io/` are **legacy read-only** (migration of old files). Never add new persisted fields to the legacy path — they go in the MusicXML writer/reader.
+- dom/ — the document model (`Song`, `Line`, elements), not a DOM/XML tree
+- layout/ vs engraving/ — `layout/` computes positions and spacing; `engraving/` holds staff geometry and engraving constants
+- converter/ vs uiconverter/ — `converter/` is the headless batch converter; `uiconverter/` is its Swing front end
 
 ### Key Entry Points
 
 - `SongScribe.java` — application bootstrap (`main()`)
 - `ui/component/MainFrame.java` — main window (singleton)
-- `music/Song.java` — the document model
+- `dom/Song.java` — the document model
+
+### Design Docs
+
+`docs/*.md` holds subsystem design notes (`undo.md`, `clipboard.md`, `line-layout.md`, `tie-rendering-placement.md`, and others). Guides in `.agents/guides/` tell you the conventions to follow; `docs/` explains why a subsystem is built the way it is. Check for a matching doc before a non-trivial change to one of these areas.
 
 ### Spawning Fresh Subagents
 
@@ -32,6 +41,7 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **User preferences** (`Prefs`, `PrefsKey`, `defaults.json`, `PrefsDidChangeNotification`): [Preferences](.agents/guides/prefs.md).
 - **Custom UI constants** (`FlatLafProps`, `FlatLafKeys`, `FlatLaf.properties`): [FlatLaf Properties](.agents/guides/flatlaf-props.md).
 - **File-based logging**: [Logging](.agents/guides/logging.md). If the user says, "check the log", read this guide to know where to look.
+- **Nullability** — `@Nullable`, `@NullMarked`, NullAway suppressions, deferred-init fields, `requireXxx()` accessors, or reacting to an unexpected null: [Null Handling](.agents/guides/null-handling.md).
 - **Creating a new singleton class**: [Singletons](.agents/guides/singletons.md).
 - **Third-party API documentation lookup**: [Context7](.agents/guides/context7.md) — use context7 rather than web search.
 - **SMuFL glyph names, codepoints, or ranges**: look up at `https://w3c.github.io/smufl/latest/index.html?search=<search terms>`.

@@ -8,9 +8,10 @@ Feature branches are based on `develop`, not `main`. Before any operation that r
 
 ## Null Handling
 
-- Never use `Objects.requireNonNull` / `Objects.requireNonNullElse`.
-- Optional value with fallback → null guard + early return / default.
-- Annotate nullable fields, parameters, and returns with `@Nullable`. Do not use `Optional`.
+The codebase is `@NullMarked` and NullAway runs in the build. Read
+[null-handling.md](../guides/null-handling.md) before writing or changing any
+nullability annotation, suppression, or null check — the bullets you remember
+are not the whole rule set.
 
 ## Development Scripts
 
