@@ -46,6 +46,7 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.dom.Ending;
+import songscribe.dom.Song;
 
 class FragmentTest extends UnitTest {
 
@@ -357,6 +358,123 @@ class FragmentTest extends UnitTest {
 
             assertThat(fragment.elements()).hasSize(2);
             assertThat(fragment.spans()).isEmpty();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // A tie is dropped when the range holds only one of its two notes —
+    // the same rule every other span type follows. The copy still succeeds
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TieClippedByRange {
+
+        @Test
+        void testCaptureRangeContainingBothEndpointsOfATieCopiesIt() {
+            var line = detachedLine();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            line.addElement(noteA);
+            line.addElement(noteB);
+            line.addSpan(new Tie(noteA, noteB));
+
+            var fragment = Fragment.capture(line, 0, 1);
+
+            assertThat(fragment.spans()).hasSize(1);
+        }
+
+        @Test
+        void testCaptureRangeClippingATieCopiesTheSelectedElementsAndUpdatesTheClipboard() {
+            // [A, B, C] — Tie(B, C): only B is inside the captured range [0, 1]. A tie is a
+            // relationship between two specific notes, so with one of them outside there is
+            // nothing to attach the far end to and the tie is dropped — exactly as every
+            // other span type is dropped in this shape. The copy itself must still succeed:
+            // the user selected A and B, so they get A and B.
+            var line = detachedLine();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            var noteC = crotchet();
+            line.addElement(noteA);
+            line.addElement(noteB);
+            line.addElement(noteC);
+            line.addSpan(new Tie(noteB, noteC));
+
+            var baseline = Fragment.capture(lineWith(ElementType.CROTCHET), 0, 0);
+            var clipboardManager = new ClipboardManager();
+            clipboardManager.setFragment(baseline);
+
+            // The same call shape ScoreViewController.handleCopy makes.
+            var fragment = Fragment.capture(line, 0, 1);
+            clipboardManager.setFragment(fragment);
+
+            assertThat(fragment.elements()).hasSize(2);
+            assertThat(fragment.spans()).as("a clipped tie is dropped, not copied").isEmpty();
+            assertThat(clipboardManager.getFragment())
+                .as("clipping a tie must not stop the copy from reaching the clipboard")
+                .isSameAs(fragment);
+        }
+
+        @Test
+        void testCaptureRangeContainingNeitherEndpointOfATieDropsIt() {
+            // [A, B, C, D] — Tie(A, D): capturing [1, 2] excludes both endpoints.
+            var line = detachedLine();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            var noteC = crotchet();
+            var noteD = crotchet();
+            line.addElement(noteA);
+            line.addElement(noteB);
+            line.addElement(noteC);
+            line.addElement(noteD);
+            line.addSpan(new Tie(noteA, noteD));
+
+            var fragment = Fragment.capture(line, 1, 2);
+
+            assertThat(fragment.elements()).hasSize(2);
+            assertThat(fragment.spans()).isEmpty();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // A paste landing at a line boundary needs no Fragment-level special
+    // case: it reaches a pre-existing cross-line tie through the ordinary
+    // insertion rule, like any other insertion between two tied notes
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class PasteAcrossLineBoundary {
+
+        @Test
+        void testPastingRightAfterTheAnchorOfACrossLineTieRemovesIt() {
+            var song = new Song();
+            var firstLine = song.getLine(0);
+            var secondLine = new Line(song);
+            var anchorNote = crotchet();
+            var endNote = crotchet();
+            var crossLineTie = new Tie(anchorNote, endNote);
+
+            song.withoutMutationTracking(() -> {
+                firstLine.addElement(anchorNote);
+                song.addLine(secondLine);
+                secondLine.addElement(endNote);
+                firstLine.addTie(crossLineTie);
+            });
+
+            assertThat(firstLine.getSpans()).containsOnlyOnce(crossLineTie);
+            assertThat(secondLine.getSpans()).containsOnlyOnce(crossLineTie);
+
+            // A small, independent fragment to paste — plain content, no spans of its own.
+            var pasted = Fragment.capture(lineWith(ElementType.CROTCHET), 0, 0).instantiate();
+
+            // Landing right after the anchor, the only element firstLine has, lands between
+            // the tie's two notes exactly like an insertion in the middle of a same-line tie.
+            song.withModification(
+                () -> firstLine.addElement(firstLine.elementCount(), pasted.elements().getFirst()));
+
+            assertThat(firstLine.getSpans()).doesNotContain(crossLineTie);
+            assertThat(secondLine.getSpans()).doesNotContain(crossLineTie);
         }
     }
 

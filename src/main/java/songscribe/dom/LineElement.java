@@ -49,7 +49,7 @@ public abstract class LineElement {
      * the authoritative answer to "is this element live in the document?"; no membership
      * scan is needed to decide.
      * <p>
-     * Three kinds of element reach this field, the first two the same way:
+     * Two kinds of element reach this field; a {@link Span} never does:
      * <pre>
      *                          Line
      *                           │
@@ -58,11 +58,11 @@ public abstract class LineElement {
      *     │                                            │
      *     ▼                                            ▼
      *   StaffElement                                Span  (tie, beam, tuplet,
-     *     parentLine ◄── Line.attach / Line.detach     parentLine      hairpin, ending, trill)
-     *     │              ONLY writer  ── structural       ▲
-     *     │                                               │
-     *     │  children (List&lt;LineElement&gt;)                 └── Line.attach / Line.detach
-     *     ▼                                                    ONLY writer ── structural
+     *     parentLine ◄── Line.attach / Line.detach     parentLine stays null
+     *     │              ONLY writer  ── structural     for its whole life;
+     *     │                                            Span.isIn(Line) derives
+     *     │  children (List&lt;LineElement&gt;)              parentage from its endpoints
+     *     ▼
      *   Articulation, FermataAttachment, …
      *     parentLine ◄── LineElement.addChild /
      *                    removeChild, and
@@ -70,11 +70,17 @@ public abstract class LineElement {
      *                    when the host attaches
      *                    or detaches
      * </pre>
-     * For elements in either of Line's two lists the invariant is
-     * {@code parentLine == L ⟺ that list of L contains this}, holding at
+     * For an element in Line's {@code elements} list the invariant is
+     * {@code parentLine == L ⟺ L.elements contains this}, holding at
      * modification-bracket boundaries. Inside a bracket a re-parent may briefly have
      * attached to B while A's list still holds the element; {@code Line.detach}'s
      * {@code != this} guard is what makes that ordering-independent.
+     * <p>
+     * A span has no such two-way tie. It is never attached, so a cross-line span can be
+     * in two lines at once, and the derived invariant is one-directional:
+     * {@code span.isIn(L)} ⟹ {@code L.spans} contains the span. The converse does not
+     * hold — a span whose endpoints are both detached is in no line yet remains in the
+     * list it was added to.
      */
     private @Nullable Line parentLine;
 
@@ -159,8 +165,8 @@ public abstract class LineElement {
     }
 
     /**
-     * Sets the Line that contains this element. For elements in either of Line's two
-     * lists the only callers are {@code Line.attach} and {@code Line.detach}; calling it
+     * Sets the Line that contains this element. For an element in Line's {@code elements}
+     * list the only callers are {@code Line.attach} and {@code Line.detach}; calling it
      * elsewhere breaks the invariant documented on {@link #parentLine}. Package-private
      * so the compiler enforces that, rather than leaving it to a reader of this comment.
      */

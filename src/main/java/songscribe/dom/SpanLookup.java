@@ -40,23 +40,25 @@ public interface SpanLookup {
     List<Span> getSpans();
 
     /**
-     * The anchor element's position <i>in this lookup's own line</i>, or -1 when the anchor is
-     * unset or belongs to another line.
+     * Where the anchor element sits <i>relative to this lookup's own line</i>: an
+     * {@link SpanBound.At} when the anchor is in this line, otherwise which side of this line
+     * it fell off, or {@link SpanBound#ABSENT} when it has no position at all.
      * <p>
      * Every query below resolves endpoints through this method and {@link #endIndexOf}, never
      * through {@link Span#getAnchorElementIndex()}, which answers from whichever line the
-     * endpoint currently belongs to. The difference shows while a span is transiently
-     * cross-line — during a paste or a line split an endpoint may already have been reparented
-     * — and -1 is the answer a lookup asked about its own line owes its callers, since a
-     * position in some other line is indistinguishable from a real one.
+     * endpoint itself belongs to. The receiver has to decide because a position in some other
+     * line is indistinguishable from a real one: a tie whose anchor sits at index 7 of the
+     * previous line would otherwise report "7" to this line and be read as covering this
+     * line's element 7. Only the line being asked knows that the answer is "off my left edge",
+     * and only that answer lets it draw and query its own half of the span.
      */
-    int anchorIndexOf(Span span);
+    SpanBound anchorIndexOf(Span span);
 
     /**
-     * The end element's position <i>in this lookup's own line</i>, or -1 when the end is unset
-     * or belongs to another line. See {@link #anchorIndexOf} for why the receiver decides.
+     * Where the end element sits relative to this lookup's own line. See
+     * {@link #anchorIndexOf} for why the receiver decides.
      */
-    int endIndexOf(Span span);
+    SpanBound endIndexOf(Span span);
 
     // --- the only three methods that iterate --------------------------------
 

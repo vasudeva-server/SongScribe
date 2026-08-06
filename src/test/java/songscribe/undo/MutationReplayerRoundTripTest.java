@@ -944,46 +944,50 @@ class MutationReplayerRoundTripTest extends UnitTest {
         }
 
         @Test
-        void testUndoOfSpanAdditionDetachesAndRedoReattaches() {
-            // Spans ride the same attach/detach chokepoint as staff elements, but the
-            // round-trip tests above compare serialized MusicXML, which never records
-            // parentLine — so only an identity assertion can catch a replay that puts a
-            // span back in the list without attaching it.
+        void testUndoOfSpanAdditionRemovesItFromTheLineAndRedoPutsItBack() {
+            // A span carries no parentLine of its own: Span.isIn derives parentage from
+            // its endpoints, and membership of the line's span list is the rest of the
+            // truth. The round-trip tests above compare serialized MusicXML, which records
+            // neither — so only these assertions catch a replay that leaves the span out
+            // of the list, or puts it back twice.
             var song = songWithNotes(2);
             var line = song.getLine(0);
             var tie = new Tie(line.getElement(0), line.getElement(1));
 
             var batch = UndoTestSupport.captureBatch(song, () -> line.addTie(tie));
-            assertThat(tie.getParentLine()).isSameAs(line);
+            assertThat(tie.isIn(line)).isTrue();
+            assertThat(line.getSpans()).containsOnlyOnce(tie);
 
             var scoreView = UndoTestSupport.scoreViewFor(song);
 
             UndoTestSupport.replayUndo(scoreView, batch);
-            assertThat(tie.getParentLine()).isNull();
+            assertThat(line.getSpans()).doesNotContain(tie);
 
             UndoTestSupport.replayRedo(scoreView, batch);
-            assertThat(tie.getParentLine()).isSameAs(line);
+            assertThat(tie.isIn(line)).isTrue();
+            assertThat(line.getSpans()).containsOnlyOnce(tie);
         }
 
         @Test
-        void testUndoOfSpanRemovalReattachesAndRedoDetaches() {
-            // Beams take the merge path on the way to attach, so they exercise a
-            // different route into the chokepoint than the tie above.
+        void testUndoOfSpanRemovalPutsItBackInTheLineAndRedoTakesItOut() {
+            // Beams take the merge path on the way in, so they exercise a different route
+            // into appendChild/removeChild than the tie above.
             var song = songWithNotes(2);
             var line = song.getLine(0);
             var beam = new Beam(line.getElement(0), line.getElement(1));
             song.withoutMutationTracking(() -> line.addBeaming(beam));
 
             var batch = UndoTestSupport.captureBatch(song, () -> line.removeBeaming(beam));
-            assertThat(beam.getParentLine()).isNull();
+            assertThat(line.getSpans()).doesNotContain(beam);
 
             var scoreView = UndoTestSupport.scoreViewFor(song);
 
             UndoTestSupport.replayUndo(scoreView, batch);
-            assertThat(beam.getParentLine()).isSameAs(line);
+            assertThat(beam.isIn(line)).isTrue();
+            assertThat(line.getSpans()).containsOnlyOnce(beam);
 
             UndoTestSupport.replayRedo(scoreView, batch);
-            assertThat(beam.getParentLine()).isNull();
+            assertThat(line.getSpans()).doesNotContain(beam);
         }
 
         @Test

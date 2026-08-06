@@ -24,6 +24,7 @@ import module java.desktop;
 
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -71,6 +72,17 @@ class NoteDragHandler {
 
     /** All notes (plus tie-chain expansions) that move together during drag. */
     private final List<PitchShifter.PitchShiftEntry> dragGroup = new ArrayList<>();
+
+    /**
+     * The components of the lines other than this one that the drag group reaches, resolved
+     * once at press. Non-empty only for a group formed across a cross-line tie.
+     * <p>
+     * Resolved at press rather than per drag event because the group is fixed for the whole
+     * gesture, while {@code handleDrag} runs on every mouse movement that changes the pitch.
+     * Each entry appears once however many of the group's notes sit on it, so one line is not
+     * invalidated repeatedly.
+     */
+    private final List<LineComponent> foreignLineComponents = new ArrayList<>();
 
     NoteDragHandler(LineComponent lc) {
         this.lc = lc;
@@ -174,6 +186,7 @@ class NoteDragHandler {
         // reconcileVacatedPositions.
         dragGroup.clear();
         dragGroup.addAll(PitchShifter.buildPitchShiftGroup(line, dragBegin, dragEnd));
+        resolveForeignLineComponents();
 
         // Save state for possible revert on a press+release without drag
         dragElementIndex = hitIndex;
@@ -227,8 +240,52 @@ class NoteDragHandler {
 
         lastPlayedStaffPositionSp = originalDragStaffPositionSp + clampedDelta;
 
-        lc.invalidateLayout();
+        invalidateDraggedLines();
         dragMoved = true;
+    }
+
+    /**
+     * Marks every line this drag moved a note on as needing a fresh layout.
+     * <p>
+     * A group formed across a cross-line tie moves the partner note in the adjacent line too,
+     * and that line's tie geometry lives in its own cached {@code LayoutResult}. Repainting it
+     * is not enough: the note head is redrawn at its new staff position while the tie is drawn
+     * from the stale cached curve, leaving the tie pointing at where the note used to be. Only
+     * the layout being recomputed puts the two back together.
+     */
+    private void invalidateDraggedLines() {
+        lc.invalidateLayout();
+
+        for (var lineComponent : foreignLineComponents) {
+            lineComponent.invalidateLayout();
+        }
+    }
+
+    /**
+     * Resolves {@link #foreignLineComponents} for the group this press just built. Called once
+     * per press; see that field for why it is not done per drag event.
+     */
+    private void resolveForeignLineComponents() {
+        foreignLineComponents.clear();
+
+        var ownLine = lc.getLine();
+        var scoreView = lc.getScoreView();
+        var seen = new LinkedHashSet<Line>();
+
+        for (var entry : dragGroup) {
+            var entryLine = entry.line();
+
+            //noinspection ObjectEquality
+            if (entryLine == ownLine || !seen.add(entryLine)) {
+                continue;
+            }
+
+            var lineComponent = scoreView.getLineComponent(entryLine.getSong().indexOfLine(entryLine));
+
+            if (lineComponent != null) {
+                foreignLineComponents.add(lineComponent);
+            }
+        }
     }
 
     /**
@@ -260,7 +317,7 @@ class NoteDragHandler {
             var decision = PitchShifter.confirmRestatements(lc, dragLine, dragGroup);
 
             if (decision.isCancelled()) {
-                revertDrag(dragLine);
+                revertDrag();
             } else {
                 // The pitch mutations were already applied during handleDrag, so
                 // commitPitchShift records each PITCH/ACCIDENTAL ElementModification with the
@@ -280,6 +337,7 @@ class NoteDragHandler {
         dragElementIndex = -1;
         dragLine = null;
         dragGroup.clear();
+        foreignLineComponents.clear();
 
         PreviewElementManager.restorePreviewElement(lc);
     }
@@ -291,13 +349,16 @@ class NoteDragHandler {
      * leaving no undo step behind and no modified flag set.
      *
      * <p>This is the only path on which a release does not commit.
+     *
+     * <p>Each entry is restored through its own line: a group formed across a cross-line tie
+     * holds an entry whose index only means something in the adjacent line.
      */
-    private void revertDrag(Line line) {
+    private void revertDrag() {
         for (var entry : dragGroup) {
-            line.getElement(entry.index()).copyStateFrom(entry.beforeClone());
+            entry.line().getElement(entry.index()).copyStateFrom(entry.beforeClone());
         }
 
-        lc.invalidateLayout();
+        invalidateDraggedLines();
         lc.repaint();
     }
 
@@ -315,6 +376,13 @@ class NoteDragHandler {
      * back onto the line, the reconciliation reads the pre-drag line it needs, and the final
      * state is put back. Running this per mouse step instead would be both wrong (the second step
      * would read the first step's result as its "before") and pointless work.
+     * <p>
+     * Scoped to the entries that sit on {@code line}, because the reconciliation reads and
+     * indexes into that one line: a group formed across a cross-line tie also holds an entry
+     * whose index is an index into the adjacent line, and means nothing here. The partner note
+     * still moves and still gives up its own accidental — it is only the "which later notes were
+     * leaning on the accidental this vacates" search that stops at the line boundary, exactly as
+     * {@link PitchShifter#confirmRestatements} does.
      *
      * @param line       The dragged line, in its post-drag state
      * @param finalDelta The staff positions the group moved by, in total
@@ -325,10 +393,11 @@ class NoteDragHandler {
     private List<AccidentalReconciliation.AccidentalChange> reconcileVacatedPositions(
         Line line, int finalDelta, AccidentalRestatements.Decision decision) {
 
-        var changes = PitchShifter.intendedChanges(dragGroup, finalDelta);
-        var afterClones = new ArrayList<StaffElement>(dragGroup.size());
+        var entriesOnLine = PitchShifter.entriesOnLine(dragGroup, line);
+        var changes = PitchShifter.intendedChanges(dragGroup, line, finalDelta);
+        var afterClones = new ArrayList<StaffElement>(entriesOnLine.size());
 
-        for (var entry : dragGroup) {
+        for (var entry : entriesOnLine) {
             var note = line.getElement(entry.index());
             afterClones.add(note.clone());
             note.copyStateFrom(entry.beforeClone());
@@ -340,8 +409,8 @@ class NoteDragHandler {
         try {
             return AccidentalReconciliation.reconcileModification(line, changes, decision.removal());
         } finally {
-            for (var i = 0; i < dragGroup.size(); i++) {
-                line.getElement(dragGroup.get(i).index()).copyStateFrom(afterClones.get(i));
+            for (var i = 0; i < entriesOnLine.size(); i++) {
+                line.getElement(entriesOnLine.get(i).index()).copyStateFrom(afterClones.get(i));
             }
         }
     }

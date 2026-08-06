@@ -31,6 +31,7 @@ import java.util.function.BiFunction;
 import java.util.stream.Stream;
 
 import org.jspecify.annotations.Nullable;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -107,6 +108,21 @@ class PasteSpanReconciliationTest extends UnitTest {
         return List.of(crotchet(), crotchet());
     }
 
+    /**
+     * Reconciles a paste of two ordinary notes carrying {@code spans} — what every test says
+     * unless it names the elements itself. Only the tie rule reads the pasted elements, and
+     * only to ask whether they are separators a tie may cross; two notes are not.
+     */
+    private static PasteSpanReconciliation reconcileNotePaste(
+        Line line,
+        int insertIndex,
+        InsertionSpacingCalculator.@Nullable DeletedRange deleteRange,
+        List<Span> spans
+    ) {
+        return PasteSpanReconciliation.reconcile(
+            line, insertIndex, deleteRange, fragmentNotes(), spans);
+    }
+
     // -----------------------------------------------------------------------
     // Straddled target spans — pure insertion
     // -----------------------------------------------------------------------
@@ -125,7 +141,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
                 TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentTuplet));
 
             assertThat(result.targetSpansToRemove()).containsExactly(tuplet);
@@ -143,7 +159,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = fragmentNotes();
             var fragmentBeam = new Beam(notes.get(0), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentBeam));
 
             assertThat(result.targetSpansToRemove()).containsExactly(beam);
@@ -159,13 +175,67 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = fragmentNotes();
             var fragmentTie = new Tie(notes.get(0), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentTie));
 
             assertThat(result.targetSpansToRemove()).containsExactly(tie);
             assertThat(result.fragmentSpans())
                 .as("the fragment's tie still binds the fragment's own notes")
                 .containsExactly(fragmentTie);
+        }
+
+        /**
+         * The straddle rule and the per-clone sweep in {@code Line.addElement} answer the same
+         * question about the same barline landing between the same two tied notes, so they
+         * have to answer it the same way.
+         */
+        @Test
+        void testPastingOnlyABarlineBetweenTiedNotesLeavesTheTieAlone() {
+            var line = sixNoteLine();
+            var tie = new Tie(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
+            line.addSpan(tie);
+
+            assertThat(tie.isInvalidatedByInsertion(INTERIOR_INDEX, ElementType.SINGLE_BARLINE, line))
+                .as("drawing a barline in between the tied notes leaves the tie")
+                .isFalse();
+
+            var result = PasteSpanReconciliation.reconcile(
+                line, INTERIOR_INDEX, null,
+                List.of(ElementType.SINGLE_BARLINE.newInstance()), List.of());
+
+            assertThat(result.targetSpansToRemove())
+                .as("so pasting that same barline must leave it too")
+                .isEmpty();
+        }
+
+        @Test
+        void testPastingANoteAmongSeparatorsBetweenTiedNotesStillRemovesTheTie() {
+            var line = sixNoteLine();
+            var tie = new Tie(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
+            line.addSpan(tie);
+
+            var result = PasteSpanReconciliation.reconcile(
+                line, INTERIOR_INDEX, null,
+                List.of(ElementType.SINGLE_BARLINE.newInstance(), crotchet()), List.of());
+
+            assertThat(result.targetSpansToRemove())
+                .as("one sounding note between the tied notes is enough to break the tie")
+                .containsExactly(tie);
+        }
+
+        @Test
+        void testPastingAFinalDoubleBarlineBetweenTiedNotesRemovesTheTie() {
+            var line = sixNoteLine();
+            var tie = new Tie(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
+            line.addSpan(tie);
+
+            var result = PasteSpanReconciliation.reconcile(
+                line, INTERIOR_INDEX, null,
+                List.of(ElementType.FINAL_DOUBLE_BARLINE.newInstance()), List.of());
+
+            assertThat(result.targetSpansToRemove())
+                .as("the one barline a tie may not cross, per Tie.isLegalSeparator")
+                .containsExactly(tie);
         }
 
         @Test
@@ -177,7 +247,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = fragmentNotes();
             var fragmentTrill = new Trill(notes.get(0), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentTrill));
 
             assertThat(result.targetSpansToRemove()).containsExactly(trill);
@@ -193,7 +263,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = fragmentNotes();
             var fragmentHairpin = new Crescendo(notes.get(0), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentHairpin));
 
             assertThat(result.targetSpansToRemove())
@@ -212,7 +282,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var fragmentTuplet = new Tuplet(notes.get(0), notes.get(1), TRIPLET_GRADE,
                 TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentTuplet));
 
             assertThat(result.targetSpansToRemove()).containsExactly(beam);
@@ -241,7 +311,7 @@ class PasteSpanReconciliationTest extends UnitTest {
 
             // Inserting *at* the anchor pushes the whole span right — it still covers
             // exactly its own notes, so nothing is broken.
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, SPAN_ANCHOR_INDEX, null, List.of(fragmentBeam));
 
             assertThat(result.targetSpansToRemove()).isEmpty();
@@ -257,7 +327,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = fragmentNotes();
             var fragmentBeam = new Beam(notes.get(0), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, SPAN_END_INDEX + 1, null, List.of(fragmentBeam));
 
             assertThat(result.targetSpansToRemove()).isEmpty();
@@ -279,7 +349,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var deleteRange =
                 new InsertionSpacingCalculator.DeletedRange(SPAN_ANCHOR_INDEX, SPAN_END_INDEX);
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, SPAN_ANCHOR_INDEX, deleteRange, List.of(fragmentTuplet));
 
             assertThat(result.targetSpansToRemove()).isEmpty();
@@ -301,7 +371,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var deleteRange =
                 new InsertionSpacingCalculator.DeletedRange(INTERIOR_INDEX, INTERIOR_INDEX);
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, deleteRange, List.of(fragmentTuplet));
 
             assertThat(result.targetSpansToRemove()).containsExactly(tuplet);
@@ -320,7 +390,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var deleteRange =
                 new InsertionSpacingCalculator.DeletedRange(SPAN_ANCHOR_INDEX, SPAN_END_INDEX);
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, SPAN_ANCHOR_INDEX, deleteRange, List.of(fragmentHairpin));
 
             assertThat(result.targetSpansToRemove()).isEmpty();
@@ -358,7 +428,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = fragmentNotes();
             var fragmentSpan = spanFactory.apply(notes.get(0), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentSpan));
 
             var destinationSurvives = !result.targetSpansToRemove().contains(destinationSpan);
@@ -514,7 +584,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         var notes = fragmentNotes();
         var fragmentSpan = kind.create(notes.get(0), notes.get(1));
 
-        var result = PasteSpanReconciliation.reconcile(
+        var result = reconcileNotePaste(
             line, placement.insertIndex(), placement.deleteRange(), List.of(fragmentSpan));
 
         var expectedDestinationRemoved = placement.straddles() && kind.destinationRemovedOnStraddle;
@@ -551,7 +621,7 @@ class PasteSpanReconciliationTest extends UnitTest {
                 TRIPLET_NORMAL_NOTES, ElementType.CROTCHET, NO_DOTS);
             var fragmentBeam = new Beam(notes.get(0), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentTuplet, fragmentBeam));
 
             assertThat(result.targetSpansToRemove())
@@ -574,7 +644,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = fragmentNotes();
             var fragmentHairpin = new Diminuendo(notes.get(0), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentHairpin));
 
             assertThat(result.targetSpansToRemove()).containsExactly(destinationHairpin);
@@ -595,7 +665,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var fragmentCrescendo = new Crescendo(notes.get(0), notes.get(0));
             var fragmentDiminuendo = new Diminuendo(notes.get(1), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentCrescendo, fragmentDiminuendo));
 
             assertThat(result.targetSpansToRemove()).containsExactly(destinationHairpin);
@@ -613,7 +683,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = fragmentNotes();
             var fragmentHairpin = new Diminuendo(notes.get(0), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentHairpin));
 
             assertThat(result.targetSpansToRemove()).isEmpty();
@@ -634,7 +704,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var fragmentTie = new Tie(notes.get(0), notes.get(1));
             var fragmentHairpin = new Crescendo(notes.get(0), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of(fragmentBeam, fragmentTie, fragmentHairpin));
 
             assertThat(result.fragmentSpans())
@@ -653,7 +723,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = fragmentNotes();
             var fragmentBeam = new Beam(notes.get(0), notes.get(1));
 
-            var result = PasteSpanReconciliation.reconcile(line, 2, null, List.of(fragmentBeam));
+            var result = reconcileNotePaste(line, 2, null, List.of(fragmentBeam));
 
             assertThat(result.targetSpansToRemove()).isEmpty();
             assertThat(result.fragmentSpans()).containsExactly(fragmentBeam);
@@ -666,11 +736,109 @@ class PasteSpanReconciliationTest extends UnitTest {
                 new Beam(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
             line.addSpan(destinationBeam);
 
-            var result = PasteSpanReconciliation.reconcile(
+            var result = reconcileNotePaste(
                 line, INTERIOR_INDEX, null, List.of());
 
             assertThat(result.targetSpansToRemove()).containsExactly(destinationBeam);
             assertThat(result.fragmentSpans()).isEmpty();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Ties straddling a line boundary
+    // -----------------------------------------------------------------------
+
+    /**
+     * A tie is the only span whose two endpoints can sit in different lines, so it is the only
+     * one the straddle rule can be asked about while holding an index it cannot compare. The
+     * rule declines those and leaves them to the per-clone sweep in {@code Line.addElement}.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class CrossLineTies {
+
+        private static final int FIRST_LINE_NOTE_COUNT = 2;
+
+        /** The tie's anchor: the last note of the first line. */
+        private static final int CROSS_LINE_ANCHOR_INDEX = FIRST_LINE_NOTE_COUNT - 1;
+
+        /** Legal separators heading the second line, so the tie's end is not at index 0. */
+        private static final int SECOND_LINE_SEPARATOR_COUNT = 2;
+
+        /** The tie's end: the first note of the second line, behind those separators. */
+        private static final int CROSS_LINE_END_INDEX = SECOND_LINE_SEPARATOR_COUNT;
+
+        private Song song = new Song();
+        private Line firstLine = song.getLine(0);
+        private Line secondLine = new Line(song);
+        private Tie crossLineTie =
+            new Tie(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
+
+        /**
+         * Two lines joined by a tie, shaped so the endpoints cannot be compared by luck: the
+         * anchor's index in the first line is <em>lower</em> than the end's index in the
+         * second, which is what an index test that mixes the two lines needs to get wrong.
+         */
+        @BeforeEach
+        void setUpCrossLineTie() {
+            song = new Song();
+            firstLine = song.getLine(0);
+            secondLine = new Line(song);
+
+            song.withoutMutationTracking(() -> {
+                song.addLine(secondLine);
+
+                for (var i = 0; i < FIRST_LINE_NOTE_COUNT; i++) {
+                    firstLine.addElement(crotchet());
+                }
+
+                for (var i = 0; i < SECOND_LINE_SEPARATOR_COUNT; i++) {
+                    secondLine.addElement(ElementType.SINGLE_BARLINE.newInstance());
+                }
+
+                secondLine.addElement(crotchet());
+            });
+
+            crossLineTie = new Tie(
+                firstLine.getElement(CROSS_LINE_ANCHOR_INDEX),
+                secondLine.getElement(CROSS_LINE_END_INDEX));
+
+            song.withoutMutationTracking(() -> firstLine.addTie(crossLineTie));
+        }
+
+        @Test
+        void testPasteBeforeTheEndNoteLeavesTheCrossLineTieToTheInsertionSweep() {
+            // Squarely between the tied notes, and the shape that makes the mixed-line
+            // comparison read as a straddle: anchor 1 in the first line is below the paste
+            // index in the second, and the end sits at that index.
+            var result = reconcileNotePaste(
+                secondLine, CROSS_LINE_END_INDEX, null, List.of());
+
+            assertThat(result.targetSpansToRemove())
+                .as("the straddle rule cannot compare an index in one line against another's")
+                .isEmpty();
+        }
+
+        @Test
+        void testPasteAfterTheAnchorLeavesTheCrossLineTieToTheInsertionSweep() {
+            var result = reconcileNotePaste(
+                firstLine, FIRST_LINE_NOTE_COUNT, null, List.of());
+
+            assertThat(result.targetSpansToRemove()).isEmpty();
+        }
+
+        @Test
+        void testASameLineSpanOnALineHostingACrossLineTieIsStillReconciled() {
+            var beam = new Beam(
+                secondLine.getElement(0), secondLine.getElement(CROSS_LINE_END_INDEX));
+            song.withoutMutationTracking(() -> secondLine.addSpan(beam));
+
+            var result = reconcileNotePaste(
+                secondLine, CROSS_LINE_END_INDEX, null, List.of());
+
+            assertThat(result.targetSpansToRemove())
+                .as("skipping the tie must not stop the loop reaching the rest of the line")
+                .containsExactly(beam);
         }
     }
 
@@ -731,7 +899,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         private PasteSpanReconciliation paste(
             Line line, int insertIndex, List<? extends StaffElement> notes, List<Span> spans
         ) {
-            var reconciliation = PasteSpanReconciliation.reconcile(line, insertIndex, null, spans);
+            var reconciliation = reconcileNotePaste(line, insertIndex, null, spans);
 
             for (var i = 0; i < notes.size(); i++) {
                 line.addElement(insertIndex + i, notes.get(i));

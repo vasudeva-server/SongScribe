@@ -567,6 +567,139 @@ class NoteDragHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // Cross-line tie drag (#493)
+    // -------------------------------------------------------------------------
+
+    /**
+     * Dragging one endpoint of a tie that crosses a line break pulls the partner note in the
+     * adjacent line into the drag group, so the group holds an index that only means something
+     * in a line the drag handler is not attached to. Every step of the release has to resolve
+     * each entry against its own line — indexing them all into the dragged line reads past the
+     * end of the shorter one — and every line the drag moved a note on has to be re-laid out,
+     * because a line's tie geometry lives in its cached layout: repaint alone redraws the note
+     * head at its new pitch with the tie still curving to where it used to be.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class CrossLineTieDrag {
+
+        private static final int ORIGINAL_POSITION_SP = 4;
+        private static final int DRAGGED_POSITION_SP = 6;
+
+        /**
+         * The first line is deliberately longer than the second, so the tie anchor's index in it
+         * is past the end of the second line's element list. That is what turns "resolved against
+         * the wrong line" from a silently wrong note into an out-of-bounds read.
+         */
+        private static final int FIRST_LINE_NOTE_COUNT = 4;
+
+        private static final int SECOND_LINE_INDEX = 1;
+
+        private Line firstLine = detachedLine();
+        private Line secondLine = detachedLine();
+        private StaffElement anchor = ElementType.CROTCHET.newInstance();
+        private StaffElement tieEnd = ElementType.CROTCHET.newInstance();
+        private final LineComponent firstLineComponent = mock(LineComponent.class);
+
+        @BeforeEach
+        void setUpTieAcrossTheBreak() {
+            var song = new Song();
+            firstLine = song.getLine(0);
+            secondLine = new Line(song);
+
+            song.withoutMutationTracking(() -> {
+                for (var i = 0; i < FIRST_LINE_NOTE_COUNT; i++) {
+                    firstLine.addElement(sharpNote());
+                }
+
+                song.addLine(secondLine);
+                secondLine.addElement(sharpNote());
+
+                // A later note restating the sharp the drag takes away, so the release asks the
+                // restatement question and Cancel — the one path that reverts — can be exercised.
+                secondLine.addElement(sharpNote());
+            });
+
+            anchor = firstLine.getElement(FIRST_LINE_NOTE_COUNT - 1);
+            tieEnd = secondLine.getElement(0);
+            song.withoutMutationTracking(() -> firstLine.addTie(new Tie(anchor, tieEnd)));
+
+            var mockScore = lc.getScoreView();
+            when(lc.getLine()).thenReturn(secondLine);
+            when(lc.getLineIndex()).thenReturn(SECOND_LINE_INDEX);
+            when(mockScore.getLineComponent(song.indexOfLine(firstLine))).thenReturn(firstLineComponent);
+        }
+
+        private static StaffElement sharpNote() {
+            var note = ElementType.CROTCHET.newInstance();
+            note.setStaffPosition(ORIGINAL_POSITION_SP);
+            note.setAccidental(StaffElement.Accidental.SHARP);
+            return note;
+        }
+
+        /** Drags the tie's end note — the one in the second line — and releases. */
+        private void dragTheTieEndAndReleaseAnswering(int answer) {
+            setupSingleSelection(0);
+            pressOnNote(0);
+            dragToPosition(DRAGGED_POSITION_SP);
+
+            try (var optionDialogs = mockStatic(OptionDialogs.class)) {
+                optionDialogs.when(() -> OptionDialogs.showConfirmDialog(
+                    any(), any(), any(), anyInt(), anyInt())).thenReturn(answer);
+
+                handler.handleRelease();
+            }
+        }
+
+        @Test
+        void testReleaseCommitsBothEndpointsWithoutReadingPastTheDraggedLine() {
+            dragTheTieEndAndReleaseAnswering(JOptionPane.NO_OPTION);
+
+            assertThat(tieEnd.getStaffPosition()).isEqualTo(DRAGGED_POSITION_SP);
+            assertThat(anchor.getStaffPosition())
+                .as("the tie's anchor in the first line committed at the dragged pitch too")
+                .isEqualTo(DRAGGED_POSITION_SP);
+        }
+
+        @Test
+        void testCancelPutsBothEndpointsBack() {
+            dragTheTieEndAndReleaseAnswering(JOptionPane.CANCEL_OPTION);
+
+            assertThat(tieEnd.getStaffPosition()).isEqualTo(ORIGINAL_POSITION_SP);
+            assertThat(anchor.getStaffPosition())
+                .as("the anchor the drag moved in the first line was put back as well")
+                .isEqualTo(ORIGINAL_POSITION_SP);
+            assertThat(anchor.getAccidental())
+                .as("and got back the accidental the drag cleared")
+                .isEqualTo(StaffElement.Accidental.SHARP);
+        }
+
+        @Test
+        void testDragRelaysOutTheLineHoldingTheOtherEndOfTheTie() {
+            setupSingleSelection(0);
+            pressOnNote(0);
+            dragToPosition(DRAGGED_POSITION_SP);
+
+            verify(firstLineComponent, atLeastOnce()).invalidateLayout();
+        }
+
+        @Test
+        void testTheRestatementOfferStaysOnTheDraggedLine() {
+            // The reconciliation indexes into the dragged line alone. Only the second line's own
+            // later sharp is the drag's to take away; the first line's notes are not offered even
+            // though the group reaches into that line.
+            dragTheTieEndAndReleaseAnswering(JOptionPane.YES_OPTION);
+
+            assertThat(secondLine.getElement(1).getAccidental())
+                .as("the accepted restatement on the dragged line is gone")
+                .isNull();
+            assertThat(firstLine.getElement(0).getAccidental())
+                .as("a note on the other line was never part of the offer")
+                .isEqualTo(StaffElement.Accidental.SHARP);
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // No-drag on Preserved Multi-selection
     // -------------------------------------------------------------------------
 

@@ -20,6 +20,8 @@
 
 package songscribe.dom;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * Represents a tie connecting two elements of the same pitch.
  * <p>
@@ -81,17 +83,85 @@ public class Tie extends Span {
     }
 
     /**
+     * This tie's two endpoints as one line resolved them, so that "between the two notes"
+     * is asked of the line performing the edit rather than of each endpoint's own line.
+     *
+     * @param anchorBound where the anchor sits relative to the asking line
+     * @param endBound    where the end sits relative to the asking line
+     */
+    private record Endpoints(SpanBound anchorBound, SpanBound endBound) {
+
+        /** Whether the asking line's half of this tie passes over {@code index}. */
+        private boolean covers(int index) {
+            return Span.containing(index).test(anchorBound, endBound);
+        }
+
+        /**
+         * Whether {@code index} lies strictly past the anchor. An anchor off the asking
+         * line's left edge is before every index there, so in the line holding the tie's
+         * end everything up to that end lies past the anchor.
+         */
+        private boolean isAfterAnchor(int index) {
+            return !anchorBound.atOrAfter(index);
+        }
+
+        /**
+         * Whether {@code index} lies strictly short of the end — the mirror of
+         * {@link #isAfterAnchor}, so in the line holding the tie's anchor everything past
+         * that anchor lies short of an end off the right edge.
+         */
+        private boolean isBeforeEnd(int index) {
+            return !endBound.atOrBefore(index);
+        }
+    }
+
+    /**
+     * This tie's endpoints as {@code line} resolves them, or {@code null} when {@code line}
+     * can say nothing about where one of them sits.
+     * <p>
+     * Both rules below resolve through here, so "unresolvable" is defined once and the
+     * insertion and replacement checks cannot disagree about a tie whose endpoint has been
+     * detached or whose far line the song no longer holds. An {@link SpanBound#ABSENT} bound
+     * has no direction, so neither rule may read it as bounding anything: the tie is on its
+     * way out, and the edit is not what removes it.
+     * <p>
+     * Resolving through the asking line is what makes a cross-line tie work. Its two
+     * endpoints live in different lines, so {@link #getAnchorElementIndex()} and
+     * {@link #getEndElementIndex()} would answer with two positions measured in two different
+     * lines — for a tie anchored at index 7 of one line and ending at index 0 of the next,
+     * every "between them" test would be {@code index > 7 && index <= 0} and never true.
+     */
+    private @Nullable Endpoints resolveIn(Line line) {
+        var anchorBound = line.anchorIndexOf(this);
+        var endBound = line.endIndexOf(this);
+
+        if (anchorBound.isAbsent() || endBound.isAbsent()) {
+            return null;
+        }
+
+        return new Endpoints(anchorBound, endBound);
+    }
+
+    /**
      * Returns true if inserting an element of {@code insertedType} at {@code insertedIndex}
-     * lands something between the two tied notes that may not sit there. A note or a rest
-     * breaks the tie — the notes no longer sound as one — as does anything else that is not
-     * a legal separator, such as a grace note. A barline or repeat takes no musical time, so
-     * a tie across one is ordinary notation and the insertion leaves it alone (refs #726).
+     * of {@code line} lands something between the two tied notes that may not sit there. A
+     * note or a rest breaks the tie — the notes no longer sound as one — as does anything
+     * else that is not a legal separator, such as a grace note. A barline or repeat takes no
+     * musical time, so a tie across one is ordinary notation and the insertion leaves it
+     * alone (refs #726).
+     * <p>
+     * For a tie straddling a line boundary the region between the two notes is whatever
+     * follows the anchor in the anchor's line plus whatever precedes the end in the end's
+     * line. That falls out of the bounds rather than being a separate rule: the asking line
+     * resolves its own endpoint to a position and the far one to an edge it runs off, and an
+     * edge is unbounded in its direction. Nothing here tests for index 0, so an end note
+     * preceded by a grace note is handled by where the end actually resolves.
      * <p>
      * Must be called on the <em>pre-insertion</em> line state.
      *
      * @param insertedIndex the index at which the element will be inserted (pre-insertion)
      * @param insertedType  the type of the element being inserted
-     * @param line          the owning line (pre-insertion state)
+     * @param line          the line receiving the insertion (pre-insertion state)
      */
     @Override
     public boolean isInvalidatedByInsertion(int insertedIndex, ElementType insertedType, Line line) {
@@ -99,17 +169,17 @@ public class Tie extends Span {
             return false;
         }
 
-        var anchorIndex = getAnchorElementIndex();
-        var endIndex = getEndElementIndex();
+        var endpoints = resolveIn(line);
 
-        if (anchorIndex < 0 || endIndex < 0) {
+        if (endpoints == null) {
             return false;
         }
 
-        // The end index is inside the invalidating range where the anchor's is not: inserting
-        // at endIndex displaces the end note rightwards, so the new element lands between the
-        // two, while inserting at anchorIndex displaces the anchor and lands outside.
-        return insertedIndex > anchorIndex && insertedIndex <= endIndex;
+        // The end's index is inside the invalidating range where the anchor's is not:
+        // inserting at the end's index displaces the end note rightwards, so the new element
+        // lands between the two, while inserting at the anchor's displaces the anchor and
+        // lands outside.
+        return endpoints.covers(insertedIndex) && endpoints.isAfterAnchor(insertedIndex);
     }
 
     /**
@@ -118,29 +188,39 @@ public class Tie extends Span {
      * it sounded before, or a separator that may no longer sit between the two notes. A
      * replacement outside the tie leaves it alone (refs #726).
      * <p>
+     * The replaced element's position and both endpoints are resolved in {@code line}, so a
+     * tie straddling a line boundary compares three positions measured the same way. See
+     * {@link #isInvalidatedByInsertion} for what the two lines' halves then cover.
+     * <p>
      * Must be called on the <em>pre-replacement</em> line state, while {@code oldElement} is
      * still in the line.
      *
      * @param oldElement the element being replaced (still in the line at call time)
      * @param newElement the element that will replace it
-     * @param line       the owning line (pre-replacement state)
+     * @param line       the line receiving the replacement (pre-replacement state)
      */
     @Override
     public boolean isInvalidatedByReplacement(
         StaffElement oldElement, StaffElement newElement, Line line
     ) {
-        var anchorIndex = getAnchorElementIndex();
-        var endIndex = getEndElementIndex();
+        var endpoints = resolveIn(line);
+
+        if (endpoints == null) {
+            return false;
+        }
+
         var replacedIndex = line.getElementIndex(oldElement);
 
-        if (anchorIndex < 0 || endIndex < 0
-                || replacedIndex < anchorIndex || replacedIndex > endIndex) {
+        // Only an element of this line has a position the bounds can be compared against. The
+        // guard is not redundant with the coverage test: a bound off an edge covers every
+        // index in its direction, so it would swallow the -1 of an element that is elsewhere.
+        if (replacedIndex < 0 || !endpoints.covers(replacedIndex)) {
             return false;
         }
 
         // Strictly inside: the replacement takes over the separator slot between the two notes,
         // so it must be something a tie may straddle.
-        if (replacedIndex > anchorIndex && replacedIndex < endIndex) {
+        if (endpoints.isAfterAnchor(replacedIndex) && endpoints.isBeforeEnd(replacedIndex)) {
             return !isLegalSeparator(newElement.getType());
         }
 

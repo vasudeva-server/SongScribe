@@ -43,6 +43,9 @@ import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Tie;
+import songscribe.layout.ElementColumn.TieColumns;
+import songscribe.layout.LayoutResult.TieLayout.OpenSide;
 import songscribe.layout.stacking.VerticalStackingCalculator;
 import songscribe.shape.BezierBow;
 import songscribe.util.LogUtils;
@@ -823,6 +826,9 @@ public class LayoutEngine {
      * system. Each tie produces a filled lens shape defined by an outer and an inner cubic Bézier
      * curve that share start/end points, creating natural tapering at the endpoints.
      * Populates {@code builder} with a {@link LayoutResult.TieLayout} for each tie span.
+     * <p>
+     * A tie whose two notes sit in different lines is laid out once per line, and each line draws
+     * only the half it owns; {@link #tieLayout} carries the geometry of both cases.
      */
     private void calculateTies(
         Line line,
@@ -837,90 +843,246 @@ public class LayoutEngine {
 
         var elementToColumn = elementToColumnMap(columns);
 
-        for (var span : ties) {
-            var spanColumns = ElementColumn.resolveSpan(span, elementToColumn);
+        // Resolved once for the line: both limits depend on the line's own edges, not on any
+        // tie, so every half running off an edge stops in the same place.
+        var openLimits = new OpenTieLimits(
+            HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line),
+            lineEndTieLimitXSs(line, elementToColumn));
 
-            if (spanColumns == null) {
+        for (var tie : ties) {
+            var tieColumns = ElementColumn.resolveTie(tie, line, elementToColumn);
+
+            if (tieColumns == null) {
                 continue;
             }
 
-            var startElement = spanColumns.anchor();
-            var endElement = spanColumns.end();
-            var startColumn = spanColumns.anchorColumn();
-            var endColumn = spanColumns.endColumn();
+            var layout = switch (tieColumns) {
+                case TieColumns.Whole whole -> {
+                    var spanColumns = whole.columns();
 
-            // Tie arc sign from Tie.arcSign() (LilyPond's both-stem fallthrough tree, shared with
-            // the skyline seeder and MusicXML export). Y increases downward, so +1 → arc bulges
-            // downward (tie below), -1 → arc bulges upward (tie above).
-            var arcSignSs = span.arcSign();
+                    yield tieLayout(
+                        tie,
+                        spanColumns.anchor(),
+                        spanColumns.anchorColumn(),
+                        spanColumns.endColumn(),
+                        OpenSide.NONE,
+                        openLimits);
+                }
 
-            // Seat the tie in the staff space adjacent to the note (in the arc direction), placed so
-            // both the endpoints and the apex clear the staff lines bounding that space (LilyPond
-            // tie-formatting-problem.cc generate_configuration). The vertical seat is computed first;
-            // the horizontal attachment then follows from it, because LilyPond samples the chord
-            // skyline at the seat height — the endpoint sits at the notehead's facing edge while the
-            // seat is within the head box, and recedes to the notehead center once it drops below.
-            // A tie joins two same-pitch notes, so both endpoints share one Y. The tie is positioned
-            // purely note-relative and independent of any articulation, matching LilyPond, where the
-            // tie and the note's scripts (staccato, accent) are placed independently.
-            //
-            //   left note          tie          right note
-            //   ┌───────┐   start ↗   ↖ end   ┌───────┐
-            //   │  ●  ⟋─┼────╮       ╭────┼─⟍  ●  │
-            //   └───────┘    ╰───────╯    └───────┘
-            //
-            // When the seat row lands on the left note's up-displaced augmentation dot, the whole tie
-            // lifts a further quarter-space to clear it (the dot never moves) — LilyPond's dot-row case.
-            var notePositionSp = startElement.getStaffPosition();
-            var dotRowCoincides = tieSeatRowHasDot(startElement, notePositionSp, arcSignSs);
-            var seatSs = tieSeatSs(notePositionSp, arcSignSs, dotRowCoincides);
-            var endpointYSs = Staff.spToSs(notePositionSp) + arcSignSs * seatSs;
+                // The half this line owns keeps the column of the note that is in it; the other
+                // side gets no column, which is what makes it terminate at the line's edge.
+                case TieColumns.Half half when half.openSide() == OpenSide.END -> tieLayout(
+                    tie, half.attached(), half.attachedColumn(), null, OpenSide.END, openLimits);
 
-            // Facing edge while the seat stays within the half-space-tall head box; notehead center
-            // once it clears the box (LilyPond get_attachment's edge-vs-center step). dir = +1 for the
-            // left endpoint (tie extends rightward), -1 for the right.
-            var centerAttach = seatSs > Staff.STAFF_POSITION_OFFSET_SS;
-            var startXSs = tieEndpointXSs(
-                startColumn.getXSs(), 1, centerAttach, startElement.getType());
-            var endXSs = tieEndpointXSs(
-                endColumn.getXSs(), -1, centerAttach, endElement.getType());
+                case TieColumns.Half half -> tieLayout(
+                    tie, half.attached(), null, half.attachedColumn(), OpenSide.START, openLimits);
+            };
 
-            var tieWidthSs = endXSs - startXSs;
-
-            // LilyPond slur_shape: control points P1 = (indent, height), P2 = (width − indent, height).
-            var indentSs = BezierBow.indent(tieWidthSs, TIE_HEIGHT_LIMIT_SS, TIE_SLUR_MAX_FRACTION);
-            var cp1XSs = startXSs + indentSs;
-            var cp2XSs = endXSs - indentSs;
-
-            // Arc height from the endpoint baseline (the shared endpoint Y for a same-pitch tie),
-            // adjusted so the arc body clears the nearest staff line.
-            var heightSs = tieLineAvoidedHeightSs(
-                endpointYSs, arcSignSs, BezierBow.height(tieWidthSs, TIE_RATIO, TIE_HEIGHT_LIMIT_SS));
-            var shoulderYSs = endpointYSs + arcSignSs * heightSs;
-
-            // Outer/inner lens taper: outer control points offset away from the notes by the midpoint
-            // half-thickness, inner control points offset toward the notes.
-            var outerCpYSs = shoulderYSs + arcSignSs * TIE_MID_THICKNESS_SS;
-            var innerCpYSs = shoulderYSs - arcSignSs * TIE_MID_THICKNESS_SS;
-
-            if (LogUtils.isTracingTies(LOG)) {
-                // LilyPond position convention (positive = up) for direct ground-truth comparison:
-                // LilyPond ss is positive-up, SongScribe ss is positive-down, so negate and ×2.
-                LOG.debug(
-                    "tie notePos={} arcSign={} seatSs={} width={} endpointPos={} apexPos={} heightSs={}",
-                    notePositionSp, arcSignSs, seatSs, tieWidthSs,
-                    -2 * endpointYSs, -2 * shoulderYSs, heightSs);
-            }
-
-            builder.putTieLayout(span, new LayoutResult.TieLayout(
-                startXSs, endpointYSs,
-                endXSs, endpointYSs,
-                cp1XSs, outerCpYSs,
-                cp2XSs, outerCpYSs,
-                cp1XSs, innerCpYSs,
-                cp2XSs, innerCpYSs
-            ));
+            builder.putTieLayout(tie, layout);
         }
+    }
+
+    /**
+     * The X limits at which a tie half running off an edge of the line being laid out stops,
+     * before the note-head gap is taken off each. Both are properties of the line, so every
+     * half in it terminates in the same place.
+     *
+     * @param startXSs where a half entering from the left begins — the staff header's right edge
+     * @param endXSs   where a half exiting to the right stops — see {@link #lineEndTieLimitXSs}
+     */
+    private record OpenTieLimits(double startXSs, double endXSs) {}
+
+    /**
+     * X at which a half exiting through this line's right edge stops: the left edge of the
+     * line's closing barline or repeat when it ends with one, and the staff's right margin
+     * otherwise.
+     * <p>
+     * This is LilyPond's rule read exactly. `set_column_chord_outline` bounds the open end with
+     * `Axis_group_interface::staff_extent (...)[-dir]` over the <em>break column's own</em>
+     * elements — at a system end, its bar line — and `-dir` for the right bound is `iv[LEFT]`,
+     * that bar line's left edge. The `iv.is_empty ()` fallback to the column's own X is what
+     * makes a line ending in no barline run to the line's edge instead.
+     * <p>
+     * A tie's anchor is not the last element of its line whenever a legal separator follows it,
+     * which is the ordinary case: the toggle offers a cross-line tie on the last <em>note</em>
+     * of a line, past any barline or repeat closing it, and one may equally be inserted after
+     * the anchor later. Without this the arc would be drawn straight through the barline glyph,
+     * which a terminal barline in particular shares pixels with, being laid out flush right.
+     * <p>
+     * A breath mark is deliberately not included: it is ordinary music rather than part of the
+     * closing column, and LilyPond does not bound a tie with one.
+     */
+    private double lineEndTieLimitXSs(Line line, Map<StaffElement, ElementColumn> elementToColumn) {
+        var elementCount = line.elementCount();
+
+        if (elementCount == 0) {
+            return staffRightMarginSs;
+        }
+
+        var lastElement = line.getElement(elementCount - 1);
+        var lastType = lastElement.getType();
+
+        if (!lastType.isBarLine() && !lastType.isRepeat()) {
+            return staffRightMarginSs;
+        }
+
+        var lastColumn = elementToColumn.get(lastElement);
+
+        return lastColumn == null ? staffRightMarginSs : lastColumn.getXSs();
+    }
+
+    /**
+     * Builds one tie's geometry: the whole arc when both of its notes are in the line being laid
+     * out, or the half of it this line draws when they are not.
+     * <p>
+     * A half is described by the same twelve numbers as a whole tie, and {@code openSide} records
+     * which of its ends is a staff edge rather than a notehead. The half is a complete arc in its
+     * own right, so nothing downstream has to reconstruct the side that is missing.
+     *
+     * @param tie          the tie being laid out
+     * @param seatNote     the note this line seats the arc against — a tie joins two same-pitch
+     *                     notes, so either endpoint yields the same staff position
+     * @param anchorColumn the anchor (left) note's column, or {@code null} when that note is in an
+     *                     earlier line and this half enters from where the music starts
+     * @param endColumn    the end (right) note's column, or {@code null} when that note is in a
+     *                     later line and this half exits through the staff's right edge
+     * @param openSide     which end of the arc terminates at a staff edge, if either
+     * @param openLimits   where this line's edges stop an open end; the side that attaches to a
+     *                     notehead ignores its half of this
+     */
+    private LayoutResult.TieLayout tieLayout(
+        Tie tie,
+        StaffElement seatNote,
+        @Nullable ElementColumn anchorColumn,
+        @Nullable ElementColumn endColumn,
+        OpenSide openSide,
+        OpenTieLimits openLimits) {
+
+        // Tie arc sign from Tie.arcSign() (LilyPond's both-stem fallthrough tree, shared with
+        // the skyline seeder and MusicXML export). Y increases downward, so +1 → arc bulges
+        // downward (tie below), -1 → arc bulges upward (tie above).
+        //
+        // Both halves of a broken tie get the same sign for free, because arcSign() reads the two
+        // notehead elements rather than this line's columns. LilyPond arrives at the same answer
+        // the long way round, reaching across the break for the head a half does not have
+        // (tie.cc get_default_dir: `if (!one_head) one_head = head (me->broken_neighbor (d), d)`).
+        var arcSignSs = tie.arcSign();
+
+        // Seat the tie in the staff space adjacent to the note (in the arc direction), placed so
+        // both the endpoints and the apex clear the staff lines bounding that space (LilyPond
+        // tie-formatting-problem.cc generate_configuration). The vertical seat is computed first;
+        // the horizontal attachment then follows from it, because LilyPond samples the chord
+        // skyline at the seat height — the endpoint sits at the notehead's facing edge while the
+        // seat is within the head box, and recedes to the notehead center once it drops below.
+        // A tie joins two same-pitch notes, so both endpoints share one Y. The tie is positioned
+        // purely note-relative and independent of any articulation, matching LilyPond, where the
+        // tie and the note's scripts (staccato, accent) are placed independently.
+        //
+        //   left note          tie          right note
+        //   ┌───────┐   start ↗   ↖ end   ┌───────┐
+        //   │  ●  ⟋─┼────╮       ╭────┼─⟍  ●  │
+        //   └───────┘    ╰───────╯    └───────┘
+        //
+        // When the seat row lands on the left note's up-displaced augmentation dot, the whole tie
+        // lifts a further quarter-space to clear it (the dot never moves) — LilyPond's dot-row case.
+        // The dot belongs to the left note and sits under the arc's path, so the check applies only
+        // where that note is in this line: a half entering from the left edge passes over no dot.
+        var notePositionSp = seatNote.getStaffPosition();
+        var dotRowCoincides = anchorColumn != null
+            && tieSeatRowHasDot(anchorColumn.getElement(), notePositionSp, arcSignSs);
+        var seatSs = tieSeatSs(notePositionSp, arcSignSs, dotRowCoincides);
+        var endpointYSs = Staff.spToSs(notePositionSp) + arcSignSs * seatSs;
+
+        // Facing edge while the seat stays within the half-space-tall head box; notehead center
+        // once it clears the box (LilyPond get_attachment's edge-vs-center step). dir = +1 for the
+        // left endpoint (tie extends rightward), -1 for the right.
+        //
+        // An open end has no notehead to attach to and terminates at a line edge instead:
+        //
+        //   line A:  … ● ● ●─────►┊   runs on to the right staff edge
+        //   line B:  𝄞 # ┊◄────● ● …   enters where the music starts, past the header
+        //
+        // That is LilyPond's rule in tie-formatting-problem.cc set_column_chord_outline: when the
+        // bound item is a line-break column rather than a note (`bounds[0]->break_status_dir()`),
+        // the chord outline's limit is taken from
+        // `Axis_group_interface::staff_extent (...)[-dir]` instead of from the union of the note-head
+        // boxes, falling back to the break column's own X only where that extent is empty.
+        //
+        // Read that `staff_extent` carefully — it is not the staff symbol's extent, which would
+        // span the whole system. `Axis_group_interface::staff_extent` (axis-group-interface.cc:244)
+        // takes the *break column's own* elements, keeps those belonging to this staff, and returns
+        // their combined X extent. At a system start those elements are the prefatory matter: the
+        // clef and key signature. `-dir` then picks the far edge of that group — for the left bound
+        // (`dir == LEFT`) it is `iv[RIGHT]`, the header's right edge.
+        //
+        // So the continuation half begins where the music does, past the header, and LilyPond's
+        // rule and SongScribe's layout agree without either having to be bent. Taken instead to
+        // X 0, the arc would be drawn straight across the clef, reading as a marking on the header
+        // rather than as the continuation of a tie. The other end is bounded the same way — see
+        // lineEndTieLimitXSs.
+        //
+        // An open end takes the same NOTE_HEAD_GAP_SS as an attached one. LilyPond applies it in
+        // one unconditional step after both attachments are resolved
+        // (`conf->attachment_x_.widen (-details_.x_gap_)`, tie-formatting-problem.cc:580), with no
+        // test for whether an end is a notehead or a break column, so the arc stands off the
+        // header and the barline by exactly what it stands off a notehead.
+        var centerAttach = seatSs > Staff.STAFF_POSITION_OFFSET_SS;
+        var startXSs = anchorColumn == null
+            ? openLimits.startXSs() + NOTE_HEAD_GAP_SS
+            : tieEndpointXSs(
+                anchorColumn.getXSs(), 1, centerAttach, anchorColumn.getElement().getType());
+        var endXSs = endColumn == null
+            ? openLimits.endXSs() - NOTE_HEAD_GAP_SS
+            : tieEndpointXSs(
+                endColumn.getXSs(), -1, centerAttach, endColumn.getElement().getType());
+
+        var tieWidthSs = endXSs - startXSs;
+
+        // LilyPond slur_shape: control points P1 = (indent, height), P2 = (width − indent, height).
+        var indentSs = BezierBow.indent(tieWidthSs, TIE_HEIGHT_LIMIT_SS, TIE_SLUR_MAX_FRACTION);
+        var cp1XSs = startXSs + indentSs;
+        var cp2XSs = endXSs - indentSs;
+
+        // Arc height from the endpoint baseline (the shared endpoint Y for a same-pitch tie),
+        // adjusted so the arc body clears the nearest staff line.
+        //
+        // A half's width is its own — note to staff edge — never the notional whole tie's, and the
+        // height law is a function of that width. So each half of a broken tie is flatter than the
+        // unbroken tie would have been, and the two halves differ in height from each other
+        // whenever they differ in width. They are two complete arcs rather than two pieces of one:
+        // LilyPond builds each from `Real l = attachment_x_.length()` over its own system
+        // (tie-configuration.cc get_untransformed_bezier), and slur_shape's control points
+        // (0,0), (indent,h), (w−indent,h), (w,0) put both ends of every half back on the baseline —
+        // the open end meets the staff edge flat, not mid-arc with a slope left hanging. Nothing in
+        // tie-column.cc handles breaks at all; the halves are independent formatting problems.
+        var heightSs = tieLineAvoidedHeightSs(
+            endpointYSs, arcSignSs, BezierBow.height(tieWidthSs, TIE_RATIO, TIE_HEIGHT_LIMIT_SS));
+        var shoulderYSs = endpointYSs + arcSignSs * heightSs;
+
+        // Outer/inner lens taper: outer control points offset away from the notes by the midpoint
+        // half-thickness, inner control points offset toward the notes.
+        var outerCpYSs = shoulderYSs + arcSignSs * TIE_MID_THICKNESS_SS;
+        var innerCpYSs = shoulderYSs - arcSignSs * TIE_MID_THICKNESS_SS;
+
+        if (LogUtils.isTracingTies(LOG)) {
+            // LilyPond position convention (positive = up) for direct ground-truth comparison:
+            // LilyPond ss is positive-up, SongScribe ss is positive-down, so negate and ×2.
+            LOG.debug(
+                "tie notePos={} arcSign={} seatSs={} width={} endpointPos={} apexPos={} heightSs={}"
+                    + " openSide={}",
+                notePositionSp, arcSignSs, seatSs, tieWidthSs,
+                -2 * endpointYSs, -2 * shoulderYSs, heightSs, openSide);
+        }
+
+        return new LayoutResult.TieLayout(
+            startXSs, endpointYSs,
+            endXSs, endpointYSs,
+            cp1XSs, outerCpYSs,
+            cp2XSs, outerCpYSs,
+            cp1XSs, innerCpYSs,
+            cp2XSs, innerCpYSs,
+            openSide
+        );
     }
 
     /**

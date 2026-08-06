@@ -1107,10 +1107,20 @@ public final class Song {
      * (see {@link #withoutMutationTracking}) — test setup can install lines with
      * arbitrary terminal elements.
      *
+     * <p>An insertion that lands <em>between</em> two lines pushes them apart, and a tie
+     * that straddled that boundary can no longer be drawn — its two halves have nothing
+     * left to meet across. Such a tie is removed by
+     * {@link #removeSpansBetweenNonAdjacentLines}. That is skipped while replaying: undo
+     * and redo replay the recorded span mutations themselves.
+     *
      * <pre>
      *  withModification {
      *    incrementAutoMaintenance {
      *      applyChange(LineInsertion(index, line), …)
+     *
+     *      if (line landed between two existing lines)
+     *        for each span of lines[index - 1] whose two lines are no longer adjacent
+     *          applyChange(&lt;typed span removal&gt; …)
      *
      *      if (line became the new last line) {
      *        if (prevLast.lastElement == FINAL_DOUBLE_BARLINE)
@@ -1148,6 +1158,12 @@ public final class Song {
                 }
             });
 
+            // Only the pair the new line landed between can have been pulled apart; every
+            // other pair shifts by the same amount and stays adjacent.
+            if (lineIndex > 0 && lineIndex < lines.size() - 1 && !isReplaying()) {
+                removeSpansBetweenNonAdjacentLines(lines.get(lineIndex - 1));
+            }
+
             if (willBecomeNewLast && !isMutationTrackingSuspended() && !isReplaying()) {
                 maintainTerminalOnLastLineChange(previousLastLine, line);
             }
@@ -1167,10 +1183,20 @@ public final class Song {
      * replaying — bulk-load paths and undo/redo drive the line list explicitly, and
      * both legitimately pass through a transient zero-line state.
      *
+     * <p>The removed line keeps its elements, and they keep pointing at it — the
+     * {@link LineDeletion} record holds the line intact so undo can put it back unchanged.
+     * A span it shared with a surviving line therefore has to be taken out explicitly, or
+     * that line would go on drawing half a tie to a line no longer in the song;
+     * {@link #removeSpansBetweenNonAdjacentLines} does that. It is skipped while replaying:
+     * undo and redo replay the recorded span mutations themselves.
+     *
      * <pre>
      *  withModification {
      *    incrementAutoMaintenance {
      *      applyChange(LineDeletion(index, removed), …)
+     *
+     *      for each span the removed line shared with a surviving line
+     *        applyChange(&lt;typed span removal&gt; …)
      *
      *      if (removed line was the last line) {
      *        if (lines is now empty) {
@@ -1200,6 +1226,12 @@ public final class Song {
                 () -> lines.remove(index)
             );
 
+            // The deleted line is now in no position at all, so every span it shares with
+            // a line that survives it spans lines that are not adjacent.
+            if (!isReplaying()) {
+                removeSpansBetweenNonAdjacentLines(deletedLine);
+            }
+
             if (wasLast && !isMutationTrackingSuspended() && !isReplaying()) {
                 if (!lines.isEmpty()) {
                     maintainTerminalOnLastLineChange(null, lines.getLast());
@@ -1208,6 +1240,45 @@ public final class Song {
                 }
             }
         }));
+    }
+
+    /**
+     * Removes from {@code line} every span whose two endpoints sit in lines that are no
+     * longer adjacent.
+     * <p>
+     * Only a tie can straddle a line break, and only between consecutive lines: its anchor
+     * is in one line and its end in the next. Once those two lines are no longer neighbors
+     * the tie describes a jump nothing can draw, so it is
+     * removed rather than left to render across a gap.
+     * <p>
+     * Both ways adjacency breaks come through here — a line inserted between the two, and
+     * one of the two leaving the song, which leaves it with no position in {@code lines} at
+     * all. A pair in the wrong order is caught the same way.
+     * <p>
+     * Spans with both endpoints in one line, and spans with an endpoint in no line, are
+     * untouched: neither says anything about a relationship between two lines.
+     * <p>
+     * The removal goes through {@link Line#removeInvalidatedSpan}, so it emits its own
+     * typed mutation and undo puts the span back into both lines' span lists. Call it from
+     * inside an open modification bracket.
+     */
+    private void removeSpansBetweenNonAdjacentLines(Line line) {
+        // Copied because each removal writes the list being read.
+        for (var span : List.copyOf(line.getSpans())) {
+            var anchorLine = span.getAnchorLine();
+            var endLine = span.getEndLine();
+
+            if (anchorLine == null || endLine == null || anchorLine == endLine) {
+                continue;
+            }
+
+            var anchorLineIndex = indexOfLine(anchorLine);
+            var endLineIndex = indexOfLine(endLine);
+
+            if (anchorLineIndex < 0 || endLineIndex < 0 || endLineIndex - anchorLineIndex != 1) {
+                line.removeInvalidatedSpan(span);
+            }
+        }
     }
 
     /**

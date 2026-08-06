@@ -26,6 +26,7 @@ import module java.desktop;
 import songscribe.error.RuntimeError;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Tie;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
 import songscribe.engraving.LineThickness;
@@ -416,9 +417,23 @@ class LineRenderer {
         var ties = line.findTies();
 
         for (var span : ties) {
-            renderWithPreviewShiftIfNeeded(g2, frame, span.getAnchorElementIndex(),
+            renderWithPreviewShiftIfNeeded(g2, frame, previewShiftStartOf(span, line),
                 () -> tieRenderer.renderTie(g2, span, invariants, frame));
         }
+    }
+
+    /**
+     * Returns the index the preview shift must weigh {@code tie} against in {@code line}.
+     * <p>
+     * Receiver-relative resolution: {@code previewShiftFromIndex} is a position in the line
+     * being painted, so the tie's start has to be one too. Reading it off the tie would hand
+     * an index resolved in the anchor's own line to a comparison against this line's shift
+     * boundary, and a tie tied in from the previous line would be shifted or left unshifted
+     * according to where its anchor sat over there. An anchor off this line's left edge means
+     * the half enters at element 0 and shifts exactly when the whole line does.
+     */
+    static int previewShiftStartOf(Tie tie, Line line) {
+        return line.anchorIndexOf(tie).indexOr(0);
     }
 
     /**

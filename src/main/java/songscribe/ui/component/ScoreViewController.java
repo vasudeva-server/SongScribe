@@ -51,6 +51,19 @@ import songscribe.message.mutation.LineDeletion;
 import songscribe.message.mutation.LineInsertion;
 import songscribe.message.mutation.LineScopedMutation;
 import songscribe.message.mutation.MetadataChange;
+import songscribe.message.mutation.BeamingAddition;
+import songscribe.message.mutation.BeamingRemoval;
+import songscribe.message.mutation.CrescendoAddition;
+import songscribe.message.mutation.CrescendoRemoval;
+import songscribe.message.mutation.DiminuendoAddition;
+import songscribe.message.mutation.DiminuendoRemoval;
+import songscribe.message.mutation.Mutation;
+import songscribe.message.mutation.SpanAddition;
+import songscribe.message.mutation.SpanRemoval;
+import songscribe.message.mutation.TieAddition;
+import songscribe.message.mutation.TieRemoval;
+import songscribe.message.mutation.TupletAddition;
+import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.ElementTypeWasSelectedNotification;
@@ -66,6 +79,7 @@ import songscribe.prefs.PrefsKey;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
@@ -393,7 +407,8 @@ public final class ScoreViewController {
         //   line insert/delete? ──yes──▶ rebuild the LinePanel list (add/remove panels)
         //          │no
         //          ▼
-        //   line-scoped change?  ──yes──▶ invalidate just the affected LinePanel
+        //   line-scoped change?  ──yes──▶ invalidate every LinePanel the change affects
+        //                                 (one, or two for a span straddling a boundary)
         //
         // Font, metadata, and layout changes (e.g. a Song Settings commit) all
         // require re-laying out every line, not just repainting: invalidating each
@@ -417,12 +432,10 @@ public final class ScoreViewController {
             var targetLine = message.getLine();
 
             for (var linePanel : staffPanel.getLinePanels()) {
-                if (targetLine == null || linePanel.getLine() == targetLine) {
-                    linePanel.getLineComponent().invalidateLayout();
+                var line = linePanel.getLine();
 
-                    if (targetLine != null) {
-                        break;
-                    }
+                if (targetLine == null || line == targetLine || spanMutationReaches(message, line)) {
+                    linePanel.getLineComponent().invalidateLayout();
                 }
             }
         }
@@ -434,6 +447,63 @@ public final class ScoreViewController {
 
         // Debounce repaints to batch multiple rapid changes
         repaintDebounce.trigger();
+    }
+
+    /**
+     * Returns whether any span this notification's mutations name has an endpoint in
+     * {@code line}, making {@code line} one of the lines that draws it.
+     * <p>
+     * A line-scoped mutation names one line, which for almost every span is the only line
+     * whose rendering it changes. A tie whose two notes sit in different lines is the
+     * exception: adding or removing it changes what <em>both</em> lines draw — one gains or
+     * loses the half running off its right edge, the other the half entering from the left —
+     * while the mutation still names only one of them. Without this, the far line keeps its
+     * cached {@code LayoutResult} and its half is never drawn, which is the half-tie the
+     * whole of #493 exists to prevent, arriving by way of the repaint rather than the model.
+     * <p>
+     * Ties are the only spans that can straddle a boundary today; the test below is written
+     * over spans in general because the question — which lines does this span reach — has the
+     * same answer for all of them, not because the others are expected to.
+     */
+    private static boolean spanMutationReaches(SongDidChangeNotification message, Line line) {
+        for (var mutation : message.getMutations()) {
+            var span = mutatedSpan(mutation);
+
+            if (span != null && span.isIn(line)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * The span {@code mutation} names, or null when it names none.
+     * <p>
+     * Every mutation that carries a span is listed, not only the tie ones, so the answer
+     * matches the question {@link #spanMutationReaches} asks. Only a tie can straddle a line
+     * boundary today, which is what makes the others no-ops rather than optional: a beam,
+     * tuplet or hairpin resolves to the one line it is in, and {@link Span#isIn} then reports
+     * that line alone — the same line the mutation already named. Listing them costs nothing
+     * and means a span type that later gains a second line is drawn on both without this
+     * method being the thing that quietly refused to notice.
+     */
+    private static @Nullable Span mutatedSpan(Mutation mutation) {
+        return switch (mutation) {
+            case TieAddition(var _, var tie) -> tie;
+            case TieRemoval(var _, var tie) -> tie;
+            case BeamingAddition(var _, var beam) -> beam;
+            case BeamingRemoval(var _, var beam) -> beam;
+            case TupletAddition(var _, var tuplet) -> tuplet;
+            case TupletRemoval(var _, var tuplet) -> tuplet;
+            case CrescendoAddition(var _, var crescendo) -> crescendo;
+            case CrescendoRemoval(var _, var crescendo) -> crescendo;
+            case DiminuendoAddition(var _, var diminuendo) -> diminuendo;
+            case DiminuendoRemoval(var _, var diminuendo) -> diminuendo;
+            case SpanAddition(var _, var span) -> span;
+            case SpanRemoval(var _, var span) -> span;
+            default -> null;
+        };
     }
 
     /**
@@ -1073,7 +1143,7 @@ public final class ScoreViewController {
         var result = spacingResult[0];
 
         var reconciliation = PasteSpanReconciliation.reconcile(
-            line, insertIndex, deleteRange, instantiated.spans());
+            line, insertIndex, deleteRange, instantiated.elements(), instantiated.spans());
 
         // Drop the destination spans this paste lands inside before anything moves,
         // while their anchor/end indices still resolve against the pre-paste line.
@@ -1126,9 +1196,11 @@ public final class ScoreViewController {
         // invalidate, each by its own rule: the ending's barline/repeat-aware one,
         // which is more precise than the straddle test PasteSpanReconciliation
         // applies to the other span kinds, so endings are left to it; and the tie's
-        // separator rule. Its tuplet and tie removals are now redundant (the
-        // reconciliation above already removed a straddled tuplet or tie) but
-        // harmless: findTupletAt finds nothing, and no tie is left to invalidate.
+        // separator rule. Its tuplet removal is now redundant but harmless — the
+        // reconciliation above already removed a straddled tuplet, so findTupletAt
+        // finds nothing. Its tie removal is not redundant: the reconciliation judges
+        // only ties with both endpoints in this line, leaving a tie that straddles a
+        // line boundary to this sweep, which resolves it against the receiving line.
         for (var k = 0; k < cloneCount; k++) {
             var clone = clones.get(k);
             clone.setXOffsetPx(ScaleContext.ssToRoundedPx(result.cloneXPositionsSs().get(k)));

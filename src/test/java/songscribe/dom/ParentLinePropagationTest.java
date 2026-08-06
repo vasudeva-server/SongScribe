@@ -231,8 +231,9 @@ class ParentLinePropagationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Spans: maintained by the same attach/detach chokepoint, so every
-    // add/remove pair keeps the pointer without a hand-written assignment
+    // Spans: never attached at all. Parentage is derived from where the
+    // endpoints sit, so every add/remove pair moves list membership and
+    // leaves the inherited parentLine untouched at null.
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -252,76 +253,73 @@ class ParentLinePropagationTest extends UnitTest {
             addToLine(line, end);
         }
 
+        /**
+         * Runs {@code adder} and then {@code remover} untracked, asserting on each side
+         * of the pair that {@code span} is where it belongs.
+         * <p>
+         * {@code isIn} is asserted only after the addition: it reads the endpoints, which
+         * the removal leaves in the line, so the list is the only thing a removal changes.
+         */
+        private void assertAddThenRemove(Span span, Runnable adder, Runnable remover) {
+            song.withoutMutationTracking(adder);
+            assertThat(span.isIn(line)).isTrue();
+            assertThat(line.getSpans()).contains(span);
+            assertThat(span.getParentLine()).isNull();
+
+            song.withoutMutationTracking(remover);
+            assertThat(line.getSpans()).doesNotContain(span);
+            assertThat(span.getParentLine()).isNull();
+        }
+
         @Test
-        void testAddTieAttachesAndRemoveTieDetaches() {
+        void testAddTiePutsItInTheLineAndRemoveTieTakesItOut() {
             var tie = new Tie(anchor, end);
-
-            song.withoutMutationTracking(() -> line.addTie(tie));
-            assertThat(tie.getParentLine()).isSameAs(line);
-
-            song.withoutMutationTracking(() -> line.removeTie(tie));
-            assertThat(tie.getParentLine()).isNull();
+            assertAddThenRemove(tie, () -> line.addTie(tie), () -> line.removeTie(tie));
         }
 
         @Test
-        void testAddBeamingAttachesAndRemoveBeamingDetaches() {
+        void testAddBeamingPutsItInTheLineAndRemoveBeamingTakesItOut() {
             var beam = new Beam(anchor, end);
-
-            song.withoutMutationTracking(() -> line.addBeaming(beam));
-            assertThat(beam.getParentLine()).isSameAs(line);
-
-            song.withoutMutationTracking(() -> line.removeBeaming(beam));
-            assertThat(beam.getParentLine()).isNull();
+            assertAddThenRemove(beam, () -> line.addBeaming(beam), () -> line.removeBeaming(beam));
         }
 
         @Test
-        void testAddTupletAttachesAndRemoveTupletDetaches() {
+        void testAddTupletPutsItInTheLineAndRemoveTupletTakesItOut() {
             var tuplet = Tuplet.withUnresolvedRatio(anchor, end, TRIPLET_GRADE);
-
-            song.withoutMutationTracking(() -> line.addTuplet(tuplet));
-            assertThat(tuplet.getParentLine()).isSameAs(line);
-
-            song.withoutMutationTracking(() -> line.removeTuplet(tuplet));
-            assertThat(tuplet.getParentLine()).isNull();
+            assertAddThenRemove(tuplet, () -> line.addTuplet(tuplet), () -> line.removeTuplet(tuplet));
         }
 
         @Test
-        void testAddHairpinAttachesAndRemoveHairpinDetaches() {
+        void testAddHairpinPutsItInTheLineAndRemoveHairpinTakesItOut() {
             // Crescendo and diminuendo share addHairpin/removeHairpin — one covers both.
             var hairpin = new Crescendo(anchor, end);
-
-            song.withoutMutationTracking(() -> line.addCrescendo(hairpin));
-            assertThat(hairpin.getParentLine()).isSameAs(line);
-
-            song.withoutMutationTracking(() -> line.removeCrescendo(hairpin));
-            assertThat(hairpin.getParentLine()).isNull();
+            assertAddThenRemove(hairpin, () -> line.addCrescendo(hairpin), () -> line.removeCrescendo(hairpin));
         }
 
         @Test
-        void testAddSpanAttachesAndRemoveSpanDetaches() {
+        void testAddSpanPutsItInTheLineAndRemoveSpanTakesItOut() {
             // The untyped path, used directly by spans with no add helper of their own
             // (Ending) and indirectly by those that have one (addTrill delegates here).
             var trill = new Trill(anchor, end);
-
-            song.withoutMutationTracking(() -> line.addSpan(trill));
-            assertThat(trill.getParentLine()).isSameAs(line);
-
-            song.withoutMutationTracking(() -> line.removeSpan(trill));
-            assertThat(trill.getParentLine()).isNull();
+            assertAddThenRemove(trill, () -> line.addSpan(trill), () -> line.removeSpan(trill));
         }
 
         @Test
-        void testAttachingASpanToAnotherLineBeforeRemovalWins() {
-            // The `!= this` guard in detach, for spans: a re-parent that attached to
-            // line2 first must survive the removal from the original line.
+        void testAddingASpanToASecondLineDoesNotMoveIt() {
+            // Adding no longer re-parents anything: parentage follows the endpoints, which
+            // line2 does not hold, so the tie is in line and not in line2 however many
+            // lists it has been put into.
             var line2 = new Line(song);
             var tie = new Tie(anchor, end);
 
             song.withoutMutationTracking(() -> line.addTie(tie));
             song.withoutMutationTracking(() -> line2.addTie(tie));
-            song.withoutMutationTracking(() -> line.removeTie(tie));
 
-            assertThat(tie.getParentLine()).isSameAs(line2);
+            assertThat(tie.getParentLine()).isNull();
+            assertThat(tie.isIn(line)).isTrue();
+            assertThat(tie.isIn(line2)).isFalse();
+            assertThat(line.getSpans()).contains(tie);
+            assertThat(line2.getSpans()).contains(tie);
         }
     }
 

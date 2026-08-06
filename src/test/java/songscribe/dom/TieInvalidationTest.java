@@ -38,6 +38,7 @@ import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementReplacement;
 import songscribe.message.mutation.TieRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.undo.UndoTestSupport;
 
 /**
  * Unit tests for {@link Tie#isInvalidatedByInsertion} and {@link Tie#isInvalidatedByReplacement},
@@ -568,6 +569,177 @@ class TieInvalidationTest extends UnitTest {
                     .as("no tie removal must be recorded")
                     .isEmpty()
             );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Cross-line tie — anchor in one line, end in the next (issue #493)
+    // -----------------------------------------------------------------------
+
+    /** Index of the tie's anchor in the cross-line fixture — the last note of the first line. */
+    private static final int CROSS_LINE_ANCHOR_INDEX = THREE_NOTES.length - 1;
+
+    /** Index of the tie's end in the cross-line fixture — the first note of the second line. */
+    private static final int CROSS_LINE_END_INDEX = 0;
+
+    /**
+     * A tie whose anchor is the last note of one line and whose end is the first note of the
+     * next. {@link Tie#isInvalidatedByInsertion} and {@link Tie#isInvalidatedByReplacement}
+     * resolve both endpoints through {@link Tie#resolveIn}, which asks the line performing the
+     * edit — so the far endpoint always resolves to an edge bound rather than to the -1 the far
+     * line's own index would give. These tests exercise that through the {@link Line#addElement}
+     * / {@link Line#setElement} wiring, so both lines' {@code spans} lists are checked, not just
+     * the boolean the predicate returns.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class CrossLineTie {
+
+        private Line secondLine;
+        private Tie tie;
+
+        @BeforeEach
+        void buildCrossLineTie() {
+            secondLine = new Line(song);
+
+            song.withoutMutationTracking(() -> {
+                // Song() leaves an auto-added terminal barline on the only line it creates;
+                // drop it so the first line ends with its last note, matching a real
+                // cross-line boundary rather than a stray extra element.
+                line.removeElement(0);
+
+                for (var type : THREE_NOTES) {
+                    line.addElement(type.newInstance());
+                }
+
+                song.addLine(secondLine);
+
+                for (var type : THREE_NOTES) {
+                    secondLine.addElement(type.newInstance());
+                }
+            });
+
+            tie = tieBetween(
+                line.getElement(CROSS_LINE_ANCHOR_INDEX), secondLine.getElement(CROSS_LINE_END_INDEX));
+        }
+
+        /** Asserts that the tie is in both lines' span lists, once each. */
+        private void assertTieInBothLines() {
+            assertThat(line.getSpans()).containsOnlyOnce(tie);
+            assertThat(secondLine.getSpans()).containsOnlyOnce(tie);
+        }
+
+        /** Asserts that the tie is in neither line's span list. */
+        private void assertTieInNeitherLine() {
+            assertThat(line.getSpans()).doesNotContain(tie);
+            assertThat(secondLine.getSpans()).doesNotContain(tie);
+        }
+
+        @Test
+        void testAppendingNoteToFirstLineRemovesTieFromBothLines() {
+            song.withModification(() ->
+                line.addElement(line.elementCount(), new StaffElement(ElementType.CROTCHET)));
+
+            assertTieInNeitherLine();
+        }
+
+        @Test
+        void testAppendingNoteToFirstLineThroughTheIndexlessOverloadRemovesTieFromBothLines() {
+            // Every other case here calls addElement(int, StaffElement). The indexless overload
+            // is the one the UI's own append path uses, and it once inserted directly rather
+            // than delegating — running no invalidation sweep at all. That was invisible while
+            // every span ended inside its own line, since nothing appended past the last
+            // element could land between a span's endpoints; a cross-line tie is the case
+            // where it can (#493).
+            song.withModification(() -> line.addElement(new StaffElement(ElementType.CROTCHET)));
+
+            assertTieInNeitherLine();
+        }
+
+        @Test
+        void testAppendingBarlineToFirstLineThroughTheIndexlessOverloadRetainsTieInBothLines() {
+            song.withModification(() -> line.addElement(new StaffElement(ElementType.SINGLE_BARLINE)));
+
+            assertTieInBothLines();
+        }
+
+        @Test
+        void testInsertingNoteAtHeadOfSecondLineRemovesTieFromBothLines() {
+            song.withModification(() ->
+                secondLine.addElement(CROSS_LINE_END_INDEX, new StaffElement(ElementType.CROTCHET)));
+
+            assertTieInNeitherLine();
+        }
+
+        @Test
+        void testAppendingBarlineToFirstLineRetainsTieInBothLines() {
+            song.withModification(() ->
+                line.addElement(line.elementCount(), new StaffElement(ElementType.SINGLE_BARLINE)));
+
+            assertTieInBothLines();
+        }
+
+        @Test
+        void testInsertingBarlineAtHeadOfSecondLineRetainsTieInBothLines() {
+            song.withModification(() ->
+                secondLine.addElement(CROSS_LINE_END_INDEX, new StaffElement(ElementType.SINGLE_BARLINE)));
+
+            assertTieInBothLines();
+        }
+
+        @Test
+        void testAppendingRepeatToFirstLineRetainsTieInBothLines() {
+            song.withModification(() ->
+                line.addElement(line.elementCount(), new StaffElement(ElementType.REPEAT_LEFT)));
+
+            assertTieInBothLines();
+        }
+
+        @Test
+        void testAppendingGraceNoteToFirstLineRemovesTieFromBothLines() {
+            song.withModification(() ->
+                line.addElement(line.elementCount(), new StaffElement(ElementType.GRACE_QUAVER)));
+
+            assertTieInNeitherLine();
+        }
+
+        @Test
+        void testInsertingGraceNoteAtHeadOfSecondLineRemovesTieFromBothLines() {
+            song.withModification(() ->
+                secondLine.addElement(CROSS_LINE_END_INDEX, new StaffElement(ElementType.GRACE_QUAVER)));
+
+            assertTieInNeitherLine();
+        }
+
+        @Test
+        void testReplacingAnchorWithDifferentStaffPositionRemovesTieFromBothLines() {
+            var replacement = ElementType.CROTCHET.newInstance();
+            replacement.setStaffPosition(DIFFERENT_STAFF_POSITION);
+
+            song.withModification(() -> line.setElement(CROSS_LINE_ANCHOR_INDEX, replacement));
+
+            assertTieInNeitherLine();
+        }
+
+        @Test
+        void testReplacingEndWithDifferentStaffPositionRemovesTieFromBothLines() {
+            var replacement = ElementType.CROTCHET.newInstance();
+            replacement.setStaffPosition(DIFFERENT_STAFF_POSITION);
+
+            song.withModification(() -> secondLine.setElement(CROSS_LINE_END_INDEX, replacement));
+
+            assertTieInNeitherLine();
+        }
+
+        @Test
+        void testUndoRestoresTheTieIntoBothLines() {
+            var batch = UndoTestSupport.captureBatch(song,
+                () -> line.addElement(line.elementCount(), new StaffElement(ElementType.CROTCHET)));
+            assertTieInNeitherLine();
+
+            UndoTestSupport.replayUndo(UndoTestSupport.scoreViewFor(song), batch);
+
+            assertTieInBothLines();
         }
     }
 

@@ -43,6 +43,7 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Ending;
 import songscribe.dom.Span;
+import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
@@ -257,6 +258,11 @@ public final class MusicEditOperations {
         var endIndex = range.end();
 
         line.withModification(() -> {
+            if (range.size() == 1) {
+                toggleBoundaryTie(line, beginIndex);
+                return;
+            }
+
             var exactTie = line.findExactTie(beginIndex, endIndex);
 
             if (exactTie == null) {
@@ -267,6 +273,39 @@ public final class MusicEditOperations {
                 line.removeTie(exactTie);
             }
         });
+    }
+
+    /**
+     * Toggles the cross-line tie candidate at {@code index} in {@code line}, if any (#493).
+     * <p>
+     * {@code Span.exactly}/{@code findExactTie} can never match a cross-line half — only an
+     * {@code At} bound can equal a queried index, and a cross-line half's far bound is always
+     * {@link SpanBound#BEFORE_LINE} or {@link SpanBound#AFTER_LINE} — so add-versus-remove is
+     * decided by identity against the two real endpoints instead. That also keeps this from
+     * ever mistaking a same-line tie that merely ends on the boundary note (a chained tie) for
+     * the boundary tie itself: such a tie's elements never equal {@code boundaryTie}'s.
+     */
+    private void toggleBoundaryTie(Line line, int index) {
+        var boundaryTie = RangeQueries.boundaryTieAt(line, index);
+
+        if (boundaryTie == null) {
+            return;
+        }
+
+        Tie existingTie = null;
+
+        for (var tie : line.findTies()) {
+            if (tie.getAnchorElement() == boundaryTie.anchor() && tie.getEndElement() == boundaryTie.end()) {
+                existingTie = tie;
+                break;
+            }
+        }
+
+        if (existingTie == null) {
+            line.addTie(new Tie(boundaryTie.anchor(), boundaryTie.end()));
+        } else {
+            line.removeTie(existingTie);
+        }
     }
 
     // ========== Tuplet Operations ==========
@@ -869,11 +908,11 @@ public final class MusicEditOperations {
     // and re-resolve every ending, on every iteration.
     private boolean hasOverlap(Line line, int begin, int end) {
         for (var ending : line.findEndings()) {
-            var anchorIndex = line.anchorIndexOf(ending);
-            var endIndex = line.endIndexOf(ending);
+            var anchorBound = line.anchorIndexOf(ending);
+            var endBound = line.endIndexOf(ending);
 
             for (var i = begin; i <= end; i++) {
-                if (Span.containing(i).test(anchorIndex, endIndex)) {
+                if (Span.containing(i).test(anchorBound, endBound)) {
                     return true;
                 }
             }
@@ -1137,8 +1176,18 @@ public final class MusicEditOperations {
                     continue;
                 }
 
-                var tieStart = tieSpan.getAnchorElementIndex();
-                var tieEnd = tieSpan.getEndElementIndex();
+                // Receiver-relative resolution. Reading the pair off the tie takes the anchor
+                // index from the anchor's own line and the end index from the end's own line,
+                // so a tie crossing a line boundary yields 7..0 — an inverted range that walks
+                // nothing and silently flips no partner at all. Asking `line` gives
+                // At(7)/AFTER_LINE here and BEFORE_LINE/At(0) in the next line, so each line
+                // walks exactly its own half. The off-edge bound clamps to this line's own
+                // edge because every element below is indexed into `line`; the far half is not
+                // reachable from here. findTieAt has already rejected a tie with an ABSENT
+                // bound, so a non-At bound can only be BEFORE_LINE on the anchor or
+                // AFTER_LINE on the end.
+                var tieStart = line.anchorIndexOf(tieSpan).indexOr(0);
+                var tieEnd = line.endIndexOf(tieSpan).indexOr(line.elementCount() - 1);
 
                 for (var j = tieStart; j <= tieEnd; j++) {
                     if (visited.add(j)) {

@@ -24,8 +24,11 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.IntStream;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.Line;
 import songscribe.dom.Span;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
@@ -41,6 +44,9 @@ import songscribe.dom.TupletValidator;
  */
 public final class RangeQueries {
 
+    /** A single element selected at a line boundary — the cross-line tie candidate (#493). */
+    private static final int TIE_SELECTION_SIZE_BOUNDARY = 1;
+
     /** Two adjacent notes, with nothing between them. */
     private static final int TIE_SELECTION_SIZE_WITHOUT_SEPARATOR = 2;
 
@@ -48,6 +54,96 @@ public final class RangeQueries {
     private static final int TIE_SELECTION_SIZE_WITH_SEPARATOR = 3;
 
     private RangeQueries() {}
+
+    /**
+     * A tie candidate spanning a line boundary, with {@code anchor} the endpoint earlier in
+     * document order and {@code end} the endpoint later (#493).
+     */
+    public record BoundaryTie(StaffElement anchor, StaffElement end) {}
+
+    /**
+     * Returns the cross-line tie candidate for the element at {@code index} in {@code line},
+     * or {@code null} if the element does not sit at an eligible line boundary (#493).
+     *
+     * <p>All of these must hold: {@code index} is the element a tie would leave or enter
+     * {@code line} through — see {@link #tieExitIndex}/{@link #tieEntryIndex} — an adjacent
+     * line exists on that side and offers such an element of its own, both elements are
+     * pitched notes, and the two share a pitch. A line with only one of them checks the
+     * boundary before the line first, so it never also offers the boundary after it.
+     */
+    public static @Nullable BoundaryTie boundaryTieAt(Line line, int index) {
+        var song = line.getSong();
+        var lineIndex = song.indexOfLine(line);
+        var element = line.getElement(index);
+        BoundaryTie candidate = null;
+
+        if (index == tieEntryIndex(line) && lineIndex > 0) {
+            var previousLine = song.getLine(lineIndex - 1);
+            var anchorIndex = tieExitIndex(previousLine);
+
+            if (anchorIndex >= 0) {
+                candidate = new BoundaryTie(previousLine.getElement(anchorIndex), element);
+            }
+        } else if (index == tieExitIndex(line)
+            && lineIndex >= 0 && lineIndex < song.lineCount() - 1) {
+            var nextLine = song.getLine(lineIndex + 1);
+            var endIndex = tieEntryIndex(nextLine);
+
+            if (endIndex >= 0) {
+                candidate = new BoundaryTie(element, nextLine.getElement(endIndex));
+            }
+        }
+
+        if (candidate == null) {
+            return null;
+        }
+
+        if (!candidate.anchor().getType().isPitchedNote() || !candidate.end().getType().isPitchedNote()) {
+            return null;
+        }
+
+        return candidate.anchor().getPitch() == candidate.end().getPitch() ? candidate : null;
+    }
+
+    /** The element a tie entering {@code line} from the previous line ends on. */
+    private static int tieEntryIndex(Line line) {
+        return tieAttachmentIndex(line, 0, 1);
+    }
+
+    /** The element a tie leaving {@code line} for the next line anchors to. */
+    private static int tieExitIndex(Line line) {
+        return tieAttachmentIndex(line, line.elementCount() - 1, -1);
+    }
+
+    /**
+     * The index of the element at one edge of {@code line} that a cross-line tie attaches to,
+     * found by walking inward from {@code edgeIndex} in direction {@code step} past every
+     * element a tie may straddle. Returns -1 when the walk runs off the line without reaching
+     * one.
+     *
+     * <p>Not simply the first or last element. {@link Tie#isLegalSeparator} lets a barline,
+     * repeat or breath mark sit between a tie's two notes, and a line that ends with a barline
+     * is the ordinary case rather than a corner one — pinning the candidate to the last element
+     * would refuse the tie for most of the lines a user actually writes. The same walk answers
+     * both halves of the question, because they are one question put to two lines: which
+     * element the user must have selected for a tie to leave this line, and which element of
+     * the adjacent line it lands on.
+     *
+     * <p>A grace note is not a legal separator, so one sitting before the end note or after the
+     * anchor stops the walk instead of being passed over — matching what
+     * {@link Tie#isInvalidatedByInsertion} does to a tie the moment a grace note appears there.
+     * A final double barline stops it for the same reason: nothing may sound across the end of
+     * the piece.
+     */
+    private static int tieAttachmentIndex(Line line, int edgeIndex, int step) {
+        for (var i = edgeIndex; i >= 0 && i < line.elementCount(); i += step) {
+            if (!Tie.isLegalSeparator(line.getElement(i).getType())) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
 
     /**
      * Returns the index of the first element in the range that is not a grace note,
@@ -118,9 +214,21 @@ public final class RangeQueries {
      *
      * <p>A tie joins two notes of the same pitch, which may be adjacent or separated by a
      * single non-duration element such as a barline or repeat (refs #527).
+     *
+     * <p>A <b>single</b> selected element is also accepted, but only when it sits at a line
+     * edge and the adjacent line offers a same-pitch note at its own edge — the cross-line
+     * tie (#493). That case shares none of the same-line checks below: there is no second
+     * selected element to pair with, and the partner is found by
+     * {@link #boundaryTieAt} rather than by looking inside {@code range}.
      */
     public static boolean canToggleTie(Selection.Range range) {
         var selectionSize = range.size();
+
+        // A single boundary element ties to the adjacent line's matching edge note, not to
+        // anything else in range.line() — none of the same-line checks below apply (#493).
+        if (selectionSize == TIE_SELECTION_SIZE_BOUNDARY) {
+            return boundaryTieAt(range.line(), range.begin()) != null;
+        }
 
         if (selectionSize != TIE_SELECTION_SIZE_WITHOUT_SEPARATOR
             && selectionSize != TIE_SELECTION_SIZE_WITH_SEPARATOR) {
@@ -195,7 +303,7 @@ public final class RangeQueries {
 
         var coversExisting = (firstTuplet != null)
             && Span.exactly(beginIndex, endIndex).test(
-                firstTuplet.getAnchorElementIndex(), firstTuplet.getEndElementIndex());
+                line.anchorIndexOf(firstTuplet), line.endIndexOf(firstTuplet));
 
         // A strict sub-range of a tuplet has no creation decision to offer: making a tuplet
         // of it would silently destroy the tuplet it sits inside. The tuplet is still

@@ -52,12 +52,24 @@ public final class ToggleNotationAction extends UIAction {
             "toggle-beam",
             Strings.get(Strings.ACTION_BEAM_TOGGLE_TOOLTIP),
             KeyEvent.VK_B,
+            Flag.REQUIRES_MULTIPLE_SELECTION,
             ScoreViewController::canToggleBeaming,
             ToggleBeamCommand::new,
             Strings.ACTION_EDIT_OP_TOGGLE_BEAM
         );
     }
 
+    /**
+     * Unlike beaming, tying takes {@link Flag#REQUIRES_SELECTION} rather than
+     * {@link Flag#REQUIRES_MULTIPLE_SELECTION}: a tie across a line break is offered on a
+     * <b>single</b> selected note \u2014 a line's last note, or its first, past any barline or
+     * repeat closing or opening the line \u2014 and pairs it with the matching note at the adjacent
+     * line's own edge (#493). A size requirement is checked before
+     * {@code canToggle} runs, so {@code REQUIRES_MULTIPLE_SELECTION} would reject that
+     * selection before the boundary lookup was ever consulted. Sizes this admits but a tie
+     * cannot use are rejected by {@code RangeQueries.canToggleTie}, which is the real gate:
+     * it accepts a single element only when a cross-line partner exists.
+     */
     public static ToggleNotationAction createTieAction(MainFrame mainFrame) {
         return new ToggleNotationAction(
             mainFrame,
@@ -67,6 +79,7 @@ public final class ToggleNotationAction extends UIAction {
             "toggle-tie",
             Strings.get(Strings.ACTION_TIE_TOGGLE_TOOLTIP),
             KeyEvent.VK_T,
+            Flag.REQUIRES_SELECTION,
             ScoreViewController::canToggleTie,
             ToggleTieCommand::new,
             Strings.ACTION_EDIT_OP_TOGGLE_TIE
@@ -81,6 +94,7 @@ public final class ToggleNotationAction extends UIAction {
         String actionCommand,
         String tooltip,
         int virtualKey,
+        Flag selectionSizeFlag,
         Predicate<? super ScoreViewController> canToggle,
         Supplier<? extends Message> commandFactory,
         String undoOpNameKey
@@ -94,7 +108,7 @@ public final class ToggleNotationAction extends UIAction {
             tooltip,
             virtualKey,
             0,
-            Flag.REQUIRES_MULTIPLE_SELECTION,
+            selectionSizeFlag,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,

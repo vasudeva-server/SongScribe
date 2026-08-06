@@ -26,10 +26,14 @@ import java.util.Map;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Span;
+import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Tie;
 import songscribe.engraving.Staff;
+import songscribe.layout.LayoutResult.TieLayout.OpenSide;
 
 /**
  * The fundamental horizontal spacing unit in the engraving system.
@@ -653,6 +657,9 @@ public final class ElementColumn {
      * Resolves a {@link Span} span's anchor and end elements to their columns, or {@code null}
      * when either endpoint is unset ({@link Span#getAnchorElement} /
      * {@link Span#getEndElement}) or either has no column in {@code columnsByElement}.
+     * <p>
+     * A tie is the one span whose two notes may sit in different lines, and this method cannot
+     * tell that apart from an unplaceable span — use {@link #resolveTie} for ties.
      *
      * @param span              the span to resolve
      * @param columnsByElement  element-to-column lookup for the line being laid out
@@ -684,4 +691,93 @@ public final class ElementColumn {
      */
     public record SpanColumns(
         StaffElement anchor, StaffElement end, ElementColumn anchorColumn, ElementColumn endColumn) {}
+
+    /**
+     * Resolves a tie against the line being laid out, telling a tie that runs off one edge of
+     * that line apart from one the line cannot draw at all.
+     * <p>
+     * Only a tie can straddle a line boundary, which is why this is a tie-only sibling of
+     * {@link #resolveSpan}: every other span type resolves both endpoints in one line or is not
+     * drawn. A tie that does straddle one is laid out once per line, and each line owns the
+     * endpoint that is actually in it — so which side is open comes from asking {@code line}
+     * where the far endpoint sits ({@link Line#anchorIndexOf} / {@link Line#endIndexOf}), never
+     * from the endpoint's own line. An endpoint that resolves to no direction at all
+     * ({@link SpanBound#ABSENT} — unset, in no line, or in a line the song no longer holds)
+     * yields {@code null}: nothing is drawn rather than an arc running off an edge toward
+     * nothing.
+     *
+     * @param tie              the tie to resolve
+     * @param line             the line being laid out
+     * @param columnsByElement element-to-column lookup for that line
+     * @return the whole tie, the half this line owns, or {@code null} if the line draws no part of it
+     */
+    @Nullable
+    public static TieColumns resolveTie(
+        Tie tie, Line line, Map<StaffElement, ElementColumn> columnsByElement) {
+        var spanColumns = resolveSpan(tie, columnsByElement);
+
+        if (spanColumns != null) {
+            return new TieColumns.Whole(spanColumns);
+        }
+
+        var anchor = tie.getAnchorElement();
+        var end = tie.getEndElement();
+
+        if (anchor == null || end == null) {
+            return null;
+        }
+
+        var anchorColumn = columnsByElement.get(anchor);
+
+        if (anchorColumn != null && line.endIndexOf(tie) == SpanBound.AFTER_LINE) {
+            return new TieColumns.Half(anchor, anchorColumn, OpenSide.END);
+        }
+
+        var endColumn = columnsByElement.get(end);
+
+        if (endColumn != null && line.anchorIndexOf(tie) == SpanBound.BEFORE_LINE) {
+            return new TieColumns.Half(end, endColumn, OpenSide.START);
+        }
+
+        return null;
+    }
+
+    /**
+     * What {@link #resolveTie} found: either the whole tie or the half of it this line draws.
+     * A tie the line draws no part of is not a case here — {@link #resolveTie} returns
+     * {@code null} for that, as {@link #resolveSpan} does.
+     */
+    public sealed interface TieColumns {
+
+        /** Both notes are in this line, so the arc runs from one column to the other. */
+        record Whole(SpanColumns columns) implements TieColumns {}
+
+        /**
+         * One note is in this line and the other is in another line of the song, so this half
+         * runs from {@code attachedColumn} off the edge named by {@code openSide}. There is
+         * deliberately no column for the far note: it belongs to another line's layout, and
+         * fabricating one here would put a notehead where the staff edge belongs.
+         *
+         * @param attached       the note of the tie that is in this line
+         * @param attachedColumn that note's column
+         * @param openSide       the edge this half runs off — never {@link OpenSide#NONE}
+         */
+        record Half(StaffElement attached, ElementColumn attachedColumn, OpenSide openSide)
+            implements TieColumns {
+
+            /**
+             * Rejects {@link OpenSide#NONE}, which would describe a half with no open edge —
+             * a whole tie, which is {@link Whole}'s case. Enforced here rather than left to
+             * the doc above because {@code LayoutEngine.calculateTies} reads this by testing
+             * for {@link OpenSide#END} and treating everything else as {@link OpenSide#START},
+             * so a {@code NONE} would not fail there: it would silently draw the arc opening
+             * off the wrong edge.
+             */
+            public Half {
+                if (openSide == OpenSide.NONE) {
+                    throw new IllegalArgumentException("a tie half must run off one of the line's edges");
+                }
+            }
+        }
+    }
 }

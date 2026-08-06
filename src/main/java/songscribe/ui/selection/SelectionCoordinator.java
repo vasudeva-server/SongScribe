@@ -43,6 +43,7 @@ import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
+import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
 import songscribe.layout.AccidentalMaterializer;
@@ -437,11 +438,25 @@ public final class SelectionCoordinator {
      * query: a note is selected through the index range (clicking one collapses the range onto
      * it). That predates {@link HitTarget} and stays as it is — see {@link Selection}.
      * <p>
+     * The leading {@code activeLineIndex} gate is kind-dependent. Every {@link HitTarget} kind
+     * except {@link HitTarget.Tie} lives on exactly one line, so asking about any other line
+     * must answer {@code false} — the gate short-circuits that before the switch runs. A tie
+     * can be cross-line (#493): one {@link songscribe.dom.Tie} object present in both lines'
+     * span lists, half drawn by each. Both lines' repaints ask this method with their own line
+     * index (see {@code LineRenderer.buildInvariants}), so the tie case answers instead from
+     * {@link songscribe.dom.Tie#isIn} against the line at {@code lineIndex} — record equality
+     * alone would report the tie selected on every line in the song.
+     * <p>
      * The switch is exhaustive on purpose. A {@code default} arm would silently answer
      * {@code false} for a variant added later, which is exactly how the staff line went
      * unanswered before it was folded in.
      */
     public boolean isSelected(HitTarget target, int lineIndex) {
+        if (target instanceof HitTarget.Tie(var tie)) {
+            var line = getLine(lineIndex);
+            return isSelectedTarget(target) && line != null && tie.isIn(line);
+        }
+
         if (activeLineIndex != lineIndex) {
             return false;
         }
@@ -464,7 +479,7 @@ public final class SelectionCoordinator {
             case HitTarget.Articulation _ -> isSelectedTarget(target);
             case HitTarget.Attachment _ -> isSelectedTarget(target);
             case HitTarget.Accidental _ -> isSelectedTarget(target);
-            case HitTarget.Tie _ -> isSelectedTarget(target);
+            case HitTarget.Tie _ -> throw new AssertionError("HitTarget.Tie is handled above the gate");
             case HitTarget.Beam _ -> isSelectedTarget(target);
             case HitTarget.Trill _ -> isSelectedTarget(target);
             case HitTarget.Tuplet _ -> isSelectedTarget(target);
@@ -524,11 +539,10 @@ public final class SelectionCoordinator {
      * current selection is still valid, or if it is not a target.
      * <p>
      * One rule covers every {@link HitTarget} variant, rather than one arm per variant.
-     * {@link HitTarget#owner()} names the element the target hangs off, and an element that
-     * has been removed from the line has its {@code parentLine} cleared — {@link Line#detach}
-     * maintains that for staff elements and spans alike — so walking to the root of the
-     * parent chain and asking which line it belongs to answers for an articulation on a
-     * note, a tie, a hairpin and a note itself alike.
+     * {@link HitTarget#owner()} names the element the target hangs off, so walking to the
+     * root of the parent chain and asking {@link #isOnLine} whether that root is still on
+     * the line answers for an articulation on a note, a tie, a hairpin and a note itself
+     * alike.
      *
      * @return whether the selection was cleared
      */
@@ -573,18 +587,29 @@ public final class SelectionCoordinator {
      * Returns whether {@code element} still hangs off {@code line}.
      * <p>
      * Sub-elements — an articulation, a fermata — carry no line of their own, so the walk
-     * climbs to the root of the parent chain and asks about that element instead. Every root
-     * kind — staff element or span — answers through the same field: {@link Line#detach}
-     * clears {@code parentLine} whichever of Line's two lists drops the element, so a
-     * reference comparison against {@code line} is enough for either — and it answers for a
-     * span, which {@code Line.getElementIndex} cannot. {@link #revalidateDecorationSelection}
-     * runs after every mutation, so keep the comparison to this one field read.
+     * climbs to the root of the parent chain and asks about that element instead.
+     * <p>
+     * A staff element answers from its own {@code parentLine} field, which
+     * {@link Line#detach} clears when the line drops it, so a reference comparison against
+     * {@code line} settles it in constant time.
+     * <p>
+     * A span has no such field — it is never attached, and {@link Span#isIn} derives
+     * parentage from its endpoints, which a removal leaves exactly where they were. So a
+     * span is asked of the line's span list instead, the only record of a span having been
+     * removed. That list is short, it is scanned once per mutation rather than per element,
+     * and it is what makes a cross-line tie answer yes for <em>both</em> of the lines it is
+     * drawn across: a removal takes it out of both lists together, and until then both hold
+     * it.
      */
     private static boolean isOnLine(LineElement element, Line line) {
         var root = element;
 
         for (var parent = root.getParentElement(); parent != null; parent = root.getParentElement()) {
             root = parent;
+        }
+
+        if (root instanceof Span span) {
+            return line.getSpans().contains(span);
         }
 
         return root.getParentLine() == line;

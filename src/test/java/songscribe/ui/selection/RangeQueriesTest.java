@@ -519,11 +519,22 @@ class RangeQueriesTest extends UnitTest {
     // -- canToggleTie failure paths --
 
     @Test
-    void testCanToggleTieWithSizeLessThanTwoIsFalse() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+    void testCanToggleTieWithASingleElementAndNoAdjacentLineIsFalse() {
+        // A single selected element is no longer rejected outright — it is the cross-line tie
+        // case (#493), which pairs it with a same-pitch note at the adjacent line's own edge.
+        // What still rejects it is having no adjacent line to pair with: this line stands alone
+        // in its song, so there is no note on either side of it to tie to.
+        var song = new Song();
+        var line = song.getLine(0);
 
+        song.withoutMutationTracking(() -> {
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(ElementType.CROTCHET.newInstance());
+        });
+
+        assertThat(song.lineCount())
+            .as("the song must hold only this line, or a partner note would exist")
+            .isEqualTo(1);
         assertThat(RangeQueries.canToggleTie(Selection.Range.single(line, 0))).isFalse();
     }
 

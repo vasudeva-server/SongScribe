@@ -25,6 +25,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Line;
+import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
@@ -310,7 +311,17 @@ public class LineTrackBuilder {
                 var tieSpan = line.findTieAt(elementIndex);
                 var velocity = noteVelocity(element, velocityMap, lineIndex, elementIndex);
 
-                if ((tieSpan == null) || (tieSpan.getAnchorElementIndex() == elementIndex)) {
+                // Receiver-relative resolution. Reading the indices off the tie would compare
+                // an index resolved in the anchor's line with elementIndex in this one, so a
+                // tie crossing a line boundary would match whichever line happened to have an
+                // element at the other line's index — a note-on struck or swallowed in the
+                // wrong place, silently. Only an At bound names a position in this line, which
+                // is what suppresses the note-on for a note tied in from the previous line and
+                // the note-off for a note tied out into the next one.
+                var strikesNote = tieSpan == null || isAt(line.anchorIndexOf(tieSpan), elementIndex);
+                var releasesNote = tieSpan == null || isAt(line.endIndexOf(tieSpan), elementIndex);
+
+                if (strikesNote) {
                     slideHelper.createPendingResets(track, trackTicks, 0);
 
                     if (slideHelper.hasPendingGracePitch()) {
@@ -322,7 +333,7 @@ public class LineTrackBuilder {
                     }
                 }
 
-                if ((tieSpan == null) || (tieSpan.getEndElementIndex() == elementIndex)) {
+                if (releasesNote) {
                     var slide = element.getSlide();
 
                     if (slide != null) {
@@ -340,6 +351,15 @@ public class LineTrackBuilder {
         }
 
         return trackTicks;
+    }
+
+    /**
+     * Returns whether {@code bound} names element {@code elementIndex} of the line that
+     * resolved it. An endpoint off either edge of that line names no element in it, so it
+     * never equals a queried index.
+     */
+    private static boolean isAt(SpanBound bound, int elementIndex) {
+        return bound instanceof SpanBound.At(var index) && index == elementIndex;
     }
 
     /**

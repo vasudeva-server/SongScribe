@@ -88,22 +88,44 @@ public abstract class Span extends LineElement {
     }
 
     /**
-     * Returns the number of elements in this range.
-     * Returns 0 if the range is not properly defined.
+     * Returns whether this span is in {@code line}, meaning either of its endpoints is.
+     * <p>
+     * A span is never attached to a line: its inherited {@code parentLine} stays
+     * {@code null} for its whole life, and this derives parentage from where the endpoints
+     * sit instead. A span whose endpoints straddle a line boundary is therefore in both
+     * lines, which is what no single stored pointer could say.
+     * <p>
+     * Two reference comparisons and nothing else: it allocates nothing and is safe to ask
+     * on any path.
+     * <p>
+     * It answers where the endpoints are, which is not the same question as whether the
+     * span is still in the document — a removed span whose endpoints survive still reports
+     * {@code true}. A caller that means "is this span still live on that line" must ask
+     * {@code line.getSpans()}, as {@code SelectionCoordinator.isOnLine} does.
      */
-    public int getElementCount() {
-        if (anchorElement == null || endElement == null) {
-            return 0;
-        }
+    public boolean isIn(Line line) {
+        return getAnchorLine() == line || getEndLine() == line;
+    }
 
-        var startIndex = getAnchorElementIndex();
-        var endIndex = getEndElementIndex();
+    /**
+     * The line the anchor element belongs to, or {@code null} when the anchor is unset or
+     * sits in no line. Null-safe so callers deciding which lines a span reaches — including
+     * {@link Line#appendChild} and {@link Song#removeSpansBetweenNonAdjacentLines} — express
+     * that in one call rather than each repeating the unwrap.
+     * <p>
+     * This is the endpoint's <em>own</em> line, which is not the same question as where the
+     * endpoint sits relative to some other line; for that, ask that line via
+     * {@link Line#anchorIndexOf}.
+     */
+    public @Nullable Line getAnchorLine() {
+        var anchor = anchorElement;
+        return anchor == null ? null : anchor.getParentLine();
+    }
 
-        if (startIndex < 0 || endIndex < 0) {
-            return 0;
-        }
-
-        return endIndex - startIndex + 1;
+    /** The line the end element belongs to. See {@link #getAnchorLine}. */
+    public @Nullable Line getEndLine() {
+        var end = endElement;
+        return end == null ? null : end.getParentLine();
     }
 
     /**
@@ -252,44 +274,55 @@ public abstract class Span extends LineElement {
     }
 
     /**
-     * A test on a span's resolved anchor and end element indices.
+     * A test on a span's endpoints as the asking line resolved them.
      * <p>
-     * Both indices are {@code -1} when the corresponding endpoint is unset or its element
-     * sits in no line, so a predicate that cares about that must guard for it explicitly.
+     * The bounds are {@link SpanBound}s, not indices, because an endpoint may sit off one of
+     * that line's edges or nowhere at all; the queried positions stay {@code int} because a
+     * query is always a real in-line position. That asymmetry is what keeps a cross-line
+     * half from matching a query for a span genuinely anchored at this line's first or last
+     * element.
      */
     @FunctionalInterface
     public interface IndexPredicate {
-        boolean test(int anchorIndex, int endIndex);
+        boolean test(SpanBound anchorBound, SpanBound endBound);
     }
 
     /**
      * A predicate matching a span whose anchor-to-end range includes {@code elementIndex}.
      * <p>
-     * Guarded: a span with an unresolvable endpoint ({@code -1}) contains nothing, so a
-     * half-detached span is never reported as covering an element.
+     * A half whose far endpoint is off an edge covers every element it passes over on the way
+     * there, so a cross-line tie's line-A half contains everything from its anchor to the last
+     * element. {@link SpanBound#ABSENT} is rejected outright: an endpoint with no position
+     * bounds nothing, so a half-detached span is never reported as covering an element.
      */
     public static IndexPredicate containing(int elementIndex) {
-        return (anchorIndex, endIndex) ->
-            anchorIndex >= 0 && endIndex >= 0 && anchorIndex <= elementIndex && elementIndex <= endIndex;
+        return (anchorBound, endBound) -> anchorBound.atOrBefore(elementIndex) && endBound.atOrAfter(elementIndex);
     }
 
     /**
      * A predicate matching a span overlapping the inclusive element index range
      * {@code [begin, end]}.
      * <p>
-     * Deliberately <em>not</em> guarded against unresolvable endpoints ({@code -1}): the trill
+     * Off-edge bounds read as unbounded in their direction, exactly as in {@link #containing}.
+     * An {@link SpanBound#ABSENT} anchor is deliberately <em>not</em> rejected: the trill
      * sweeps in {@link Line#addTrill} and {@link Line#removeTrillsOverlapping} rely on a
      * half-detached span still being found so it can be cleaned up.
      */
     public static IndexPredicate overlapping(int begin, int end) {
-        return (anchorIndex, endIndex) -> anchorIndex <= end && endIndex >= begin;
+        return (anchorBound, endBound) ->
+            (anchorBound.isAbsent() || anchorBound.atOrBefore(end)) && endBound.atOrAfter(begin);
     }
 
     /**
      * A predicate matching a span whose anchor and end are exactly the given indices.
+     * <p>
+     * Only a resolved position can equal a queried one — an off-edge bound is never coerced
+     * to index 0 or to the last index, so a cross-line half never answers an exact-range query.
      */
     public static IndexPredicate exactly(int anchorIndex, int endIndex) {
-        return (spanAnchorIndex, spanEndIndex) -> spanAnchorIndex == anchorIndex && spanEndIndex == endIndex;
+        return (anchorBound, endBound) ->
+            anchorBound instanceof SpanBound.At(var spanAnchorIndex) && spanAnchorIndex == anchorIndex &&
+            endBound instanceof SpanBound.At(var spanEndIndex) && spanEndIndex == endIndex;
     }
 
     /**
@@ -298,8 +331,8 @@ public abstract class Span extends LineElement {
      * <p>
      * This is the single place LineElement-level state is copied, so a new subclass cannot
      * forget it. Subclasses carry their own subclass-specific state in {@link #createCopy}.
-     * Does not set {@code parentLine} — {@code Line.addSpan} does that on insert —
-     * and does not copy derived caches.
+     * Does not set {@code parentLine} — no span ever has one; see {@link #isIn} — and does
+     * not copy derived caches.
      *
      * @param newAnchor The anchor element for the copy
      * @param newEnd    The end element for the copy

@@ -2352,6 +2352,7 @@ class ScoreViewControllerTest extends UnitTest {
 
         private ScoreView scoreMock;
         private Line targetLine;
+        private Line otherLine;
         private LineComponent targetLineComponentMock;
         private LineComponent otherLineComponentMock;
         private ScoreViewController controller;
@@ -2364,7 +2365,7 @@ class ScoreViewControllerTest extends UnitTest {
             targetLine.addElement(ElementType.CROTCHET.newInstance());
             targetLine.addElement(ElementType.CROTCHET.newInstance());
 
-            var otherLine = detachedLine();
+            otherLine = detachedLine();
             otherLine.addElement(ElementType.CROTCHET.newInstance());
             otherLine.addElement(ElementType.CROTCHET.newInstance());
 
@@ -2405,6 +2406,37 @@ class ScoreViewControllerTest extends UnitTest {
 
             verify(targetLineComponentMock).invalidateLayout();
             verify(otherLineComponentMock, never()).invalidateLayout();
+        }
+
+        @Test
+        void testSongDidChangeInvalidatesBothLinesWhenAnAddedTieStraddlesThem() {
+            // A tie whose two notes sit in different lines changes what BOTH lines draw: one
+            // gains the half running off its right edge, the other the half entering from the
+            // left. The mutation names a single line, so filtering on that line alone leaves
+            // the far line's cached layout stale and its half of the arc never drawn (#493).
+            var tie = new Tie(targetLine.getElement(1), otherLine.getElement(0));
+            controller.songDidChange(
+                new SongDidChangeNotification(List.of(new TieAddition(targetLine, tie)), new Song())
+            );
+
+            verify(targetLineComponentMock).invalidateLayout();
+            verify(otherLineComponentMock).invalidateLayout();
+        }
+
+        @Test
+        void testSongDidChangeInvalidatesBothLinesWhenARemovedTieStraddledThem() {
+            // The mirror case, and the reason the far line is found through the tie's endpoint
+            // elements rather than through Span.isIn: by the time this notification is handled
+            // the removal has already taken the tie out of both lines' span lists, so asking
+            // either line whether it holds the tie answers no. The endpoints still name their
+            // lines.
+            var tie = new Tie(targetLine.getElement(1), otherLine.getElement(0));
+            controller.songDidChange(
+                new SongDidChangeNotification(List.of(new TieRemoval(targetLine, tie)), new Song())
+            );
+
+            verify(targetLineComponentMock).invalidateLayout();
+            verify(otherLineComponentMock).invalidateLayout();
         }
 
         @Test

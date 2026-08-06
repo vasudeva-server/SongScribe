@@ -27,9 +27,12 @@ import static songscribe.util.GraphicsState.Property.TRANSFORM;
 import module java.desktop;
 
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
+import songscribe.dom.SpanBound;
 import songscribe.dom.Tie;
 import songscribe.shape.BezierBow;
 import songscribe.util.GraphicsState;
@@ -39,6 +42,12 @@ import songscribe.util.GraphicsState;
  * <p>
  * Reads pre-computed cubic Bezier geometry from {@link LayoutResult.TieLayout}
  * and draws a filled lens shape using an outer and inner cubic Bezier curve.
+ * <p>
+ * A tie whose notes sit in different lines is laid out as one half per line, and each half is
+ * drawn by the same path as a whole tie: an open half is a complete arc over its own width that
+ * returns to the baseline at the staff edge, so nothing here branches on
+ * {@link LayoutResult.TieLayout#openSide()}. That distinction is decided in the layout phase,
+ * which is the only phase that knows where the edges are.
  */
 public final class TieRenderer {
 
@@ -122,17 +131,27 @@ public final class TieRenderer {
      * A tie is colored if either its start or end note is playing or selected — the
      * endpoint checks are what carries an index-range selection onto the ties inside it —
      * and, failing that, if the tie is itself the selected target.
+     * <p>
+     * A tie crossing a line boundary has only one endpoint in the line being painted. The
+     * other names no element here and so contributes no color; the line that owns it colors
+     * its own half from the same two checks.
      */
     Color determineTieColor(Tie tie, LineInvariants invariants) {
-        var startColor = invariants.getElementColor(tie.getAnchorElementIndex());
+        // Receiver-relative resolution. getElementColor indexes the line being painted, so
+        // reading the pair off the tie would ask this line for the color of its own element 7
+        // when the anchor is element 7 of a different line — the wrong note's playback
+        // highlight or selection would bleed onto the tie. Asking the painted line yields an
+        // At bound only for the endpoint it actually owns.
+        var line = invariants.requireCurrentLine();
+        var anchorColor = endpointColor(line.anchorIndexOf(tie), invariants);
 
-        if (!LineInvariants.isDefaultColor(startColor)) {
-            return startColor;
+        if (anchorColor != null) {
+            return anchorColor;
         }
 
-        var endColor = invariants.getElementColor(tie.getEndElementIndex());
+        var endColor = endpointColor(line.endIndexOf(tie), invariants);
 
-        if (!LineInvariants.isDefaultColor(endColor)) {
+        if (endColor != null) {
             return endColor;
         }
 
@@ -143,5 +162,24 @@ public final class TieRenderer {
         }
 
         return RenderingUtils.ELEMENT_COLOR;
+    }
+
+    /**
+     * Returns the color the endpoint at {@code bound} imposes on the tie, or null when it
+     * imposes none — either because the endpoint lies outside the line being painted, or
+     * because it is drawn in the default color and so has nothing to impose.
+     */
+    private static @Nullable Color endpointColor(SpanBound bound, LineInvariants invariants) {
+        if (!(bound instanceof SpanBound.At(var index))) {
+            return null;
+        }
+
+        var color = invariants.getElementColor(index);
+
+        if (LineInvariants.isDefaultColor(color)) {
+            return null;
+        }
+
+        return color;
     }
 }

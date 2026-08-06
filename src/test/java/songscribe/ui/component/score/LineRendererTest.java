@@ -51,6 +51,7 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
+import songscribe.dom.Tie;
 import songscribe.font.DocumentFonts;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
@@ -222,6 +223,66 @@ class LineRendererTest extends UnitTest {
 
             verify(g2).setColor(ScoreView.getSelectionColor());
             verify(g2, never()).setColor(overflowColor());
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // previewShiftStartOf — which index the preview shift weighs a tie against
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class PreviewShiftStartOf {
+
+        private static final int ANCHOR_INDEX = 1;
+
+        private Song song;
+        private Line firstLine;
+        private Line secondLine;
+        private Tie tie;
+
+        /**
+         * A tie whose anchor is the last note of the first line and whose end is the first
+         * element of the second — the only shape a cross-line tie takes (#493). The anchor is
+         * deliberately not at index 0, so an answer of 0 for the anchor line would be visibly
+         * wrong rather than accidentally right.
+         */
+        @BeforeEach
+        void setUp() {
+            song = new Song();
+            firstLine = song.getLine(0);
+            secondLine = new Line(song);
+
+            var unrelated = ElementType.CROTCHET.newInstance();
+            var anchor = ElementType.CROTCHET.newInstance();
+            var end = ElementType.CROTCHET.newInstance();
+            tie = new Tie(anchor, end);
+
+            song.withoutMutationTracking(() -> {
+                firstLine.addElement(unrelated);
+                firstLine.addElement(anchor);
+                song.addLine(secondLine);
+                secondLine.addElement(end);
+                firstLine.addTie(tie);
+            });
+        }
+
+        @Test
+        void testAnchorLineWeighsTheTieAgainstTheAnchorsOwnIndex() {
+            assertThat(LineRenderer.previewShiftStartOf(tie, firstLine))
+                .as("the anchor sits in this line, so its real position decides")
+                .isEqualTo(ANCHOR_INDEX);
+        }
+
+        @Test
+        void testContinuationHalfEntersAtTheStartOfItsLine() {
+            // The anchor is off this line's left edge, so the half enters at element 0 and
+            // shifts exactly when the whole line does. Reading the index off the tie instead
+            // would hand this line the anchor's position in the *previous* line, and the half
+            // would shift or not according to where that note happened to sit over there.
+            assertThat(LineRenderer.previewShiftStartOf(tie, secondLine))
+                .as("the continuation half enters at the start of its line")
+                .isZero();
         }
     }
 

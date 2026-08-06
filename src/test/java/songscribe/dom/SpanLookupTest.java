@@ -30,16 +30,23 @@ import songscribe.UnitTest;
 
 /**
  * Unit tests for {@link Span}'s predicate factories ({@link Span#containing},
- * {@link Span#overlapping}, {@link Span#exactly}), plus the guard
- * behavior change {@link SpanLookup} inherits from {@link Span#containing}: a span with an
- * unresolvable endpoint ({@code -1}) contains nothing, while {@link Span#overlapping} stays
- * unguarded so the trill removal sweeps in {@link Line#addTrill} and
- * {@link Line#removeTrillsOverlapping} keep finding half-detached trills.
+ * {@link Span#overlapping}, {@link Span#exactly}) driven through {@link Line}, the sole
+ * {@link SpanLookup} implementor and the thing that resolves an endpoint to a
+ * {@link SpanBound}. {@link SpanBoundPredicateTest} covers the predicates as pure functions
+ * over every bound combination; this covers what {@code Line} actually hands them.
  *
- * <p>{@link Line}, the sole {@link SpanLookup} implementor, resolves the indices these
- * predicates operate on.
+ * <p>That includes the guard behavior {@link SpanLookup} inherits from
+ * {@link Span#containing}: a span with an {@link SpanBound#ABSENT} endpoint contains nothing,
+ * while {@link Span#overlapping} stays unguarded so the trill removal sweeps in
+ * {@link Line#addTrill} and {@link Line#removeTrillsOverlapping} keep finding half-detached
+ * trills.
  */
 class SpanLookupTest extends UnitTest {
+
+    /** Applies {@code predicate} to {@code span}'s endpoints as {@code lookupLine} resolves them. */
+    private static boolean matches(Span.IndexPredicate predicate, Line lookupLine, Span span) {
+        return predicate.test(lookupLine.anchorIndexOf(span), lookupLine.endIndexOf(span));
+    }
 
     // -----------------------------------------------------------------------
     // Shared layout for the predicate-factory tests below:
@@ -166,7 +173,7 @@ class SpanLookupTest extends UnitTest {
         }
 
         private <T extends Span> void assertParity(Class<T> type) {
-            assertThat(parityLine.findSpans(type, (anchorIndex, endIndex) -> true))
+            assertThat(parityLine.findSpans(type, (anchorBound, endBound) -> true))
                 .as("findSpans(%s, alwaysTrue) must match findSpans(%s) element-for-element in order",
                     type.getSimpleName(), type.getSimpleName())
                 .containsExactlyElementsOf(parityLine.findSpans(type));
@@ -183,21 +190,21 @@ class SpanLookupTest extends UnitTest {
 
         @Test
         void testAtAnchorMatches() {
-            assertThat(Span.containing(ANCHOR_IDX).test(tie.getAnchorElementIndex(), tie.getEndElementIndex()))
+            assertThat(matches(Span.containing(ANCHOR_IDX), line, tie))
                 .as("the anchor index is inclusive")
                 .isTrue();
         }
 
         @Test
         void testInteriorMatches() {
-            assertThat(Span.containing(ANCHOR_IDX + 1).test(tie.getAnchorElementIndex(), tie.getEndElementIndex()))
+            assertThat(matches(Span.containing(ANCHOR_IDX + 1), line, tie))
                 .as("an index strictly between anchor and end matches")
                 .isTrue();
         }
 
         @Test
         void testAtEndMatches() {
-            assertThat(Span.containing(END_IDX).test(tie.getAnchorElementIndex(), tie.getEndElementIndex()))
+            assertThat(matches(Span.containing(END_IDX), line, tie))
                 .as("the end index is inclusive")
                 .isTrue();
         }
@@ -205,14 +212,14 @@ class SpanLookupTest extends UnitTest {
         @Test
         void testOneBeforeAnchorDoesNotMatch() {
             assertThat(
-                Span.containing(BEFORE_ANCHOR_IDX).test(tie.getAnchorElementIndex(), tie.getEndElementIndex()))
+                matches(Span.containing(BEFORE_ANCHOR_IDX), line, tie))
                 .as("one index before the anchor is outside the range")
                 .isFalse();
         }
 
         @Test
         void testOneAfterEndDoesNotMatch() {
-            assertThat(Span.containing(AFTER_END_IDX).test(tie.getAnchorElementIndex(), tie.getEndElementIndex()))
+            assertThat(matches(Span.containing(AFTER_END_IDX), line, tie))
                 .as("one index after the end is outside the range")
                 .isFalse();
         }
@@ -230,7 +237,7 @@ class SpanLookupTest extends UnitTest {
         void testQueryEndingAtSpanAnchorOverlaps() {
             // Query [0, ANCHOR_IDX] touches the span at its left boundary.
             assertThat(
-                Span.overlapping(0, ANCHOR_IDX).test(tie.getAnchorElementIndex(), tie.getEndElementIndex()))
+                matches(Span.overlapping(0, ANCHOR_IDX), line, tie))
                 .as("a query range ending exactly at the span's anchor overlaps it")
                 .isTrue();
         }
@@ -239,7 +246,7 @@ class SpanLookupTest extends UnitTest {
         void testQueryStartingAtSpanEndOverlaps() {
             // Query [END_IDX, LAST_IDX] touches the span at its right boundary.
             assertThat(
-                Span.overlapping(END_IDX, LAST_IDX).test(tie.getAnchorElementIndex(), tie.getEndElementIndex()))
+                matches(Span.overlapping(END_IDX, LAST_IDX), line, tie))
                 .as("a query range starting exactly at the span's end overlaps it")
                 .isTrue();
         }
@@ -248,7 +255,7 @@ class SpanLookupTest extends UnitTest {
         void testQueryEndingJustBeforeAnchorDoesNotOverlap() {
             // Query [0, BEFORE_ANCHOR_IDX] falls entirely left of the span.
             assertThat(
-                Span.overlapping(0, BEFORE_ANCHOR_IDX).test(tie.getAnchorElementIndex(), tie.getEndElementIndex()))
+                matches(Span.overlapping(0, BEFORE_ANCHOR_IDX), line, tie))
                 .as("a query range ending just before the anchor does not overlap")
                 .isFalse();
         }
@@ -257,7 +264,7 @@ class SpanLookupTest extends UnitTest {
         void testQueryStartingJustAfterEndDoesNotOverlap() {
             // Query [AFTER_END_IDX, LAST_IDX] falls entirely right of the span.
             assertThat(
-                Span.overlapping(AFTER_END_IDX, LAST_IDX).test(tie.getAnchorElementIndex(), tie.getEndElementIndex()))
+                matches(Span.overlapping(AFTER_END_IDX, LAST_IDX), line, tie))
                 .as("a query range starting just after the end does not overlap")
                 .isFalse();
         }
@@ -284,12 +291,11 @@ class SpanLookupTest extends UnitTest {
         @Test
         void testExactRangeMatchesOnlyItsOwnTie() {
             assertAll(
-                () -> assertThat(Span.exactly(0, ANCHOR_IDX)
-                    .test(chainedTie.getAnchorElementIndex(), chainedTie.getEndElementIndex()))
+                () -> assertThat(matches(Span.exactly(0, ANCHOR_IDX), line, chainedTie))
                     .as("the chained tie's own exact range matches")
                     .isTrue(),
                 () -> assertThat(
-                    Span.exactly(0, ANCHOR_IDX).test(tie.getAnchorElementIndex(), tie.getEndElementIndex()))
+                    matches(Span.exactly(0, ANCHOR_IDX), line, tie))
                     .as("the other tie's different range does not match")
                     .isFalse()
             );
@@ -322,8 +328,7 @@ class SpanLookupTest extends UnitTest {
             song.withoutMutationTracking(() -> line.addTie(partialMatchTie));
 
             assertAll(
-                () -> assertThat(Span.exactly(ANCHOR_IDX, END_IDX)
-                    .test(partialMatchTie.getAnchorElementIndex(), partialMatchTie.getEndElementIndex()))
+                () -> assertThat(matches(Span.exactly(ANCHOR_IDX, END_IDX), line, partialMatchTie))
                     .as("matching only the anchor is not an exact match")
                     .isFalse(),
                 () -> assertThat(line.findExactTie(ANCHOR_IDX, END_IDX))
@@ -490,10 +495,10 @@ class SpanLookupTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // A span whose endpoints have been reparented to another line resolves to -1
-    // against the line that still holds the span. Resolving through the endpoint's
-    // own line instead would answer with a position in *that* line — a plausible
-    // non-negative index no caller could tell apart from a real one.
+    // A span whose endpoints have been reparented to another line resolves against the
+    // line that still holds the span to a direction, never a position. Resolving through
+    // the endpoint's own line instead would answer with a position in *that* line — a
+    // plausible index no caller could tell apart from a real one.
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -556,11 +561,11 @@ class SpanLookupTest extends UnitTest {
         }
 
         @Test
-        void testEndpointsInAnotherLineDoNotResolve() {
+        void testEndpointsInAnotherLineResolveToADirectionNotAPosition() {
             assertAll(
                 // Preconditions: the spans are still in the source line, and the endpoints
                 // really did move — so the receiver-blind resolution had a plausible
-                // non-negative index available to return.
+                // index available to return.
                 () -> assertThat(sourceLine.getSpans())
                     .as("the spans must still belong to the source line")
                     .contains(ending, trill),
@@ -571,12 +576,14 @@ class SpanLookupTest extends UnitTest {
                     .as("the end must now resolve in the other line")
                     .isNotEqualTo(-1),
 
+                // otherLine was appended after sourceLine, so both endpoints are off its
+                // right edge — a direction, never an index of this line.
                 () -> assertThat(sourceLine.anchorIndexOf(ending))
-                    .as("an anchor in another line has no position in this one")
-                    .isEqualTo(-1),
+                    .as("an anchor in a later line is off this line's right edge")
+                    .isEqualTo(SpanBound.AFTER_LINE),
                 () -> assertThat(sourceLine.endIndexOf(ending))
-                    .as("an end in another line has no position in this one")
-                    .isEqualTo(-1)
+                    .as("an end in a later line is off this line's right edge")
+                    .isEqualTo(SpanBound.AFTER_LINE)
             );
         }
 
@@ -607,6 +614,172 @@ class SpanLookupTest extends UnitTest {
                 () -> assertThat(sourceLine.hasTrillOverlapping(0, lastIndex))
                     .as("a trill with both endpoints in another line overlaps no range here")
                     .isFalse()
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // The feature this type exists for: one Tie in two lines' span lists, each line
+    // owning one endpoint and seeing the other as a direction off its own edge.
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class CrossLineTie {
+
+        private static final int LINE_NOTE_COUNT = 4;
+
+        private Song crossSong;
+        private Line lineA;
+        private Line lineB;
+        private Tie crossTie;
+        private StaffElement anchorElement;
+        private StaffElement endElement;
+
+        @BeforeEach
+        void setUp() {
+            crossSong = new Song();
+            lineA = crossSong.getLine(0);
+            lineB = new Line(crossSong);
+
+            crossSong.withoutMutationTracking(() -> {
+                crossSong.addLine(lineB);
+
+                for (var i = 0; i < LINE_NOTE_COUNT; i++) {
+                    lineA.addElement(new StaffElement(ElementType.CROTCHET));
+                    lineB.addElement(new StaffElement(ElementType.CROTCHET));
+                }
+            });
+
+            anchorElement = lineA.getElement(lineA.elementCount() - 1);
+            endElement = lineB.getElement(0);
+            crossTie = new Tie(anchorElement, endElement);
+            crossSong.withoutMutationTracking(() -> lineA.addTie(crossTie));
+        }
+
+        @Test
+        void testEachLineResolvesItsOwnEndpointAndTheOtherAsADirection() {
+            var anchorIndex = lineA.getElementIndex(anchorElement);
+            var endIndex = lineB.getElementIndex(endElement);
+
+            assertAll(
+                // Precondition: one tie, both lists — otherwise each line would be resolving
+                // a span it never sees.
+                () -> assertThat(lineA.getSpans())
+                    .as("the anchor's line holds the tie")
+                    .contains(crossTie),
+                () -> assertThat(lineB.getSpans())
+                    .as("the end's line holds the same tie")
+                    .contains(crossTie),
+
+                () -> assertThat(lineA.anchorIndexOf(crossTie))
+                    .as("line A owns the anchor, so it resolves to a real position there")
+                    .isEqualTo(new SpanBound.At(anchorIndex)),
+                () -> assertThat(lineA.endIndexOf(crossTie))
+                    .as("line A's half exits through its right edge")
+                    .isEqualTo(SpanBound.AFTER_LINE),
+                () -> assertThat(lineB.anchorIndexOf(crossTie))
+                    .as("line B's half enters through its left edge")
+                    .isEqualTo(SpanBound.BEFORE_LINE),
+                () -> assertThat(lineB.endIndexOf(crossTie))
+                    .as("line B owns the end, so it resolves to a real position there")
+                    .isEqualTo(new SpanBound.At(endIndex))
+            );
+        }
+
+        @Test
+        void testEachHalfCoversOnlyItsOwnSideOfTheBoundary() {
+            var anchorIndex = lineA.getElementIndex(anchorElement);
+            var endIndex = lineB.getElementIndex(endElement);
+
+            assertAll(
+                () -> assertThat(lineA.findTieAt(anchorIndex))
+                    .as("line A's half covers the element it is anchored to")
+                    .isSameAs(crossTie),
+                () -> assertThat(lineA.findTieAt(anchorIndex - 1))
+                    .as("line A's half starts at its anchor, not before it")
+                    .isNull(),
+                () -> assertThat(lineB.findTieAt(endIndex))
+                    .as("line B's half covers the element it ends on")
+                    .isSameAs(crossTie),
+                () -> assertThat(lineB.findTieAt(endIndex + 1))
+                    .as("line B's half stops at its end, not after it")
+                    .isNull()
+            );
+        }
+
+        @Test
+        void testHalfNeverAnswersAnExactRangeQuery() {
+            var anchorIndex = lineA.getElementIndex(anchorElement);
+            var lastIndexOfLineA = lineA.elementCount() - 1;
+
+            assertAll(
+                () -> assertThat(lineA.findExactTie(anchorIndex, anchorIndex))
+                    .as("an off-edge end is not the anchor's own index")
+                    .isNull(),
+                () -> assertThat(lineA.findExactTie(anchorIndex, lastIndexOfLineA))
+                    .as("an off-edge end is not this line's last index either")
+                    .isNull(),
+                () -> assertThat(lineB.findExactTie(0, lineB.getElementIndex(endElement)))
+                    .as("an off-edge anchor is not index 0")
+                    .isNull()
+            );
+        }
+
+        @Test
+        void testDeletedFarEndpointResolvesToAbsentRatherThanADirection() {
+            // withReplay skips the invalidation sweep, leaving the tie in both lists with an
+            // end element that now belongs to no line — see GuardBehavior above.
+            crossSong.withoutMutationTracking(
+                () -> crossSong.withReplay(() -> lineB.removeElement(lineB.getElementIndex(endElement))));
+
+            assertAll(
+                () -> assertThat(lineA.endIndexOf(crossTie))
+                    .as("an endpoint in no line has no direction to offer")
+                    .isEqualTo(SpanBound.ABSENT),
+                () -> assertThat(lineA.findTieAt(lineA.getElementIndex(anchorElement)))
+                    .as("the half stops covering anything rather than running off an edge")
+                    .isNull()
+            );
+        }
+
+        @Test
+        void testFarEndpointInALineTheSongNoLongerHoldsResolvesToAbsent() {
+            // Song.removeLine leaves the deleted line's elements pointing at it, so the far
+            // endpoint still names a Line — one with no earlier-or-later answer.
+            crossSong.withoutMutationTracking(() -> crossSong.removeLine(crossSong.indexOfLine(lineB)));
+
+            assertAll(
+                () -> assertThat(endElement.getParentLine())
+                    .as("precondition: the deleted line still owns its elements")
+                    .isSameAs(lineB),
+                () -> assertThat(lineA.endIndexOf(crossTie))
+                    .as("a line outside the song has no position in the running order")
+                    .isEqualTo(SpanBound.ABSENT)
+            );
+        }
+
+        @Test
+        void testMergeCandidateWithAnOffLineBoundIsNotAbsorbed() {
+            // A hairpin whose endpoints both sit in line B, yet which line A's span list also
+            // holds — the shape a cross-line span leaves behind. Read as indices, its bounds
+            // would drag the added hairpin's anchor to a position line A does not have.
+            var strayHairpin = new Crescendo(lineB.getElement(0), lineB.getElement(1));
+            crossSong.withoutMutationTracking(() -> lineA.addSpan(strayHairpin));
+
+            var addedHairpin = new Crescendo(lineA.getElement(0), lineA.getElement(1));
+            crossSong.withoutMutationTracking(() -> lineA.addCrescendo(addedHairpin));
+
+            assertAll(
+                () -> assertThat(lineA.getSpans())
+                    .as("the off-line hairpin is not absorbed into the added one")
+                    .contains(strayHairpin, addedHairpin),
+                () -> assertThat(lineA.anchorIndexOf(addedHairpin))
+                    .as("the added hairpin keeps the anchor it was drawn with")
+                    .isEqualTo(new SpanBound.At(0)),
+                () -> assertThat(lineA.endIndexOf(addedHairpin))
+                    .as("the added hairpin keeps the end it was drawn with")
+                    .isEqualTo(new SpanBound.At(1))
             );
         }
     }

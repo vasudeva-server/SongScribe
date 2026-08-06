@@ -163,7 +163,10 @@ final class MusicXmlSpanIndex {
      *       end (inclusive); anchor and end flags set only at the endpoints.</li>
      *   <li><b>Tie</b>: {@code tieStart} reference set at anchor; {@code tieStop}
      *       set at end. Both may be non-null on the same note when it is the
-     *       end of one tie and the anchor of the next in a chain.</li>
+     *       end of one tie and the anchor of the next in a chain. Each endpoint
+     *       is bucketed only when it resolves to a position in {@code line}, so a
+     *       tie straddling a line boundary contributes one marker here and the
+     *       other in the far line.</li>
      *   <li><b>Crescendo / Diminuendo / Ending</b>: anchor and end indices only;
      *       Ending additionally records its split index when present.</li>
      * </ul>
@@ -205,16 +208,32 @@ final class MusicXmlSpanIndex {
 
         // Ties: anchor and end flags are independent so a note that is the end
         // of one tie and the anchor of the next will have both flags set.
+        //
+        // Receiver-relative resolution, and only here. Reading the pair off the tie takes
+        // the anchor index from the anchor's own line and the end index from the end's own
+        // line, so a tie crossing a line boundary hands the same two indices to both lines:
+        // each would emit a <tied type="start"/> *and* a <tied type="stop"/>, and the
+        // exported file would carry unpaired markers the reader later pairs into ties nobody
+        // wrote, dropping the real one. Asking `line` yields At(7)/AFTER_LINE in the anchor's
+        // line and BEFORE_LINE/At(0) in the end's, so each line emits exactly its own half's
+        // marker and the far half's marker comes from the far line.
+        //
+        // The beam, tuplet, trill, hairpin and ending branches need none of this: only ties
+        // can be cross-line, and those branches walk `for (i = anchorIdx; i <= endIdx; i++)`,
+        // which is a no-op on the inverted pair a cross-line span would produce. Do not
+        // "fix" them to match.
         for (var tie : line.findTies()) {
-            var anchorIdx = tie.getAnchorElementIndex();
-            var endIdx = tie.getEndElementIndex();
-
-            if (!indicesInRange(anchorIdx, endIdx, count)) {
-                continue;
+            // No range check on either index: an At bound is a position in `line` itself, and
+            // `count` is that line's element count, so it is in range by construction. The
+            // other branches below do need indicesInRange, because they read the pair off the
+            // span and so can be handed a position belonging to some other line.
+            if (line.anchorIndexOf(tie) instanceof SpanBound.At(var anchorIdx)) {
+                builders[anchorIdx].tieStart = tie;
             }
 
-            builders[anchorIdx].tieStart = tie;
-            builders[endIdx].tieStop = tie;
+            if (line.endIndexOf(tie) instanceof SpanBound.At(var endIdx)) {
+                builders[endIdx].tieStop = tie;
+            }
         }
 
         // Tuplets: set the span reference on every note in the group [anchor, end].

@@ -124,6 +124,12 @@ public record Fragment(
      * boundary ends at the boundary, and a melisma that crosses it is closed or dropped, so
      * a paste can never join the copied syllables to whatever they land next to.
      *
+     * <p>A span is captured only when the range contains <b>both</b> its endpoints; one with
+     * an endpoint outside is dropped from the fragment, and that applies to every span type
+     * including a {@link songscribe.dom.Tie}. Copying a range that clips a tie therefore
+     * copies the elements the user selected and nothing else — the capture is never refused
+     * and the clipboard is never left holding a span it cannot paste whole.
+     *
      * @param line  The line to capture from
      * @param begin The index of the first element to capture
      * @param end   The index of the last element to capture

@@ -33,6 +33,7 @@ import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
+import songscribe.dom.SpanBound;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.ui.ViewScale;
@@ -98,6 +99,22 @@ public final class LineInvariants {
     @Nullable
     private final Tie playingTieSpan;
 
+    /**
+     * Where the playing tie's two endpoints sit relative to this line, resolved once alongside
+     * the tie itself. Null exactly when {@link #playingTieSpan} is.
+     * <p>
+     * Cached because {@link #isElementInPlayingTie} is asked once per element as the line
+     * paints, and for a tie crossing a line boundary resolving the far endpoint walks the
+     * song's line list to work out which side of this line it fell off. That answer is the
+     * same for every element, so it is resolved for the line rather than for each of them.
+     */
+    @Nullable
+    private final SpanBound playingTieAnchorBound;
+
+    /** @see #playingTieAnchorBound */
+    @Nullable
+    private final SpanBound playingTieEndBound;
+
     /** Notes highlighted by the active slide preview, resolved once per line. */
     private final PreviewElementManager.SlidePreviewNotes slidePreviewNotes;
 
@@ -123,6 +140,15 @@ public final class LineInvariants {
         playingTieSpan = (b.playingNoteIndex >= 0 && b.currentLine != null)
             ? b.currentLine.findTieAt(b.playingNoteIndex)
             : null;
+
+        if (playingTieSpan == null || b.currentLine == null) {
+            playingTieAnchorBound = null;
+            playingTieEndBound = null;
+        } else {
+            playingTieAnchorBound = b.currentLine.anchorIndexOf(playingTieSpan);
+            playingTieEndBound = b.currentLine.endIndexOf(playingTieSpan);
+        }
+
         slidePreviewNotes = PreviewElementManager.getSlidePreviewNotes();
     }
 
@@ -457,14 +483,26 @@ public final class LineInvariants {
     /**
      * Returns whether the given element index is part of the same tie span
      * as the currently playing note, making it co-highlighted during playback.
+     * <p>
+     * Answers for the half of the tie that lies in the line being painted. A tie crossing a
+     * line boundary is asked separately by each line's invariants, and each reports its own
+     * half; neither speaks for the other line's elements.
      *
      * @param elementIndex the element index to check
      * @return true if the element is in the same tie as the playing note
      */
     public boolean isElementInPlayingTie(int elementIndex) {
-        return playingTieSpan != null
-                && Span.containing(elementIndex).test(
-                    playingTieSpan.getAnchorElementIndex(), playingTieSpan.getEndElementIndex());
+        // Receiver-relative resolution, done once for the line rather than per element. Reading
+        // the pair off the tie would take the anchor index from one line and the end index from
+        // the other, and for a cross-line tie the resulting 7 <= i && i <= 0 is unsatisfiable,
+        // so the highlight would silently never fire. Resolving against currentLine yields
+        // At(7)/AFTER_LINE here and BEFORE_LINE/At(0) in the next line, and each half covers
+        // exactly the elements it passes over. The two bounds are null whenever the tie is.
+        if (playingTieAnchorBound == null || playingTieEndBound == null) {
+            return false;
+        }
+
+        return Span.containing(elementIndex).test(playingTieAnchorBound, playingTieEndBound);
     }
 
     /**

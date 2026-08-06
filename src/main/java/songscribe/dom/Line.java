@@ -105,14 +105,14 @@ public class Line implements LyricRun, SpanLookup {
      * structural change was never safe and this field does not change that.
      *
      * <pre>
-     *   elements written  ──► attach/detach(StaffElement) ──► elementIndexMap = null
+     *   elements written  ──► attach/detach ──► elementIndexMap = null
      *        addElement ×2, setElement, removeElement, removeRange
-     *
-     *   spans written     ──► attach/detach(Span) ────────► no effect
-     *        appendChild/removeChild                         (spans do not move elements)
      *
      *   getElementIndex() ──► null? rebuild : cached lookup
      * </pre>
+     * Writes to {@link #spans} are absent from that picture because they cannot reach it:
+     * a span holds no position in {@code elements}, and {@link #appendChild} /
+     * {@link #removeChild} touch the span list alone.
      */
     private volatile @Nullable Map<StaffElement, Integer> elementIndexMap = null;
 
@@ -251,65 +251,55 @@ public class Line implements LyricRun, SpanLookup {
     // ========================================================================
     // Line element parentage
     //
-    // For the elements held in this line's two lists, attach/detach are the only
-    // writers of parentLine. Every mutation of `elements`, and every mutation of
-    // `spans`, funnels through one of them from inside the applyChange
-    // mutator lambda, so parentage moves with the recorded change:
+    // For the staff elements held in `elements`, attach/detach are the only writers of
+    // parentLine. Every mutation of `elements` funnels through one of them from inside
+    // the applyChange mutator lambda, so parentage moves with the recorded change:
     //
     //     addElement(StaffElement) ──┐
-    //     addElement(int, …) ────────┤
-    //     setElement ────────────────┤
-    //     addTie ────────────────────┼──► attach
-    //     addBeaming ────────────────┤
-    //     addTuplet ─────────────────┤
-    //     addHairpin ────────────────┤
-    //     addSpan ───────────┘
+    //     addElement(int, …) ────────┼──► attach
+    //     setElement ────────────────┘
     //
     //     setElement ────────────────┐
-    //     removeElement ─────────────┤
-    //     removeRange ───────────────┤
-    //     removeTie ─────────────────┼──► detach
-    //     removeBeaming ─────────────┤
-    //     removeTuplet ──────────────┤
-    //     removeHairpin ─────────────┤
-    //     removeSpan ────────┘
+    //     removeElement ─────────────┼──► detach
+    //     removeRange ───────────────┘
     //
-    // The spans callers reach attach/detach through appendChild/removeChild,
-    // which pair the pointer write with the list mutation it has to accompany.
+    // A span is never attached to a line at all. Its inherited parentLine stays null for
+    // its whole life, and Span.isIn(Line) derives parentage from where its endpoints sit,
+    // so a span whose endpoints straddle a line boundary is in both of those lines.
+    // appendChild/removeChild — still the only writers of `spans` — therefore write the
+    // lists alone, and keep both lines of such a pair holding the span so every sweep
+    // over a line's spans sees the half that belongs to it.
     //
     // Attachments (articulations, fermatas) live in neither list, so none of this
     // covers them: LineElement.addChild/removeChild own their parentLine, and
     // propagateParentLine is what carries a host element's line down to them.
     //
-    // Invariant, for an element in one of this line's two lists:
-    // element.getParentLine() == L ⟺ that list of L contains the element, and
-    // null ⟺ the element is in no line at all.
+    // Invariants:
+    //   staff element — element.getParentLine() == L ⟺ L.elements contains the element,
+    //   and null ⟺ the element is in no line at all.
+    //
+    //   span — span.isIn(L) ⟹ L.spans contains the span. One-directional on purpose:
+    //   a span with both endpoints detached is in no line by the derived answer, yet is
+    //   still in the list it was added to, which is exactly where it sat before.
     // ========================================================================
 
     /** Points {@code element} and everything below it at this line. */
-    private void attach(LineElement element) {
-        // Only staff elements sit in `elements`; span parentage cannot move an index.
-        if (element instanceof StaffElement) {
-            elementIndexMap = null;
-        }
-
+    private void attach(StaffElement element) {
+        elementIndexMap = null;
         element.setParentLine(this);
         element.propagateParentLine(this);
     }
 
     /** Clears {@code element}'s line pointer, and those of everything below it. */
-    private void detach(LineElement element) {
-        // Only staff elements sit in `elements`; span parentage cannot move an index.
+    private void detach(StaffElement element) {
         // Invalidate above the early return below, so a re-parent cannot skip it.
-        if (element instanceof StaffElement) {
-            elementIndexMap = null;
-        }
+        elementIndexMap = null;
 
         // A re-parent that ran attach() first already owns this element — don't
         // clear a pointer that now names a different line.
         //
         // No caller reaches this return today: every re-parent detaches before it attaches,
-        // setElement (:452) deliberately so. It is kept because the cost of being wrong here
+        // setElement deliberately so. It is kept because the cost of being wrong here
         // is a live element with no line, and untestable — a test cannot reach it either.
         if (element.getParentLine() != this) {
             return;
@@ -320,40 +310,80 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * Attaches {@code element} and appends it to {@code spans}. Call from inside
-     * an applyChange mutator lambda — the pairing is what keeps parentage moving with the
-     * recorded change. The {@code elements} list has no counterpart because every one of
-     * its mutations inserts at an index or replaces in place.
+     * Returns the line holding an endpoint of {@code span} that is not this line, or
+     * {@code null} when neither endpoint is in another line.
+     * <p>
+     * A span reaches {@link #appendChild} either with both endpoints in this line, with
+     * both detached, or — for a cross-line tie — with one endpoint here and one in the
+     * adjacent line. This answers the third case, so that tie lands in both lines' lists.
      */
-    private void appendChild(Span element) {
-        attach(element);
-        spans.add(element);
+    private @Nullable Line otherLineOf(Span span) {
+        var anchorLine = span.getAnchorLine();
+
+        if (anchorLine != null && anchorLine != this) {
+            return anchorLine;
+        }
+
+        var endLine = span.getEndLine();
+
+        if (endLine != null && endLine != this) {
+            return endLine;
+        }
+
+        return null;
     }
 
     /**
-     * Detaches {@code element} and removes it from {@code spans}. Takes the index
-     * its caller already located, rather than scanning the list a second time.
+     * Appends {@code element} to {@code spans} — this line's, and the other line of the
+     * pair when the span's endpoints straddle a boundary. Call from inside an applyChange
+     * mutator lambda, so the list write moves with the recorded change. The {@code elements}
+     * list has no counterpart because every one of its mutations inserts at an index or
+     * replaces in place.
      */
-    private void removeChild(Span element, int index) {
-        detach(element);
-        spans.remove(index);
+    private void appendChild(Span element) {
+        spans.add(element);
+
+        var otherLine = otherLineOf(element);
+
+        if (otherLine != null) {
+            otherLine.spans.add(element);
+        }
     }
 
+    /**
+     * Removes {@code element} from {@code spans} — this line's, and the other line of the
+     * pair, so a cross-line span leaves both halves together. Takes the index its caller
+     * already located in this line, rather than scanning the list a second time.
+     */
+    private void removeChild(Span element, int index) {
+        spans.remove(index);
+
+        var otherLine = otherLineOf(element);
+
+        if (otherLine != null) {
+            otherLine.spans.remove(element);
+        }
+    }
+
+    /**
+     * Appends {@code element}, or inserts it before the auto-maintained terminal when this
+     * line carries one, so the terminal remains last.
+     * <p>
+     * Resolves the position and hands off to {@link #addElement(int, StaffElement)} rather
+     * than inserting here: appending is an insertion at the end, and the companion work that
+     * overload does — dropping the spans the new element invalidates above all — applies to it
+     * just the same. It looked as though it did not while every span ended somewhere inside
+     * its own line, because nothing appended past the last element could land between a span's
+     * endpoints. A tie whose end note is in the <em>next</em> line breaks that: everything
+     * after its anchor is between the two notes, and appending is exactly how something gets
+     * there (#493).
+     */
     public void addElement(StaffElement element) {
-        // When the line ends with the auto-maintained terminal, insert the new
-        // element before it so the terminal remains the last element.
         var lastIdx = elements.size() - 1;
         var insertBeforeFinal = lastIdx >= 0
             && song.isAutoMaintainedTerminal(elements.get(lastIdx), this);
-        var index = insertBeforeFinal ? lastIdx : elements.size();
 
-        applyChange(
-            new ElementInsertion(this, index, element),
-            () -> {
-                attach(element);
-                elements.add(index, element);
-            }
-        );
+        addElement(insertBeforeFinal ? lastIdx : elements.size(), element);
     }
 
     /**
@@ -992,14 +1022,22 @@ public class Line implements LyricRun, SpanLookup {
         // Expand bounds to absorb adjacent/overlapping spans. Both must be resolved before
         // the setters below, which mutate the very indices these predicates read. Positions
         // come from this line throughout — the same route the predicates above resolve by.
-        var mergedAnchorIdx = findSpans(type, (anchor, end) -> anchor <= anchorIdx && anchorIdx <= end + reach)
+        //
+        // bothResolved has already excluded every non-At bound, so indexOr's fallback is
+        // unreachable here. It is the un-merged position anyway, so an unreachable case would
+        // leave the merge a no-op rather than move an endpoint somewhere arbitrary.
+        var mergedAnchorIdx = findSpans(
+            type,
+            bothResolved((anchor, end) -> anchor <= anchorIdx && anchorIdx <= end + reach))
             .stream()
-            .mapToInt(this::anchorIndexOf)
+            .mapToInt(candidate -> anchorIndexOf(candidate).indexOr(anchorIdx))
             .min()
             .orElse(anchorIdx);
-        var mergedEndIdx = findSpans(type, (anchor, end) -> anchor - reach <= endIdx && endIdx <= end)
+        var mergedEndIdx = findSpans(
+            type,
+            bothResolved((anchor, end) -> anchor - reach <= endIdx && endIdx <= end))
             .stream()
-            .mapToInt(this::endIndexOf)
+            .mapToInt(candidate -> endIndexOf(candidate).indexOr(endIdx))
             .max()
             .orElse(endIdx);
 
@@ -1013,9 +1051,31 @@ public class Line implements LyricRun, SpanLookup {
 
         var subsumedSpans = findSpans(
             type,
-            (anchor, end) -> anchor >= mergedAnchorIdx && end <= mergedEndIdx
+            bothResolved((anchor, end) -> anchor >= mergedAnchorIdx && end <= mergedEndIdx)
         );
         subsumedSpans.forEach(remover);
+    }
+
+    /** A comparison over two endpoint positions both known to be in this line. */
+    @FunctionalInterface
+    private interface ResolvedIndexPredicate {
+        boolean test(int anchorIndex, int endIndex);
+    }
+
+    /**
+     * Restricts {@code matches} to spans whose endpoints both resolve to a position in this
+     * line, so a span carrying an off-line or absent bound is never a merge candidate.
+     * <p>
+     * {@link #mergeOverlappingSpans} widens by arithmetic on these positions and then indexes
+     * {@link #elements} with the result. Neither is meaningful for an endpoint that is not in
+     * this line, and letting one through would drag the widened span out to an unrelated
+     * neighbor's position — or past the end of the list.
+     */
+    private static Span.IndexPredicate bothResolved(ResolvedIndexPredicate matches) {
+        return (anchorBound, endBound) ->
+            anchorBound instanceof SpanBound.At(var anchorIndex) &&
+            endBound instanceof SpanBound.At(var endIndex) &&
+            matches.test(anchorIndex, endIndex);
     }
 
     /**
@@ -1556,9 +1616,12 @@ public class Line implements LyricRun, SpanLookup {
      * {@code spans.removeIf} would drop the span with no record, making
      * undo of the enclosing operation lossy.
      * <p>
-     * Every branch is a no-op when the span is no longer in this line, so callers
-     * that cannot cheaply tell whether an earlier step already removed it (the paste
-     * reconciliation in {@code ScoreViewController.tryInsertFragment}) may call it
+     * Every branch is a no-op when the span is no longer in any line it was in — each
+     * one looks the span up in this line's {@code spans} and returns when it is absent,
+     * and a removal takes a cross-line span out of both lines' lists together, so a
+     * second call on either line finds nothing left to remove. Callers that cannot
+     * cheaply tell whether an earlier step already removed it (the paste reconciliation
+     * in {@code ScoreViewController.tryInsertFragment}) may therefore call it
      * unconditionally.
      */
     public void removeInvalidatedSpan(Span span) {
@@ -1599,13 +1662,53 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     @Override
-    public int anchorIndexOf(Span span) {
-        return getElementIndex(span.getAnchorElement());
+    public SpanBound anchorIndexOf(Span span) {
+        return boundOf(span.getAnchorElement());
     }
 
     @Override
-    public int endIndexOf(Span span) {
-        return getElementIndex(span.getEndElement());
+    public SpanBound endIndexOf(Span span) {
+        return boundOf(span.getEndElement());
+    }
+
+    /**
+     * Resolves one endpoint of a span against this line, for both accessors above.
+     * <p>
+     * Direction for an endpoint in another line comes from where the two lines actually sit in
+     * the song, not from which endpoint is being asked about: an anchor is not necessarily
+     * behind us just because it is the earlier of the pair. {@link Song#removeLine} leaves a
+     * deleted line's elements pointing at it, so an endpoint can name a line the song no
+     * longer holds; that has no earlier-or-later answer and resolves to
+     * {@link SpanBound#ABSENT}, which stops this half drawing rather than sending it off an
+     * edge toward nothing.
+     * <p>
+     * Only a cross-line endpoint pays for the two {@link Song#indexOfLine} scans, and only
+     * ties are ever cross-line.
+     */
+    private SpanBound boundOf(@Nullable StaffElement endpoint) {
+        if (endpoint == null) {
+            return SpanBound.ABSENT;
+        }
+
+        var endpointLine = endpoint.getParentLine();
+
+        if (endpointLine == null) {
+            return SpanBound.ABSENT;
+        }
+
+        if (endpointLine == this) {
+            // The stored-parentage invariant guarantees this line's elements contain it.
+            return new SpanBound.At(getElementIndex(endpoint));
+        }
+
+        var thisLineIndex = song.indexOfLine(this);
+        var endpointLineIndex = song.indexOfLine(endpointLine);
+
+        if (thisLineIndex < 0 || endpointLineIndex < 0) {
+            return SpanBound.ABSENT;
+        }
+
+        return endpointLineIndex < thisLineIndex ? SpanBound.BEFORE_LINE : SpanBound.AFTER_LINE;
     }
 
     /**
