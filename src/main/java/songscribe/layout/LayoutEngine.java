@@ -117,6 +117,14 @@ public class LayoutEngine {
     static final double TIE_DOT_ROW_NUDGE_SS = 0.25;
 
     /**
+     * Slack allowed when deciding whether a line's closing barline stands flush with the end of the
+     * staff, which is what stops a cross-line tie at its left edge rather than carrying it over;
+     * staff spaces. Absorbs the rounding of the spring solve, nothing more — a closer that is not
+     * snapped flush right falls short by far more than this.
+     */
+    private static final double FLUSH_RIGHT_CLOSER_TOLERANCE_SS = 0.01;
+
+    /**
      * Distance a tie endpoint clears a staff line by, in the arc direction; staff spaces. Both the seat
      * of a tie whose note sits on a line and the outward push of a tie whose edge-seat would land on a
      * line are this amount (LilyPond Tie tip-staff-line-clearance, 0.45 half-spaces × 0.5).
@@ -893,8 +901,8 @@ public class LayoutEngine {
 
     /**
      * X at which a half exiting through this line's right edge stops: the left edge of the
-     * line's closing barline or repeat when it ends with one, and the staff's right margin
-     * otherwise.
+     * line's closing barline or repeat when that closer stands flush with the end of the staff,
+     * and the staff's right margin otherwise.
      * <p>
      * This is LilyPond's rule read exactly. `set_column_chord_outline` bounds the open end with
      * `Axis_group_interface::staff_extent (...)[-dir]` over the <em>break column's own</em>
@@ -905,8 +913,12 @@ public class LayoutEngine {
      * A tie's anchor is not the last element of its line whenever a legal separator follows it,
      * which is the ordinary case: the toggle offers a cross-line tie on the last <em>note</em>
      * of a line, past any barline or repeat closing it, and one may equally be inserted after
-     * the anchor later. Without this the arc would be drawn straight through the barline glyph,
-     * which a terminal barline in particular shares pixels with, being laid out flush right.
+     * the anchor later. A terminal barline is laid out flush right, so it shares its pixels with
+     * the end of the staff and an arc run past it would have nowhere to go; there the arc stops
+     * at its left edge. A closer that sits short of the margin — the ordinary case, since only
+     * the last line's terminal is snapped flush right — leaves open staff to the right of it, and
+     * a half stopping at its left edge would end mid-staff. Such an arc carries over the barline
+     * to the end of the staff, which is where the reader's eye leaves the line.
      * <p>
      * A breath mark is deliberately not included: it is ordinary music rather than part of the
      * closing column, and LilyPond does not bound a tie with one.
@@ -927,7 +939,12 @@ public class LayoutEngine {
 
         var lastColumn = elementToColumn.get(lastElement);
 
-        return lastColumn == null ? staffRightMarginSs : lastColumn.getXSs();
+        if (lastColumn == null
+            || lastColumn.getRightEdgeXSs() < staffRightMarginSs - FLUSH_RIGHT_CLOSER_TOLERANCE_SS) {
+            return staffRightMarginSs;
+        }
+
+        return lastColumn.getXSs();
     }
 
     /**

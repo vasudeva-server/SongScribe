@@ -45,6 +45,11 @@ class CrossLineTieLayoutTest extends UnitTest {
 
     private static final double STAFF_RIGHT_MARGIN_SS = 60.0;
 
+    // A staff too narrow for the fixture's own content, which leaves its columns on their
+    // collision floors so the closing barline ends up reaching the staff's end rather than
+    // standing short of it.
+    private static final double FLUSH_STAFF_RIGHT_MARGIN_SS = 12.0;
+
     // Extra untied notes prepended to the first line ahead of the anchor. Used to move the
     // anchor's own X far from where it sits in the baseline fixture without touching the second
     // line at all, so the width-independence test can tell a real dependency on the far line's
@@ -52,9 +57,13 @@ class CrossLineTieLayoutTest extends UnitTest {
     private static final int EXTRA_NOTES_BEFORE_ANCHOR = 3;
 
     private static LayoutEngine engine() {
+        return engine(STAFF_RIGHT_MARGIN_SS);
+    }
+
+    private static LayoutEngine engine(double staffRightMarginSs) {
         var lyricsFont = new Font("Dialog", Font.PLAIN, 12);
         var metrics = LyricRenderMetrics.forFont(lyricsFont);
-        return new LayoutEngine(metrics, STAFF_RIGHT_MARGIN_SS, DocumentFonts.defaultFonts());
+        return new LayoutEngine(metrics, staffRightMarginSs, DocumentFonts.defaultFonts());
     }
 
     private static <T> T require(@Nullable T value, String description) {
@@ -119,8 +128,19 @@ class CrossLineTieLayoutTest extends UnitTest {
     }
 
     private static LayoutResult.TieLayout tieLayoutFor(Line line, Tie tie) {
-        var result = require(engine().layout(line), "LayoutResult");
+        return tieLayoutFor(line, tie, STAFF_RIGHT_MARGIN_SS);
+    }
+
+    private static LayoutResult.TieLayout tieLayoutFor(Line line, Tie tie, double staffRightMarginSs) {
+        var result = require(engine(staffRightMarginSs).layout(line), "LayoutResult");
         return require(result.getTieLayout(tie), "TieLayout");
+    }
+
+    /** The right edge of the column laid out for {@code line}'s last element. */
+    private static double lastColumnRightEdgeXSs(Line line, double staffRightMarginSs) {
+        var result = require(engine(staffRightMarginSs).layout(line), "LayoutResult");
+        var lastElement = line.getElement(line.elementCount() - 1);
+        return require(result.getElementColumn(lastElement), "ElementColumn").getRightEdgeXSs();
     }
 
     @Test
@@ -216,25 +236,47 @@ class CrossLineTieLayoutTest extends UnitTest {
     }
 
     @Test
-    void testTheAnchorHalfStopsShortOfAClosingBarlineRatherThanCrossingIt() {
+    void testTheAnchorHalfCarriesOverAClosingBarlineThatStandsShortOfTheStaffsEnd() {
         var fixture = CrossLineFixture.create(0, ElementType.SINGLE_BARLINE);
         var firstLine = fixture.firstLine();
         var anchorHalf = tieLayoutFor(firstLine, fixture.tie());
         var barline = firstLine.getElement(firstLine.elementCount() - 1);
-        var barlineXSs = require(engine().layout(firstLine), "LayoutResult").getElementXSs(barline);
 
         // A barline is a legal separator, so it may be inserted between the two tied notes
-        // without breaking the tie — which puts one at the end of the anchor's line. Run to the
-        // staff-right margin the arc would be drawn through the barline glyph; LilyPond bounds
-        // the open end with the closing column's own left edge instead.
+        // without breaking the tie — which puts one at the end of the anchor's line. Only the
+        // last line's terminal is snapped flush right, so this one sits well short of the margin
+        // with open staff to the right of it; stopping the arc at its left edge would end the
+        // half mid-staff instead of at the edge the reader's eye leaves the line by.
         assertThat(barline.getType().isBarLine())
             .as("the fixture's first line really does end with a barline")
             .isTrue();
+        assertThat(lastColumnRightEdgeXSs(firstLine, STAFF_RIGHT_MARGIN_SS))
+            .as("that barline really does stand short of the staff's end")
+            .isLessThan(STAFF_RIGHT_MARGIN_SS);
         assertThat(anchorHalf.endXSs())
-            .as("the anchor half stops a note-head gap short of the closing barline")
+            .as("the anchor half runs over the barline to the staff-right margin")
+            .isEqualTo(STAFF_RIGHT_MARGIN_SS - LayoutEngine.NOTE_HEAD_GAP_SS);
+    }
+
+    @Test
+    void testTheAnchorHalfStopsShortOfAClosingBarlineFlushWithTheStaffsEnd() {
+        var fixture = CrossLineFixture.create(0, ElementType.SINGLE_BARLINE);
+        var firstLine = fixture.firstLine();
+        var anchorHalf = tieLayoutFor(fixture.firstLine(), fixture.tie(), FLUSH_STAFF_RIGHT_MARGIN_SS);
+        var barline = firstLine.getElement(firstLine.elementCount() - 1);
+        var result = require(engine(FLUSH_STAFF_RIGHT_MARGIN_SS).layout(firstLine), "LayoutResult");
+        var barlineXSs = result.getElementXSs(barline);
+
+        // A staff too narrow for its own content leaves the columns on their collision floors, so
+        // the closing barline reaches the end of the staff — the shape a flush-right terminal
+        // barline has, and the one arrangement with no open staff to carry the arc over into.
+        // There the arc must stop at the barline's left edge, or it would be drawn through the
+        // glyph and off the end of the staff.
+        assertThat(lastColumnRightEdgeXSs(firstLine, FLUSH_STAFF_RIGHT_MARGIN_SS))
+            .as("the closing barline really does reach the staff's end")
+            .isGreaterThanOrEqualTo(FLUSH_STAFF_RIGHT_MARGIN_SS);
+        assertThat(anchorHalf.endXSs())
+            .as("the anchor half stops a note-head gap short of the flush closing barline")
             .isEqualTo(barlineXSs - LayoutEngine.NOTE_HEAD_GAP_SS);
-        assertThat(anchorHalf.endXSs())
-            .as("and so short of the staff-right margin it would otherwise have run to")
-            .isLessThan(STAFF_RIGHT_MARGIN_SS - LayoutEngine.NOTE_HEAD_GAP_SS);
     }
 }
