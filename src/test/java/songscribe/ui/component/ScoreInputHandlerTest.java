@@ -61,6 +61,8 @@ import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.ToggleBeamWithPreviousCommand;
+import songscribe.message.command.ToggleFallOnLastInsertionCommand;
+import songscribe.message.command.ToggleGlissandoWithPreviousCommand;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.notification.SongDidChangeNotification;
@@ -1048,8 +1050,8 @@ class ScoreInputHandlerTest extends UnitTest {
             var bindings = handler.installKeyBindings(component);
 
             // 7 plain KEY_CODES bindings + shift-Left/Right extension bindings
-            // + the plain-B beam-with-previous binding.
-            final var expectedBindingCount = 10;
+            // + the three last-insertion bindings: plain B, shift-G and plain F.
+            final var expectedBindingCount = 12;
             assertThat(bindings).hasSize(expectedBindingCount);
 
             var inputMap = component.getInputMap(JComponent.WHEN_FOCUSED);
@@ -1170,40 +1172,261 @@ class ScoreInputHandlerTest extends UnitTest {
             }
         }
 
-        /**
-         * Installs key bindings on a fresh component and dispatches plain {@code b} the way
-         * Swing does: an enabled binding runs and the key is consumed; a disabled one is
-         * skipped without running, leaving the key to fall through to the root pane, where
-         * the toggle-beam action's own plain-{@code b} accelerator lives.
-         * <p>
-         * Calling {@code actionPerformed} unconditionally instead would hide the difference
-         * that matters — an action that runs and decides to do nothing still swallows the
-         * key, which is what would break the select-mode shortcut.
-         *
-         * @param callback The mode/state source the binding consults
-         * @return Whether the binding consumed the key
-         */
         private boolean pressBeamKey(InputHandlerCallback callback) {
+            return pressLastInsertionKey(callback, KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Shift+G glissando-with-previous binding
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class GlissandoKeyBinding {
+
+        private static final KeyStroke SHIFT_G =
+            KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK);
+
+        @Test
+        void testInstallKeyBindingsRegistersShiftGButNotPlainOrOtherModifierVariants() {
+            var callback = mock(InputHandlerCallback.class);
             var handler = new ScoreInputHandler(callback);
             var component = new JPanel();
-            handler.installKeyBindings(component);
 
-            var action = component.getActionMap().get(
-                component.getInputMap(JComponent.WHEN_FOCUSED).get(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0)));
+            var bindings = handler.installKeyBindings(component);
 
-            if (!action.isEnabled()) {
-                return false;
+            assertThat(bindings).containsKey(SHIFT_G);
+            assertThat(bindings).doesNotContainKey(KeyStroke.getKeyStroke(KeyEvent.VK_G, 0));
+            assertThat(bindings).doesNotContainKey(
+                KeyStroke.getKeyStroke(KeyEvent.VK_G, UIUtils.MENU_SHORTCUT_MASK));
+            assertThat(bindings).doesNotContainKey(
+                KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.ALT_DOWN_MASK));
+        }
+
+        @Test
+        void testShiftGInEditModeConsumesTheKeyAndPostsToggleGlissandoWithPreviousCommand() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                var consumed = pressLastInsertionKey(callback, SHIFT_G);
+
+                assertThat(consumed).as("binding handled the key").isTrue();
+                mc.verify(() -> MessageCenter.post(any(ToggleGlissandoWithPreviousCommand.class)));
             }
+        }
 
-            action.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
+        @Test
+        void testShiftGInSelectModeLeavesTheKeyForTheToggleGlissandoAccelerator() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.SELECT);
 
-            return true;
+            try (var mc = mockStatic(MessageCenter.class)) {
+                var consumed = pressLastInsertionKey(callback, SHIFT_G);
+
+                assertThat(consumed)
+                    .as("binding must not swallow shift-g outside edit mode")
+                    .isFalse();
+                mc.verify(() -> MessageCenter.post(any(ToggleGlissandoWithPreviousCommand.class)), never());
+            }
+        }
+
+        @Test
+        void testShiftGWhileGraceModeInProgressLeavesTheKeyUnconsumed() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            when(graceModeManager.isInProgress()).thenReturn(true);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                var consumed = pressLastInsertionKey(callback, SHIFT_G);
+
+                assertThat(consumed).as("binding handled the key").isFalse();
+                mc.verify(() -> MessageCenter.post(any(ToggleGlissandoWithPreviousCommand.class)), never());
+            }
+        }
+
+        @Test
+        void testShiftGWhilePasteModeInProgressLeavesTheKeyUnconsumed() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            var pasteModeManager = mock(PasteModeManager.class);
+            when(pasteModeManager.isInProgress()).thenReturn(true);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                var consumed = pressLastInsertionKey(callback, SHIFT_G);
+
+                assertThat(consumed).as("binding handled the key").isFalse();
+                mc.verify(() -> MessageCenter.post(any(ToggleGlissandoWithPreviousCommand.class)), never());
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------
+    // Plain-F fall-on-last-insertion binding
+    // -------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class FallKeyBinding {
+
+        private static final KeyStroke PLAIN_F = KeyStroke.getKeyStroke(KeyEvent.VK_F, 0);
+
+        @Test
+        void testInstallKeyBindingsRegistersPlainFButNotModifiedVariants() {
+            var callback = mock(InputHandlerCallback.class);
+            var handler = new ScoreInputHandler(callback);
+            var component = new JPanel();
+
+            var bindings = handler.installKeyBindings(component);
+
+            assertThat(bindings).containsKey(PLAIN_F);
+            assertThat(bindings).doesNotContainKey(
+                KeyStroke.getKeyStroke(KeyEvent.VK_F, UIUtils.MENU_SHORTCUT_MASK));
+            assertThat(bindings).doesNotContainKey(
+                KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.SHIFT_DOWN_MASK));
+            assertThat(bindings).doesNotContainKey(
+                KeyStroke.getKeyStroke(KeyEvent.VK_F, InputEvent.ALT_DOWN_MASK));
+        }
+
+        @Test
+        void testPlainFInEditModeConsumesTheKeyAndPostsToggleFallOnLastInsertionCommand() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                var consumed = pressLastInsertionKey(callback, PLAIN_F);
+
+                assertThat(consumed).as("binding handled the key").isTrue();
+                mc.verify(() -> MessageCenter.post(any(ToggleFallOnLastInsertionCommand.class)));
+            }
+        }
+
+        @Test
+        void testPlainFInSelectModeLeavesTheKeyForTheToggleFallAccelerator() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.SELECT);
+
+            try (var mc = mockStatic(MessageCenter.class)) {
+                var consumed = pressLastInsertionKey(callback, PLAIN_F);
+
+                assertThat(consumed)
+                    .as("binding must not swallow f outside edit mode")
+                    .isFalse();
+                mc.verify(() -> MessageCenter.post(any(ToggleFallOnLastInsertionCommand.class)), never());
+            }
+        }
+
+        @Test
+        void testPlainFWhileGraceModeInProgressLeavesTheKeyUnconsumed() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            when(graceModeManager.isInProgress()).thenReturn(true);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                var consumed = pressLastInsertionKey(callback, PLAIN_F);
+
+                assertThat(consumed).as("binding handled the key").isFalse();
+                mc.verify(() -> MessageCenter.post(any(ToggleFallOnLastInsertionCommand.class)), never());
+            }
+        }
+
+        @Test
+        void testPlainFWhilePasteModeInProgressLeavesTheKeyUnconsumed() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            var pasteModeManager = mock(PasteModeManager.class);
+            when(pasteModeManager.isInProgress()).thenReturn(true);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                var consumed = pressLastInsertionKey(callback, PLAIN_F);
+
+                assertThat(consumed).as("binding handled the key").isFalse();
+                mc.verify(() -> MessageCenter.post(any(ToggleFallOnLastInsertionCommand.class)), never());
+            }
         }
     }
 
     // -------------------------------------------------------------------
     // Helpers
     // -------------------------------------------------------------------
+
+    /**
+     * Installs key bindings on a fresh component and dispatches {@code keyStroke} the way
+     * Swing does: an enabled binding runs and the key is consumed; a disabled one is
+     * skipped without running, leaving the key to fall through to the root pane, where the
+     * corresponding action's own accelerator lives.
+     * <p>
+     * Calling {@code actionPerformed} unconditionally instead would hide the difference
+     * that matters — an action that runs and decides to do nothing still swallows the
+     * key, which is what would break the select-mode shortcut.
+     *
+     * @param callback The mode/state source the binding consults
+     * @param keyStroke The last-insertion binding's keystroke (plain B, shift-G or plain F)
+     * @return Whether the binding consumed the key
+     */
+    private boolean pressLastInsertionKey(InputHandlerCallback callback, KeyStroke keyStroke) {
+        var handler = new ScoreInputHandler(callback);
+        var component = new JPanel();
+        handler.installKeyBindings(component);
+
+        var action = component.getActionMap().get(
+            component.getInputMap(JComponent.WHEN_FOCUSED).get(keyStroke));
+
+        if (!action.isEnabled()) {
+            return false;
+        }
+
+        action.actionPerformed(new ActionEvent(component, ActionEvent.ACTION_PERFORMED, ""));
+
+        return true;
+    }
 
     private MouseEvent mouseEvent(int id, boolean popupTrigger) {
         return new MouseEvent(

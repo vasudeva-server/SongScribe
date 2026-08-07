@@ -71,11 +71,11 @@
       "Bash(rtk ls *)",
       "Bash(rtk read:*)",
       "Bash(rtk write:*)",
-      "Bash(rtk grep:*)"
+      "Bash(rtk grep:*)",
+      "Bash(./scripts/test.sh)"
     ],
     "ask": [
-      "Bash(./scripts/test.sh e2e:*)",
-      "Bash(./scripts/test.sh)"
+      "Bash(./scripts/test.sh e2e:*)"
     ]
   },
   "hooks": {

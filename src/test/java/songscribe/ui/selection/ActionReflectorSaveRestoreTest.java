@@ -42,12 +42,14 @@ import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
 import songscribe.ui.action.UIAction;
 
-class SlideReflectionTest extends MainFrameMockTest {
+/**
+ * Covers {@link ActionReflector}'s save/restore of action states across a selection: a
+ * selection snapshots the pre-selection states, and clearing it puts them back.
+ */
+class ActionReflectorSaveRestoreTest extends MainFrameMockTest {
 
     private ElementTypeAction crotchetAction;
     private ElementTypeAction minimAction;
-    private ElementTypeAction glissandoAction;
-    private ElementTypeAction fallAction;
     private AccidentalAction sharpAction;
     private DotAction dotAction;
     private FermataAction fermataAction;
@@ -58,8 +60,6 @@ class SlideReflectionTest extends MainFrameMockTest {
         var mainFrame = mainFrame();
         crotchetAction = ElementTypeAction.createQuarterNoteAction(mainFrame);
         minimAction = ElementTypeAction.createHalfNoteAction(mainFrame);
-        glissandoAction = ElementTypeAction.createGlissandoAction(mainFrame);
-        fallAction = ElementTypeAction.createFallAction(mainFrame);
         sharpAction = AccidentalAction.createSharpAction(mainFrame);
         dotAction = DotAction.createDotAction(mainFrame);
         fermataAction = FermataAction.createAction(mainFrame);
@@ -69,47 +69,21 @@ class SlideReflectionTest extends MainFrameMockTest {
     private List<UIAction.Reflectable> allActions() {
         return List.of(
             crotchetAction, minimAction,
-            glissandoAction, fallAction,
             sharpAction, dotAction,
             fermataAction, staccatoAction
         );
     }
 
-    private SelectionCoordinator createCoordinatorWithGlissando() {
-        var note1 = ElementType.CROTCHET.newInstance();
-        var note2 = ElementType.CROTCHET.newInstance();
-        note1.setGlissando();
-
+    private SelectionCoordinator createCoordinator() {
         return ReflectionTestHelper.createCoordinator(
-            List.of(note1, note2), allActions()
+            List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance()),
+            allActions()
         );
-    }
-
-    private SelectionCoordinator createCoordinatorWithFall() {
-        var note1 = ElementType.CROTCHET.newInstance();
-        var note2 = ElementType.CROTCHET.newInstance();
-        note1.setFall();
-
-        return ReflectionTestHelper.createCoordinator(
-            List.of(note1, note2), allActions()
-        );
-    }
-
-    private void assertSelectedAndEnabled(UIAction action, boolean selected, boolean enabled) {
-        if (action instanceof UIAction.Selectable selectable) {
-            assertThat(selectable.isSelected())
-                .as("%s selected", action.getClass().getSimpleName())
-                .isEqualTo(selected);
-        }
-
-        assertThat(action.isEnabled())
-            .as("%s enabled", action.getClass().getSimpleName())
-            .isEqualTo(enabled);
     }
 
     @Test
-    void testClearGlissandoSelectionRestoresState() {
-        var coordinator = createCoordinatorWithGlissando();
+    void testClearSelectionRestoresState() {
+        var coordinator = createCoordinator();
 
         // Set up a known pre-selection state: enable and select crotchet
         crotchetAction.setEnabled(true);
@@ -117,13 +91,14 @@ class SlideReflectionTest extends MainFrameMockTest {
         sharpAction.setEnabled(true);
         sharpAction.setSelected(true);
 
-        // Select glissando (saves state, then reflection modifies it)
-        ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.getActionReflector().triggerReflection();
+        // Selecting saves the states.
+        ReflectionTestHelper.selectNote(coordinator, 0);
 
-        // Verify reflection changed state
-        assertThat(crotchetAction.isEnabled()).isFalse();
-        assertThat(glissandoAction.isSelected()).isTrue();
+        // Drive the actions to a new state, as reflection would.
+        crotchetAction.setEnabled(false);
+        crotchetAction.setSelected(false);
+        sharpAction.setEnabled(false);
+        sharpAction.setSelected(false);
 
         // Clear selection and restore
         ReflectionTestHelper.clearSelection(coordinator);
@@ -135,91 +110,24 @@ class SlideReflectionTest extends MainFrameMockTest {
         assertThat(sharpAction.isSelected()).isTrue();
     }
 
-    @Test
-    void testConnectedGlissandoSelectedReflectsGlissandoAction() {
-        var coordinator = createCoordinatorWithGlissando();
-        ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.getActionReflector().triggerReflection();
-
-        assertSelectedAndEnabled(glissandoAction, true, true);
-        assertSelectedAndEnabled(fallAction, false, false);
-        assertSelectedAndEnabled(crotchetAction, false, false);
-        assertSelectedAndEnabled(minimAction, false, false);
-        assertSelectedAndEnabled(sharpAction, false, false);
-        assertSelectedAndEnabled(dotAction, false, false);
-        assertSelectedAndEnabled(fermataAction, false, false);
-        assertSelectedAndEnabled(staccatoAction, false, false);
-    }
-
-    @Test
-    void testNonMatchingGlissandoToolDisabled() {
-        // When CONNECTED is selected, fall should be disabled
-        var coordinator = createCoordinatorWithGlissando();
-        ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.getActionReflector().triggerReflection();
-
-        assertSelectedAndEnabled(glissandoAction, true, true);
-        assertSelectedAndEnabled(fallAction, false, false);
-
-        // And vice versa
-        var coordinator2 = createCoordinatorWithFall();
-        ReflectionTestHelper.selectGlissando(coordinator2, 0);
-        coordinator2.getActionReflector().triggerReflection();
-
-        assertSelectedAndEnabled(fallAction, true, true);
-        assertSelectedAndEnabled(glissandoAction, false, false);
-    }
-
-    @Test
-    void testNoteWithGlissandoSelectedDoesNotTriggerGlissandoReflection() {
-        var coordinator = createCoordinatorWithGlissando();
-
-        // Select the note itself, not its glissando
-        ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.getActionReflector().triggerReflection();
-
-        // Normal reflection: crotchet should be selected (it's a crotchet note)
-        assertThat(crotchetAction.isSelected()).isTrue();
-
-        // Glissando action should NOT be selected (normal reflection, not glissando reflection)
-        assertThat(glissandoAction.isSelected()).isFalse();
-    }
-
-    @Test
-    void testFallSelectedReflectsFallAction() {
-        var coordinator = createCoordinatorWithFall();
-        ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.getActionReflector().triggerReflection();
-
-        assertSelectedAndEnabled(fallAction, true, true);
-        assertSelectedAndEnabled(glissandoAction, false, false);
-        assertSelectedAndEnabled(crotchetAction, false, false);
-        assertSelectedAndEnabled(minimAction, false, false);
-        assertSelectedAndEnabled(sharpAction, false, false);
-        assertSelectedAndEnabled(dotAction, false, false);
-        assertSelectedAndEnabled(fermataAction, false, false);
-        assertSelectedAndEnabled(staccatoAction, false, false);
-    }
-
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class SaveRestore {
 
         @Test
-        void testSaveOccursOnGlissandoSelection() {
-            var coordinator = createCoordinatorWithGlissando();
+        void testSaveOccursOnSelection() {
+            var coordinator = createCoordinator();
 
             // Set a known state before selection
             fermataAction.setEnabled(true);
             fermataAction.setSelected(true);
 
-            // Select glissando — this should save states
-            ReflectionTestHelper.selectGlissando(coordinator, 0);
-            coordinator.getActionReflector().triggerReflection();
+            // Selecting should save the states.
+            ReflectionTestHelper.selectNote(coordinator, 0);
 
-            // Fermata should now be disabled by reflection
-            assertThat(fermataAction.isEnabled()).isFalse();
-            assertThat(fermataAction.isSelected()).isFalse();
+            // Drive the action to a new state, as reflection would.
+            fermataAction.setEnabled(false);
+            fermataAction.setSelected(false);
 
             // Restore should bring back the saved state, proving save happened
             coordinator.getActionReflector().restoreActionStates();
@@ -235,7 +143,7 @@ class SlideReflectionTest extends MainFrameMockTest {
          */
         @Test
         void testEndingSelectionSavesRatherThanRestoresActionStates() {
-            var coordinator = createCoordinatorWithGlissando();
+            var coordinator = createCoordinator();
             var ending = new Ending(
                 ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
 

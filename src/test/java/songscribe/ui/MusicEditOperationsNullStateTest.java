@@ -166,6 +166,48 @@ class MusicEditOperationsNullStateTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // canToggleGlissando — null state
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanToggleGlissandoReturnsFalseWhenStateNull() {
+        assertThat(opsWithNullState().canToggleGlissando())
+            .as("canToggleGlissando() with null state must return false")
+            .isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // toggleGlissando — null state guard
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testToggleGlissandoEmitsNoNotificationWhenStateNull() {
+        opsWithNullState().toggleGlissando(null);
+        verifyNoChangeNotification();
+    }
+
+    // -----------------------------------------------------------------------
+    // canToggleFall — null state
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testCanToggleFallReturnsFalseWhenStateNull() {
+        assertThat(opsWithNullState().canToggleFall())
+            .as("canToggleFall() with null state must return false")
+            .isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // toggleFall — null state guard
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testToggleFallEmitsNoNotificationWhenStateNull() {
+        opsWithNullState().toggleFall(null);
+        verifyNoChangeNotification();
+    }
+
+    // -----------------------------------------------------------------------
     // canToggleTuplet — null state
     // -----------------------------------------------------------------------
 

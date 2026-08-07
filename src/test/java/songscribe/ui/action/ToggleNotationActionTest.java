@@ -32,6 +32,8 @@ import org.mockito.MockedStatic;
 import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.ToggleBeamCommand;
+import songscribe.message.command.ToggleFallCommand;
+import songscribe.message.command.ToggleGlissandoCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
@@ -98,6 +100,72 @@ class ToggleNotationActionTest extends MainFrameMockTest {
                 new MusicSelectionDidChangeNotification(mockEnv().score()));
             assertThat(action.isEnabled()).isFalse();
         }
+
+        // Glissando action
+        @Test
+        void testGlissandoActionEnabledWhenCanToggleGlissandoIsTrue() {
+            when(mockEnv().ctrl().canToggleGlissando()).thenReturn(true);
+            var action = ToggleNotationAction.createGlissandoAction(mainFrame());
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+            assertThat(action.isEnabled()).isTrue();
+        }
+
+        @Test
+        void testGlissandoActionDisabledWhenCanToggleGlissandoIsFalse() {
+            when(mockEnv().ctrl().canToggleGlissando()).thenReturn(false);
+            var action = ToggleNotationAction.createGlissandoAction(mainFrame());
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+            assertThat(action.isEnabled()).isFalse();
+        }
+
+        /**
+         * The load-bearing property of the whole feature: being selection-gated
+         * ({@link UIAction.Flag#REQUIRES_SELECTION}) means the action is disabled whenever
+         * nothing is selected, which is always true in real edit mode. That is what frees
+         * Shift+G for {@code ScoreInputHandler}'s edit-mode binding — if this ever regressed,
+         * the root-pane accelerator would win and swallow the key before the binding saw it.
+         */
+        @Test
+        void testGlissandoActionDisabledWithNoSelectionRegardlessOfCanToggleGlissando() {
+            when(mockEnv().score().getSelectionSize()).thenReturn(0);
+            when(mockEnv().ctrl().canToggleGlissando()).thenReturn(true);
+            var action = ToggleNotationAction.createGlissandoAction(mainFrame());
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+            assertThat(action.isEnabled()).isFalse();
+        }
+
+        // Fall action
+        @Test
+        void testFallActionEnabledWhenCanToggleFallIsTrue() {
+            when(mockEnv().ctrl().canToggleFall()).thenReturn(true);
+            var action = ToggleNotationAction.createFallAction(mainFrame());
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+            assertThat(action.isEnabled()).isTrue();
+        }
+
+        @Test
+        void testFallActionDisabledWhenCanToggleFallIsFalse() {
+            when(mockEnv().ctrl().canToggleFall()).thenReturn(false);
+            var action = ToggleNotationAction.createFallAction(mainFrame());
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+            assertThat(action.isEnabled()).isFalse();
+        }
+
+        /** See {@link #testGlissandoActionDisabledWithNoSelectionRegardlessOfCanToggleGlissando}. */
+        @Test
+        void testFallActionDisabledWithNoSelectionRegardlessOfCanToggleFall() {
+            when(mockEnv().score().getSelectionSize()).thenReturn(0);
+            when(mockEnv().ctrl().canToggleFall()).thenReturn(true);
+            var action = ToggleNotationAction.createFallAction(mainFrame());
+            action.musicSelectionDidChange(
+                new MusicSelectionDidChangeNotification(mockEnv().score()));
+            assertThat(action.isEnabled()).isFalse();
+        }
     }
 
     // Rows 30 & 31: actionPerformed — dispatches the correct command on the message bus
@@ -137,6 +205,51 @@ class ToggleNotationActionTest extends MainFrameMockTest {
             var captor = ArgumentCaptor.forClass(ToggleTieCommand.class);
             messageMock.verify(() -> MessageCenter.post(captor.capture()));
             assertThat(captor.getValue()).isInstanceOf(ToggleTieCommand.class);
+        }
+
+        // Glissando action dispatches ToggleGlissandoCommand
+        @Test
+        void testGlissandoActionPerformedPostsToggleGlissandoCommand() {
+            var action = ToggleNotationAction.createGlissandoAction(mainFrame());
+            action.actionPerformed(
+                new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "toggle-glissando"));
+            var captor = ArgumentCaptor.forClass(ToggleGlissandoCommand.class);
+            messageMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue()).isInstanceOf(ToggleGlissandoCommand.class);
+        }
+
+        // Fall action dispatches ToggleFallCommand
+        @Test
+        void testFallActionPerformedPostsToggleFallCommand() {
+            var action = ToggleNotationAction.createFallAction(mainFrame());
+            action.actionPerformed(
+                new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "toggle-fall"));
+            var captor = ArgumentCaptor.forClass(ToggleFallCommand.class);
+            messageMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue()).isInstanceOf(ToggleFallCommand.class);
+        }
+    }
+
+    // Flag and accelerator configuration for the two new actions
+
+    @Nested
+    class Configuration {
+
+        @Test
+        void testGlissandoActionRequiresSelectionAndUsesShiftGAccelerator() {
+            var action = ToggleNotationAction.createGlissandoAction(mainFrame());
+
+            assertThat(action.hasFlag(UIAction.Flag.REQUIRES_SELECTION)).isTrue();
+            assertThat(action.getAccelerator())
+                .isEqualTo(KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK));
+        }
+
+        @Test
+        void testFallActionRequiresSelectionAndUsesPlainFAccelerator() {
+            var action = ToggleNotationAction.createFallAction(mainFrame());
+
+            assertThat(action.hasFlag(UIAction.Flag.REQUIRES_SELECTION)).isTrue();
+            assertThat(action.getAccelerator()).isEqualTo(KeyStroke.getKeyStroke(KeyEvent.VK_F, 0));
         }
     }
 

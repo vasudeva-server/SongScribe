@@ -41,8 +41,6 @@ import songscribe.Strings;
 import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
-import songscribe.dom.Lyric;
-import songscribe.dom.SlideZone;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.ui.OptionDialogs;
@@ -51,24 +49,15 @@ import songscribe.ui.dialog.TempoChangeDialog;
 import songscribe.ui.edit.EditModeManager;
 
 /**
- * Tests for the two principal routing branches inside
- * {@link PreviewElementManager#handleClick}:
+ * Tests for the routing branches inside {@link PreviewElementManager#handleClick}:
  *
  * <ul>
- *   <li>Glissando-placeholder path (row 28): clicking with a glissando preview element
- *       either applies the glissando to the source note or is a no-op, depending on
- *       whether {@code currentGlissandoZone} is set.</li>
  *   <li>Force-insert path (row 30): {@code handleClick(lc, true)} always inserts a new
  *       element even when {@code xPosSsMatchesElement} is true, while
  *       {@code handleClick(lc, false)} modifies the existing element in-place.</li>
  * </ul>
  */
 class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase {
-
-    private static final int VERSE = 1;
-    private static final String SYLLABLE = "glo";
-    private static final int GRACE_INDEX = 0;
-    private static final int HOST_INDEX = 1;
 
     // -----------------------------------------------------------------------
     // Helpers
@@ -80,189 +69,6 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
                 line.addElement(type.newInstance());
             }
         });
-    }
-
-    /**
-     * Builds {@code [grace(glissando, SYLLABLE), host crotchet]} with the automatic
-     * grace-host melisma established: {@link Lyric.Extend#START} on the grace and a
-     * text-less {@link Lyric.Extend#STOP} carrier on the host.
-     */
-    private void addPairedGraceCarryingSyllable() {
-        song.withoutMutationTracking(() -> {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
-            grace.setGlissando();
-            grace.setLyricForVerse(VERSE, Lyric.Syllabic.SINGLE, false, SYLLABLE, Lyric.Extend.NONE);
-            line.addElement(grace);
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.syncGraceHostMelisma(GRACE_INDEX);
-        });
-    }
-
-    /** Reads the verse lyric at {@code index}, failing the test when there is none. */
-    private Lyric requireLyric(int index, int verse) {
-        var lyric = line.getElement(index).getLyricForVerse(verse);
-
-        assertThat(lyric).as("expected a verse " + verse + " lyric at index " + index).isNotNull();
-
-        return lyric;
-    }
-
-    // -----------------------------------------------------------------------
-    // Glissando-placeholder path (row 28)
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class GlissandoPlaceholderPath {
-
-        /**
-         * A valid zone (CONNECTED) applies the glissando to the source note at
-         * {@code currentXIndex - 1}.
-         */
-        @Test
-        void testValidZoneAppliesGlissandoToSourceNote() {
-            addNotes(2, ElementType.CROTCHET);
-
-            // Preview element is a SLIDE placeholder, zone is set
-            setPreviewElement(ElementType.SLIDE.newInstance());
-            PreviewElementManager.setCurrentXIndex(1);
-            PreviewElementManager.setCurrentSlideZone(SlideZone.GLISSANDO);
-
-            PreviewElementManager.handleClick(lc);
-
-            var sourceNote = line.getElement(0);
-            assertThat(sourceNote.hasGlissando())
-                .as("glissando applied to source note at xIndex-1")
-                .isTrue();
-        }
-
-        /**
-         * A null zone (no valid glissando position) is a no-op: no glissando is set.
-         */
-        @Test
-        void testNullZoneIsNoOp() {
-            addNotes(2, ElementType.CROTCHET);
-
-            setPreviewElement(ElementType.SLIDE.newInstance());
-            PreviewElementManager.setCurrentXIndex(1);
-            PreviewElementManager.setCurrentSlideZone(null);
-
-            PreviewElementManager.handleClick(lc);
-
-            assertThat(line.getElement(0).hasGlissando())
-                .as("no glissando set when zone is null")
-                .isFalse();
-        }
-    }
-
-    // -----------------------------------------------------------------------
-    // Fall-placeholder path — line-full guard
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class FallPlaceholderPath {
-
-        /**
-         * With room on the line, a FALL zone applies a fall to the source note at
-         * {@code currentXIndex - 1} without changing the element count.
-         */
-        @Test
-        void testFallAppliedWhenLineHasRoom() {
-            song.setLineWidthSs(WIDE_LINE_SS);
-            addNotes(2, ElementType.CROTCHET);
-
-            setPreviewElement(ElementType.SLIDE.newInstance());
-            PreviewElementManager.setCurrentXIndex(1);
-            PreviewElementManager.setCurrentSlideZone(SlideZone.FALL);
-
-            var countBefore = line.elementCount();
-            PreviewElementManager.handleClick(lc);
-
-            assertThat(line.getElement(0).hasFall())
-                .as("fall applied to source note when the line has room")
-                .isTrue();
-            assertThat(line.elementCount())
-                .as("applying a fall does not change the element count")
-                .isEqualTo(countBefore);
-        }
-
-        /**
-         * When the fall would not fit, the click shows the line-full error and leaves the source
-         * note unchanged. The alert is verified through a static mock so removing it fails the test.
-         */
-        @Test
-        void testFallBlockedWhenLineFull() {
-            song.setLineWidthSs(0);
-            addNotes(2, ElementType.CROTCHET);
-
-            setPreviewElement(ElementType.SLIDE.newInstance());
-            PreviewElementManager.setCurrentXIndex(1);
-            PreviewElementManager.setCurrentSlideZone(SlideZone.FALL);
-
-            try (var optionDialogsMock = mockStatic(OptionDialogs.class)) {
-                PreviewElementManager.handleClick(lc);
-
-                optionDialogsMock.verify(() -> OptionDialogs.showErrorMessage(
-                    isNull(), eq(Strings.ALERT_TITLE_INSERT_ERROR), eq(Strings.ERROR_LINE_FULL_FALL)));
-            }
-
-            assertThat(line.getElement(0).hasFall())
-                .as("fall not applied when the line is full")
-                .isFalse();
-        }
-
-        /**
-         * Plan trace row 2. Slides are mutually exclusive, so applying a fall to a paired
-         * grace note clears its glissando and un-pairs it, which dissolves the automatic
-         * grace-host melisma. Both elements survive the click, so there is no hand-back: the
-         * syllable simply stays on the now-ordinary former grace note.
-         *
-         * <p>The host's carrier must be removed outright rather than merely have its extend
-         * cleared — an empty-text lyric still counts as lyric-bearing for backward lyric
-         * navigation. This test fails if {@code syncGraceHostMelisma} is dropped from the
-         * slide-placeholder branch of {@code handleClick}: the grace would keep {@code START}
-         * and the host would keep its {@code STOP} carrier.
-         */
-        @Test
-        void testFallOnPairedGraceNoteTearsDownTheMelisma() {
-            song.setLineWidthSs(WIDE_LINE_SS);
-            addPairedGraceCarryingSyllable();
-
-            assertThat(requireLyric(GRACE_INDEX, VERSE).extend())
-                .as("pre-condition: the melisma starts on the grace note")
-                .isEqualTo(Lyric.Extend.START);
-            assertThat(requireLyric(HOST_INDEX, VERSE).extend())
-                .as("pre-condition: the host carries the melisma's STOP")
-                .isEqualTo(Lyric.Extend.STOP);
-
-            // currentXIndex - 1 is the slide's source note, so index 1 targets the grace.
-            setPreviewElement(ElementType.SLIDE.newInstance());
-            PreviewElementManager.setCurrentXIndex(HOST_INDEX);
-            PreviewElementManager.setCurrentSlideZone(SlideZone.FALL);
-
-            PreviewElementManager.handleClick(lc);
-
-            var graceNote = line.getElement(GRACE_INDEX);
-            assertThat(graceNote.hasFall())
-                .as("fall applied to the grace note")
-                .isTrue();
-            assertThat(graceNote.hasGlissando())
-                .as("the fall replaced the glissando, un-pairing the grace note")
-                .isFalse();
-
-            var graceLyric = requireLyric(GRACE_INDEX, VERSE);
-            assertThat(graceLyric.text())
-                .as("the syllable stays on the now-ordinary former grace note")
-                .isEqualTo(SYLLABLE);
-            assertThat(graceLyric.extend())
-                .as("the melisma START reverted to NONE")
-                .isEqualTo(Lyric.Extend.NONE);
-
-            assertThat(line.getElement(HOST_INDEX).getLyricForVerse(VERSE))
-                .as("the host's carrier is removed outright, leaving no empty-lyric residue")
-                .isNull();
-        }
     }
 
     // -----------------------------------------------------------------------

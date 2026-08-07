@@ -273,37 +273,6 @@ public final class SlideRenderer {
         drawGlissandoIfDrawable(g2, src, tgt, invariants.getMiddleLineYSs());
     }
 
-    /**
-     * Renders a preview fall glyph trailing the source note.
-     * <p>
-     * Used when the slide tool is active and the mouse hovers over the fall zone. No notehead is
-     * shown and nothing is stored — only the glyph preview. A fall has no target note, so unlike
-     * {@link #renderPreviewGlissando} this never resolves the following element.
-     *
-     * @param g2          Graphics context (staff-space coordinate system)
-     * @param sourceIndex Index of the source note in the line
-     * @param line        The line containing the note
-     * @param invariants  Line invariants
-     */
-    public void renderPreviewFall(
-        Graphics2D g2,
-        int sourceIndex,
-        Line line,
-        LineInvariants invariants
-    ) {
-        if (sourceIndex < 0 || sourceIndex >= line.elementCount()) {
-            return;
-        }
-
-        var src = noteContextSs(
-            line.getElement(sourceIndex), sourceIndex, line,
-            invariants.getLayoutResult(), NO_SHIFT_SS
-        );
-
-        drawFallGlyph(
-            g2, SlideGeometry.computeFallBoundsSs(src), invariants.getMiddleLineYSs(), g2.getColor());
-    }
-
     // ==========================================================================
     // Geometry Lookup
     // ==========================================================================

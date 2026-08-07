@@ -21,11 +21,10 @@
 package songscribe.dom;
 
 /**
- * The kind of slide a slide tool would attach at a hovered position: a connecting
- * {@link StaffElement.Glissando} to the following note, or a trailing {@link StaffElement.Fall} on
- * the source note. Models the <em>intended</em> tool state before any {@link StaffElement.Slide} is
- * instantiated, and owns the single mapping between that intent and the concrete slide on an element
- * so the two never drift apart.
+ * The kind of slide a toggle would attach to a note: a connecting {@link StaffElement.Glissando} to
+ * the following note, or a trailing {@link StaffElement.Fall} on the note itself. Models the
+ * <em>intended</em> slide before any {@link StaffElement.Slide} is instantiated, and owns the single
+ * mapping between that intent and the concrete slide on an element so the two never drift apart.
  */
 public enum SlideZone {
     GLISSANDO,

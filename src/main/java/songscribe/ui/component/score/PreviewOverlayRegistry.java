@@ -46,27 +46,9 @@ final class PreviewOverlayRegistry {
     private static PreviewElementOverlay overlay = null;
 
     /**
-     * The component that draws the fall-tool hover preview, or null before a host has installed
-     * one. Mutually exclusive with {@link #glissandoOverlay}:
-     * {@link PreviewElementManager#shouldShowSlidePreviewOn} guarantees only one
-     * {@link songscribe.dom.SlideZone} is ever current at a time.
-     */
-    @Nullable
-    private static FallPreviewOverlay fallOverlay = null;
-
-    /**
-     * The component that draws the glissando-tool hover preview, or null before a host has
-     * installed one. Mutually exclusive with {@link #fallOverlay}.
-     */
-    @Nullable
-    private static GlissandoPreviewOverlay glissandoOverlay = null;
-
-    /**
      * The component that draws the connecting glissando between a grace note and the host-note
-     * insertion preview, or null before a host has installed one. Independent of the two
-     * slide-tool previews: it is gated on grace mode rather than on a
-     * {@link songscribe.dom.SlideZone}, and the note-head preview it connects to is showing at the
-     * same time.
+     * insertion preview, or null before a host has installed one. It is gated on grace mode, and
+     * the note-head preview it connects to is showing at the same time.
      */
     @Nullable
     private static GraceGlissandoPreviewOverlay graceGlissandoOverlay = null;
@@ -88,8 +70,6 @@ final class PreviewOverlayRegistry {
      */
     static void install(OverlayHost host) {
         overlay = new PreviewElementOverlay(host);
-        fallOverlay = new FallPreviewOverlay(host);
-        glissandoOverlay = new GlissandoPreviewOverlay(host);
         graceGlissandoOverlay = new GraceGlissandoPreviewOverlay(host);
 
         for (var installed : installed()) {
@@ -100,10 +80,10 @@ final class PreviewOverlayRegistry {
     /**
      * Rebuilds every hover-preview overlay's ink and bounds from the current tracking state,
      * hiding each one that no longer applies. Call whenever anything the renderers read has
-     * changed — the preview element itself, its decorations, the staff position it sits at, or
-     * the slide zone a slide tool is previewing. Each overlay's own gate decides whether it is
-     * the one that should be visible, so a single call here keeps them all in sync without the
-     * caller having to know which one currently applies.
+     * changed — the preview element itself, its decorations, or the staff position it sits at.
+     * Each overlay's own gate decides whether it is the one that should be visible, so a single
+     * call here keeps them all in sync without the caller having to know which one currently
+     * applies.
      */
     static void previewDidChange() {
         var previewLine = PreviewElementManager.getCurrentInsertionLine();
@@ -119,14 +99,11 @@ final class PreviewOverlayRegistry {
      * each of them.
      */
     private static List<RecordedInkOverlay> installed() {
-        if (overlay == null
-            || fallOverlay == null
-            || glissandoOverlay == null
-            || graceGlissandoOverlay == null) {
+        if (overlay == null || graceGlissandoOverlay == null) {
             return List.of();
         }
 
-        return List.of(overlay, fallOverlay, glissandoOverlay, graceGlissandoOverlay);
+        return List.of(overlay, graceGlissandoOverlay);
     }
 
     /**
@@ -218,11 +195,6 @@ final class PreviewOverlayRegistry {
         return overlay;
     }
 
-    /** Returns the installed fall-preview overlay, or null before {@link #install}. */
-    static @Nullable FallPreviewOverlay getFallOverlay() {
-        return fallOverlay;
-    }
-
     /**
      * Returns the installed grace-host glissando-preview overlay, or null before
      * {@link #install}.
@@ -237,8 +209,6 @@ final class PreviewOverlayRegistry {
      */
     static void reset() {
         overlay = null;
-        fallOverlay = null;
-        glissandoOverlay = null;
         graceGlissandoOverlay = null;
     }
 }

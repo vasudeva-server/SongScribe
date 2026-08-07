@@ -141,23 +141,5 @@ class FallRendererTest extends UnitTest {
             .isNotNull();
     }
 
-    @Test
-    void testRenderPreviewFallDrawsWithoutMutatingSourceNote() {
-        // The hover preview draws over a plain note (no fall yet) and must not resolve the
-        // following element nor attach a slide — it is a transient preview only.
-        var note = ElementType.CROTCHET.newInstance();
-        note.setUpper(true);
-        var line = detachedLine();
-        line.addElement(note);
-        line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());
-
-        var invariants = fallInvariants(line, LayoutResult.builder().build());
-
-        RENDERER.renderPreviewFall(mock(Graphics2D.class), 0, line, invariants);
-
-        assertThat(note.getSlide())
-            .as("preview rendering leaves the source note unchanged")
-            .isNull();
-    }
 
 }

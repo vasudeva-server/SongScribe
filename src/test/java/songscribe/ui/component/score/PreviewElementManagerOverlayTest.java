@@ -43,7 +43,6 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
-import songscribe.dom.SlideZone;
 import songscribe.dom.Song;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
@@ -61,8 +60,8 @@ import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
- * Unit tests for what actually drives {@link PreviewElementOverlay} and {@link FallPreviewOverlay}
- * through {@link PreviewElementManager} — the five former repaint sites inside
+ * Unit tests for what actually drives {@link PreviewElementOverlay}
+ * through {@link PreviewElementManager} — the former repaint sites inside
  * {@code trackMouse}/{@code handleClick} (T19), the three mode-driven restore/clear paths (T19),
  * rebuild re-targeting without an intervening mouse event (T20), and the position-vs-configuration
  * split inside {@code trackMouse} (T22).
@@ -173,12 +172,6 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         if (freshOverlay != null) {
             freshOverlay.updateBounds();
         }
-
-        var freshFallOverlay = PreviewElementManager.getFallOverlay();
-
-        if (freshFallOverlay != null) {
-            freshFallOverlay.updateBounds();
-        }
     }
 
     @AfterEach
@@ -187,7 +180,6 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         PreviewElementManager.setCurrentPreviewLine(null);
         PreviewElementManager.setCurrentXIndex(-1);
         PreviewElementManager.setXPosSsMatchesElement(false);
-        PreviewElementManager.setCurrentSlideZone(null);
         PreviewElementManager.clearPendingTempoPrompt();
         messageCenterMock.close();
         playbackMock.close();
@@ -286,60 +278,6 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         assertThat(overlay.isVisible())
             .as("precondition: the preview overlay must be visible before the change under test")
             .isTrue();
-    }
-
-    @Test
-    void testTrackMouseSlidePlaceholderHidesNoteOverlay() {
-        // A real pitched note ahead of the terminal, so the mouse can sit directly over it
-        // without tripping the auto-maintained-terminal block.
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
-        when(layoutResult.findInsertionIndex(anyDouble(), eq(line))).thenReturn(0);
-        when(layoutResult.findElementAtXSs(anyDouble(), eq(line))).thenReturn(0);
-        editModeManagerMock.when(EditModeManager::getPreviewElement)
-            .thenReturn(ElementType.SLIDE.newInstance());
-
-        PreviewElementManager.trackMouse(lc, mouseEvent(0, ON_STAFF_Y_PX, false));
-
-        var overlay = PreviewElementManager.getOverlay();
-
-        assertThat(overlay).as("expected installOverlay to install a non-null overlay").isNotNull();
-
-        assertThat(PreviewElementManager.getCurrentInsertionLine())
-            .as("the slide-placeholder branch still updates the tracked line")
-            .isSameAs(lc);
-        assertThat(overlay.isVisible())
-            .as("a slide placeholder has no note head -> the note overlay stays hidden")
-            .isFalse();
-    }
-
-    @Test
-    void testHandleClickSlideCommittedHidesFallOverlay() {
-        song.setLineWidthSs(100.0);
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
-        editModeManagerMock.when(EditModeManager::getPreviewElement)
-            .thenReturn(ElementType.SLIDE.newInstance());
-
-        PreviewElementManager.setCurrentPreviewLine(lc);
-        PreviewElementManager.setCurrentXIndex(1);
-        PreviewElementManager.setCurrentSlideZone(SlideZone.FALL);
-        PreviewElementManager.previewElementDidChange();
-
-        var fallOverlay = PreviewElementManager.getFallOverlay();
-
-        assertThat(fallOverlay).as("expected installOverlay to install a non-null fall overlay").isNotNull();
-
-        assertThat(fallOverlay.isVisible())
-            .as("fixture sanity: the fall preview is visible before the click commits it")
-            .isTrue();
-
-        PreviewElementManager.handleClick(lc);
-
-        assertThat(line.getElement(0).hasFall())
-            .as("fixture sanity: the click actually applied the fall")
-            .isTrue();
-        assertThat(fallOverlay.isVisible())
-            .as("handleClick's slide-committed site hides the fall preview once applied")
-            .isFalse();
     }
 
     // -------------------------------------------------------------------------

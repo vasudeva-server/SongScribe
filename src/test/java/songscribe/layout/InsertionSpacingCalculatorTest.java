@@ -32,6 +32,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.function.ToDoubleFunction;
 
@@ -46,6 +47,7 @@ import songscribe.dom.Song;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.font.DocumentFonts;
 
@@ -272,11 +274,11 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     }
 
     /**
-     * The chain {@code hasRoomForFall} solves — every column with a fall-carrying clone in the
+     * The chain {@code hasRoomForSlides} solves — every column with a slide-carrying clone in each
      * source's place — reduced to the two margins a test can name: the natural width the line wants
      * and the fully compressed floor below which no solve succeeds.
      */
-    private record FallProjection(double anchorXSs, List<Spring> springs, double trailingReservationSs) {
+    private record SlideProjection(double anchorXSs, List<Spring> springs, double trailingReservationSs) {
 
         private double widthSs(ToDoubleFunction<? super Spring> gapSs) {
             return anchorXSs + springs.stream().mapToDouble(gapSs).sum() + trailingReservationSs;
@@ -297,16 +299,30 @@ class InsertionSpacingCalculatorTest extends UnitTest {
     }
 
     /** Builds the projected chain a fall at {@code sourceIndex} produces, as the gate builds it. */
-    private static FallProjection fallProjection(Line line, int sourceIndex) {
-        var sourceWithFall = line.getElement(sourceIndex).clone();
-        sourceWithFall.setFall();
+    private static SlideProjection fallProjection(Line line, int sourceIndex) {
+        return slideProjection(line, new int[] { sourceIndex }, SlideZone.FALL);
+    }
+
+    /**
+     * Builds the projected chain {@code zone}'s slides at {@code sourceIndices} produce, as the
+     * gate builds it. An empty {@code sourceIndices} projects the line as it already stands, which
+     * is the baseline a test compares a slide's demand against.
+     */
+    private static SlideProjection slideProjection(Line line, int[] sourceIndices, SlideZone zone) {
+        var sourcesWithSlide = new HashMap<Integer, StaffElement>();
+
+        for (var sourceIndex : sourceIndices) {
+            var sourceWithSlide = line.getElement(sourceIndex).clone();
+            zone.applyTo(sourceWithSlide);
+            sourcesWithSlide.put(sourceIndex, sourceWithSlide);
+        }
 
         var elementCount = line.elementCount();
         var effectiveCount = line.effectiveElementCount();
         var columns = new ArrayList<ElementColumn>(elementCount);
 
         for (var i = 0; i < effectiveCount; i++) {
-            columns.add(lightweightColumn(i == sourceIndex ? sourceWithFall : line.getElement(i)));
+            columns.add(lightweightColumn(sourcesWithSlide.getOrDefault(i, line.getElement(i))));
         }
 
         // Mirror the gate's conditional terminal append rather than looping every element: the two
@@ -315,7 +331,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
             columns.add(lightweightColumn(line.getElement(elementCount - 1)));
         }
 
-        return new FallProjection(
+        return new SlideProjection(
             HorizontalSpacingCalculator.calculateAnchorXSs(columns.getFirst(), line),
             LyricLift.applyLyricLift(HorizontalSpacingCalculator.buildSprings(columns, line), columns),
             HorizontalSpacingCalculator.trailingReservationSs(columns.getLast(), line));
@@ -862,6 +878,163 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
             assertThat(source.hasGlissando()).as("original glissando restored").isTrue();
             assertThat(source.hasFall()).as("fall not left in place").isFalse();
+        }
+    }
+
+    /**
+     * The batched gate behind both slide toggles. What {@link HasRoomForFall} covers for one fall,
+     * these cover for a batch and for the other slide kind: the cumulative demand of several slides,
+     * and a glissando's floor under the gap it reaches across.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HasRoomForSlides {
+
+        /** Index of the third element of the fixtures built here. */
+        private static final int THIRD_INDEX = 2;
+
+        /** No index at all — the batch a toggle hands over when nothing would gain a slide. */
+        private static final int[] NO_INDICES = {};
+
+        @Test
+        void testAnEmptyBatchAlwaysFits() {
+            var line = lineWithCrotchets(2, songWithLineWidth(0));
+
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(line, NO_INDICES, SlideZone.FALL, null))
+                .as("nothing claims space, so not even a zero-width line can refuse it")
+                .isTrue();
+        }
+
+        /**
+         * The correctness fix the batch gate exists for: falls that each fit against the unchanged
+         * line can jointly overrun it, and asking one index at a time would accept exactly that.
+         */
+        @Test
+        void testTwoFallsThatEachFitAloneAreRefusedTogether() {
+            var song = songMock();
+            var line = lineWithCrotchets(4, song);
+            var firstFloorSs = slideProjection(line, new int[] { 1 }, SlideZone.FALL).compressedFloorSs();
+            var secondFloorSs =
+                slideProjection(line, new int[] { THIRD_INDEX }, SlideZone.FALL).compressedFloorSs();
+            var bothFloorSs =
+                slideProjection(line, new int[] { 1, THIRD_INDEX }, SlideZone.FALL).compressedFloorSs();
+            var widestSingleFloorSs = Math.max(firstFloorSs, secondFloorSs);
+            // Between the two floors: room for either fall, not for both.
+            var marginSs = (widestSingleFloorSs + bothFloorSs) / 2;
+
+            assertThat(widestSingleFloorSs)
+                .as("fixture is only meaningful if the second fall raises the floor at all")
+                .isLessThan(bothFloorSs);
+
+            when(song.getLineWidthSs()).thenReturn(marginSs);
+
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(
+                line, new int[] { 1 }, SlideZone.FALL, null))
+                .as("either fall alone fits")
+                .isTrue();
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(
+                line, new int[] { THIRD_INDEX }, SlideZone.FALL, null))
+                .isTrue();
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(
+                line, new int[] { 1, THIRD_INDEX }, SlideZone.FALL, null))
+                .as("their demands accumulate, so the pair overruns the same line")
+                .isFalse();
+        }
+
+        /** {@code hasRoomForFall} is only a convenience name for the single-index batch. */
+        @Test
+        void testSingleFallAgreesWithHasRoomForFallOnBothSidesOfTheBoundary() {
+            var song = songMock();
+            var line = lineWithCrotchets(3, song);
+            var floorSs = fallProjection(line, 1).compressedFloorSs();
+
+            when(song.getLineWidthSs()).thenReturn(floorSs - BOUNDARY_SLACK_SS);
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(
+                line, new int[] { 1 }, SlideZone.FALL, null))
+                .isEqualTo(InsertionSpacingCalculator.hasRoomForFall(line, 1, null))
+                .isFalse();
+
+            when(song.getLineWidthSs()).thenReturn(floorSs + BOUNDARY_SLACK_SS);
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(
+                line, new int[] { 1 }, SlideZone.FALL, null))
+                .isEqualTo(InsertionSpacingCalculator.hasRoomForFall(line, 1, null))
+                .isTrue();
+        }
+
+        /**
+         * The auto-maintained terminal cannot carry a slide, and an index naming it would leave that
+         * slide out of the projection entirely — so the batch is refused rather than measured wrong.
+         */
+        @Test
+        void testAnIndexPastTheLastSlideBearingElementIsRefused() {
+            var line = lineWithTerminal(3, songWithLineWidth(WIDE_LINE_SS));
+            var terminalIndex = line.effectiveElementCount();
+
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(
+                line, new int[] { terminalIndex }, SlideZone.FALL, null))
+                .as("the terminal barline is not a slide bearer, however wide the line")
+                .isFalse();
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(
+                line, new int[] { line.elementCount() }, SlideZone.FALL, null))
+                .as("nor is an index off the end of the line")
+                .isFalse();
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(
+                line, new int[] { -1 }, SlideZone.FALL, null))
+                .isFalse();
+        }
+
+        /** An index that already carries the zone's slide claims nothing further. */
+        @Test
+        void testAnIndexAlreadyCarryingTheSlideAddsNoWidth() {
+            var song = songMock();
+            var line = lineWithCrotchets(3, song);
+            line.getElement(0).setFall();
+            var marginSs = fallProjection(line, 1).compressedFloorSs() + BOUNDARY_SLACK_SS;
+            when(song.getLineWidthSs()).thenReturn(marginSs);
+
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(
+                line, new int[] { 0, 1 }, SlideZone.FALL, null))
+                .as("only the fall being added is projected, so the verdict is the same as for it alone")
+                .isEqualTo(InsertionSpacingCalculator.hasRoomForSlides(
+                    line, new int[] { 1 }, SlideZone.FALL, null))
+                .isTrue();
+        }
+
+        /**
+         * A glissando widens nothing of its own: it puts a floor under the spring reaching the
+         * <em>following</em> column, so the line it draws stays visible. That floor is enough to
+         * make a line infeasible, which is why the toggle asks about glissandos too (refs #717).
+         */
+        @Test
+        void testGlissandoIsRefusedBelowItsReservationFloorAndAcceptedAbove() {
+            var song = songMock();
+            var line = lineWithCrotchets(3, song);
+            var floorSs = slideProjection(line, new int[] { 1 }, SlideZone.GLISSANDO).compressedFloorSs();
+
+            assertThat(slideProjection(line, NO_INDICES, SlideZone.GLISSANDO).compressedFloorSs())
+                .as("fixture is only meaningful if the glissando's reservation raises the floor")
+                .isLessThan(floorSs);
+
+            when(song.getLineWidthSs()).thenReturn(floorSs - BOUNDARY_SLACK_SS);
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(
+                line, new int[] { 1 }, SlideZone.GLISSANDO, null))
+                .as("below the floor the gap cannot hold a visible glissando")
+                .isFalse();
+
+            when(song.getLineWidthSs()).thenReturn(floorSs + BOUNDARY_SLACK_SS);
+            assertThat(InsertionSpacingCalculator.hasRoomForSlides(
+                line, new int[] { 1 }, SlideZone.GLISSANDO, null))
+                .isTrue();
+        }
+
+        @Test
+        void testGlissandoCheckLeavesTheLiveElementUntouched() {
+            var line = lineWithCrotchets(3, songWithLineWidth(WIDE_LINE_SS));
+            var source = line.getElement(1);
+
+            InsertionSpacingCalculator.hasRoomForSlides(line, new int[] { 1 }, SlideZone.GLISSANDO, null);
+
+            assertThat(source.hasGlissando()).as("the check measures a clone").isFalse();
         }
     }
 

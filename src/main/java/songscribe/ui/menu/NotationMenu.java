@@ -25,8 +25,10 @@ import static songscribe.ui.action.Actions.AUTO_STEM_DIRECTION_ACTION;
 import static songscribe.ui.action.Actions.BREATH_MARK_ACTION;
 import static songscribe.ui.action.Actions.DYNAMIC_MARKING_ACTION_GROUP;
 import static songscribe.ui.action.Actions.EDIT_LYRIC_ACTION;
+import static songscribe.ui.action.Actions.FALL_ACTION;
 import static songscribe.ui.action.Actions.FERMATA_ACTION;
 import static songscribe.ui.action.Actions.FLIP_STEM_DIRECTION_ACTION;
+import static songscribe.ui.action.Actions.GLISSANDO_ACTION;
 import static songscribe.ui.action.Actions.MAKE_ENDING_ACTION;
 import static songscribe.ui.action.Actions.REMOVE_TUPLET_ACTION;
 import static songscribe.ui.action.Actions.REST_ACTION;
@@ -58,7 +60,6 @@ public class NotationMenu extends JMenu {
         addSeparator();
 
         // Group 2: Spans & Barlines
-        add(new SlideMenu());
         add(new RepeatsMenu());
         add(new BarlineMenu(mainFrame));
 
@@ -75,6 +76,8 @@ public class NotationMenu extends JMenu {
         addSeparator();
 
         // Group 4: Display
+        add(new JMenuItem(GLISSANDO_ACTION));
+        add(new JMenuItem(FALL_ACTION));
         add(new JMenuItem(TOGGLE_BEAM_ACTION));
         add(new JMenuItem(TOGGLE_TIE_ACTION));
         add(createStemDirectionMenu());

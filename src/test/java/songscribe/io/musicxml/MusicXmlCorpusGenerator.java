@@ -387,11 +387,6 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
                 // Breath mark is a trailing line element after the note it follows.
                 line.addElement(ElementType.CROTCHET.newInstance());
                 line.addElement(ElementType.BREATH_MARK.newInstance());
-
-                // Standalone slide element.
-                line.addElement(ElementType.CROTCHET.newInstance());
-                line.addElement(ElementType.SLIDE.newInstance());
-                line.addElement(ElementType.CROTCHET.newInstance());
             }
         );
     }

@@ -32,7 +32,6 @@ import org.jspecify.annotations.Nullable;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.dom.StaffElement;
-import songscribe.hit.HitTarget;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
@@ -401,11 +400,6 @@ public final class ActionReflector {
         // Selection cleared
         if (selection == null) {
             lastReflectedSelection = null;
-
-            if (coordinator.getSelectedTarget() instanceof HitTarget.Slide(var owner)) {
-                reflectSlideSelection(owner);
-            }
-
             return;
         }
 
@@ -447,22 +441,6 @@ public final class ActionReflector {
         }
 
         updateGraceNoteActionEnabled(hasGraceNote);
-    }
-
-    /**
-     * Reflects a standalone slide selection onto toolbar actions.
-     * The matching slide action is selected and enabled; all others are disabled.
-     */
-    private void reflectSlideSelection(StaffElement element) {
-        if (element.getSlide() == null) {
-            return;
-        }
-
-        for (var reflectable : getReflectableActions()) {
-            var matches = reflectable.matchesSlide(element);
-            ((UIAction) reflectable).setEnabled(matches);
-            reflectable.setSelected(matches);
-        }
     }
 
     /**

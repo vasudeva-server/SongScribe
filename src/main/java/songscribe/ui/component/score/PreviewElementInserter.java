@@ -29,7 +29,6 @@ import songscribe.Strings;
 import songscribe.dom.Ending;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
-import songscribe.dom.SlideZone;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.layout.AccidentalMaterializer;
@@ -47,8 +46,7 @@ import songscribe.ui.edit.GraceModeManager;
 import songscribe.undo.OpNames;
 
 /**
- * Turns a click on the hover preview into an edit: an append, an insert, a replacement, or a slide
- * attached to the note the pointer sits after.
+ * Turns a click on the hover preview into an edit: an append, an insert, or a replacement.
  * <p>
  * The tracking state the click resolves against — which line, which insertion index, whether the
  * pointer is over an existing element head — belongs to {@link PreviewElementManager} and is read
@@ -93,11 +91,6 @@ final class PreviewElementInserter {
         }
 
         var previewElement = EditModeManager.getPreviewElement();
-
-        if (SlideZoneResolver.isSlidePlaceholder(previewElement)) {
-            attachSlide(lc, line);
-            return;  // Stay in slide mode
-        }
 
         // Belt-and-braces: block clicks that would try to insert past the auto-maintained
         // terminal. trackMouse already clears the preview at these positions.
@@ -190,51 +183,6 @@ final class PreviewElementInserter {
                 pendingTempoPrompt = new PendingTempoPrompt(lc, line, line.getElement(0));
             }
         });
-    }
-
-    /**
-     * Attaches the previewed slide to the note the pointer sits after. A no-op when the pointer is
-     * in no valid slide zone, and refused outright when a fall would not fit.
-     */
-    private static void attachSlide(LineComponent lc, Line line) {
-        var zone = PreviewElementManager.getSlideZone();
-
-        if (zone == null) {
-            return;  // No valid zone = click is a no-op
-        }
-
-        var noteIndex = PreviewElementManager.getCurrentXIndex() - 1;
-
-        if (zone == SlideZone.FALL
-                && !InsertionSpacingCalculator.hasRoomForFall(line, noteIndex, lc.getLyricRenderMetrics())) {
-            OptionDialogs.showErrorMessage(
-                null,
-                Strings.ALERT_TITLE_INSERT_ERROR,
-                Strings.ERROR_LINE_FULL_FALL
-            );
-            return;
-        }
-
-        var sourceNote = line.getElement(noteIndex);
-
-        // A fall replaces the glissando (slides are mutually exclusive), which un-pairs
-        // a grace note. Capture the pairing first — applyTo destroys the evidence.
-        var wasPairedGraceNote = line.isPairedGraceNote(noteIndex);
-
-        line.withModification(OpNames.addSlideLabel(zone == SlideZone.FALL), () -> {
-            line.modifyElement(noteIndex, ElementField.SLIDE, () -> zone.applyTo(sourceNote));
-
-            // Un-pairing dissolves the automatic melisma. Both elements survive, so
-            // the syllable simply stays on the now-ordinary former grace note.
-            if (wasPairedGraceNote) {
-                line.syncGraceHostMelisma(noteIndex);
-            }
-        });
-
-        // The source note now already carries this slide, so sourceAlreadyHasSlide flips
-        // the gate off — the overlay has to be told so it takes itself down immediately
-        // rather than waiting for the next mouse move.
-        PreviewOverlayRegistry.previewDidChange();
     }
 
     /**

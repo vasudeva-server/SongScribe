@@ -89,16 +89,7 @@ Sri Chinmoy</rightinfo>
             <staffposition>0</staffposition>
           </note>
           <note type="BREATH_MARK">
-            <staffposition>-7</staffposition>
-          </note>
-          <note type="CROTCHET">
-            <staffposition>0</staffposition>
-          </note>
-          <note type="SLIDE">
-            <staffposition>0</staffposition>
-          </note>
-          <note type="CROTCHET">
-            <staffposition>0</staffposition>
+            <staffposition>-5</staffposition>
           </note>
       </notes>
     </line>

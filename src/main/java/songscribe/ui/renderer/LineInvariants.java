@@ -115,9 +115,6 @@ public final class LineInvariants {
     @Nullable
     private final SpanBound playingTieEndBound;
 
-    /** Notes highlighted by the active slide preview, resolved once per line. */
-    private final PreviewElementManager.SlidePreviewNotes slidePreviewNotes;
-
     private LineInvariants(
         Builder b,
         LayoutResult layoutResult,
@@ -148,8 +145,6 @@ public final class LineInvariants {
             playingTieAnchorBound = b.currentLine.anchorIndexOf(playingTieSpan);
             playingTieEndBound = b.currentLine.endIndexOf(playingTieSpan);
         }
-
-        slidePreviewNotes = PreviewElementManager.getSlidePreviewNotes();
     }
 
     /** Returns a new builder for invariants describing the given song. */
@@ -435,18 +430,6 @@ public final class LineInvariants {
         }
 
         return selectionProvider.isElementRangeSelected(elementIndex, lineIndex);
-    }
-
-    /**
-     * Returns whether the element at {@code elementIndex} on this line is one the active slide
-     * preview would connect to, reusing the per-line resolution computed at construction.
-     * <p>
-     * The highlight applies only to the note glyph (notehead, stem, flag, accidentals, dots) and is
-     * therefore applied by {@code LineRenderer.getElementColor}, not by {@link #getElementColor},
-     * so it does not leak onto the note's decorations, attachments, ties, or lyrics.
-     */
-    public boolean isSlidePreviewNote(int elementIndex) {
-        return slidePreviewNotes.highlights(lineIndex, elementIndex);
     }
 
     /**

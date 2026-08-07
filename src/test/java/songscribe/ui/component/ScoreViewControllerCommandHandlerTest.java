@@ -48,6 +48,10 @@ import songscribe.message.command.FirstSecondEndingCommand;
 import songscribe.message.command.FlipStemDirectionCommand;
 import songscribe.message.command.ToggleBeamCommand;
 import songscribe.message.command.ToggleBeamWithPreviousCommand;
+import songscribe.message.command.ToggleFallCommand;
+import songscribe.message.command.ToggleFallOnLastInsertionCommand;
+import songscribe.message.command.ToggleGlissandoCommand;
+import songscribe.message.command.ToggleGlissandoWithPreviousCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.mutation.BeamingAddition;
@@ -65,6 +69,7 @@ import songscribe.dom.Song;
 import songscribe.dom.EndingValidationResult;
 import songscribe.dom.Line;
 import songscribe.ui.MusicEditOperations;
+import songscribe.ui.SlideOperations;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tuplet;
 import songscribe.ui.action.Actions;
@@ -414,6 +419,61 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // handleToggleGlissando / handleToggleFall no-op — mirrors handleToggleBeam's
+    // null-range guard above, since both share the same select-mode shape.
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testHandleToggleGlissandoIsNoOpWhenNoActiveSelection() {
+        var coordinatorMock = mock(SelectionCoordinator.class);
+        when(coordinatorMock.getRange()).thenReturn(null);
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            coordinatorMock,
+            mock(ClipboardManager.class)
+        );
+
+        controller.handleToggleGlissando(new ToggleGlissandoCommand());
+
+        var mock = messageCenterMock;
+
+        if (mock == null) {
+            throw new IllegalStateException("messageCenterMock not set");
+        }
+
+        mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
+    }
+
+    @Test
+    void testHandleToggleFallIsNoOpWhenNoActiveSelection() {
+        var coordinatorMock = mock(SelectionCoordinator.class);
+        when(coordinatorMock.getRange()).thenReturn(null);
+
+        messageCenterMock = mockStatic(MessageCenter.class);
+
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            coordinatorMock,
+            mock(ClipboardManager.class)
+        );
+
+        controller.handleToggleFall(new ToggleFallCommand());
+
+        var mock = messageCenterMock;
+
+        if (mock == null) {
+            throw new IllegalStateException("messageCenterMock not set");
+        }
+
+        mock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
+    }
+
+    // -----------------------------------------------------------------------
     // handleFirstSecondEnding no-op — row 57
     // -----------------------------------------------------------------------
 
@@ -578,6 +638,235 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
             controller.handleToggleBeamWithPrevious(new ToggleBeamWithPreviousCommand());
 
             uiUtils.verify(UIUtils::beep);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleToggleGlissandoWithPrevious / handleToggleFallOnLastInsertion
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testHandleToggleGlissandoWithPreviousBeepsAndDoesNothingWhilePlaying() {
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(true);
+
+            controller.handleToggleGlissandoWithPrevious(new ToggleGlissandoWithPreviousCommand());
+
+            uiUtils.verify(UIUtils::beep);
+            editModeManager.verify(EditModeManager::getLastInsertion, never());
+        }
+    }
+
+    @Test
+    void testHandleToggleGlissandoWithPreviousBeepsWhenNoLastInsertion() {
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(null);
+
+            controller.handleToggleGlissandoWithPrevious(new ToggleGlissandoWithPreviousCommand());
+
+            uiUtils.verify(UIUtils::beep);
+        }
+    }
+
+    @Test
+    void testHandleToggleGlissandoWithPreviousBeepsWhenTheToggleRefuses() {
+        var line = new Line(new Song());
+        var elementIndex = 2;
+        var insertion = new EditModeManager.Insertion(line, elementIndex);
+        var score = mock(ScoreView.class);
+        var controller = new ScoreViewController(
+            score,
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var slideOperations = mockStatic(SlideOperations.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(insertion);
+            slideOperations.when(() -> SlideOperations.toggleGlissandoWithPredecessor(
+                    line, elementIndex, score.getLyricRenderMetrics()))
+                .thenReturn(SlideOperations.Result.REFUSED);
+
+            controller.handleToggleGlissandoWithPrevious(new ToggleGlissandoWithPreviousCommand());
+
+            uiUtils.verify(UIUtils::beep);
+        }
+    }
+
+    /**
+     * A no-room refusal already shows the "line full" dialog; beeping on top of that would
+     * read as a second, separate failure the moment the user dismisses it — the defect the
+     * user reported during phase 10's manual verification.
+     */
+    @Test
+    void testHandleToggleGlissandoWithPreviousDoesNotBeepWhenTheToggleReportsAnErrorDialog() {
+        var line = new Line(new Song());
+        var elementIndex = 2;
+        var insertion = new EditModeManager.Insertion(line, elementIndex);
+        var score = mock(ScoreView.class);
+        var controller = new ScoreViewController(
+            score,
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var slideOperations = mockStatic(SlideOperations.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(insertion);
+            slideOperations.when(() -> SlideOperations.toggleGlissandoWithPredecessor(
+                    line, elementIndex, score.getLyricRenderMetrics()))
+                .thenReturn(SlideOperations.Result.REPORTED);
+
+            controller.handleToggleGlissandoWithPrevious(new ToggleGlissandoWithPreviousCommand());
+
+            uiUtils.verify(UIUtils::beep, never());
+        }
+    }
+
+    @Test
+    void testHandleToggleFallOnLastInsertionBeepsAndDoesNothingWhilePlaying() {
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(true);
+
+            controller.handleToggleFallOnLastInsertion(new ToggleFallOnLastInsertionCommand());
+
+            uiUtils.verify(UIUtils::beep);
+            editModeManager.verify(EditModeManager::getLastInsertion, never());
+        }
+    }
+
+    @Test
+    void testHandleToggleFallOnLastInsertionBeepsWhenNoLastInsertion() {
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(null);
+
+            controller.handleToggleFallOnLastInsertion(new ToggleFallOnLastInsertionCommand());
+
+            uiUtils.verify(UIUtils::beep);
+        }
+    }
+
+    @Test
+    void testHandleToggleFallOnLastInsertionBeepsWhenTheToggleRefuses() {
+        var line = new Line(new Song());
+        var elementIndex = 2;
+        var insertion = new EditModeManager.Insertion(line, elementIndex);
+        var score = mock(ScoreView.class);
+        var controller = new ScoreViewController(
+            score,
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var slideOperations = mockStatic(SlideOperations.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(insertion);
+            slideOperations.when(() -> SlideOperations.toggleFallOnLastInsertion(
+                    line, elementIndex, score.getLyricRenderMetrics()))
+                .thenReturn(SlideOperations.Result.REFUSED);
+
+            controller.handleToggleFallOnLastInsertion(new ToggleFallOnLastInsertionCommand());
+
+            uiUtils.verify(UIUtils::beep);
+        }
+    }
+
+    /**
+     * Pins the same regression as {@link #testHandleToggleGlissandoWithPreviousDoesNotBeepWhenTheToggleReportsAnErrorDialog}
+     * for the fall path — the "not enough room" dialog was the one reported in phase 10.
+     */
+    @Test
+    void testHandleToggleFallOnLastInsertionDoesNotBeepWhenTheToggleReportsAnErrorDialog() {
+        var line = new Line(new Song());
+        var elementIndex = 2;
+        var insertion = new EditModeManager.Insertion(line, elementIndex);
+        var score = mock(ScoreView.class);
+        var controller = new ScoreViewController(
+            score,
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var slideOperations = mockStatic(SlideOperations.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(insertion);
+            slideOperations.when(() -> SlideOperations.toggleFallOnLastInsertion(
+                    line, elementIndex, score.getLyricRenderMetrics()))
+                .thenReturn(SlideOperations.Result.REPORTED);
+
+            controller.handleToggleFallOnLastInsertion(new ToggleFallOnLastInsertionCommand());
+
+            uiUtils.verify(UIUtils::beep, never());
         }
     }
 

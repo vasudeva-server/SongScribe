@@ -59,7 +59,6 @@ public enum ElementType {
     GRACE_QUAVER("Grace note", KeyEvent.VK_G, 0, 0, 0),
 
     // Other
-    SLIDE("Slide", 0, 0),
     REPEAT_LEFT("Repeat left", KeyEvent.VK_L, 0, 0, 0),
     REPEAT_RIGHT("Repeat right", KeyEvent.VK_R, 0, 0, 0),
     REPEAT_LEFT_RIGHT("Repeat left/right", 0, 0),
@@ -477,10 +476,6 @@ public enum ElementType {
             return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_BREATH_MARK);
         }
 
-        if (this == SLIDE) {
-            return Strings.get(Strings.LABEL_ELEMENT_CATEGORY_FALL);
-        }
-
         throw new IllegalStateException("No category name for element type " + this);
     }
 
@@ -492,7 +487,7 @@ public enum ElementType {
      * exactly {@link #isDuration()} (notes and rests).
      */
     public boolean isNonContentElement() {
-        return isGraceNote() || this == SLIDE || this == BREATH_MARK;
+        return isGraceNote() || this == BREATH_MARK;
     }
 
     /**
@@ -607,12 +602,6 @@ public enum ElementType {
 
         computeBarlineBoundsSs();
         computeRepeatBoundsSs();
-
-        // Slides are rendered as lines between two notes — their actual visual
-        // extent is context-dependent. These nominal bounds satisfy the non-zero
-        // contract without affecting layout (slides are decorations on notes,
-        // not standalone positioned elements).
-        SLIDE.setSymmetricBounds(1, 1, -0.5);  // widthSs=1, heightSs=1, topOffsetSs=-0.5
 
         // Copy bounds to alias types
         for (var type : values()) {

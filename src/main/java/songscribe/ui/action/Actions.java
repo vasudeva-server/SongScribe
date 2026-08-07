@@ -98,8 +98,6 @@ public final class Actions {
     public static ElementTypeAction QUARTER_NOTE_ACTION;
     public static ElementTypeAction HALF_NOTE_ACTION;
     public static ElementTypeAction WHOLE_NOTE_ACTION;
-    public static ElementTypeAction GLISSANDO_ACTION;
-    public static ElementTypeAction FALL_ACTION;
 
     public static List<ElementTypeAction> NOTE_DURATION_ACTIONS;
     public static DurationActionGroup DURATION_ACTION_GROUP;
@@ -130,6 +128,8 @@ public final class Actions {
 
     public static ToggleNotationAction TOGGLE_BEAM_ACTION;
     public static ToggleNotationAction TOGGLE_TIE_ACTION;
+    public static ToggleNotationAction GLISSANDO_ACTION;
+    public static ToggleNotationAction FALL_ACTION;
 
     public static List<TupletAction> TOGGLE_TUPLET_ACTIONS;
     public static TupletAction REMOVE_TUPLET_ACTION;
@@ -221,8 +221,6 @@ public final class Actions {
         QUARTER_NOTE_ACTION = ElementTypeAction.createQuarterNoteAction(mainFrame);
         HALF_NOTE_ACTION = ElementTypeAction.createHalfNoteAction(mainFrame);
         WHOLE_NOTE_ACTION = ElementTypeAction.createWholeNoteAction(mainFrame);
-        GLISSANDO_ACTION = ElementTypeAction.createGlissandoAction(mainFrame);
-        FALL_ACTION = ElementTypeAction.createFallAction(mainFrame);
 
         NOTE_DURATION_ACTIONS = List.of(
             GRACE_EIGHTH_NOTE_ACTION,
@@ -241,9 +239,7 @@ public final class Actions {
             EIGHTH_NOTE_ACTION,
             QUARTER_NOTE_ACTION,
             HALF_NOTE_ACTION,
-            WHOLE_NOTE_ACTION,
-            GLISSANDO_ACTION,
-            FALL_ACTION
+            WHOLE_NOTE_ACTION
         );
         DURATION_ACTION_GROUP.setDefaultAction(QUARTER_NOTE_ACTION);
 
@@ -285,6 +281,8 @@ public final class Actions {
 
         TOGGLE_BEAM_ACTION = ToggleNotationAction.createBeamAction(mainFrame);
         TOGGLE_TIE_ACTION = ToggleNotationAction.createTieAction(mainFrame);
+        GLISSANDO_ACTION = ToggleNotationAction.createGlissandoAction(mainFrame);
+        FALL_ACTION = ToggleNotationAction.createFallAction(mainFrame);
 
         TOGGLE_TUPLET_ACTIONS = List.of(
             TupletAction.createDupletAction(mainFrame),

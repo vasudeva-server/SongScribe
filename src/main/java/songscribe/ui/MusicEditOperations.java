@@ -48,6 +48,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
+import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.RangeQueries;
 import songscribe.ui.selection.Selection;
@@ -300,6 +301,46 @@ public final class MusicEditOperations {
         } else {
             line.removeTie(existingTie);
         }
+    }
+
+    // ========== Slide Operations ==========
+
+    public boolean canToggleGlissando() {
+        var range = coordinator.getRange();
+        return (range != null) && RangeQueries.canToggleGlissando(range);
+    }
+
+    public void toggleGlissando(@Nullable LyricRenderMetrics lyricRenderMetrics) {
+        var range = coordinator.getRange();
+
+        if (range == null) {
+            return;
+        }
+
+        SlideOperations.toggleGlissando(range, lyricRenderMetrics);
+    }
+
+    /**
+     * Whether the selection holds any note a fall could hang off.
+     *
+     * <p>Takes no metrics and consults no horizontal room: a line too full for the falls is a
+     * commit-time refusal with an error message, made inside {@link SlideOperations#toggleFall}.
+     * Solving for room here would run a full spacing solve on every selection and song change,
+     * to answer a question the commit has to ask again anyway.
+     */
+    public boolean canToggleFall() {
+        var range = coordinator.getRange();
+        return (range != null) && RangeQueries.canToggleFall(range);
+    }
+
+    public void toggleFall(@Nullable LyricRenderMetrics lyricRenderMetrics) {
+        var range = coordinator.getRange();
+
+        if (range == null) {
+            return;
+        }
+
+        SlideOperations.toggleFall(range, lyricRenderMetrics);
     }
 
     // ========== Tuplet Operations ==========

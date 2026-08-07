@@ -25,10 +25,12 @@ import module java.desktop;
 import java.awt.event.MouseEvent;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.jspecify.annotations.Nullable;
 
 import songscribe.dom.Line;
+import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.ui.Mode;
 import songscribe.ui.component.score.LineComponent;
@@ -38,6 +40,8 @@ import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.ToggleBeamWithPreviousCommand;
+import songscribe.message.command.ToggleFallOnLastInsertionCommand;
+import songscribe.message.command.ToggleGlissandoWithPreviousCommand;
 import songscribe.util.UIUtils;
 
 /**
@@ -201,29 +205,41 @@ public final class ScoreInputHandler extends KeyAdapter
         registerBinding(bindings, inputMap, actionMap, KeyEvent.VK_LEFT, InputEvent.SHIFT_DOWN_MASK);
         registerBinding(bindings, inputMap, actionMap, KeyEvent.VK_RIGHT, InputEvent.SHIFT_DOWN_MASK);
 
-        registerToggleBeamWithPreviousBinding(bindings, inputMap, actionMap);
+        registerLastInsertionBinding(bindings, inputMap, actionMap,
+            KeyStroke.getKeyStroke(KeyEvent.VK_B, 0), ToggleBeamWithPreviousCommand::new);
+        registerLastInsertionBinding(bindings, inputMap, actionMap,
+            KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK), ToggleGlissandoWithPreviousCommand::new);
+        registerLastInsertionBinding(bindings, inputMap, actionMap,
+            KeyStroke.getKeyStroke(KeyEvent.VK_F, 0), ToggleFallOnLastInsertionCommand::new);
 
         return bindings;
     }
 
     /**
-     * Binds plain {@code b} to beaming the last inserted note with the one before it.
+     * Binds {@code keyStroke} to posting the command {@code commandFactory} produces, acting
+     * on the last insertion — e.g. plain {@code b} to beam it with the one before it, Shift+G
+     * to toggle its glissando, plain {@code f} to toggle its fall.
      * <p>
-     * The binding lives here, on the focused score, rather than on the toggle-beam action:
-     * that action stays disabled in edit mode, and a disabled action bound to the window's
-     * input map is skipped outright, so it could never report failure. This binding resolves
-     * first regardless of any action's enabled state.
+     * The binding lives here, on the focused score, rather than on the target action: that
+     * action stays disabled in edit mode, and a disabled action bound to the window's input
+     * map is skipped outright, so it could never report failure. This binding resolves first
+     * regardless of any action's enabled state.
      * <p>
      * That precedence is exactly why the mode guard is an {@code isEnabled} override rather
      * than an early return from {@code actionPerformed}. Swing invokes an enabled binding and
      * stops searching, so a guard that ran and did nothing would still swallow the key —
-     * leaving select mode, where the score view holds focus, with no working beam shortcut at
-     * all. Reporting the binding as disabled instead lets the search continue to the root
-     * pane, where the toggle-beam action's own plain {@code b} accelerator lives.
+     * leaving select mode, where the score view holds focus, with no working shortcut at all.
+     * Reporting the binding as disabled instead lets the search continue to the root pane,
+     * where the target action's own accelerator lives.
      */
-    private void registerToggleBeamWithPreviousBinding(
-        Map<? super KeyStroke, Object> bindings, InputMap inputMap, ActionMap actionMap) {
-        registerKeyStroke(bindings, inputMap, actionMap, KeyStroke.getKeyStroke(KeyEvent.VK_B, 0),
+    private void registerLastInsertionBinding(
+        Map<? super KeyStroke, Object> bindings,
+        InputMap inputMap,
+        ActionMap actionMap,
+        KeyStroke keyStroke,
+        Supplier<? extends Message> commandFactory
+    ) {
+        registerKeyStroke(bindings, inputMap, actionMap, keyStroke,
             new AbstractAction() {
                 @Override
                 public boolean isEnabled() {
@@ -237,7 +253,7 @@ public final class ScoreInputHandler extends KeyAdapter
 
                 @Override
                 public void actionPerformed(ActionEvent e) {
-                    MessageCenter.post(new ToggleBeamWithPreviousCommand());
+                    MessageCenter.post(commandFactory.get());
                 }
             });
     }

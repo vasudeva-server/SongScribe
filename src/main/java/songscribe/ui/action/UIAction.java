@@ -157,14 +157,6 @@ public class UIAction extends AbstractAction {
          * Only called when appliesTo() returns true.
          */
         boolean matchesElement(StaffElement element);
-
-        /**
-         * Whether this action matches the slide attached to the given element.
-         * Only glissando/fall actions override this to return true.
-         */
-        default boolean matchesSlide(StaffElement element) {
-            return false;
-        }
     }
 
     /**
@@ -707,9 +699,7 @@ public class UIAction extends AbstractAction {
         // apply to it. Accidentals and articulations can, and stay enabled so the grace
         // note can be decorated before it is placed.
         return !(hasFlag(Flag.DISABLE_WHEN_GRACE_DURATION_SELECTED)
-                && (duration == Actions.GRACE_EIGHTH_NOTE_ACTION))
-            && (duration != Actions.GLISSANDO_ACTION)
-            && (duration != Actions.FALL_ACTION);
+            && (duration == Actions.GRACE_EIGHTH_NOTE_ACTION));
     }
 
     @Handler(priority = Message.MEDIUM_PRIORITY)

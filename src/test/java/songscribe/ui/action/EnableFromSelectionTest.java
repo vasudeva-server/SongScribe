@@ -175,32 +175,6 @@ class EnableFromSelectionTest extends MainFrameMockTest {
         }
     }
 
-    @Test
-    void testEnableFromDurationSelectionReturnsFalseWhenGlissandoSelected() {
-        Actions.DURATION_ACTION_GROUP.setSelected(Actions.GLISSANDO_ACTION, true);
-        try {
-            var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
-            action.setFlags(UIAction.Flag.ENABLE_WHEN_DURATION_SELECTED);
-
-            assertThat(action.enableFromDurationSelection(false)).isFalse();
-        } finally {
-            Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
-        }
-    }
-
-    @Test
-    void testEnableFromDurationSelectionReturnsFalseWhenFallSelected() {
-        Actions.DURATION_ACTION_GROUP.setSelected(Actions.FALL_ACTION, true);
-        try {
-            var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");
-            action.setFlags(UIAction.Flag.ENABLE_WHEN_DURATION_SELECTED);
-
-            assertThat(action.enableFromDurationSelection(false)).isFalse();
-        } finally {
-            Actions.DURATION_ACTION_GROUP.setSelected(Actions.QUARTER_NOTE_ACTION, true);
-        }
-    }
-
     // -- enableFromDurationSelection: ENABLE_WHEN_DURATION_SELECTED + no selection + normal duration → true --
 
     @Test

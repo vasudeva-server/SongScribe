@@ -173,8 +173,10 @@ public final class OpNames {
     }
 
     /**
-     * Names a slide deletion by subtype: {@code Delete Fall} for a {@link
-     * StaffElement.Fall}, otherwise {@code Delete Glissando}.
+     * Names a slide deletion by subtype: {@code Remove Fall} for a {@link
+     * StaffElement.Fall}, otherwise {@code Remove Glissando}. A slide is taken off the note that
+     * carries it rather than deleted as an element of its own, so it is worded as a removal
+     * even though the sibling labels here read {@code Delete}.
      */
     public static String deleteSlideLabel(StaffElement.Slide slide) {
         return Strings.get(slide instanceof StaffElement.Fall

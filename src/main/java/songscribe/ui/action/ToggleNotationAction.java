@@ -27,10 +27,14 @@ import java.util.function.Supplier;
 
 import net.engio.mbassy.listener.Handler;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.ToggleBeamCommand;
+import songscribe.message.command.ToggleFallCommand;
+import songscribe.message.command.ToggleGlissandoCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.notification.DocumentDidLoadNotification;
@@ -52,6 +56,7 @@ public final class ToggleNotationAction extends UIAction {
             "toggle-beam",
             Strings.get(Strings.ACTION_BEAM_TOGGLE_TOOLTIP),
             KeyEvent.VK_B,
+            0,
             Flag.REQUIRES_MULTIPLE_SELECTION,
             ScoreViewController::canToggleBeaming,
             ToggleBeamCommand::new,
@@ -79,10 +84,66 @@ public final class ToggleNotationAction extends UIAction {
             "toggle-tie",
             Strings.get(Strings.ACTION_TIE_TOGGLE_TOOLTIP),
             KeyEvent.VK_T,
+            0,
             Flag.REQUIRES_SELECTION,
             ScoreViewController::canToggleTie,
             ToggleTieCommand::new,
             Strings.ACTION_EDIT_OP_TOGGLE_TIE
+        );
+    }
+
+    /**
+     * Like tying, and unlike beaming, a glissando takes {@link Flag#REQUIRES_SELECTION}
+     * rather than {@link Flag#REQUIRES_MULTIPLE_SELECTION}: a single selected note is
+     * already eligible, because the glissando pairs it with the note before it. The real
+     * gate is {@code ScoreViewController.canToggleGlissando}, which checks that such a
+     * predecessor exists and that the pair can carry a glissando.
+     * <p>
+     * The undo-op-name key is {@code null} (Tier B): {@code SlideOperations} labels its own
+     * {@code withModification} bracket with {@code OpNames.addSlideLabel} /
+     * {@code OpNames.deleteSlideLabel}, so the action must not impose a static label.
+     */
+    public static ToggleNotationAction createGlissandoAction(MainFrame mainFrame) {
+        return new ToggleNotationAction(
+            mainFrame,
+            Strings.get(Strings.ACTION_GLISSANDO_TOGGLE),
+            "connecting-glissando.svg",
+            26,
+            "toggle-glissando",
+            Strings.get(Strings.ACTION_GLISSANDO_TOGGLE_TOOLTIP),
+            KeyEvent.VK_G,
+            InputEvent.SHIFT_DOWN_MASK,
+            Flag.REQUIRES_SELECTION,
+            ScoreViewController::canToggleGlissando,
+            ToggleGlissandoCommand::new,
+            null
+        );
+    }
+
+    /**
+     * Like tying, and unlike beaming, a fall takes {@link Flag#REQUIRES_SELECTION} rather
+     * than {@link Flag#REQUIRES_MULTIPLE_SELECTION}: a fall applies to a note directly, so
+     * a single selected note is eligible. The real gate is
+     * {@code ScoreViewController.canToggleFall}.
+     * <p>
+     * The undo-op-name key is {@code null} (Tier B): {@code SlideOperations} labels its own
+     * {@code withModification} bracket with {@code OpNames.addSlideLabel} /
+     * {@code OpNames.deleteSlideLabel}, so the action must not impose a static label.
+     */
+    public static ToggleNotationAction createFallAction(MainFrame mainFrame) {
+        return new ToggleNotationAction(
+            mainFrame,
+            Strings.get(Strings.ACTION_FALL_TOGGLE),
+            "fall.svg",
+            26,
+            "toggle-fall",
+            Strings.get(Strings.ACTION_FALL_TOGGLE_TOOLTIP),
+            KeyEvent.VK_F,
+            0,
+            Flag.REQUIRES_SELECTION,
+            ScoreViewController::canToggleFall,
+            ToggleFallCommand::new,
+            null
         );
     }
 
@@ -94,10 +155,11 @@ public final class ToggleNotationAction extends UIAction {
         String actionCommand,
         String tooltip,
         int virtualKey,
+        int modifiers,
         Flag selectionSizeFlag,
         Predicate<? super ScoreViewController> canToggle,
         Supplier<? extends Message> commandFactory,
-        String undoOpNameKey
+        @Nullable String undoOpNameKey
     ) {
         super(
             mainFrame,
@@ -107,7 +169,7 @@ public final class ToggleNotationAction extends UIAction {
             actionCommand,
             tooltip,
             virtualKey,
-            0,
+            modifiers,
             selectionSizeFlag,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,

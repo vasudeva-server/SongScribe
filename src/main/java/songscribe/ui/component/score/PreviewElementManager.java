@@ -33,7 +33,6 @@ import songscribe.message.MessageCenter;
 import songscribe.dom.Song;
 import songscribe.dom.ElementLocation;
 import songscribe.dom.Line;
-import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.ui.component.MainFrame;
@@ -60,8 +59,8 @@ import songscribe.ui.playback.PlaybackController;
  * be active across all LineComponents at a time — and answers every "should this be drawn"
  * question that depends on it. The work that hangs off the tracking state lives elsewhere:
  * {@link PreviewElementInserter} turns a click into an edit, {@link PreviewOverlayRegistry} owns
- * the overlay components, {@link PreviewCursorHider} takes the system cursor away over the
- * preview, and {@link SlideZoneResolver} decides which slide a slide tool would draw.
+ * the overlay components, and {@link PreviewCursorHider} takes the system cursor away over the
+ * preview.
  */
 public final class PreviewElementManager {
 
@@ -100,9 +99,6 @@ public final class PreviewElementManager {
      * layout for the just-inserted note.
      */
     private static final int TEMPO_PROMPT_PRIORITY = Message.LOW_PRIORITY - 1;
-
-    /** The slide zone determined by mouse position (null if no valid zone). */
-    private static @Nullable SlideZone currentSlideZone = null;
 
     /** Last tracked mouse X in staff-space units; used by LineRenderer to avoid Swing getMousePosition() returning null. */
     private static double currentMouseXSs = 0.0;
@@ -351,45 +347,7 @@ public final class PreviewElementManager {
      * renderer, far from the predicates they test.
      */
     static boolean shouldShowPreviewOn(LineComponent lc) {
-        var previewElement = activePreviewElementOn(lc);
-
-        // A slide tool's placeholder has no note head at all; the slide preview components draw
-        // for it instead.
-        return previewElement != null
-            && !SlideZoneResolver.isSlidePlaceholder(previewElement)
-            && lc.isPreviewElementVisible();
-    }
-
-    /**
-     * Returns whether the slide-tool hover preview for {@code zone} should be drawn on
-     * {@code lc}. {@link SlidePreviewOverlay}'s two subclasses each call this with their own
-     * zone, so at most one is ever visible.
-     * <p>
-     * The single home for "is this slide preview visible". The predicates live here, on the
-     * manager, so the overlays call rather than re-assemble them.
-     */
-    static boolean shouldShowSlidePreviewOn(LineComponent lc, SlideZone zone) {
-        if (currentPreviewLine != lc) {
-            return false;
-        }
-
-        var previewElement = EditModeManager.getPreviewElement();
-
-        if (!SlideZoneResolver.isSlidePlaceholder(previewElement)
-            || !shouldShowSlidePreview()
-            || currentSlideZone != zone) {
-            return false;
-        }
-
-        var line = lc.getLine();
-
-        if (line == null) {
-            return false;
-        }
-
-        var sourceIndex = currentXIndex - 1;
-
-        return !SlideZoneResolver.sourceAlreadyHasSlide(line, sourceIndex, zone);
+        return activePreviewElementOn(lc) != null && lc.isPreviewElementVisible();
     }
 
     /**
@@ -461,7 +419,6 @@ public final class PreviewElementManager {
             currentStaffPosition = 0;
             xPosSsMatchesElement = false;
             yPosSpMatchesElement = false;
-            currentSlideZone = null;
         }
 
         // Unconditional: the mode-driven paths reach here with no preview line to clear, and the
@@ -546,81 +503,12 @@ public final class PreviewElementManager {
             return null;
         }
 
-        // A slide tool never replaces an existing element either — it attaches a
-        // slide to a note. Instead of the red replacement highlight, the connected
-        // notes are drawn in the preview color (see isSlidePreviewNote).
-        if (SlideZoneResolver.isSlidePlaceholder(previewElement)) {
-            return null;
-        }
-
         // A grace note may never be replaced, so it never shows the red replacement highlight.
         if (isGraceNoteAt(currentPreviewLine.getLine(), currentXIndex)) {
             return null;
         }
 
         return new ElementLocation(currentPreviewLine.getLineIndex(), currentXIndex);
-    }
-
-    /**
-     * The notes a previewed slide would connect to, and the line they live on. A connecting
-     * glissando highlights both the source note and the target note to its right; a fall
-     * highlights only the source, so {@code targetIndex} is -1. {@link #NONE} means no preview.
-     */
-    public record SlidePreviewNotes(int lineIndex, int sourceIndex, int targetIndex) {
-        public static final SlidePreviewNotes NONE = new SlidePreviewNotes(-1, -1, -1);
-
-        /** Returns whether the element at {@code (atLineIndex, atElementIndex)} is highlighted. */
-        public boolean highlights(int atLineIndex, int atElementIndex) {
-            // sourceIndex/targetIndex are -1 when absent (a fall has no target; NONE has
-            // neither). Guard so a negative query index never matches an absent endpoint.
-            return atLineIndex == lineIndex
-                && ((sourceIndex >= 0 && atElementIndex == sourceIndex)
-                    || (targetIndex >= 0 && atElementIndex == targetIndex));
-        }
-    }
-
-    /**
-     * Resolves which notes the currently previewed slide would connect to. Computed once so a
-     * caller can reuse it across every element on a line instead of re-resolving per element.
-     * <p>
-     * Returns {@link SlidePreviewNotes#NONE} when no slide preview is being shown. The
-     * conditions mirror those in {@link #shouldShowSlidePreviewOn}: the highlight is only shown
-     * when the preview slide itself is drawn, which excludes the case where the source note
-     * already carries this slide type.
-     */
-    public static SlidePreviewNotes getSlidePreviewNotes() {
-        if (!shouldShowSlidePreview() || currentPreviewLine == null) {
-            return SlidePreviewNotes.NONE;
-        }
-
-        // shouldShowSlidePreview() above already guarantees the zone is non-null.
-        var type = currentSlideZone;
-        var line = currentPreviewLine.getLine();
-        var sourceIndex = currentXIndex - 1;
-
-        if (line == null || sourceIndex < 0) {
-            return SlidePreviewNotes.NONE;
-        }
-
-        // No preview line is drawn (and thus no highlight) when the source note already
-        // carries this slide type.
-        if (SlideZoneResolver.sourceAlreadyHasSlide(line, sourceIndex, type)) {
-            return SlidePreviewNotes.NONE;
-        }
-
-        // A connecting glissando also highlights the target note immediately to the right.
-        var targetIndex = type == SlideZone.GLISSANDO ? currentXIndex : -1;
-
-        return new SlidePreviewNotes(currentPreviewLine.getLineIndex(), sourceIndex, targetIndex);
-    }
-
-    /**
-     * Returns whether the note at {@code (lineIndex, elementIndex)} is one the currently previewed
-     * slide would connect to. Prefer {@link #getSlidePreviewNotes()} when checking several
-     * elements on the same line so the resolution runs only once.
-     */
-    public static boolean isSlidePreviewNote(int lineIndex, int elementIndex) {
-        return getSlidePreviewNotes().highlights(lineIndex, elementIndex);
     }
 
     /**
@@ -636,23 +524,6 @@ public final class PreviewElementManager {
      */
     public static boolean isHoveringOverElementHead() {
         return xPosSsMatchesElement && yPosSpMatchesElement;
-    }
-
-    /**
-     * Returns whether a slide preview line should be drawn.
-     * <p>
-     * True when the mouse is in a valid slide zone (not over a note head, not to the
-     * left of the first note). The preview is shown for both insertion and removal modes.
-     */
-    public static boolean shouldShowSlidePreview() {
-        return currentSlideZone != null;
-    }
-
-    /**
-     * Returns the current slide zone type, or null if no valid zone exists.
-     */
-    static @Nullable SlideZone getSlideZone() {
-        return currentSlideZone;
     }
 
     /**
@@ -691,13 +562,6 @@ public final class PreviewElementManager {
     }
 
     /**
-     * Sets the current slide zone type (package-private for test setup).
-     */
-    static void setCurrentSlideZone(@Nullable SlideZone zone) {
-        currentSlideZone = zone;
-    }
-
-    /**
      * Clears any queued first-note tempo prompt (package-private for test teardown, so a
      * prompt left pending by one test cannot leak into the next).
      *
@@ -727,11 +591,6 @@ public final class PreviewElementManager {
     /** Returns the installed hover-preview overlay, or null before {@link #installOverlay}. */
     static @Nullable PreviewElementOverlay getOverlay() {
         return PreviewOverlayRegistry.getOverlay();
-    }
-
-    /** Returns the installed fall-preview overlay, or null before {@link #installOverlay}. */
-    static @Nullable FallPreviewOverlay getFallOverlay() {
-        return PreviewOverlayRegistry.getFallOverlay();
     }
 
     /**
@@ -766,25 +625,6 @@ public final class PreviewElementManager {
             && elementIndex >= 0
             && elementIndex < line.elementCount()
             && line.getElement(elementIndex).getType().isGraceNote();
-    }
-
-    /**
-     * Returns whether the source note at {@code sourceIndex} on {@code line} already carries the
-     * slide {@code zone} represents.
-     *
-     * @see SlideZoneResolver#sourceAlreadyHasSlide
-     */
-    static boolean sourceAlreadyHasSlide(Line line, int sourceIndex, @Nullable SlideZone zone) {
-        return SlideZoneResolver.sourceAlreadyHasSlide(line, sourceIndex, zone);
-    }
-
-    /**
-     * Computes the slide zone type for the given intended type, or null if no valid zone.
-     *
-     * @see SlideZoneResolver#computeSlideZone
-     */
-    static @Nullable SlideZone computeSlideZone(Line line, int xIndex, @Nullable SlideZone intendedZone) {
-        return SlideZoneResolver.computeSlideZone(line, xIndex, intendedZone);
     }
 
     // ==========================================================================
@@ -906,21 +746,17 @@ public final class PreviewElementManager {
         // Hide the ghost preview over it; handleClick separately ignores the click.
         var graceNoteBlocked = isGraceNoteAt(line, elementAtX);
 
-        // Compute slide zone before change detection so zone changes trigger repaints.
-        var newSlideZone = SlideZoneResolver.zoneUnderMouse(previewElement, line, xIndex, elementAtX);
-
-        // Split the six tracked fields by what they affect. The insertion index alone is
+        // Split the five tracked fields by what they affect. The insertion index alone is
         // position: the glyphs the renderers would emit are identical, so the overlay only needs
         // a new translate. Everything else changes the drawn ink — the staff position flips the
-        // stem direction and crosses the ledger-line threshold, the hover flags and the slide
-        // zone change what is drawn at all — so the display list has to be rebuilt. Both are step
-        // functions, so rebuilds stay rare even though the mouse moves continuously.
+        // stem direction and crosses the ledger-line threshold, and the hover flags change what
+        // is drawn at all — so the display list has to be rebuilt. Both are step functions, so
+        // rebuilds stay rare even though the mouse moves continuously.
         var xIndexChanged = xIndex != currentXIndex;
         var configurationChanged = lc != currentPreviewLine
             || staffPosition != currentStaffPosition
             || newXMatch != xPosSsMatchesElement
-            || newYMatch != yPosSpMatchesElement
-            || newSlideZone != currentSlideZone;
+            || newYMatch != yPosSpMatchesElement;
 
         if (!xIndexChanged && !configurationChanged) {
             return;  // No change, no repaint
@@ -934,16 +770,6 @@ public final class PreviewElementManager {
         currentStaffPosition = staffPosition;
         xPosSsMatchesElement = newXMatch;
         yPosSpMatchesElement = newYMatch;
-        currentSlideZone = newSlideZone;
-
-        if (SlideZoneResolver.isSlidePlaceholder(previewElement)) {
-            // No note-head preview for slide tool — the slide overlays draw the preview line.
-            // The overlay still has to be told, so it takes itself down when the tool changed
-            // from a note to a slide while the preview was showing.
-            PreviewOverlayRegistry.previewDidChange();
-            repaintHighlightedElements(previousPreviewLine);
-            return;
-        }
 
         // Always show the ghost preview — even when hovering over an existing element head.
         // The preview shows the user what pitch/type will replace the existing element.
@@ -999,11 +825,7 @@ public final class PreviewElementManager {
         currentMouseLine = lc;
 
         if (shouldHandlePreviewElement(lc)) {
-            var previewElement = EditModeManager.getPreviewElement();
-
-            if (!SlideZoneResolver.isSlidePlaceholder(previewElement)) {
-                EditModeManager.setPreviewElementVisible(true);
-            }
+            EditModeManager.setPreviewElementVisible(true);
         }
     }
 

@@ -37,9 +37,9 @@ import songscribe.util.GraphicUtils;
  * in the preview color, is what shows the user that the ghost they are moving is going to be
  * attached to the grace note behind it.
  * <p>
- * Unlike {@link GlissandoPreviewOverlay}, whose endpoints are both resolved note positions, this
- * one's target is the preview element — so it tracks the mouse vertically, continuously, while its
- * X stays pinned to grace mode's locked host slot.
+ * Unlike a glissando between two already-committed notes, whose endpoints are both resolved note
+ * positions, this one's target is the preview element — so it tracks the mouse vertically,
+ * continuously, while its X stays pinned to grace mode's locked host slot.
  *
  * <h2>Record once, replay many</h2>
  * Like the other preview overlays the ink comes from running the real {@code SlideRenderer} against

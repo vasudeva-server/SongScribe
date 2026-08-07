@@ -53,6 +53,12 @@ public final class RangeQueries {
     /** Two notes with a single non-duration element between them (refs #527). */
     private static final int TIE_SELECTION_SIZE_WITH_SEPARATOR = 3;
 
+    /** A glissando's source and its target, both selected (#717). */
+    private static final int GLISSANDO_SELECTION_SIZE_WITH_TARGET = 2;
+
+    /** A single selected element, read as the glissando's target — its source precedes it (#717). */
+    private static final int GLISSANDO_SELECTION_SIZE_SOURCE_ONLY = 1;
+
     private RangeQueries() {}
 
     /**
@@ -264,6 +270,131 @@ public final class RangeQueries {
         // single separator, which can never be a grace note, and the isPitchedNote() check
         // above already rejects a grace note at either endpoint (refs #592).
         return !shouldConnect || shouldConnectBeamSelection(line, begin, end);
+    }
+
+    /**
+     * Returns the index of the element a glissando toggle would act on, or -1 when the range
+     * is ineligible.
+     *
+     * <p>A glissando lives on its <b>source</b> note and connects forward to the element that
+     * immediately follows it, so the source is not always inside the range: a single selected
+     * element is read as the glissando's <em>target</em>, whose source is the element before it,
+     * while a selected pair is read as source and target in order. Any other size has no
+     * unambiguous source.
+     *
+     * <p>Removing an existing glissando is never blocked. The {@code hasGlissando()} test
+     * therefore comes first, ahead of the bounds, type and pitch gates, which apply to the add
+     * branch only: a glissando that reached the model through a MusicXML import may sit on a
+     * note whose follower is a rest or a grace note, and gating removal on those rules would
+     * leave it impossible to toggle off.
+     *
+     * <p>Adding one requires two adjacent {@link songscribe.dom.ElementType#isPitchedNote()
+     * pitched notes} — which excludes rests, barlines, repeats, breath marks and grace notes —
+     * of different pitch, as {@link Line#isSamePitchAsFollower} defines that condition.
+     *
+     * <pre>{@code
+     * GLISSANDO SOURCE RESOLUTION       A glissando lives on its SOURCE and connects forward.
+     *
+     *   size 1:  [ N ]                  source = begin() - 1
+     *          ↑ begin                  ┌───┐   ┌───┐
+     *                                   │ p │~~~│ N │      p = begin()-1
+     *                                   └───┘   └───┘
+     *   size 2:  [ N   N ]              source = begin()
+     *          ↑ begin ↑ end            ┌───┐   ┌───┐
+     *                                   │ N │~~~│ N │
+     *                                   └───┘   └───┘
+     *   any other size  →  -1
+     *
+     *   source resolved
+     *         │
+     *         ▼
+     *   source.hasGlissando()? ──yes──► return source     (removal: no further gate)
+     *         │ no
+     *         ▼
+     *   source >= 0  AND  source+1 < elementCount()
+     *     AND  both source and source+1 isPitchedNote()
+     *     AND  !isSamePitchAsFollower(source)  ──no──► -1
+     *         │ yes
+     *         ▼
+     *   return source                                     (addition)
+     * }</pre>
+     */
+    public static int glissandoSourceIndex(Selection.Range range) {
+        var line = range.line();
+        int sourceIndex;
+
+        if (range.size() == GLISSANDO_SELECTION_SIZE_SOURCE_ONLY) {
+            sourceIndex = range.begin() - 1;
+        } else if (range.size() == GLISSANDO_SELECTION_SIZE_WITH_TARGET) {
+            sourceIndex = range.begin();
+        } else {
+            return -1;
+        }
+
+        if (sourceIndex < 0) {
+            return -1;
+        }
+
+        var sourceElement = line.getElement(sourceIndex);
+
+        // Removal answers before any add-only gate runs.
+        if (sourceElement.hasGlissando()) {
+            return sourceIndex;
+        }
+
+        if (sourceIndex + 1 >= line.elementCount()) {
+            return -1;
+        }
+
+        if (!sourceElement.getType().isPitchedNote()
+            || !line.getElement(sourceIndex + 1).getType().isPitchedNote()) {
+            return -1;
+        }
+
+        return line.isSamePitchAsFollower(sourceIndex) ? -1 : sourceIndex;
+    }
+
+    /**
+     * Returns whether the range can toggle a glissando.
+     *
+     * @see #glissandoSourceIndex
+     */
+    public static boolean canToggleGlissando(Selection.Range range) {
+        return glissandoSourceIndex(range) >= 0;
+    }
+
+    /**
+     * Returns every index in the range whose element may carry a fall — that is, every
+     * {@link songscribe.dom.ElementType#isPitchedNote() pitched note}, which excludes rests,
+     * barlines, repeats, breath marks and grace notes, plus any element that already carries a
+     * fall regardless of type: a fall that reached the model through a MusicXML import may sit
+     * on a non-pitched element the add rules would never have allowed one on, and gating removal
+     * on those rules would leave it impossible to toggle off (mirrors
+     * {@link #glissandoSourceIndex}'s removal bypass).
+     *
+     * <p>The one statement of which notes a fall toggle applies to, so the predicate that
+     * offers the toggle and the kernel that performs it cannot disagree.
+     */
+    public static int[] fallIndices(Selection.Range range) {
+        var line = range.line();
+
+        return IntStream.rangeClosed(range.begin(), range.end())
+            .filter(i -> {
+                var element = line.getElement(i);
+
+                return element.hasFall() || element.getType().isPitchedNote();
+            })
+            .toArray();
+    }
+
+    /**
+     * Returns whether the range can toggle a fall — that is, whether it holds any note a fall
+     * could hang off.
+     *
+     * @see #fallIndices
+     */
+    public static boolean canToggleFall(Selection.Range range) {
+        return fallIndices(range).length > 0;
     }
 
     /**

@@ -75,8 +75,6 @@ class LyricEditorActionAuditTest extends MainFrameMockTest {
             ElementTypeAction.createQuarterNoteAction(mainFrame),
             ElementTypeAction.createHalfNoteAction(mainFrame),
             ElementTypeAction.createWholeNoteAction(mainFrame),
-            ElementTypeAction.createGlissandoAction(mainFrame),
-            ElementTypeAction.createFallAction(mainFrame),
             // DotRestToolbar
             DotAction.createDotAction(mainFrame),
             DotAction.createDoubleDotAction(mainFrame),
@@ -99,6 +97,8 @@ class LyricEditorActionAuditTest extends MainFrameMockTest {
             // ModifyNoteToolbar
             ToggleNotationAction.createBeamAction(mainFrame),
             ToggleNotationAction.createTieAction(mainFrame),
+            ToggleNotationAction.createGlissandoAction(mainFrame),
+            ToggleNotationAction.createFallAction(mainFrame),
             TupletAction.createTripletAction(mainFrame),
             StemDirectionAction.createFlipAction(mainFrame),
             EditLyricAction.createAction(mainFrame),

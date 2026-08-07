@@ -37,12 +37,12 @@ import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 
-import songscribe.ui.action.Actions;
 import songscribe.hit.HitTarget;
+import songscribe.ui.action.Actions;
 
 /**
  * E2E tests for glissando interactions that require mouse clicks at pixel
- * coordinates: selection, insertion, and deletion.
+ * coordinates: selection and deletion.
  */
 @TestClassOrder(ClassOrderer.OrderAnnotation.class)
 class NoteConnectionTest extends E2ETest {
@@ -57,8 +57,6 @@ class NoteConnectionTest extends E2ETest {
     // After PAIR_E_SRC is deleted, subsequent elements shift down by 1;
     // the post-deletion entries capture these shifted positions.
     private enum Element {
-        PAIR_A_SRC(5),
-        PAIR_A_TGT(6),
         PAIR_B_SRC(7),
         PAIR_B_TGT(8),
         PAIR_D_SRC(11),
@@ -136,36 +134,70 @@ class NoteConnectionTest extends E2ETest {
     }
 
 
+    /**
+     * Edit-mode key bindings for glissando (Shift+G) and fall (plain F), replacing the
+     * mouse-driven {@code GlissandoInsertion} class this feature deleted (#717). Both tests
+     * place brand-new notes past the end of line 0 via real clicks, so the appended indices
+     * never collide with the fixed {@link Element} indices {@link GlissandoSelection} and
+     * {@link GlissandoDeletion} rely on — appending can shift nothing that comes before it.
+     */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     @Order(2)
     @TestInstance(TestInstance.Lifecycle.PER_CLASS)
-    @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-    class GlissandoInsertion {
+    class EditModeSlideBindings {
 
-        @Order(1)
-        @Test
-        void testInsertConnectedGlissando() {
+        /** Staff positions far enough apart that the two placed notes differ in pitch. */
+        private static final int FIRST_NOTE_STAFF_POSITION_SP = 0;
+        private static final int SECOND_NOTE_STAFF_POSITION_SP = 2;
+
+        @BeforeEach
+        void resetState() {
             enterEditMode();
-            selectDuration(Actions.GLISSANDO_ACTION);
-            clickAt(midpoint(0, Element.PAIR_A_SRC.index, Element.PAIR_A_TGT.index));
-            performLayout(0);
-
-            var note = song().getLine(0).getElement(Element.PAIR_A_SRC.index);
-            assertThat(note.hasGlissando()).as("has glissando").isTrue();
+            deselectSelection();
         }
 
-        @Order(2)
         @Test
-        void testInsertFall() {
-            selectDuration(Actions.FALL_ACTION);
-            clickAt(midpoint(0, Element.PAIR_A_TGT.index, Element.PAIR_B_SRC.index));
+        void testShiftGTogglesGlissandoOnLastTwoPlacedNotes() {
+            var sourceIndex = song().getLine(0).effectiveElementCount();
+
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPoint(0, FIRST_NOTE_STAFF_POSITION_SP));
+            performLayout(0);
+            clickAt(insertionPoint(0, SECOND_NOTE_STAFF_POSITION_SP));
             performLayout(0);
 
-            var note = song().getLine(0).getElement(Element.PAIR_A_TGT.index);
-            assertThat(note.hasFall()).as("has fall").isTrue();
+            pressKey(KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK);
+            performLayout(0);
+
+            var source = song().getLine(0).getElement(sourceIndex);
+            assertThat(source.hasGlissando()).as("glissando added between the two notes").isTrue();
+
+            pressKey(KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK);
+            performLayout(0);
+
+            assertThat(source.hasGlissando()).as("second press removes the glissando").isFalse();
         }
 
+        @Test
+        void testPlainFTogglesFallOnLastPlacedNote() {
+            var noteIndex = song().getLine(0).effectiveElementCount();
+
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPoint(0, FIRST_NOTE_STAFF_POSITION_SP));
+            performLayout(0);
+
+            pressKey(KeyEvent.VK_F, 0);
+            performLayout(0);
+
+            var note = song().getLine(0).getElement(noteIndex);
+            assertThat(note.hasFall()).as("fall added to the placed note").isTrue();
+
+            pressKey(KeyEvent.VK_F, 0);
+            performLayout(0);
+
+            assertThat(note.hasFall()).as("second press removes the fall").isFalse();
+        }
     }
 
 

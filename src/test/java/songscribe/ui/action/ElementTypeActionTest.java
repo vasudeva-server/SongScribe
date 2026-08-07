@@ -43,14 +43,12 @@ class ElementTypeActionTest extends MainFrameMockTest {
     private ElementTypeAction durationAction;
     private ElementTypeAction nonDurationAction;
     private ElementTypeAction breathMarkAction;
-    private ElementTypeAction glissandoAction;
 
     @BeforeEach
     void createActions() {
         durationAction = ElementTypeAction.createQuarterNoteAction(mainFrame());
         nonDurationAction = ElementTypeAction.createSingleBarlineAction(mainFrame());
         breathMarkAction = ElementTypeAction.createBreathMarkAction(mainFrame());
-        glissandoAction = ElementTypeAction.createGlissandoAction(mainFrame());
     }
 
     // CR2: createReplacement preserves note kind (note stays note)
@@ -171,21 +169,6 @@ class ElementTypeActionTest extends MainFrameMockTest {
     void testBreathMarkDoesNotApplyToBarline() {
         var element = ElementType.SINGLE_BARLINE.newInstance();
         assertThat(breathMarkAction.appliesTo(element)).isFalse();
-    }
-
-    // Row 9: matchesSlide — true when element carries the matching slide, false otherwise
-    @Test
-    void testMatchesSlideWhenMatches() {
-        var noteWithGlissando = ElementType.CROTCHET.newInstance();
-        noteWithGlissando.setGlissando();
-        assertThat(glissandoAction.matchesSlide(noteWithGlissando)).isTrue();
-    }
-
-    @Test
-    void testMatchesSlideWhenDiffers() {
-        var noteWithFall = ElementType.CROTCHET.newInstance();
-        noteWithFall.setFall();
-        assertThat(glissandoAction.matchesSlide(noteWithFall)).isFalse();
     }
 
     // Rows 11–12: actionPerformed posts the correct notification when no active selection

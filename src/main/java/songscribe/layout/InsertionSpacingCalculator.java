@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 
 import org.jspecify.annotations.Nullable;
@@ -30,6 +31,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.SlideZone;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 
@@ -695,20 +697,11 @@ public final class InsertionSpacingCalculator {
     /**
      * Determines whether a fall will fit on a line when applied to the element at the given index.
      * <p>
-     * A fall widens the source element's column rather than adding one, so the line it produces is
-     * the current line with that one column swapped out. This gate builds exactly that projection —
-     * every column including the auto-maintained terminal barline, with the fall-carrying clone in
-     * the source's place — and runs the same compress-to-fit solve
-     * ({@link InsertionResult#fitsWithinLine}) that the insertion gates and the committed layout
-     * run. Solving rather than measuring is what lets a full line with slack in its springs accept
-     * a fall: the projection is derived from the chain, never from the elements' current X
-     * positions, which still carry the pre-fall (and possibly stale) spacing (refs #617).
+     * A single-index convenience over {@link #hasRoomForSlides}, which holds the implementation and
+     * documents the projection.
      *
      * @param line               The line to check
-     * @param sourceIndex        The index of the element the fall would be applied to. Must name an
-     *                           effective element ({@code < line.effectiveElementCount()}) — the
-     *                           auto-maintained terminal cannot carry a fall, and an index naming it
-     *                           would leave the fall out of the projection entirely
+     * @param sourceIndex        The index of the element the fall would be applied to
      * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
      *                           line as if it had no lyrics
      * @return {@code true} if the fall fits on the line
@@ -716,31 +709,77 @@ public final class InsertionSpacingCalculator {
     public static boolean hasRoomForFall(
         Line line, int sourceIndex, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
-        var sourceElement = line.getElement(sourceIndex);
+        return hasRoomForSlides(line, new int[] { sourceIndex }, SlideZone.FALL, lyricRenderMetrics);
+    }
 
-        // Fall already present — no change in right extent, always fits
-        if (sourceElement.hasFall()) {
+    /**
+     * Determines whether the slides of the given kind will fit on a line when applied to the
+     * elements at the given indices.
+     * <p>
+     * A slide claims horizontal space without adding a column: a fall widens its own source's
+     * column, and a connecting glissando puts a floor under the spring reaching the following
+     * column so the line it draws stays visible. Either way the line it produces is the current
+     * line with those columns swapped out — the same shape as an accidental, a dot or a duration
+     * swap, so this projects the line's effective elements with a slide-carrying clone at each
+     * source index and asks {@link #calculateModification} the identical projection-and-solve
+     * question those modifications do ({@link ModificationResult#fitsWithinLine}). Solving rather
+     * than measuring is what lets a full line with slack in its springs accept a slide: the
+     * projection is derived from the chain, never from the elements' current X positions, which
+     * still carry the pre-slide (and possibly stale) spacing (refs #617).
+     * <p>
+     * The whole batch is projected in one solve, so the verdict accounts for the slides' cumulative
+     * demand. Asking about each candidate separately against the unchanged line would accept N
+     * slides that each fit alone but jointly overrun it.
+     *
+     * @param line               The line to check
+     * @param sourceIndices      The indices of the elements the slides would be applied to. Each
+     *                           must name an effective element
+     *                           ({@code < line.effectiveElementCount()}) — the auto-maintained
+     *                           terminal cannot carry a slide, and an index naming it would leave
+     *                           that slide out of the projection entirely, so one that does refuses
+     *                           the whole batch
+     * @param zone               The kind of slide being applied
+     * @param lyricRenderMetrics Lyric metrics for measuring the line's syllables; null spaces the
+     *                           line as if it had no lyrics
+     * @return {@code true} if the slides fit on the line
+     */
+    public static boolean hasRoomForSlides(
+        Line line, int[] sourceIndices, SlideZone zone, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+
+        var effectiveCount = line.effectiveElementCount();
+
+        // Measure clones carrying the slide so the live model elements are never mutated,
+        // mirroring the read-only geometry contract of hasRoomForGraceNote.
+        var sourcesWithSlide = new HashMap<Integer, StaffElement>();
+
+        for (var sourceIndex : sourceIndices) {
+            if (sourceIndex < 0 || sourceIndex >= effectiveCount) {
+                return false;
+            }
+
+            var sourceElement = line.getElement(sourceIndex);
+
+            // Slide already present — it claims no further space, so the live element measures it.
+            if (!zone.matches(sourceElement)) {
+                var sourceWithSlide = sourceElement.clone();
+                zone.applyTo(sourceWithSlide);
+                sourcesWithSlide.put(sourceIndex, sourceWithSlide);
+            }
+        }
+
+        // Nothing claims space — the projection is the line as it already stands, which already fits.
+        if (sourcesWithSlide.isEmpty()) {
             return true;
         }
 
-        // Measure a clone carrying the fall so the live model element is never mutated,
-        // mirroring the read-only geometry contract of hasRoomForGraceNote.
-        var sourceWithFall = sourceElement.clone();
-        sourceWithFall.setFall();
-
-        var effectiveCount = line.effectiveElementCount();
-        var columnBuilder = lyricRenderMetrics != null ? new ElementColumnBuilder(lyricRenderMetrics) : null;
-        var columns = new ArrayList<ElementColumn>(line.elementCount());
+        var projectedElements = new ArrayList<StaffElement>(effectiveCount);
 
         for (var i = 0; i < effectiveCount; i++) {
-            var element = i == sourceIndex ? sourceWithFall : line.getElement(i);
-            columns.add(buildSurroundingColumn(element, line, i, columnBuilder));
+            projectedElements.add(sourcesWithSlide.getOrDefault(i, line.getElement(i)));
         }
 
-        appendTerminalIfPresent(columns, line, columnBuilder);
-
-        return !HorizontalSpacingCalculator.solveLine(columns, line, line.getSong().getLineWidthSs())
-            .isInfeasible();
+        return calculateModification(line, projectedElements, lyricRenderMetrics)
+            .fitsWithinLine(line.getSong().getLineWidthSs());
     }
 
     /**

@@ -49,16 +49,6 @@ class PreviewElementManagerHoverTest extends PreviewElementManagerTestBase {
     }
 
     @Test
-    void testNullForGlissandoPlaceholder() {
-        PreviewElementManager.setXPosSsMatchesElement(true);
-        PreviewElementManager.setCurrentXIndex(X_INDEX);
-        setPreviewElement(ElementType.SLIDE.newInstance());
-
-        assertThat(PreviewElementManager.getHoveredElementLocation())
-            .as("a glissando tool never highlights a replacement target").isNull();
-    }
-
-    @Test
     void testReturnsLocationForReplaceableNote() {
         when(lc.getLineIndex()).thenReturn(LINE_INDEX);
         PreviewElementManager.setXPosSsMatchesElement(true);

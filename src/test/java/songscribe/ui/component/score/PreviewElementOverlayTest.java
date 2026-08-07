@@ -187,17 +187,6 @@ class PreviewElementOverlayTest extends UnitTest {
                 .isFalse();
         }
 
-        @Test
-        void testHiddenForSlidePlaceholder() {
-            editModeManagerMock.when(EditModeManager::getPreviewElement)
-                .thenReturn(ElementType.SLIDE.newInstance());
-
-            overlay.previewDidChange(lc);
-
-            assertThat(overlay.isVisible())
-                .as("a slide placeholder has no note head -> hidden (the slide overlays draw instead)")
-                .isFalse();
-        }
     }
 
     @Nested

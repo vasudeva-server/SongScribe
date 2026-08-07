@@ -18,21 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.component.toolbar;
+package songscribe.message.command;
 
-import songscribe.ui.action.Actions;
-import songscribe.ui.component.ToolbarButton;
-import songscribe.ui.component.TupletPopupButton;
+import songscribe.message.Message;
 
-public class ModifyNoteToolbar extends Toolbar {
-
-    public ModifyNoteToolbar() {
-        add(new ToolbarButton(Actions.GLISSANDO_ACTION));
-        add(new ToolbarButton(Actions.FALL_ACTION));
-        add(new ToolbarButton(Actions.TOGGLE_BEAM_ACTION));
-        add(new ToolbarButton(Actions.TOGGLE_TIE_ACTION));
-        add(new TupletPopupButton());
-        add(new ToolbarButton(Actions.FLIP_STEM_DIRECTION_ACTION));
-        add(new ToolbarButton(Actions.EDIT_LYRIC_ACTION));
-    }
-}
+public class ToggleFallCommand extends Message {}

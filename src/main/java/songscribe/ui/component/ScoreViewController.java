@@ -24,6 +24,7 @@ import module java.desktop;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Predicate;
 
 import net.engio.mbassy.listener.Handler;
 
@@ -45,6 +46,10 @@ import songscribe.message.command.PasteboardOpCommand;
 import songscribe.message.command.SelectAllElementsCommand;
 import songscribe.message.command.ToggleBeamCommand;
 import songscribe.message.command.ToggleBeamWithPreviousCommand;
+import songscribe.message.command.ToggleFallCommand;
+import songscribe.message.command.ToggleFallOnLastInsertionCommand;
+import songscribe.message.command.ToggleGlissandoCommand;
+import songscribe.message.command.ToggleGlissandoWithPreviousCommand;
 import songscribe.message.command.ToggleTieCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.command.UpdatePreviewElementCommand;
@@ -90,6 +95,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.MusicEditOperations.HairpinResolution;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.SlideOperations;
 import songscribe.ui.TempoChangeGuards;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
@@ -233,8 +239,16 @@ public final class ScoreViewController {
         operations.toggleBeaming();
     }
 
-    @Handler
-    public void handleToggleBeamWithPrevious(ToggleBeamWithPreviousCommand message) {
+    /**
+     * Shared shell for a command that acts on the last insertion: beam, glissando and fall all
+     * gate on the same two preconditions and beep under the same rule, differing only in which
+     * operation they run and what that operation's outcome means.
+     *
+     * <p>{@code shouldBeep} runs the operation and reports whether the caller still owes the user
+     * a beep — {@code false} when the operation already gave its own feedback (a modification, or
+     * an error dialog for want of room).
+     */
+    private void handleLastInsertionCommand(Predicate<EditModeManager.Insertion> shouldBeep) {
         // Stands in for the DISABLE_WHEN_PLAYING flag the toggle-beam action carries;
         // this command arrives from a key binding that no action's enabled state gates.
         if (PlaybackController.isPlaying()) {
@@ -252,9 +266,51 @@ public final class ScoreViewController {
         // Re-arming the target is left to the operation, which does it only on the branches
         // that actually modify the line. Arming here instead would leave the slot armed on
         // every refusing path, with no commit coming to consume it.
-        if (!MusicEditOperations.toggleBeamWithPredecessor(insertion.line(), insertion.elementIndex())) {
+        if (shouldBeep.test(insertion)) {
             UIUtils.beep();
         }
+    }
+
+    @Handler
+    public void handleToggleBeamWithPrevious(ToggleBeamWithPreviousCommand message) {
+        handleLastInsertionCommand(insertion ->
+            !MusicEditOperations.toggleBeamWithPredecessor(insertion.line(), insertion.elementIndex()));
+    }
+
+    @Handler
+    public void handleToggleGlissando(ToggleGlissandoCommand message) {
+        if (selectionCoordinator.getRange() == null) {
+            return;
+        }
+
+        operations.toggleGlissando(score.getLyricRenderMetrics());
+    }
+
+    @Handler
+    public void handleToggleFall(ToggleFallCommand message) {
+        if (selectionCoordinator.getRange() == null) {
+            return;
+        }
+
+        operations.toggleFall(score.getLyricRenderMetrics());
+    }
+
+    @Handler
+    public void handleToggleGlissandoWithPrevious(ToggleGlissandoWithPreviousCommand message) {
+        // Only a silent refusal beeps: a refusal for want of room has already put an error
+        // dialog on screen, and beeping as it is dismissed reads as a second, separate failure.
+        handleLastInsertionCommand(insertion -> SlideOperations.toggleGlissandoWithPredecessor(
+            insertion.line(), insertion.elementIndex(), score.getLyricRenderMetrics())
+            == SlideOperations.Result.REFUSED);
+    }
+
+    @Handler
+    public void handleToggleFallOnLastInsertion(ToggleFallOnLastInsertionCommand message) {
+        // Only a silent refusal beeps: a refusal for want of room has already put an error
+        // dialog on screen, and beeping as it is dismissed reads as a second, separate failure.
+        handleLastInsertionCommand(insertion -> SlideOperations.toggleFallOnLastInsertion(
+            insertion.line(), insertion.elementIndex(), score.getLyricRenderMetrics())
+            == SlideOperations.Result.REFUSED);
     }
 
     @Handler
@@ -325,6 +381,14 @@ public final class ScoreViewController {
 
     public boolean canToggleTie() {
         return operations.canToggleTie();
+    }
+
+    public boolean canToggleGlissando() {
+        return operations.canToggleGlissando();
+    }
+
+    public boolean canToggleFall() {
+        return operations.canToggleFall();
     }
 
     public TupletToggleInfo canToggleTuplet() {

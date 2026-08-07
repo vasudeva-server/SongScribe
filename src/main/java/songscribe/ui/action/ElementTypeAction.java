@@ -28,7 +28,6 @@ import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 import songscribe.message.MessageCenter;
 import songscribe.dom.ElementType;
-import songscribe.dom.SlideZone;
 import songscribe.dom.StaffElement;
 import songscribe.message.notification.BarWasSelectedNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
@@ -51,7 +50,6 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     private final ElementType type;
     private final Kind kind;
-    private final @Nullable SlideZone slideZone;
 
     public static ElementTypeAction createGraceEighthNoteAction(MainFrame mainFrame) {
         return new ElementTypeAction(
@@ -137,30 +135,6 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    public static ElementTypeAction createGlissandoAction(MainFrame mainFrame) {
-        return new ElementTypeAction(
-            mainFrame,
-            Kind.DURATION, ElementType.SLIDE, SlideZone.GLISSANDO,
-            Strings.get(Strings.ACTION_DURATION_GLISSANDO), "connecting-glissando.svg", 26,
-            "glissando", Strings.get(Strings.ACTION_DURATION_GLISSANDO_TOOLTIP),
-            KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK,
-            Strings.ACTION_EDIT_OP_ADD_GLISSANDO,
-            withFlags(NON_DURATION_FLAGS, Flag.DISABLE_IN_SELECT_MODE) // Glissandos do not have a duration
-        );
-    }
-
-    public static ElementTypeAction createFallAction(MainFrame mainFrame) {
-        return new ElementTypeAction(
-            mainFrame,
-            Kind.DURATION, ElementType.SLIDE, SlideZone.FALL,
-            Strings.get(Strings.ACTION_DURATION_FALL), "fall.svg", 26,
-            "fall", Strings.get(Strings.ACTION_DURATION_FALL_TOOLTIP),
-            KeyEvent.VK_F, 0,
-            Strings.ACTION_EDIT_OP_ADD_FALL,
-            withFlags(NON_DURATION_FLAGS, Flag.DISABLE_IN_SELECT_MODE) // Falls do not have a duration
-        );
-    }
-
     public static ElementTypeAction createLeftRepeatAction(MainFrame mainFrame) {
         return new ElementTypeAction(
             mainFrame,
@@ -233,28 +207,10 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         );
     }
 
-    private ElementTypeAction(
-        MainFrame mainFrame,
-        Kind kind,
-        ElementType type,
-        String name,
-        @Nullable String icon,
-        int size,
-        String actionCommand,
-        String tooltip,
-        int virtualKey,
-        int modifiers,
-        @Nullable String undoOpNameKey,
-        Flag... flags
-    ) {
-        this(mainFrame, kind, type, null, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, undoOpNameKey, flags);
-    }
-
     protected ElementTypeAction(
         MainFrame mainFrame,
         Kind kind,
         ElementType type,
-        @Nullable SlideZone slideZone,
         String name,
         @Nullable String icon,
         int size,
@@ -268,7 +224,6 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         super(mainFrame, name, icon, size, actionCommand, tooltip, virtualKey, modifiers, flags);
         this.kind = kind;
         this.type = type;
-        this.slideZone = slideZone;
         setUndoOpNameKey(undoOpNameKey);
     }
 
@@ -278,15 +233,6 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     public Kind getKind() {
         return kind;
-    }
-
-    public @Nullable SlideZone getSlideZone() {
-        return slideZone;
-    }
-
-    @Override
-    public boolean matchesSlide(StaffElement element) {
-        return slideZone != null && slideZone.matches(element);
     }
 
     @Override
