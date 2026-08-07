@@ -70,6 +70,9 @@ class MusicXmlAnnotationRoundTripTest extends MusicXmlRoundTripSupport {
     private static final int FIRST_NOTE_INDEX = 0;
     private static final int SECOND_NOTE_INDEX = 1;
 
+    // The mid-line barline in the note/barline/note fixture.
+    private static final int ORDINARY_BARLINE_INDEX = 1;
+
     /**
      * One annotation's round-trippable fields: text, horizontal alignment,
      * placement and user Y offset.
@@ -249,5 +252,80 @@ class MusicXmlAnnotationRoundTripTest extends MusicXmlRoundTripSupport {
         assertThatCode(() -> validator.validate(xml))
             .as("annotation direction output validates against the MusicXML 4.0 schema")
             .doesNotThrowAnyException();
+    }
+
+    // -------------------------------------------------------------------------
+    // Terminal barline annotation (issue #713)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testAnnotationOnFinalDoubleBarlineTerminalRoundTrips() throws Exception {
+        var annotationCase = new AnnotationCase(
+            TEXT_ABOVE_CENTER, Component.CENTER_ALIGNMENT, Annotation.Placement.ABOVE, Y_OFFSET_ABOVE_CENTER_SS);
+
+        var song = buildSong(line -> {
+            var note = ElementType.CROTCHET.newInstance();
+            line.addElement(note);
+            var terminal = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+            line.addElement(terminal);
+            attachAnnotation(terminal, annotationCase);
+        });
+
+        var reloaded = roundTrip(song);
+        var line = reloaded.getLine(0);
+        var terminal = line.getElement(line.elementCount() - 1);
+
+        assertThat(terminal.getType()).as("terminal type").isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+        assertAnnotationEquals(terminal, annotationCase, "annotation on FINAL_DOUBLE_BARLINE terminal");
+    }
+
+    @Test
+    void testAnnotationOnRepeatRightTerminalRoundTrips() throws Exception {
+        var annotationCase = new AnnotationCase(
+            TEXT_BELOW_LEFT, Component.LEFT_ALIGNMENT, Annotation.Placement.BELOW, Y_OFFSET_BELOW_LEFT_SS);
+
+        var song = buildSong(line -> {
+            var note = ElementType.CROTCHET.newInstance();
+            line.addElement(note);
+            var terminal = ElementType.REPEAT_RIGHT.newInstance();
+            line.addElement(terminal);
+            attachAnnotation(terminal, annotationCase);
+        });
+
+        var reloaded = roundTrip(song);
+        var line = reloaded.getLine(0);
+        var terminal = line.getElement(line.elementCount() - 1);
+
+        assertThat(terminal.getType()).as("terminal type").isEqualTo(ElementType.REPEAT_RIGHT);
+        assertAnnotationEquals(terminal, annotationCase, "annotation on REPEAT_RIGHT terminal");
+    }
+
+    /**
+     * The writer emits a barline's annotation for any barline, not only the one occupying the
+     * terminal slot. Without this an annotation on an ordinary mid-line barline could be
+     * dropped on save and nobody would notice, because the two tests above only ever exercise
+     * a barline that happens to be the song's terminal.
+     */
+    @Test
+    void testAnnotationOnOrdinaryBarlineRoundTrips() throws Exception {
+        var annotationCase = new AnnotationCase(
+            TEXT_ABOVE_LEFT, Component.LEFT_ALIGNMENT, Annotation.Placement.ABOVE, Y_OFFSET_ABOVE_LEFT_SS);
+
+        var song = buildSong(line -> {
+            line.addElement(ElementType.CROTCHET.newInstance());
+            var barline = ElementType.SINGLE_BARLINE.newInstance();
+            line.addElement(barline);
+            line.addElement(ElementType.CROTCHET.newInstance());
+            attachAnnotation(barline, annotationCase);
+        });
+
+        var reloaded = roundTrip(song);
+        var line = reloaded.getLine(0);
+        var barline = line.getElement(ORDINARY_BARLINE_INDEX);
+
+        assertThat(barline.getType())
+            .as("the annotated element is still the mid-line barline, not the terminal")
+            .isEqualTo(ElementType.SINGLE_BARLINE);
+        assertAnnotationEquals(barline, annotationCase, "annotation on an ordinary barline");
     }
 }

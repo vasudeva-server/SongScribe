@@ -18,13 +18,17 @@ Per-song default spacing (loose ↔ tight over a range) is a **rest-length scala
 | Field | Values |
 | --- | --- |
 | Class | the `dom` type |
-| Selectable | `yes` / `no` / `with-parent` — can the user grab it independently |
-| X model | `spring` / `raw` / `none` |
+| Selectable | `yes` / `no` / `with-parent` / `click-only` — can the user grab it independently |
+| X model | `spring` / `raw` / `pinned` / `none` |
 | Anchor | what the position is measured from |
 | Bounds | struts / limits on movement |
 | Group | `independent` / `propagates` (selection) / `linked` |
 
 `none` = not user-adjustable (position fully derived — pitch, header layout, or computed geometry).
+
+`click-only` = selectable by a click so it can be annotated or retyped, but never draggable and never swept into a multi-element selection.
+
+`pinned` = position fully derived like `none`, but anchored to a line edge rather than to a header or a pitch.
 
 * * *
 ## Column-defining types
@@ -35,7 +39,7 @@ Occupy a horizontal time-slice → live in an `ElementColumn` → **X is spring 
 | `StaffElement` (notes) | yes | spring | neighbor columns | adjacent struts | independent; Shift/Alt propagate |
 | `StructuralElement` — rests | yes | spring | neighbor columns | adjacent struts | independent; Shift/Alt propagate |
 | `StructuralElement` — barlines / repeats | yes | spring | neighbor columns | adjacent struts | independent; Shift/Alt propagate |
-| `StructuralElement` — terminal barline | no (auto-maintained) | pinned | end of last line | pushed to line end, clamped at preceding strut | auto; line is not justified |
+| `StructuralElement` — terminal barline | click-only | pinned | end of last line | pushed to line end, clamped at preceding strut | auto; line is not justified |
 | `StructuralElement` — `BREATH_MARK` | yes | spring | neighbor columns | adjacent struts | independent; Shift/Alt propagate |
 | `Clef` | no  | none | line start (header) | header layout | —   |
 | `KeySignature` | no  | none | after clef (header) | header layout | —   |

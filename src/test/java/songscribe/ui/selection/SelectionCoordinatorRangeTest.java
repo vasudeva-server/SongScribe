@@ -98,6 +98,23 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         return new SongDidChangeNotification(List.of(mutations), new Song());
     }
 
+    /**
+     * A song-backed line holding two crotchets followed by the song's auto-maintained terminal,
+     * so element {@link #TERMINAL_ELEMENT_INDEX} is a real, indexable element rather than a
+     * detached fixture.
+     */
+    private static Line twoNoteLineWithTerminal() {
+        var song = new Song();
+        var line = song.getLine(LINE_0);
+
+        song.withoutMutationTracking(() -> {
+            line.addElement(0, ElementType.CROTCHET.newInstance());
+            line.addElement(1, ElementType.CROTCHET.newInstance());
+        });
+
+        return line;
+    }
+
     // -------------------------------------------------------------------------
     // Nothing selected
     // -------------------------------------------------------------------------
@@ -257,6 +274,117 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         assertThat(coordinator.getRange()).isNull();
     }
 
+    /**
+     * Extending from a note anchor out to the terminal must not sweep the terminal into a
+     * multi-element range — only a click, through {@link SelectionCoordinator#selectSingleElement},
+     * may select it.
+     */
+    @Test
+    void testExtendSelectionToTheTerminalClampsEndToTheLastEditableElement() {
+        var line = twoNoteLineWithTerminal();
+        var coordinator = coordinatorOn(line);
+        coordinator.selectSingleElement(LINE_0, 0);
+
+        coordinator.extendSelectionTo(TERMINAL_ELEMENT_INDEX);
+
+        assertThat(coordinator.getRange())
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).isEqualTo(0);
+                assertThat(range.end()).isEqualTo(line.effectiveElementCount() - 1);
+            });
+    }
+
+    /**
+     * Extending back from an anchor sitting on the terminal must pull the anchor itself into
+     * the clamped range — an anchor left pointing at the excluded terminal would put it outside
+     * {@code [begin, end]}, which every range query assumes cannot happen.
+     */
+    @Test
+    void testExtendSelectionFromTheTerminalClampsTheAnchorIntoTheResultingRange() {
+        var line = twoNoteLineWithTerminal();
+        var coordinator = coordinatorOn(line);
+        coordinator.selectSingleElement(LINE_0, TERMINAL_ELEMENT_INDEX);
+
+        coordinator.extendSelectionTo(0);
+
+        assertThat(coordinator.getRange())
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).isEqualTo(0);
+                assertThat(range.end()).isEqualTo(line.effectiveElementCount() - 1);
+                assertThat(range.anchor())
+                    .as("the anchor started on the excluded terminal, so it is pulled back in bounds")
+                    .isEqualTo(range.end());
+            });
+    }
+
+    /**
+     * The one gesture that may select the terminal: a click, through
+     * {@link SelectionCoordinator#selectSingleElement}, collapses the selection onto it.
+     */
+    @Test
+    void testSelectSingleElementOnTheTerminalSelectsIt() {
+        var line = twoNoteLineWithTerminal();
+        var coordinator = coordinatorOn(line);
+
+        assertThat(coordinator.selectSingleElement(LINE_0, TERMINAL_ELEMENT_INDEX)).isTrue();
+        assertThat(coordinator.getRange())
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).isEqualTo(TERMINAL_ELEMENT_INDEX);
+                assertThat(range.end()).isEqualTo(TERMINAL_ELEMENT_INDEX);
+            });
+    }
+
+    // -------------------------------------------------------------------------
+    // isTerminalSelected — the predicate the pasteboard and barline palette gate on
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testIsTerminalSelectedWhenTheSelectionIsTheTerminal() {
+        var coordinator = coordinatorOn(twoNoteLineWithTerminal());
+        coordinator.selectSingleElement(LINE_0, TERMINAL_ELEMENT_INDEX);
+
+        assertThat(coordinator.isTerminalSelected()).isTrue();
+    }
+
+    @Test
+    void testIsNotTerminalSelectedForAnOrdinaryElement() {
+        var coordinator = coordinatorOn(twoNoteLineWithTerminal());
+        coordinator.selectSingleElement(LINE_0, 0);
+
+        assertThat(coordinator.isTerminalSelected()).isFalse();
+    }
+
+    @Test
+    void testIsNotTerminalSelectedWithNoSelection() {
+        var coordinator = coordinatorOn(twoNoteLineWithTerminal());
+
+        assertThat(coordinator.isTerminalSelected()).isFalse();
+    }
+
+    /**
+     * Asking for a range that reaches the terminal yields one that stops at the last selectable
+     * element, and that range does not count as the terminal being selected. Asserting the
+     * clamped end as well as the predicate matters: testing the predicate alone would pass even
+     * with the clamp deleted, because it reports false for any multi-element range.
+     */
+    @Test
+    void testSelectRangeReachingTheTerminalClampsItOutAndIsNotTerminalSelected() {
+        var line = twoNoteLineWithTerminal();
+        var coordinator = coordinatorOn(line);
+
+        coordinator.selectRange(0, TERMINAL_ELEMENT_INDEX);
+
+        assertThat(coordinator.getRange())
+            .isNotNull()
+            .satisfies(range -> assertThat(range.end())
+                .as("the range stops short of the terminal")
+                .isEqualTo(line.effectiveElementCount() - 1));
+        assertThat(coordinator.isTerminalSelected()).isFalse();
+    }
+
     // -------------------------------------------------------------------------
     // clearSelection / clearActiveSelection
     // -------------------------------------------------------------------------
@@ -411,25 +539,19 @@ class SelectionCoordinatorRangeTest extends UnitTest {
     }
 
     /**
-     * A range reaching the song's auto-maintained terminal is usable — the terminal is a real,
+     * A selection on the song's auto-maintained terminal is usable — the terminal is a real,
      * indexable element — so an unrelated edit must not clear it.
      */
     @Test
-    void testRevalidateElementSelectionKeepsARangeReachingTheSongOwnedTerminal() {
-        var song = new Song();
-        var line = song.getLine(LINE_0);
-
-        song.withoutMutationTracking(() -> {
-            line.addElement(0, ElementType.CROTCHET.newInstance());
-            line.addElement(1, ElementType.CROTCHET.newInstance());
-        });
+    void testRevalidateElementSelectionKeepsASingleElementSelectionOnTheSongOwnedTerminal() {
+        var line = twoNoteLineWithTerminal();
 
         assertThat(line.effectiveElementCount())
             .as("the fixture must make the two counts differ, or this test proves nothing")
             .isLessThan(line.elementCount());
 
         var coordinator = coordinatorOn(line);
-        coordinator.selectRange(0, TERMINAL_ELEMENT_INDEX);
+        coordinator.selectSingleElement(LINE_0, TERMINAL_ELEMENT_INDEX);
 
         coordinator.revalidateElementSelection(notificationFor());
 
@@ -714,13 +836,7 @@ class SelectionCoordinatorRangeTest extends UnitTest {
 
     @Test
     void testSelectAllExcludesTheAutoMaintainedFinalBarlineOnTheLastLine() {
-        var song = new Song();
-        var line = song.getLine(LINE_0);
-
-        song.withoutMutationTracking(() -> {
-            line.addElement(0, ElementType.CROTCHET.newInstance());
-            line.addElement(1, ElementType.CROTCHET.newInstance());
-        });
+        var line = twoNoteLineWithTerminal();
 
         // Line now holds: [quarter, quarter, FINAL_DOUBLE_BARLINE]
         assertThat(line.elementCount()).isEqualTo(3);

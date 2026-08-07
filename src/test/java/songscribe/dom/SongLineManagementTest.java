@@ -24,7 +24,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.SongMetadata;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -34,6 +33,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * terminal invariant maintenance, interactability, and related query methods.
  */
 class SongLineManagementTest extends UnitTest {
+
+    private static final String DISPLACED_ANNOTATION_TEXT = "Fine";
 
     // -----------------------------------------------------------------------
     // getNumberedTitle
@@ -181,26 +182,26 @@ class SongLineManagementTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // isInteractable / isAutoMaintainedTerminal
+    // isAutoMaintainedTerminal
     // -----------------------------------------------------------------------
 
     @Nested
-    class IsInteractable {
+    class IsAutoMaintainedTerminal {
 
         @Test
-        void testTerminalOnLastLineIsNotInteractable() {
+        void testTerminalOnLastLineIsAutoMaintained() {
             // The auto-maintained terminal (FINAL_DOUBLE_BARLINE as last element of last
-            // line) must not be interactable.
+            // line) must be recognized as such.
             var song = new Song();
             var lastLine = song.getLine(0);
             var terminal = lastLine.getElement(lastLine.elementCount() - 1);
 
-            assertThat(song.isInteractable(terminal, lastLine)).isFalse();
+            assertThat(song.isAutoMaintainedTerminal(terminal, lastLine)).isTrue();
         }
 
         @Test
-        void testNoteOnLastLineIsInteractable() {
-            // A regular note on the last line (not the terminal) must be interactable.
+        void testNoteOnLastLineIsNotAutoMaintained() {
+            // A regular note on the last line (not the terminal) is not the terminal.
             var song = new Song();
             song.withoutMutationTracking(() -> {
                 var line = song.getLine(0);
@@ -210,13 +211,13 @@ class SongLineManagementTest extends UnitTest {
 
             var line = song.getLine(0);
             var note = line.getElement(0);
-            assertThat(song.isInteractable(note, line)).isTrue();
+            assertThat(song.isAutoMaintainedTerminal(note, line)).isFalse();
         }
 
         @Test
-        void testValidTerminalOnNonLastLineIsInteractable() {
+        void testValidTerminalOnNonLastLineIsNotAutoMaintained() {
             // A FINAL_DOUBLE_BARLINE that is NOT the last element of the last line is
-            // treated as an ordinary interactable element.
+            // treated as an ordinary element, not the terminal.
             var song = new Song();
             song.withoutMutationTracking(() -> {
                 // Add a second line, making line 0 no longer the last.
@@ -224,10 +225,10 @@ class SongLineManagementTest extends UnitTest {
                 song.addLine(line1);
             });
 
-            // The terminal on line 0 is now an interior element — interactable.
+            // The terminal on line 0 is now an interior element — not auto-maintained.
             var firstLine = song.getLine(0);
             var firstLineTerminal = firstLine.getElement(firstLine.elementCount() - 1);
-            assertThat(song.isInteractable(firstLineTerminal, firstLine)).isTrue();
+            assertThat(song.isAutoMaintainedTerminal(firstLineTerminal, firstLine)).isFalse();
         }
     }
 
@@ -323,9 +324,43 @@ class SongLineManagementTest extends UnitTest {
 
             var lastLine = song.getLine(0);
             var lastElement = lastLine.getElement(lastLine.elementCount() - 1);
-            assertThat(lastElement.getType().isValidTerminal())
+            assertThat(lastElement.getType().isValidSongTerminal())
                 .describedAs("last element of last line must be a valid terminal after removeLine")
                 .isTrue();
+        }
+
+        /**
+         * When the last line is removed, the terminal migrates onto the new last line by
+         * replacing the barline already sitting at its end. That barline may carry an
+         * annotation, and the migration must carry it across rather than dropping it — the
+         * same guarantee retyping the terminal makes.
+         */
+        @Test
+        void testRemoveLastLine_PreservesAnAnnotationOnTheDisplacedBarline() {
+            var song = new Song();
+            song.addLine(new Line(song));  // line 1 now holds the terminal
+
+            var firstLine = song.getLine(0);
+            song.withoutMutationTracking(
+                () -> firstLine.addElement(ElementType.DOUBLE_BARLINE.newInstance()));
+
+            var displaced = firstLine.getElement(firstLine.elementCount() - 1);
+            displaced.addAttachment(
+                new AnnotationAttachment(displaced, new Annotation(DISPLACED_ANNOTATION_TEXT)));
+
+            song.removeLine(1);
+
+            var terminal = firstLine.getElement(firstLine.elementCount() - 1);
+            assertThat(terminal.getType().isValidSongTerminal())
+                .describedAs("the double barline was replaced by the terminal, not appended to")
+                .isTrue();
+
+            var attachment = terminal.findAttachment(AnnotationAttachment.class);
+            assertThat(attachment)
+                .describedAs("the annotation on the displaced barline survives the migration")
+                .isNotNull();
+            assertThat(attachment.getAnnotation().getAnnotation())
+                .isEqualTo(DISPLACED_ANNOTATION_TEXT);
         }
 
         @Test
@@ -342,7 +377,7 @@ class SongLineManagementTest extends UnitTest {
             var lastLine = song.getLine(0);
             assertThat(lastLine.elementCount()).isGreaterThan(0);
             var lastElement = lastLine.getElement(lastLine.elementCount() - 1);
-            assertThat(lastElement.getType().isValidTerminal()).isTrue();
+            assertThat(lastElement.getType().isValidSongTerminal()).isTrue();
         }
 
         @Test
@@ -362,7 +397,7 @@ class SongLineManagementTest extends UnitTest {
             // The surviving line must still have a valid terminal.
             var lastLine = song.getLine(0);
             var lastElement = lastLine.getElement(lastLine.elementCount() - 1);
-            assertThat(lastElement.getType().isValidTerminal()).isTrue();
+            assertThat(lastElement.getType().isValidSongTerminal()).isTrue();
         }
     }
 
@@ -388,7 +423,7 @@ class SongLineManagementTest extends UnitTest {
 
             var newLastLine = song.getLine(1);
             var lastElement = newLastLine.getElement(newLastLine.elementCount() - 1);
-            assertThat(lastElement.getType().isValidTerminal())
+            assertThat(lastElement.getType().isValidSongTerminal())
                 .describedAs("terminal must be on the new last line after addLine")
                 .isTrue();
         }
@@ -423,7 +458,7 @@ class SongLineManagementTest extends UnitTest {
             // Line 1 (shifted from line 0) still ends in the terminal.
             var lineWithTerminal = song.getLine(1);
             var lastElement = lineWithTerminal.getElement(lineWithTerminal.elementCount() - 1);
-            assertThat(lastElement.getType().isValidTerminal())
+            assertThat(lastElement.getType().isValidSongTerminal())
                 .describedAs("terminal must survive a mid-line insertion")
                 .isTrue();
         }

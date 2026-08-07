@@ -33,8 +33,10 @@ import songscribe.error.RuntimeError;
  *   <li><b>Maintenance</b> — {@link #maintainOnLastLineChange} restores the invariant after
  *       the last line of the song changes, and {@link #installAfterParsing} restores it in
  *       one pass at the end of a suspended file load.</li>
- *   <li><b>Recognition</b> — {@link #isAutoMaintainedTerminal} and {@link #isInteractable}
- *       tell the UI which element is the maintained terminal and therefore off limits.</li>
+ *   <li><b>Recognition</b> — {@link #isAutoMaintainedTerminal} tells the UI which element is
+ *       the maintained terminal. That terminal is selectable, so an annotation can be attached
+ *       to it, but it may never be removed or replaced by anything other than another valid
+ *       terminal type.</li>
  *   <li><b>User replacement</b> — {@link #canReplaceTerminal} and {@link #replaceTerminal}
  *       let the user swap one valid terminal type for the other.</li>
  * </ul>
@@ -52,14 +54,30 @@ public final class TerminalMaintainer {
     /**
      * Returns a fresh element of the given terminal type. Throws
      * {@link IllegalArgumentException} if {@code type} is not a valid terminal
-     * (i.e. {@link ElementType#isValidTerminal()} returns {@code false}).
+     * (i.e. {@link ElementType#isValidSongTerminal()} returns {@code false}).
      */
     public static StaffElement newTerminalElement(ElementType type) {
-        if (!type.isValidTerminal()) {
+        requireValidTerminal(type);
+        return type.newInstance();
+    }
+
+    /**
+     * Returns a terminal element of {@code type} carrying {@code displaced}'s attachments.
+     * <p>
+     * Used wherever the terminal takes over the slot of an element that already existed, so an
+     * annotation on that element is not silently dropped — the terminal is selectable and can
+     * therefore carry one (issue #713). Appending a terminal into a free slot has nothing to
+     * copy and uses {@link #newTerminalElement} instead.
+     */
+    private static StaffElement terminalElementReplacing(ElementType type, StaffElement displaced) {
+        requireValidTerminal(type);
+        return new StaffElement(type, displaced);
+    }
+
+    private static void requireValidTerminal(ElementType type) {
+        if (!type.isValidSongTerminal()) {
             throw new IllegalArgumentException("Not a valid terminal type: " + type);
         }
-
-        return type.newInstance();
     }
 
     /**
@@ -107,7 +125,9 @@ public final class TerminalMaintainer {
         }
 
         if (lastType.isReplaceableByTerminal()) {
-            newLastLine.setElement(lastIdx, newTerminalElement(typeToInstall));
+            newLastLine.setElement(
+                lastIdx,
+                terminalElementReplacing(typeToInstall, newLastLine.getElement(lastIdx)));
         } else {
             newLastLine.addElement(newTerminalElement(typeToInstall));
         }
@@ -116,7 +136,7 @@ public final class TerminalMaintainer {
     /**
      * Restores the terminal invariant after a {@link Song#newParsingStub() parsing stub}
      * has been fully populated: ensures the song's last line ends with a valid
-     * terminal ({@link ElementType#isValidTerminal()}). File readers suspend mutation
+     * terminal ({@link ElementType#isValidSongTerminal()}). File readers suspend mutation
      * tracking while building lines, so the per-{@code addLine} maintenance is skipped;
      * this restores the invariant in one pass at the end of a load.
      *
@@ -136,7 +156,7 @@ public final class TerminalMaintainer {
         var lastLine = lines.getLast();
         var lastIdx = lastLine.elementCount() - 1;
 
-        if (lastIdx >= 0 && lastLine.getElement(lastIdx).getType().isValidTerminal()) {
+        if (lastIdx >= 0 && lastLine.getElement(lastIdx).getType().isValidSongTerminal()) {
             return;
         }
 
@@ -146,7 +166,7 @@ public final class TerminalMaintainer {
     /**
      * Returns {@code true} when {@code element} is the song's auto-maintained
      * terminal: it occupies the last position of the last line, and its type satisfies
-     * {@link ElementType#isValidTerminal()}.
+     * {@link ElementType#isValidSongTerminal()}.
      *
      * <p>A valid terminal type that sits on any line other than the last, or at any
      * position other than the last, is treated as an ordinary (interactable) element.
@@ -155,20 +175,10 @@ public final class TerminalMaintainer {
         var lines = song.getLines();
         var lastIdx = line.elementCount() - 1;
         return lastIdx >= 0
-            && element.getType().isValidTerminal()
+            && element.getType().isValidSongTerminal()
             && !lines.isEmpty()
             && lines.getLast() == line
             && line.getElement(lastIdx) == element;
-    }
-
-    /**
-     * Returns {@code true} when the user may interact with {@code element} on {@code line}
-     * (select, click, drag, delete, etc.). Returns {@code false} only for the
-     * song's auto-maintained terminal — i.e., a {@link ElementType#isValidTerminal()
-     * valid terminal} element that is the last element of the last line.
-     */
-    public boolean isInteractable(StaffElement element, Line line) {
-        return !isAutoMaintainedTerminal(element, line);
     }
 
     /** Returns the type of the current auto-maintained terminal element. */
@@ -189,17 +199,17 @@ public final class TerminalMaintainer {
      * currently occupying the terminal slot.
      */
     public boolean canReplaceTerminal(ElementType incomingType) {
-        return incomingType.isValidTerminal() && incomingType != currentTerminalType();
+        return incomingType.isValidSongTerminal() && incomingType != currentTerminalType();
     }
 
     /**
-     * Replaces the terminal element with a fresh element of {@code incomingType}.
+     * Retypes the terminal element to {@code incomingType}, carrying its attachments over.
      * This is a user-driven mutation — no auto-maintenance increment. No-op when
      * {@code incomingType} already matches the current terminal type. Throws
      * {@link IllegalArgumentException} if {@code incomingType} is not a valid terminal.
      */
     public void replaceTerminal(ElementType incomingType) {
-        if (!incomingType.isValidTerminal()) {
+        if (!incomingType.isValidSongTerminal()) {
             throw new IllegalArgumentException("Not a valid terminal type: " + incomingType);
         }
 
@@ -210,7 +220,11 @@ public final class TerminalMaintainer {
         var lastLine = song.getLines().getLast();
         var lastIdx = lastLine.elementCount() - 1;
 
-        song.withModification(() -> lastLine.setElement(lastIdx, newTerminalElement(incomingType)));
+        // Copied from the outgoing terminal rather than built bare, so an annotation on it
+        // survives the retype — retyping an ordinary barline already preserves attachments.
+        var replacement = terminalElementReplacing(incomingType, lastLine.getElement(lastIdx));
+
+        song.withModification(() -> lastLine.setElement(lastIdx, replacement));
     }
 
     /**
@@ -233,7 +247,7 @@ public final class TerminalMaintainer {
         }
 
         var type = previousLastLine.getElement(prevLastIdx).getType();
-        return type.isValidTerminal() ? type : null;
+        return type.isValidSongTerminal() ? type : null;
     }
 
     /**

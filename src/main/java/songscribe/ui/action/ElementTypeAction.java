@@ -28,6 +28,7 @@ import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 import songscribe.message.MessageCenter;
 import songscribe.dom.ElementType;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.message.notification.BarWasSelectedNotification;
 import songscribe.message.notification.DurationWasSelectedNotification;
@@ -175,8 +176,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         return new ElementTypeAction(
             mainFrame,
             Kind.NON_DURATION, ElementType.DOUBLE_BARLINE,
-            Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE), "@\uF347", 24,
-            "double-barline", Strings.get(Strings.ACTION_BARLINE_DOUBLE_FINE_TOOLTIP),
+            Strings.get(Strings.ACTION_BARLINE_DOUBLE), "@\uF347", 24,
+            "double-barline", Strings.get(Strings.ACTION_BARLINE_DOUBLE_TOOLTIP),
             KeyEvent.VK_D, 0,
             null,
             NON_DURATION_FLAGS
@@ -235,6 +236,21 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         return kind;
     }
 
+    /**
+     * The song-terminal type this entry stands for, or {@code null} if it stands for none. An
+     * entry stands only for itself, so the two that can act on the terminal are exactly the two
+     * whose own type may occupy the terminal slot (issue #713): the right repeat in
+     * {@code RepeatsMenu}/the toolbar, and {@link FinalDoubleBarlineAction} at the foot of
+     * {@code BarlineMenu}.
+     * <p>
+     * Every other barline and repeat entry — the plain double barline included — maps to
+     * {@code null} and is therefore inapplicable to the terminal, which is what leaves them
+     * disabled and unchecked while it is selected.
+     */
+    private @Nullable ElementType terminalType() {
+        return type.isValidSongTerminal() ? type : null;
+    }
+
     @Override
     public boolean appliesTo(StaffElement element) {
         if (kind == Kind.DURATION) {
@@ -246,9 +262,22 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
             return element.getType() == ElementType.BREATH_MARK;
         }
 
-        return element.getType().isBarLine() || element.getType().isRepeat();
+        if (!element.getType().isBarLine() && !element.getType().isRepeat()) {
+            return false;
+        }
+
+        // The terminal accepts only the two valid terminal types, so only the two entries
+        // standing for one of them apply to it.
+        if (Song.isAutoMaintainedTerminalOfItsSong(element)) {
+            return type.isValidSongTerminal();
+        }
+
+        return true;
     }
 
+    // The terminal needs no case of its own: an entry stands only for its own type, so
+    // comparing against that type answers the terminal too. It is appliesTo() that keeps the
+    // entries standing for no terminal type from ever being asked.
     @Override
     public boolean matchesElement(StaffElement element) {
         return element.getType().toNote() == type;
@@ -262,8 +291,8 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
 
     /**
      * Whether this action replaces a barline or repeat element. Only these dynamic
-     * replace actions (and {@link FinalTerminalAction}) compute a from-category label;
-     * durations, slides and breath marks keep their static Tier-A key.
+     * replace actions compute a from-category label; durations, slides and breath marks
+     * keep their static Tier-A key.
      */
     private boolean isBarLineOrRepeatReplace() {
         return kind == Kind.NON_DURATION && (type.isBarLine() || type.isRepeat());
@@ -309,9 +338,34 @@ public class ElementTypeAction extends StickyUIAction implements UIAction.Elemen
         return super.getUndoOpName();
     }
 
+    /**
+     * Retypes the song's auto-maintained terminal to what this entry stands for when the
+     * terminal is what is selected, returning whether it did.
+     * <p>
+     * This has to intercept ahead of {@link #applyToSelectionIfActive()}: that path replaces the
+     * selected element with {@link #createReplacement}, which would hand {@code Line.setElement}
+     * an ordinary barline for the terminal slot and be refused. Retyping goes through
+     * {@link Song#replaceTerminal} instead, which keeps the auto-maintenance invariant intact.
+     */
+    private boolean replaceTerminalIfSelected() {
+        var terminalType = terminalType();
+
+        if (terminalType == null
+                || !requireScoreView().getSelectionCoordinator().isTerminalSelected()) {
+            return false;
+        }
+
+        getSong().replaceTerminal(terminalType);
+        return true;
+    }
+
     @Override
     protected void performAction(ActionEvent e) {
         if (!doActionPerformed(e)) {
+            return;
+        }
+
+        if (replaceTerminalIfSelected()) {
             return;
         }
 

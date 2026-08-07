@@ -147,6 +147,19 @@ class MutationReplayerRoundTripTest extends UnitTest {
             assertRoundTrip(song, () -> line.setElement(1, ElementType.QUAVER.newInstance()));
         }
 
+        /**
+         * Retyping the song's auto-maintained terminal barline (issue #713) is an ordinary
+         * user edit, so undo must put the previous type back. Worth pinning separately from
+         * the plain replacement above because the terminal reaches
+         * {@code Line.setElement} through {@code Song.replaceTerminal}, the one path exempt
+         * from the guard that otherwise forbids replacing the terminal.
+         */
+        @Test
+        void testTerminalRetypeRoundTrips() {
+            var song = songWithNotes(3);
+            assertRoundTrip(song, () -> song.replaceTerminal(ElementType.REPEAT_RIGHT));
+        }
+
         @Test
         void testElementModificationRoundTrips() {
             var song = songWithNotes(3);

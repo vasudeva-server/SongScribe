@@ -256,4 +256,96 @@ class PasteboardActionTest extends MainFrameMockTest {
             }
         }
     }
+
+    // Issue #713: with the terminal selected, every pasteboard operation is disabled — Copy,
+    // Cut and Paste through PasteboardAction.updateScoreEnabledState()'s shared early return,
+    // Delete through DeleteAction's own override of the same method.
+
+    @Nested
+    class TerminalSelected {
+
+        @BeforeEach
+        void setUpTerminal() {
+            when(mockEnv().coordinator().isTerminalSelected()).thenReturn(true);
+        }
+
+        @Test
+        void testCopyDisabledWhenTerminalSelected() {
+            when(mockEnv().score().getSelectionSize()).thenReturn(1);
+            var action = CopyAction.createAction(mainFrame());
+
+            assertThat(action.updateScoreEnabledState()).isFalse();
+        }
+
+        @Test
+        void testCutDisabledWhenTerminalSelected() {
+            when(mockEnv().score().getSelectionSize()).thenReturn(1);
+            var action = CutAction.createAction(mainFrame());
+
+            assertThat(action.updateScoreEnabledState()).isFalse();
+        }
+
+        @Test
+        void testPasteDisabledWhenTerminalSelected() {
+            when(mockEnv().score().getPasteboardSize()).thenReturn(1);
+            var action = PasteAction.createAction(mainFrame());
+
+            assertThat(action.updateScoreEnabledState()).isFalse();
+        }
+
+        // Guards the ordering of DeleteAction's early return: canDeleteLine() true would
+        // otherwise make Delete enabled via its `|| scoreView.canDeleteLine()` disjunct if the
+        // terminal check were ever dropped or reordered after it (phase 5 task 5).
+        @Test
+        void testDeleteDisabledWhenTerminalSelectedEvenWhenLineIsDeletable() {
+            when(mockEnv().score().canDeleteLine()).thenReturn(true);
+            var action = DeleteAction.createAction(mainFrame());
+
+            assertThat(action.updateScoreEnabledState()).isFalse();
+        }
+    }
+
+    // The terminal gate must not be over-broad: an ordinary single-element selection still
+    // leaves every operation enabled.
+
+    @Nested
+    class OrdinarySelectionStillEnabled {
+
+        @BeforeEach
+        void setUpOrdinaryElement() {
+            when(mockEnv().coordinator().isTerminalSelected()).thenReturn(false);
+        }
+
+        @Test
+        void testCopyEnabledForOrdinarySelection() {
+            when(mockEnv().score().getSelectionSize()).thenReturn(1);
+            var action = CopyAction.createAction(mainFrame());
+
+            assertThat(action.updateScoreEnabledState()).isTrue();
+        }
+
+        @Test
+        void testCutEnabledForOrdinarySelection() {
+            when(mockEnv().score().getSelectionSize()).thenReturn(1);
+            var action = CutAction.createAction(mainFrame());
+
+            assertThat(action.updateScoreEnabledState()).isTrue();
+        }
+
+        @Test
+        void testPasteEnabledForOrdinarySelection() {
+            when(mockEnv().score().getPasteboardSize()).thenReturn(1);
+            var action = PasteAction.createAction(mainFrame());
+
+            assertThat(action.updateScoreEnabledState()).isTrue();
+        }
+
+        @Test
+        void testDeleteEnabledForOrdinarySelection() {
+            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
+            var action = DeleteAction.createAction(mainFrame());
+
+            assertThat(action.updateScoreEnabledState()).isTrue();
+        }
+    }
 }

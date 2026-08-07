@@ -159,23 +159,16 @@ public final class HitRegionBuilder {
     // ==========================================================================
 
     /**
-     * Registers each note head's expanded hit rect. The song's auto-maintained terminal element
-     * is skipped: it is not the user's to click.
+     * Registers each note head's expanded hit rect, including the song's auto-maintained
+     * terminal element, so an annotation can be attached to it (issue #713).
      */
     private static void addElements(
         Line line,
         LayoutResult layoutResult,
         HitRegistry.Builder builder) {
 
-        var song = line.getSong();
-
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
             var element = line.getElement(elementIndex);
-
-            if (!song.isInteractable(element, line)) {
-                continue;
-            }
-
             var rectSs = new Rectangle2D.Double();
             ElementHitGeometry.elementHitRectSs(
                 layoutResult.getElementXSs(element), element, rectSs, true);
@@ -409,15 +402,8 @@ public final class HitRegionBuilder {
         LayoutResult layoutResult,
         HitRegistry.Builder builder) {
 
-        var song = line.getSong();
-
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
             var element = line.getElement(elementIndex);
-
-            if (!song.isInteractable(element, line)) {
-                continue;
-            }
-
             var boundsSs = NoteGeometry.getAccidentalBoundsSs(element);
 
             if (boundsSs == null) {

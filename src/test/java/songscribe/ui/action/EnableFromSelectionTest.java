@@ -28,6 +28,10 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
+import songscribe.dom.ElementType;
+import songscribe.dom.Song;
+import songscribe.ui.Mode;
+import songscribe.ui.selection.SelectionCoordinator;
 
 class EnableFromSelectionTest extends MainFrameMockTest {
 
@@ -257,7 +261,75 @@ class EnableFromSelectionTest extends MainFrameMockTest {
             mockEnv().coordinator().hasActiveSelection(), mockEnv().score())).isFalse();
     }
 
+    // -- enableFromSelection: terminal selected (issue #713) --
+    //
+    // These drive a real SelectionCoordinator holding a real auto-maintained terminal rather
+    // than stubbing selectionHasDurations(), because that stub is what the terminal case would
+    // have to get wrong: the predicate has no terminal-specific branch, so hand-feeding it
+    // "false" would pass identically for any barline and prove nothing about the terminal.
+    //
+    // BeatChangeAction and TempoChangeAction carry DISABLE_WHEN_BAR_SELECTED, so they gate on
+    // selectionHasDurations(). AnnotationAction carries no such flag and stays enabled: an
+    // annotation on the terminal is the entire point of issue #713.
+
+    @Test
+    void testAnnotationActionStaysEnabledWhileTheTerminalIsSelected() {
+        var coordinator = selectTerminal();
+
+        var action = AnnotationAction.createAction(mainFrame());
+
+        assertThat(action.enableFromSelection(
+            coordinator.hasActiveSelection(), mockEnv().score())).isTrue();
+    }
+
+    @Test
+    void testBeatChangeActionIsDisabledWhileTheTerminalIsSelected() {
+        var coordinator = selectTerminal();
+
+        var action = BeatChangeAction.createAction(mainFrame());
+
+        assertThat(action.enableFromSelection(
+            coordinator.hasActiveSelection(), mockEnv().score())).isFalse();
+    }
+
+    @Test
+    void testTempoChangeActionIsDisabledWhileTheTerminalIsSelected() {
+        var coordinator = selectTerminal();
+
+        var action = TempoChangeAction.createAction(mainFrame());
+
+        assertThat(action.enableFromSelection(
+            coordinator.hasActiveSelection(), mockEnv().score())).isFalse();
+    }
+
     // -- helpers --
+
+    /**
+     * Selects the song's real auto-maintained terminal behind a real
+     * {@link SelectionCoordinator}, so the actions above compute their enabled state against
+     * the actual terminal element instead of a hand-fed boolean.
+     */
+    private SelectionCoordinator selectTerminal() {
+        var song = new Song();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+
+        when(mockEnv().score().getMode()).thenReturn(Mode.SELECT);
+
+        var coordinator = new SelectionCoordinator(mockEnv().score());
+        when(mockEnv().score().getSelectionCoordinator()).thenReturn(coordinator);
+        when(mockEnv().score().getSelectionSize()).thenReturn(1);
+
+        coordinator.registerLine(0, line);
+        coordinator.activateLine(0);
+        coordinator.selectSingleElement(0, line.elementCount() - 1);
+
+        assertThat(coordinator.isTerminalSelected())
+            .as("the fixture must actually select the terminal, or these tests prove nothing")
+            .isTrue();
+
+        return coordinator;
+    }
 
     private UIAction createNonReflectableWithBarFlag() {
         var action = new UIAction(mainFrame(), "Test", null, 0, "test", "Test");

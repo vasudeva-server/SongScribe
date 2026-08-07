@@ -1115,7 +1115,7 @@ public final class Song {
     /**
      * Restores the terminal invariant after a {@link #newParsingStub() parsing stub}
      * has been fully populated: ensures the song's last line ends with a valid
-     * terminal ({@link ElementType#isValidTerminal()}). File readers suspend mutation
+     * terminal ({@link ElementType#isValidSongTerminal()}). File readers suspend mutation
      * tracking while building lines, so the per-{@code addLine} maintenance is skipped;
      * this restores the invariant in one pass at the end of a load.
      *
@@ -1132,7 +1132,7 @@ public final class Song {
     /**
      * Returns a fresh element of the given terminal type. Throws
      * {@link IllegalArgumentException} if {@code type} is not a valid terminal
-     * (i.e. {@link ElementType#isValidTerminal()} returns {@code false}).
+     * (i.e. {@link ElementType#isValidSongTerminal()} returns {@code false}).
      */
     static StaffElement newTerminalElement(ElementType type) {
         return TerminalMaintainer.newTerminalElement(type);
@@ -1141,7 +1141,7 @@ public final class Song {
     /**
      * Returns {@code true} when {@code element} is the song's auto-maintained
      * terminal: it occupies the last position of the last line, and its type satisfies
-     * {@link ElementType#isValidTerminal()}.
+     * {@link ElementType#isValidSongTerminal()}.
      *
      * <p>A valid terminal type that sits on any line other than the last, or at any
      * position other than the last, is treated as an ordinary (interactable) element.
@@ -1151,13 +1151,22 @@ public final class Song {
     }
 
     /**
-     * Returns {@code true} when the user may interact with {@code element} on {@code line}
-     * (select, click, drag, delete, etc.). Returns {@code false} only for the
-     * song's auto-maintained terminal — i.e., a {@link ElementType#isValidTerminal()
-     * valid terminal} element that is the last element of the last line.
+     * Returns {@code true} when {@code element} is its song's auto-maintained terminal,
+     * resolving the line and song from the element itself. For callers that have a
+     * {@link StaffElement} but neither a {@link Line} nor a {@link Song} handle —
+     * {@code UIAction.Reflectable.appliesTo}, in particular.
+     * <p>
+     * <strong>Contract:</strong> returns {@code false} for an element that belongs to no line.
+     * That default is correct for an applicability predicate, where an unparented element simply
+     * does not apply, but it is <em>wrong</em> for an invariant guard, which must not treat
+     * "cannot tell" as "safe". A guard inside the DOM has a {@link Line} in hand and must use
+     * {@link #isAutoMaintainedTerminal(StaffElement, Line)} instead — see
+     * {@code Line.guardsTerminalAt}. The deliberately different name keeps the weaker predicate
+     * from being reached for by muscle memory when writing such a guard.
      */
-    public boolean isInteractable(StaffElement element, Line line) {
-        return terminal.isInteractable(element, line);
+    public static boolean isAutoMaintainedTerminalOfItsSong(StaffElement element) {
+        var line = element.getParentLine();
+        return line != null && line.getSong().isAutoMaintainedTerminal(element, line);
     }
 
     /** Returns the type of the current auto-maintained terminal element. */

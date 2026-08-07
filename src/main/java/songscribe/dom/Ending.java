@@ -338,8 +338,8 @@ public class Ending extends Span {
                     : new EndingEffect.CompensateSplit(this, ElementType.REPEAT_RIGHT);
             }
 
-            // Split is REPEAT_RIGHT: end must be isTerminal()
-            return newType.isTerminal()
+            // Split is REPEAT_RIGHT: end must be isEndingTerminal()
+            return newType.isEndingTerminal()
                 ? EndingEffect.None.INSTANCE
                 : new EndingEffect.CompensateSplit(this, ElementType.REPEAT_LEFT_RIGHT);
         }

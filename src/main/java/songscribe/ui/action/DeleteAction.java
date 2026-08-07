@@ -53,6 +53,12 @@ public final class DeleteAction extends PasteboardAction {
 
     @Override
     protected boolean updateScoreEnabledState() {
+        // Inherits the terminal veto every pasteboard operation shares; the base method
+        // returns true for DELETE once that passes, leaving the rest to the checks below.
+        if (!super.updateScoreEnabledState()) {
+            return false;
+        }
+
         var scoreView = requireScoreView();
         var selection = scoreView.getSelectionCoordinator();
 

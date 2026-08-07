@@ -1168,7 +1168,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     }
 
     /**
-     * Both {@link ElementType#isValidTerminal} types must be recognised, not just the final double
+     * Both {@link ElementType#isValidSongTerminal} types must be recognised, not just the final double
      * barline the boundary tests above use — a repeat sign ends a line just as flush.
      */
     @Test
@@ -1185,7 +1185,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     /**
      * A terminal-typed column that is <em>not</em> the line's auto-maintained terminal — the shape a
      * final barline takes on a non-last line — is not pinned flush-right, so it still owes the
-     * trailing rest. A bare {@code isValidTerminal()} type check would wrongly waive it.
+     * trailing rest. A bare {@code isValidSongTerminal()} type check would wrongly waive it.
      */
     @Test
     void testTrailingReservationSsAddsTheLineRestForATerminalTypeThatIsNotTheLinesTerminal() {

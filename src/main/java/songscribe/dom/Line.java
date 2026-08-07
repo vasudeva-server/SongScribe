@@ -67,6 +67,9 @@ public class Line implements LyricRun, SpanLookup {
         new int[]{4, 1, 5, 2, 6, 3, 0},
     };
 
+    private static final String TERMINAL_NOT_REMOVABLE =
+        "The auto-maintained terminal may not be removed";
+
     /** Spans (beams, ties, trills, crescendo, diminuendo, tuplets, endings). */
     private final List<Span> spans = new ArrayList<>();
 
@@ -424,6 +427,15 @@ public class Line implements LyricRun, SpanLookup {
             || song.isReplaying();
     }
 
+    /**
+     * True when the terminal guard is live and the element at {@code index} is the song's
+     * auto-maintained terminal. Uses the two-argument instance predicate, not the static
+     * single-argument form — a guard must not treat an unparented element as safe.
+     */
+    private boolean guardsTerminalAt(int index) {
+        return !isTerminalGuardBypassed() && song.isAutoMaintainedTerminal(elements.get(index), this);
+    }
+
     public void addElement(int index, StaffElement element) {
         if (!isTerminalGuardBypassed()
                 && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
@@ -483,6 +495,13 @@ public class Line implements LyricRun, SpanLookup {
         );
     }
 
+    /**
+     * Replaces the element at {@code index}, guarded on two fronts: the incoming element may
+     * not be a {@code FINAL_DOUBLE_BARLINE} unless it lands in the terminal position, and the
+     * element being displaced may not be the auto-maintained terminal unless the replacement is
+     * itself a valid terminal type (the exemption {@link TerminalMaintainer#replaceTerminal}
+     * relies on to swap terminal types without raising the auto-maintenance flag).
+     */
     public void setElement(int index, StaffElement element) {
         if (!isTerminalGuardBypassed()
                 && element.getType() == ElementType.FINAL_DOUBLE_BARLINE
@@ -490,6 +509,11 @@ public class Line implements LyricRun, SpanLookup {
                     || index != elementCount() - 1)) {
             throw new IllegalStateException(
                 "FINAL_DOUBLE_BARLINE may only replace the last element on the last line");
+        }
+
+        if (guardsTerminalAt(index) && !element.getType().isValidSongTerminal()) {
+            throw new IllegalStateException(
+                "The auto-maintained terminal may only be replaced by a valid terminal");
         }
 
         var oldElement = elements.get(index);
@@ -639,10 +663,8 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     public void removeElement(int index) {
-        if (!isTerminalGuardBypassed()
-                && song.isAutoMaintainedTerminal(elements.get(index), this)) {
-            throw new IllegalStateException(
-                "The auto-maintained terminal may not be removed");
+        if (guardsTerminalAt(index)) {
+            throw new IllegalStateException(TERMINAL_NOT_REMOVABLE);
         }
 
         var deleted = elements.get(index);
@@ -685,11 +707,8 @@ public class Line implements LyricRun, SpanLookup {
      * @param to   the index of the last element to remove (inclusive)
      */
     public void removeRange(int from, int to) {
-        if (!isTerminalGuardBypassed()
-                && elements.subList(from, to + 1).stream()
-                       .anyMatch(e -> song.isAutoMaintainedTerminal(e, this))) {
-            throw new IllegalStateException(
-                "The auto-maintained terminal may not be removed");
+        if (IntStream.rangeClosed(from, to).anyMatch(this::guardsTerminalAt)) {
+            throw new IllegalStateException(TERMINAL_NOT_REMOVABLE);
         }
 
         var deletedElements = List.copyOf(elements.subList(from, to + 1));

@@ -922,6 +922,32 @@ class LineMutationTest extends UnitTest {
                         Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE))));
         }
 
+        // --- setElement displaced-terminal guard ---
+
+        @Test
+        void testSetElementReplacingTerminalWithNonTerminalThrows() {
+            var terminalIndex = line.elementCount() - 1;
+            assertThatIllegalStateException().isThrownBy(() ->
+                song.withModification(() ->
+                    line.setElement(terminalIndex, new StaffElement(ElementType.SINGLE_BARLINE))));
+        }
+
+        @Test
+        void testSetElementReplacingTerminalWithOtherValidTerminalSucceeds() {
+            var terminalIndex = line.elementCount() - 1;
+            assertThatNoException().isThrownBy(() ->
+                song.withModification(() ->
+                    line.setElement(terminalIndex,
+                        Song.newTerminalElement(ElementType.REPEAT_RIGHT))));
+        }
+
+        @Test
+        void testSongReplaceTerminalStillWorksEndToEnd() {
+            song.replaceTerminal(ElementType.REPEAT_RIGHT);
+            var terminal = line.getElement(line.elementCount() - 1);
+            assertThat(terminal.getType()).isEqualTo(ElementType.REPEAT_RIGHT);
+        }
+
         // --- removeElement guards ---
 
         @Test
@@ -1056,37 +1082,37 @@ class LineMutationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // Selectability predicate
+    // Auto-maintained terminal predicate
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class SelectabilityPredicate {
+    class AutoMaintainedTerminalPredicate {
 
         @Test
-        void testFinalBarlineOnLastLineIsNotInteractable() {
+        void testFinalBarlineOnLastLineIsAutoMaintained() {
             var terminal = line.getElement(line.elementCount() - 1);
-            assertThat(song.isInteractable(terminal, line)).isFalse();
+            assertThat(song.isAutoMaintainedTerminal(terminal, line)).isTrue();
         }
 
         @Test
-        void testDoubleBarlineOnLastLineIsInteractable() {
-            assertThat(song.isInteractable(
-                new StaffElement(ElementType.DOUBLE_BARLINE), line)).isTrue();
+        void testDoubleBarlineOnLastLineIsNotAutoMaintained() {
+            assertThat(song.isAutoMaintainedTerminal(
+                new StaffElement(ElementType.DOUBLE_BARLINE), line)).isFalse();
         }
 
         @Test
-        void testFinalBarlineOnNonLastLineIsInteractable() {
+        void testFinalBarlineOnNonLastLineIsNotAutoMaintained() {
             song.addLine(1, new Line(song));
             // line is now index 0, not the last line
-            assertThat(song.isInteractable(
-                Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE), line)).isTrue();
+            assertThat(song.isAutoMaintainedTerminal(
+                Song.newTerminalElement(ElementType.FINAL_DOUBLE_BARLINE), line)).isFalse();
         }
 
         @Test
-        void testNoteOnLastLineIsInteractable() {
-            assertThat(song.isInteractable(
-                new StaffElement(ElementType.QUAVER), line)).isTrue();
+        void testNoteOnLastLineIsNotAutoMaintained() {
+            assertThat(song.isAutoMaintainedTerminal(
+                new StaffElement(ElementType.QUAVER), line)).isFalse();
         }
     }
 

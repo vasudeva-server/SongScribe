@@ -130,6 +130,7 @@ class HitRegionBuilderTest extends UnitTest {
     private TempoChangeAttachment tempoChange;
     private BeatChangeAttachment beatChange;
     private StaffElement accidentalNote;
+    private StaffElement terminal;
     private Tie tie;
     private Beam beam;
     private Trill trill;
@@ -231,6 +232,10 @@ class HitRegionBuilderTest extends UnitTest {
             accidentalNote.setAccidental(StaffElement.Accidental.SHARP);
         });
 
+        // Line.addElement always inserts before the song's auto-maintained terminal, so it is
+        // still the very last element despite everything appended above it.
+        terminal = line.getElement(line.elementCount() - 1);
+
         layoutResult = engine().layout(line);
         registry = layoutResult.getHitRegistry();
     }
@@ -262,6 +267,15 @@ class HitRegionBuilderTest extends UnitTest {
     @Test
     void testNoteHeadRegistersAnElementTarget() {
         assertRegionWinsItsOwnCenter(new HitTarget.Element(sourceNote));
+    }
+
+    /**
+     * The song's auto-maintained terminal gets an {@code ELEMENT} region like any other
+     * element, so a plain click can select it (issue #713).
+     */
+    @Test
+    void testTerminalRegistersAnElementTarget() {
+        assertRegionWinsItsOwnCenter(new HitTarget.Element(terminal));
     }
 
     @Test

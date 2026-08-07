@@ -826,13 +826,16 @@ public final class MusicEditOperations {
         var begin = range.begin();
         var end = range.end();
 
-        // The auto-maintained terminal is never selectable, so if the selection ends
-        // just before it, extend end to include it so an ending at the song's
-        // end passes structural validation. Only extend if the current end is not
-        // already a terminal — if it is, the selection is already properly closed.
+        // A multi-element selection never reaches the terminal (the selection coordinator
+        // clamps it out), so if the selection ends just before it, extend end to include it
+        // for an ending at the song's end to pass structural validation. Only extend if the
+        // current end is not already a terminal. For FINAL_DOUBLE_BARLINE, isEndingTerminal()
+        // returns true and the guard handles it. For REPEAT_RIGHT, isEndingTerminal() returns
+        // false (deliberately excluded), so extendedEnd < line.elementCount() bounds check
+        // prevents bad extension.
         var extendedEnd = end + 1;
 
-        if (!line.getElement(end).getType().isTerminal()
+        if (!line.getElement(end).getType().isEndingTerminal()
                 && extendedEnd < line.elementCount()
                 && song.isAutoMaintainedTerminal(line.getElement(extendedEnd), line)) {
             end = extendedEnd;

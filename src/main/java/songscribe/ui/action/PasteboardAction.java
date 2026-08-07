@@ -87,8 +87,23 @@ public class PasteboardAction extends UIAction {
         return isEnabled;
     }
 
+    /**
+     * True when the selection is exactly the song's auto-maintained terminal. The terminal is
+     * selectable so an annotation can be attached to it and so its type can be changed (issue
+     * #713), but it may not be copied, cut, pasted over or deleted, so every pasteboard
+     * operation is disabled while it is selected — leaving nothing to invoke by menu or
+     * keystroke.
+     */
+    protected boolean isTerminalSelected() {
+        return requireScoreView().getSelectionCoordinator().isTerminalSelected();
+    }
+
     /** Computes the enabled state from the score, once the generic flag checks pass. */
     protected boolean updateScoreEnabledState() {
+        if (isTerminalSelected()) {
+            return false;
+        }
+
         var scoreView = requireScoreView();
 
         return switch (op) {

@@ -61,7 +61,7 @@ public class NotationMenu extends JMenu {
 
         // Group 2: Spans & Barlines
         add(new RepeatsMenu());
-        add(new BarlineMenu(mainFrame));
+        add(new BarlineMenu());
 
         addSeparator();
 

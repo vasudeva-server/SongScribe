@@ -136,6 +136,9 @@ class ElementTypeActionTest extends MainFrameMockTest {
         assertThat(nonDurationAction.appliesTo(element)).isTrue();
     }
 
+    // Issue #713: how the barline and repeat entries behave against the song's auto-maintained
+    // terminal — which ones apply to it, which one is checked — lives in TerminalTypeActionTest.
+
     // A4: NON_DURATION action does not apply to notes
     @Test
     void testNonDurationDoesNotApplyToNote() {

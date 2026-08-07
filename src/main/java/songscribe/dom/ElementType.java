@@ -277,7 +277,7 @@ public enum ElementType {
      * so its right edge aligns flush with the right edge of the line.
      *
      * @param lineWidthSs  the line width in staff spaces
-     * @param terminalType the terminal element type ({@link #isValidTerminal()} must be true)
+     * @param terminalType the terminal element type ({@link #isValidSongTerminal()} must be true)
      */
     public static double terminalFlushRightXSs(double lineWidthSs, ElementType terminalType) {
         return lineWidthSs - terminalType.baseWidthSs;
@@ -493,8 +493,13 @@ public enum ElementType {
     /**
      * A terminal element can end a first-second ending selection:
      * single barline, double barline, final double barline, or left repeat.
+     *
+     * <p>This is about the right boundary of a first/second-ending bracket, not
+     * {@link #isValidSongTerminal()}. {@code REPEAT_RIGHT} is deliberately excluded because it
+     * plays the split role that closes the first ending and loops back to the second, so it
+     * cannot also serve as the bracket's right boundary.
      */
-    public boolean isTerminal() {
+    public boolean isEndingTerminal() {
         return isBarLine() || this == REPEAT_LEFT;
     }
 
@@ -562,8 +567,10 @@ public enum ElementType {
      * Returns {@code true} for element types that may occupy the auto-maintained terminal
      * slot (last position of the last line): {@code FINAL_DOUBLE_BARLINE} or
      * {@code REPEAT_RIGHT}.
+     *
+     * <p>This is about the <b>song's</b> last slot, not {@link #isEndingTerminal()}.
      */
-    public boolean isValidTerminal() {
+    public boolean isValidSongTerminal() {
         return this == FINAL_DOUBLE_BARLINE || this == REPEAT_RIGHT;
     }
 

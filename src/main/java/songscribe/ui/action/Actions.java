@@ -119,6 +119,11 @@ public final class Actions {
 
     public static ElementTypeAction[] REPEAT_ACTIONS;
     public static ElementTypeAction[] BARLINE_ACTIONS;
+
+    // Deliberately outside BARLINE_ACTIONS: that array is what BarToolbar and
+    // NON_DURATION_ACTION_GROUP consume, and this entry belongs to neither (issue #713).
+    public static FinalDoubleBarlineAction FINAL_DOUBLE_BARLINE_ACTION;
+
     public static ElementTypeAction BREATH_MARK_ACTION;
     public static ActionGroup<ElementTypeAction> NON_DURATION_ACTION_GROUP;
 
@@ -272,6 +277,7 @@ public final class Actions {
             ElementTypeAction.createDoubleBarlineAction(mainFrame),
             ElementTypeAction.createSingleBarlineAction(mainFrame),
         };
+        FINAL_DOUBLE_BARLINE_ACTION = FinalDoubleBarlineAction.createAction(mainFrame);
         BREATH_MARK_ACTION = ElementTypeAction.createBreathMarkAction(mainFrame);
         NON_DURATION_ACTION_GROUP = new NonDurationActionGroup();
 

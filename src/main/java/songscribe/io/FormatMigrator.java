@@ -346,7 +346,7 @@ public final class FormatMigrator {
 
         var lastType = lastLine.getElement(lastIdx).getType();
 
-        if (lastType.isValidTerminal()) {
+        if (lastType.isValidSongTerminal()) {
             return;
         }
 

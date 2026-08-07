@@ -20,32 +20,28 @@
 package songscribe.ui.menu;
 
 import static songscribe.ui.action.Actions.BARLINE_ACTIONS;
+import static songscribe.ui.action.Actions.FINAL_DOUBLE_BARLINE_ACTION;
 
 import module java.desktop;
 
 import songscribe.Strings;
-import songscribe.ui.action.FinalTerminalAction;
-import songscribe.ui.component.MainFrame;
 
+/**
+ * The barline palette. The final double barline trails the drawable barlines because it is not
+ * one of them: it acts on the song's auto-maintained terminal alone, which is also why it has no
+ * toolbar button. The right repeat that is its counterpart for the terminal lives in
+ * {@link RepeatsMenu}, where it doubles as an ordinary drawable repeat — see
+ * {@code FinalDoubleBarlineAction} (issue #713).
+ */
 public class BarlineMenu extends JMenu {
 
-    public BarlineMenu(MainFrame mainFrame) {
+    public BarlineMenu() {
         super(Strings.get(Strings.MENU_NOTATION_BARLINES));
 
         for (var action : BARLINE_ACTIONS) {
             add(new JRadioButtonMenuItem(action));
         }
 
-        addSeparator();
-
-        var finalBarlineRadio = new JRadioButtonMenuItem(FinalTerminalAction.createFinalDoubleBarline(mainFrame));
-        var finalRightRepeatRadio = new JRadioButtonMenuItem(FinalTerminalAction.createFinalRightRepeat(mainFrame));
-
-        var terminalGroup = new ButtonGroup();
-        terminalGroup.add(finalBarlineRadio);
-        terminalGroup.add(finalRightRepeatRadio);
-
-        add(finalBarlineRadio);
-        add(finalRightRepeatRadio);
+        add(new JRadioButtonMenuItem(FINAL_DOUBLE_BARLINE_ACTION));
     }
 }

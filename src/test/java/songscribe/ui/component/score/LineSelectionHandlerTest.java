@@ -596,6 +596,26 @@ class LineSelectionHandlerTest extends UnitTest {
         }
 
         /**
+         * The default two-note fixture's terminal sits right after the two notes, geometrically
+         * inside the drag rect the corner-drag sweeps — a rubber band must exclude it regardless
+         * (issue #713).
+         */
+        @Test
+        void testDragRectCoveringTheTerminalExcludesItFromTheSelection() {
+            var terminalIndex = line.elementCount() - 1;
+            positionElement(0, NEAR_X_SS);
+            positionElement(1, FAR_X_SS);
+            when(mockLayout.getElementXSs(line.getElement(terminalIndex))).thenReturn(FAR_X_SS);
+
+            pressThenDragToCorner();
+
+            assertThat(selectedRange().begin()).isEqualTo(0);
+            assertThat(selectedRange().end())
+                .as("the terminal, though inside the drag rect, is never selected")
+                .isEqualTo(1);
+        }
+
+        /**
          * The rubber band sweeps staff spaces, not pixels, so at 200% zoom a drag to a given
          * on-screen corner covers half the staff spaces it would at 100%.
          * <p>

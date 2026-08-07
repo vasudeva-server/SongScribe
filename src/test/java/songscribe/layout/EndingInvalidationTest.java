@@ -411,14 +411,14 @@ class EndingInvalidationTest extends UnitTest {
 
         @Test
         void testEndReplacedWithDoubleBarlineReturnsNone() {
-            // DOUBLE_BARLINE isTerminal() and split is REPEAT_RIGHT
+            // DOUBLE_BARLINE isEndingTerminal() and split is REPEAT_RIGHT
             var effect = ending.checkReplacement(end, new StaffElement(ElementType.DOUBLE_BARLINE), line);
             assertThat(effect).isEqualTo(new Ending.EndingEffect.None());
         }
 
         @Test
         void testEndReplacedWithRepeatLeftReturnsNone() {
-            // REPEAT_LEFT isTerminal() and split is REPEAT_RIGHT
+            // REPEAT_LEFT isEndingTerminal() and split is REPEAT_RIGHT
             var effect = ending.checkReplacement(end, new StaffElement(ElementType.REPEAT_LEFT), line);
             assertThat(effect).isEqualTo(new Ending.EndingEffect.None());
         }

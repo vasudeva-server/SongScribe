@@ -266,6 +266,11 @@ public final class MusicXmlWriter {
                         continue;
                     }
 
+                    // REPEAT_LEFT and REPEAT_LEFT_RIGHT take the two branches above and
+                    // still drop an annotation — a pre-existing gap for ordinary barlines,
+                    // out of scope for issue #713 because the terminal can never be either
+                    // type. Tracked by issue #734.
+                    writeElementAnnotation(pw, element);
                     MusicXmlMeasureWriter.writeBarline(pw, entry, markers.endingRightBarlineMarkers());
                     MusicXmlMeasureWriter.closeMeasure(pw);
                     measureOpen = false;
@@ -339,11 +344,7 @@ public final class MusicXmlWriter {
                         // An annotation <direction placement="above|below"> also
                         // binds to the next note, so it too is emitted immediately
                         // before its <note> (after the tempo/wedge directions).
-                        var annotationAttachment = element.findAttachment(AnnotationAttachment.class);
-
-                        if (annotationAttachment != null) {
-                            MusicXmlDirectionWriter.writeAnnotationDirection(pw, annotationAttachment.getAnnotation());
-                        }
+                        writeElementAnnotation(pw, element);
 
                         var nextElement = (i + 1 < elements.size()) ? elements.get(i + 1) : null;
                         var nextIsBreathMark = nextElement != null && nextElement.getType().isBreathMark();
@@ -409,5 +410,17 @@ public final class MusicXmlWriter {
         }
 
         return null;
+    }
+
+    /**
+     * Emits {@code element}'s {@link AnnotationAttachment}, if any, as a
+     * {@code <direction>} — a no-op when the element carries no annotation.
+     */
+    private static void writeElementAnnotation(PrintWriter pw, StaffElement element) {
+        var annotationAttachment = element.findAttachment(AnnotationAttachment.class);
+
+        if (annotationAttachment != null) {
+            MusicXmlDirectionWriter.writeAnnotationDirection(pw, annotationAttachment.getAnnotation());
+        }
     }
 }

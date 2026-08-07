@@ -808,6 +808,12 @@ public final class MusicXmlReader extends DefaultHandler {
      *
      * <p>Package-private (not private): {@link BarlineParser} appends barline
      * elements through this reader rather than duplicating line ownership.
+     *
+     * <p>Resolves any pending annotation onto the appended element. This is safe
+     * for this method's other caller, {@link #finishNote}, which appends a
+     * {@code BREATH_MARK} through it: by that point {@code finishNote} has
+     * already resolved the pending annotation onto the note itself, so nothing
+     * is left to steal.
      */
     StaffElement appendToCurrentLine(ElementType elementType) throws SAXException {
         if (currentLine == null) {
@@ -818,6 +824,7 @@ public final class MusicXmlReader extends DefaultHandler {
 
         var element = elementType.newInstance();
         currentLine.addElement(element);
+        annotations.resolveAnnotation(element);
         return element;
     }
 

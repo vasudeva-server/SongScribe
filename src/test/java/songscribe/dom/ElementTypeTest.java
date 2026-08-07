@@ -428,13 +428,13 @@ class ElementTypeTest extends UnitTest {
     }
 
     @Test
-    void testIsTerminalMembership() {
+    void testIsEndingTerminalMembership() {
         // True set: barlines and REPEAT_LEFT
         for (var type : new ElementType[]{
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE, ElementType.FINAL_DOUBLE_BARLINE,
             ElementType.REPEAT_LEFT
         }) {
-            assertThat(type.isTerminal()).as("%s.isTerminal()", type).isTrue();
+            assertThat(type.isEndingTerminal()).as("%s.isEndingTerminal()", type).isTrue();
         }
 
         // False set: everything else; REPEAT_RIGHT and REPEAT_LEFT_RIGHT are NOT terminals
@@ -446,15 +446,15 @@ class ElementTypeTest extends UnitTest {
             ElementType.GRACE_QUAVER, ElementType.BREATH_MARK,
             ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT_RIGHT
         }) {
-            assertThat(type.isTerminal()).as("%s.isTerminal()", type).isFalse();
+            assertThat(type.isEndingTerminal()).as("%s.isEndingTerminal()", type).isFalse();
         }
     }
 
     @Test
-    void testIsValidTerminalMembership() {
+    void testIsValidSongTerminalMembership() {
         // True set: only FINAL_DOUBLE_BARLINE and REPEAT_RIGHT
-        assertThat(ElementType.FINAL_DOUBLE_BARLINE.isValidTerminal()).isTrue();
-        assertThat(ElementType.REPEAT_RIGHT.isValidTerminal()).isTrue();
+        assertThat(ElementType.FINAL_DOUBLE_BARLINE.isValidSongTerminal()).isTrue();
+        assertThat(ElementType.REPEAT_RIGHT.isValidSongTerminal()).isTrue();
 
         // False set: everything else
         for (var type : new ElementType[]{
@@ -466,7 +466,7 @@ class ElementTypeTest extends UnitTest {
             ElementType.REPEAT_LEFT, ElementType.REPEAT_LEFT_RIGHT,
             ElementType.SINGLE_BARLINE, ElementType.DOUBLE_BARLINE
         }) {
-            assertThat(type.isValidTerminal()).as("%s.isValidTerminal()", type).isFalse();
+            assertThat(type.isValidSongTerminal()).as("%s.isValidSongTerminal()", type).isFalse();
         }
     }
 

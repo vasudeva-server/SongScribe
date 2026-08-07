@@ -415,7 +415,7 @@ public class LayoutEngine {
         var lastColumn = columns.getLast();
         var lastType = lastColumn.getElement().getType();
 
-        if (!lastType.isValidTerminal()) {
+        if (!lastType.isValidSongTerminal()) {
             return;
         }
 

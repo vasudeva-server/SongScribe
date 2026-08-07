@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -34,8 +35,12 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Ending;
 import songscribe.hit.HitTarget;
+import songscribe.message.MessageCenter;
 import songscribe.ui.Mode;
+import songscribe.ui.action.Actions;
+import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 
 /**
@@ -83,10 +88,25 @@ public final class ReflectionTestHelper {
      * registered and activated at line index 0, with no reflectable actions.
      */
     public static SelectionCoordinator createCoordinatorForLine(Line line) {
+        return createCoordinatorForLine(line, List.of());
+    }
+
+    /**
+     * Creates a SelectionCoordinator for an existing Line, registered and activated at line
+     * index 0, with the given actions injected as the reflectable actions list.
+     * <p>
+     * Unlike the {@code createCoordinator} overloads, this adopts a line the caller already
+     * owns rather than building a detached one — which is what a test needs when the line must
+     * be a song's real last line, the only place the auto-maintained terminal exists.
+     */
+    public static SelectionCoordinator createCoordinatorForLine(
+        Line line,
+        List<UIAction.Reflectable> actions
+    ) {
         var coordinator = new SelectionCoordinator(editModeScoreView());
         coordinator.registerLine(0, line);
         coordinator.activateLine(0);
-        return createCoordinator(coordinator, List.of(), List.of());
+        return createCoordinator(coordinator, actions, List.of());
     }
 
     /**
@@ -159,11 +179,42 @@ public final class ReflectionTestHelper {
         return createCoordinator(coordinator, actions, managedActions);
     }
 
+    /**
+     * Stands up {@link Actions#GRACE_EIGHTH_NOTE_ACTION} if nothing has yet.
+     * <p>
+     * This helper deliberately bypasses the {@code Actions} singleton graph, but the reflector
+     * it hands back does not: every reflection pass ends by enabling or disabling the grace-note
+     * action, reading that one static field directly. A test class that never calls
+     * {@code Actions.initialize} therefore hits a null there the moment a selection is live and
+     * the song changes — and because the failure surfaces inside a message handler, MBassador
+     * swallows it and aborts delivery to the post's remaining subscribers, so it reads as an
+     * unrelated test failing rather than as missing setup. Which classes happened to run first
+     * in the same JVM decided whether a suite passed.
+     */
+    private static void ensureGraceNoteActionExists() {
+        if (Actions.GRACE_EIGHTH_NOTE_ACTION != null) {
+            return;
+        }
+
+        var action = ElementTypeAction.createGraceEighthNoteAction(
+            mock(MainFrame.class, RETURNS_DEEP_STUBS));
+
+        // Every UIAction subscribes itself to the message bus on construction. The reflector
+        // only ever calls setEnabled on this one, so leaving it subscribed would buy nothing
+        // and cost plenty: its own song-change handler would then run against the deep-stub
+        // frame stood up above and throw, which is the very failure this method exists to stop.
+        MessageCenter.unsubscribe(action);
+
+        Actions.GRACE_EIGHTH_NOTE_ACTION = action;
+    }
+
     private static SelectionCoordinator createCoordinator(
         SelectionCoordinator coordinator,
         List<UIAction.Reflectable> actions,
         List<UIAction> managedActions
     ) {
+        ensureGraceNoteActionExists();
+
         var reflector = coordinator.getActionReflector();
 
         try {

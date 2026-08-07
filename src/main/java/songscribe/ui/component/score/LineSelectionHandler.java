@@ -591,12 +591,13 @@ class LineSelectionHandler {
         var helper = new Rectangle2D.Double();
         var begin = -1;
         var end = -1;
+        var song = line.getSong();
 
         for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
             var element = line.getElement(elementIndex);
 
-            // Skip the song's auto-maintained terminal (shared predicate).
-            if (!line.getSong().isInteractable(element, line)) {
+            // A rubber band must never sweep in the terminal (issue #713).
+            if (song.isAutoMaintainedTerminal(element, line)) {
                 continue;
             }
 

@@ -430,9 +430,13 @@ public final class ScoreInputHandler extends KeyAdapter
                 return;
             }
 
-            // Single element: the boundary is index 0 going left, the last element going right.
+            // Single element: the boundary is index 0 going left, and going right the last
+            // selectable element — or the current index when it is already past that, which is
+            // the case sitting on the terminal (issue #713). Without folding in the current
+            // index, Right on the terminal would compute a boundary behind the cursor and step
+            // off the end of the line.
             var current = begin;
-            var boundary = (direction == MOVE_LEFT) ? 0 : line.effectiveElementCount() - 1;
+            var boundary = (direction == MOVE_LEFT) ? 0 : Math.max(current, line.effectiveElementCount() - 1);
 
             if (current != boundary) {
                 selectSingle(coordinator, lineIndex, current + direction);

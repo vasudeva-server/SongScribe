@@ -665,6 +665,44 @@ class ScoreInputHandlerTest extends UnitTest {
             assertThat(range.end()).isEqualTo(0);
         }
 
+        /**
+         * Right-arrow on the terminal used to call {@code selectSingle} with an index one past
+         * the end of the line; it must now leave the selection alone instead (issue #713).
+         */
+        @Test
+        void testRightAtTerminalIsNoOp() {
+            var line = lineEndingInTerminal();
+            var terminalIndex = line.elementCount() - 1;
+            var coordinator = new SelectionCoordinator(mock(ScoreView.class));
+            coordinator.registerLine(0, line);
+            coordinator.activateLine(0);
+            coordinator.selectSingleElement(0, terminalIndex);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_RIGHT);
+
+            var range = selectedRangeOrFail(coordinator);
+            assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
+            assertThat(range.begin()).isEqualTo(terminalIndex);
+            assertThat(range.end()).isEqualTo(terminalIndex);
+        }
+
+        @Test
+        void testLeftAtTerminalMovesToThePreviousElement() {
+            var line = lineEndingInTerminal();
+            var terminalIndex = line.elementCount() - 1;
+            var coordinator = new SelectionCoordinator(mock(ScoreView.class));
+            coordinator.registerLine(0, line);
+            coordinator.activateLine(0);
+            coordinator.selectSingleElement(0, terminalIndex);
+
+            pressArrowKey(selectionCallback(coordinator), KeyEvent.VK_LEFT);
+
+            var range = selectedRangeOrFail(coordinator);
+            assertThat(coordinator.getActiveLineIndex()).isEqualTo(0);
+            assertThat(range.begin()).isEqualTo(terminalIndex - 1);
+            assertThat(range.end()).isEqualTo(terminalIndex - 1);
+        }
+
         private List<StaffElement> threeCrotchets() {
             return List.of(
                 ElementType.CROTCHET.newInstance(),
@@ -672,6 +710,24 @@ class ScoreInputHandlerTest extends UnitTest {
                 ElementType.CROTCHET.newInstance()
             );
         }
+    }
+
+    /**
+     * A song-backed line holding two crotchets followed by the song's auto-maintained
+     * terminal, so the last element is a real, indexable element rather than a detached
+     * fixture (issue #713). Shared by the plain-arrow and Shift+arrow groups, which exercise
+     * two different branches against the same shape of line.
+     */
+    private static Line lineEndingInTerminal() {
+        var song = new Song();
+        var line = song.getLine(0);
+
+        song.withoutMutationTracking(() -> {
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(ElementType.CROTCHET.newInstance());
+        });
+
+        return line;
     }
 
     // -------------------------------------------------------------------
@@ -1029,6 +1085,41 @@ class ScoreInputHandlerTest extends UnitTest {
             pressShiftArrowKey(callback, KeyEvent.VK_LEFT);
 
             verify(callback, never()).extendSelectionTo(anyInt());
+        }
+
+        /**
+         * Shift+Right from the last selectable element must not sweep the terminal in — a
+         * click is the only gesture that may select it (issue #713). The plain-arrow tests
+         * above cover a different branch, so this one is not redundant with them.
+         */
+        @Test
+        void testShiftRightAtLastSelectableElementDoesNotExtendOntoTheTerminal() {
+            var line = lineEndingInTerminal();
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line, List.of());
+            ReflectionTestHelper.selectNote(coordinator, line.effectiveElementCount() - 1);
+            var callback = selectionCallback(coordinator);
+
+            pressShiftArrowKey(callback, KeyEvent.VK_RIGHT);
+
+            verify(callback, never()).extendSelectionTo(anyInt());
+        }
+
+        /**
+         * Shift+Left starting from the terminal extends backwards normally — the terminal is
+         * the anchor, and the coordinator's clamp pulls that anchor back into the resulting
+         * range rather than the keystroke being refused.
+         */
+        @Test
+        void testShiftLeftFromTheTerminalExtendsBackward() {
+            var line = lineEndingInTerminal();
+            var terminalIndex = line.elementCount() - 1;
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line, List.of());
+            ReflectionTestHelper.selectNote(coordinator, terminalIndex);
+            var callback = selectionCallback(coordinator);
+
+            pressShiftArrowKey(callback, KeyEvent.VK_LEFT);
+
+            verify(callback).extendSelectionTo(terminalIndex - 1);
         }
 
         @Test

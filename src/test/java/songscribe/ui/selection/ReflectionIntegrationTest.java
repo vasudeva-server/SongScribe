@@ -31,6 +31,8 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.ElementType;
+import songscribe.dom.Line;
+import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.AccidentalInParensAction;
@@ -38,6 +40,7 @@ import songscribe.ui.action.ArticulationAction;
 import songscribe.ui.action.DotAction;
 import songscribe.ui.action.ElementTypeAction;
 import songscribe.ui.action.FermataAction;
+import songscribe.ui.action.FinalDoubleBarlineAction;
 import songscribe.ui.action.UIAction;
 import songscribe.dom.FermataAttachment;
 import songscribe.ui.component.MainFrame;
@@ -49,6 +52,8 @@ class ReflectionIntegrationTest extends UnitTest {
     private ElementTypeAction crotchetAction;
     private ElementTypeAction minimAction;
     private ElementTypeAction barlineAction;
+    private ElementTypeAction rightRepeatAction;
+    private FinalDoubleBarlineAction finalDoubleBarlineAction;
     private AccidentalAction sharpAction;
     private AccidentalAction flatAction;
     private DotAction dotAction;
@@ -62,6 +67,8 @@ class ReflectionIntegrationTest extends UnitTest {
         crotchetAction = ElementTypeAction.createQuarterNoteAction(MOCK_FRAME);
         minimAction = ElementTypeAction.createHalfNoteAction(MOCK_FRAME);
         barlineAction = ElementTypeAction.createSingleBarlineAction(MOCK_FRAME);
+        rightRepeatAction = ElementTypeAction.createRightRepeatAction(MOCK_FRAME);
+        finalDoubleBarlineAction = FinalDoubleBarlineAction.createAction(MOCK_FRAME);
         sharpAction = AccidentalAction.createSharpAction(MOCK_FRAME);
         flatAction = AccidentalAction.createFlatAction(MOCK_FRAME);
         dotAction = DotAction.createDotAction(MOCK_FRAME);
@@ -228,6 +235,62 @@ class ReflectionIntegrationTest extends UnitTest {
         assertSelected(fermataAction, false);
         assertSelected(staccatoAction, false);
         assertSelected(accidentalInParensAction, false);
+    }
+
+    // -------------------------------------------------------------------------
+    // The song's auto-maintained terminal (issue #713)
+    // -------------------------------------------------------------------------
+    //
+    // Selecting the terminal must check the barline entry standing for its current type and
+    // leave every other entry unchecked. This is the check-mark the user sees in the Barline
+    // and Repeats menus, and reflection is the only thing that sets it — an action's own
+    // updateEnabledState() never touches its checked state. Asserting the predicates in
+    // isolation (as TerminalTypeActionTest does) would not catch a reflector that never
+    // reaches these entries at all.
+
+    /**
+     * A real song whose only line ends in the auto-maintained terminal, preceded by one note.
+     * The terminal exists only as the last element of a song's last line, so a detached line
+     * cannot stand in here.
+     */
+    private static Line lineEndingInTerminal(Song song) {
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        return line;
+    }
+
+    private List<UIAction.Reflectable> terminalActions() {
+        return List.of(finalDoubleBarlineAction, rightRepeatAction, barlineAction);
+    }
+
+    private void reflectTerminalOf(Song song) {
+        var line = lineEndingInTerminal(song);
+        var coordinator =
+            ReflectionTestHelper.createCoordinatorForLine(line, terminalActions());
+
+        ReflectionTestHelper.selectNote(coordinator, line.elementCount() - 1);
+        coordinator.getActionReflector().triggerReflection();
+    }
+
+    @Test
+    void testFinalDoubleBarlineEntryIsCheckedForAFinalDoubleBarlineTerminal() {
+        reflectTerminalOf(new Song());
+
+        assertSelected(finalDoubleBarlineAction, true);
+        assertSelected(rightRepeatAction, false);
+        assertSelected(barlineAction, false);
+    }
+
+    @Test
+    void testRightRepeatEntryIsCheckedForARightRepeatTerminal() {
+        var song = new Song();
+        song.replaceTerminal(ElementType.REPEAT_RIGHT);
+
+        reflectTerminalOf(song);
+
+        assertSelected(rightRepeatAction, true);
+        assertSelected(finalDoubleBarlineAction, false);
+        assertSelected(barlineAction, false);
     }
 
     @Test

@@ -36,6 +36,7 @@ import songscribe.message.mutation.LineDeletion;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
+import songscribe.dom.Song;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
@@ -68,6 +69,17 @@ import songscribe.ui.component.score.LineComponent;
  * for applying an action across it, and {@link SelectionDragTracker} for finishing the drag
  * that made it. The dependency runs one way — each reads the selection through this class,
  * and none of them can change it.
+ * <p>
+ * <b>The song's auto-maintained terminal is reachable by a click and by nothing else.</b>
+ * {@link #selectSingleElement} is the only path that may land on it, which is what a plain
+ * click uses. Every other path that assigns a selection — {@link #selectRange} (drag, pitch
+ * shift), {@link #extendSelectionTo} (Shift+click, Shift+arrow) and {@link #selectAll} —
+ * routes through {@link #setRange}, whose clamp keeps the terminal out of any multi-element
+ * range. A drag additionally filters the terminal out earlier, in {@code LineSelectionHandler}.
+ * <p>
+ * This is a coordinator-level invariant, not a type-level one: {@link Selection.Range} will
+ * happily construct a range covering the terminal, so any new code that assigns
+ * {@link #selected} without going through {@link #setRange} re-opens the hole.
  */
 public final class SelectionCoordinator {
 
@@ -256,6 +268,24 @@ public final class SelectionCoordinator {
     }
 
     /**
+     * Assigns a range on {@code line}, clamped so a multi-element range never reaches the song's
+     * auto-maintained terminal. Only {@link #selectSingleElement} may select the terminal — a
+     * click on it is the one gesture that selects it (issue #713), so a Shift+click or
+     * Shift+arrow that would sweep it in stops at the last editable element instead.
+     * <p>
+     * {@code begin} needs no clamp: the terminal is the last element, so {@code begin} reaching
+     * it implies {@code end} did too, which is the single-element range a click produces.
+     */
+    private void setRange(Line line, int begin, int end, int anchor) {
+        if (end > begin) {
+            end = Math.min(end, line.effectiveElementCount() - 1);
+            anchor = Math.min(anchor, end);
+        }
+
+        selected = new Selection.Range(line, begin, end, anchor);
+    }
+
+    /**
      * Selects {@code begin..end} on the active line, anchored at {@code anchor}, or clears the
      * selection if {@code begin} is -1. The line stays active either way.
      * <p>
@@ -270,7 +300,12 @@ public final class SelectionCoordinator {
             return;
         }
 
-        selected = (begin == -1) ? null : new Selection.Range(line, begin, end, anchor);
+        if (begin == -1) {
+            selected = null;
+            return;
+        }
+
+        setRange(line, begin, end, anchor);
     }
 
     /**
@@ -292,7 +327,7 @@ public final class SelectionCoordinator {
         }
 
         var anchor = range.anchor();
-        selected = new Selection.Range(
+        setRange(
             range.line(),
             Math.min(anchor, elementIndex),
             Math.max(anchor, elementIndex),
@@ -312,13 +347,14 @@ public final class SelectionCoordinator {
             return;
         }
 
-        var end = line.effectiveElementCount() - 1;
+        var lastSelectableIndex = line.effectiveElementCount() - 1;
 
-        if (end < 0) {
+        // Nothing selectable: an empty line, or a last line holding only the terminal.
+        if (lastSelectableIndex < 0) {
             return;
         }
 
-        selected = new Selection.Range(line, 0, end, 0);
+        setRange(line, 0, lastSelectableIndex, 0);
     }
 
     /**
@@ -738,6 +774,17 @@ public final class SelectionCoordinator {
      */
     public boolean hasActiveSelection() {
         return getSelection() != null;
+    }
+
+    /**
+     * Returns whether the selection is exactly the song's auto-maintained terminal.
+     * <p>
+     * A multi-element selection can never contain the terminal — {@link #setRange} clamps it
+     * out — so testing the single selected element is sufficient.
+     */
+    public boolean isTerminalSelected() {
+        var element = getSingleSelectedElement();
+        return element != null && Song.isAutoMaintainedTerminalOfItsSong(element);
     }
 
     /**
