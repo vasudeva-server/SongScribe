@@ -22,6 +22,7 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.within;
 
 import java.io.PrintWriter;
 import java.io.StringReader;
@@ -32,6 +33,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.function.ToDoubleFunction;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.params.ParameterizedTest;
@@ -75,6 +77,15 @@ import songscribe.io.SongLoader;
  * away. From the second generation on, the model is in recovered canonical form and
  * the cycle is a true fixpoint — which is exactly the property the MusicXML-as-canonical
  * cutover depends on. The first-generation output is still schema-validated.
+ *
+ * <h2>What the fixpoint cannot see</h2>
+ * A reader that is <em>stably</em> lossy is invisible to the fixpoint: whatever it
+ * discards or alters, it discards or alters identically on every read, so the later
+ * generations still agree. Two checks on the <em>first</em> read cover that blind spot,
+ * both comparing across the legacy model → generation 1 → recovered model step rather
+ * than across the fixpoint, so neither sees the write-forward-only fields:
+ * {@link #CONTENT_MARKERS} for dropped elements and {@link #CANONICAL_SCALARS} for
+ * altered values.
  */
 class MusicXmlCorpusLosslessnessTest extends UnitTest {
 
@@ -91,6 +102,41 @@ class MusicXmlCorpusLosslessnessTest extends UnitTest {
      * normalizes away.
      */
     private static final List<String> CONTENT_MARKERS = List.of("<note", "<measure", "<lyric");
+
+    /**
+     * A canonical scalar model value: one the writer emits and the reader is meant to
+     * recover exactly, named for the assertion message.
+     */
+    private record CanonicalScalar(String description, ToDoubleFunction<Song> value) {}
+
+    /**
+     * Canonical scalar values whose magnitude must survive the first read.
+     * <p>
+     * Counting elements says nothing about whether a value inside one survived, and the
+     * fixpoint is blind to a reader that quantizes a value on <em>every</em> read: such a
+     * read is idempotent, so generation 2 already holds the quantized value and generation 3
+     * quantizes it to the same thing. The only place the shift is observable is the legacy
+     * model against the model recovered from the first projection.
+     * <p>
+     * The line width is the known case — the {@code <page-width>} reader once converted
+     * through a whole-staff-space rounding helper, and the whole corpus passed with that bug
+     * present. Add any other scalar the reader is meant to recover exactly.
+     */
+    private static final List<CanonicalScalar> CANONICAL_SCALARS = List.of(
+        new CanonicalScalar("line width", Song::getLineWidthSs),
+        new CanonicalScalar("row-height adjustment", Song::getRowHeightAdjustmentSs),
+        new CanonicalScalar("default rest length", Song::getDefaultRestLengthSs)
+    );
+
+    /**
+     * Staff-space tolerance for {@link #CANONICAL_SCALARS}, sized to the coarsest
+     * representation any of them passes through: {@code <page-width>} is emitted as tenths
+     * with two decimal places (see {@link MusicXmlUnits#formatTenths}), i.e. thousandths of
+     * a staff space. That admits the formatter's own truncation and nothing more — a
+     * quantizing read shifts a value by orders of magnitude more (whole-staff-space rounding
+     * moves the width by up to half a staff space).
+     */
+    private static final double SCALAR_TOLERANCE_SS = 0.001;
 
     /**
      * A fixed clock so the write-forward {@code <encoding-date>} and {@code <rights>}
@@ -135,12 +181,23 @@ class MusicXmlCorpusLosslessnessTest extends UnitTest {
             .as("%s: MusicXML output must validate against the 4.0 schema", label)
             .doesNotThrowAnyException();
 
-        // 3. Normalize once (strips write-forward-only data), then re-serialize.
+        // 3. Normalize once (strips write-forward-only data).
         var normalized = read(firstGeneration);
+
+        // 3a. First-read value fidelity: a canonical scalar must come back from the first
+        // read with its magnitude intact. Guards against a reader that quantizes a value
+        // on every read, which the fixpoint check alone cannot see.
+        for (var scalar : CANONICAL_SCALARS) {
+            assertThat(scalar.value().applyAsDouble(normalized.song()))
+                .as("%s: the first read must preserve the %s", label, scalar.description())
+                .isCloseTo(scalar.value().applyAsDouble(legacy.song()), within(SCALAR_TOLERANCE_SS));
+        }
+
+        // 3b. Re-serialize the recovered model.
         var secondGeneration = writeMusicXml(normalized.song(), normalized.fonts());
 
-        // 3b. First-read fidelity: every musically meaningful element present in the
-        // first projection must survive the first read into the second projection.
+        // 3c. First-read content fidelity: every musically meaningful element present in
+        // the first projection must survive the first read into the second projection.
         // Guards against a stably-lossy reader that the fixpoint check alone misses.
         for (var marker : CONTENT_MARKERS) {
             assertThat(countOccurrences(secondGeneration, marker))
