@@ -32,8 +32,8 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.ElementColumn;
-import songscribe.layout.LayoutResult;
 import songscribe.engraving.Staff;
 
 class StackingContextTest extends UnitTest {
@@ -61,7 +61,7 @@ class StackingContextTest extends UnitTest {
         return new StackingContext(
             List.of(),
             mock(Line.class),
-            new LayoutResult.Builder());
+            new LayoutResultBuilder());
     }
 
     // -------------------------------------------------------------------------
@@ -78,7 +78,7 @@ class StackingContextTest extends UnitTest {
         var context = new StackingContext(
             List.of(columnA, columnB),
             mock(Line.class),
-            new LayoutResult.Builder());
+            new LayoutResultBuilder());
 
         var map = context.getColumnsByElement();
 
@@ -96,7 +96,7 @@ class StackingContextTest extends UnitTest {
         var context = new StackingContext(
             List.of(columnA, columnB),
             mock(Line.class),
-            new LayoutResult.Builder());
+            new LayoutResultBuilder());
 
         assertThat(context.getColumnsByElement()).hasSize(2);
     }

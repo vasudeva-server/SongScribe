@@ -139,7 +139,7 @@ class ArticulationStackingTest extends UnitTest {
      * Runs vertical stacking on the given columns and returns the built LayoutResult.
      */
     private static LayoutResult stackColumns(List<ElementColumn> columns) {
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var calculator = new VerticalStackingCalculator();
         calculator.calculate(columns, detachedLine(), builder, LINE_WIDTH_SS, DocumentFonts.defaultFonts());
         return builder.build();
@@ -401,7 +401,7 @@ class ArticulationStackingTest extends UnitTest {
             var column = columnFor(note);
 
             // Create builder with a StemLayout that extends above the note
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             var stemTopSs = -3.5;
             builder.putStemLayout(note,
                 new LayoutResult.StemLayout(stemTopSs, 0.0, 0.0, 0.0, false, 0));
@@ -604,7 +604,7 @@ class ArticulationStackingTest extends UnitTest {
 
             var fullNote = createNote(UP_STEM_STAFF_POSITION, true, ArticulationType.STACCATO);
             var column = columnFor(fullNote);
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             builder.putStemLayout(fullNote,
                 new LayoutResult.StemLayout(EXPLICIT_STEM_TOP_SS, EXPLICIT_STEM_BOTTOM_SS, 0.0, 0.0, false, 0));
 

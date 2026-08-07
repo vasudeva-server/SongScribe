@@ -47,7 +47,7 @@ import songscribe.engraving.SMuFLConstants;
 
 class LayoutResultTest extends UnitTest {
 
-    // T3a: Builder.setClef() round-trips through getClef()
+    // T3a: LayoutResultBuilder.setClef() round-trips through getClef()
     @Test
     void testBuilderClefRoundTrip() {
         var clef = new Clef();
@@ -58,7 +58,7 @@ class LayoutResultTest extends UnitTest {
         assertThat(result.getClef()).isSameAs(clef);
     }
 
-    // T3b: Builder.setKeySignature() round-trips through getKeySignature()
+    // T3b: LayoutResultBuilder.setKeySignature() round-trips through getKeySignature()
     @Test
     void testBuilderKeySignatureRoundTrip() {
         var keySig = new KeySignature(KeyType.FLATS, 2);
@@ -69,7 +69,7 @@ class LayoutResultTest extends UnitTest {
         assertThat(result.getKeySignature()).isSameAs(keySig);
     }
 
-    // T3c: Builder without setClef/setKeySignature returns null for both
+    // T3c: LayoutResultBuilder without setClef/setKeySignature returns null for both
     @Test
     void testBuilderDefaultsToNullHeaderElements() {
         var result = LayoutResult.builder().build();
@@ -1281,7 +1281,7 @@ class LayoutResultTest extends UnitTest {
     //   (3.0 + 4.0) + ANCHOR_BELOW_CONTENT_SS + ANCHOR_STAFF_TO_LYRICS_GAP_SS = 7.0 + 1.5 + 0.25
     private static final double EXPECTED_VERSE_1_BASELINE_SS = 8.75;
 
-    private static LayoutResult.Builder anchorLayoutBuilder() {
+    private static LayoutResultBuilder anchorLayoutBuilder() {
         return LayoutResult.builder()
             .setContentAboveStaffSs(ANCHOR_ABOVE_STAFF_SS)
             .setContentBelowStaffSs(ANCHOR_BELOW_CONTENT_SS);

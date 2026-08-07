@@ -40,6 +40,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.hit.HitTarget;
 import songscribe.engraving.Staff;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricBoxLayout;
 import songscribe.layout.LyricRenderMetrics;
@@ -71,7 +72,7 @@ class LyricTextRendererTest extends UnitTest {
     }
 
     /** A layout carrying this test's synthetic above/below-staff geometry. */
-    private static LayoutResult.Builder layoutBuilder() {
+    private static LayoutResultBuilder layoutBuilder() {
         return LayoutResult.builder()
             .setContentAboveStaffSs(CONTENT_ABOVE_STAFF_SS)
             .setContentBelowStaffSs(CONTENT_BELOW_STAFF_SS);

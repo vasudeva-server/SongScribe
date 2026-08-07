@@ -91,7 +91,7 @@ class LineRendererTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns a {@code LineInvariants.Builder} seeded with minimal required fields
+     * Returns a {@code LineInvariants.LayoutResultBuilder} seeded with minimal required fields
      * so each test only configures the state it cares about.
      */
     private static LineInvariants.Builder seededBuilder() {

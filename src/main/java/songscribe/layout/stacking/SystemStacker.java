@@ -23,8 +23,8 @@ package songscribe.layout.stacking;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.BeatChangeAttachment;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.ElementColumn;
-import songscribe.layout.LayoutResult;
 import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.ScaleContext;
 import songscribe.layout.StaffExtents;
@@ -87,7 +87,7 @@ public class SystemStacker {
      */
     private void stackTempo(
         ElementColumn column,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var note = column.getElement();
         var tempo = note.findAttachment(TempoChangeAttachment.class);
@@ -104,7 +104,7 @@ public class SystemStacker {
      */
     private void stackBeatChange(
         ElementColumn column,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var note = column.getElement();
         var beatChange = note.findAttachment(BeatChangeAttachment.class);
@@ -121,7 +121,7 @@ public class SystemStacker {
      */
     private void stackAnnotations(
         ElementColumn column,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var note = column.getElement();
         var annotation = note.findAttachment(AnnotationAttachment.class);
@@ -156,7 +156,7 @@ public class SystemStacker {
         MetronomeAttachment attachment,
         ElementColumn column,
         double marginSs,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var xSs = column.getXSs();
         var staffPosition = column.getElement().getStaffPosition();

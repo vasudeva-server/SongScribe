@@ -27,11 +27,12 @@ import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.layout.ElementColumn;
-import songscribe.dom.FermataAttachment;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.ShapeProfile;
 import songscribe.layout.StaffExtents;
+import songscribe.dom.FermataAttachment;
 import songscribe.shape.AccentShape;
 import songscribe.smufl.BravuraFont;
 import songscribe.smufl.SMuFLGlyph;
@@ -292,7 +293,7 @@ public class NoteAttachedStacker {
         extents.ySet(true, xSs, noteheadWidthSs, bounds.topSs());
         extents.ySet(false, xSs, noteheadWidthSs, bounds.botSs());
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var staffPosition = note.getStaffPosition();
 
         // Tier 1: Articulations
@@ -535,7 +536,7 @@ public class NoteAttachedStacker {
      */
     private void stackStaccatoColumn(
         ElementColumn column,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var note = column.getElement();
         var staccato = findStaccato(note);
@@ -562,7 +563,7 @@ public class NoteAttachedStacker {
      */
     private void stackAccentColumn(
         ElementColumn column,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var note = column.getElement();
         var accent = findAccent(note);
@@ -593,7 +594,7 @@ public class NoteAttachedStacker {
         StaffElement note,
         double columnXSs, double paddingSs, int staffPosition,
         Direction direction,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         if (staccato == null) {
             return null;
@@ -626,7 +627,7 @@ public class NoteAttachedStacker {
         StaffElement note,
         double columnXSs,
         Direction direction,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         if (accent == null) {
             return null;
@@ -705,7 +706,7 @@ public class NoteAttachedStacker {
     private void stackFermata(
         ElementColumn column,
         StaffExtents outerExtents,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var note = column.getElement();
 
@@ -732,7 +733,7 @@ public class NoteAttachedStacker {
         StaffExtents extents,
         StaffElement note,
         double columnXSs,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         if (fermata == null) {
             return;
@@ -754,7 +755,7 @@ public class NoteAttachedStacker {
      * Processes {@link Trill} spans from {@code line.findSpans(Trill.class)}.
      * Multi-note trills reserve the full horizontal span so subsequent layers clear them.
      */
-    private void stackTrills(StaffExtents outerExtents, LayoutResult.Builder builder) {
+    private void stackTrills(StaffExtents outerExtents, LayoutResultBuilder builder) {
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
         var trills = line.findSpans(Trill.class);
@@ -781,7 +782,7 @@ public class NoteAttachedStacker {
         Trill trill,
         StaffExtents outerExtents,
         Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var anchor = trill.getAnchorElement();
 

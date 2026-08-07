@@ -33,6 +33,7 @@ import songscribe.layout.ElementColumn;
 import songscribe.dom.Ending;
 import songscribe.dom.Hairpin;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
 import songscribe.dom.Trill;
@@ -44,7 +45,7 @@ import songscribe.layout.NoteGeometry;
  * <p>
  * Creates the three-layer {@link StaffExtents} model, delegates to specialized stackers
  * for each tier, then applies manual offsets. All calculations are in staff-space units.
- * Results are written directly to the {@link LayoutResult.Builder}.
+ * Results are written directly to the {@link LayoutResultBuilder}.
  * <p>
  * Tier order:
  * <ol>
@@ -75,7 +76,7 @@ public class VerticalStackingCalculator {
     public void calculate(
         List<ElementColumn> columns,
         Line line,
-        LayoutResult.Builder builder,
+        LayoutResultBuilder builder,
         double lineWidthSs,
         DocumentFontsHolder fonts) {
         calculate(columns, line, builder, lineWidthSs, fonts, null);
@@ -106,7 +107,7 @@ public class VerticalStackingCalculator {
     public void calculate(
         List<ElementColumn> columns,
         Line line,
-        LayoutResult.Builder builder,
+        LayoutResultBuilder builder,
         double lineWidthSs,
         DocumentFontsHolder fonts,
         @Nullable Attribution attribution) {
@@ -198,7 +199,7 @@ public class VerticalStackingCalculator {
         StaffExtents systemExtents,
         double lineWidthSs,
         @Nullable Attribution attribution,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var topExtentSs = systemExtents.yGet(true, 0, lineWidthSs);
         var contentAboveStaffSs = Math.max(0.0, -topExtentSs - Staff.STAFF_HALF_SS);
@@ -234,7 +235,7 @@ public class VerticalStackingCalculator {
         Attribution attribution,
         StaffExtents systemExtents,
         double staffRightSs,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var widthSs = attribution.getContentWidthSs();
         var heightSs = attribution.getContentHeightSs();
@@ -321,14 +322,14 @@ public class VerticalStackingCalculator {
      *   <li>{@link Hairpin}: crescendo / diminuendo shifts in staff-space units</li>
      * </ul>
      */
-    private void applyManualOffsets(LayoutResult.Builder builder) {
+    private void applyManualOffsets(LayoutResultBuilder builder) {
         applyDecorationOffsets(builder);
     }
 
     /**
      * Applies manual offsets to all {@link LayoutResult.DecorationLayout} entries.
      */
-    void applyDecorationOffsets(LayoutResult.Builder builder) {
+    void applyDecorationOffsets(LayoutResultBuilder builder) {
         // Collect entries to avoid ConcurrentModificationException during iteration
         var entries = List.copyOf(builder.getDecorationLayoutEntries());
 

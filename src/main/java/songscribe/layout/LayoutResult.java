@@ -27,7 +27,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 
@@ -40,7 +39,6 @@ import songscribe.dom.KeySignature;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.Span;
-import songscribe.dom.ScaleContext;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.hit.HitRegistry;
@@ -59,14 +57,9 @@ import songscribe.hit.HitRegistry;
  *   <li>Total line height for vertical spacing</li>
  * </ul>
  * <p>
- * This class is immutable after construction. Use {@link Builder} to create instances.
+ * This class is immutable after construction. Use {@link LayoutResultBuilder} to create instances.
  */
 public final class LayoutResult {
-
-    /**
-     * Offset for positioning a preview element before the first element in the line (ss).
-     */
-    private static final double PREVIEW_BEFORE_FIRST_OFFSET_SS = 1.875;  // 15px
 
     private final Map<StaffElement, ElementColumn> elementColumns;
     private final Map<Beam, BeamLayout> beamLayouts;
@@ -91,11 +84,12 @@ public final class LayoutResult {
     private final boolean hasTrailingLyricContinuation;
     private final boolean overflowsStaffWidth;
     private final HitRegistry hitRegistry;
+    private final LayoutHitTester hitTester;
 
     /**
      * Creates a layout result with the given data.
      * <p>
-     * Use {@link Builder} rather than calling this constructor directly.
+     * Use {@link LayoutResultBuilder} rather than calling this constructor directly.
      *
      * @param elementColumns   Map of elements to their columns with positions
      * @param beamLayouts      Map of beam spans to their computed beam geometry
@@ -112,7 +106,9 @@ public final class LayoutResult {
      *                           the tail of the line runs past the staff and is clipped
      * @param hitRegistry        Every clickable area of the line, in layout space
      */
-    private LayoutResult(
+    // Package-private rather than private so LayoutResultBuilder, the only intended caller,
+    // can reach it from its own file.
+    LayoutResult(
         Map<StaffElement, ElementColumn> elementColumns,
         Map<Beam, BeamLayout> beamLayouts,
         Map<StaffElement, StemLayout> stemLayouts,
@@ -156,6 +152,7 @@ public final class LayoutResult {
         this.hasTrailingLyricContinuation = hasTrailingLyricContinuation;
         this.overflowsStaffWidth = overflowsStaffWidth;
         this.hitRegistry = hitRegistry;
+        hitTester = new LayoutHitTester(this);
     }
 
     /**
@@ -178,6 +175,8 @@ public final class LayoutResult {
         hasTrailingLyricContinuation = source.hasTrailingLyricContinuation;
         overflowsStaffWidth = source.overflowsStaffWidth;
         this.hitRegistry = hitRegistry;
+        // The copy answers hit tests against itself, not against source.
+        hitTester = new LayoutHitTester(this);
     }
 
     /**
@@ -642,25 +641,11 @@ public final class LayoutResult {
         return boxes != null ? boxes : List.of();
     }
 
+    /**
+     * Delegates to {@link LayoutHitTester#hitTestLyric}.
+     */
     public @Nullable LyricHit hitTestLyric(LyricRenderMetrics lyricRenderMetrics, Line line, Point2D pointPx) {
-        var rowHeightSs = lyricRenderMetrics.lyricBoxHeightSs();
-        var rowTopYSs = lyricAreaBaseYSs();
-        var pointXSs = ScaleContext.pxToSs(pointPx.getX());
-        var pointYSs = ScaleContext.pxToSs(pointPx.getY());
-
-        for (var element : line.getElements()) {
-            for (var box : getLyricBoxes(element)) {
-                // Matches the ending and note-head hit tests, which also test containment
-                // with Rectangle2D: left and top edges inclusive, right and bottom exclusive.
-                var hitRect = new Rectangle2D.Double(box.xSs(), rowTopYSs, box.widthSs(), rowHeightSs);
-
-                if (hitRect.contains(pointXSs, pointYSs)) {
-                    return new LyricHit(element, box.verseIndex());
-                }
-            }
-        }
-
-        return null;
+        return hitTester.hitTestLyric(lyricRenderMetrics, line, pointPx);
     }
 
     // Package-private for direct unit testing of the formula.
@@ -747,136 +732,21 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Returns the index of the element whose head contains {@code mouseXSs}, or {@code -1} if none.
-     * <p>
-     * Only the horizontal (X) dimension is checked; Y position is ignored.
-     * The hit zone is the actual element head body: {@code [xSs, xSs + rightExtentSs]}.
-     *
-     * @param mouseXSs Mouse X coordinate in staff-space units
-     * @param line     The line containing the elements
-     * @return Element index, or {@code -1} if mouseXSs is not within any element head's horizontal bounds
+     * Delegates to {@link LayoutHitTester#findElementAtXSs}.
      */
     public int findElementAtXSs(double mouseXSs, Line line) {
-        for (var i = 0; i < line.elementCount(); i++) {
-            var element = line.getElement(i);
-            var column = elementColumns.get(element);
-
-            if (column == null) {
-                continue;
-            }
-
-            var elementX = column.getXSs();
-
-            if (mouseXSs >= elementX && mouseXSs <= elementX + column.getRightExtentSs()) {
-                return i;
-            }
-        }
-
-        return -1;
+        return hitTester.findElementAtXSs(mouseXSs, line);
     }
 
     /**
-     * Finds which insertion slot a mouse X coordinate falls into.
-     * <p>
-     * Insertion slots are the positions where an element can be inserted or replaced:
-     * <ul>
-     *   <li>Index 0 to elementCount-1: over an existing element (for replacement)</li>
-     *   <li>Index elementCount: after the last element (for appending)</li>
-     * </ul>
-     * <p>
-     * If the mouse is within the horizontal bounds of an element head, returns that element's index
-     * to indicate replacement. Otherwise, returns the insertion slot between elements.
-     *
-     * @param mouseXSs Mouse X coordinate in staff-space units
-     * @param line     The line containing the elements
-     * @return Insertion index (0 to elementCount inclusive)
+     * Delegates to {@link LayoutHitTester#findInsertionIndex}.
      */
     public int findInsertionIndex(double mouseXSs, Line line) {
-        // Exclude the auto-maintained terminal: insertions always occur before it,
-        // and the gap between the last real element and the barline should behave as
-        // "after the last element" rather than a between-elements midpoint.
-        var elementCount = line.effectiveElementCount();
-
-        if (elementCount == 0) {
-            return 0;
-        }
-
-        // Check each element to see if mouse is within its head bounds
-        var elementAtX = findElementAtXSs(mouseXSs, line);
-
-        if (elementAtX >= 0 && elementAtX < elementCount) {
-            return elementAtX;
-        }
-
-        // Mouse is not over any element head - find insertion slot between elements
-
-        // Check if before first element
-        var firstElement = line.getElement(0);
-        var firstColumn = elementColumns.get(firstElement);
-
-        if (firstColumn == null) {
-            return 0;
-        }
-
-        if (mouseXSs < firstColumn.getXSs()) {
-            return 0;
-        }
-
-        // Check if after last element
-        var lastElement = line.getElement(elementCount - 1);
-        var lastColumn = elementColumns.get(lastElement);
-
-        if (lastColumn == null) {
-            return elementCount;
-        }
-
-        if (mouseXSs > lastColumn.getRightEdgeXSs()) {
-            return elementCount;
-        }
-
-        // Find the slot between elements (excluding element head bounds)
-        for (var i = 0; i < elementCount - 1; i++) {
-            var currentElement = line.getElement(i);
-            var nextElement = line.getElement(i + 1);
-
-            var currentColumn = elementColumns.get(currentElement);
-            var nextColumn = elementColumns.get(nextElement);
-
-            if (currentColumn == null || nextColumn == null) {
-                continue;
-            }
-
-            var currentRight = currentColumn.getRightEdgeXSs();
-            var nextLeft = nextColumn.getXSs();
-
-            // Check if mouseXSs is in the gap between element heads
-            if (mouseXSs > currentRight && mouseXSs < nextLeft) {
-                return i + 1;
-            }
-        }
-
-        // Fallback: return position after last element
-        return elementCount;
+        return hitTester.findInsertionIndex(mouseXSs, line);
     }
 
     /**
-     * Calculates the X position for rendering a preview element at a given index.
-     * <p>
-     * If the mouse is within the horizontal bounds of an element head, snaps to that element,
-     * centering the preview's glyph on it. Otherwise, centers the preview in the room the
-     * neighbouring glyphs leave, or between the last element and the line's right boundary.
-     *
-     * @param insertionIndex      The insertion index (0 to elementCount inclusive)
-     * @param mouseXSs            Mouse X coordinate in staff-space units (used to detect if over an
-     *                            element head); ignored when {@code betweenElementsOnly} is true
-     * @param previewElement      The element to be inserted (used to calculate extents for after-last
-     *                            positioning)
-     * @param line                The line containing the elements
-     * @param betweenElementsOnly When true, skips the element-head snap check below and always
-     *                            returns a between-elements/before-first/after-last position — for
-     *                            callers (e.g. the paste-mode insertion marker) that never merge onto
-     *                            an existing element's own position
-     * @return X position in staff-space units for rendering the preview element
+     * Delegates to {@link LayoutHitTester#calculateInsertionXSs}.
      */
     public double calculateInsertionXSs(
         int insertionIndex,
@@ -885,157 +755,8 @@ public final class LayoutResult {
         Line line,
         boolean betweenElementsOnly) {
 
-        // Exclude the auto-maintained terminal from positioning decisions —
-        // it sits at the line's right edge and must not be treated as a real
-        // neighbour for spacing the preview.
-        var elementCount = line.effectiveElementCount();
-
-        // Empty line - use first element position (clef + key signature + offset)
-        if (elementCount == 0) {
-            return HorizontalSpacingCalculator.calculateFirstElementXSs(line);
-        }
-
-        // Check if mouse is over any element head - if so, snap to that element's position.
-        // Include the terminal so hovering over it snaps the preview to its position.
-        if (!betweenElementsOnly) {
-            for (var i = 0; i < line.elementCount(); i++) {
-                var element = line.getElement(i);
-                var column = elementColumns.get(element);
-
-                if (column == null) {
-                    continue;
-                }
-
-                var elementX = column.getXSs();
-
-                if (mouseXSs >= elementX && mouseXSs <= elementX + column.getRightExtentSs()) {
-                    // Mouse is over this element head - snap to its position.
-                    // For the terminal, right-align the preview to the terminal's right edge
-                    // so a wider replacement (e.g. REPEAT_RIGHT replacing FINAL_DOUBLE_BARLINE)
-                    // doesn't overflow the staff boundary.
-                    if (line.getSong().isAutoMaintainedTerminal(element, line)) {
-                        var previewRightExtentSs = ElementColumnBuilder.calculateRightExtentSs(
-                                previewElement, false, StaffElement.Direction.UP);
-                        return elementX + column.getRightExtentSs() - previewRightExtentSs;
-                    }
-
-                    // Center the preview's glyph on the hovered element's glyph rather than
-                    // aligning the two origins: a preview narrower than what it would replace —
-                    // a thin barline over a notehead — otherwise sits against that element's
-                    // left edge instead of on it (refs #689). Both widths are measured the same
-                    // way, so a preview of the hovered element's own type still lands exactly
-                    // on it.
-                    return centeredInRoomSs(
-                        elementX, elementX + element.getType().getElementWidthSs(), previewElement);
-                }
-            }
-        }
-
-        // Mouse is not over an element head - handle insertion
-
-        // Before first element - position to the left
-        if (insertionIndex == 0) {
-            var firstElement = line.getElement(0);
-            var firstColumn = elementColumns.get(firstElement);
-
-            if (firstColumn == null) {
-                return HorizontalSpacingCalculator.calculateFirstElementXSs(line);
-            }
-
-            return firstColumn.getXSs() - PREVIEW_BEFORE_FIRST_OFFSET_SS;
-        }
-
-        // After last element - use same spacing logic as layout engine
-        if (insertionIndex >= elementCount) {
-            var lastElement = line.getElement(elementCount - 1);
-            var lastColumn = elementColumns.get(lastElement);
-
-            if (lastColumn == null) {
-                return HorizontalSpacingCalculator.calculateFirstElementXSs(line);
-            }
-
-            // Build a temporary column for the preview element to calculate proper spacing
-            var insertionColumn = new ElementColumn(
-                previewElement,
-                Collections.emptyList(),
-                ElementColumnBuilder.calculateLeftExtentSs(previewElement),
-                ElementColumnBuilder.calculateRightExtentSs(previewElement, false, StaffElement.Direction.UP),
-                ElementColumnBuilder.calculateRightExtentExcludingAugmentationSs(previewElement, false, StaffElement.Direction.UP),
-                0,
-                0,
-                null,  // a preview element carries no lyric
-                0,
-                false
-            );
-
-            var song = line.getSong();
-
-            // Space the pair through the spring engine the committed layout uses, so the preview
-            // honours the song's line rest instead of a fixed default gap.
-            var naturalXSs = lastColumn.getXSs()
-                + HorizontalSpacingCalculator.buildSpring(
-                    lastColumn, insertionColumn, song.getDefaultRestLengthSs()).naturalLengthSs();
-
-            // The line can already be visually full — its committed elements compressed to fit —
-            // so the preview's default spacing can overrun what room is actually left. The nearest
-            // hard boundary is the auto-maintained terminal (excluded from elementCount above) when
-            // the line has one, otherwise the staff margin itself. Splitting the remaining room
-            // between the last real element and that boundary reads as the preview floating past
-            // the end of the line, rather than pinned flush against the boundary (refs #608).
-            var boundarySs = song.getLineWidthSs();
-            var terminalColumn = line.elementCount() > elementCount
-                ? elementColumns.get(line.getElement(elementCount))
-                : null;
-
-            if (terminalColumn != null) {
-                boundarySs = terminalColumn.getXSs();
-            }
-
-            if (naturalXSs + insertionColumn.getRightExtentSs() > boundarySs) {
-                // The room starts at the last element's drawn right edge, measured the same way as
-                // the between-elements case below: past the glyph, but not past its flag or dots.
-                return centeredInRoomSs(
-                    lastColumn.getXSs() + lastElement.getType().getElementWidthSs(), boundarySs, previewElement);
-            }
-
-            return naturalXSs;
-        }
-
-        // Between elements - center the preview in the room the two neighbouring glyphs leave
-        var prevElement = line.getElement(insertionIndex - 1);
-        var currElement = line.getElement(insertionIndex);
-
-        var prevColumn = elementColumns.get(prevElement);
-        var currColumn = elementColumns.get(currElement);
-
-        if (prevColumn == null || currColumn == null) {
-            return HorizontalSpacingCalculator.calculateFirstElementXSs(line);
-        }
-
-        // The room runs from the previous element's drawn right edge to the next element's origin,
-        // which is that element's drawn left edge. Extents are deliberately not consulted: a flag,
-        // dot or accidental does not shrink the room, but the glyphs themselves do — starting the
-        // room at the previous element's own origin would center the preview over that element's
-        // notehead rather than in the space beside it (refs #689).
-        var roomStartSs = prevColumn.getXSs() + prevElement.getType().getElementWidthSs();
-
-        return centeredInRoomSs(roomStartSs, currColumn.getXSs(), previewElement);
-    }
-
-    /**
-     * Returns the X at which {@code previewElement}'s glyph sits centered in the room between
-     * {@code roomStartSs} and {@code roomEndSs}.
-     * <p>
-     * Centering is symmetric in both directions: a preview wider than the room straddles it,
-     * overlapping each side equally, rather than being pinned to either edge.
-     * <p>
-     * The width centered is the element's own drawn width, not its column's spacing footprint —
-     * a flag, accidental or dot would otherwise leave the glyph the eye actually reads as the
-     * element sitting well off center.
-     */
-    private static double centeredInRoomSs(double roomStartSs, double roomEndSs, StaffElement previewElement) {
-        var previewWidthSs = previewElement.getType().getElementWidthSs();
-        return roomStartSs + (roomEndSs - roomStartSs - previewWidthSs) / 2;
+        return hitTester.calculateInsertionXSs(
+            insertionIndex, mouseXSs, previewElement, line, betweenElementsOnly);
     }
 
     // ==========================================================================
@@ -1054,297 +775,12 @@ public final class LayoutResult {
     // ==========================================================================
 
     /**
-     * Builder for creating LayoutResult instances incrementally.
-     */
-    public static class Builder {
-
-        private final Map<StaffElement, ElementColumn> elementColumns;
-        private final Map<Beam, BeamLayout> beamLayouts;
-        private final Map<StaffElement, StemLayout> stemLayouts;
-        private final Map<Tie, TieLayout> tieLayouts;
-        private final Map<LineElement, DecorationLayout> decorationLayouts;
-        private final Map<StaffElement, SlideLayout> slideLayouts;
-        @Nullable
-        private Clef clef;
-        @Nullable
-        private KeySignature keySignature;
-        private double contentAboveStaffSs = 0;
-        private double contentBelowStaffSs = 0;
-        private final Map<StaffElement, List<LyricBoxLayout>> lyricBoxes;
-        private final List<LyricConnectorLayout> lyricConnectors;
-        private boolean hasTrailingLyricContinuation = false;
-        private boolean overflowsStaffWidth = false;
-
-        public Builder() {
-            elementColumns = new HashMap<>();
-            beamLayouts = new HashMap<>();
-            stemLayouts = new HashMap<>();
-            tieLayouts = new HashMap<>();
-            decorationLayouts = new HashMap<>();
-            slideLayouts = new HashMap<>();
-            lyricBoxes = new HashMap<>();
-            lyricConnectors = new ArrayList<>();
-        }
-
-        /**
-         * Sets the clef element for this line.
-         *
-         * @param clef The clef element
-         * @return This builder for chaining
-         */
-        public Builder setClef(Clef clef) {
-            this.clef = clef;
-            return this;
-        }
-
-        /**
-         * Sets the key signature element for this line.
-         *
-         * @param keySignature The key signature element
-         * @return This builder for chaining
-         */
-        public Builder setKeySignature(KeySignature keySignature) {
-            this.keySignature = keySignature;
-            return this;
-        }
-
-        /**
-         * Adds an element column to the result.
-         *
-         * @param element The element
-         * @param column  The element's column with position
-         * @return This builder for chaining
-         */
-        public Builder putElementColumn(StaffElement element, ElementColumn column) {
-            elementColumns.put(element, column);
-            return this;
-        }
-
-        /**
-         * Sets the true extent of this line's content above the staff top.
-         *
-         * @param contentAboveStaffSs Distance above the staff top in staff-space units (i.e. the
-         *                            staff top's Y position within the line's local coordinate frame)
-         * @return This builder for chaining
-         */
-        public Builder setContentAboveStaffSs(double contentAboveStaffSs) {
-            this.contentAboveStaffSs = contentAboveStaffSs;
-            return this;
-        }
-
-        /**
-         * Sets the true extent of this line's content below the staff bottom.
-         * <p>
-         * Must never be negative. A line with nothing below its staff sets 0, which is what
-         * {@link #lyricAnchorBelowStaffSs} keys off to inset the lyric row; a negative value
-         * would slip past that check and place the row above the staff bottom.
-         *
-         * @param contentBelowStaffSs Distance below the staff bottom in staff-space units,
-         *                            zero or greater
-         * @return This builder for chaining
-         */
-        public Builder setContentBelowStaffSs(double contentBelowStaffSs) {
-            this.contentBelowStaffSs = contentBelowStaffSs;
-            return this;
-        }
-
-        /**
-         * Adds a lyric box for an element. One verse is laid out at a time, so an element gets at
-         * most one box; insertion order is preserved.
-         *
-         * @param element the element the box is anchored to
-         * @param box     the lyric box layout
-         * @return this builder for chaining
-         */
-        public Builder addLyricBox(StaffElement element, LyricBoxLayout box) {
-            lyricBoxes.computeIfAbsent(element, e -> new ArrayList<>()).add(box);
-            return this;
-        }
-
-        /**
-         * Adds a lyric connector (hyphen or extender) to the line.
-         *
-         * @param connector the connector layout
-         * @return this builder for chaining
-         */
-        public Builder addLyricConnector(LyricConnectorLayout connector) {
-            lyricConnectors.add(connector);
-            return this;
-        }
-
-        /**
-         * Marks whether this line ends with an active melisma extender that continues onto
-         * the next line.
-         *
-         * @param hasTrailingLyricContinuation true if continuation continues past the last note
-         * @return this builder for chaining
-         */
-        public Builder setHasTrailingLyricContinuation(boolean hasTrailingLyricContinuation) {
-            this.hasTrailingLyricContinuation = hasTrailingLyricContinuation;
-            return this;
-        }
-
-        /**
-         * Marks whether the line was placed on its collision floors because its content could not
-         * fit the staff width, so its tail runs past the staff and is clipped.
-         *
-         * @param overflowsStaffWidth true if the line overflows the staff width
-         * @return this builder for chaining
-         */
-        public Builder setOverflowsStaffWidth(boolean overflowsStaffWidth) {
-            this.overflowsStaffWidth = overflowsStaffWidth;
-            return this;
-        }
-
-        /**
-         * Adds computed beam geometry for a beam span.
-         *
-         * @param span       The beam span
-         * @param beamLayout The computed beam geometry
-         * @return This builder for chaining
-         */
-        public Builder putBeamLayout(Beam beam, BeamLayout beamLayout) {
-            beamLayouts.put(beam, beamLayout);
-            return this;
-        }
-
-        /**
-         * Adds computed stem geometry for an unbeamed element.
-         *
-         * @param element    The element
-         * @param stemLayout The computed stem geometry
-         * @return This builder for chaining
-         */
-        public Builder putStemLayout(StaffElement element, StemLayout stemLayout) {
-            stemLayouts.put(element, stemLayout);
-            return this;
-        }
-
-        /**
-         * Adds computed tie geometry for a tie span.
-         *
-         * @param span      The tie span
-         * @param tieLayout The computed tie geometry
-         * @return This builder for chaining
-         */
-        public Builder putTieLayout(Tie tie, TieLayout tieLayout) {
-            tieLayouts.put(tie, tieLayout);
-            return this;
-        }
-
-        /**
-         * Adds computed slide geometry for a slide-owning note.
-         *
-         * @param note        The note owning the slide
-         * @param slideLayout The computed slide geometry
-         * @return This builder for chaining
-         */
-        public Builder putSlideLayout(StaffElement note, SlideLayout slideLayout) {
-            slideLayouts.put(note, slideLayout);
-            return this;
-        }
-
-        /**
-         * Adds computed decoration layout for an above-staff decoration element.
-         *
-         * @param element          The decoration element
-         * @param decorationLayout The computed decoration geometry
-         * @return This builder for chaining
-         */
-        public Builder putDecorationLayout(LineElement element, DecorationLayout decorationLayout) {
-            decorationLayouts.put(element, decorationLayout);
-            return this;
-        }
-
-        /**
-         * Returns the decoration layout entries for iteration.
-         * <p>
-         * Used by the post-layout offset application pass to read and update
-         * decoration positions with manual user offsets.
-         *
-         * @return The decoration layout entry set (mutable — callers may update via
-         *         {@link #putDecorationLayout})
-         */
-        public Set<Map.Entry<LineElement, DecorationLayout>> getDecorationLayoutEntries() {
-            return decorationLayouts.entrySet();
-        }
-
-        /**
-         * Returns the decoration layout for a specific element, or null if not yet computed.
-         *
-         * @param element The decoration element to look up
-         * @return The decoration layout, or null if not present
-         */
-        public @Nullable DecorationLayout getDecorationLayout(LineElement element) {
-            return decorationLayouts.get(element);
-        }
-
-        /**
-         * Returns the tie layout for a tie span from the builder's accumulated data.
-         *
-         * @param span The tie span to look up
-         * @return The tie layout, or null if not yet computed
-         */
-        public @Nullable TieLayout getTieLayout(Tie tie) {
-            return tieLayouts.get(tie);
-        }
-
-        /**
-         * Returns the stem layout for an element from the builder's accumulated data.
-         * <p>
-         * Checks beamed stem layouts first, then standalone stem layouts.
-         * Used by the vertical stacking calculator to seed note bounding areas.
-         *
-         * @param element The element to look up
-         * @return The stem layout, or null if not yet computed
-         */
-        public @Nullable StemLayout getStemLayout(StaffElement element) {
-            for (var beamLayout : beamLayouts.values()) {
-                var stemLayout = beamLayout.stems().get(element);
-
-                if (stemLayout != null) {
-                    return stemLayout;
-                }
-            }
-
-            return stemLayouts.get(element);
-        }
-
-        /**
-         * Builds the immutable result.
-         *
-         * @return The layout result
-         */
-        public LayoutResult build() {
-            return new LayoutResult(
-                elementColumns,
-                beamLayouts,
-                stemLayouts,
-                tieLayouts,
-                decorationLayouts,
-                slideLayouts,
-                clef,
-                keySignature,
-                contentAboveStaffSs,
-                contentBelowStaffSs,
-                lyricBoxes,
-                lyricConnectors,
-                hasTrailingLyricContinuation,
-                overflowsStaffWidth,
-                // The registry is built from a finished result and attached with
-                // withHitRegistry, so a freshly built one has nothing clickable yet.
-                HitRegistry.EMPTY
-            );
-        }
-    }
-
-    /**
      * Creates a new builder for LayoutResult.
      *
      * @return A new builder instance
      */
-    public static Builder builder() {
-        return new Builder();
+    public static LayoutResultBuilder builder() {
+        return new LayoutResultBuilder();
     }
 
     @Override

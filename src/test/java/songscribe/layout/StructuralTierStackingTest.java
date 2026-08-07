@@ -97,7 +97,7 @@ class StructuralTierStackingTest extends UnitTest {
     }
 
     private static LayoutResult stackColumns(List<ElementColumn> columns, Line line) {
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var calculator = new VerticalStackingCalculator();
         calculator.calculate(columns, line, builder, LINE_WIDTH_SS, DocumentFonts.defaultFonts());
         return builder.build();
@@ -108,7 +108,7 @@ class StructuralTierStackingTest extends UnitTest {
      * Use when you need exact Y control — no note-attached layer seeding occurs.
      */
     private static LayoutResult stackDirectly(List<ElementColumn> columns, Line line) {
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var context = new StackingContext(columns, line, builder);
         var stacker = new StructuralStacker(context, new StaffExtents(LINE_WIDTH_SS));
         stacker.stackTuplets();

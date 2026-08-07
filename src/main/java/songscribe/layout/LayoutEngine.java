@@ -302,7 +302,7 @@ public class LayoutEngine {
     private void buildLyricLayout(
         List<ElementColumn> columns,
         int activeVerse,
-        LayoutResult.Builder builder,
+        LayoutResultBuilder builder,
         boolean hasLeadingLyricContinuation) {
 
         var lyricResult = LyricLayoutBuilder.build(
@@ -445,7 +445,7 @@ public class LayoutEngine {
     private LayoutResult buildLayoutResult(
         List<ElementColumn> columns,
         Line line,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         // Add element columns
         for (var column : columns) {
@@ -570,7 +570,7 @@ public class LayoutEngine {
     private void calculateBeams(
         Line line,
         List<ElementColumn> columns,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
         var beams = line.findSpans(Beam.class);
         var elementToColumn = elementToColumnMap(columns);
 
@@ -775,7 +775,7 @@ public class LayoutEngine {
     private void calculateUnbeamedStems(
         Line line,
         List<ElementColumn> columns,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
         for (var col : columns) {
             var element = col.getElement();
 
@@ -832,7 +832,7 @@ public class LayoutEngine {
     private void calculateTies(
         Line line,
         List<ElementColumn> columns,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var ties = line.findTies();
 
@@ -1097,7 +1097,7 @@ public class LayoutEngine {
     private void calculateSlides(
         Line line,
         List<ElementColumn> columns,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var elementToColumn = elementToColumnMap(columns);
 
@@ -1392,7 +1392,7 @@ public class LayoutEngine {
      * {@link HorizontalSpacingCalculator#calculateKeySignatureXSs()}, one clef width plus
      * LilyPond's clef-to-key-signature gap further right.
      */
-    private static void createHeaderElements(Line line, LayoutResult.Builder builder) {
+    private static void createHeaderElements(Line line, LayoutResultBuilder builder) {
         var clef = new Clef();
         clef.setPosition(CLEF_X_POSITION_SS, 0);
         builder.setClef(clef);

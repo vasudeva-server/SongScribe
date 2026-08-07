@@ -349,7 +349,7 @@ class LineInvariantsTest extends UnitTest {
             .isEqualTo(Color.BLACK);
     }
 
-    // Builder.build() — throws IllegalStateException when layoutResult is null
+    // LayoutResultBuilder.build() — throws IllegalStateException when layoutResult is null
     @Test
     void testBuildThrowsWhenLayoutResultNull() {
         var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())
@@ -360,7 +360,7 @@ class LineInvariantsTest extends UnitTest {
             .hasMessage(BUILD_VALIDATION_MESSAGE);
     }
 
-    // Builder.build() — throws IllegalStateException when lyricRenderMetrics is null
+    // LayoutResultBuilder.build() — throws IllegalStateException when lyricRenderMetrics is null
     @Test
     void testBuildThrowsWhenLyricRenderMetricsNull() {
         var builder = LineInvariants.builder(new Song(), DocumentFonts.defaultFonts())

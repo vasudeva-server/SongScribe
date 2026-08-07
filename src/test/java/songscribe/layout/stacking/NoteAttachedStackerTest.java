@@ -41,6 +41,7 @@ import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.NoteGeometry;
 import songscribe.layout.ShapeProfile;
 import songscribe.layout.StaffExtents;
@@ -156,7 +157,7 @@ class NoteAttachedStackerTest extends UnitTest {
         @Test
         void testStemPathSeedsExactStemExtentsIntoNoteAttachedLayer() {
             var note = stemUpNote(STAFF_CENTER_SP);
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             // Extreme stem values ensure the min/max clamps always select the stem.
             builder.putStemLayout(note,
                 new LayoutResult.StemLayout(EXTREME_STEM_TOP_SS, EXTREME_STEM_BOT_SS, 0, 0, true, 0));
@@ -211,7 +212,7 @@ class NoteAttachedStackerTest extends UnitTest {
         @Test
         void testBotContentExtentSsIsSetToFullElementBottom() {
             var note = stemUpNote(STAFF_CENTER_SP);
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             // Extreme stem makes botSs = EXTREME_STEM_BOT_SS, which exceeds the initial
             // STAFF_HALF_SS (2.0) so the context field is updated.
             builder.putStemLayout(note,
@@ -241,7 +242,7 @@ class NoteAttachedStackerTest extends UnitTest {
             var tie = new Tie(startNote, endNote);
             line.addSpan(tie);
 
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             builder.putTieLayout(tie,
                 flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, PROTRUDING_ARC_Y_SS));
 
@@ -268,7 +269,7 @@ class NoteAttachedStackerTest extends UnitTest {
             line.addSpan(tie);
 
             var tieLayout = arcTieLayout(BEZIER_CP_Y_SS);
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             builder.putTieLayout(tie, tieLayout);
 
             var context = new StackingContext(
@@ -321,7 +322,7 @@ class NoteAttachedStackerTest extends UnitTest {
             var tie = new Tie(startNote, endNote);
             line.addSpan(tie);
 
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             // Stem sets botContentExtentSs to EXTREME_STEM_BOT_SS (10.0); arc at 20.0
             // is further down, so the tie becomes the bottoming constraint.
             builder.putStemLayout(startNote,
@@ -350,7 +351,7 @@ class NoteAttachedStackerTest extends UnitTest {
             var tie = new Tie(startNote, endNote);
             line.addSpan(tie);
 
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             builder.putTieLayout(tie,
                 flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, DOWNWARD_ARC_Y_SS));
 
@@ -396,7 +397,7 @@ class NoteAttachedStackerTest extends UnitTest {
                 .describedAs("sanity: conflicting stems resolve to the neutral branch — arc bulges up (above)")
                 .isLessThan(0);
 
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             builder.putTieLayout(tie,
                 flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, PROTRUDING_ARC_Y_SS));
 
@@ -533,7 +534,7 @@ class NoteAttachedStackerTest extends UnitTest {
             var accent = startNote.getArticulations().get(1);
 
             var line = detachedLine();
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             List<ElementColumn> columns;
 
             if (withTie) {
@@ -568,7 +569,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var fermata = new FermataAttachment(note);
         note.addAttachment(fermata);
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var context = new StackingContext(
             List.of(mockColumnAt(note, START_NOTE_X_SS)), detachedLine(), builder);
         stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
@@ -623,7 +624,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var fermata = new FermataAttachment(note);
         note.addAttachment(fermata);
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var context = new StackingContext(
             List.of(mockColumnAt(note, START_NOTE_X_SS)), detachedLine(), builder);
         stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
@@ -652,7 +653,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var tie = new Tie(startNote, endNote);
         line.addSpan(tie);
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         builder.putTieLayout(tie, flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, PROTRUDING_ARC_Y_SS));
 
         var context = new StackingContext(
@@ -683,7 +684,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var trill = new Trill(note);
         line.addSpan(trill);
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var context = new StackingContext(
             List.of(mockColumnAt(note, START_NOTE_X_SS)), line, builder);
         stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
@@ -707,7 +708,7 @@ class NoteAttachedStackerTest extends UnitTest {
         trill.setEndElement(null);
         line.addSpan(trill);
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var context = new StackingContext(
             List.of(mockColumnAt(note, START_NOTE_X_SS)), line, builder);
         stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
@@ -733,7 +734,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var trillWithRest = new Trill(anchorNote, endNote);
         lineWithRest.addSpan(trillWithRest);
 
-        var builderWithRest = new LayoutResult.Builder();
+        var builderWithRest = new LayoutResultBuilder();
         var contextWithRest = new StackingContext(
             List.of(mockColumnAt(anchorNote, START_NOTE_X_SS), mockColumnAt(endNote, END_NOTE_X_SS)),
             lineWithRest, builderWithRest);
@@ -749,7 +750,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var trillNoRest = new Trill(anchorNoteNoRest, endNoteNoRest);
         lineNoRest.addSpan(trillNoRest);
 
-        var builderNoRest = new LayoutResult.Builder();
+        var builderNoRest = new LayoutResultBuilder();
         var contextNoRest = new StackingContext(
             List.of(mockColumnAt(anchorNoteNoRest, START_NOTE_X_SS),
                 mockColumnAt(endNoteNoRest, END_NOTE_X_SS)),
@@ -785,7 +786,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var trill = new Trill(anchorNote, endNote);
         line.addSpan(trill);
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         // Both notes share the same real support edge, via an explicit stem top rather than
         // relying on notehead geometry to land in the narrow window described above.
         builder.putStemLayout(anchorNote,
@@ -827,7 +828,7 @@ class NoteAttachedStackerTest extends UnitTest {
             note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
             var accent = note.getArticulations().getFirst();
 
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
             stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
@@ -843,7 +844,7 @@ class NoteAttachedStackerTest extends UnitTest {
             note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
             var accent = note.getArticulations().getFirst();
 
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
             stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
@@ -875,7 +876,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var trill = new Trill(note);
         line.addSpan(trill);
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var context = new StackingContext(
             List.of(mockColumnAt(note, START_NOTE_X_SS)), line, builder);
         stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
@@ -907,7 +908,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var fermata = new FermataAttachment(note);
         note.addAttachment(fermata);
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
         stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
@@ -936,7 +937,7 @@ class NoteAttachedStackerTest extends UnitTest {
         note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
         var accent = note.getArticulations().get(1);
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
         stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
@@ -959,7 +960,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var fermata = new FermataAttachment(note);
         note.addAttachment(fermata);
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
         stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
@@ -994,7 +995,7 @@ class NoteAttachedStackerTest extends UnitTest {
         note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
         var staccato = note.getArticulations().getFirst();
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)), builder);
         stackNoteAttached(context, new StaffExtents(LINE_WIDTH_SS));
 
@@ -1025,7 +1026,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var tie = new Tie(startNote, endNote);
         line.addSpan(tie);
 
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         // Upward arc protruding past the above accent's note-relative position, so that accent must
         // clear it.
         builder.putTieLayout(tie, flatTieLayout(START_NOTE_X_SS, END_NOTE_X_SS, PROTRUDING_ARC_Y_SS));
@@ -1086,11 +1087,11 @@ class NoteAttachedStackerTest extends UnitTest {
     }
 
     private static StackingContext contextWith(List<ElementColumn> columns) {
-        return contextWith(columns, new LayoutResult.Builder());
+        return contextWith(columns, new LayoutResultBuilder());
     }
 
     private static StackingContext contextWith(
-            List<ElementColumn> columns, LayoutResult.Builder builder) {
+            List<ElementColumn> columns, LayoutResultBuilder builder) {
         return new StackingContext(columns, detachedLine(), builder);
     }
 

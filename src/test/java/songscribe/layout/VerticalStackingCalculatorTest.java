@@ -358,7 +358,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
          * line takes, with no empty-specific branch behind it (refs #630).
          */
         private static double stackOnEmptyLine(
-            Attribution attribution, LayoutResult.Builder builder) {
+            Attribution attribution, LayoutResultBuilder builder) {
 
             new VerticalStackingCalculator().calculate(
                 List.of(),

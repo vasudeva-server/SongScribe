@@ -39,6 +39,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Tuplet;
 import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.StaffExtents;
@@ -654,7 +655,7 @@ class StructuralStackerTest extends UnitTest {
     @Nested
     class RawObstacleTopSs {
 
-        private static StructuralStacker newStacker(LayoutResult.Builder builder) {
+        private static StructuralStacker newStacker(LayoutResultBuilder builder) {
             var context = new StackingContext(List.of(), detachedLine(), builder);
             return new StructuralStacker(context, new StaffExtents(WIDTH_SS));
         }
@@ -666,7 +667,7 @@ class StructuralStackerTest extends UnitTest {
             column.getElement().setUpper(true);
             when(column.isBeamed()).thenReturn(false);
 
-            var stacker = newStacker(new LayoutResult.Builder());
+            var stacker = newStacker(new LayoutResultBuilder());
 
             assertThat(stacker.rawObstacleTopSs(column)).isCloseTo(naturalTopYSs, within(TOLERANCE));
         }
@@ -679,7 +680,7 @@ class StructuralStackerTest extends UnitTest {
             when(column.isBeamed()).thenReturn(true);
 
             // No stem layout put into the builder for this element -- getStemLayout returns null.
-            var stacker = newStacker(new LayoutResult.Builder());
+            var stacker = newStacker(new LayoutResultBuilder());
 
             assertThat(stacker.rawObstacleTopSs(column)).isCloseTo(naturalTopYSs, within(TOLERANCE));
         }
@@ -692,7 +693,7 @@ class StructuralStackerTest extends UnitTest {
             column.getElement().setUpper(true);
             when(column.isBeamed()).thenReturn(true);
 
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             builder.putStemLayout(column.getElement(),
                 new LayoutResult.StemLayout(beamTopYSs, 0.0, 0.0, 0.0, false, 0));
             var stacker = newStacker(builder);
@@ -710,7 +711,7 @@ class StructuralStackerTest extends UnitTest {
             // Default direction is DOWN.
             when(column.isBeamed()).thenReturn(true);
 
-            var builder = new LayoutResult.Builder();
+            var builder = new LayoutResultBuilder();
             builder.putStemLayout(column.getElement(),
                 new LayoutResult.StemLayout(beamTopYSs, 0.0, 0.0, 0.0, false, 0));
             var stacker = newStacker(builder);

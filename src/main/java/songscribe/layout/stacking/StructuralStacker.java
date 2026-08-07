@@ -36,13 +36,14 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
 import songscribe.engraving.LineThickness;
 import songscribe.layout.ElementColumn;
-import songscribe.dom.Ending;
 import songscribe.layout.EndingBracketGeometry;
 import songscribe.layout.LayoutResult;
-import songscribe.dom.Span;
-import songscribe.layout.StaffExtents;
-import songscribe.dom.Tuplet;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.NoteGeometry;
+import songscribe.layout.StaffExtents;
+import songscribe.dom.Ending;
+import songscribe.dom.Span;
+import songscribe.dom.Tuplet;
 
 import static songscribe.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.layout.stacking.StackingUtils.stackAboveWithRegions;
@@ -143,7 +144,7 @@ public class StructuralStacker {
     private void stackTuplets(
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         for (var tuplet : line.findSpans(Tuplet.class)) {
             var spanColumns = ElementColumn.resolveSpan(tuplet, columnsByElement);
@@ -518,7 +519,7 @@ public class StructuralStacker {
     private void stackHairpins(
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         for (var crescendo : line.findSpans(Crescendo.class)) {
             stackSpanElement(crescendo, crescendo.getContentHeightSs(), HAIRPIN_MARGIN_SS, columnsByElement, builder);
@@ -538,7 +539,7 @@ public class StructuralStacker {
      */
     private void stackTextDynamics(
         ElementColumn column,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var note = column.getElement();
         var dynamic = note.findAttachment(DynamicAttachment.class);
@@ -567,7 +568,7 @@ public class StructuralStacker {
     private void stackEndings(
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         for (var ending : line.findSpans(Ending.class)) {
             var anchor = ending.getAnchorElement();
@@ -630,7 +631,7 @@ public class StructuralStacker {
         double heightSs,
         double marginSs,
         Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var spanColumns = ElementColumn.resolveSpan(element, columnsByElement);
 

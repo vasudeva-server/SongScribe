@@ -68,7 +68,7 @@ class FermataTrillStackingTest extends UnitTest {
     }
 
     private static LayoutResult stackColumns(List<ElementColumn> columns, Line line) {
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
         var calculator = new VerticalStackingCalculator();
         calculator.calculate(columns, line, builder, LINE_WIDTH_SS, DocumentFonts.defaultFonts());
         return builder.build();

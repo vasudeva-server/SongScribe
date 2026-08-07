@@ -26,8 +26,8 @@ import java.util.Map;
 
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.ElementColumn;
-import songscribe.layout.LayoutResult;
 import songscribe.engraving.Staff;
 
 /**
@@ -41,7 +41,7 @@ public class StackingContext {
     private final List<ElementColumn> columns;
     private final Map<StaffElement, ElementColumn> columnsByElement;
     private final Line line;
-    private final LayoutResult.Builder builder;
+    private final LayoutResultBuilder builder;
     private double lowestNoteBotSs = Staff.STAFF_HEIGHT_SS;
     // True extent of staff-element content below the staff. Defaults to staff bottom
     // (STAFF_HALF_SS in middle-relative coordinates) so an empty line contributes 0
@@ -51,7 +51,7 @@ public class StackingContext {
     public StackingContext(
             List<ElementColumn> columns,
             Line line,
-            LayoutResult.Builder builder) {
+            LayoutResultBuilder builder) {
         this.columns = columns;
         this.line = line;
         this.builder = builder;
@@ -70,7 +70,7 @@ public class StackingContext {
         return line;
     }
 
-    public LayoutResult.Builder getBuilder() {
+    public LayoutResultBuilder getBuilder() {
         return builder;
     }
 

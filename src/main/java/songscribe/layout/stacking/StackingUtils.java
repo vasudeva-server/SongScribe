@@ -24,6 +24,7 @@ import java.util.List;
 
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Direction;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.smufl.SMuFLMetadata;
 import songscribe.dom.CollisionRegion;
 import songscribe.layout.LayoutResult;
@@ -161,7 +162,7 @@ public final class StackingUtils {
      * distinct from a pre-beam estimate such as {@link songscribe.layout.ElementColumn#getAbsoluteTopYSs()}.
      */
     static double resolvedStemTopYSs(
-        LayoutResult.Builder builder, StaffElement element, double fallbackTopSs) {
+        LayoutResultBuilder builder, StaffElement element, double fallbackTopSs) {
 
         var stemLayout = builder.getStemLayout(element);
         return stemLayout != null ? stemLayout.topYSs() : fallbackTopSs;
@@ -233,7 +234,7 @@ public final class StackingUtils {
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
         int staffPosition,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         return stackAtAnchor(Direction.UP, extents, element, xSs, widthSs, heightSs, marginSs,
             staffPosition, builder);
@@ -253,7 +254,7 @@ public final class StackingUtils {
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
         int staffPosition,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         return stackAtAnchor(Direction.DOWN, extents, element, xSs, widthSs, heightSs, marginSs,
             staffPosition, builder);
@@ -286,7 +287,7 @@ public final class StackingUtils {
         double marginSs, double staffPaddingSs,
         double horizonPaddingSs,
         int staffPosition,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var atOrBeyondStaffEdge = direction.isUp()
             ? staffPosition <= TOP_STAFF_LINE_POSITION
@@ -326,7 +327,7 @@ public final class StackingUtils {
         StaffExtents extents,
         LineElement element,
         double xSs, double widthSs, double heightSs, double boundSs, double marginSs,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var above = direction.isUp();
         var innerEdgeYSs = above ? boundSs - marginSs : boundSs + marginSs;
@@ -355,7 +356,7 @@ public final class StackingUtils {
         LineElement element,
         double xSs, double widthSs, double heightSs, double innerEdgeYSs,
         StaffExtents.Profile reserveProfile, double decorationMarginSs,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var above = direction.isUp();
 
@@ -412,7 +413,7 @@ public final class StackingUtils {
         double xSs, double widthSs, double heightSs,
         StaffExtents.Profiles profiles,
         double paddingSs, double staffPaddingSs, double horizonPaddingSs,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var above = direction.isUp();
         var support = extents.clearance(above, xSs, profiles.inner(), paddingSs, horizonPaddingSs);
@@ -451,7 +452,7 @@ public final class StackingUtils {
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
         int staffPosition,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var anchorSs = direction.isUp() ? anchorCeilingSs(staffPosition) : anchorFloorSs(staffPosition);
         return stackAtAnchor(direction, extents, element, xSs, widthSs, heightSs, marginSs,
@@ -464,7 +465,7 @@ public final class StackingUtils {
         LineElement element,
         double xSs, double widthSs, double heightSs, double marginSs,
         double anchorSs,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var above = direction.isUp();
         var currentSs = yGetExpanded(extents, above, xSs, widthSs);
@@ -482,7 +483,7 @@ public final class StackingUtils {
         StaffExtents.Profile reserveProfile,
         double marginSs, double horizonPaddingSs,
         double centerSs,
-        LayoutResult.Builder builder) {
+        LayoutResultBuilder builder) {
 
         var above = direction.isUp();
 
@@ -580,7 +581,7 @@ public final class StackingUtils {
         List<CollisionRegion> regions,
         double xSs, double widthSs, double marginSs,
         int staffPosition,
-        LayoutResult.Builder builder
+        LayoutResultBuilder builder
     ) {
         var anchorSs = anchorCeilingSs(staffPosition);
         var elementYSs = Double.MAX_VALUE;

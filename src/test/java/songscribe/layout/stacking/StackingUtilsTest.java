@@ -35,7 +35,7 @@ import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.Trill;
-import songscribe.layout.LayoutResult;
+import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.StaffExtents;
 import songscribe.engraving.Staff;
 import songscribe.engraving.LineThickness;
@@ -335,7 +335,7 @@ class StackingUtilsTest extends UnitTest {
             REGION_B_X_OFFSET_SS, REGION_B_Y_OFFSET_SS, REGION_B_WIDTH_SS, REGION_B_HEIGHT_SS);
 
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         StackingUtils.stackAboveWithRegions(
             extents,
@@ -369,7 +369,7 @@ class StackingUtilsTest extends UnitTest {
             REGION_B_X_OFFSET_SS, REGION_B_Y_OFFSET_SS, REGION_B_WIDTH_SS, REGION_B_HEIGHT_SS);
 
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         StackingUtils.stackAboveWithRegions(
             extents,
@@ -428,7 +428,7 @@ class StackingUtilsTest extends UnitTest {
         extents.ySet(true, obstructionXSs, obstructionWidthSs, OBSTRUCTION_TOP_SS);
 
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         var elementYSs = StackingUtils.stackAbove(
             extents,
@@ -454,7 +454,7 @@ class StackingUtilsTest extends UnitTest {
         extents.ySet(true, obstructionXSs, obstructionWidthSs, OBSTRUCTION_TOP_SS);
 
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         var elementYSs = StackingUtils.stackAbove(
             extents,
@@ -478,7 +478,7 @@ class StackingUtilsTest extends UnitTest {
         //     shows the default top of 0 — confirming the reservation did not extend there.
         var extents = new StaffExtents(LINE_WIDTH_SS);
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         StackingUtils.stackAbove(
             extents,
@@ -518,7 +518,7 @@ class StackingUtilsTest extends UnitTest {
     void testPlaceAndReserveAboveReturnsTopEdgeAndReservesIt() {
         var extents = new StaffExtents(LINE_WIDTH_SS);
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         var returnedYSs = StackingUtils.placeAndReserve(Direction.UP, extents, element,
             PLACE_AND_RESERVE_X_SS, PLACE_AND_RESERVE_WIDTH_SS, PLACE_AND_RESERVE_HEIGHT_SS,
@@ -541,7 +541,7 @@ class StackingUtilsTest extends UnitTest {
     void testPlaceAndReserveBelowReturnsBottomEdgeAndReservesIt() {
         var extents = new StaffExtents(LINE_WIDTH_SS);
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         var boundSs = -PLACE_AND_RESERVE_BOUND_SS; // mirror to a positive (below-staff) bound
         var returnedYSs = StackingUtils.placeAndReserve(Direction.DOWN, extents, element,
@@ -581,7 +581,7 @@ class StackingUtilsTest extends UnitTest {
         // articulation clears the staff line by exactly staffPaddingSs.
         var extents = new StaffExtents(LINE_WIDTH_SS);
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.UP, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
@@ -606,7 +606,7 @@ class StackingUtilsTest extends UnitTest {
         var extents = new StaffExtents(LINE_WIDTH_SS);
         extents.ySet(true, CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_SUPPORT_ABOVE_SS);
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.UP, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
@@ -622,7 +622,7 @@ class StackingUtilsTest extends UnitTest {
     void testPlaceAndReserveClampedBelowIsolatedElementClampsToStaffPadding() {
         var extents = new StaffExtents(LINE_WIDTH_SS);
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.DOWN, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
@@ -640,7 +640,7 @@ class StackingUtilsTest extends UnitTest {
         var extents = new StaffExtents(LINE_WIDTH_SS);
         extents.ySet(false, CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_SUPPORT_BELOW_SS);
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         var returnedYSs = StackingUtils.placeAndReserveClamped(Direction.DOWN, extents, element,
             CLAMPED_X_SS, CLAMPED_WIDTH_SS, CLAMPED_HEIGHT_SS,
@@ -678,7 +678,7 @@ class StackingUtilsTest extends UnitTest {
         var extents = new StaffExtents(LINE_WIDTH_SS);
         extents.ySet(true, QUANTIZE_X_SS, QUANTIZE_WIDTH_SS, QUANTIZE_COLLISION_SUPPORT_SS);
         var element = mock(LineElement.class);
-        var builder = new LayoutResult.Builder();
+        var builder = new LayoutResultBuilder();
 
         // A flat reservation profile: this asserts where the dot is placed, not what it reserves.
         var returnedYSs = StackingUtils.stackStaccato(Direction.UP, extents, element,
@@ -734,7 +734,7 @@ class StackingUtilsTest extends UnitTest {
             SLOPED_X_SS, SLOPED_WIDTH_SS, SLOPED_HEIGHT_SS,
             StaffExtents.Profile.flat(SLOPED_WIDTH_SS), SLOPED_MARGIN_SS,
             SLOPED_STAFF_PADDING_SS, StackingUtils.SCRIPT_HORIZON_PADDING_SS,
-            SLOPED_STAFF_POSITION, new LayoutResult.Builder());
+            SLOPED_STAFF_POSITION, new LayoutResultBuilder());
     }
 
     /** The dot's top Y for a given support edge, once margin, centering and quantization are applied. */
@@ -798,7 +798,7 @@ class StackingUtilsTest extends UnitTest {
             SLOPED_X_SS, SLOPED_WIDTH_SS, SLOPED_HEIGHT_SS,
             StaffExtents.Profile.flat(SLOPED_WIDTH_SS), SLOPED_MARGIN_SS,
             SLOPED_STAFF_PADDING_SS, StackingUtils.SCRIPT_HORIZON_PADDING_SS,
-            SLOPED_STAFF_POSITION, new LayoutResult.Builder());
+            SLOPED_STAFF_POSITION, new LayoutResultBuilder());
 
         var idealCenterSs = StackingUtils.staccatoAnchorCeilingSs(SLOPED_STAFF_POSITION);
 
