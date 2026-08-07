@@ -7,7 +7,7 @@
     <rights>Copyright © 2026 Sri Chinmoy Centre, Creative Commons BY-NC-ND 4.0</rights>
     <encoding>
       <software>SongScribe 2.0.0</software>
-      <encoding-date>2026-08-05</encoding-date>
+      <encoding-date>2026-08-06</encoding-date>
       <supports element="accidental" type="yes" />
       <supports element="beam" type="yes" />
       <supports element="stem" type="yes" />
@@ -300,7 +300,7 @@
         <type>quarter</type>
       </note>
       <barline location="right">
-        <bar-style>regular</bar-style>
+        <bar-style>none</bar-style>
       </barline>
     </measure>
     <measure number="2">
