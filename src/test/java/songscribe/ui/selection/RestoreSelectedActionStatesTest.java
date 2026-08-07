@@ -65,7 +65,7 @@ class RestoreSelectedActionStatesTest extends MainFrameMockTest {
         var coordinator = coordinatorManaging(quarterNoteAction);
 
         durationGroup.select(quarterNoteAction, quarterNoteAction);
-        coordinator.saveActionStates();
+        coordinator.getActionReflector().saveActionStates();
 
         // Reflection deselects every duration button for a non-uniform selection, which
         // drives ActionGroup to null out its selection.
@@ -75,7 +75,7 @@ class RestoreSelectedActionStatesTest extends MainFrameMockTest {
             .as("precondition: reflection must have left the duration group with no selection")
             .isNull();
 
-        coordinator.restoreSelectedActionStates();
+        coordinator.getActionReflector().restoreSelectedActionStates();
 
         assertThat(durationGroup.getSelected())
             .as("the user's chosen duration button must survive the delete")
@@ -88,10 +88,10 @@ class RestoreSelectedActionStatesTest extends MainFrameMockTest {
         var coordinator = coordinatorManaging(quarterNoteAction);
 
         quarterNoteAction.setEnabled(true);
-        coordinator.saveActionStates();
+        coordinator.getActionReflector().saveActionStates();
         quarterNoteAction.setEnabled(false);
 
-        coordinator.restoreSelectedActionStates();
+        coordinator.getActionReflector().restoreSelectedActionStates();
 
         assertThat(quarterNoteAction.isEnabled())
             .as("enabled state is stale after a mutation and must be left for the action to re-derive")
@@ -102,15 +102,15 @@ class RestoreSelectedActionStatesTest extends MainFrameMockTest {
     void testRestoreSelectedActionStatesClearsSavedStates() {
         var coordinator = coordinatorManaging(Actions.QUARTER_NOTE_ACTION);
 
-        coordinator.saveActionStates();
+        coordinator.getActionReflector().saveActionStates();
 
-        assertThat(coordinator.hasSavedActionStates())
+        assertThat(coordinator.getActionReflector().hasSavedActionStates())
             .as("precondition: states must be saved before the restore")
             .isTrue();
 
-        coordinator.restoreSelectedActionStates();
+        coordinator.getActionReflector().restoreSelectedActionStates();
 
-        assertThat(coordinator.hasSavedActionStates())
+        assertThat(coordinator.getActionReflector().hasSavedActionStates())
             .as("the restore must consume the saved states")
             .isFalse();
     }
@@ -126,7 +126,7 @@ class RestoreSelectedActionStatesTest extends MainFrameMockTest {
 
         durationGroup.select(quarterNoteAction, quarterNoteAction);
 
-        coordinator.restoreSelectedActionStates();
+        coordinator.getActionReflector().restoreSelectedActionStates();
 
         assertThat(durationGroup.getSelected())
             .as("a restore with nothing saved must leave the current selection alone")

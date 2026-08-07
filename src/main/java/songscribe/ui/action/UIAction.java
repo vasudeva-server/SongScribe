@@ -56,6 +56,7 @@ import songscribe.ui.dialog.BaseDialog;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.playback.MidiController;
+import songscribe.ui.selection.SelectionActionApplier;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.undo.UndoController;
 import songscribe.util.GraphicUtils;
@@ -739,7 +740,7 @@ public class UIAction extends AbstractAction {
             return false;
         }
 
-        coordinator.applyActionToSelection(reflectable, reflectable.isSelected(), score);
+        SelectionActionApplier.apply(coordinator, reflectable, reflectable.isSelected(), score);
         return true;
     }
 

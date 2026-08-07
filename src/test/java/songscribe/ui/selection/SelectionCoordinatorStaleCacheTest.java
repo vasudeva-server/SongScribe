@@ -71,7 +71,7 @@ class SelectionCoordinatorStaleCacheTest extends MainFrameMockTest {
         assertThat(coordinator.selectionHasDurations())
             .as("precondition: a barline carries no duration")
             .isFalse();
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
         assertThat(action.isSelected())
             .as("precondition: a barline cannot carry a sharp")
             .isFalse();
@@ -116,7 +116,7 @@ class SelectionCoordinatorStaleCacheTest extends MainFrameMockTest {
     void testReflectionRerunsAfterADeleteShiftsTheSelectedIndex() {
         var fixture = noteSelectedWhereTheDeletedBarlineWas();
 
-        fixture.coordinator().triggerReflection();
+        fixture.coordinator().getActionReflector().triggerReflection();
 
         assertThat(fixture.action().isSelected())
             .as("the selected note carries a sharp")

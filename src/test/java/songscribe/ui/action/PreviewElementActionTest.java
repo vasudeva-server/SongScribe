@@ -39,6 +39,7 @@ import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.UpdatePreviewElementCommand;
 import songscribe.ui.selection.ElementSelection;
+import songscribe.ui.selection.SelectionActionApplier;
 
 // Rows 56-58: PreviewElementAction.actionPerformed — keyboard-shortcut toggle and
 // command-posting behaviour. DotAction (a concrete non-overriding subclass) is
@@ -85,9 +86,14 @@ class PreviewElementActionTest extends MainFrameMockTest {
                 .thenReturn(mock(ElementSelection.class));
 
             var action = DotAction.createDotAction(mainFrame());
-            action.actionPerformed(
-                new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "add-dot")
-            );
+
+            // Stubbed out: the applier would reach through the mocked selection's line, and
+            // what this test observes is the early return that follows it.
+            try (var _ = mockStatic(SelectionActionApplier.class)) {
+                action.actionPerformed(
+                    new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, "add-dot")
+                );
+            }
 
             // UIAction's constructor calls MessageCenter.subscribe, which is fine.
             // What must NOT happen is a post() — the command would mean no selection was applied.

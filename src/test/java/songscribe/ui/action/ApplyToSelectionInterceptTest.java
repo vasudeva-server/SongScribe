@@ -22,8 +22,8 @@ package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import module java.desktop;
@@ -34,6 +34,7 @@ import org.mockito.ArgumentMatchers;
 import songscribe.MainFrameMockTest;
 import songscribe.dom.Line;
 import songscribe.ui.selection.ElementSelection;
+import songscribe.ui.selection.SelectionActionApplier;
 
 class ApplyToSelectionInterceptTest extends MainFrameMockTest {
 
@@ -53,37 +54,51 @@ class ApplyToSelectionInterceptTest extends MainFrameMockTest {
 
         var action = FermataAction.createAction(mainFrame());
 
-        assertThat(action.applyToSelectionIfActive()).isFalse();
-        verify(mockEnv().coordinator(), never()).applyActionToSelection(
-            ArgumentMatchers.any(),
-            ArgumentMatchers.anyBoolean(),
-            ArgumentMatchers.any()
-        );
+        try (var applier = mockStatic(SelectionActionApplier.class)) {
+            assertThat(action.applyToSelectionIfActive()).isFalse();
+            applier.verify(
+                () -> SelectionActionApplier.apply(
+                    ArgumentMatchers.any(),
+                    ArgumentMatchers.any(),
+                    ArgumentMatchers.anyBoolean(),
+                    ArgumentMatchers.any()
+                ),
+                never()
+            );
+        }
     }
 
     // -- applyToSelectionIfActive: reflectable with active selection --
 
-    @Test
-    void testReflectableWithSelectionPassesSelectedFalse() {
+    /**
+     * Asserts that an action carrying the given selected state routes to the applier with
+     * exactly that state, and reports having handled the selection itself.
+     * <p>
+     * The applier is stubbed out rather than run: its mutation pass would reach through the
+     * mocked {@link Line} the selection names, and what is under test here is only that the
+     * action hands off to it.
+     */
+    private void assertRoutesToApplier(boolean selected) {
         var selection = new ElementSelection(mock(Line.class), 0, 2);
         when(mockEnv().coordinator().getSelection()).thenReturn(selection);
 
         var action = FermataAction.createAction(mainFrame());
-        action.setSelected(false);
+        action.setSelected(selected);
 
-        assertThat(action.applyToSelectionIfActive()).isTrue();
-        verify(mockEnv().coordinator()).applyActionToSelection(action, false, mockEnv().score());
+        try (var applier = mockStatic(SelectionActionApplier.class)) {
+            assertThat(action.applyToSelectionIfActive()).isTrue();
+            applier.verify(() -> SelectionActionApplier.apply(
+                mockEnv().coordinator(), action, selected, mockEnv().score()));
+        }
+    }
+
+    @Test
+    void testReflectableWithSelectionPassesSelectedFalse() {
+        assertRoutesToApplier(false);
     }
 
     @Test
     void testReflectableWithSelectionReturnsTrue() {
-        var selection = new ElementSelection(mock(Line.class), 0, 2);
-        when(mockEnv().coordinator().getSelection()).thenReturn(selection);
-
-        var action = FermataAction.createAction(mainFrame());
-        action.setSelected(true);
-
-        assertThat(action.applyToSelectionIfActive()).isTrue();
-        verify(mockEnv().coordinator()).applyActionToSelection(action, true, mockEnv().score());
+        assertRoutesToApplier(true);
     }
 }

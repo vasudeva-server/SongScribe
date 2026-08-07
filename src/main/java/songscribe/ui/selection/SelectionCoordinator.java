@@ -20,45 +20,28 @@
 
 package songscribe.ui.selection;
 
-import java.awt.AWTEvent;
-import java.awt.Toolkit;
-import java.awt.event.AWTEventListener;
-import java.awt.event.MouseEvent;
-import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Predicate;
 
 import org.jspecify.annotations.Nullable;
 
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
-import songscribe.layout.AccidentalMaterializer;
-import songscribe.layout.AccidentalReconciliation;
-import songscribe.dom.Ending;
-import songscribe.layout.InsertionSpacingCalculator;
-import songscribe.ui.EndingConfirms;
 import songscribe.ui.Mode;
-import songscribe.ui.OptionDialogs;
-import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
-import songscribe.ui.edit.AccidentalRestatements;
-import songscribe.dom.Beam;
 
 /**
  * Score-level coordinator that owns the score's one selection, tracks which line it sits on,
@@ -77,6 +60,13 @@ import songscribe.dom.Beam;
  * registration is what a {@code LineComponent} does when it takes on a line, and it is
  * deliberately all a {@code LineComponent} contributes — the selection itself outlives any
  * number of {@code LineComponent.setLine} rebuilds because it never lived on one.
+ * <p>
+ * <b>What is selected, and nothing downstream of it.</b> Three things follow from a selection
+ * without being part of it, and each is its own class reached from here:
+ * {@link ActionReflector} for what the toolbar shows about it, {@link SelectionActionApplier}
+ * for applying an action across it, and {@link SelectionDragTracker} for finishing the drag
+ * that made it. The dependency runs one way — each reads the selection through this class,
+ * and none of them can change it.
  */
 public final class SelectionCoordinator {
 
@@ -97,28 +87,11 @@ public final class SelectionCoordinator {
     @Nullable
     private Selection selected = null;
 
-    /**
-     * The LineComponent that currently has an active rubber-band drag, or null.
-     * Tracked so the global AWTEventListener can clean up if Swing fails to
-     * deliver mouseReleased to the originating LineComponent.
-     */
-    @Nullable
-    private LineComponent draggingLine = null;
+    /** Cleans up after a rubber-band drag Swing failed to finish. */
+    private final SelectionDragTracker dragTracker = new SelectionDragTracker();
 
-    // Lazy-initialized list of all reflectable actions discovered from Actions.
-    @Nullable
-    private List<UIAction.Reflectable> reflectableActions = null;
-
-    // Lazy-initialized list of all actions whose state is managed during selection.
-    @Nullable
-    private List<UIAction> managedActions = null;
-
-    // Saved action states (selected + enabled) before a selection becomes active.
-    private final Map<UIAction, ActionState> savedActionStates = new IdentityHashMap<>();
-
-    // Last reflected selection range, used to skip redundant reflection.
-    @Nullable
-    private ElementSelection lastReflectedSelection = null;
+    /** Keeps the toolbar actions in step with whatever this coordinator has selected. */
+    private final ActionReflector actionReflector = new ActionReflector(this);
 
     // Content cache: lazily computed flags about what the current selection contains.
     @Nullable
@@ -131,30 +104,23 @@ public final class SelectionCoordinator {
     private ElementSelection applicabilityCacheSelection = null;
     private final Map<UIAction.Reflectable, Boolean> applicabilityCache = new IdentityHashMap<>();
 
-    private record ActionState(boolean selected, boolean enabled) {}
-
-    /**
-     * Global AWT listener that catches mouseReleased events which Swing sometimes
-     * fails to deliver to a LineComponent during fast rubber-band drags.
-     * Registered only while a drag is active and removed once the release is caught.
-     */
-    private final AWTEventListener globalMouseReleasedListener = event -> {
-        if (event instanceof MouseEvent me && me.getID() == MouseEvent.MOUSE_RELEASED) {
-            if (draggingLine != null) {
-                if (draggingLine.isDraggingSelection()) {
-                    draggingLine.clearDragRectangle();
-                }
-
-                draggingLine = null;
-            }
-
-            Toolkit.getDefaultToolkit().removeAWTEventListener(this.globalMouseReleasedListener);
-        }
-    };
-
     public SelectionCoordinator(ScoreView scoreView) {
         this.scoreView = scoreView;
         MessageCenter.subscribe(this);
+    }
+
+    /**
+     * Detaches this coordinator and everything it subscribed on its own behalf from the bus.
+     * <p>
+     * Constructing a coordinator puts two listeners on the bus, not one — the
+     * {@link ActionReflector} it owns subscribes itself — so unsubscribing the coordinator
+     * object alone would leave the reflector handling notifications for a coordinator the
+     * test has finished with. A test that drives a coordinator directly and wants it off the
+     * bus calls this rather than {@code MessageCenter.unsubscribe(coordinator)}.
+     */
+    public void unsubscribeForTest() {
+        MessageCenter.unsubscribe(this);
+        MessageCenter.unsubscribe(actionReflector);
     }
 
     // -------------------------------------------------------------------------
@@ -842,624 +808,26 @@ public final class SelectionCoordinator {
     // -------------------------------------------------------------------------
 
     /**
-     * Scans all static fields in Actions for UIAction instances matching the given predicate.
+     * Returns the reflector that keeps the toolbar actions in step with this selection.
      */
-    private <T> List<T> collectActions(Class<? extends T> type, Predicate<? super UIAction> filter) {
-        var result = new ArrayList<T>();
-
-        for (var field : Actions.class.getDeclaredFields()) {
-            if (!Modifier.isStatic(field.getModifiers())) {
-                continue;
-            }
-
-            try {
-                var value = field.get(null);
-
-                if (value instanceof UIAction action) {
-                    if (filter.test(action) && type.isInstance(action)) {
-                        result.add(type.cast(action));
-                    }
-                } else if (value instanceof UIAction[] array) {
-                    for (var action : array) {
-                        if (filter.test(action) && type.isInstance(action)) {
-                            result.add(type.cast(action));
-                        }
-                    }
-                } else if (value instanceof List<?> list) {
-                    for (var item : list) {
-                        if (item instanceof UIAction action
-                            && filter.test(action) && type.isInstance(action)) {
-                            result.add(type.cast(action));
-                        }
-                    }
-                }
-            } catch (IllegalAccessException e) {
-                // Non-public fields are skipped
-            }
-        }
-
-        return result;
-    }
-
-    private List<UIAction.Reflectable> getReflectableActions() {
-        if (reflectableActions == null) {
-            reflectableActions = collectActions(
-                UIAction.Reflectable.class,
-                action -> true
-            );
-        }
-
-        return reflectableActions;
-    }
-
-    /**
-     * Lazily discovers all actions whose state needs to be saved/restored during selection.
-     * This includes reflectable actions (whose selected state reflects selection content)
-     * and non-reflectable actions with DISABLE_WHEN_BAR_SELECTED (whose enabled state
-     * may change due to mutual exclusivity).
-     */
-    private List<UIAction> getManagedActions() {
-        if (managedActions == null) {
-            managedActions = collectActions(
-                UIAction.class,
-                action -> action instanceof UIAction.Reflectable
-                    || action.hasFlag(UIAction.Flag.DISABLE_WHEN_BAR_SELECTED)
-            );
-        }
-
-        return managedActions;
-    }
-
-    public void setManagedActions(@Nullable List<UIAction> actions) {
-        managedActions = actions;
-    }
-
-    AWTEventListener getGlobalMouseReleasedListener() {
-        return globalMouseReleasedListener;
-    }
-
-    /**
-     * One element the action will change, decided before anything is mutated.
-     *
-     * @param index        The element's index on the line, unchanged by the modification
-     * @param standIn      The element as it will read afterwards: the replacement for an
-     *                     {@link UIAction.ElementReplaceable}, a modified clone for an
-     *                     {@link UIAction.ElementModifiable}. Detached from the line, so the fit
-     *                     gate can measure it without anything having been mutated
-     * @param compensation The ending change the user confirmed for this index, applied in the
-     *                     apply pass because it mutates the line, or
-     *                     {@link Ending.EndingEffect.None#INSTANCE} when there is none
-     */
-    private record PendingChange(int index, StaffElement standIn, Ending.EndingEffect compensation) {}
-
-    /**
-     * Applies the given action to all applicable elements in the selection.
-     * Wraps the entire apply pass in a single modification bracket so all emitted
-     * mutations coalesce into one {@code SongDidChangeNotification}.
-     * <p>
-     * Runs in three passes, because the ending confirms decide which elements actually change and
-     * the fit gate cannot be built until that is known — gating the loop as it runs would
-     * over-refuse, killing the whole action before its dialogs are even shown:
-     * <ol>
-     *   <li><b>Decide</b> — compute each applicable element's post-change stand-in and, for a
-     *       replacement, resolve and confirm its ending effect. Mutates nothing and opens no
-     *       bracket, which also keeps a dialog from being open while a modification bracket is.</li>
-     *   <li><b>Reconcile and gate</b> — over the indices that proceed; still mutates nothing, so a
-     *       refusal leaves the score untouched and creates no undo step.</li>
-     *   <li><b>Apply</b> — inside the modification bracket.</li>
-     * </ol>
-     *
-     * @param action   the reflectable action to apply
-     * @param selected true to apply the attribute, false to remove it
-     * @param score    the view to parent any ending-confirm dialogs on, and the source of the
-     *                 song-wide lyric metrics the fit gate measures syllable widths with; null in
-     *                 tests, which space the projection as if the line had no lyrics
-     */
-    public void applyActionToSelection(
-        UIAction.Reflectable action, boolean selected, @Nullable ScoreView score) {
-        var selection = getSelection();
-
-        if (selection == null) {
-            return;
-        }
-
-        var line = selection.line();
-        var song = line.getSong();
-        var changes = decideChanges(action, selected, score, selection);
-
-        if (changes.isEmpty()) {
-            return;
-        }
-
-        // Still the decide phase: the prompt must run before any modification bracket opens, for
-        // the same reason the ending confirms above do.
-        var decision = AccidentalRestatements.confirm(score, line, editedNotes(line, changes));
-
-        if (decision.isCancelled()) {
-            return;
-        }
-
-        // The accidentals this modification must make explicit so no pitch the user did not touch
-        // changes — removing an explicit accidental is exactly as context-changing as adding one —
-        // plus the ones it makes redundant and so takes away again, plus any restatement the user
-        // accepted above.
-        var accidentalChanges = AccidentalReconciliation.reconcileModification(
-            line, intendedChanges(changes), decision.removal());
-
-        if (action instanceof UIAction.WidensColumn
-            && !fitsAfterModification(line, changes, accidentalChanges, score)) {
-            OptionDialogs.showErrorMessage(
-                score,
-                Strings.ALERT_TITLE_INSERT_ERROR,
-                Strings.ERROR_LINE_FULL_ELEMENT,
-                changes.getFirst().standIn().getType().categoryName()
-            );
-            return;
-        }
-
-        // Only a replacement can invalidate a beam or a tuplet; an in-place modification leaves
-        // element types alone.
-        var needsSpanCleanup = action instanceof UIAction.ElementReplaceable;
-
-        song.withModification(() -> {
-            for (var change : changes) {
-                var index = change.index();
-                var compensation = change.compensation();
-
-                // The compensating ending changes mutate the line, so they belong here rather
-                // than beside the confirm that authorized them.
-                if (compensation instanceof Ending.EndingEffect.CompensateEnd compensateEnd) {
-                    EndingConfirms.applyCompensatingEndChange(line, compensateEnd);
-                } else if (compensation instanceof Ending.EndingEffect.CompensateSplit compensateSplit) {
-                    EndingConfirms.applyCompensatingSplitChange(line, compensateSplit);
-                }
-
-                if (action instanceof UIAction.ElementReplaceable) {
-                    // An Invalidate effect needs no compensation here: setElement removes the
-                    // ending itself via isInvalidatedByReplacement.
-                    line.setElement(index, change.standIn());
-                } else if (action instanceof UIAction.ElementModifiable modifiable) {
-                    line.modifyElement(
-                        index,
-                        modifiable.modifiedFields(),
-                        () -> modifiable.applyToElement(line.getElement(index), selected)
-                    );
-                }
-            }
-
-            // Recorded in the same bracket so the toggle and its reconciliation are one undo step.
-            AccidentalMaterializer.commit(line, accidentalChanges);
-
-            // Accepted restatements on later lines join the same step.
-            AccidentalRestatements.commitOtherLines(decision, line);
-
-            if (needsSpanCleanup) {
-                validateSpans(line, selection.begin(), selection.end());
-            }
-
-            invalidateSelectionCaches();
-        });
-    }
-
-    /**
-     * Pass 1 — decides what the action does to each element of the selection, mutating nothing.
-     * An index the user declines an ending confirm for is simply left out of the result, so the
-     * gate and the apply pass see only the elements that really change.
-     */
-    private static List<PendingChange> decideChanges(
-        UIAction.Reflectable action, boolean selected, @Nullable ScoreView score, ElementSelection selection) {
-
-        var line = selection.line();
-        var changes = new ArrayList<PendingChange>();
-
-        for (var i = selection.begin(); i <= selection.end(); i++) {
-            var element = line.getElement(i);
-
-            if (!action.appliesTo(element)) {
-                continue;
-            }
-
-            if (action instanceof UIAction.ElementReplaceable replaceable) {
-                if (!selected) {
-                    continue;
-                }
-
-                var replacement = replaceable.createReplacement(element, true);
-                var effect = line.findEndingReplacementEffect(i, replacement);
-                Ending.EndingEffect compensation = Ending.EndingEffect.None.INSTANCE;
-
-                switch (effect) {
-                    case Ending.EndingEffect.Invalidate _ -> {
-                        if (!EndingConfirms.confirmInvalidation(score)) {
-                            continue;
-                        }
-                        // proceed: line.setElement will remove the ending via isInvalidatedByReplacement
-                    }
-                    case Ending.EndingEffect.CompensateEnd compensateEnd -> {
-                        if (!EndingConfirms.confirmCompensateEnd(score, compensateEnd)) {
-                            continue;
-                        }
-                        compensation = compensateEnd;
-                    }
-                    case Ending.EndingEffect.CompensateSplit compensateSplit -> {
-                        if (!EndingConfirms.confirmCompensateSplit(score, compensateSplit, replacement.getType())) {
-                            continue;
-                        }
-                        compensation = compensateSplit;
-                    }
-                    case Ending.EndingEffect.None _ -> {}
-                }
-
-                changes.add(new PendingChange(i, replacement, compensation));
-            } else if (action instanceof UIAction.ElementModifiable modifiable) {
-                // Safe on a detached clone: applyToElement takes the element as a parameter and
-                // touches nothing else.
-                var standIn = element.clone();
-                modifiable.applyToElement(standIn, selected);
-                changes.add(new PendingChange(i, standIn, Ending.EndingEffect.None.INSTANCE));
-            }
-        }
-
-        return changes;
-    }
-
-    /**
-     * The post-change state of every element this modification touches, as
-     * {@link AccidentalReconciliation} describes it. These are the notes the user changed
-     * deliberately, so they are never materialized themselves — only the notes that inherit
-     * their context are.
-     */
-    private static List<AccidentalReconciliation.IntendedChange> intendedChanges(List<PendingChange> changes) {
-        var intended = new ArrayList<AccidentalReconciliation.IntendedChange>(changes.size());
-
-        for (var change : changes) {
-            var standIn = change.standIn();
-            intended.add(new AccidentalReconciliation.IntendedChange(
-                change.index(), standIn.getAccidental(), standIn.getStaffPosition()));
-        }
-
-        return intended;
-    }
-
-    /**
-     * This action's changes, described for the restatement prompt: each changed note's accidental
-     * now, and the one its stand-in will carry instead — which is none for a toggle-off or for a
-     * replacement that bears no accidental.
-     *
-     * <p>The staff position is the live note's, which is the position the accidental being removed
-     * was written at. An in-place modification never moves it, but taking it from the stand-in
-     * would state the wrong thing if one ever did.
-     */
-    private static List<AccidentalRestatements.EditedNote> editedNotes(
-        Line line, List<PendingChange> changes) {
-
-        var edited = new ArrayList<AccidentalRestatements.EditedNote>(changes.size());
-
-        for (var change : changes) {
-            var element = line.getElement(change.index());
-
-            edited.add(new AccidentalRestatements.EditedNote(
-                change.index(),
-                element.getStaffPosition(),
-                element.getAccidental(),
-                change.standIn().getAccidental()));
-        }
-
-        return edited;
-    }
-
-    /**
-     * Pass 2 — whether the line still fits once the changes and the accidentals they force are
-     * in place. Mutates nothing: the projection is built from stand-ins and clones, so a refusal
-     * leaves every live element as it was.
-     */
-    private static boolean fitsAfterModification(
-        Line line,
-        List<PendingChange> changes,
-        List<AccidentalReconciliation.AccidentalChange> accidentalChanges,
-        @Nullable ScoreView score) {
-
-        var effectiveCount = line.effectiveElementCount();
-
-        // Nothing but the auto-maintained terminal barline, which layout pins flush-right: there
-        // is no chain to solve and nothing the change can push past the margin.
-        if (effectiveCount == 0) {
-            return true;
-        }
-
-        var projected = new ArrayList<StaffElement>(effectiveCount);
-
-        for (var i = 0; i < effectiveCount; i++) {
-            projected.add(line.getElement(i));
-        }
-
-        for (var change : changes) {
-            // The auto-maintained terminal barline is not in the projection: layout pins it
-            // flush-right, and its column is built from the live element.
-            if (change.index() < effectiveCount) {
-                projected.set(change.index(), change.standIn());
-            }
-        }
-
-        // Accidental width is a layout input, so the gate has to measure the reconciled
-        // accidentals — on clones, because the live notes must stay untouched until the gate
-        // has accepted.
-        for (var accidentalChange : accidentalChanges) {
-            var index = line.getElementIndex(accidentalChange.note());
-
-            if (index < effectiveCount) {
-                var note = accidentalChange.note().clone();
-                note.setAccidental(accidentalChange.accidental());
-                projected.set(index, note);
-            }
-        }
-
-        var lyricRenderMetrics = (score != null) ? score.findLyricRenderMetrics() : null;
-
-        return InsertionSpacingCalculator.calculateModification(line, projected, lyricRenderMetrics)
-            .fitsWithinLine(line.getSong().getLineWidthSs());
-    }
-
-    // Validates beam and tuplet spans after batch element replacement.
-    //
-    // Tie repair is omitted because Line.setElement already does it, on every
-    // path: Tie.isInvalidatedByReplacement removes exactly the ties a replacement
-    // makes illegal. Independently, no replacement reachable from this call site
-    // can invalidate a tie in the first place — the replacement preserves pitch
-    // and rest-ness, grace notes are disabled in select mode via
-    // Flag.DISABLE_IN_SELECT_MODE, and ElementModifiable actions do not touch
-    // element type — so nothing here relies on that second argument holding.
-    private void validateSpans(Line line, int begin, int end) {
-        repairBeamings(line, begin, end);
-        line.removeOverlappingTuplets(begin, end);
-    }
-
-    // Trim-and-kill repair for beams that overlap [begin, end] after a batch
-    // element replacement. For each overlapping beam:
-    //   1. Trim non-beamable elements from the left and right ends.
-    //   2. If the trimmed span still contains a non-beamable element in the
-    //      interior, kill the beam entirely (no replacement).
-    //   3. If the trimmed span is identical to the original, no-op.
-    //   4. If the trimmed span has fewer than two elements, kill without re-add.
-    //   5. Otherwise, remove the original beam and add a new one for the
-    //      trimmed sub-range.
-    //
-    // The bidirectional trim handles configurations where both ends become
-    // non-beamable but the interior is still valid, leaving the logic resilient
-    // to a future disjoint-selection capability.
-    //
-    // Behavior change vs. legacy repairSpanSet: a beam with a non-beamable
-    // element in the middle is now killed entirely instead of being split into
-    // sub-beams.
-    private void repairBeamings(Line line, int begin, int end) {
-        var overlapping = line.findBeamsOverlapping(begin, end);
-
-        for (var beam : overlapping) {
-            var anchorIdx = beam.getAnchorElementIndex();
-            var endIdx = beam.getEndElementIndex();
-            var newStart = anchorIdx;
-
-            while (newStart <= endIdx && !line.getElement(newStart).getType().isBeamable()) {
-                newStart++;
-            }
-
-            var newEnd = endIdx;
-
-            while (newEnd >= newStart && !line.getElement(newEnd).getType().isBeamable()) {
-                newEnd--;
-            }
-
-            // No valid elements remain in the trimmed span — kill outright.
-            if (newStart > newEnd) {
-                line.removeBeaming(beam);
-                continue;
-            }
-
-            // Check for any non-beamable element in the interior of the trimmed span.
-            // Grace notes are exempt: they are not beam members, so a beam legitimately
-            // passes over one (refs #592).
-            var hasInteriorInvalid = false;
-
-            for (var i = newStart; i <= newEnd; i++) {
-                var type = line.getElement(i).getType();
-
-                if (!type.isBeamable() && !type.isGraceNote()) {
-                    hasInteriorInvalid = true;
-                    break;
-                }
-            }
-
-            if (hasInteriorInvalid) {
-                line.removeBeaming(beam);
-                continue;
-            }
-
-            // Trimmed span is identical to the original — no-op.
-            if (newStart == anchorIdx && newEnd == endIdx) {
-                continue;
-            }
-
-            // Fewer than two elements — kill without re-add.
-            if (newEnd - newStart < 1) {
-                line.removeBeaming(beam);
-                continue;
-            }
-
-            // Trimmed span shrank but is all valid — replace with the truncated beam.
-            line.removeBeaming(beam);
-            line.addBeaming(new Beam(line.getElement(newStart), line.getElement(newEnd)));
-        }
+    public ActionReflector getActionReflector() {
+        return actionReflector;
     }
 
     // -------------------------------------------------------------------------
-    // Action state save/restore
+    // Rubber-band drag tracking
     // -------------------------------------------------------------------------
 
     /**
-     * Saves the current selected and enabled state of all managed actions.
-     * Does nothing if states have already been saved (prevents overwriting
-     * a previous save).
+     * Returns the tracker that cleans up after a rubber-band drag Swing failed to finish.
      */
-    public void saveActionStates() {
-        if (!savedActionStates.isEmpty()) {
-            return;
-        }
-
-        for (var action : getManagedActions()) {
-            var selected = (action instanceof UIAction.Selectable selectable)
-                && selectable.isSelected();
-            savedActionStates.put(action, new ActionState(selected, action.isEnabled()));
-        }
-    }
-
-    /**
-     * Restores all managed actions to their previously saved states and clears
-     * the saved state map. Does nothing if no states have been saved.
-     */
-    public void restoreActionStates() {
-        if (savedActionStates.isEmpty()) {
-            return;
-        }
-
-        for (var entry : savedActionStates.entrySet()) {
-            var action = entry.getKey();
-            var state = entry.getValue();
-
-            if (action instanceof UIAction.Selectable selectable) {
-                selectable.setSelected(state.selected());
-            }
-
-            action.setEnabled(state.enabled());
-        }
-
-        savedActionStates.clear();
-    }
-
-    /**
-     * Restores only the selected state of all managed actions, leaving their enabled
-     * state untouched, then clears the saved state map.
-     * <p>
-     * This is the correct restore after a mutation such as a delete. The saved enabled
-     * states are stale — the song has changed, so each action must re-derive whether it
-     * applies to the new content. The saved selected states are not stale: they record
-     * which duration/bar button the user had chosen before selecting, which is user
-     * intent rather than a property of the song.
-     * <p>
-     * Discarding the selected states instead would latch both duration action groups
-     * empty for the rest of the session, because selection reflection deselects every
-     * duration button for a non-uniform selection and nothing else ever reselects one.
-     */
-    public void restoreSelectedActionStates() {
-        if (savedActionStates.isEmpty()) {
-            return;
-        }
-
-        for (var entry : savedActionStates.entrySet()) {
-            if (entry.getKey() instanceof UIAction.Selectable selectable) {
-                selectable.setSelected(entry.getValue().selected());
-            }
-        }
-
-        savedActionStates.clear();
-    }
-
-    /**
-     * Clears saved action states without restoring them.
-     * Used when the operation that saved states completes successfully
-     * and the current state should be kept.
-     */
-    public void clearSavedActionStates() {
-        savedActionStates.clear();
-    }
-
-    /**
-     * Returns whether the saved action states map is empty.
-     * Package-private for tests that verify clear/restore semantics.
-     */
-    boolean hasSavedActionStates() {
-        return !savedActionStates.isEmpty();
-    }
-
-    /**
-     * Returns the LineComponent that currently has an active rubber-band drag, or null.
-     * Package-private for tests that verify drag-cleanup semantics.
-     */
-    @Nullable
-    LineComponent getDraggingLine() {
-        return draggingLine;
-    }
-
-    /**
-     * Restores only the actions that have the given flag to their previously
-     * saved state, then clears all saved states. Actions without the flag
-     * are left at their current state.
-     */
-    public void restoreActionStatesWithFlag(UIAction.Flag flag) {
-        if (savedActionStates.isEmpty()) {
-            return;
-        }
-
-        for (var entry : savedActionStates.entrySet()) {
-            var action = entry.getKey();
-
-            if (!action.hasFlag(flag)) {
-                continue;
-            }
-
-            var state = entry.getValue();
-
-            if (action instanceof UIAction.Selectable selectable) {
-                selectable.setSelected(state.selected());
-            }
-
-            action.setEnabled(state.enabled());
-        }
-
-        savedActionStates.clear();
+    public SelectionDragTracker getDragTracker() {
+        return dragTracker;
     }
 
     // -------------------------------------------------------------------------
-    // Selection reflection
+    // Cache invalidation
     // -------------------------------------------------------------------------
-
-    /**
-     * Called by {@link LineComponent} when a rubber-band drag begins,
-     * so the coordinator can install the safety-net AWTEventListener.
-     */
-    public void dragDidStart(LineComponent lineComponent) {
-        draggingLine = lineComponent;
-        Toolkit.getDefaultToolkit().addAWTEventListener(
-            globalMouseReleasedListener, AWTEvent.MOUSE_EVENT_MASK
-        );
-    }
-
-    @Handler(priority = Message.HIGH_PRIORITY)
-    public void musicSelectionDidChangeSaveRestoreActionStates(MusicSelectionDidChangeNotification message) {
-        var selection = getSelection();
-
-        if (selection == null) {
-            // A decoration selection nulls out the element selection, but it is still a
-            // selection — freeze the action states rather than restoring them as if the
-            // selection had been cleared.
-            if (hasDecorationSelection()) {
-                saveActionStates();
-            } else {
-                restoreActionStates();
-            }
-        } else if (!selection.equals(lastReflectedSelection)) {
-            saveActionStates();
-        }
-    }
-
-    /**
-     * Reflects the current selection onto all reflectable toolbar actions.
-     * Fires at LOW_PRIORITY so it runs after all UIAction handlers have processed
-     * the selection-changed message.
-     */
-    @Handler
-    public void musicSelectionDidChangeReflectSelection(MusicSelectionDidChangeNotification message) {
-        triggerReflection();
-    }
 
     /**
      * Drops every cached answer about the current selection as soon as the song changes.
@@ -1482,172 +850,14 @@ public final class SelectionCoordinator {
     /**
      * Discards the cached selection queries and the reflection guard, so the next query
      * and the next reflection both recompute from the elements now on the line.
+     * <p>
+     * Package-private so {@link SelectionActionApplier} can call it from inside its
+     * modification bracket, which is where a batch apply's caches go stale.
      */
-    private void invalidateSelectionCaches() {
+    void invalidateSelectionCaches() {
         contentCacheSelection = null;
         applicabilityCacheSelection = null;
         applicabilityCache.clear();
-        lastReflectedSelection = null;
-    }
-
-    /**
-     * Re-reflects action state when a mutation changes the content of the
-     * selected line without changing the selection range.
-     * <p>
-     * An undo/redo (e.g. toggling a fermata or trill on the selected note, then
-     * undoing it) reverts the element's attributes but leaves the selection range
-     * intact. {@link #triggerReflection()} would short-circuit on the unchanged
-     * range and leave toggle actions stuck in their pre-undo checked state, so we
-     * clear the guard and force a fresh reflection.
-     */
-    @Handler
-    public void songDidChangeReflectSelection(SongDidChangeNotification message) {
-        var line = getActiveLine();
-
-        if (line != null && message.getLine() == line
-                && hasDecorationSelection()
-                && revalidateDecorationSelection()) {
-            // A decoration selection carries no ElementSelection for getSelection() to
-            // compare below, so undo/redo of a mutation on this line — which can shift
-            // indices or remove the selected decoration outright — would otherwise go
-            // unnoticed and leave the selection pointing at the wrong (or a dead) decoration.
-            // The selection was just cleared: force a fresh reflection so any decoration
-            // toolbar action that was showing selected/enabled resets to its default state.
-            lastReflectedSelection = null;
-            triggerReflection();
-        }
-
-        var selection = getSelection();
-
-        if (selection == null) {
-            return;
-        }
-
-        // Only the mutations targeting the selected line can change the checked
-        // state of the reflectable actions. Asked per mutation rather than through
-        // getLine(), which reports no line at all for an edit spanning several — as an
-        // accepted restatement removal does — and would leave the toolbar stuck in its
-        // pre-undo state when such an edit is undone.
-        if (!message.touchesLine(selection.line())) {
-            return;
-        }
-
-        // Bypass the range-equality guard: the selection range is unchanged but
-        // the underlying element attributes may not be.
-        lastReflectedSelection = null;
-        triggerReflection();
-    }
-
-    /**
-     * Reflects the current selection onto all reflectable toolbar actions.
-     * Package-private so tests can trigger reflection directly without a notification.
-     */
-    void triggerReflection() {
-        var actions = getReflectableActions();
-
-        // A line selection selects the line as a whole, not its content, so no action
-        // applies. getSelection() synthesizes a full-line span for it, which would
-        // otherwise reflect as if the user had selected every element on the line.
-        if (isLineSelected()) {
-            // Null so the next content selection always re-reflects, even when its span
-            // happens to equal the synthesized full-line span.
-            lastReflectedSelection = null;
-
-            for (var reflectable : actions) {
-                reflectable.setSelected(false);
-            }
-
-            updateGraceNoteActionEnabled(false);
-            return;
-        }
-
-        var selection = getSelection();
-
-        // Selection cleared
-        if (selection == null) {
-            lastReflectedSelection = null;
-
-            if (getSelectedTarget() instanceof HitTarget.Slide(var owner)) {
-                reflectSlideSelection(owner);
-            }
-
-            return;
-        }
-
-        // Skip if the selection range is unchanged
-        if (selection.equals(lastReflectedSelection)) {
-            return;
-        }
-
-        lastReflectedSelection = selection;
-
-        // Reflect selection attributes onto toolbar actions
-        var line = selection.line();
-        var hasGraceNote = false;
-
-        for (var reflectable : actions) {
-            var applicable = false;
-            var matched = true;
-
-            for (var i = selection.begin(); i <= selection.end(); i++) {
-                var element = line.getElement(i);
-
-                if (element.getType().isGraceNote()) {
-                    hasGraceNote = true;
-                }
-
-                if (!reflectable.appliesTo(element)) {
-                    continue;
-                }
-
-                applicable = true;
-
-                if (!reflectable.matchesElement(element)) {
-                    matched = false;
-                    break;
-                }
-            }
-
-            reflectable.setSelected(applicable && matched);
-        }
-
-        updateGraceNoteActionEnabled(hasGraceNote);
-    }
-
-    /**
-     * Reflects a standalone slide selection onto toolbar actions.
-     * The matching slide action is selected and enabled; all others are disabled.
-     */
-    private void reflectSlideSelection(StaffElement element) {
-        if (element.getSlide() == null) {
-            return;
-        }
-
-        for (var reflectable : getReflectableActions()) {
-            var matches = reflectable.matchesSlide(element);
-            ((UIAction) reflectable).setEnabled(matches);
-            reflectable.setSelected(matches);
-        }
-    }
-
-    /**
-     * Reflects a single element's attributes onto all reflectable toolbar actions.
-     * Used when grace note pairing is complete to mirror the host note's attributes.
-     */
-    public void reflectElement(StaffElement element) {
-        for (var reflectable : getReflectableActions()) {
-            reflectable.setSelected(
-                reflectable.appliesTo(element) && reflectable.matchesElement(element)
-            );
-        }
-
-        updateGraceNoteActionEnabled(element.getType().isGraceNote());
-    }
-
-    // Grace notes can only be inserted, not applied to existing notes.
-    // In select mode the action is unconditionally disabled.
-    // Package-private so tests for rows 93/94 can exercise the logic directly.
-    void updateGraceNoteActionEnabled(boolean hasGraceNote) {
-        Actions.GRACE_EIGHTH_NOTE_ACTION.setEnabled(!isInSelectMode() && hasGraceNote);
+        actionReflector.invalidateReflectionGuard();
     }
 }

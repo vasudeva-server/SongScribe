@@ -143,7 +143,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             var line = selection;
 
             ReflectionTestHelper.selectRange(coordinator, 0, 2);
-            coordinator.applyActionToSelection(SHARP_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, SHARP_ACTION, true, null);
 
             // Only the actual note gets the accidental
             assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
@@ -176,7 +176,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
             // Only the first note is selected — the second must be reconciled on its behalf.
             ReflectionTestHelper.selectRange(coordinator, 0, 0);
-            coordinator.applyActionToSelection(SHARP_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, SHARP_ACTION, true, null);
 
             assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
             assertThat(line.getElement(1).getAccidental())
@@ -203,7 +203,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             var line = selection;
 
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
-            coordinator.applyActionToSelection(ACCIDENTAL_IN_PARENS_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, ACCIDENTAL_IN_PARENS_ACTION, true, null);
 
             assertThat(line.getElement(0).isAccidentalInParentheses()).isTrue();
             assertThat(line.getElement(1).isAccidentalInParentheses()).isFalse();
@@ -222,7 +222,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             var line = selection;
 
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
-            coordinator.applyActionToSelection(HALF_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, HALF_ACTION, true, null);
 
             assertThat(line.getElement(0).getType()).isEqualTo(ElementType.MINIM);
             assertThat(line.getElement(1).getType()).isEqualTo(ElementType.MINIM_REST);
@@ -243,7 +243,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             var line = selection;
 
             ReflectionTestHelper.selectNote(coordinator, 0);
-            coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
             var replaced = line.getElement(0);
             assertThat(replaced.getType()).isEqualTo(ElementType.CROTCHET);
@@ -268,7 +268,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             var line = selection;
 
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
-            coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
             assertThat(line.getElement(0).getType()).isEqualTo(ElementType.GRACE_QUAVER);
             assertThat(line.getElement(1).getType()).isEqualTo(ElementType.CROTCHET);
@@ -294,7 +294,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             var line = selection;
 
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
-            coordinator.applyActionToSelection(DOUBLE_BARLINE_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, DOUBLE_BARLINE_ACTION, true, null);
 
             for (var i = 0; i <= 1; i++) {
                 assertThat(line.getElement(i).getType())
@@ -319,7 +319,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
             // Apply dot to selection — DotAction applies to all durations (notes + rests)
-            coordinator.applyActionToSelection(DOT_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, DOT_ACTION, true, null);
 
             for (var i = 0; i <= 2; i++) {
                 assertThat(line.getElement(i).getDotCount())
@@ -344,12 +344,12 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
             // Reflect — sharp not selected (not all match), flat not selected (not all match)
-            coordinator.triggerReflection();
+            coordinator.getActionReflector().triggerReflection();
             assertThat(SHARP_ACTION.isSelected()).isFalse();
             assertThat(FLAT_ACTION.isSelected()).isFalse();
 
             // Apply sharp to selection
-            coordinator.applyActionToSelection(SHARP_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, SHARP_ACTION, true, null);
 
             // Verify both notes are now sharp
             assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
@@ -374,12 +374,12 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
             // Reflect — should show no duration selected (mixed quaver/semiquaver)
-            coordinator.triggerReflection();
+            coordinator.getActionReflector().triggerReflection();
             assertThat(QUARTER_ACTION.isSelected()).isFalse();
             assertThat(HALF_ACTION.isSelected()).isFalse();
 
             // Apply quarter note to selection
-            coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
             // Verify all notes changed to crotchet
             for (var i = 0; i <= 2; i++) {
@@ -553,10 +553,10 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
             // Add dots first
-            coordinator.applyActionToSelection(DOT_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, DOT_ACTION, true, null);
 
             // Change duration — dots should be preserved by copy constructor
-            coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
             for (var i = 0; i <= 1; i++) {
                 var note = line.getElement(i);
@@ -585,16 +585,16 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
             // Step 1: Change duration to quarter
-            coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
             // Step 2: Add sharp
-            coordinator.applyActionToSelection(SHARP_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, SHARP_ACTION, true, null);
 
             // Step 3: Add fermata
-            coordinator.applyActionToSelection(FERMATA_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, FERMATA_ACTION, true, null);
 
             // Step 4: Add staccato
-            coordinator.applyActionToSelection(STACCATO_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, STACCATO_ACTION, true, null);
 
             // Verify all attributes applied to both notes
             for (var i = 0; i <= 1; i++) {
@@ -628,12 +628,12 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
             // Apply fermata
-            coordinator.applyActionToSelection(FERMATA_ACTION, true, null);
+            SelectionActionApplier.apply(coordinator, FERMATA_ACTION, true, null);
             assertThat(line.getElement(0).findAttachment(FermataAttachment.class)).isNotNull();
             assertThat(line.getElement(1).findAttachment(FermataAttachment.class)).isNotNull();
 
             // Remove fermata
-            coordinator.applyActionToSelection(FERMATA_ACTION, false, null);
+            SelectionActionApplier.apply(coordinator, FERMATA_ACTION, false, null);
             assertThat(line.getElement(0).findAttachment(FermataAttachment.class)).isNull();
             assertThat(line.getElement(1).findAttachment(FermataAttachment.class)).isNull();
         }
@@ -671,14 +671,14 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
             // Select and reflect — saves state for both managed actions
             ReflectionTestHelper.selectNote(coordinator, 0);
-            coordinator.triggerReflection();
+            coordinator.getActionReflector().triggerReflection();
 
             // Simulate flag chain disabling the non-reflectable action
             flaggedAction.setEnabled(false);
 
             // Clear and reflect — both actions should be restored
             ReflectionTestHelper.clearSelection(coordinator);
-            coordinator.triggerReflection();
+            coordinator.getActionReflector().triggerReflection();
 
             assertThat(flaggedAction.isEnabled())
                 .as("non-reflectable action enabled state restored")
@@ -705,14 +705,14 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
             // Select and reflect — saves state, then reflects
             ReflectionTestHelper.selectNote(coordinator, 0);
-            coordinator.triggerReflection();
+            coordinator.getActionReflector().triggerReflection();
 
             // Note has FLAT, so SHARP=false, FLAT=true
             assertThat(sharpAction.isSelected()).isFalse();
             assertThat(flatAction.isSelected()).isTrue();
 
             // Apply sharp — mutates the note
-            coordinator.applyActionToSelection(sharpAction, true, null);
+            SelectionActionApplier.apply(coordinator, sharpAction, true, null);
             var selection = coordinator.getActiveLine();
             assertThat(selection).isNotNull();
 
@@ -724,7 +724,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
             // Clear selection and reflect — restores pre-selection state
             ReflectionTestHelper.clearSelection(coordinator);
-            coordinator.triggerReflection();
+            coordinator.getActionReflector().triggerReflection();
 
             assertThat(sharpAction.isSelected()).as("sharp restored to pre-selection selected").isFalse();
             assertThat(sharpAction.isEnabled()).as("sharp restored to pre-selection enabled").isTrue();

@@ -119,7 +119,7 @@ class SlideReflectionTest extends MainFrameMockTest {
 
         // Select glissando (saves state, then reflection modifies it)
         ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         // Verify reflection changed state
         assertThat(crotchetAction.isEnabled()).isFalse();
@@ -139,7 +139,7 @@ class SlideReflectionTest extends MainFrameMockTest {
     void testConnectedGlissandoSelectedReflectsGlissandoAction() {
         var coordinator = createCoordinatorWithGlissando();
         ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertSelectedAndEnabled(glissandoAction, true, true);
         assertSelectedAndEnabled(fallAction, false, false);
@@ -156,7 +156,7 @@ class SlideReflectionTest extends MainFrameMockTest {
         // When CONNECTED is selected, fall should be disabled
         var coordinator = createCoordinatorWithGlissando();
         ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertSelectedAndEnabled(glissandoAction, true, true);
         assertSelectedAndEnabled(fallAction, false, false);
@@ -164,7 +164,7 @@ class SlideReflectionTest extends MainFrameMockTest {
         // And vice versa
         var coordinator2 = createCoordinatorWithFall();
         ReflectionTestHelper.selectGlissando(coordinator2, 0);
-        coordinator2.triggerReflection();
+        coordinator2.getActionReflector().triggerReflection();
 
         assertSelectedAndEnabled(fallAction, true, true);
         assertSelectedAndEnabled(glissandoAction, false, false);
@@ -176,7 +176,7 @@ class SlideReflectionTest extends MainFrameMockTest {
 
         // Select the note itself, not its glissando
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         // Normal reflection: crotchet should be selected (it's a crotchet note)
         assertThat(crotchetAction.isSelected()).isTrue();
@@ -189,7 +189,7 @@ class SlideReflectionTest extends MainFrameMockTest {
     void testFallSelectedReflectsFallAction() {
         var coordinator = createCoordinatorWithFall();
         ReflectionTestHelper.selectGlissando(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertSelectedAndEnabled(fallAction, true, true);
         assertSelectedAndEnabled(glissandoAction, false, false);
@@ -215,14 +215,14 @@ class SlideReflectionTest extends MainFrameMockTest {
 
             // Select glissando — this should save states
             ReflectionTestHelper.selectGlissando(coordinator, 0);
-            coordinator.triggerReflection();
+            coordinator.getActionReflector().triggerReflection();
 
             // Fermata should now be disabled by reflection
             assertThat(fermataAction.isEnabled()).isFalse();
             assertThat(fermataAction.isSelected()).isFalse();
 
             // Restore should bring back the saved state, proving save happened
-            coordinator.restoreActionStates();
+            coordinator.getActionReflector().restoreActionStates();
             assertThat(fermataAction.isEnabled()).isTrue();
             assertThat(fermataAction.isSelected()).isTrue();
         }
@@ -251,7 +251,7 @@ class SlideReflectionTest extends MainFrameMockTest {
             when(scoreView.getSelectionSize()).thenReturn(0);
             when(scoreView.getSelectionCoordinator()).thenReturn(coordinator);
 
-            coordinator.musicSelectionDidChangeSaveRestoreActionStates(
+            coordinator.getActionReflector().musicSelectionDidChangeSaveRestoreActionStates(
                 new MusicSelectionDidChangeNotification(scoreView));
 
             // A restore here would resurrect the pre-selection state.

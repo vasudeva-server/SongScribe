@@ -53,6 +53,7 @@ import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.component.score.LineComponent;
 import songscribe.ui.component.score.PreviewElementManager;
+import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -79,7 +80,7 @@ class GraceModeManagerTest extends UnitTest {
     @BeforeEach
     void setUp() {
         editModeManager = mock(EditModeManager.class);
-        selectionCoordinator = mock(SelectionCoordinator.class);
+        selectionCoordinator = ReflectionTestHelper.mockCoordinator();
         ScaleContext.setPixelsPerStaffSpace(ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE);
     }
 
@@ -431,7 +432,8 @@ class GraceModeManagerTest extends UnitTest {
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
-            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            var scoreCoordinator = ReflectionTestHelper.mockCoordinator();
+            when(mockScore.getSelectionCoordinator()).thenReturn(scoreCoordinator);
             Actions.initialize(mockFrame);
         }
 
@@ -980,7 +982,8 @@ class GraceModeManagerTest extends UnitTest {
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
-            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            var scoreCoordinator = ReflectionTestHelper.mockCoordinator();
+            when(mockScore.getSelectionCoordinator()).thenReturn(scoreCoordinator);
             Actions.initialize(mockFrame);
         }
 
@@ -1064,7 +1067,8 @@ class GraceModeManagerTest extends UnitTest {
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
-            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            var scoreCoordinator = ReflectionTestHelper.mockCoordinator();
+            when(mockScore.getSelectionCoordinator()).thenReturn(scoreCoordinator);
             Actions.initialize(mockFrame);
         }
 
@@ -1149,7 +1153,8 @@ class GraceModeManagerTest extends UnitTest {
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
-            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            var scoreCoordinator = ReflectionTestHelper.mockCoordinator();
+            when(mockScore.getSelectionCoordinator()).thenReturn(scoreCoordinator);
             Actions.initialize(mockFrame);
         }
 
@@ -1458,7 +1463,8 @@ class GraceModeManagerTest extends UnitTest {
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
-            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            var scoreCoordinator = ReflectionTestHelper.mockCoordinator();
+            when(mockScore.getSelectionCoordinator()).thenReturn(scoreCoordinator);
             Actions.initialize(mockFrame);
         }
 
@@ -1556,7 +1562,8 @@ class GraceModeManagerTest extends UnitTest {
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
-            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            var scoreCoordinator = ReflectionTestHelper.mockCoordinator();
+            when(mockScore.getSelectionCoordinator()).thenReturn(scoreCoordinator);
             Actions.initialize(mockFrame);
         }
 
@@ -1730,7 +1737,8 @@ class GraceModeManagerTest extends UnitTest {
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
-            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            var scoreCoordinator = ReflectionTestHelper.mockCoordinator();
+            when(mockScore.getSelectionCoordinator()).thenReturn(scoreCoordinator);
             Actions.initialize(mockFrame);
         }
 
@@ -1918,7 +1926,8 @@ class GraceModeManagerTest extends UnitTest {
             when(mockFrame.getRootPane()).thenReturn(mockRootPane);
             when(mockFrame.requireScoreView()).thenReturn(mockScore);
             when(mockFrame.getScoreView()).thenReturn(mockScore);
-            when(mockScore.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            var scoreCoordinator = ReflectionTestHelper.mockCoordinator();
+            when(mockScore.getSelectionCoordinator()).thenReturn(scoreCoordinator);
             Actions.initialize(mockFrame);
         }
 

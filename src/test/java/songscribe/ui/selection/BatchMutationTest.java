@@ -105,7 +105,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
-        coordinator.applyActionToSelection(SHARP_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, SHARP_ACTION, true, null);
 
         var line = getLine(coordinator);
         assertThat(line.getElement(0).getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
@@ -125,7 +125,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
-        coordinator.applyActionToSelection(FERMATA_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, FERMATA_ACTION, true, null);
 
         var line = getLine(coordinator);
 
@@ -150,7 +150,7 @@ class BatchMutationTest extends MainFrameMockTest {
         line.addBeaming(new Beam(line.getElement(0), line.getElement(2)));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         assertThat(line.findSpans(Beam.class).isEmpty()).isTrue();
     }
@@ -166,7 +166,7 @@ class BatchMutationTest extends MainFrameMockTest {
         line.addBeaming(new Beam(line.getElement(0), line.getElement(1)));
 
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         assertThat(line.findBeamAt(0)).isNull();
         assertThat(line.findBeamAt(1)).isNull();
@@ -185,7 +185,7 @@ class BatchMutationTest extends MainFrameMockTest {
         line.addBeaming(new Beam(line.getElement(0), line.getElement(3)));
 
         ReflectionTestHelper.selectNote(coordinator, 3);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var beam = line.findBeamAt(0);
         assertThat(beam).isNotNull();
@@ -207,7 +207,7 @@ class BatchMutationTest extends MainFrameMockTest {
         line.addBeaming(new Beam(line.getElement(0), line.getElement(3)));
 
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var beam = line.findBeamAt(1);
         assertThat(beam).isNotNull();
@@ -230,7 +230,7 @@ class BatchMutationTest extends MainFrameMockTest {
         line.addBeaming(new Beam(line.getElement(0), line.getElement(4)));
 
         ReflectionTestHelper.selectNote(coordinator, 2);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         assertThat(line.getElement(2).getType()).isEqualTo(ElementType.CROTCHET);
         assertThat(line.findSpans(Beam.class).isEmpty()).isTrue();
@@ -244,7 +244,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectNote(coordinator, 0);
 
-        coordinator.applyActionToSelection(FERMATA_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, FERMATA_ACTION, true, null);
 
         var song = getLine(coordinator).getSong();
         verify(song).withModification(any());
@@ -261,7 +261,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(List.of(note), List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectNote(coordinator, 0);
 
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var replaced = getLine(coordinator).getElement(0);
         assertThat(replaced.getType()).isEqualTo(ElementType.CROTCHET);
@@ -279,7 +279,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var line = getLine(coordinator);
         assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
@@ -296,7 +296,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var line = getLine(coordinator);
         assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
@@ -315,7 +315,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var line = getLine(coordinator);
         assertThat(line.getElement(0).getType()).isEqualTo(ElementType.CROTCHET);
@@ -334,7 +334,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
-        coordinator.applyActionToSelection(QUARTER_ACTION, false, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, false, null);
 
         var line = getLine(coordinator);
         assertThat(line.getElement(0).getType()).isEqualTo(ElementType.QUAVER);
@@ -349,7 +349,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
 
         // No selection set -- should not throw
-        coordinator.applyActionToSelection(FERMATA_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, FERMATA_ACTION, true, null);
 
         assertThat(getLine(coordinator).getElement(0).findAttachment(FermataAttachment.class)).isNull();
     }
@@ -365,7 +365,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = ReflectionTestHelper.createCoordinator(notes, List.of(FERMATA_ACTION), songMock);
 
         // No selection — must not invoke the modification bracket
-        coordinator.applyActionToSelection(FERMATA_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, FERMATA_ACTION, true, null);
 
         verify(songMock, never()).withModification(any());
     }
@@ -386,7 +386,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var line = getLine(coordinator);
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
-        coordinator.applyActionToSelection(QUARTER_ACTION, false, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, false, null);
 
         for (var i = 0; i <= 2; i++) {
             assertThat(line.getElement(i).getType())
@@ -410,7 +410,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
-        coordinator.applyActionToSelection(FERMATA_ACTION, false, null);
+        SelectionActionApplier.apply(coordinator, FERMATA_ACTION, false, null);
 
         var line = getLine(coordinator);
 
@@ -433,7 +433,7 @@ class BatchMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
-        coordinator.applyActionToSelection(FERMATA_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, FERMATA_ACTION, true, null);
 
         var selection = coordinator.getSelection();
         assertThat(selection).isNotNull();
@@ -462,7 +462,7 @@ class BatchMutationTest extends MainFrameMockTest {
         line.addSpan(tie);
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var preserved = line.findTieAt(0);
         assertThat(preserved).isNotNull();
@@ -488,7 +488,7 @@ class BatchMutationTest extends MainFrameMockTest {
         line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(2), 3));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         assertThat(line.findSpans(Tuplet.class)).isEmpty();
     }
@@ -507,7 +507,7 @@ class BatchMutationTest extends MainFrameMockTest {
         line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(4), 3));
 
         ReflectionTestHelper.selectNote(coordinator, 2);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         assertThat(line.findSpans(Tuplet.class)).isEmpty();
     }
@@ -526,7 +526,7 @@ class BatchMutationTest extends MainFrameMockTest {
         line.addTuplet(Tuplet.withUnresolvedRatio(line.getElement(0), line.getElement(1), 3));
 
         ReflectionTestHelper.selectRange(coordinator, 3, 4);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var preserved = line.findTupletAt(0);
         assertThat(preserved).isNotNull();

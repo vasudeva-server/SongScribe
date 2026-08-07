@@ -58,7 +58,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertThat(uiAction.isSelected()).isTrue();
     }
@@ -80,7 +80,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertThat(uiAction.isSelected()).isFalse();
     }
@@ -102,7 +102,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertThat(uiAction.isSelected()).isFalse();
     }
@@ -121,7 +121,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertThat(uiAction.isSelected()).isFalse();
     }
@@ -145,17 +145,17 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
         // Select note 0 only, reflect — action becomes true (SHARP matches)
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
         assertThat(uiAction.isSelected()).isTrue();
 
         // Extend selection to [0,1], reflect — action becomes false (FLAT mismatch)
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
         assertThat(uiAction.isSelected()).isFalse();
 
         // Clear and reflect — should restore to original saved state (false)
         ReflectionTestHelper.clearSelection(coordinator);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
         assertThat(uiAction.isSelected()).isFalse();
     }
 
@@ -176,14 +176,14 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
         // Select and reflect — saves state (selected=false, enabled=true)
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         // Manually disable the action during selection
         uiAction.setEnabled(false);
 
         // Clear and reflect — restores both selected and enabled from saved state
         ReflectionTestHelper.clearSelection(coordinator);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertThat(uiAction.isEnabled()).isTrue();
     }
@@ -206,12 +206,12 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
         // Select and reflect — action becomes false (FLAT does not match SHARP)
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
         assertThat(uiAction.isSelected()).isFalse();
 
         // Clear and reflect — action restored to pre-selection value (true)
         ReflectionTestHelper.clearSelection(coordinator);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
         assertThat(uiAction.isSelected()).isTrue();
     }
 
@@ -231,7 +231,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
         // Select and reflect — action becomes true (SHARP matches)
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
         assertThat(uiAction.isSelected()).isTrue();
     }
 
@@ -249,7 +249,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
             List.of(action)
         );
 
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertThat(uiAction.isSelected()).isFalse();
     }
@@ -270,7 +270,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertThat(uiAction.isSelected()).isTrue();
     }
@@ -291,7 +291,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertThat(uiAction.isSelected()).isFalse();
     }
@@ -320,7 +320,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         uiAction.setEnabled(false);
 
         // Clear without restoring — the mutated state must be preserved
-        coordinator.clearSavedActionStates();
+        coordinator.getActionReflector().clearSavedActionStates();
 
         assertThat(uiAction.isSelected())
             .as("selected must remain at mutated value (not restored to saved false)")
@@ -328,7 +328,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         assertThat(uiAction.isEnabled())
             .as("enabled must remain at mutated value (not restored to saved true)")
             .isFalse();
-        assertThat(coordinator.hasSavedActionStates())
+        assertThat(coordinator.getActionReflector().hasSavedActionStates())
             .as("saved map must be empty after clearSavedActionStates")
             .isFalse();
     }
@@ -372,7 +372,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         uiUnflagged.setEnabled(false);
 
         // Restore only actions carrying DISABLE_IN_GRACE_MODE
-        coordinator.restoreActionStatesWithFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE);
+        coordinator.getActionReflector().restoreActionStatesWithFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE);
 
         // Flagged action must be restored to its saved state
         assertThat(uiFlagged.isSelected())
@@ -391,7 +391,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
             .isFalse();
 
         // The saved map must be fully cleared regardless
-        assertThat(coordinator.hasSavedActionStates())
+        assertThat(coordinator.getActionReflector().hasSavedActionStates())
             .as("saved map must be empty after restoreActionStatesWithFlag")
             .isFalse();
     }
@@ -414,7 +414,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
         );
 
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         // Reflection only sets selected state, not enabled state.
         // Enabled state is managed by flag-based logic in updateEnabledState().
@@ -445,7 +445,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
         // Select and reflect — saves both selected and enabled for each action
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         // During selection, states have changed:
         // action1: selected=true (SHARP matches), action2: selected=false (FLAT doesn't match)
@@ -455,7 +455,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
         // Clear and reflect — restores original states
         ReflectionTestHelper.clearSelection(coordinator);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertThat(uiAction1.isSelected()).as("action1 selected").isTrue();
         assertThat(uiAction1.isEnabled()).as("action1 enabled").isTrue();

@@ -74,13 +74,13 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
             when(mockLine.isDraggingSelection()).thenReturn(true);
 
             // dragDidStart sets the field and registers the AWT listener (mocked to no-op).
-            coordinator.dragDidStart(mockLine);
-            assertThat(coordinator.getDraggingLine())
+            coordinator.getDragTracker().dragDidStart(mockLine);
+            assertThat(coordinator.getDragTracker().getDraggingLine())
                 .as("draggingLine set after dragDidStart")
                 .isSameAs(mockLine);
 
             // Obtain the listener via the package-private accessor.
-            var listener = coordinator.getGlobalMouseReleasedListener();
+            var listener = coordinator.getDragTracker().getGlobalMouseReleasedListener();
 
             // Invoke the listener directly — the AWT dispatch path is not under test.
             var fakeSource = new Panel();
@@ -91,7 +91,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
 
             // Both cleanup effects must be observable.
             verify(mockLine).clearDragRectangle();
-            assertThat(coordinator.getDraggingLine())
+            assertThat(coordinator.getDragTracker().getDraggingLine())
                 .as("draggingLine nulled after MOUSE_RELEASED")
                 .isNull();
         }
@@ -117,10 +117,10 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         // Select the note and trigger reflection — this sets lastReflectedSelection and
         // populates savedActionStates via the selectNote helper's saveActionStates call.
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         // Confirm states were saved.
-        assertThat(coordinator.hasSavedActionStates())
+        assertThat(coordinator.getActionReflector().hasSavedActionStates())
             .as("savedActionStates non-empty after first reflection")
             .isTrue();
 
@@ -128,9 +128,9 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         // It must be a complete no-op: it must not call restoreActionStates (which would clear the map).
         // The handler ignores its parameter — provide a mock to satisfy the non-null contract.
         var dummyNotification = mock(MusicSelectionDidChangeNotification.class);
-        coordinator.musicSelectionDidChangeSaveRestoreActionStates(dummyNotification);
+        coordinator.getActionReflector().musicSelectionDidChangeSaveRestoreActionStates(dummyNotification);
 
-        assertThat(coordinator.hasSavedActionStates())
+        assertThat(coordinator.getActionReflector().hasSavedActionStates())
             .as("savedActionStates must remain non-empty — restore must not have been called")
             .isTrue();
     }
@@ -155,7 +155,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         ReflectionTestHelper.selectNote(coordinator, 0);
 
         // First reflection: action becomes selected=true (SHARP matches).
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
         assertThat(uiAction.isSelected())
             .as("action selected=true after first reflection (SHARP match)")
             .isTrue();
@@ -164,7 +164,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         uiAction.setSelected(false);
 
         // Second triggerReflection with the same selection range → dedup guard fires → no-op.
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         // The artificial mutation must survive — the guard prevented re-reflection.
         assertThat(uiAction.isSelected())
@@ -197,7 +197,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         var sharpNote = ElementType.CROTCHET.newInstance();
         sharpNote.setAccidental(StaffElement.Accidental.SHARP);
 
-        coordinator.reflectElement(sharpNote);
+        coordinator.getActionReflector().reflectElement(sharpNote);
 
         assertThat(uiSharp.isSelected())
             .as("sharpAction selected=true — element has SHARP")
@@ -221,7 +221,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         Actions.GRACE_EIGHTH_NOTE_ACTION.setEnabled(true);
 
         // Calling with hasGraceNote=true while inSelectMode must still disable.
-        coordinator.updateGraceNoteActionEnabled(true);
+        coordinator.getActionReflector().updateGraceNoteActionEnabled(true);
 
         assertThat(Actions.GRACE_EIGHTH_NOTE_ACTION.isEnabled())
             .as("GRACE_EIGHTH_NOTE_ACTION disabled when in select mode")
@@ -240,13 +240,13 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         var coordinator = new SelectionCoordinator(scoreView);
 
         // hasGraceNote=true, not in select mode → enabled.
-        coordinator.updateGraceNoteActionEnabled(true);
+        coordinator.getActionReflector().updateGraceNoteActionEnabled(true);
         assertThat(Actions.GRACE_EIGHTH_NOTE_ACTION.isEnabled())
             .as("GRACE_EIGHTH_NOTE_ACTION enabled when not in select mode and hasGraceNote=true")
             .isTrue();
 
         // hasGraceNote=false, not in select mode → disabled.
-        coordinator.updateGraceNoteActionEnabled(false);
+        coordinator.getActionReflector().updateGraceNoteActionEnabled(false);
         assertThat(Actions.GRACE_EIGHTH_NOTE_ACTION.isEnabled())
             .as("GRACE_EIGHTH_NOTE_ACTION disabled when not in select mode but hasGraceNote=false")
             .isFalse();
@@ -277,7 +277,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         );
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertThat(Actions.GRACE_EIGHTH_NOTE_ACTION.isEnabled())
             .as("GRACE_EIGHTH_NOTE_ACTION enabled when selection contains a grace note")
@@ -302,7 +302,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         Actions.GRACE_EIGHTH_NOTE_ACTION.setEnabled(true);
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.triggerReflection();
+        coordinator.getActionReflector().triggerReflection();
 
         assertThat(Actions.GRACE_EIGHTH_NOTE_ACTION.isEnabled())
             .as("GRACE_EIGHTH_NOTE_ACTION disabled when selection contains no grace notes")

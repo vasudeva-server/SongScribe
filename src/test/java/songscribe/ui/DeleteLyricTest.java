@@ -85,7 +85,7 @@ class DeleteLyricTest extends MainFrameMockTest {
     private SelectionCoordinator createCoordinator(Line line) {
         var created = ReflectionTestHelper.createCoordinatorForLine(line);
 
-        created.setManagedActions(new ArrayList<>());
+        created.getActionReflector().setManagedActions(new ArrayList<>());
 
         return created;
     }

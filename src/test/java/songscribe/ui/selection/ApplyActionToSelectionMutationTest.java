@@ -65,7 +65,7 @@ import songscribe.ui.action.UIAction;
 import songscribe.ui.OptionDialogs;
 
 /**
- * Mutation-emission tests for {@link SelectionCoordinator#applyActionToSelection}.
+ * Mutation-emission tests for {@link SelectionActionApplier#apply}.
  * Verifies that the method emits the correct mutation records for both
  * {@link UIAction.ElementReplaceable} and {@link UIAction.ElementModifiable}
  * action paths, including downstream span-validation mutations (beam repair
@@ -199,7 +199,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
             optionDialogs.when(() -> OptionDialogs.showConfirmDialog(
                 any(), any(), any(), anyInt(), anyInt())).thenReturn(answer);
 
-            coordinator.applyActionToSelection(SHARP_ACTION, false, null);
+            SelectionActionApplier.apply(coordinator, SHARP_ACTION, false, null);
         }
     }
 
@@ -255,7 +255,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var replacements = mutationsOfType(ElementReplacement.class);
         assertThat(replacements).hasSize(3);
@@ -283,7 +283,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var replacements = mutationsOfType(ElementReplacement.class);
         assertThat(replacements).hasSize(2);
@@ -310,7 +310,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 3);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var replacements = mutationsOfType(ElementReplacement.class);
         assertThat(replacements).hasSize(1);
@@ -346,7 +346,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 2);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var replacements = mutationsOfType(ElementReplacement.class);
         assertThat(replacements).hasSize(1);
@@ -376,7 +376,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
             () -> line.addSpan(new Tie(line.getElement(0), line.getElement(1))));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         assertThat(mutationsOfType(ElementReplacement.class)).hasSize(2);
         assertNoTieMutations();
@@ -394,7 +394,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
 
-        coordinator.applyActionToSelection(SHARP_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, SHARP_ACTION, true, null);
 
         var modifications = mutationsOfType(ElementModification.class);
         assertThat(modifications).hasSize(3);
@@ -424,7 +424,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 3);
 
-        coordinator.applyActionToSelection(SHARP_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, SHARP_ACTION, true, null);
 
         var modifications = mutationsOfType(ElementModification.class);
         assertThat(modifications).hasSize(2);
@@ -443,7 +443,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
-        coordinator.applyActionToSelection(FERMATA_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, FERMATA_ACTION, true, null);
 
         var modifications = mutationsOfType(ElementModification.class);
         assertThat(modifications).hasSize(2);
@@ -464,7 +464,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         var coordinator = createCoordinator(notes, List.of(DOT_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
-        coordinator.applyActionToSelection(DOT_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, DOT_ACTION, true, null);
 
         var modifications = mutationsOfType(ElementModification.class);
         assertThat(modifications).hasSize(2);
@@ -495,7 +495,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
             () -> line.addSpan(new Tie(line.getElement(0), line.getElement(1))));
 
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
-        coordinator.applyActionToSelection(SHARP_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, SHARP_ACTION, true, null);
 
         assertThat(mutationsOfType(ElementModification.class)).hasSize(3);
         assertNoSpanMutations();

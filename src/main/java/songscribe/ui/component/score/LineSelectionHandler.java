@@ -325,7 +325,7 @@ class LineSelectionHandler {
 
         if (!dragging) {
             var coordinator = lc.getScoreView().getSelectionCoordinator();
-            coordinator.dragDidStart(lc);
+            coordinator.getDragTracker().dragDidStart(lc);
         }
 
         dragging = true;

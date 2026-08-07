@@ -40,6 +40,7 @@ import songscribe.prefs.Prefs;
 import songscribe.prefs.PrefsKey;
 import songscribe.ui.playback.PlayThread;
 import songscribe.ui.selection.ElementSelection;
+import songscribe.ui.selection.SelectionActionApplier;
 
 class AccidentalActionTest extends MainFrameMockTest {
 
@@ -89,9 +90,16 @@ class AccidentalActionTest extends MainFrameMockTest {
             );
         }
 
+        /**
+         * The selection above exists only to send the action down its
+         * apply-to-selection branch. The applier is stubbed out because it would reach
+         * through the mocked line the selection names, and what these tests observe is
+         * the note-playing decision that happens before it.
+         */
         @Test
         void testPlayThreadNotStartedWhenPrefIsDisabled() {
             try (var prefsMock = mockStatic(Prefs.class);
+                 var _ = mockStatic(SelectionActionApplier.class);
                  var playMock = mockConstruction(PlayThread.class)) {
                 prefsMock.when(() -> Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)).thenReturn(false);
                 action.actionPerformed(new ActionEvent(new JButton(), ActionEvent.ACTION_PERFORMED, ""));
@@ -102,6 +110,7 @@ class AccidentalActionTest extends MainFrameMockTest {
         @Test
         void testPlayThreadNotStartedWhenSelectedElementIsNull() {
             try (var prefsMock = mockStatic(Prefs.class);
+                 var _ = mockStatic(SelectionActionApplier.class);
                  var playMock = mockConstruction(PlayThread.class)) {
                 prefsMock.when(() -> Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)).thenReturn(true);
                 when(mockEnv().score().getSingleSelectedElement()).thenReturn(null);

@@ -50,7 +50,7 @@ import songscribe.ui.action.UIAction;
 
 /**
  * Coverage for the beam-repair and tuplet-invalidation behavior of
- * {@link SelectionCoordinator#applyActionToSelection}'s span validation
+ * {@link SelectionActionApplier#apply}'s span validation
  * step. Each test exercises a single beam or tuplet scenario through a real
  * {@code ElementReplaceable} action and asserts on the exact mutation records
  * emitted into the open modification bracket.
@@ -122,7 +122,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 1);
-        coordinator.applyActionToSelection(SIXTEENTH_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, SIXTEENTH_ACTION, true, null);
 
         assertThat(mutationsOfType(BeamingRemoval.class)).isEmpty();
         assertThat(mutationsOfType(BeamingAddition.class)).isEmpty();
@@ -147,7 +147,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
@@ -178,7 +178,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 2);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
@@ -211,7 +211,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 2);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
@@ -242,7 +242,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 2);
-        coordinator.applyActionToSelection(SIXTEENTH_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, SIXTEENTH_ACTION, true, null);
 
         assertThat(mutationsOfType(BeamingRemoval.class))
             .as("an interior grace note does not puncture the beam")
@@ -268,7 +268,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var removals = mutationsOfType(BeamingRemoval.class);
         assertThat(removals).hasSize(1);
@@ -308,7 +308,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectRange(coordinator, 0, 4);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         var removals = mutationsOfType(TupletRemoval.class);
         assertThat(removals).hasSize(2);
@@ -336,7 +336,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 0);
-        coordinator.applyActionToSelection(QUARTER_ACTION, true, null);
+        SelectionActionApplier.apply(coordinator, QUARTER_ACTION, true, null);
 
         assertThat(mutationsOfType(TupletRemoval.class)).isEmpty();
     }
@@ -363,7 +363,7 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         capturedMutations.clear();
 
         ReflectionTestHelper.selectNote(coordinator, 1);
-        coordinator.applyActionToSelection(dotAction, true, null);
+        SelectionActionApplier.apply(coordinator, dotAction, true, null);
 
         var removals = mutationsOfType(TupletRemoval.class);
         assertThat(removals).hasSize(1);

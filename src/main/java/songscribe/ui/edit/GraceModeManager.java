@@ -594,7 +594,7 @@ public final class GraceModeManager {
         MouseEvent e
     ) {
         // Save action states before modifying anything
-        selectionCoordinator.saveActionStates();
+        selectionCoordinator.getActionReflector().saveActionStates();
 
         var line = lineComponent.getLine();
 
@@ -806,7 +806,7 @@ public final class GraceModeManager {
             line.syncGraceHostMelisma(graceNoteIndex);
 
             // Mirror the host note's attributes onto the toolbar.
-            selectionCoordinator.reflectElement(hostNote);
+            selectionCoordinator.getActionReflector().reflectElement(hostNote);
         });
 
         commit();
@@ -851,7 +851,7 @@ public final class GraceModeManager {
     private void resetState() {
         // Restore only DISABLE_IN_GRACE_MODE actions to their pre-grace-mode state.
         // All other actions (duration, embellishments, etc.) keep their current state.
-        selectionCoordinator.restoreActionStatesWithFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE);
+        selectionCoordinator.getActionReflector().restoreActionStatesWithFlag(UIAction.Flag.DISABLE_IN_GRACE_MODE);
 
         // Set INACTIVE before posting the message so that enableFromGraceModeState()
         // sees the correct state when re-enabling DISABLE_IN_GRACE_MODE actions.

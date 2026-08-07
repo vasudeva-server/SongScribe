@@ -56,6 +56,7 @@ import songscribe.ui.component.ScoreViewController;
 
 import songscribe.dom.Ending;
 import songscribe.ui.selection.ReflectionTestHelper;
+import songscribe.ui.selection.SelectionActionApplier;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
@@ -131,7 +132,7 @@ class EndingConfirmsTest extends UnitTest {
     private SelectionCoordinator coordinatorForLine(Line line) {
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
 
-        coordinator.setManagedActions(new ArrayList<>());
+        coordinator.getActionReflector().setManagedActions(new ArrayList<>());
 
         return coordinator;
     }
@@ -195,7 +196,7 @@ class EndingConfirmsTest extends UnitTest {
             // on a non-repeat replacement, to exercise the Invalidate confirm-dialog flow.
             var env = setupPrimaryLine();
             ReflectionTestHelper.selectNote(env.coordinator(), SPLIT_INDEX);
-            env.coordinator().applyActionToSelection(SINGLE_BARLINE_ACTION, true, null);
+            SelectionActionApplier.apply(env.coordinator(), SINGLE_BARLINE_ACTION, true, null);
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getSpans()).contains(env.ending());
@@ -234,7 +235,7 @@ class EndingConfirmsTest extends UnitTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), SPLIT_INDEX);
-                env.coordinator().applyActionToSelection(SINGLE_BARLINE_ACTION, true, null);
+                SelectionActionApplier.apply(env.coordinator(), SINGLE_BARLINE_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
@@ -255,7 +256,7 @@ class EndingConfirmsTest extends UnitTest {
             // split=REPEAT_RIGHT; changing end to REPEAT_RIGHT requires split → REPEAT_LEFT_RIGHT
             var env = setupPrimaryLine();
             ReflectionTestHelper.selectNote(env.coordinator(), END_INDEX);
-            env.coordinator().applyActionToSelection(RIGHT_REPEAT_ACTION, true, null);
+            SelectionActionApplier.apply(env.coordinator(), RIGHT_REPEAT_ACTION, true, null);
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
@@ -267,7 +268,7 @@ class EndingConfirmsTest extends UnitTest {
             // split=REPEAT_RIGHT → REPEAT_LEFT_RIGHT requires end → REPEAT_RIGHT
             var env = setupPrimaryLine();
             ReflectionTestHelper.selectNote(env.coordinator(), SPLIT_INDEX);
-            env.coordinator().applyActionToSelection(LEFT_RIGHT_REPEAT_ACTION, true, null);
+            SelectionActionApplier.apply(env.coordinator(), LEFT_RIGHT_REPEAT_ACTION, true, null);
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
             assertThat(env.line().getElement(END_INDEX).getType()).isEqualTo(ElementType.SINGLE_BARLINE);
@@ -290,7 +291,7 @@ class EndingConfirmsTest extends UnitTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), END_INDEX);
-                env.coordinator().applyActionToSelection(LEFT_REPEAT_ACTION, true, null);
+                SelectionActionApplier.apply(env.coordinator(), LEFT_REPEAT_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
@@ -305,7 +306,7 @@ class EndingConfirmsTest extends UnitTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), END_INDEX);
-                env.coordinator().applyActionToSelection(RIGHT_REPEAT_ACTION, true, null);
+                SelectionActionApplier.apply(env.coordinator(), RIGHT_REPEAT_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_LEFT_RIGHT);
@@ -320,7 +321,7 @@ class EndingConfirmsTest extends UnitTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), END_INDEX);
-                env.coordinator().applyActionToSelection(SINGLE_BARLINE_ACTION, true, null);
+                SelectionActionApplier.apply(env.coordinator(), SINGLE_BARLINE_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
@@ -335,7 +336,7 @@ class EndingConfirmsTest extends UnitTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), SPLIT_INDEX);
-                env.coordinator().applyActionToSelection(RIGHT_REPEAT_ACTION, true, null);
+                SelectionActionApplier.apply(env.coordinator(), RIGHT_REPEAT_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_RIGHT);
@@ -350,7 +351,7 @@ class EndingConfirmsTest extends UnitTest {
 
             try (var od = simulateYes()) {
                 ReflectionTestHelper.selectNote(env.coordinator(), SPLIT_INDEX);
-                env.coordinator().applyActionToSelection(LEFT_RIGHT_REPEAT_ACTION, true, null);
+                SelectionActionApplier.apply(env.coordinator(), LEFT_RIGHT_REPEAT_ACTION, true, null);
             }
 
             assertThat(env.line().getElement(SPLIT_INDEX).getType()).isEqualTo(ElementType.REPEAT_LEFT_RIGHT);

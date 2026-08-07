@@ -287,7 +287,7 @@ class SelectionContentTest extends MainFrameMockTest {
             .isFalse();
 
         // Apply the action: the note is replaced with a rest and the cache is cleared
-        coordinator.applyActionToSelection(action, true, null);
+        SelectionActionApplier.apply(coordinator, action, true, null);
 
         // Cache must have been invalidated: recomputed result must be true
         assertThat(coordinator.selectionHasRests())

@@ -634,7 +634,7 @@ public final class ScoreViewController {
         // Discard saved action states — the song has changed, so restoring
         // pre-selection states would be stale. Individual action handlers will
         // re-evaluate their enabled state from the current context.
-        selectionCoordinator.clearSavedActionStates();
+        selectionCoordinator.getActionReflector().clearSavedActionStates();
         score.deselect();
     }
 
@@ -669,7 +669,7 @@ public final class ScoreViewController {
                 }
             }
 
-            selectionCoordinator.restoreSelectedActionStates();
+            selectionCoordinator.getActionReflector().restoreSelectedActionStates();
             selectionCoordinator.clearSelection();
             score.selectionChanged();
             score.repaint();
@@ -727,7 +727,7 @@ public final class ScoreViewController {
         // Restore the pre-selection selected states but not the enabled states — the song
         // has changed, so individual action handlers must re-evaluate enablement from the
         // current context, while the user's chosen duration button survives the delete.
-        selectionCoordinator.restoreSelectedActionStates();
+        selectionCoordinator.getActionReflector().restoreSelectedActionStates();
         score.deselect();
     }
 
@@ -1292,7 +1292,7 @@ public final class ScoreViewController {
             // Discard saved action states — the song has changed, so restoring
             // pre-selection states would be stale. Individual action handlers will
             // re-evaluate their enabled state from the current context.
-            selectionCoordinator.clearSavedActionStates();
+            selectionCoordinator.getActionReflector().clearSavedActionStates();
             score.deselect();
         }
     }

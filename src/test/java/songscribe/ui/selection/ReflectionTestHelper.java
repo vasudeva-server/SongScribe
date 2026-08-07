@@ -61,6 +61,24 @@ public final class ReflectionTestHelper {
     }
 
     /**
+     * A mocked {@link SelectionCoordinator} whose collaborators answer as mocks rather than
+     * null, for tests that only need the coordinator to stand there.
+     * <p>
+     * A coordinator hands out an {@link ActionReflector} and a {@link SelectionDragTracker},
+     * and production code calls straight through them — {@code
+     * coordinator.getActionReflector().saveActionStates()}. A bare {@code
+     * mock(SelectionCoordinator.class)} answers null for both, so every such call NPEs. Tests
+     * that want to observe those calls keep their own handle on the returned mock via
+     * {@link SelectionCoordinator#getActionReflector()}.
+     */
+    public static SelectionCoordinator mockCoordinator() {
+        var coordinator = mock(SelectionCoordinator.class);
+        when(coordinator.getActionReflector()).thenReturn(mock(ActionReflector.class));
+        when(coordinator.getDragTracker()).thenReturn(mock(SelectionDragTracker.class));
+        return coordinator;
+    }
+
+    /**
      * Creates a SelectionCoordinator for an existing Line (e.g. from a fixture),
      * registered and activated at line index 0, with no reflectable actions.
      */
@@ -146,14 +164,16 @@ public final class ReflectionTestHelper {
         List<UIAction.Reflectable> actions,
         List<UIAction> managedActions
     ) {
-        try {
-            var reflField = SelectionCoordinator.class.getDeclaredField("reflectableActions");
-            reflField.setAccessible(true);
-            reflField.set(coordinator, new ArrayList<>(actions));
+        var reflector = coordinator.getActionReflector();
 
-            var managedField = SelectionCoordinator.class.getDeclaredField("managedActions");
+        try {
+            var reflField = ActionReflector.class.getDeclaredField("reflectableActions");
+            reflField.setAccessible(true);
+            reflField.set(reflector, new ArrayList<>(actions));
+
+            var managedField = ActionReflector.class.getDeclaredField("managedActions");
             managedField.setAccessible(true);
-            managedField.set(coordinator, new ArrayList<>(managedActions));
+            managedField.set(reflector, new ArrayList<>(managedActions));
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException("Failed to inject test actions", e);
         }
@@ -186,7 +206,7 @@ public final class ReflectionTestHelper {
      * Selects notes [fromIndex..toIndex] inclusive on the coordinator's active line.
      */
     public static void selectRange(SelectionCoordinator coordinator, int fromIndex, int toIndex) {
-        coordinator.saveActionStates();
+        coordinator.getActionReflector().saveActionStates();
         requireActiveLine(coordinator);
 
         // Anchored at fromIndex, so a backwards range reads as a drag that started at its end.
@@ -209,7 +229,7 @@ public final class ReflectionTestHelper {
      * are conveniences over it for the kinds tests reach for most.
      */
     public static void selectTarget(SelectionCoordinator coordinator, HitTarget target) {
-        coordinator.saveActionStates();
+        coordinator.getActionReflector().saveActionStates();
         requireActiveLine(coordinator);
         coordinator.select(target);
     }
@@ -242,6 +262,6 @@ public final class ReflectionTestHelper {
     public static void clearSelection(SelectionCoordinator coordinator) {
         requireActiveLine(coordinator);
         coordinator.clearActiveSelection();
-        coordinator.restoreActionStates();
+        coordinator.getActionReflector().restoreActionStates();
     }
 }

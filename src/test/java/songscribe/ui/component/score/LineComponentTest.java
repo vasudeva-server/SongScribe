@@ -78,6 +78,7 @@ import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.renderer.ElementFrame;
 import songscribe.ui.selection.SelectionCoordinator;
+import songscribe.ui.selection.SelectionDragTracker;
 
 /**
  * Unit tests for {@link LineComponent} coordinate conversions and layout-state semantics.
@@ -913,11 +914,13 @@ class LineComponentTest extends UnitTest {
         /** Bounds large enough to contain the helper event's point. */
         private static final Dimension DRAG_COMPONENT_SIZE = new Dimension(100, 50);
 
-        private SelectionCoordinator coordinator;
+        private SelectionDragTracker dragTracker;
 
         @BeforeEach
         void setUp() {
-            coordinator = mock(SelectionCoordinator.class);
+            var coordinator = mock(SelectionCoordinator.class);
+            dragTracker = mock(SelectionDragTracker.class);
+            when(coordinator.getDragTracker()).thenReturn(dragTracker);
 
             var mockScoreView = mock(ScoreView.class);
             when(mockScoreView.getSelectionCoordinator()).thenReturn(coordinator);
@@ -954,14 +957,14 @@ class LineComponentTest extends UnitTest {
         void testDragDuringPasteModeDoesNotStartASelection() {
             dragWithPasteInProgress(true);
 
-            verify(coordinator, never()).dragDidStart(any());
+            verify(dragTracker, never()).dragDidStart(any());
         }
 
         @Test
         void testDragOutsidePasteModeStartsASelection() {
             dragWithPasteInProgress(false);
 
-            verify(coordinator).dragDidStart(lc);
+            verify(dragTracker).dragDidStart(lc);
         }
     }
 

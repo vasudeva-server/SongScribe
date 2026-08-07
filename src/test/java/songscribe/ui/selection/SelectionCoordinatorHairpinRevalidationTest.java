@@ -80,7 +80,7 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
         // An undo that removed the hairpin, reported on the selected line.
         fixture.line().removeSpan(fixture.hairpin());
 
-        fixture.coordinator().songDidChangeReflectSelection(new SongDidChangeNotification(
+        fixture.coordinator().getActionReflector().songDidChangeReflectSelection(new SongDidChangeNotification(
             List.of(new CrescendoRemoval(fixture.line(), fixture.hairpin())),
             fixture.line().getSong()
         ));
@@ -106,7 +106,7 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
 
         // A redo that re-added the selected hairpin: it is on the line, so the mutation
         // and the document agree, unlike a removal reported for a hairpin still present.
-        fixture.coordinator().songDidChangeReflectSelection(new SongDidChangeNotification(
+        fixture.coordinator().getActionReflector().songDidChangeReflectSelection(new SongDidChangeNotification(
             List.of(new CrescendoAddition(fixture.line(), fixture.hairpin())),
             fixture.line().getSong()
         ));
