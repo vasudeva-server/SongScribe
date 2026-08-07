@@ -340,10 +340,10 @@ class TempoChangeDialogTest extends MainFrameMockTest {
             .as("the earlier tempo change it changed from survives").isNotNull();
     }
 
-    // ── Row 30: showForElement — static factory pre-sets selectedElement/selectedLine before showing ──
+    // ── Row 30: showForElement — static factory constructs the dialog and delegates to showFor ──
 
     @Test
-    void testShowForElementSetsElementAndLineBeforeShow() {
+    void testShowForElementDelegatesToShowFor() {
         var element = ElementType.CROTCHET.newInstance();
         var line = detachedLine();
 
@@ -355,13 +355,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
                 .hasSize(1);
             var captured = construction.constructed().getFirst();
 
-            assertThat(captured.selectedElement)
-                .as("selectedElement set to the provided element before setVisible")
-                .isSameAs(element);
-            assertThat(captured.selectedLine)
-                .as("selectedLine set to the provided line before setVisible")
-                .isSameAs(line);
-            verify(captured).setVisible(true);
+            verify(captured).showFor(element, line);
         }
     }
 

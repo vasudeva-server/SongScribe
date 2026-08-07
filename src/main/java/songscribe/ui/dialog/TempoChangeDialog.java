@@ -49,10 +49,7 @@ public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
     }
 
     public static void showForElement(MainFrame mainFrame, StaffElement element, Line line) {
-        var dialog = new TempoChangeDialog(mainFrame);
-        dialog.selectedElement = element;
-        dialog.selectedLine = line;
-        dialog.setVisible(true);
+        new TempoChangeDialog(mainFrame).showFor(element, line);
     }
 
     @Override

@@ -34,6 +34,8 @@ import songscribe.ui.action.Actions;
 import songscribe.ui.component.ComponentNames;
 import songscribe.ui.component.LyricEditor;
 import songscribe.ui.component.LyricTargetResolver;
+import songscribe.ui.component.MainFrame;
+import songscribe.ui.dialog.AttachmentEditor;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.PasteModeManager;
@@ -729,6 +731,19 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
+        // A click does nothing at all while the song is playing, mirroring the guard in
+        // mousePressed: everything below opens an editor, opens a modal dialog or inserts an
+        // element, and DISABLE_WHEN_PLAYING does not reach a mouse handler.
+        //
+        // Read from PlaybackController rather than the sequencer, for the reason mousePressed
+        // gives. The only playback check below is the selection handler's, which asks whether
+        // the sequencer object is currently running — a different question during the window
+        // between a playback transition and the sequencer following it, and one that now gates
+        // a modal dialog rather than just a selection change.
+        if (PlaybackController.isPlaying()) {
+            return;
+        }
+
         // The same lyric test the press path's cascade runs first, so both agree on which
         // syllable is under the pointer. Only the lyric answer matters here, so the rest of the
         // cascade is skipped.
@@ -751,8 +766,23 @@ public class LineComponent extends ScoreComponent
             return;
         }
 
-        if (editLyricOnDoubleClickedElement(e)) {
-            return;
+        // Both double-click-to-edit gestures ask about the same point, so it is resolved once
+        // here and shared, as hitTestViewPoint's own contract asks and as mousePressed already
+        // does with its cascade result. The shared gate is hoisted for the same reason: it
+        // answers one question about the event, not one per gesture, and pinning line to a
+        // local here is what lets both gestures take it as a plain non-null argument.
+        var clickedLine = line;
+
+        if (isPlainDoubleClickGesture(e) && clickedLine != null) {
+            var clickHit = selectionHandler.hitTestViewPoint(e.getPoint());
+
+            if (editLyricOnDoubleClickedElement(clickHit, clickedLine)) {
+                return;
+            }
+
+            if (editDoubleClickedAttachment(clickHit, clickedLine)) {
+                return;
+            }
         }
 
         if (selectionHandler.handleClick(e)) {
@@ -771,34 +801,53 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Opens the lyric editor on a double-clicked element, returning true when it did.
+     * Answers whether {@code e} is a plain double-click gesture: the click count, shift, mode
+     * and playback conditions shared by every double-click-to-edit gesture on this line.
      * <p>
      * The gesture is a plain double-click in SELECT mode; in EDIT mode it needs
      * {@link #mousePressed} to have already switched permanently to SELECT mode by the time
      * the click arrives, which Alt does anywhere and a plain click does on the staff lines in
      * the clef/key signature column. {@code isSelectionActive} is the gate for exactly those
-     * cases, and additionally rules out playback. The staff-line route never reaches the
-     * editor, since no element sits in that column for the hit test below to find. Shift is
-     * excluded separately: shift+click extends the selection, and this method runs before the
-     * selection handler sees the click, so without the guard a shift+double-click would
-     * discard the selection the user was building.
+     * cases, and additionally rules out playback. Shift is excluded separately: shift+click
+     * extends the selection, and callers run this before the selection handler sees the click,
+     * so without the guard a shift+double-click would discard the selection the user was
+     * building.
      */
-    private boolean editLyricOnDoubleClickedElement(MouseEvent e) {
+    private boolean isPlainDoubleClickGesture(MouseEvent e) {
+        return e.getClickCount() == DOUBLE_CLICK_COUNT
+            && !e.isShiftDown()
+            && selectionHandler.isSelectionActive(e);
+    }
+
+    /**
+     * The index in {@code line} of the element {@code clickHit} resolved to, or -1 when the
+     * click landed on anything else.
+     */
+    private static int elementIndexOf(@Nullable HitTarget clickHit, Line line) {
+        if (clickHit instanceof HitTarget.Element(var element)) {
+            return line.getElementIndex(element);
+        }
+
+        return -1;
+    }
+
+    /**
+     * Opens the lyric editor on the double-clicked element {@code clickHit} resolved to,
+     * returning true when it did.
+     * <p>
+     * The staff-line route into {@link #isPlainDoubleClickGesture} never reaches the editor,
+     * since no element sits in the clef/key signature column for {@code clickHit} to resolve to.
+     */
+    private boolean editLyricOnDoubleClickedElement(@Nullable HitTarget clickHit, Line line) {
         var view = getScoreView();
 
-        if (e.getClickCount() != DOUBLE_CLICK_COUNT
-            || e.isShiftDown()
-            || line == null
-            || view.getActiveLyricEditor() != null
-            || !selectionHandler.isSelectionActive(e)) {
+        if (view.getActiveLyricEditor() != null) {
             return false;
         }
 
         // The press already hit-tested this point for every element the drag handler
-        // admits; only the cases it declines (a rest, say) still need the scan.
-        var hitIndex = pressHitIndex >= 0
-            ? pressHitIndex
-            : selectionHandler.hitTestElementIndex(e.getPoint());
+        // admits; only the cases it declines (a rest, say) still need the resolved hit.
+        var hitIndex = pressHitIndex >= 0 ? pressHitIndex : elementIndexOf(clickHit, line);
 
         if (hitIndex == -1) {
             return false;
@@ -812,6 +861,29 @@ public class LineComponent extends ScoreComponent
 
         LyricEditor.deselectAndOpenOn(view, line, targetIndex);
         return true;
+    }
+
+    /**
+     * Opens the edit dialog for the double-clicked attachment {@code clickHit} resolved to,
+     * returning true when one opened.
+     * <p>
+     * The press already selected the attachment, so this is only the second half of the
+     * gesture. Unlike {@link #editLyricOnDoubleClickedElement} there is no active-editor
+     * condition: a lyric editor open elsewhere on the line must not block editing an
+     * attachment. A fermata or a dynamic has no dialog, so {@link AttachmentEditor#edit}
+     * answers false for those and the attachment is simply left selected.
+     * <p>
+     * Answering false is safe even when the click really did land on an attachment.
+     * {@link #mouseClicked} hands the click to {@code handleClick} next, which consumes every
+     * click while selection is active — and {@link #isPlainDoubleClickGesture}, already true
+     * to have got here, says it is. So nothing is inserted at the click point either way.
+     */
+    private boolean editDoubleClickedAttachment(@Nullable HitTarget clickHit, Line line) {
+        if (!(clickHit instanceof HitTarget.Attachment(var attachment))) {
+            return false;
+        }
+
+        return AttachmentEditor.edit(MainFrame.getInstance(), attachment, line);
     }
 
     @Override

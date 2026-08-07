@@ -2,12 +2,12 @@
 # Run tests via Gradle
 # Usage: ./scripts/test.sh [--debug] [--keep-going] [--<gradle-flag>...] [unit|e2e|ClassName|ClassName.method|...]
 # Examples:
-#   ./scripts/test.sh                                          # All tests (unit then e2e)
+#   ./scripts/test.sh                                          # Unit tests only (same as `unit`)
 #   ./scripts/test.sh e2e                                      # e2e tests only
 #   ./scripts/test.sh e2e FontChooserTest                      # Specific e2e class (e2e prefix required)
 #   ./scripts/test.sh e2e FontChooserTest.testFoo              # Specific e2e method
 #   ./scripts/test.sh unit                                     # Unit tests only
-#   ./scripts/test.sh --keep-going                             # All tests, continue past failures
+#   ./scripts/test.sh --keep-going                             # Unit tests, continue past failures
 #   ./scripts/test.sh --debug e2e                              # e2e tests with debug pausing (e2e only)
 #   ./scripts/test.sh SMuFLMetadataTest                        # Specific unit class
 #   ./scripts/test.sh SMuFLMetadataTest.testNoteHeadWidthSsIsPositiveAndPlausible
@@ -19,6 +19,10 @@
 # Targets are checked against src/test/java before Gradle runs: an unknown class,
 # an e2e class without the e2e prefix, a unit/e2e mix, or --debug outside e2e all
 # fail immediately with the command to use instead.
+#
+# There is deliberately no form that runs both suites. e2e tests drive a real GUI,
+# are slow, and need explicit approval before they run, so nothing reaches them by
+# default — `e2e` has to be typed. Run the two in sequence when you want both.
 
 set -euo pipefail
 
@@ -104,7 +108,9 @@ done
 case "${1:-}" in
   e2e)  EXPLICIT_TASK="e2e";  TASKS=("e2eTest"); shift ;;
   unit) EXPLICIT_TASK="unit"; TASKS=("test");    shift ;;
-  "")   TASKS=("test" "e2eTest") ;;
+  # No arguments means the unit suite, never e2e. Reaching the GUI suite always
+  # takes typing `e2e`, so no unqualified invocation can start it by accident.
+  "")   EXPLICIT_TASK="unit"; TASKS=("test") ;;
 esac
 
 for arg in "$@"; do

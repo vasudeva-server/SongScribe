@@ -58,6 +58,8 @@ import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.Tempo;
+import songscribe.dom.TempoChangeAttachment;
 import songscribe.hit.HitPriority;
 import songscribe.hit.HitRegistry;
 import songscribe.hit.HitTarget;
@@ -71,7 +73,9 @@ import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.LyricEditor;
+import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.dialog.AttachmentEditor;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.ui.edit.PasteModeManager;
@@ -1208,6 +1212,228 @@ class LineComponentTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // Double-click on an attachment opens its edit dialog
+    // -------------------------------------------------------------------------
+
+    /**
+     * These tests drive the real {@code mouseClicked} routing and observe the gesture through
+     * the {@link AttachmentEditor} static mock, because the call to {@code edit} is the
+     * method's only observable effect. Which attachment lies under the cursor is stubbed
+     * ({@code HitRegionBuilderTest} owns the real geometry), and which dialog an attachment
+     * maps to is owned by {@code AttachmentEditorTest}; what is tested here is only whether the
+     * gesture reaches {@code edit} at all.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class DoubleClickAttachmentEditing {
+
+        private ScoreView mockScoreView;
+        private Line line;
+        private StaffElement element;
+        private TempoChangeAttachment attachment;
+        private LayoutResult mockLayout;
+
+        @BeforeEach
+        void setUp() {
+            mockScoreView = mock(ScoreView.class);
+            when(mockScoreView.getSelectionCoordinator()).thenReturn(mock(SelectionCoordinator.class));
+            when(mockScoreView.getViewScale()).thenReturn(ViewScale.IDENTITY);
+            // SELECT mode with no editor open is the state the gesture is designed for.
+            when(mockScoreView.getMode()).thenReturn(Mode.SELECT);
+            when(mockScoreView.getActiveLyricEditor()).thenReturn(null);
+            lc.setScoreView(mockScoreView);
+
+            var song = new Song();
+            line = song.getLine(0);
+            element = ElementType.CROTCHET.newInstance();
+            attachment = new TempoChangeAttachment(element, new Tempo());
+            song.withoutMutationTracking(() -> {
+                line.addElement(element);
+                element.addAttachment(attachment);
+            });
+            lc.song = song;
+            lc.setLine(line, 0);
+            // Inject a clean layout so the heavyweight layout engine never runs. Its registry
+            // reports the attachment, which outranks the element it sits over.
+            mockLayout = mock(LayoutResult.class);
+            when(mockLayout.getHitRegistry()).thenReturn(
+                registryHitting(
+                    new HitTarget.Attachment(attachment), HitPriority.ATTACHMENT, false));
+            lc.layoutResult = mockLayout;
+            lc.layoutDirty = false;
+        }
+
+        /** Runs {@code mouseClicked} with playback stopped, the state the gesture needs. */
+        private void clickWith(
+            MouseEvent event, Consumer<? super MockedStatic<AttachmentEditor>> assertions) {
+            clickWhilePlaying(false, event, assertions);
+        }
+
+        /**
+         * Runs {@code mouseClicked} with the edit-mode managers stubbed and playback reporting
+         * {@code playing}, then hands the test the static {@link AttachmentEditor} stub to
+         * assert against. {@link MainFrame} is stubbed too because the production code passes
+         * {@code MainFrame.getInstance()} to {@code edit}; a null instance keeps the
+         * heavyweight singleton from being constructed, and {@code edit} is itself stubbed so
+         * it never dereferences the argument.
+         */
+        private void clickWhilePlaying(
+            boolean playing,
+            MouseEvent event,
+            Consumer<? super MockedStatic<AttachmentEditor>> assertions) {
+            var graceMock = mock(GraceModeManager.class);
+            var pasteMock = mock(PasteModeManager.class);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mainFrame = mockStatic(MainFrame.class);
+                var playback = mockStatic(PlaybackController.class);
+                var attachmentEditor = mockStatic(AttachmentEditor.class)) {
+
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteMock);
+                mainFrame.when(MainFrame::getInstance).thenReturn(null);
+                playback.when(PlaybackController::isPlaying).thenReturn(playing);
+
+                lc.mouseClicked(event);
+
+                assertions.accept(attachmentEditor);
+            }
+        }
+
+        @Test
+        void testPlainDoubleClickOpensTheEditorOnTheClickedAttachment() {
+            clickWith(
+                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
+                attachmentEditor -> attachmentEditor.verify(
+                    () -> AttachmentEditor.edit(any(), eq(attachment), eq(line)), times(1)));
+        }
+
+        @Test
+        void testSingleClickDoesNotOpenTheEditor() {
+            // Without the click-count check every ordinary click on an attachment would pop
+            // open its dialog instead of merely selecting it.
+            clickWith(clickEvent(SINGLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
+        }
+
+        @Test
+        void testShiftDoubleClickDoesNotOpenTheEditor() {
+            // Shift+click is building a selection, and this runs before the selection handler
+            // sees the click, so without the guard it would interrupt with a modal dialog.
+            clickWith(
+                clickEvent(DOUBLE_CLICK, InputEvent.SHIFT_DOWN_MASK),
+                MockedStatic::verifyNoInteractions);
+        }
+
+        @Test
+        void testDoubleClickInEditModeWithoutAltDoesNotOpenTheEditor() {
+            // EDIT mode is for inserting elements; a click above or below the staff must keep
+            // inserting there rather than opening a dialog.
+            when(mockScoreView.getMode()).thenReturn(Mode.EDIT);
+
+            clickWith(clickEvent(DOUBLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
+        }
+
+        /**
+         * The only branch where the gesture fires outside SELECT mode: {@code isSelectionActive}
+         * admits an Alt-down click, since Alt switches to SELECT mode permanently on the press.
+         * An inverted or dropped Alt term passes every negative test above, so without this it
+         * would surface only in manual testing.
+         */
+        @Test
+        void testAltDoubleClickInEditModeOpensTheEditor() {
+            when(mockScoreView.getMode()).thenReturn(Mode.EDIT);
+
+            clickWith(
+                clickEvent(DOUBLE_CLICK, InputEvent.ALT_DOWN_MASK),
+                attachmentEditor -> attachmentEditor.verify(
+                    () -> AttachmentEditor.edit(any(), eq(attachment), eq(line)), times(1)));
+        }
+
+        /**
+         * A note that merely carries an attachment is not the attachment. The lyric editor is
+         * reported as already open so the element branch above declines outright, leaving the
+         * attachment hit test as the only thing that can refuse this click.
+         */
+        @Test
+        void testDoubleClickOnAnElementDoesNotOpenTheEditor() {
+            when(mockScoreView.getActiveLyricEditor()).thenReturn(mock(LyricEditor.class));
+            when(mockLayout.getHitRegistry()).thenReturn(
+                registryHitting(new HitTarget.Element(element), HitPriority.ELEMENT, false));
+
+            clickWith(clickEvent(DOUBLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
+        }
+
+        /**
+         * The fermata and dynamic outcome — an attachment with no dialog, standing in here as
+         * the stubbed {@code edit}'s default answer of false. Nothing opens, and no element is
+         * inserted at the click point; without the second half, every double-clicked fermata
+         * would drop a note under itself.
+         * <p>
+         * This does not distinguish which step swallowed the click. The selection handler
+         * consumes every click while selection is active, so a {@code mouseClicked} that
+         * ignored {@code edit}'s answer and returned early itself would leave exactly the same
+         * observable result — and would be equally correct, which is why nothing here tries to
+         * tell the two apart.
+         */
+        @Test
+        void testDoubleClickThatOpensNoDialogInsertsNoElement() {
+            try (var previewManager = mockStatic(PreviewElementManager.class)) {
+                clickWith(
+                    clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
+                    // The gesture really did run and decline, so the assertion below is
+                    // observing the aftermath of a refusal rather than of a click that never
+                    // reached the attachment step at all.
+                    attachmentEditor -> attachmentEditor.verify(
+                        () -> AttachmentEditor.edit(any(), eq(attachment), eq(line))));
+
+                previewManager.verifyNoInteractions();
+            }
+        }
+
+        /**
+         * A double-click during playback must not interrupt with a modal dialog. The guard
+         * under test is {@code mouseClicked}'s own, which reads {@code PlaybackController} —
+         * the same state the {@code DISABLE_WHEN_PLAYING} action flag resolves against, and the
+         * one {@code mousePressed} already uses. The sequencer-running check further down the
+         * path is left reporting "not playing", so this guard is the only thing that can refuse
+         * the click.
+         */
+        @Test
+        void testDoubleClickWhilePlayingDoesNotOpenTheEditor() {
+            clickWhilePlaying(
+                true, clickEvent(DOUBLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
+        }
+
+        /**
+         * An open lyric editor blocks the lyric gesture but must not block this one — the two
+         * edit different things. Pins the deliberate absence of an active-editor condition on
+         * the attachment step: copying the lyric step's guard onto it, or swapping the order of
+         * the two steps, would silently break editing an attachment whenever a lyric editor
+         * happened to be open on the line.
+         */
+        @Test
+        void testDoubleClickWithTheLyricEditorOpenStillOpensTheEditor() {
+            when(mockScoreView.getActiveLyricEditor()).thenReturn(mock(LyricEditor.class));
+
+            clickWith(
+                clickEvent(DOUBLE_CLICK, NO_MODIFIERS),
+                attachmentEditor -> attachmentEditor.verify(
+                    () -> AttachmentEditor.edit(any(), eq(attachment), eq(line)), times(1)));
+        }
+
+        /**
+         * The click count must match exactly, not merely reach two. Swing reports a rising count
+         * for each click of a longer train, so a loosened comparison would reopen the dialog on
+         * the third click and on every one after it.
+         */
+        @Test
+        void testTripleClickDoesNotOpenTheEditor() {
+            clickWith(clickEvent(TRIPLE_CLICK, NO_MODIFIERS), MockedStatic::verifyNoInteractions);
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // Click on a lyric — a registry-reported HitTarget.Lyric
     // -------------------------------------------------------------------------
 
@@ -1535,6 +1761,9 @@ class LineComponentTest extends UnitTest {
 
     /** Click count identifying a double-click in a {@link MouseEvent}. */
     private static final int DOUBLE_CLICK = 2;
+
+    /** Click count Swing reports for the third click of a click train. */
+    private static final int TRIPLE_CLICK = 3;
 
     /** Empty modifier mask, for a click with no modifier key held. */
     private static final int NO_MODIFIERS = 0;

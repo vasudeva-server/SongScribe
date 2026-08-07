@@ -101,6 +101,21 @@ public abstract class AttachmentDialog<T> extends StandardDialog {
         return true;
     }
 
+    /**
+     * Shows this dialog pre-bound to {@code element} on {@code line}.
+     *
+     * <p>{@link #getData()} resolves its target from the selection via
+     * {@link songscribe.ui.component.ScoreView#getSingleSelectedElement()}, which answers null
+     * whenever the selection is a directly selected notation object rather than an element index
+     * range — the state a click on an attachment leaves behind. A caller that already knows the
+     * target must supply it here instead of relying on that resolution.
+     */
+    void showFor(StaffElement element, Line line) {
+        selectedElement = element;
+        selectedLine = line;
+        setVisible(true);
+    }
+
     @Override
     protected boolean getData() {
         if (selectedElement == null) {

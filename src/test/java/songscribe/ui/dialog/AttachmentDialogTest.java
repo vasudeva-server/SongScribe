@@ -19,8 +19,11 @@
  */
 package songscribe.ui.dialog;
 
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.util.Collections;
+
+import javax.swing.JDialog;
 
 import org.jspecify.annotations.Nullable;
 
@@ -47,6 +50,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -301,6 +305,39 @@ class AttachmentDialogTest extends MainFrameMockTest {
         assertThatThrownBy(() -> fireRemoveAction(dialog))
             .as("remove action throws when line is null")
             .isInstanceOf(IllegalStateException.class);
+    }
+
+    // ── Row 7: showFor(element, line) — pre-binds selectedElement/selectedLine before show ──
+
+    /**
+     * This is what stops {@link AttachmentDialog#getData()} from falling back to
+     * {@link songscribe.ui.component.ScoreView#getSingleSelectedElement()}, which answers null
+     * for a directly selected attachment.
+     */
+    @Test
+    void testShowForSetsSelectedElementAndLineThenShows() {
+        var element = ElementType.CROTCHET.newInstance();
+        var line = detachedLine();
+        line.addElement(element);
+
+        var dialog = new ControlDialog(mainFrame(), null);
+
+        try (var construction = mockConstruction(JDialog.class,
+                (mockDialog, context) -> BaseDialogTestHelper.configureMockDialog(mockDialog, new Point(100, 100)))) {
+            dialog.showFor(element, line);
+
+            assertThat(dialog.selectedElement)
+                .as("selectedElement set from showFor's argument")
+                .isSameAs(element);
+            assertThat(dialog.selectedLine)
+                .as("selectedLine set from showFor's argument")
+                .isSameAs(line);
+            assertThat(construction.constructed())
+                .as("exactly one JDialog window was created")
+                .hasSize(1);
+            // showFor asks the dialog window to become visible.
+            verify(construction.constructed().getFirst()).setVisible(true);
+        }
     }
 
     // ── Helpers ──
