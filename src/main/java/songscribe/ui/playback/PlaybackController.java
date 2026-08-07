@@ -20,7 +20,7 @@
 
 package songscribe.ui.playback;
 
-import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 import module java.desktop;
 
@@ -55,8 +55,20 @@ public final class PlaybackController {
 
     public enum PlaybackState {
         PLAYING,
-        PAUSED,
+
+        /**
+         * Playback ended with the music selection left intact, so the next {@link #play}
+         * resumes at the beginning of that selection.
+         */
         STOPPED,
+
+        /**
+         * Playback ended and the music selection was dropped, so the next {@link #play}
+         * starts at the beginning of the song. Distinct from {@link #STOPPED} only in
+         * that the selection is gone — the score clears its own selection when it sees
+         * this state, rather than being reached into from here.
+         */
+        REWOUND,
     }
 
     // The MIDI velocity values for normal and accented notes
@@ -68,6 +80,10 @@ public final class PlaybackController {
     public static final int SELECTED_NOTE_VELOCITY =
         (int) Math.round(NOTE_VELOCITY * SELECTED_NOTE_VOLUME_FRACTION);
 
+    // Bound on the spin in awaitSequencerStopped(), generous relative to the
+    // sub-millisecond wait actually observed.
+    private static final long SEQUENCER_STOP_TIMEOUT_MILLIS = 250;
+
     private static final Logger LOG = LoggerFactory.getLogger(PlaybackController.class);
 
     @Nullable
@@ -75,7 +91,6 @@ public final class PlaybackController {
 
     private static PlaybackState state = PlaybackState.STOPPED;
     private static int previousPlayingLine = -1;
-    private static long pausedTickPosition = 0;
 
     private static int instrument = 0;
     private static int tempoChangePercent = 100;
@@ -85,7 +100,7 @@ public final class PlaybackController {
     @Nullable
     private static ElementSelection activeSelection = null;
 
-    public static PlayPauseAction PLAY_PAUSE_ACTION;
+    public static PlayStopAction PLAY_STOP_ACTION;
     public static RewindAction REWIND_ACTION;
     public static PlayWithRepeatsAction PLAY_WITH_REPEATS_ACTION;
     public static LoopPlaybackAction LOOP_PLAYBACK_ACTION;
@@ -103,7 +118,7 @@ public final class PlaybackController {
      * constructed instances.
      */
     public static void initialize(MainFrame mainFrame) {
-        PLAY_PAUSE_ACTION = PlayPauseAction.createAction(mainFrame);
+        PLAY_STOP_ACTION = PlayStopAction.createAction(mainFrame);
         REWIND_ACTION = RewindAction.createAction(mainFrame);
         PLAY_WITH_REPEATS_ACTION = PlayWithRepeatsAction.createAction(mainFrame);
         LOOP_PLAYBACK_ACTION = LoopPlaybackAction.createAction(mainFrame);
@@ -116,7 +131,7 @@ public final class PlaybackController {
      * zombie subscribers. Call from {@code @AfterEach} in test base classes.
      */
     public static void unsubscribeForTest() {
-        MessageCenter.unsubscribe(PLAY_PAUSE_ACTION);
+        MessageCenter.unsubscribe(PLAY_STOP_ACTION);
         MessageCenter.unsubscribe(REWIND_ACTION);
         MessageCenter.unsubscribe(PLAY_WITH_REPEATS_ACTION);
         MessageCenter.unsubscribe(LOOP_PLAYBACK_ACTION);
@@ -132,16 +147,6 @@ public final class PlaybackController {
 
     public static void setState(PlaybackState newState) {
         state = newState;
-    }
-
-    // Package-private for testing
-    static long getPausedTickPosition() {
-        return pausedTickPosition;
-    }
-
-    // Package-private for testing
-    static void setPausedTickPosition(long position) {
-        pausedTickPosition = position;
     }
 
     @Nullable
@@ -194,7 +199,11 @@ public final class PlaybackController {
             var noteIndex = (data[2] << 8) | data[3];
             updatePlayingNote(lineIndex, noteIndex);
         } else if (meta.getType() == MidiMetaMessageTypes.END_OF_TRACK) {
-            stop();
+            // The MIDI system calls this back on the sequencer's own thread. stop() posts
+            // synchronously, so its subscribers — including the Play/Stop button, which
+            // derives its whole label from that notification — would otherwise mutate
+            // Swing state off the EDT.
+            EventQueue.invokeLater(PlaybackController::stop);
         }
     }
 
@@ -232,46 +241,31 @@ public final class PlaybackController {
         return registeredScore.getLineComponent(lineIndex);
     }
 
-    public static void playbackDidPause() {
-        state = PlaybackState.PAUSED;
-        pausedTickPosition = MidiController.sequencer != null ? MidiController.sequencer.getTickPosition() : 0;
-        stopSequencer();
-        MessageCenter.post(new PlaybackStateDidChangeNotification(state));
-    }
-
-    public static void playbackDidStop() {
-        stop();
-    }
-
-    public static void rewindToBeginning() {
-        if (state == PlaybackState.PLAYING) {
-            clearPlayingHighlight();
-
-            if (MidiController.sequencer != null) {
-                MidiController.sequencer.setTickPosition(0);
-            }
-        } else if (state == PlaybackState.PAUSED) {
-            playbackDidStop();
-        }
-    }
-
     /**
-     * Reacts to a selection change while playback is paused.
-     * If a new selection is made, clears the playing highlight and updates
-     * the active selection so that resuming starts from the new position.
-     * If the selection is cleared (null), stops playback entirely (rewind).
-     * Does nothing if playback is not paused.
+     * Ends playback and returns to the top of the song. Rewinding is {@link #stop} plus
+     * dropping the music selection, so the next {@link #play} starts at the beginning of
+     * the song rather than at the beginning of whatever was selected.
      */
-    public static void selectionDidChange(@Nullable ElementSelection selection) {
-        if (state != PlaybackState.PAUSED) {
+    public static void rewindToBeginning() {
+        // Already at the top with nothing selected, so there is nothing left to rewind.
+        // This also absorbs the auto-repeat of the keyboard shortcut, which would
+        // otherwise re-post the notification several times a second while the key is held.
+        if (state == PlaybackState.REWOUND) {
             return;
         }
 
-        if (selection == null) {
-            stop();
-        } else {
-            clearPlayingHighlight();
-            activeSelection = selection;
+        endPlayback(PlaybackState.REWOUND);
+    }
+
+    /**
+     * Reclassifies a rewind as an ordinary stop once the user selects music again: the
+     * next Play should start at that new selection, not at the top of the song. Posts
+     * nothing, because the two states are indistinguishable to every subscriber — they
+     * differ only in what Play does next.
+     */
+    public static void selectionDidChange() {
+        if (state == PlaybackState.REWOUND) {
+            state = PlaybackState.STOPPED;
         }
     }
 
@@ -285,10 +279,22 @@ public final class PlaybackController {
         previousPlayingLine = -1;
     }
 
+    /**
+     * Halts the sequencer and parks it at the start. No wait for the asynchronous stop to
+     * settle, unlike {@link #reloadSequenceDuringPlayback}: nothing reads the position
+     * again until the next {@link #play}, which loads a fresh sequence and rewinds it
+     * anyway. Callers that drive the sequencer themselves straight afterwards want
+     * {@link #stopAndAwaitSequencer} instead.
+     */
     private static void stopSequencer() {
-        if (MidiController.sequencer != null) {
-            MidiController.sequencer.stop();
+        var sequencer = MidiController.sequencer;
+
+        if (sequencer == null) {
+            return;
         }
+
+        sequencer.stop();
+        sequencer.setTickPosition(0);
     }
 
     public static void setInstrument(int value) {
@@ -328,57 +334,19 @@ public final class PlaybackController {
         return new MidiSequenceBuilder(song, getPlaybackSettings()).buildFullSequence();
     }
 
-    public static void togglePlayPause() {
+    public static void togglePlayStop() {
         if (state == PlaybackState.PLAYING) {
-            playbackDidPause();
-        } else if (state == PlaybackState.PAUSED) {
-            var currentSelection = registeredScore != null ? registeredScore.getSelection() : null;
-
-            if (!Objects.equals(currentSelection, activeSelection)) {
-                play(currentSelection);
-            } else {
-                resume();
-            }
+            stop();
         } else {
-            play(null);
+            play();
         }
     }
 
-    private static void resume() {
-        var sequencer = MidiController.sequencer;
-
-        if (sequencer == null || registeredScore == null) {
-            return;
-        }
-
-        try {
-            var sequence = buildSequenceForSelection(
-                registeredScore.getSong(), activeSelection);
-            sequencer.setSequence(sequence);
-
-            if (pausedTickPosition >= sequencer.getTickLength()) {
-                pausedTickPosition = 0;
-                OptionDialogs.showWarningMessage(
-                    null,
-                    Strings.ALERT_TITLE_RESUME_ERROR,
-                    Strings.ERROR_PLAYBACK_RESUME_PAST_END
-                );
-                return;
-            }
-
-            sequencer.setTickPosition(pausedTickPosition);
-            MidiController.reinitChannels();
-            MidiController.setPlaybackInstrument(instrument);
-            applyVolumeFromPrefs();
-            playbackDidStart();
-            sequencer.start();
-        } catch (InvalidMidiDataException e) {
-            LOG.error("Failed to rebuild sequence on resume", e);
-            playbackDidStop();
-        }
-    }
-
-    public static void play(@Nullable ElementSelection selection) {
+    /**
+     * Starts playback at the beginning of the score's music selection, or at the beginning
+     * of the song when nothing is selected — which is also what a rewind leaves behind.
+     */
+    public static void play() {
         var sequencer = MidiController.sequencer;
 
         try {
@@ -392,14 +360,7 @@ public final class PlaybackController {
                 return;
             }
 
-            ElementSelection noteSelection;
-
-            if (selection != null) {
-                noteSelection = selection;
-            } else {
-                noteSelection = score.getSelection();
-            }
-
+            var noteSelection = score.getSelection();
             activeSelection = noteSelection;
             setSequenceToPlayFromSelection(noteSelection, score, sequencer);
 
@@ -417,10 +378,35 @@ public final class PlaybackController {
         }
     }
 
+    /**
+     * Ends playback, leaving the music selection alone so the next {@link #play} resumes
+     * at the beginning of it.
+     */
     public static void stop() {
-        state = PlaybackState.STOPPED;
+        endPlayback(PlaybackState.STOPPED);
+    }
+
+    /**
+     * Ends playback and does not return until the sequencer has actually gone quiet, for
+     * callers that immediately load and start a sequence of their own on it.
+     */
+    public static void stopAndAwaitSequencer() {
+        stop();
+
+        var sequencer = MidiController.sequencer;
+
+        if (sequencer != null) {
+            awaitSequencerStopped(sequencer);
+        }
+    }
+
+    /**
+     * The shared tail of {@link #stop} and {@link #rewindToBeginning} — the two differ
+     * only in the state they land in, and hence in what the next {@link #play} starts from.
+     */
+    private static void endPlayback(PlaybackState newState) {
+        state = newState;
         activeSelection = null;
-        pausedTickPosition = 0;
         stopSequencer();
         clearPlayingHighlight();
 
@@ -449,31 +435,69 @@ public final class PlaybackController {
 
         try {
             var savedTick = sequencer.getTickPosition();
-            sequencer.stop();
-
-            // Spin until the sequencer's internal thread is fully stopped.
-            // sequencer.stop() is asynchronous — without this gate,
-            // setSequence()/start() can race with the PlayThread that is
-            // still winding down, causing missed note-offs or silent playback.
-            // The wait is typically < 1 ms so EDT impact is negligible.
-            while (sequencer.isRunning()) {
-                Thread.onSpinWait();
-            }
-
             var song = registeredScore.getSong();
             var sequence = buildSequenceForSelection(song, activeSelection);
-            sequencer.setSequence(sequence);
-            sequencer.setTickPosition(Math.min(savedTick, sequencer.getTickLength()));
-
-            // Skip reinitChannels() here — the GM System On reset invalidates the
-            // SoftSynthesizer's receiver while the sequencer thread is still sending
-            // notes-off. Just restore the instrument and volume directly.
-            MidiController.setPlaybackInstrument(instrument);
-            applyVolumeFromPrefs();
-            sequencer.start();
+            reloadSequenceDuringPlayback(sequencer, sequence, savedTick);
         } catch (InvalidMidiDataException e) {
             LOG.error("Failed to rebuild sequence during playback", e);
-            playbackDidStop();
+            stop();
+        }
+    }
+
+    /**
+     * Loads {@code sequence} into an already-playing {@code sequencer} and resumes it at
+     * {@code tickPosition}, without the channel reinitialization that a fresh {@link #play}
+     * performs.
+     */
+    private static void reloadSequenceDuringPlayback(
+        Sequencer sequencer,
+        Sequence sequence,
+        long tickPosition
+    ) throws InvalidMidiDataException {
+        sequencer.stop();
+        awaitSequencerStopped(sequencer);
+
+        sequencer.setSequence(sequence);
+        sequencer.setTickPosition(Math.min(tickPosition, sequencer.getTickLength()));
+
+        // Re-derive the loop count for the selection the new sequence was built from,
+        // which a fresh play() would have done. The selection is unchanged across a
+        // preferences reload, so this is idempotent.
+        setLoopSequence(activeSelection, sequencer);
+
+        // Skip reinitChannels() here — the GM System On reset invalidates the
+        // SoftSynthesizer's receiver while the sequencer thread is still sending
+        // notes-off. Just restore the instrument and volume directly.
+        MidiController.setPlaybackInstrument(instrument);
+        applyVolumeFromPrefs();
+        sequencer.start();
+    }
+
+    /**
+     * Spins until the sequencer's internal thread is fully stopped.
+     * <p>
+     * {@link Sequencer#stop()} is asynchronous — without this gate, loading and starting a
+     * sequence can race with the play thread that is still winding down, causing missed
+     * note-offs or silent playback. The wait is typically under a millisecond, so the EDT
+     * impact is negligible; the deadline only exists so a wedged sequencer degrades to a
+     * warning instead of freezing the EDT forever. Proceeding after the deadline reopens
+     * the race this guards against, which is the better of the two failures.
+     */
+    private static void awaitSequencerStopped(Sequencer sequencer) {
+        var deadlineNanos =
+            System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(SEQUENCER_STOP_TIMEOUT_MILLIS);
+
+        while (sequencer.isRunning()) {
+            // Subtract rather than compare, so the check survives nanoTime's wraparound.
+            if (System.nanoTime() - deadlineNanos >= 0) {
+                LOG.warn(
+                    "Sequencer still running {} ms after stop(); continuing anyway",
+                    SEQUENCER_STOP_TIMEOUT_MILLIS
+                );
+                return;
+            }
+
+            Thread.onSpinWait();
         }
     }
 
@@ -516,19 +540,11 @@ public final class PlaybackController {
             score.getSong(), noteSelection
         );
 
-        // Sequence doesn't override equals(), so != checks whether the sequencer already
-        // has this exact object loaded — content equality is not meaningful here.
-        //noinspection ObjectEquality
-        if (
-            (sequencer.getTickPosition() >= sequencer.getTickLength()) ||
-                (sequence != sequencer.getSequence())
-        ) {
-            sequencer.setTickPosition(0);
-
-            //noinspection ObjectEquality
-            if (sequence != sequencer.getSequence()) {
-                sequencer.setSequence(sequence);
-            }
-        }
+        // Play always restarts at the beginning of the selection (or of the song when
+        // there is none), so the sequence is loaded and rewound unconditionally.
+        // buildSequenceForSelection() returns a freshly built Sequence every call, so
+        // there is never an already-loaded instance worth reusing.
+        sequencer.setSequence(sequence);
+        sequencer.setTickPosition(0);
     }
 }

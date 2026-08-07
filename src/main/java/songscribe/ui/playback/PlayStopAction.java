@@ -28,23 +28,26 @@ import songscribe.ui.component.MainFrame;
 import songscribe.message.Message;
 import songscribe.message.notification.PlaybackStateDidChangeNotification;
 
-public final class PlayPauseAction extends SequencerAction {
+public final class PlayStopAction extends SequencerAction {
 
     private static final String PLAY_NAME = Strings.get(Strings.ACTION_PLAY_PLAY);
-    private static final String PLAY_ICON = "@\uF446";
     private static final String PLAY_TOOLTIP = Strings.get(Strings.ACTION_PLAY_PLAY_TOOLTIP);
 
-    private static final String PAUSE_NAME = Strings.get(Strings.ACTION_PLAY_PAUSE);
-    private static final String PAUSE_ICON = "@\uF44B";
-    private static final String PAUSE_TOOLTIP = Strings.get(Strings.ACTION_PLAY_PAUSE_TOOLTIP);
+    private static final String STOP_NAME = Strings.get(Strings.ACTION_PLAY_STOP);
+    private static final String STOP_TOOLTIP = Strings.get(Strings.ACTION_PLAY_STOP_TOOLTIP);
+
+    // Package-private so the tests can assert the button shows the right glyph without
+    // redeclaring the codepoints.
+    static final String PLAY_ICON = "@\uF446";
+    static final String STOP_ICON = "@\uF447";
 
     private static final int ICON_SIZE = 20;
 
-    public static PlayPauseAction createAction(MainFrame mainFrame) {
-        return new PlayPauseAction(mainFrame);
+    public static PlayStopAction createAction(MainFrame mainFrame) {
+        return new PlayStopAction(mainFrame);
     }
 
-    private PlayPauseAction(MainFrame mainFrame) {
+    private PlayStopAction(MainFrame mainFrame) {
         super(
             mainFrame,
             PLAY_NAME,
@@ -60,21 +63,23 @@ public final class PlayPauseAction extends SequencerAction {
         );
     }
 
-    // We need to know if playback stopped
+    // The label mirrors playback state rather than tracking its own — a play
+    // that bails out early posts no notification and must leave the button on Play.
     @Override
     @Handler(priority = Message.MEDIUM_PRIORITY)
     public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
         super.playbackStateDidChange(message);
 
-        if (message.getState() == PlaybackController.PlaybackState.STOPPED) {
+        if (message.getState() == PlaybackController.PlaybackState.PLAYING) {
+            toggleToStop();
+        } else {
             toggleToPlay();
         }
     }
 
     @Override
     protected void performAction(ActionEvent e) {
-        toggleAction();
-        PlaybackController.togglePlayPause();
+        PlaybackController.togglePlayStop();
     }
 
     private void toggleToPlay() {
@@ -83,17 +88,9 @@ public final class PlayPauseAction extends SequencerAction {
         putValue(SHORT_DESCRIPTION, PLAY_TOOLTIP);
     }
 
-    private void toggleToPause() {
-        setName(PAUSE_NAME);
-        setIcon(PAUSE_ICON, ICON_SIZE);
-        putValue(SHORT_DESCRIPTION, PAUSE_TOOLTIP);
-    }
-
-    void toggleAction() {
-        if (getName().equals(PLAY_NAME)) {
-            toggleToPause();
-        } else {
-            toggleToPlay();
-        }
+    private void toggleToStop() {
+        setName(STOP_NAME);
+        setIcon(STOP_ICON, ICON_SIZE);
+        putValue(SHORT_DESCRIPTION, STOP_TOOLTIP);
     }
 }

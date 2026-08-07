@@ -39,6 +39,7 @@ import songscribe.message.notification.PlaybackStateDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.ui.action.UIAction;
 import songscribe.ui.playback.PlaybackController.PlaybackState;
+import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -46,7 +47,7 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 /**
- * Unit tests for PlayPauseAction, RewindAction, LoopPlaybackAction, and PlayWithRepeatsAction.
+ * Unit tests for PlayStopAction, RewindAction, LoopPlaybackAction, and PlayWithRepeatsAction.
  */
 class PlaybackActionsTest extends MainFrameMockTest {
 
@@ -66,22 +67,21 @@ class PlaybackActionsTest extends MainFrameMockTest {
     }
 
     // -------------------------------------------------------------------------
-    // PlayPauseAction
+    // PlayStopAction
     // -------------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class PlayPause {
+    class PlayStop {
 
         /**
-         * Row 45 — actionPerformed toggles the action label/icon then delegates
-         * to PlaybackController.togglePlayPause().
+         * Row 45 — actionPerformed delegates to PlaybackController.togglePlayStop()
+         * without moving the label itself.
          */
         @Test
-        void testActionPerformedTogglesNameAndCallsTogglePlayPause() {
-            var action = PlayPauseAction.createAction(mainFrame());
+        void testActionPerformedCallsTogglePlayStop() {
+            var action = PlayStopAction.createAction(mainFrame());
             var playName = Strings.get(Strings.ACTION_PLAY_PLAY);
-            var pauseName = Strings.get(Strings.ACTION_PLAY_PAUSE);
 
             // Initial state: action has the play name
             assertThat(action.getName()).isEqualTo(playName);
@@ -89,68 +89,105 @@ class PlaybackActionsTest extends MainFrameMockTest {
             try (var playbackMock = mockStatic(PlaybackController.class)) {
                 action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, null));
 
-                // toggleAction() was called → name switched to pause
-                assertThat(action.getName()).isEqualTo(pauseName);
-
-                // PlaybackController.togglePlayPause() must have been called
-                playbackMock.verify(PlaybackController::togglePlayPause);
+                // PlaybackController.togglePlayStop() must have been called
+                playbackMock.verify(PlaybackController::togglePlayStop);
             }
         }
 
         /**
-         * Row 46 — playbackStateDidChange(STOPPED) resets the action label to the
-         * play name regardless of the current label.
+         * Row 46 — playbackStateDidChange is the sole driver of the action's label:
+         * PLAYING switches it to the stop name, and anything else switches it back
+         * to the play name.
+         * <p>
+         * The icon and tooltip are asserted alongside the name because all three move
+         * together; checking only the name would let a swapped glyph or a tooltip wired
+         * to the wrong branch through, leaving a button that reads "Stop" but shows the
+         * play triangle.
          */
         @Test
-        void testPlaybackStateDidChangeSwitchesToPlayNameOnStopped() {
-            var action = PlayPauseAction.createAction(mainFrame());
-            var playName = Strings.get(Strings.ACTION_PLAY_PLAY);
-            var pauseName = Strings.get(Strings.ACTION_PLAY_PAUSE);
+        void testPlaybackStateDidChangeDrivesActionNameIconAndTooltip() {
+            var action = PlayStopAction.createAction(mainFrame());
 
-            // Manually switch to pause state so we can observe the revert
-            try (var playbackMock = mockStatic(PlaybackController.class)) {
-                action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, null));
-            }
+            assertPlayAppearance(action);
 
-            assertThat(action.getName()).isEqualTo(pauseName);
+            action.playbackStateDidChange(
+                new PlaybackStateDidChangeNotification(PlaybackState.PLAYING)
+            );
 
-            // Now post a STOPPED notification — the action should revert to play
+            assertThat(action.getName())
+                .as("PLAYING must present the button as Stop")
+                .isEqualTo(Strings.get(Strings.ACTION_PLAY_STOP));
+            assertThat(action.getValue(UIAction.FONT_ICON_KEY))
+                .isEqualTo(UIUtils.getTaggedString(PlayStopAction.STOP_ICON).text());
+            assertThat(action.getValue(Action.SHORT_DESCRIPTION))
+                .isEqualTo(Strings.get(Strings.ACTION_PLAY_STOP_TOOLTIP));
+
             action.playbackStateDidChange(
                 new PlaybackStateDidChangeNotification(PlaybackState.STOPPED)
             );
 
-            assertThat(action.getName()).isEqualTo(playName);
+            assertPlayAppearance(action);
         }
 
         /**
-         * Row 47 — toggleAction is idempotent over a round-trip: calling it twice
-         * restores the original name.
+         * A rewind ends playback, so it must present the button as Play — and never leave
+         * it reading "Stop" with nothing playing.
          */
         @Test
-        void testToggleActionRoundTripRestoresOriginalName() {
-            var action = PlayPauseAction.createAction(mainFrame());
-            var originalName = action.getName();
+        void testPlaybackStateDidChangePresentsPlayAfterRewind() {
+            var action = PlayStopAction.createAction(mainFrame());
 
-            // Two toggles must return to the original state
-            action.toggleAction();
-            action.toggleAction();
+            action.playbackStateDidChange(
+                new PlaybackStateDidChangeNotification(PlaybackState.PLAYING)
+            );
+            action.playbackStateDidChange(
+                new PlaybackStateDidChangeNotification(PlaybackState.REWOUND)
+            );
 
-            assertThat(action.getName()).isEqualTo(originalName);
+            assertPlayAppearance(action);
+        }
+
+        private void assertPlayAppearance(PlayStopAction action) {
+            assertThat(action.getName())
+                .as("the button must read Play whenever nothing is playing")
+                .isEqualTo(Strings.get(Strings.ACTION_PLAY_PLAY));
+            assertThat(action.getValue(UIAction.FONT_ICON_KEY))
+                .as("the button must show the play glyph whenever nothing is playing")
+                .isEqualTo(UIUtils.getTaggedString(PlayStopAction.PLAY_ICON).text());
+            assertThat(action.getValue(Action.SHORT_DESCRIPTION))
+                .isEqualTo(Strings.get(Strings.ACTION_PLAY_PLAY_TOOLTIP));
         }
 
         /**
-         * Row 48 — PlayPauseAction does NOT carry DISABLE_WHEN_PLAYING, so it
+         * Regression guard for the desync that motivated removing toggleAction():
+         * performAction must not move the label itself — only
+         * playbackStateDidChange may do that.
+         */
+        @Test
+        void testPerformActionDoesNotMoveTheLabel() {
+            var action = PlayStopAction.createAction(mainFrame());
+            var playName = Strings.get(Strings.ACTION_PLAY_PLAY);
+
+            try (var playbackMock = mockStatic(PlaybackController.class)) {
+                action.actionPerformed(new ActionEvent(action, ActionEvent.ACTION_PERFORMED, null));
+
+                assertThat(action.getName()).isEqualTo(playName);
+            }
+        }
+
+        /**
+         * Row 48 — PlayStopAction does NOT carry DISABLE_WHEN_PLAYING, so it
          * remains enabled while playback is in the PLAYING state. (The existing
          * audit test checks DISABLE_WHEN_EDITING_TEXT but not the absence of
          * DISABLE_WHEN_PLAYING.)
          */
         @Test
         void testActionRemainsEnabledDuringPlaybackBecauseDisableWhenPlayingFlagIsAbsent() {
-            var action = PlayPauseAction.createAction(mainFrame());
+            var action = PlayStopAction.createAction(mainFrame());
 
             // The flag must NOT be set — that is the design intent
             assertThat(action.hasFlag(UIAction.Flag.DISABLE_WHEN_PLAYING))
-                .as("PlayPauseAction must not carry DISABLE_WHEN_PLAYING so it acts as the pause button")
+                .as("PlayStopAction must not carry DISABLE_WHEN_PLAYING so it can act as the stop button")
                 .isFalse();
         }
     }
@@ -266,7 +303,7 @@ class PlaybackActionsTest extends MainFrameMockTest {
 
         @BeforeEach
         void setUpScoreView() {
-            // PlayPauseAction has DISABLE_WHEN_SONG_EMPTY, so requires the song to be non-empty
+            // PlayStopAction has DISABLE_WHEN_SONG_EMPTY, so requires the song to be non-empty
             var mockSong = mock(Song.class);
             when(mockSong.isEmpty()).thenReturn(false);
             when(mockEnv().score().isInitialized()).thenReturn(true);
@@ -286,10 +323,10 @@ class PlaybackActionsTest extends MainFrameMockTest {
         void testActionDisabledWhenSequencerIsNull() {
             MidiController.sequencer = null;
 
-            PlaybackController.PLAY_PAUSE_ACTION.updateEnabledState();
+            PlaybackController.PLAY_STOP_ACTION.updateEnabledState();
 
-            assertThat(PlaybackController.PLAY_PAUSE_ACTION.isEnabled())
-                .as("PLAY_PAUSE_ACTION must be disabled when MIDI is unavailable")
+            assertThat(PlaybackController.PLAY_STOP_ACTION.isEnabled())
+                .as("PLAY_STOP_ACTION must be disabled when MIDI is unavailable")
                 .isFalse();
         }
 
@@ -301,10 +338,10 @@ class PlaybackActionsTest extends MainFrameMockTest {
         void testActionEnabledWhenSequencerIsSet() {
             MidiController.sequencer = mock(Sequencer.class);
 
-            PlaybackController.PLAY_PAUSE_ACTION.updateEnabledState();
+            PlaybackController.PLAY_STOP_ACTION.updateEnabledState();
 
-            assertThat(PlaybackController.PLAY_PAUSE_ACTION.isEnabled())
-                .as("PLAY_PAUSE_ACTION must be enabled when MIDI is available")
+            assertThat(PlaybackController.PLAY_STOP_ACTION.isEnabled())
+                .as("PLAY_STOP_ACTION must be enabled when MIDI is available")
                 .isTrue();
         }
     }

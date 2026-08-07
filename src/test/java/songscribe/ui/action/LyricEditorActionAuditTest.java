@@ -30,7 +30,7 @@ import org.mockito.MockedStatic;
 import songscribe.MainFrameMockTest;
 import songscribe.prefs.Prefs;
 import songscribe.ui.playback.LoopPlaybackAction;
-import songscribe.ui.playback.PlayPauseAction;
+import songscribe.ui.playback.PlayStopAction;
 import songscribe.ui.playback.PlayWithRepeatsAction;
 import songscribe.ui.playback.RewindAction;
 
@@ -109,7 +109,7 @@ class LyricEditorActionAuditTest extends MainFrameMockTest {
             TempoChangeAction.createAction(mainFrame),
             // PlaybackToolbar
             LoopPlaybackAction.createAction(mainFrame),
-            PlayPauseAction.createAction(mainFrame),
+            PlayStopAction.createAction(mainFrame),
             PlayWithRepeatsAction.createAction(mainFrame),
             RewindAction.createAction(mainFrame),
             // Mode toolbar

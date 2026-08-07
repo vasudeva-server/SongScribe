@@ -20,7 +20,9 @@
 
 package songscribe.ui.playback;
 
+import java.awt.EventQueue;
 import java.util.ArrayList;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.sound.midi.MetaMessage;
 import javax.sound.midi.Sequence;
@@ -33,6 +35,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
+
+import net.engio.mbassy.listener.Handler;
 
 import songscribe.UnitTest;
 import songscribe.dom.Line;
@@ -48,11 +52,13 @@ import songscribe.ui.playback.PlaybackController.PlaybackState;
 import songscribe.ui.selection.ElementSelection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -64,7 +70,6 @@ class PlaybackControllerTest extends UnitTest {
         PlaybackController.setPreviousPlayingLine(-1);
         PlaybackController.setActiveSelection(null);
         PlaybackController.setRegisteredScore(null);
-        PlaybackController.setPausedTickPosition(0);
         PlaybackController.setInstrument(0);
         PlaybackController.setTempoChangePercent(100);
         PlaybackController.setNoteDurationPercent(100);
@@ -75,65 +80,7 @@ class PlaybackControllerTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class SelectionDidChange {
-
-        @Test
-        void testClearsHighlightAndUpdatesSelectionWhenPausedWithSelection() {
-            var mockScore = mock(ScoreView.class);
-            var mockLineComponent = mock(LineComponent.class);
-            when(mockScore.getLineComponent(0)).thenReturn(mockLineComponent);
-            PlaybackController.register(mockScore);
-
-            PlaybackController.setState(PlaybackState.PAUSED);
-            PlaybackController.setPreviousPlayingLine(0);
-
-            var selection = new ElementSelection(detachedLine(), 1, 3);
-            PlaybackController.selectionDidChange(selection);
-
-            verify(mockLineComponent).setPlayingIndices(-1, -1);
-            assertThat(PlaybackController.getPreviousPlayingLine()).isEqualTo(-1);
-            assertThat(PlaybackController.getActiveSelection()).isEqualTo(selection);
-            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.PAUSED);
-        }
-
-        @Test
-        void testDoesNothingWhenPlaying() {
-            PlaybackController.setState(PlaybackState.PLAYING);
-            var selection = new ElementSelection(detachedLine(), 0, 0);
-
-            PlaybackController.selectionDidChange(selection);
-
-            assertThat(PlaybackController.getActiveSelection()).isNull();
-            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.PLAYING);
-        }
-
-        @Test
-        void testDoesNothingWhenStopped() {
-            var selection = new ElementSelection(detachedLine(), 0, 0);
-
-            PlaybackController.selectionDidChange(selection);
-
-            assertThat(PlaybackController.getActiveSelection()).isNull();
-            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
-        }
-
-        @Test
-        void testStopsWhenSelectionClearedWhilePaused() {
-            PlaybackController.setState(PlaybackState.PAUSED);
-
-            // stop() posts a notification — suppress the real message bus
-            try (var messageCenterMock = mockStatic(MessageCenter.class)) {
-                PlaybackController.selectionDidChange(null);
-
-                assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
-                assertThat(PlaybackController.getActiveSelection()).isNull();
-            }
-        }
-    }
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class TogglePlayPause {
+    class TogglePlayStop {
 
         private MockedStatic<MessageCenter> messageCenterMock;
 
@@ -159,8 +106,8 @@ class PlaybackControllerTest extends UnitTest {
             PlaybackController.register(mockScore);
             MidiController.sequencer = mockSequencer;
 
-            // Sequencer tick check: position(0) < length(1000) — the sequence
-            // is always new so setTickPosition(0) + setSequence() are both called.
+            // play() loads a freshly built sequence and rewinds it unconditionally, so
+            // these only need to be non-zero enough to look like a real loaded sequence.
             when(mockSequencer.getTickLength()).thenReturn(1000L);
             when(mockSequencer.getTickPosition()).thenReturn(0L);
 
@@ -176,7 +123,7 @@ class PlaybackControllerTest extends UnitTest {
             var mockSequencer = mock(Sequencer.class);
 
             try (var ignored = setupForPlay(mockSequencer)) {
-                PlaybackController.togglePlayPause();
+                PlaybackController.togglePlayStop();
             }
 
             assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.PLAYING);
@@ -186,77 +133,66 @@ class PlaybackControllerTest extends UnitTest {
         }
 
         @Test
-        void testTransitionsPlayingToPaused() {
+        void testTransitionsPlayingToStopped() {
             PlaybackController.setState(PlaybackState.PLAYING);
-            // sequencer is null → stopSequencer() is a no-op; tick position stays 0
+            // sequencer is null → stopSequencer() is a no-op
 
-            PlaybackController.togglePlayPause();
+            PlaybackController.togglePlayStop();
 
-            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.PAUSED);
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
+            assertThat(PlaybackController.getActiveSelection()).isNull();
             var captor = ArgumentCaptor.forClass(PlaybackStateDidChangeNotification.class);
             messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
-            assertThat(captor.getValue().getState()).isEqualTo(PlaybackState.PAUSED);
+            assertThat(captor.getValue().getState()).isEqualTo(PlaybackState.STOPPED);
         }
 
-        /**
-         * Registers a mock sequencer and score reporting the given selection.
-         * Returns a MockedConstruction that stubs buildFromNoteToEnd on any
-         * MidiSequenceBuilder constructed while it is open.
-         */
-        private MockedConstruction<MidiSequenceBuilder> setupForResume(
-            Sequencer mockSequencer,
-            ElementSelection scoreSelection,
-            long tickPosition
-        ) {
+        @Test
+        void testPlayAfterStopRestartsAtBeginningOfSelection() throws Exception {
+            var mockSequencer = mock(Sequencer.class);
             var mockScore = mock(ScoreView.class);
-            when(mockScore.getSong()).thenReturn(mock(Song.class));
-            when(mockScore.getSelection()).thenReturn(scoreSelection);
+            var selection = new ElementSelection(detachedLine(), 2, 4);
+            var mockSong = mock(Song.class);
+            var lines = new ArrayList<Line>();
+            lines.add(selection.line());
+            when(mockSong.getLines()).thenReturn(lines);
+            when(mockScore.getSong()).thenReturn(mockSong);
+            when(mockScore.getSelection()).thenReturn(selection);
             PlaybackController.register(mockScore);
             MidiController.sequencer = mockSequencer;
-            when(mockSequencer.getTickLength()).thenReturn(1000L);
-            when(mockSequencer.getTickPosition()).thenReturn(tickPosition);
 
-            return mockConstruction(MidiSequenceBuilder.class,
+            final var tickLength = 1000L;
+            // Non-zero tick, as if playback had advanced before Stop was pressed
+            final var advancedTick = 500L;
+            when(mockSequencer.getTickLength()).thenReturn(tickLength);
+            when(mockSequencer.getTickPosition()).thenReturn(advancedTick);
+
+            PlaybackController.setState(PlaybackState.PLAYING);
+
+            // Stop leg: rewinds the sequencer to tick 0
+            PlaybackController.togglePlayStop();
+
+            verify(mockSequencer).setTickPosition(0);
+            reset(mockSequencer);
+            when(mockSequencer.getTickLength()).thenReturn(tickLength);
+            when(mockSequencer.getTickPosition()).thenReturn(0L);
+
+            final var stubVolumePercent = 80;
+
+            // Play leg: rebuilds the sequence and seeks to the beginning of the selection
+            try (var ignored = mockConstruction(MidiSequenceBuilder.class,
                 (builder, ctx) -> when(builder.buildFromNoteToEnd(anyInt(), anyInt()))
                     .thenReturn(new Sequence(Sequence.PPQ, 480)));
-        }
+                 var prefsMock = mockStatic(Prefs.class)) {
+                prefsMock.when(() -> Prefs.getBoolean(PrefsKey.LOOP_PLAYBACK)).thenReturn(false);
+                prefsMock.when(() -> Prefs.getInt(PrefsKey.PLAYBACK_VOLUME))
+                    .thenReturn(stubVolumePercent);
 
-        @Test
-        void testPausedSameSelectionResumesPlayback() throws Exception {
-            var mockSequencer = mock(Sequencer.class);
-            var selection = new ElementSelection(detachedLine(), 0, 2);
-            PlaybackController.setActiveSelection(selection);
-            PlaybackController.setState(PlaybackState.PAUSED);
-            // pausedTickPosition = 5 < getTickLength(1000) — tick check passes
-            PlaybackController.setPausedTickPosition(5L);
-
-            // Same selection as activeSelection → resume() path is taken
-            try (var ignored = setupForResume(mockSequencer, selection, 5L)) {
-                PlaybackController.togglePlayPause();
+                PlaybackController.togglePlayStop();
             }
 
-            // resume() calls playbackDidStart() → state = PLAYING
-            // activeSelection is unchanged (resume() does not update it)
-            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.PLAYING);
-            assertThat(PlaybackController.getActiveSelection()).isSameAs(selection);
-        }
-
-        @Test
-        void testPausedDifferentSelectionPlaysNewSelection() throws Exception {
-            var mockSequencer = mock(Sequencer.class);
-            var originalSelection = new ElementSelection(detachedLine(), 0, 2);
-            PlaybackController.setActiveSelection(originalSelection);
-            PlaybackController.setState(PlaybackState.PAUSED);
-
-            // Score reports a different selection → play(newSelection) is called
-            var newSelection = new ElementSelection(detachedLine(), 1, 3);
-
-            try (var ignored = setupForResume(mockSequencer, newSelection, 0L)) {
-                PlaybackController.togglePlayPause();
-            }
-
-            // play(newSelection) was called → activeSelection updated to newSelection
-            assertThat(PlaybackController.getActiveSelection()).isEqualTo(newSelection);
+            verify(mockSequencer).setSequence(any(Sequence.class));
+            verify(mockSequencer).setTickPosition(0);
+            assertThat(PlaybackController.getActiveSelection()).isEqualTo(selection);
             assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.PLAYING);
         }
     }
@@ -278,88 +214,27 @@ class PlaybackControllerTest extends UnitTest {
         }
 
         @Test
-        void testPlaybackDidPauseSetsStateSavesTickAndPostsNotification() {
-            var mockSequencer = mock(Sequencer.class);
-            final var savedTick = 42L;
-            when(mockSequencer.getTickPosition()).thenReturn(savedTick);
-            MidiController.sequencer = mockSequencer;
-
-            try (var messageCenterMock = mockStatic(MessageCenter.class)) {
-                PlaybackController.playbackDidPause();
-
-                assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.PAUSED);
-                assertThat(PlaybackController.getPausedTickPosition()).isEqualTo(savedTick);
-                var captor = ArgumentCaptor.forClass(PlaybackStateDidChangeNotification.class);
-                messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
-                assertThat(captor.getValue().getState()).isEqualTo(PlaybackState.PAUSED);
-            }
-        }
-
-        @Test
         void testStopClearsStateAndActiveSelectionAndPostsNotification() {
+            var mockSequencer = mock(Sequencer.class);
+            var mockScore = mock(ScoreView.class);
+            MidiController.sequencer = mockSequencer;
+            PlaybackController.register(mockScore);
             PlaybackController.setState(PlaybackState.PLAYING);
             PlaybackController.setActiveSelection(new ElementSelection(detachedLine(), 0, 1));
-            PlaybackController.setPausedTickPosition(99L);
 
             try (var messageCenterMock = mockStatic(MessageCenter.class)) {
                 PlaybackController.stop();
 
                 assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
                 assertThat(PlaybackController.getActiveSelection()).isNull();
-                assertThat(PlaybackController.getPausedTickPosition()).isZero();
+                verify(mockSequencer).setTickPosition(0);
+                // stop() must leave the music selection in place so the next
+                // Play restarts at the selection
+                verify(mockScore, never()).clearSelection();
                 var captor = ArgumentCaptor.forClass(PlaybackStateDidChangeNotification.class);
                 messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
                 assertThat(captor.getValue().getState()).isEqualTo(PlaybackState.STOPPED);
             }
-        }
-    }
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class RewindToBeginning {
-
-        @Test
-        void testWhilePlayingClearsHighlightAndSeeksSequencerToTickZero() {
-            var mockSequencer = mock(Sequencer.class);
-            var mockScore = mock(ScoreView.class);
-            var mockLineComponent = mock(LineComponent.class);
-            when(mockScore.getLineComponent(0)).thenReturn(mockLineComponent);
-            PlaybackController.register(mockScore);
-            MidiController.sequencer = mockSequencer;
-
-            PlaybackController.setState(PlaybackState.PLAYING);
-            PlaybackController.setPreviousPlayingLine(0);
-
-            PlaybackController.rewindToBeginning();
-
-            verify(mockLineComponent).setPlayingIndices(-1, -1);
-            assertThat(PlaybackController.getPreviousPlayingLine()).isEqualTo(-1);
-            verify(mockSequencer).setTickPosition(0);
-            // State stays PLAYING — rewind does not stop playback
-            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.PLAYING);
-        }
-
-        @Test
-        void testWhilePausedCallsStopAndStateBecomeStopped() {
-            PlaybackController.setState(PlaybackState.PAUSED);
-
-            try (var messageCenterMock = mockStatic(MessageCenter.class)) {
-                PlaybackController.rewindToBeginning();
-
-                assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
-                var captor = ArgumentCaptor.forClass(PlaybackStateDidChangeNotification.class);
-                messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
-                assertThat(captor.getValue().getState()).isEqualTo(PlaybackState.STOPPED);
-            }
-        }
-
-        @Test
-        void testWhileStoppedIsNoOp() {
-            // State is already STOPPED from tearDown default; no sequencer set
-            PlaybackController.rewindToBeginning();
-
-            // State unchanged, no exceptions
-            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
         }
     }
 
@@ -397,21 +272,77 @@ class PlaybackControllerTest extends UnitTest {
         }
 
         @Test
-        void testEndOfTrackMessageCallsStop() throws Exception {
-            try (var messageCenterMock = mockStatic(MessageCenter.class)) {
-                var meta = new MetaMessage();
-                // END_OF_TRACK carries no payload; set the type explicitly since the
-                // no-arg MetaMessage constructor defaults to type 0 (SEQUENCE_NUMBER).
-                meta.setMessage(MidiMetaMessageTypes.END_OF_TRACK, new byte[0], 0);
+        void testEndOfTrackMessageStopsPlayback() throws Exception {
+            PlaybackController.setState(PlaybackState.PLAYING);
 
-                PlaybackController.handleMetaMessage(meta);
+            PlaybackController.handleMetaMessage(endOfTrackMessage());
+            drainEventQueue();
 
-                assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
-                var captor = ArgumentCaptor.forClass(PlaybackStateDidChangeNotification.class);
-                messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
-                assertThat(captor.getValue().getState()).isEqualTo(PlaybackState.STOPPED);
-            }
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
         }
+
+        /**
+         * The MIDI system delivers end-of-track on the sequencer's own thread. The stop it
+         * triggers posts synchronously, and the Play/Stop button derives its entire label
+         * from that notification — so a subscriber running on the MIDI thread would be
+         * mutating Swing state off the event thread. This pins the hand-off.
+         */
+        @Test
+        void testEndOfTrackDeliversTheStateChangeOnTheEventThread() throws Exception {
+            var listener = new NotifiedThreadRecorder();
+            MessageCenter.subscribe(listener);
+
+            PlaybackController.setState(PlaybackState.PLAYING);
+
+            assertThat(EventQueue.isDispatchThread())
+                .as("this test only means anything when it starts off the event thread")
+                .isFalse();
+
+            PlaybackController.handleMetaMessage(endOfTrackMessage());
+            drainEventQueue();
+
+            assertThat(listener.notifiedThread.get())
+                .as("the playback state change must be delivered on the event thread")
+                .isSameAs(eventThread());
+        }
+
+        private MetaMessage endOfTrackMessage() throws Exception {
+            var meta = new MetaMessage();
+            // END_OF_TRACK carries no payload; set the type explicitly since the
+            // no-arg MetaMessage constructor defaults to type 0 (SEQUENCE_NUMBER).
+            meta.setMessage(MidiMetaMessageTypes.END_OF_TRACK, new byte[0], 0);
+
+            return meta;
+        }
+    }
+
+    /**
+     * Records the thread a playback state change is delivered on. A named class rather than
+     * an anonymous one so the message bus can see the {@code @Handler} method; held by a
+     * local in the test so the bus's weak reference does not collect it mid-test.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    static class NotifiedThreadRecorder {
+
+        final AtomicReference<Thread> notifiedThread = new AtomicReference<>();
+
+        @Handler
+        public void playbackStateDidChange(PlaybackStateDidChangeNotification message) {
+            notifiedThread.set(Thread.currentThread());
+        }
+    }
+
+    /** Runs everything already queued on the event thread, then returns. */
+    private static void drainEventQueue() throws Exception {
+        EventQueue.invokeAndWait(() -> {
+        });
+    }
+
+    private static Thread eventThread() throws Exception {
+        var thread = new AtomicReference<Thread>();
+        EventQueue.invokeAndWait(() -> thread.set(Thread.currentThread()));
+
+        return thread.get();
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -472,6 +403,151 @@ class PlaybackControllerTest extends UnitTest {
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
+    class RewindToBeginning {
+
+        private MockedStatic<MessageCenter> messageCenterMock;
+
+        @BeforeEach
+        void setUp() {
+            messageCenterMock = mockStatic(MessageCenter.class);
+        }
+
+        @AfterEach
+        void tearDownMock() {
+            messageCenterMock.close();
+        }
+
+        /**
+         * Rewinding while a song plays ends playback and parks the sequencer at the start.
+         * It must not restart the sequencer: the whole point of REWOUND is that playback
+         * has stopped at the top of the song.
+         */
+        @Test
+        void testRewindWhilePlayingEndsPlaybackAndParksTheSequencerAtTheStart() {
+            var mockSequencer = mock(Sequencer.class);
+            MidiController.sequencer = mockSequencer;
+
+            var mockScore = mock(ScoreView.class);
+            final var playingLine = 1;
+            var mockLineComponent = mock(LineComponent.class);
+            when(mockScore.getLineComponent(playingLine)).thenReturn(mockLineComponent);
+            PlaybackController.register(mockScore);
+
+            PlaybackController.setPreviousPlayingLine(playingLine);
+            PlaybackController.setActiveSelection(new ElementSelection(detachedLine(), 2, 4));
+            PlaybackController.setState(PlaybackState.PLAYING);
+
+            PlaybackController.rewindToBeginning();
+
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.REWOUND);
+            assertThat(PlaybackController.getActiveSelection()).isNull();
+            verify(mockSequencer).stop();
+            verify(mockSequencer).setTickPosition(0);
+            verify(mockSequencer, never()).start();
+            verify(mockLineComponent).setPlayingIndices(-1, -1);
+            assertThat(PlaybackController.getPreviousPlayingLine()).isEqualTo(-1);
+        }
+
+        /**
+         * The score clears its own selection in response to the notification, so rewind must
+         * announce REWOUND rather than reach into the score itself.
+         */
+        @Test
+        void testRewindPostsRewoundAndNeverTouchesTheScoreSelection() {
+            var mockScore = mock(ScoreView.class);
+            PlaybackController.register(mockScore);
+            PlaybackController.setState(PlaybackState.PLAYING);
+
+            PlaybackController.rewindToBeginning();
+
+            verify(mockScore, never()).clearSelection();
+            var captor = ArgumentCaptor.forClass(PlaybackStateDidChangeNotification.class);
+            messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue().getState()).isEqualTo(PlaybackState.REWOUND);
+        }
+
+        /**
+         * Rewinding from a stop still announces REWOUND, because the score's selection has
+         * to be dropped for the next Play to start at the top of the song rather than at
+         * that selection.
+         */
+        @Test
+        void testRewindWhileStoppedStillAnnouncesRewound() {
+            PlaybackController.setState(PlaybackState.STOPPED);
+
+            PlaybackController.rewindToBeginning();
+
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.REWOUND);
+            var captor = ArgumentCaptor.forClass(PlaybackStateDidChangeNotification.class);
+            messageCenterMock.verify(() -> MessageCenter.post(captor.capture()));
+            assertThat(captor.getValue().getState()).isEqualTo(PlaybackState.REWOUND);
+        }
+
+        /**
+         * Holding the keyboard shortcut repeats it at the key-repeat rate. A second rewind
+         * from an already-rewound state has nothing left to do, and must not post again —
+         * every post repaints the score.
+         */
+        @Test
+        void testRewindWhileAlreadyRewoundDoesNothing() {
+            var mockSequencer = mock(Sequencer.class);
+            MidiController.sequencer = mockSequencer;
+            PlaybackController.setState(PlaybackState.REWOUND);
+
+            PlaybackController.rewindToBeginning();
+
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.REWOUND);
+            verify(mockSequencer, never()).stop();
+            messageCenterMock.verifyNoInteractions();
+        }
+
+        /**
+         * Rewind is reachable before a score is registered and with MIDI unavailable, so
+         * neither may throw.
+         */
+        @Test
+        void testRewindWithoutScoreOrSequencerStillRewinds() {
+            // registeredScore and MidiController.sequencer are both null from tearDown
+            PlaybackController.setState(PlaybackState.PLAYING);
+
+            PlaybackController.rewindToBeginning();
+
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.REWOUND);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class SelectionDidChange {
+
+        /**
+         * Selecting music after a rewind means the next Play should start at that selection,
+         * so the rewound state has to give way to an ordinary stop. Without this, Play would
+         * keep starting at the top of the song however many notes the user selected.
+         */
+        @Test
+        void testReclassifiesRewoundAsStopped() {
+            PlaybackController.setState(PlaybackState.REWOUND);
+
+            PlaybackController.selectionDidChange();
+
+            assertThat(PlaybackController.getState()).isEqualTo(PlaybackState.STOPPED);
+        }
+
+        @Test
+        void testLeavesPlayingUntouched() {
+            PlaybackController.setState(PlaybackState.PLAYING);
+
+            PlaybackController.selectionDidChange();
+
+            assertThat(PlaybackController.getState())
+                .as("changing the selection mid-song must not stop playback")
+                .isEqualTo(PlaybackState.PLAYING);
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
     class ApplyPrefsDuringPlayback {
 
         @Test
@@ -483,18 +559,6 @@ class PlaybackControllerTest extends UnitTest {
             PlaybackController.applyPrefsDuringPlayback();
 
             // Sequencer must not be touched
-            verify(mockSequencer, never()).stop();
-            verify(mockSequencer, never()).start();
-        }
-
-        @Test
-        void testDoesNothingWhenPaused() {
-            var mockSequencer = mock(Sequencer.class);
-            MidiController.sequencer = mockSequencer;
-            PlaybackController.setState(PlaybackState.PAUSED);
-
-            PlaybackController.applyPrefsDuringPlayback();
-
             verify(mockSequencer, never()).stop();
             verify(mockSequencer, never()).start();
         }
@@ -524,9 +588,46 @@ class PlaybackControllerTest extends UnitTest {
                 PlaybackController.applyPrefsDuringPlayback();
             }
 
-            // stop → setSequence → setTickPosition (clamped) → start
+            // stop → setSequence → setTickPosition (clamped) → loop count → start
             verify(mockSequencer).stop();
             verify(mockSequencer).setTickPosition(Math.min(savedTick, tickLength));
+            verify(mockSequencer).start();
+
+            // Reloading re-derives the loop count. Without it, a user with Loop Playback on
+            // who changes the tempo mid-song would silently stop looping.
+            verify(mockSequencer).setLoopCount(anyInt());
+        }
+
+        /**
+         * Stopping a sequencer is asynchronous, so the reload spins until it reports itself
+         * stopped. A sequencer that never does must not hang the event thread forever: the
+         * spin gives up after a bounded wait and reloads anyway. Without the deadline this
+         * test would never return.
+         */
+        @Test
+        void testWedgedSequencerGivesUpWaitingAndReloadsAnyway() throws Exception {
+            var mockSequencer = mock(Sequencer.class);
+            var mockScore = mock(ScoreView.class);
+            var mockSong = mock(Song.class);
+
+            when(mockScore.getSong()).thenReturn(mockSong);
+            when(mockSong.getLines()).thenReturn(new ArrayList<>());
+            when(mockSequencer.getTickPosition()).thenReturn(0L);
+            when(mockSequencer.getTickLength()).thenReturn(1000L);
+            // Never goes quiet, so only the deadline can end the spin
+            when(mockSequencer.isRunning()).thenReturn(true);
+
+            MidiController.sequencer = mockSequencer;
+            PlaybackController.register(mockScore);
+            PlaybackController.setState(PlaybackState.PLAYING);
+
+            try (var ignored = mockConstruction(MidiSequenceBuilder.class,
+                (builder, ctx) -> when(builder.buildFullSequence())
+                    .thenReturn(new Sequence(Sequence.PPQ, 480)))) {
+                PlaybackController.applyPrefsDuringPlayback();
+            }
+
+            verify(mockSequencer).setSequence(any(Sequence.class));
             verify(mockSequencer).start();
         }
     }

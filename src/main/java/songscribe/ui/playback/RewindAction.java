@@ -27,6 +27,8 @@ import songscribe.util.UIUtils;
 
 public final class RewindAction extends SequencerAction {
 
+    private static final int ICON_SIZE = 20;
+
     public static RewindAction createAction(MainFrame mainFrame) {
         return new RewindAction(mainFrame);
     }
@@ -36,7 +38,7 @@ public final class RewindAction extends SequencerAction {
             mainFrame,
             Strings.get(Strings.ACTION_PLAY_REWIND),
             "@\uF448",
-            20,
+            ICON_SIZE,
             "rewind",
             Strings.get(Strings.ACTION_PLAY_REWIND_TOOLTIP),
             KeyEvent.VK_PERIOD,

@@ -781,9 +781,11 @@ public class PreferencesDialog extends BaseDialog {
                 // Apply the user's volume preference
                 PlaybackController.applyVolumeFromPrefs();
 
-                // Stop score playback if it's running
+                // Stop score playback if it's running. Waiting matters here: stopping a
+                // sequencer is asynchronous, and this method loads and starts a sequence of
+                // its own on that same sequencer a few lines below.
                 if (PlaybackController.isPlaying()) {
-                    PlaybackController.stop();
+                    PlaybackController.stopAndAwaitSequencer();
                 }
 
                 try {

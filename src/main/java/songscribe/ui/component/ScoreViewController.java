@@ -106,7 +106,6 @@ import songscribe.ui.edit.AccidentalRestatements;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.PasteModeManager;
 import songscribe.ui.edit.ScoreActions;
-import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.hit.HitTarget;
 import songscribe.ui.selection.ElementSelection;
@@ -633,19 +632,34 @@ public final class ScoreViewController {
     }
 
     @Handler
-    public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
-        PlaybackController.selectionDidChange(score.getSelection());
-    }
-
-    @Handler
     public void playbackStateDidChange(
         PlaybackStateDidChangeNotification message
     ) {
-        if (message.getState() == PlaybackController.PlaybackState.STOPPED) {
-            if (MidiController.sequencer != null) {
-                MidiController.sequencer.setTickPosition(0);
-            }
-            score.repaint();
+        var state = message.getState();
+
+        if (state == PlaybackController.PlaybackState.PLAYING) {
+            return;
+        }
+
+        // A rewind goes back to the top of the song, so the selection that would otherwise
+        // anchor the next Play is dropped. The score owns its selection, so it drops it
+        // here rather than being reached into from the playback controller. Guarded because
+        // clearSelection() posts a MusicSelectionDidChangeNotification even when there was
+        // nothing selected.
+        if (state == PlaybackController.PlaybackState.REWOUND && score.getSelection() != null) {
+            score.clearSelection();
+        }
+
+        score.repaint();
+    }
+
+    @Handler
+    public void musicSelectionDidChangeCancelRewind(MusicSelectionDidChangeNotification message) {
+        // Selecting music after a rewind means the next Play should start at that selection
+        // rather than at the top of the song. Ignore the cleared case, which is the rewind
+        // itself reaching this handler via clearSelection() above.
+        if (score.getSelection() != null) {
+            PlaybackController.selectionDidChange();
         }
     }
 

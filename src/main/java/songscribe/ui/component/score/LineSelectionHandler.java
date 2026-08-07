@@ -226,10 +226,6 @@ class LineSelectionHandler {
         // Don't clear selection on shift+click (preserve for extend)
         if (!e.isShiftDown() || range == null) {
             lc.getScoreView().clearSelection();
-
-            if (MidiController.sequencer != null) {
-                MidiController.sequencer.setTickPosition(0);
-            }
         }
 
         // Select the hit element immediately on press.
