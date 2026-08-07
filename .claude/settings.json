@@ -74,7 +74,8 @@
       "Bash(rtk grep:*)"
     ],
     "ask": [
-      "Bash(./scripts/test.sh e2e:*)"
+      "Bash(./scripts/test.sh e2e:*)",
+      "Bash(./scripts/test.sh)"
     ]
   },
   "hooks": {
