@@ -104,7 +104,8 @@ If `$ARGUMENTS` is empty or not provided, review changed files from git:
   - Get the cumulative diff with `/opt/homebrew/bin/git diff <base>...HEAD` (three dots — diff against the merge base, not against the tip of `develop`).
   - Get the list of changed file paths with `/opt/homebrew/bin/git diff --name-only <base>...HEAD`. Exclude deleted files.
   - If `HEAD` is `develop` itself, or the commit list is empty, review the most recently modified files that the user mentioned or edited earlier in this conversation.
-- The diff output is the **review target** passed to agents in Phase 2.
+- **Also collect untracked files.** `git diff` never shows untracked files, so a brand-new file the user hasn't `git add`ed yet is otherwise invisible to this skill even though it is squarely part of "what changed." Run `/opt/homebrew/bin/git status --porcelain --untracked-files=all` and take every path marked `??` under `src/` (any extension — production code, tests, and resources alike). Read each one in full (Serena's `jet_brains_get_symbols_overview`/`find_symbol` for `.java`/`.kt`, plain `Read` otherwise) and add it to the review target alongside the diffed files — for these there is no "diff hunk," the whole file is the target.
+- The diff output plus any untracked files collected above form the **review target** passed to agents in Phase 2.
 
 ### Mode C: Commit Review
 

@@ -124,6 +124,13 @@ first, then resolve the remaining token as the scope.
 tests from git: run `/opt/homebrew/bin/git diff` (or `git diff HEAD` if changes
 are staged). Collect changed `*Test.java` files.
 
+**Also collect untracked test files.** `git diff` never shows untracked files,
+so a brand-new `*Test.java` file the user hasn't `git add`ed yet is otherwise
+invisible to this skill. Run
+`/opt/homebrew/bin/git status --porcelain --untracked-files=all` and add every
+`??`-marked path under `src/test/` whose name ends in `Test.java` to the scope
+— for these there is no diff hunk, the whole file is in scope.
+
 If there are **no uncommitted changes**, fall back to the branch's own commits —
 everything this branch has added since it forked from `develop`:
 
