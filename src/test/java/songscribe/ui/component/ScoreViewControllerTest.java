@@ -75,6 +75,7 @@ import songscribe.message.MessageCenter;
 import songscribe.ui.action.PasteboardAction;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.BeamingRemoval;
+import songscribe.message.mutation.ElementRangeDeletion;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LayoutField;
@@ -620,7 +621,7 @@ class ScoreViewControllerTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // songDidChange — stale-selection guard
+    // songDidChange — selection revalidation
     // -----------------------------------------------------------------------
 
     /**
@@ -628,15 +629,19 @@ class ScoreViewControllerTest extends UnitTest {
      * {@code HandleDelete.testHandleDeleteAllButLastFewNotesDoesNotCrashSongDidChangeHandlers}.
      * Forward delete clears the selection itself before shrinking the line, so it never
      * reaches this guard; undo has no such courtesy. Undoing an insertion removes elements
-     * while leaving the selection untouched, which leaves the selected range running past
-     * the end of the line, and every later reader of that range indexes off the end and
-     * throws. The {@code songDidChange} handler is the only thing standing between an undo
-     * and that crash, so these tests pin the call down where it is made rather than only on
-     * {@link SelectionCoordinator}, where the method it calls is already covered.
+     * while the selection is still naming them by index, so {@code songDidChange} has to
+     * revalidate the range before anything else reads it — via
+     * {@link SelectionCoordinator#revalidateElementSelection}, which splices the range
+     * through the notification's mutations when they name this line, and falls back to
+     * clearing the range outright when it still runs past the end of the line despite the
+     * splice (the backstop that fires when a notification carries no matching mutations to
+     * splice against at all, which some fixtures here build on purpose). These tests pin
+     * the call down where it is made rather than only on {@link SelectionCoordinator},
+     * where the methods it calls are already covered.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class SongDidChangeStaleSelection {
+    class SongDidChangeRevalidatesSelection {
 
         /** Notes added to the fixture line, ahead of the song-maintained terminal barline. */
         private static final int NOTE_COUNT = 4;
@@ -698,12 +703,19 @@ class ScoreViewControllerTest extends UnitTest {
         }
 
         /**
-         * The mutation list is left empty on purpose: the guard runs on every song change,
-         * ahead of every branch that inspects the mutations, so no particular mutation is
-         * what triggers it.
+         * A notification carrying no mutations at all — used for the tests that exercise the
+         * backstop clear, which is the only one of the two mechanisms an empty list can reach.
          */
-        private SongDidChangeNotification songDidChange() {
+        private SongDidChangeNotification songDidChangeWithNoMutations() {
             return new SongDidChangeNotification(List.of(), song);
+        }
+
+        /**
+         * A notification carrying {@code mutations} — used to drive the actual splice, as
+         * opposed to the backstop {@link #songDidChangeWithNoMutations} exercises.
+         */
+        private SongDidChangeNotification songDidChangeWithMutations(List<Mutation> mutations) {
+            return new SongDidChangeNotification(mutations, song);
         }
 
         /** The selected range, failing rather than returning null. */
@@ -716,23 +728,45 @@ class ScoreViewControllerTest extends UnitTest {
         }
 
         @Test
-        void testSongDidChangeClearsSelectionLeftRunningPastTheEndOfTheLine() {
+        void testSongDidChangeClearsSelectionLeftRunningPastTheEndOfTheLineWithNoMatchingMutation() {
+            // No mutation in the notification names this line, so there is nothing to splice
+            // against — the backstop is the only thing that can catch this stranded range.
             undoTheInsertions();
 
             assertThat(selectedRange().end())
                 .as("the fixture must strand the selection, or this test proves nothing")
                 .isGreaterThanOrEqualTo(line.elementCount());
 
-            buildController().songDidChange(songDidChange());
+            buildController().songDidChange(songDidChangeWithNoMutations());
 
             assertThat(coordinator.getRange()).isNull();
+        }
+
+        @Test
+        void testSongDidChangeSplicesASelectionThatOverlapsAMatchingDeletion() {
+            // A deletion that actually names this line must be spliced, not just checked
+            // against the backstop: the surviving notes stay selected by identity.
+            var removedElements = List.copyOf(line.getElements(0, UNDONE_NOTE_COUNT - 1));
+            var survivingElements = List.copyOf(line.getElements(UNDONE_NOTE_COUNT, NOTE_COUNT - 1));
+
+            undoTheInsertions();
+
+            var deletion = new ElementRangeDeletion(line, 0, UNDONE_NOTE_COUNT - 1, removedElements);
+            buildController().songDidChange(songDidChangeWithMutations(List.of(deletion)));
+
+            var range = selectedRange();
+            assertThat(range.begin()).isEqualTo(0);
+            assertThat(range.end()).isEqualTo(NOTE_COUNT - UNDONE_NOTE_COUNT - 1);
+            assertThat(line.getElements(range.begin(), range.end()))
+                .as("the range must keep naming the same elements it named before the deletion")
+                .isEqualTo(survivingElements);
         }
 
         @Test
         void testSongDidChangeLeavesSelectionStillWithinTheLineAlone() {
             // The guard must not be a blanket "clear on every song change": that would pass
             // the test above while making the user's selection vanish after any edit.
-            buildController().songDidChange(songDidChange());
+            buildController().songDidChange(songDidChangeWithNoMutations());
 
             assertThat(selectedRange().begin()).isEqualTo(0);
             assertThat(selectedRange().end()).isEqualTo(NOTE_COUNT - 1);
@@ -745,7 +779,7 @@ class ScoreViewControllerTest extends UnitTest {
          * way to notice the day someone reorders them.
          */
         @Test
-        void testSongDidChangeClearsTheSelectionBeforeWarmingTheTupletCache() {
+        void testSongDidChangeRevalidatesTheSelectionBeforeWarmingTheTupletCache() {
             var controller = buildController();
             undoTheInsertions();
 
@@ -757,7 +791,7 @@ class ScoreViewControllerTest extends UnitTest {
                 return new TupletToggleInfo(false, Set.of(), null, false);
             });
 
-            controller.songDidChange(songDidChange());
+            controller.songDidChange(songDidChangeWithNoMutations());
 
             // Without this the assertion below would pass vacuously if the warm-up stopped
             // being called at all.

@@ -626,12 +626,22 @@ class LineSelectionHandler {
      * The end of {@code begin..end} the drag started from, which stays put while the other
      * end follows the pointer. The element under the drag start point when there is one,
      * otherwise whichever end is horizontally nearer to it.
+     * <p>
+     * The element under the drag start is clamped into {@code begin..end}, because it can land
+     * outside. The sweep in {@link #calculateLineSelectionFromDrag} catches elements by their
+     * true visual bounds, while {@link #hitTestElementIndex} answers from the registry's click
+     * rects, which pad anything narrower or shorter than a minimum size so it stays clickable.
+     * Press inside that padding and drag away from the element and the press resolves to an
+     * element the band never caught — the drag rectangle grows from the press point, so nothing
+     * makes it reach back over that element's own bounds.
+     * {@link songscribe.ui.selection.Selection.Range} rejects an anchor outside its own span,
+     * so without this clamp such a drag would throw out of a mouse handler.
      */
     private int dragAnchor(Line line, int begin, int end) {
         var anchorIndex = hitTestElementIndex(dragStart);
 
         if (anchorIndex != -1) {
-            return anchorIndex;
+            return Math.clamp(anchorIndex, begin, end);
         }
 
         var distToBegin = Math.abs(dragStart.x - line.getElement(begin).getXOffsetPx());

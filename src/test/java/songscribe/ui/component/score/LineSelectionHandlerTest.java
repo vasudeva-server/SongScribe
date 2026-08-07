@@ -641,6 +641,46 @@ class LineSelectionHandlerTest extends UnitTest {
         }
 
         /**
+         * The drag start can resolve to an element the rubber band never caught, because the
+         * two answers come from deliberately different geometry: the sweep tests each element's
+         * true visual bounds, while the hit registry pads anything narrower or shorter than a
+         * minimum size so it stays clickable. Press inside that padding and drag away from the
+         * element and the press names an element outside {@code begin..end} — the drag rectangle
+         * grows from the press point, so nothing makes it reach back over that element.
+         * <p>
+         * {@link Selection.Range} rejects an anchor outside its own span, so an unclamped anchor
+         * would throw {@link IllegalArgumentException} out of a mouse handler. This application
+         * turns an uncaught exception on the event thread into a fatal dialog and an exit, so
+         * the cost of getting this wrong is the user losing their unsaved score to an ordinary
+         * drag.
+         */
+        @Test
+        void testAnchorOutsideTheSweptRangeIsClampedIntoIt() {
+            register(threeNoteLine());
+            positionElement(0, ELEMENT_0_X_SS);
+            positionElement(1, ELEMENT_1_X_SS);
+            positionElement(2, ELEMENT_2_X_SS);
+
+            // Only element 0 lies within the swept span; the press is stubbed to resolve to
+            // element 2, which the band is nowhere near.
+            var unsweptElementIndex = 2;
+            givenClickableAtOrigin(
+                new HitTarget.Element(line.getElement(unsweptElementIndex)),
+                HitPriority.ELEMENT,
+                false);
+
+            pressAt(shiftPressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
+            handler.handleDrag(dragEvent(DRAG_TARGET_X, DRAG_TARGET_Y));
+
+            var range = selectedRange();
+            assertThat(range.begin()).as("begin").isEqualTo(0);
+            assertThat(range.end()).as("end").isEqualTo(0);
+            assertThat(range.anchor())
+                .as("the anchor is clamped onto the only element the band actually caught")
+                .isEqualTo(0);
+        }
+
+        /**
          * Dragging straight along the staff, with Y never changing, still sweeps.
          * <p>
          * Held exactly constant the rectangle would have no height, and a rectangle with no

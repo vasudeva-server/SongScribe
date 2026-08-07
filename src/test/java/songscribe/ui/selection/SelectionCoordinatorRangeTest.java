@@ -21,7 +21,15 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+
+import javax.swing.JOptionPane;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -30,7 +38,19 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.hit.HitTarget;
+import songscribe.message.mutation.ElementDeletion;
+import songscribe.message.mutation.ElementInsertion;
+import songscribe.message.mutation.ElementRangeDeletion;
+import songscribe.message.mutation.LineDeletion;
+import songscribe.message.mutation.LineInsertion;
+import songscribe.message.mutation.Mutation;
+import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.prefs.Prefs;
+import songscribe.prefs.PrefsKey;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.PitchShifter;
+import songscribe.undo.UndoTestSupport;
 
 /**
  * Unit tests for the index-range shape of the coordinator's one selection: how it is set,
@@ -67,6 +87,15 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         }
 
         return line;
+    }
+
+    /**
+     * A notification carrying {@code mutations} in the order given. The song attached to it is
+     * never consulted by {@link SelectionCoordinator#revalidateElementSelection}, so a fresh,
+     * unrelated one is enough.
+     */
+    private static SongDidChangeNotification notificationFor(Mutation... mutations) {
+        return new SongDidChangeNotification(List.of(mutations), new Song());
     }
 
     // -------------------------------------------------------------------------
@@ -287,7 +316,9 @@ class SelectionCoordinatorRangeTest extends UnitTest {
     void testRevalidateElementSelectionIsANoOpWhenNothingIsSelected() {
         var coordinator = coordinatorOn(crotchetLine(2));
 
-        assertThat(coordinator.revalidateElementSelection()).isFalse();
+        coordinator.revalidateElementSelection(notificationFor());
+
+        assertThat(coordinator.getRange()).isNull();
     }
 
     @Test
@@ -295,52 +326,88 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         var coordinator = coordinatorOn(crotchetLine(2));
         coordinator.select(new HitTarget.StaffLine());
 
-        assertThat(coordinator.revalidateElementSelection()).isFalse();
+        coordinator.revalidateElementSelection(notificationFor());
+
         assertThat(coordinator.isLineSelected()).isTrue();
     }
 
     @Test
     void testRevalidateElementSelectionKeepsARangeStillWithinTheLine() {
-        var coordinator = coordinatorOn(crotchetLine(2));
+        var line = crotchetLine(3);
+        var coordinator = coordinatorOn(line);
         coordinator.selectRange(0, 1);
 
-        assertThat(coordinator.revalidateElementSelection()).isFalse();
-        assertThat(coordinator.getRange()).isNotNull();
+        var insertedElement = ElementType.CROTCHET.newInstance();
+        var insertIndex = 2;
+        line.addElement(insertIndex, insertedElement);
+
+        coordinator.revalidateElementSelection(
+            notificationFor(new ElementInsertion(line, insertIndex, insertedElement)));
+
+        assertThat(coordinator.getRange())
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).as("begin").isEqualTo(0);
+                assertThat(range.end()).as("end").isEqualTo(1);
+            });
     }
 
+    /**
+     * The old bounds-check-and-clear behavior dropped the whole selection the moment its tail
+     * ran past the end of the line. The splice instead follows the surviving elements, so a
+     * deletion of the range's own tail shrinks the range rather than clearing it.
+     */
     @Test
-    void testRevalidateElementSelectionClearsARangeRunningPastTheEndOfTheLine() {
+    void testRevalidateElementSelectionShrinksARangeWhenItsTailIsDeleted() {
         var line = crotchetLine(2);
         var coordinator = coordinatorOn(line);
         coordinator.selectRange(0, 1);
 
-        // Simulates undoing an insertion: the element the range reached is gone.
-        line.removeElement(1);
+        var deletedIndex = 1;
+        var deletedElement = line.getElement(deletedIndex);
+        line.removeElement(deletedIndex);
 
-        assertThat(coordinator.revalidateElementSelection()).isTrue();
-        assertThat(coordinator.getRange()).isNull();
+        coordinator.revalidateElementSelection(
+            notificationFor(new ElementDeletion(line, deletedIndex, deletedElement)));
+
+        assertThat(coordinator.getRange())
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).as("begin").isEqualTo(0);
+                assertThat(range.end()).as("end").isEqualTo(0);
+            });
         assertThat(coordinator.getActiveLineIndex())
-            .as("the line stays active — only the range became unusable")
+            .as("the line stays active — only the range shrank")
             .isEqualTo(LINE_0);
     }
 
     /**
      * The crash this guards against: every range query walks the selected span, so a range
-     * left pointing past the end of a shrunk line throws before anything else can notice it is
-     * stale.
+     * whose end can no longer be indexed on its line throws before anything else can notice it
+     * is stale. Splicing a range-deletion of the selected tail keeps {@code end} inside the
+     * shrunk line rather than past it.
      */
     @Test
     void testRevalidatedSelectionMakesTheTupletQuerySafeOnAShrunkLine() {
-        var line = crotchetLine(2);
+        var line = crotchetLine(3);
         var coordinator = coordinatorOn(line);
-        coordinator.selectRange(0, 1);
+        coordinator.selectRange(0, 2);
 
-        line.removeElement(1);
-        coordinator.revalidateElementSelection();
+        var deleteFrom = 1;
+        var deleteTo = 2;
+        var deletedElements = List.of(line.getElement(deleteFrom), line.getElement(deleteTo));
+        line.removeElement(deleteTo);
+        line.removeElement(deleteFrom);
+
+        coordinator.revalidateElementSelection(
+            notificationFor(new ElementRangeDeletion(line, deleteFrom, deleteTo, deletedElements)));
 
         var range = coordinator.getRange();
 
-        assertThat(range).as("the stale range was dropped, so there is nothing to query").isNull();
+        assertThat(range).as("the range survives, spliced to what's left").isNotNull();
+        assertThat(range.end())
+            .as("safe to index — this is what the crash guarded against")
+            .isLessThan(line.elementCount());
     }
 
     /**
@@ -364,10 +431,281 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         var coordinator = coordinatorOn(line);
         coordinator.selectRange(0, TERMINAL_ELEMENT_INDEX);
 
-        assertThat(coordinator.revalidateElementSelection()).isFalse();
+        coordinator.revalidateElementSelection(notificationFor());
+
         assertThat(coordinator.getRange())
             .isNotNull()
             .satisfies(range -> assertThat(range.end()).isEqualTo(TERMINAL_ELEMENT_INDEX));
+    }
+
+    @Test
+    void testRevalidateElementSelectionLeavesTheRangeUntouchedForAMutationOnAnotherLine() {
+        var line = crotchetLine(2);
+        var coordinator = coordinatorOn(line);
+        coordinator.selectRange(0, 1);
+
+        var otherLineIndex = 1;
+        var otherLine = crotchetLine(2);
+        coordinator.registerLine(otherLineIndex, otherLine);
+
+        var insertedElement = ElementType.CROTCHET.newInstance();
+
+        coordinator.revalidateElementSelection(
+            notificationFor(new ElementInsertion(otherLine, 0, insertedElement)));
+
+        assertThat(coordinator.getRange())
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).as("begin").isEqualTo(0);
+                assertThat(range.end()).as("end").isEqualTo(1);
+            });
+    }
+
+    @Test
+    void testRevalidateElementSelectionClearsTheSelectionAndDeactivatesTheLineOnDeletionOfItsOwnLine() {
+        var line = crotchetLine(2);
+        var coordinator = coordinatorOn(line);
+        coordinator.selectRange(0, 1);
+
+        coordinator.revalidateElementSelection(notificationFor(new LineDeletion(LINE_0, line)));
+
+        assertThat(coordinator.getRange()).isNull();
+        assertThat(coordinator.getActiveLineIndex())
+            .as("the line itself is gone, so it must be deactivated too")
+            .isEqualTo(-1);
+    }
+
+    /**
+     * The fold clears the selection outright on a {@link LineDeletion}, but only after checking
+     * that the deleted line is the range's own. Drop that check — the tempting simplification,
+     * since a deleted line is obviously gone — and deleting any line at all would wipe a
+     * selection sitting on a line that is still there, and deactivate it besides.
+     */
+    @Test
+    void testRevalidateElementSelectionLeavesTheRangeUntouchedForDeletionOfAnotherLine() {
+        var line = crotchetLine(2);
+        var coordinator = coordinatorOn(line);
+        coordinator.selectRange(0, 1);
+
+        var otherLineIndex = 1;
+        var otherLine = crotchetLine(2);
+        coordinator.registerLine(otherLineIndex, otherLine);
+
+        coordinator.revalidateElementSelection(
+            notificationFor(new LineDeletion(otherLineIndex, otherLine)));
+
+        assertThat(coordinator.getRange())
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).as("begin").isEqualTo(0);
+                assertThat(range.end()).as("end").isEqualTo(1);
+            });
+        assertThat(coordinator.getActiveLineIndex())
+            .as("another line's deletion must not deactivate this one")
+            .isEqualTo(LINE_0);
+    }
+
+    @Test
+    void testRevalidateElementSelectionLeavesTheRangeUntouchedForLineInsertionOfAnotherLine() {
+        var line = crotchetLine(2);
+        var coordinator = coordinatorOn(line);
+        coordinator.selectRange(0, 1);
+
+        var insertedLineIndex = 1;
+        var insertedLine = crotchetLine(1);
+
+        coordinator.revalidateElementSelection(
+            notificationFor(new LineInsertion(insertedLineIndex, insertedLine)));
+
+        assertThat(coordinator.getRange())
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).as("begin").isEqualTo(0);
+                assertThat(range.end()).as("end").isEqualTo(1);
+            });
+    }
+
+    @Test
+    void testRevalidateElementSelectionClearsTheRangeWhenEveryElementInItIsDeleted() {
+        var line = crotchetLine(2);
+        var coordinator = coordinatorOn(line);
+        coordinator.selectRange(0, 1);
+
+        var deleteFrom = 0;
+        var deleteTo = 1;
+        var deletedElements = List.of(line.getElement(deleteFrom), line.getElement(deleteTo));
+        line.removeElement(deleteTo);
+        line.removeElement(deleteFrom);
+
+        coordinator.revalidateElementSelection(
+            notificationFor(new ElementRangeDeletion(line, deleteFrom, deleteTo, deletedElements)));
+
+        assertThat(coordinator.getRange()).isNull();
+        assertThat(coordinator.getActiveLineIndex())
+            .as("only the range became unusable — the line stays active")
+            .isEqualTo(LINE_0);
+    }
+
+    /**
+     * The fold walks the batch front-to-back because each record's indices describe the state
+     * the record before it left behind. Reversing that walk is not a harmless reordering: on
+     * this batch it leaves {@code begin} one too high, so the range names a note the user never
+     * selected and drops one they did. A one-mutation batch cannot tell the two orders apart,
+     * which is why every other test in this group leaves the order unpinned.
+     */
+    @Test
+    void testRevalidateElementSelectionFoldsTheBatchInRecordedOrder() {
+        final var lineElementCount = 5;
+        final var rangeBegin = 2;
+        final var removedAheadCount = 2;
+        final var rangeEnd = lineElementCount - 1;
+
+        var line = crotchetLine(lineElementCount);
+        var coordinator = coordinatorOn(line);
+        coordinator.selectRange(rangeBegin, rangeEnd);
+
+        var selectedElements = List.copyOf(line.getElements(rangeBegin, rangeEnd));
+
+        // Two removals ahead of the range, in the order they run. The second names index 0 of
+        // the list the first one left behind, not of the original list — which is precisely
+        // why the fold has to replay them in this order and no other.
+        var firstRemovedIndex = 1;
+        var firstRemoved = line.getElement(firstRemovedIndex);
+        line.removeElement(firstRemovedIndex);
+
+        var secondRemovedIndex = 0;
+        var secondRemoved = line.getElement(secondRemovedIndex);
+        line.removeElement(secondRemovedIndex);
+
+        coordinator.revalidateElementSelection(notificationFor(
+            new ElementDeletion(line, firstRemovedIndex, firstRemoved),
+            new ElementDeletion(line, secondRemovedIndex, secondRemoved)));
+
+        var range = coordinator.getRange();
+
+        assertThat(range).as("expected the range to survive the fold").isNotNull();
+        assertThat(range.begin())
+            .as("folding the batch back-to-front instead would leave begin one too high")
+            .isEqualTo(rangeBegin - removedAheadCount);
+        assertThat(range.end()).as("end").isEqualTo(rangeEnd - removedAheadCount);
+        assertThat(line.getElements(range.begin(), range.end()))
+            .as("the range must keep naming the same elements it named before the batch")
+            .isEqualTo(selectedElements);
+    }
+
+    /**
+     * The backstop: a structural change made without going through the mutation-tracked API
+     * never reaches the fold, so nothing in it can shrink the range. It is the bounds check
+     * after the fold — not the fold itself — that catches this and clears the range.
+     */
+    @Test
+    void testRevalidateElementSelectionBackstopClearsARangeLeftUnindexableByAnUntrackedChange() {
+        var line = crotchetLine(2);
+        var coordinator = coordinatorOn(line);
+        coordinator.selectRange(0, 1);
+
+        // The song behind detachedLine reports mutation tracking permanently suspended, so
+        // this removal records nothing on its own — no wrapper needed to make it untracked.
+        line.removeElement(1);
+
+        coordinator.revalidateElementSelection(notificationFor());
+
+        assertThat(coordinator.getRange()).isNull();
+        assertThat(coordinator.getActiveLineIndex())
+            .as("the backstop clears the range only — the line itself stays active")
+            .isEqualTo(LINE_0);
+    }
+
+    // -------------------------------------------------------------------------
+    // revalidateElementSelection driven by a real pitch shift
+    // -------------------------------------------------------------------------
+
+    /**
+     * The specific thing the old arrow-key repair threw away: it re-synced a selection after a
+     * grace-note collapse by calling {@code selectRange(begin, end)}, which always anchors at
+     * {@code begin} — discarding an anchor the user had dragged to the far end of the range.
+     * The splice tracks the anchor through the removal instead, so a shift-extend that follows
+     * still grows from the note the user actually anchored on.
+     */
+    @Test
+    void testPitchShiftThatCollapsesAGraceNoteIntoItsHostPreservesTheAnchor() {
+        var song = new Song();
+        var line = song.getLine(LINE_0);
+
+        // The grace note and its host already share a staff position, so shifting them both by
+        // the same delta — which a uniform pitch shift always does — leaves them still equal,
+        // and the commit's grace/host collision check removes the grace note.
+        var sharedPositionSp = 4;
+        var extraPositionSp = 9;
+        var raiseOnePosition = -1;
+
+        // Indices of the three elements once added to the (initially empty) line, before the
+        // shift removes the grace note.
+        var extraIndex = 2;
+
+        // Only the terminal barline the song auto-maintains survives the collapse alongside
+        // the host and the extra note.
+        var elementCountAfterCollapse = 3;
+
+        var grace = ElementType.GRACE_QUAVER.newInstance();
+        grace.setStaffPosition(sharedPositionSp);
+        var host = ElementType.CROTCHET.newInstance();
+        host.setStaffPosition(sharedPositionSp);
+        var extra = ElementType.CROTCHET.newInstance();
+        extra.setStaffPosition(extraPositionSp);
+
+        song.withoutMutationTracking(() -> {
+            line.addElement(grace);
+            line.addElement(host);
+            line.addElement(extra);
+        });
+
+        var coordinator = coordinatorOn(line);
+        coordinator.selectSingleElement(LINE_0, extraIndex);
+        coordinator.extendSelectionTo(0);
+
+        assertThat(coordinator.getRange())
+            .as("fixture sanity: the anchor starts at the far end, not at begin")
+            .isNotNull()
+            .satisfies(range -> assertThat(range.anchor()).isEqualTo(extraIndex));
+
+        // Off the bus before the real shift below posts a real SongDidChangeNotification —
+        // this test drives revalidateElementSelection directly afterward, and the production
+        // wiring this coordinator would otherwise trigger (ActionReflector's toolbar reflection)
+        // has no toolbar to reflect onto here.
+        coordinator.unsubscribeForTest();
+
+        var batch = new ArrayList<Mutation>();
+
+        // Prefs is mocked only to silence the audio feedback the shift plays, and
+        // OptionDialogs to silence the restatement prompt — neither is relevant here.
+        try (var optionDialogs = mockStatic(OptionDialogs.class);
+             var prefs = mockStatic(Prefs.class)) {
+
+            prefs.when(() -> Prefs.getBoolean(PrefsKey.PLAY_SELECTED_NOTE)).thenReturn(false);
+            optionDialogs.when(() -> OptionDialogs.showConfirmDialog(
+                any(), any(), any(), anyInt(), anyInt())).thenReturn(JOptionPane.NO_OPTION);
+
+            batch.addAll(UndoTestSupport.captureBatch(song,
+                () -> PitchShifter.shiftPitch(null, line, 0, extraIndex, raiseOnePosition)));
+        }
+
+        assertThat(line.elementCount())
+            .as("the grace note actually collapsed away, or this test proves nothing — the "
+                + "survivors are the host, the extra note and the song-owned terminal barline")
+            .isEqualTo(elementCountAfterCollapse);
+
+        coordinator.revalidateElementSelection(new SongDidChangeNotification(batch, song));
+
+        assertThat(coordinator.getRange())
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).as("begin follows the surviving host").isEqualTo(0);
+                assertThat(range.end()).as("end follows the surviving extra note").isEqualTo(1);
+                assertThat(range.anchor())
+                    .as("the anchor stayed on the note it started on, not reset to begin")
+                    .isEqualTo(1);
+            });
     }
 
     // -------------------------------------------------------------------------

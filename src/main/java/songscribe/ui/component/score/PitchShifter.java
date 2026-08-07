@@ -89,30 +89,26 @@ public final class PitchShifter {
      * across many mouse steps, an arrow key runs them once per press.
      * <p>
      * A grace-note/host collapse during the commit removes an element, shifting every
-     * later index down by one. Returns null if {@code [begin, end]} is still valid as
-     * the selection range (nothing removed, or nothing removed within/before it);
-     * otherwise returns the range adjusted for the removals, or {@code {-1, -1}} if
-     * every element in the range was removed and the selection should be cleared. Scoped to
-     * {@code line} only — a removal the shift causes in the adjacent line through a cross-line
-     * tie's partner note does not affect the returned range, since {@code [begin, end]} was never
-     * a range on that other line to begin with.
+     * later index down by one. The active selection range is spliced through that removal
+     * by the same mechanism every other structural mutation uses, so this method itself
+     * has nothing to report back to its caller.
      *
      * @param parent The component to parent the restatement prompt on, or null when there is no
      *               owning window. Without it the prompt is placed against the screen rather than
      *               the score window
      */
-    public static int @Nullable [] shiftPitch(
+    public static void shiftPitch(
             @Nullable Component parent, Line line, int begin, int end, int deltaSp) {
         var group = buildPitchShiftGroup(line, begin, end);
 
         if (group.isEmpty()) {
-            return null;
+            return;
         }
 
         var clampedDelta = clampDelta(group, deltaSp);
 
         if (clampedDelta == 0) {
-            return null;
+            return;
         }
 
         // The first note in the range is the arrow-key analog of the grabbed note in a
@@ -124,7 +120,7 @@ public final class PitchShifter {
         var decision = confirmRestatements(parent, line, group);
 
         if (decision.isCancelled()) {
-            return null;
+            return;
         }
 
         // The accidentals this shift must make explicit so no pitch the user did not touch
@@ -146,41 +142,7 @@ public final class PitchShifter {
         // here to let the played note ring for its standard duration.
         scheduleAnchorNoteOff(line, anchorIndex);
 
-        var removedIndices = commitPitchShift(line, group, accidentalChanges, decision);
-
-        if (removedIndices.isEmpty()) {
-            return null;
-        }
-
-        return adjustRangeForRemovals(begin, end, removedIndices);
-    }
-
-    /**
-     * Recomputes the {@code [begin, end]} selection range after {@code removedIndices}
-     * (indices in the pre-removal element list) were removed, each shifting every later
-     * index down by one. A removal below {@code begin} shifts the whole range down;
-     * a removal within {@code [begin, end]} only shrinks {@code end}. Returns
-     * {@code {-1, -1}} if the adjusted range is empty (every element in the original
-     * range was removed).
-     */
-    static int[] adjustRangeForRemovals(int begin, int end, List<Integer> removedIndices) {
-        var newBegin = begin;
-        var newEnd = end;
-
-        for (var removedIndex : removedIndices) {
-            if (removedIndex < begin) {
-                newBegin--;
-                newEnd--;
-            } else if (removedIndex <= end) {
-                newEnd--;
-            }
-        }
-
-        if (newEnd < newBegin) {
-            return new int[] {-1, -1};
-        }
-
-        return new int[] {newBegin, newEnd};
+        commitPitchShift(line, group, accidentalChanges, decision);
     }
 
     /**
@@ -471,20 +433,12 @@ public final class PitchShifter {
      * step — a bracket opened on {@code line} delegates to its {@link songscribe.dom.Song}, so
      * mutations recorded through the adjacent line's own {@code applyChange}/{@code removeElement}
      * coalesce into the same batch.
-     * <p>
-     * Returns the indices (in the pre-removal element list) of every element {@code line} itself
-     * lost to a grace-note/host collapse, so a caller tracking a selection range on {@code line}
-     * can adjust it for the resulting index shift. A collapse in the adjacent line is still
-     * applied to the model — it is simply not {@code line}'s own range to report. Empty if
-     * nothing was removed on {@code line}.
      */
-    static List<Integer> commitPitchShift(
+    static void commitPitchShift(
             Line line,
             List<PitchShiftEntry> group,
             List<AccidentalReconciliation.AccidentalChange> accidentalChanges,
             AccidentalRestatements.Decision decision) {
-
-        var removedIndicesOnLine = new ArrayList<Integer>();
 
         line.withModification(Strings.get(Strings.ACTION_EDIT_OP_MOVE_NOTE), () -> {
             for (var entry : group) {
@@ -528,8 +482,6 @@ public final class PitchShifter {
 
             for (var lineEntries : entriesByLine.entrySet()) {
                 var entryLine = lineEntries.getKey();
-                //noinspection ObjectEquality
-                var isPrimaryLine = entryLine == line;
 
                 var sortedEntries = lineEntries.getValue().stream()
                         .sorted((a, b) -> Integer.compare(b.index(), a.index()))
@@ -547,10 +499,6 @@ public final class PitchShifter {
                                 Strings.WARNING_GRACE_NOTE_SAME_PITCH
                         );
                         entryLine.removeElement(idx);
-
-                        if (isPrimaryLine) {
-                            removedIndicesOnLine.add(idx);
-                        }
                     } else if (!element.getType().isGraceNote()) {
                         // Host note shifted to the same pitch as its preceding grace note — remove the grace note
                         // The preceding grace note sits immediately before idx, so asking whether it
@@ -565,17 +513,11 @@ public final class PitchShifter {
                                     Strings.WARNING_GRACE_NOTE_SAME_PITCH
                             );
                             entryLine.removeElement(graceIdx);
-
-                            if (isPrimaryLine) {
-                                removedIndicesOnLine.add(graceIdx);
-                            }
                         }
                     }
                 }
             }
         });
-
-        return removedIndicesOnLine;
     }
 
     /**

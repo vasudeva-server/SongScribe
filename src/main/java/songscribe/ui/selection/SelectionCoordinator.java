@@ -32,6 +32,7 @@ import net.engio.mbassy.listener.Handler;
 
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
+import songscribe.message.mutation.LineDeletion;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Line;
 import songscribe.dom.LineElement;
@@ -234,8 +235,9 @@ public final class SelectionCoordinator {
 
     /**
      * Clears what is selected while leaving its line active, so the next selection lands on
-     * the same line without being reactivated. What a rubber band that caught nothing, and a
-     * selection that a mutation invalidated, both leave behind.
+     * the same line without being reactivated. What a rubber band that caught nothing leaves
+     * behind — and, more rarely, a range spliced out of existence by
+     * {@link #revalidateElementSelection} or caught by its bounds backstop.
      */
     public void clearActiveSelection() {
         selected = null;
@@ -529,24 +531,53 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Clears the selection if it is a range that no longer fits its line — e.g. after an undo
-     * that removed an element the range covered. No-op for a target selection, which
+     * Splices the selected range through every mutation in {@code notification}, so it keeps
+     * naming the elements the user selected as the batch that just ran shifted or removed
+     * elements around it. No-op for a target selection, which
      * {@link #revalidateDecorationSelection} answers for instead.
      * <p>
-     * The line stays active, as it does for a stale target: only what was selected on it
-     * became unusable.
-     *
-     * @return whether the selection was cleared
+     * The mutation list is folded front-to-back: {@code Song.applyChange} appends to it as
+     * each mutation runs, and undo replays mutations in reverse but *records* them in replay
+     * order, so each record's indices are relative to the state the previous record left
+     * behind. Folding back-to-front would apply every splice against the wrong baseline.
+     * <p>
+     * A {@link LineDeletion} of the range's own line clears the selection outright — via
+     * {@link #clearSelection}, not {@link #clearActiveSelection}, since the line itself is
+     * gone and leaving {@code activeLineIndex} pointing at it would strand a stale index.
+     * Every other mutation either moves no element index (a song-scoped mutation, a
+     * replacement, a modification) or is spliced via {@link Selection.Range#splicedFor}.
+     * <p>
+     * After the fold, a range whose {@code end} can no longer be indexed on its line — a
+     * structural change that never reached the mutation record — is also cleared. This is a
+     * backstop, not the primary mechanism: do not remove it as unreachable.
      */
-    public boolean revalidateElementSelection() {
+    public void revalidateElementSelection(SongDidChangeNotification notification) {
         var range = getRange();
 
-        if (range == null || range.fitsLine()) {
-            return false;
+        if (range == null) {
+            return;
         }
 
-        clearActiveSelection();
-        return true;
+        for (var mutation : notification.getMutations()) {
+            if (mutation instanceof LineDeletion deletion && deletion.deletedLine() == range.line()) {
+                clearSelection();
+                return;
+            }
+
+            range = range.splicedFor(mutation);
+
+            if (range == null) {
+                clearActiveSelection();
+                return;
+            }
+        }
+
+        if (range.end() >= range.line().elementCount()) {
+            clearActiveSelection();
+            return;
+        }
+
+        selected = range;
     }
 
     /**

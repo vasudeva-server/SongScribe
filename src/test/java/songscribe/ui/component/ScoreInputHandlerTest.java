@@ -65,6 +65,7 @@ import songscribe.message.command.ToggleFallOnLastInsertionCommand;
 import songscribe.message.command.ToggleGlissandoWithPreviousCommand;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
+import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
@@ -871,7 +872,7 @@ class ScoreInputHandlerTest extends UnitTest {
         }
 
         @Test
-        void testDownCollapsingUnselectedPrecedingGraceNoteShrinksSelectionRange() {
+        void testDownCollapsingUnselectedPrecedingGraceNoteSlidesSelectionRangeDown() {
             final var gracePositionSp = 4;
             var song = new Song();
             var line = song.getLine(0);
@@ -898,6 +899,12 @@ class ScoreInputHandlerTest extends UnitTest {
                     OptionDialogs.showWarningMessage(any(), anyString(), anyString()));
             }
 
+            // The shift no longer repairs the selection itself — it records the removal and the
+            // coordinator splices the range when the notification arrives. MessageCenter is
+            // mocked here, so replay the recorded batch into the coordinator by hand.
+            coordinator.revalidateElementSelection(
+                new SongDidChangeNotification(capturedMutations(), song));
+
             // The grace note collapsed into the host, shifting every later index down by
             // one; the surviving selection must track the same two notes (now at 0 and 1),
             // not the stale pre-removal indices (1 and 2).
@@ -912,6 +919,20 @@ class ScoreInputHandlerTest extends UnitTest {
          * carried by whichever {@link SongDidChangeNotification} recorded the shift.
          */
         private ElementModification capturedPitchModification() {
+            return capturedMutations().stream()
+                .filter(m -> m instanceof ElementModification)
+                .map(m -> (ElementModification) m)
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("No ElementModification in captured notifications"));
+        }
+
+        /**
+         * Every mutation carried by the {@link SongDidChangeNotification}s posted so far, in
+         * post order. {@code MessageCenter} is mocked for this group, so nothing the production
+         * bus would deliver actually arrives; a test that needs a subscriber's reaction has to
+         * replay the batch into that subscriber itself.
+         */
+        private List<Mutation> capturedMutations() {
             var captor = ArgumentCaptor.forClass(Message.class);
             messageCenterMock.verify(() -> MessageCenter.post(captor.capture()), atLeastOnce());
 
@@ -919,10 +940,7 @@ class ScoreInputHandlerTest extends UnitTest {
                 .filter(m -> m instanceof SongDidChangeNotification)
                 .map(m -> (SongDidChangeNotification) m)
                 .flatMap(n -> n.getMutations().stream())
-                .filter(m -> m instanceof ElementModification)
-                .map(m -> (ElementModification) m)
-                .findFirst()
-                .orElseThrow(() -> new AssertionError("No ElementModification in captured notifications"));
+                .toList();
         }
     }
 

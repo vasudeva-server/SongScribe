@@ -25,6 +25,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,20 +58,25 @@ import songscribe.ui.selection.ReflectionTestHelper;
  *
  * <p>Forward delete clears the selection itself before shrinking the line, so it never
  * needs the guard in {@code ScoreViewController.songDidChange}. Undo has no such courtesy:
- * undoing an insertion removes elements and leaves the selection exactly as it was, so the
- * selected range is left running past the end of the line. The first handler that walks
- * that range indexes off the end and throws.
+ * undoing an insertion removes elements while the selection is still naming them by index.
+ * What keeps that safe is {@link SelectionCoordinator#revalidateElementSelection}, which
+ * splices the range through every mutation in the undo batch as it replays — the range goes
+ * on naming the same surviving elements it named before, sliding or shrinking as needed, and
+ * is only cleared outright once nothing of it survives. This class exercises that splice
+ * end to end, through a real undo on the real message bus, rather than merely proving the
+ * old crash can no longer happen.
  *
  * <p>What makes this worth testing through the bus rather than by calling the handler
- * directly is the ordering. The guard only helps if it runs before the handlers that read
+ * directly is the ordering. The splice only helps if it runs before the handlers that read
  * the range, and nothing in {@code ScoreViewController} enforces that — it rests entirely
  * on {@code TUPLET_INFO_CACHE_PRIORITY} outranking every other subscriber to this
  * notification. A direct call cannot see that; it would keep passing if the priority were
- * dropped tomorrow. So this test posts a real undo through the real bus and reads the
- * selection from a subscriber at {@link Message#MEDIUM_PRIORITY} — the priority
- * {@link UIAction#songDidChange} actually uses, which is how the crash reached users
- * (every {@code UIAction} re-derives its enabled state there, and the trill and tuplet
- * actions do it by walking the selected range).
+ * dropped tomorrow. So {@link #testUndoingAnInsertionDoesNotLeaveAStaleSelectionForLaterHandlers}
+ * posts a real undo through the real bus and reads the selection from a subscriber at
+ * {@link Message#MEDIUM_PRIORITY} — the priority {@link UIAction#songDidChange} actually
+ * uses, which is how the crash this guards against reached users (every {@code UIAction}
+ * re-derives its enabled state there, and the trill and tuplet actions do it by walking
+ * the selected range).
  *
  * <p>Lives in {@code songscribe.undo} rather than beside the other selection tests because
  * it needs {@link UndoController#resetForTest()}, which is package-private.
@@ -123,6 +130,24 @@ class UndoStaleSelectionTest extends UnitTest {
     }
 
     /**
+     * Builds a real controller wired to {@code coordinator} and subscribes it to the real
+     * bus, storing it in {@link #controller} so {@link #tearDown} unsubscribes it. The
+     * operations are mocked only because the tuplet cache warm-up is beside the point in
+     * these tests; the selection every test here watches is the coordinator's, which is
+     * real.
+     */
+    private ScoreViewController buildController(SelectionCoordinator coordinator) {
+        controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            coordinator,
+            mock(ClipboardManager.class)
+        );
+
+        return controller;
+    }
+
+    /**
      * Builds the line, wires a real coordinator and controller to it, and leaves one
      * undoable insertion on the stack with the whole line selected — the state a user is
      * in when they select everything and then press undo.
@@ -141,16 +166,7 @@ class UndoStaleSelectionTest extends UnitTest {
         });
 
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-
-        // A real controller, subscribed to the real bus by its own constructor. The
-        // operations are mocked only because the tuplet cache warm-up is beside the point
-        // here; the selection this test watches is the coordinator's, which is real.
-        controller = new ScoreViewController(
-            mock(ScoreView.class),
-            mock(MusicEditOperations.class),
-            coordinator,
-            mock(ClipboardManager.class)
-        );
+        buildController(coordinator);
 
         ReflectionTestHelper.selectRange(coordinator, 0, SELECTION_END_INDEX);
 
@@ -164,6 +180,10 @@ class UndoStaleSelectionTest extends UnitTest {
     @Test
     void testUndoingAnInsertionDoesNotLeaveAStaleSelectionForLaterHandlers() {
         var coordinator = selectEverythingOverAnUndoableInsertion();
+
+        // The base notes the undo must not touch, captured by identity before the undo
+        // runs — the splice is expected to leave the range naming exactly these.
+        var baseNotesBeforeUndo = List.copyOf(line.getElements(0, BASE_NOTE_COUNT - 1));
 
         var probeRan = new boolean[1];
         var caughtDuringNotification = new Exception[1];
@@ -204,8 +224,164 @@ class UndoStaleSelectionTest extends UnitTest {
         assertThat(caughtDuringNotification[0])
             .as("songDidChange handlers must not see a selection running past the end of the line")
             .isNull();
+
+        var rangeAfterUndo = coordinator.getRange();
+        assertThat(rangeAfterUndo)
+            .as("the undone insertion left the base notes selected — the splice must not clear them")
+            .isNotNull();
+        assertThat(rangeAfterUndo.begin()).isEqualTo(0);
+        assertThat(rangeAfterUndo.end()).isEqualTo(BASE_NOTE_COUNT - 1);
+        assertThat(line.getElements(rangeAfterUndo.begin(), rangeAfterUndo.end()))
+            .as("the range must keep naming the same elements it named before the undo")
+            .isEqualTo(baseNotesBeforeUndo);
+    }
+
+    @Test
+    void testUndoOfInsertionBeforeTheRangeSlidesTheRangeDownButKeepsTheSameElements() {
+        // Layout after the tracked insertion: [X, Y, A, B, C] — X and Y are undone; A, B
+        // and C are the untouched notes the range must go on naming.
+        final var precedingInsertionCount = 2;
+        final var rangeNoteCount = 3;
+
+        song.withoutMutationTracking(() -> {
+            for (var i = 0; i < rangeNoteCount; i++) {
+                line.addElement(ElementType.QUAVER.newInstance());
+            }
+        });
+
+        var rangeNotesBeforeInsertion = List.copyOf(line.getElements(0, rangeNoteCount - 1));
+
+        song.withModification(() -> {
+            for (var i = 0; i < precedingInsertionCount; i++) {
+                line.addElement(i, ElementType.QUAVER.newInstance());
+            }
+        });
+
+        var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+        buildController(coordinator);
+
+        var rangeBegin = precedingInsertionCount;
+        var rangeEnd = precedingInsertionCount + rangeNoteCount - 1;
+        ReflectionTestHelper.selectRange(coordinator, rangeBegin, rangeEnd);
+
+        UndoController.undo();
+
+        var range = coordinator.getRange();
+        assertThat(range).as("expected the range to survive the splice").isNotNull();
+        assertThat(range.begin())
+            .as("the range slides down by exactly the two elements removed ahead of it")
+            .isEqualTo(0);
+        assertThat(range.end()).isEqualTo(rangeNoteCount - 1);
+        assertThat(line.getElements(range.begin(), range.end()))
+            .as("the range must keep naming the same elements it named before the undo")
+            .isEqualTo(rangeNotesBeforeInsertion);
+    }
+
+    @Test
+    void testUndoOfInsertionInsideTheRangeShrinksTheRangeByOne() {
+        // Layout after the tracked insertion: [A, X, B] — X is undone; A and B are the
+        // untouched notes on either side of it.
+        final var insertedNoteIndex = 1;
+        final var rangeEndBeforeUndo = 2;
+
+        var noteA = ElementType.QUAVER.newInstance();
+        var noteB = ElementType.QUAVER.newInstance();
+        song.withoutMutationTracking(() -> {
+            line.addElement(noteA);
+            line.addElement(noteB);
+        });
+
+        song.withModification(
+            () -> line.addElement(insertedNoteIndex, ElementType.QUAVER.newInstance()));
+
+        var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+        buildController(coordinator);
+
+        // [A, X, B] — select the whole thing, anchored at the end.
+        ReflectionTestHelper.selectRange(coordinator, rangeEndBeforeUndo, 0);
+
+        UndoController.undo();
+
+        var range = coordinator.getRange();
+        assertThat(range).as("expected the range to survive the splice").isNotNull();
+        assertThat(range.begin()).isEqualTo(0);
+        assertThat(range.end())
+            .as("the deletion inside the range shrinks it by exactly the one element removed")
+            .isEqualTo(rangeEndBeforeUndo - 1);
+        assertThat(line.getElement(range.begin())).isSameAs(noteA);
+        assertThat(line.getElement(range.end())).isSameAs(noteB);
+    }
+
+    @Test
+    void testUndoThenRedoReturnsTheRangeExactlyToWhereItStarted() {
+        // Layout after the tracked insertion: [A, X, B] — X is inserted, then undone, then
+        // redone. The range is anchored on B rather than A, so a round trip that silently
+        // swapped the anchor for the opposite end would still pass on begin/end alone.
+        final var insertedNoteIndex = 1;
+        final var anchor = 2;
+
+        var noteA = ElementType.QUAVER.newInstance();
+        var noteB = ElementType.QUAVER.newInstance();
+        song.withoutMutationTracking(() -> {
+            line.addElement(noteA);
+            line.addElement(noteB);
+        });
+
+        song.withModification(
+            () -> line.addElement(insertedNoteIndex, ElementType.QUAVER.newInstance()));
+
+        var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+        buildController(coordinator);
+
+        ReflectionTestHelper.selectRange(coordinator, anchor, 0);
+
+        var rangeBeforeUndo = coordinator.getRange();
+        assertThat(rangeBeforeUndo).as("expected an active selection").isNotNull();
+
+        UndoController.undo();
+        UndoController.redo();
+
+        var rangeAfterRedo = coordinator.getRange();
+        assertThat(rangeAfterRedo)
+            .as("expected the range to survive the undo/redo round trip")
+            .isNotNull();
+        assertThat(rangeAfterRedo.begin()).isEqualTo(rangeBeforeUndo.begin());
+        assertThat(rangeAfterRedo.end()).isEqualTo(rangeBeforeUndo.end());
+        assertThat(rangeAfterRedo.anchor())
+            .as("the anchor must round-trip along with begin and end")
+            .isEqualTo(rangeBeforeUndo.anchor());
+        assertThat(line.getElement(rangeAfterRedo.begin())).isSameAs(noteA);
+        assertThat(line.getElement(rangeAfterRedo.end())).isSameAs(noteB);
+    }
+
+    @Test
+    void testUndoOfAnEditOnADifferentLineLeavesTheRangeUntouched() {
+        var otherLine = new Line(song);
+        song.withoutMutationTracking(() -> song.addLine(1, otherLine));
+
+        final var rangeNoteCount = 3;
+
+        song.withoutMutationTracking(() -> {
+            for (var i = 0; i < rangeNoteCount; i++) {
+                line.addElement(ElementType.QUAVER.newInstance());
+            }
+        });
+
+        song.withModification(() -> otherLine.addElement(ElementType.QUAVER.newInstance()));
+
+        var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+        buildController(coordinator);
+
+        var anchor = rangeNoteCount - 1;
+        ReflectionTestHelper.selectRange(coordinator, anchor, 0);
+
+        var rangeBeforeUndo = coordinator.getRange();
+        assertThat(rangeBeforeUndo).as("expected an active selection").isNotNull();
+
+        UndoController.undo();
+
         assertThat(coordinator.getRange())
-            .as("the stranded selection is dropped, not merely survived")
-            .isNull();
+            .as("an edit undone on another line must not touch this line's selection")
+            .isEqualTo(rangeBeforeUndo);
     }
 }

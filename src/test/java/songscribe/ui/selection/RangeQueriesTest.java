@@ -245,48 +245,6 @@ class RangeQueriesTest extends UnitTest {
         assertThat(rangeOver(line, 0, 1).singleElement()).isNull();
     }
 
-    // -- Range.fitsLine --
-
-    @Test
-    void testFitsLineIsFalseOnceTheLineHasShrunkPastTheRangeEnd() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-
-        var range = rangeOver(line, 0, 1);
-        assertThat(range.fitsLine()).as("before the line shrinks").isTrue();
-
-        // Simulates undoing an insertion: the element the range reached is gone.
-        line.removeElement(1);
-
-        assertThat(range.fitsLine()).as("after the line shrinks").isFalse();
-    }
-
-    /**
-     * Pins down the choice of {@link Line#elementCount()} over
-     * {@link Line#effectiveElementCount()}. The two differ only on a line that ends with a
-     * barline the song maintains itself — which every line in a real song does. The terminal
-     * is a real, indexable element, so a range reaching it is usable and must survive.
-     * Bounding the check by the terminal-excluding count would clear such a selection on
-     * every song change, and the user would watch their selection vanish after an unrelated
-     * edit.
-     */
-    @Test
-    void testFitsLineAcceptsARangeReachingTheSongOwnedTerminal() {
-        var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        var terminal = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
-        line.addElement(terminal);
-        when(line.getSong().isAutoMaintainedTerminal(terminal, line)).thenReturn(true);
-
-        assertThat(line.effectiveElementCount())
-            .as("the fixture must make the two counts differ, or this test proves nothing")
-            .isLessThan(line.elementCount());
-
-        assertThat(rangeOver(line, 0, line.elementCount() - 1).fitsLine()).isTrue();
-    }
-
     // -- canToggleBeaming / canToggleTuplet with grace notes (refs #592) --
 
     @Test

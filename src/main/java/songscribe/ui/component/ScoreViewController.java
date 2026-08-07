@@ -449,15 +449,12 @@ public final class ScoreViewController {
 
     @Handler(priority = TUPLET_INFO_CACHE_PRIORITY)
     public void songDidChange(SongDidChangeNotification message) {
-        // An undo/redo can remove elements from the selected line without touching the
-        // selection — undoing an insertion is enough — which leaves the selected range
-        // running past the end of the line. Every later reader of that range would index
-        // off the end, so it is dropped here, in the highest-priority handler for this
-        // notification, ahead of warmTupletCache: the first such reader. Ordering by
-        // program order rather than by another priority constant keeps the two from
-        // drifting apart. The forward delete path has no need of this — it clears the
-        // selection itself before shrinking the line.
-        selectionCoordinator.revalidateElementSelection();
+        // The selected range is spliced through this batch of mutations here, before any
+        // other reader of the range sees it — in particular ahead of warmTupletCache, the
+        // first such reader below. That ordering is expressed as program order within this
+        // one method rather than as a second priority constant that could drift out of step
+        // with TUPLET_INFO_CACHE_PRIORITY.
+        selectionCoordinator.revalidateElementSelection(message);
 
         warmTupletCache();
 

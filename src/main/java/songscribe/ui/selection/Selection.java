@@ -25,6 +25,10 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.hit.HitTarget;
+import songscribe.message.mutation.ElementDeletion;
+import songscribe.message.mutation.ElementInsertion;
+import songscribe.message.mutation.ElementRangeDeletion;
+import songscribe.message.mutation.Mutation;
 
 /**
  * The one thing selected in the score, in whichever of its two shapes.
@@ -66,18 +70,50 @@ import songscribe.hit.HitTarget;
  */
 public sealed interface Selection {
 
-    /** An index range on one line, anchored at the end the user extended from. */
+    /**
+     * An index range on one line, anchored at the end the user extended from.
+     * <p>
+     * A range names elements by index, so any mutation that inserts or removes elements at or
+     * below it retargets it unless the indices are spliced to follow their elements. That is
+     * what {@link #splicedFor} does, one mutation at a time:
+     *
+     * <pre>
+     *                      b ─────────────── e
+     *                      │                 │
+     *   insert at i:   i ≤ b        b &lt; i ≤ e        i &gt; e
+     *                  b+1, e+1     b, e+1           b, e
+     *                  (range      (new element     (untouched)
+     *                   slides)     joins it)
+     *
+     *   delete [f..t]:  t &lt; b       overlaps          f &gt; e
+     *                   b−k, e−k    b → first survivor at or after f    b, e
+     *                   (k = t−f+1) e → last survivor before f          (untouched)
+     *                               empty ⇒ clear
+     * </pre>
+     *
+     * {@code begin} and {@code end} do <b>not</b> use the same boundary predicate. An insertion
+     * at {@code i == begin} slides the whole range right; a deletion at {@code i == begin} is an
+     * interior shrink. Any attempt to collapse the two into a single signed-delta helper produces
+     * an off-by-one on every insertion at {@code begin}. Keep them as two functions.
+     */
     record Range(Line line, int begin, int end, int anchor) implements Selection {
 
         /**
-         * @throws IllegalArgumentException if the range is empty or reversed. A range that
-         *     selects nothing is not stored at all — the coordinator holds null for that —
-         *     so constructing one is a caller bug rather than a state to represent.
+         * @throws IllegalArgumentException if the range is empty or reversed, or if the anchor
+         *     lies outside it. A range that selects nothing is not stored at all — the
+         *     coordinator holds null for that — so constructing one is a caller bug rather than
+         *     a state to represent. The anchor names the end the user extended from, so an
+         *     anchor outside the span it anchors is equally a caller bug.
          */
         public Range {
             if (begin < 0 || end < begin) {
                 throw new IllegalArgumentException(
                     "Selection.Range must select at least one element, got [" + begin + ", " + end + "]");
+            }
+
+            if (anchor < begin || anchor > end) {
+                throw new IllegalArgumentException(
+                    "Selection.Range anchor " + anchor + " must lie within [" + begin + ", " + end + "]");
             }
         }
 
@@ -119,19 +155,89 @@ public sealed interface Selection {
         }
 
         /**
-         * Returns whether the range still fits the line — false once a mutation has shrunk the
-         * line past its end, as an undo that removed a selected element does.
+         * This range spliced for {@code mutation}, or null if nothing of it survives.
+         * Returns {@code this} unchanged for a mutation on another line, for a replacement
+         * or a modification (neither moves an index), and for song-scoped mutations.
          *
-         * <p>Bounded by {@link Line#elementCount()} rather than
-         * {@link Line#effectiveElementCount()}: what makes a range unusable is that it can no
-         * longer be indexed at all. Whether a selection may reach the song-owned terminal is a
-         * separate question, decided where the selection is made.
+         * <p><b>That last case includes a {@link songscribe.message.mutation.LineDeletion} of
+         * this range's own line, which comes back unchanged like any other song-scoped
+         * mutation — a range still naming a line the song no longer holds.</b> Only element
+         * indices are spliced here; whether the line itself survived is a question this method
+         * does not ask. {@link SelectionCoordinator#revalidateElementSelection} answers it by
+         * intercepting that mutation before it ever reaches here, and any other caller folding
+         * a whole batch has to do the same.
          *
-         * <p>Only the end is checked, because every caller that builds a range leaves
-         * {@code begin <= end} — the constructor rejects anything else.
+         * <p>A deletion that removes the anchored element leaves the anchor with no element of
+         * its own, so the result is clamped back into {@code [begin, end]} here. That clamp is
+         * not optional: this method establishes the anchor invariant and the constructor
+         * enforces it, so skipping it would throw on the EDT from inside a message handler.
+         * The anchor clamps in the same direction {@code begin} does — forward, onto the
+         * element that slid into the hole — so a deletion swallowing the anchor from strictly
+         * inside the range lands it on the first survivor after the hole, not the last one
+         * before it. Either side would satisfy the invariant; forward is chosen so one rule
+         * covers the anchor wherever it sits, rather than the landing changing with it.
          */
-        public boolean fitsLine() {
-            return end < line.elementCount();
+        public @Nullable Range splicedFor(Mutation mutation) {
+            return switch (mutation) {
+                //noinspection ObjectEquality
+                case ElementInsertion insertion when insertion.line() == line -> spliced(
+                    afterInsertion(begin, insertion.index()),
+                    afterInsertion(end, insertion.index()),
+                    afterInsertion(anchor, insertion.index()));
+
+                //noinspection ObjectEquality
+                case ElementDeletion deletion when deletion.line() == line ->
+                    splicedForDeletion(deletion.index(), deletion.index());
+
+                //noinspection ObjectEquality
+                case ElementRangeDeletion deletion when deletion.line() == line ->
+                    splicedForDeletion(deletion.from(), deletion.to());
+
+                default -> this;
+            };
+        }
+
+        /** Where index {@code x} lands after one element is inserted at {@code at}. */
+        private static int afterInsertion(int x, int at) {
+            return x >= at ? x + 1 : x;
+        }
+
+        /**
+         * Where index {@code x} lands after elements {@code [from..to]} are removed.
+         * A removed index has nowhere of its own to land, so it clamps to a survivor:
+         * {@code isRangeStart} clamps forward onto the element that slid into {@code from},
+         * otherwise back onto the last element before the hole.
+         */
+        private static int afterDeletion(int x, int from, int to, boolean isRangeStart) {
+            if (x < from) {
+                return x;
+            }
+
+            if (x > to) {
+                return x - ((to - from) + 1);
+            }
+
+            return isRangeStart ? from : from - 1;
+        }
+
+        /** This range spliced for the removal of elements {@code [from..to]} of its own line. */
+        private @Nullable Range splicedForDeletion(int from, int to) {
+            return spliced(
+                afterDeletion(begin, from, to, true),
+                afterDeletion(end, from, to, false),
+                afterDeletion(anchor, from, to, true));
+        }
+
+        /**
+         * The spliced endpoints as a range, or null if the splice left nothing selected.
+         * The anchor is clamped rather than validated — see {@link #splicedFor}.
+         */
+        private @Nullable Range spliced(int splicedBegin, int splicedEnd, int splicedAnchor) {
+            if (splicedEnd < splicedBegin) {
+                return null;
+            }
+
+            return new Range(line, splicedBegin, splicedEnd, Math.clamp(splicedAnchor, splicedBegin, splicedEnd));
         }
     }
 
