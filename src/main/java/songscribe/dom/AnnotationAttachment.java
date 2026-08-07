@@ -30,7 +30,7 @@ import org.jspecify.annotations.Nullable;
  * Annotations display text above or below a note (e.g., "dolce", "cresc.", etc.).
  * They can be aligned left, center, or right relative to the note.
  */
-public class AnnotationAttachment extends Attachment {
+public final class AnnotationAttachment extends Attachment {
 
     /** The annotation data. */
     private Annotation annotation;

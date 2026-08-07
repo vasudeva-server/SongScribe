@@ -34,7 +34,8 @@ import org.jspecify.annotations.Nullable;
  * <p>
  * Vertical placement is determined by the layout calculator, not stored as a property.
  */
-public abstract class Attachment extends LineElement {
+public abstract sealed class Attachment extends LineElement
+    permits FermataAttachment, DynamicAttachment, AnnotationAttachment, MetronomeAttachment {
 
     /**
      * Horizontal alignment of the attachment relative to the owner element.

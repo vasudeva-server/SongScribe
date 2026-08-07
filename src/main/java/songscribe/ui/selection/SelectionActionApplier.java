@@ -71,21 +71,10 @@ public final class SelectionActionApplier {
     private record PendingChange(int index, StaffElement standIn, Ending.EndingEffect compensation) {}
 
     /**
-     * Applies the given action to all applicable elements in the coordinator's selection.
-     * Wraps the entire apply pass in a single modification bracket so all emitted
-     * mutations coalesce into one {@code SongDidChangeNotification}.
-     * <p>
-     * Runs in three passes, because the ending confirms decide which elements actually change and
-     * the fit gate cannot be built until that is known — gating the loop as it runs would
-     * over-refuse, killing the whole action before its dialogs are even shown:
-     * <ol>
-     *   <li><b>Decide</b> — compute each applicable element's post-change stand-in and, for a
-     *       replacement, resolve and confirm its ending effect. Mutates nothing and opens no
-     *       bracket, which also keeps a dialog from being open while a modification bracket is.</li>
-     *   <li><b>Reconcile and gate</b> — over the indices that proceed; still mutates nothing, so a
-     *       refusal leaves the score untouched and creates no undo step.</li>
-     *   <li><b>Apply</b> — inside the modification bracket.</li>
-     * </ol>
+     * Applies the given action to the coordinator's current selection, leaving the undo step's
+     * op-name to the generic fallback. A no-op when nothing is selected. See
+     * {@link #apply(SelectionCoordinator, ElementSelection, UIAction.Reflectable, boolean,
+     * ScoreView, String)}, which does the work and explains how.
      *
      * @param coordinator the coordinator holding the selection to apply to
      * @param action      the reflectable action to apply
@@ -106,8 +95,45 @@ public final class SelectionActionApplier {
             return;
         }
 
+        apply(coordinator, selection, action, selected, score, null);
+    }
+
+    /**
+     * Applies the given action to all applicable elements of a caller-supplied selection. Wraps
+     * the entire apply pass in a single modification bracket so all emitted mutations coalesce
+     * into one {@code SongDidChangeNotification}.
+     * <p>
+     * Runs in three passes, because the ending confirms decide which elements actually change and
+     * the fit gate cannot be built until that is known — gating the loop as it runs would
+     * over-refuse, killing the whole action before its dialogs are even shown:
+     * <ol>
+     *   <li><b>Decide</b> — compute each applicable element's post-change stand-in and, for a
+     *       replacement, resolve and confirm its ending effect. Mutates nothing and opens no
+     *       bracket, which also keeps a dialog from being open while a modification bracket is.</li>
+     *   <li><b>Reconcile and gate</b> — over the indices that proceed; still mutates nothing, so a
+     *       refusal leaves the score untouched and creates no undo step.</li>
+     *   <li><b>Apply</b> — inside the modification bracket.</li>
+     * </ol>
+     *
+     * @param coordinator the coordinator to invalidate selection caches on once the mutation lands
+     * @param selection   the selection to apply to, supplied by the caller rather than read from
+     *                    the coordinator
+     * @param action      the reflectable action to apply
+     * @param selected    true to apply the attribute, false to remove it
+     * @param score       the view to parent any ending-confirm dialogs on, and the source of the
+     *                    song-wide lyric metrics the fit gate measures syllable widths with; null in
+     *                    tests, which space the projection as if the line had no lyrics
+     * @param opLabel     the undo step's op-name, or null to fall back to the generic op-name
+     */
+    public static void apply(
+        SelectionCoordinator coordinator,
+        ElementSelection selection,
+        UIAction.Reflectable action,
+        boolean selected,
+        @Nullable ScoreView score,
+        @Nullable String opLabel) {
+
         var line = selection.line();
-        var song = line.getSong();
         var changes = decideChanges(action, selected, score, selection);
 
         if (changes.isEmpty()) {
@@ -131,12 +157,24 @@ public final class SelectionActionApplier {
 
         if (action instanceof UIAction.WidensColumn
             && !fitsAfterModification(line, changes, accidentalChanges, score)) {
-            OptionDialogs.showErrorMessage(
-                score,
-                Strings.ALERT_TITLE_INSERT_ERROR,
-                Strings.ERROR_LINE_FULL_ELEMENT,
-                changes.getFirst().standIn().getType().categoryName()
-            );
+            // A removal can still overflow the line — reconciliation may need to add accidentals
+            // to other notes to preserve their pitch — so it gets its own operation-neutral
+            // wording instead of the insert phrasing, which would misdescribe a deletion.
+            if (selected) {
+                OptionDialogs.showErrorMessage(
+                    score,
+                    Strings.ALERT_TITLE_INSERT_ERROR,
+                    Strings.ERROR_LINE_FULL_ELEMENT,
+                    changes.getFirst().standIn().getType().categoryName()
+                );
+            } else {
+                OptionDialogs.showErrorMessage(
+                    score,
+                    Strings.ALERT_TITLE_LINE_TOO_FULL,
+                    Strings.ERROR_LINE_FULL_REMOVAL
+                );
+            }
+
             return;
         }
 
@@ -144,7 +182,7 @@ public final class SelectionActionApplier {
         // element types alone.
         var needsSpanCleanup = action instanceof UIAction.ElementReplaceable;
 
-        song.withModification(() -> {
+        line.withOptionallyNamedModification(opLabel, () -> {
             for (var change : changes) {
                 var index = change.index();
                 var compensation = change.compensation();

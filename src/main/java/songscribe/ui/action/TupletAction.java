@@ -34,6 +34,7 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
+import songscribe.undo.OpNames;
 import songscribe.util.StringUtils;
 
 public final class TupletAction extends UIAction {
@@ -187,7 +188,7 @@ public final class TupletAction extends UIAction {
     @Override
     public String getUndoOpName() {
         if (tuplet == Tuplet.REMOVE) {
-            return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TUPLET);
+            return OpNames.removeTupletLabel();
         }
 
         var baseAddKey = baseAddKey();

@@ -36,34 +36,23 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.function.BiFunction;
-import java.util.function.Function;
-import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import javax.swing.JOptionPane;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Named;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.MethodSource;
 import org.jspecify.annotations.Nullable;
 import org.mockito.MockedStatic;
 
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.UnitTest;
-import songscribe.dom.Articulation;
-import songscribe.dom.ArticulationType;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
-import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
-import songscribe.dom.FermataAttachment;
-import songscribe.dom.Hairpin;
 import songscribe.hit.HitTarget;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.OptionDialogs;
@@ -72,7 +61,6 @@ import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
-import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.Ending;
@@ -545,229 +533,6 @@ class ScoreViewControllerTest extends UnitTest {
             // G (paired), B, and the breath mark all removed; A and terminal barline remain.
             assertThat(line.elementCount()).isEqualTo(2);
             assertThat(line.getElement(0)).isSameAs(noteA);
-        }
-
-        // Row 18: glissando selection removes the glissando from source element
-        @Test
-        void testHandleDeleteGlissandoSelectionRemovesGlissandoFromElement() {
-            var song = new Song();
-            var line = song.getLine(0);
-            var noteA = crotchet();
-            noteA.setFall();
-            var noteB = crotchet();
-
-            song.withoutMutationTracking(() -> {
-                line.addElement(noteA);
-                line.addElement(noteB);
-            });
-
-            var scoreMock = mock(ScoreView.class);
-            when(scoreMock.getSong()).thenReturn(song);
-            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-            ReflectionTestHelper.selectGlissando(coordinator, 0);
-            var controller = buildController(song, coordinator, scoreMock);
-
-            controller.handleDelete();
-
-            assertThat(noteA.hasFall()).isFalse();
-            // Only the glissando is removed; elements are unchanged (noteA, noteB, barline)
-            assertThat(line.elementCount()).isEqualTo(3);
-            // The removal must be recorded as a mutation so the resulting notification triggers a
-            // relayout — a fall occupies horizontal space, so deleting it must reflow the line. A
-            // bare removeSlide() leaves the song unmodified and the layout stale.
-            assertThat(song.isModified()).isTrue();
-        }
-
-        // Row 1 of the pair-destruction trace: deleting a paired grace note's slide un-pairs
-        // it, which dissolves the automatic grace-host melisma. handleDelete must capture the
-        // pairing BEFORE removeSlide() strips the glissando — afterwards there is no pairing
-        // left to read, so the sync would never run and the melisma would survive its pair.
-        @Test
-        void testHandleDeleteSlideOnPairedGraceNoteTearsDownAutomaticMelisma() {
-            // [G(paired, "om" START), H(text-less STOP carrier)] — delete G's glissando.
-            var song = new Song();
-            var line = song.getLine(0);
-            var grace = ElementType.GRACE_QUAVER.newInstance();
-            grace.setGlissando();
-            grace.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "om", Lyric.Extend.START);
-            var host = crotchet();
-            host.setLyricForVerse(1, null, false, "", Lyric.Extend.STOP);
-
-            song.withoutMutationTracking(() -> {
-                line.addElement(grace);
-                line.addElement(host);
-            });
-
-            var scoreMock = mock(ScoreView.class);
-            when(scoreMock.getSong()).thenReturn(song);
-            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-            ReflectionTestHelper.selectGlissando(coordinator, 0);
-            var controller = buildController(song, coordinator, scoreMock);
-
-            controller.handleDelete();
-
-            assertThat(grace.hasGlissando()).isFalse();
-
-            // The host's carrier must be REMOVED, not merely cleared to an empty lyric: an
-            // empty-lyric host is still a valid backward target for lyric navigation.
-            assertThat(host.getLyricForVerse(1)).isNull();
-
-            var graceLyric = grace.getLyricForVerse(1);
-
-            assertThat(graceLyric).as("the now-ordinary former grace note lost its syllable").isNotNull();
-
-            // Both elements survive the un-pairing, so the syllable simply stays put —
-            // only its melisma goes away.
-            assertThat(graceLyric.extend()).isEqualTo(Lyric.Extend.NONE);
-            assertThat(graceLyric.text()).isEqualTo("om");
-            assertThat(graceLyric.syllabic()).isEqualTo(Lyric.Syllabic.SINGLE);
-        }
-
-        // Ending selection removes the ending from the line and is recorded as a mutation
-        @Test
-        void testHandleDeleteEndingSelectionRemovesEndingFromLine() {
-            var song = new Song();
-            var line = song.getLine(0);
-            var noteA = crotchet();
-            var split = ElementType.REPEAT_RIGHT.newInstance();
-            var noteB = crotchet();
-
-            song.withoutMutationTracking(() -> {
-                line.addElement(noteA);
-                line.addElement(split);
-                line.addElement(noteB);
-            });
-
-            var ending = new Ending(noteA, noteB);
-            song.withoutMutationTracking(() -> line.addSpan(ending));
-
-            var scoreMock = mock(ScoreView.class);
-            when(scoreMock.getSong()).thenReturn(song);
-            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-            ReflectionTestHelper.selectEnding(coordinator, ending);
-            var controller = buildController(song, coordinator, scoreMock);
-
-            controller.handleDelete();
-
-            assertThat(line.findEndings()).doesNotContain(ending);
-            // The removal must be recorded as a mutation so undo restores the ending.
-            assertThat(song.isModified()).isTrue();
-            // The deleted ending must not stay selected, or Delete would remain enabled while
-            // pointing at an ending no longer in the line. ScoreView owns the actual clearing,
-            // so at this seam the controller's contract is that it asks for it.
-            verify(scoreMock).deselect();
-        }
-
-        /**
-         * The kinds that became selectable with the hit registry but that Delete must leave
-         * alone. A tie, beam, tuplet and trill are toggled off by their own actions; an
-         * accidental belongs to its note; an articulation and an attachment are removed through
-         * the palette that added them.
-         */
-        private static Stream<Named<Function<StaffElement, HitTarget>>> undeletableTargets() {
-            return Stream.of(
-                Named.of("tie", note -> new HitTarget.Tie(new Tie(note, note))),
-                Named.of("beam", note -> new HitTarget.Beam(new Beam(note, note))),
-                Named.of("trill", note -> new HitTarget.Trill(new Trill(note, note))),
-                Named.of("accidental", HitTarget.Accidental::new),
-                Named.of("articulation",
-                    note -> new HitTarget.Articulation(new Articulation(ArticulationType.STACCATO))),
-                Named.of("attachment",
-                    note -> new HitTarget.Attachment(new FermataAttachment())));
-        }
-
-        /**
-         * Delete with one of these selected must do nothing at all — in particular it must not
-         * fall through to deleting the whole staff line, which is what the next branch of
-         * handleDelete does when nothing else claims the keystroke. Losing a line because the
-         * user pressed Delete with a tie selected would be the worst outcome here.
-         */
-        @ParameterizedTest
-        @MethodSource("undeletableTargets")
-        void testHandleDeleteLeavesTheLineIntactForKindsItDoesNotDelete(
-            Function<? super StaffElement, ? extends HitTarget> makeTarget
-        ) {
-            var song = new Song();
-            var line = song.getLine(0);
-            var noteA = crotchet();
-            var noteB = crotchet();
-
-            song.withoutMutationTracking(() -> {
-                line.addElement(noteA);
-                line.addElement(noteB);
-            });
-
-            var elementCountBefore = line.elementCount();
-            var lineCountBefore = song.lineCount();
-
-            var scoreMock = mock(ScoreView.class);
-            when(scoreMock.getSong()).thenReturn(song);
-            when(scoreMock.canDeleteLine()).thenReturn(true);
-            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-            ReflectionTestHelper.selectTarget(coordinator, makeTarget.apply(noteA));
-            var controller = buildController(song, coordinator, scoreMock);
-
-            controller.handleDelete();
-
-            assertThat(song.lineCount())
-                .as("the staff line must survive").isEqualTo(lineCountBefore);
-            assertThat(line.elementCount())
-                .as("no element may be removed").isEqualTo(elementCountBefore);
-        }
-
-        /**
-         * Builds a two-note line carrying {@code hairpin}, selects the hairpin, deletes it
-         * through the controller, and returns the song so the caller can assert on it.
-         */
-        private Song deleteSelectedHairpin(BiFunction<? super StaffElement, ? super StaffElement, ? extends Hairpin> hairpinFactory) {
-            var song = new Song();
-            var line = song.getLine(0);
-            var noteA = crotchet();
-            var noteB = crotchet();
-
-            song.withoutMutationTracking(() -> {
-                line.addElement(noteA);
-                line.addElement(noteB);
-            });
-
-            var hairpin = hairpinFactory.apply(noteA, noteB);
-            song.withoutMutationTracking(() -> line.addSpan(hairpin));
-
-            var scoreMock = mock(ScoreView.class);
-            when(scoreMock.getSong()).thenReturn(song);
-            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
-            ReflectionTestHelper.selectHairpin(coordinator, hairpin);
-            var controller = buildController(song, coordinator, scoreMock);
-
-            controller.handleDelete();
-
-            assertThat(line.getSpans())
-                .as("the selected hairpin is gone from the line")
-                .doesNotContain(hairpin);
-            // Without a mutation bracket the deletion would be invisible to undo: the
-            // hairpin would vanish and no undo step would bring it back.
-            assertThat(song.isModified())
-                .as("the removal was recorded so undo can restore it")
-                .isTrue();
-
-            return song;
-        }
-
-        // A selected crescendo is removed by Delete and the removal is undoable.
-        @Test
-        void testHandleDeleteHairpinSelectionRemovesCrescendoFromLine() {
-            var song = deleteSelectedHairpin(Crescendo::new);
-
-            assertThat(song.getLine(0).getCrescendos()).isEmpty();
-        }
-
-        // The diminuendo case is separate because the controller switches on the hairpin's
-        // subtype: were the two branches swapped, a crescendo-only test would still pass.
-        @Test
-        void testHandleDeleteHairpinSelectionRemovesDiminuendoFromLine() {
-            var song = deleteSelectedHairpin(Diminuendo::new);
-
-            assertThat(song.getLine(0).getDiminuendos()).isEmpty();
         }
 
         // Row 19: no element/glissando selection, canDeleteLine() true → removes line

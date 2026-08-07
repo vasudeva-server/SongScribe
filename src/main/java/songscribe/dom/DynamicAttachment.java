@@ -31,7 +31,7 @@ import songscribe.smufl.SMuFLMetadata;
  * Dynamics indicate volume levels (p, f, mf, etc.) and are typically
  * placed below the staff, centered on the note.
  */
-public class DynamicAttachment extends Attachment {
+public final class DynamicAttachment extends Attachment {
 
     /** Default width for dynamic markings in staff-space units. */
     private static final double DEFAULT_WIDTH_SS = 2.5;  // 20px

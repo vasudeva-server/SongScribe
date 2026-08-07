@@ -29,6 +29,9 @@ import net.engio.mbassy.listener.Handler;
 
 import org.jspecify.annotations.Nullable;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import songscribe.Strings;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
@@ -65,8 +68,15 @@ import songscribe.message.notification.RestModeDidChangeNotification;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.message.notification.TupletsWereRemovedNotification;
 import songscribe.prefs.PrefsKey;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.Attachment;
+import songscribe.dom.AttachmentRemoval;
+import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
+import songscribe.dom.DynamicAttachment;
+import songscribe.dom.FermataAttachment;
+import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
@@ -80,6 +90,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.MusicEditOperations.HairpinResolution;
 import songscribe.ui.OptionDialogs;
+import songscribe.ui.TempoChangeGuards;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.PreviewElementManager;
@@ -92,6 +103,8 @@ import songscribe.ui.edit.ScoreActions;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.playback.PlaybackController;
 import songscribe.hit.HitTarget;
+import songscribe.ui.selection.ElementSelection;
+import songscribe.ui.selection.SelectionActionApplier;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.dom.EndingValidationResult;
 import songscribe.ui.selection.TupletToggleInfo;
@@ -104,6 +117,8 @@ import songscribe.util.UIUtils;
  * Handles all @Handler methods for messages posted to the MessageCenter.
  */
 public final class ScoreViewController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(ScoreViewController.class);
 
     // Delay in milliseconds for debouncing repaint when layout changes occur
     private static final int REPAINT_DEBOUNCE_DELAY_MS = 300;
@@ -649,6 +664,47 @@ public final class ScoreViewController {
         }
     }
 
+    /**
+     * Deletes whatever the Backspace / Delete keystroke should delete, dispatching on what is
+     * selected. The lyric branch owns its own cleanup and returns; every other branch falls
+     * through to the shared tail.
+     *
+     * <pre>
+     * Backspace / Delete
+     *         │
+     *         ▼
+     *    handleDelete()
+     *         │
+     *         ├─ HitTarget.Lyric ─────────────► modifyElement(LYRIC) ──► restoreSelectedActionStates()
+     *         │                                                          clearSelection(); repaint(); return
+     *         │
+     *         ├─ range != null ───────────────► deleteElementRange()  ─┐
+     *         │                                                        │
+     *         ├─ selectedTarget != null ──────► deleteSelectedTarget() ┤
+     *         │        │                                               │
+     *         │        ├── Slide      ─► modifyElement(SLIDE)          │
+     *         │        ├── Ending     ─► removeSpan                    │
+     *         │        ├── Hairpin    ─► removeCrescendo/Diminuendo    │
+     *         │        ├── Tie        ─► removeTie      ── both lines  │
+     *         │        ├── Beam       ─► removeBeaming                 │
+     *         │        ├── Tuplet     ─► removeTuplet                  │
+     *         │        ├── Trill      ─► removeSpan  (explicit label)  │
+     *         │        ├── Articulatn ─► modifyElement(ARTICULATION)   │
+     *         │        ├── Attachment ─► deleteAttachment() ──┐        │
+     *         │        │                   ├ Fermata     FERMATA       │
+     *         │        │                   ├ Dynamic     DYNAMIC_ATT   │
+     *         │        │                   ├ Annotation  ANNOTATION    │
+     *         │        │                   ├ BeatChange  BEAT_CHANGE   │
+     *         │        │                   └ TempoChange TEMPO_CHANGE  │ veto
+     *         │        └── Accidental ─► SelectionActionApplier.apply ─┤
+     *         │                          (restatements, reconciliation,│
+     *         │                           fit gate — can refuse)       │
+     *         ├─ canDeleteLine() ─────────────► song.removeLine()     ─┤
+     *         │                                                        ▼
+     *         └────────────────────────────► restoreSelectedActionStates()
+     *                                         score.deselect()
+     * </pre>
+     */
     void handleDelete() {
         var song = score.getSong();
 
@@ -735,11 +791,12 @@ public final class ScoreViewController {
      * Deletes the selected target from {@code line}, each variant in its own
      * modification bracket so the undo step is named after what was deleted.
      * <p>
-     * Only a slide, an ending and a hairpin can be deleted this way. The other
-     * {@link HitTarget} variants are selectable but have no delete behavior of their own —
-     * a note is deleted through the index range, and an articulation, tie, beam, trill or
-     * tuplet is removed by toggling it off — so they are deliberately a no-op rather than
-     * falling through to the whole-line delete.
+     * Every notation object that can be directly selected is deleted here, each through the
+     * tracked removal API that owns it, so Delete and the object's own toolbar toggle can
+     * never disagree. The remaining variants are deliberately a no-op rather than falling
+     * through to the whole-line delete.
+     * <p>
+     * {@link #handleDelete} carries the diagram of how a keystroke reaches each arm below.
      */
     private void deleteSelectedTarget(Line line, HitTarget target) {
         switch (target) {
@@ -778,30 +835,152 @@ public final class ScoreViewController {
                     }
                 });
 
+            // Line.removeChild also removes the tie from the other line of a cross-line tie,
+            // so both halves vanish under a single TieRemoval and one undo restores both.
+            case HitTarget.Tie(var tie) ->
+                line.withModification(OpNames.removeTieLabel(), () -> line.removeTie(tie));
+
+            case HitTarget.Beam(var beam) ->
+                line.withModification(OpNames.removeBeamLabel(), () -> line.removeBeaming(beam));
+
+            case HitTarget.Tuplet(var tuplet) ->
+                line.withModification(OpNames.removeTupletLabel(), () -> line.removeTuplet(tuplet));
+
+            // The explicit label is not optional: the generic SpanRemoval's unlabeled fallback
+            // op-name is the literal text "Ending", so an unlabeled trill removal would make
+            // the undo menu read "Undo Ending".
+            case HitTarget.Trill(var trill) ->
+                line.withModification(OpNames.removeTrillLabel(), () -> line.removeSpan(trill));
+
+            case HitTarget.Articulation(var articulation) -> {
+                var owner = articulation.getOwnerElement();
+                var elementIndex = resolveOwnerIndex(line, owner);
+
+                if (owner != null && elementIndex != null) {
+                    line.withModification(OpNames.removeArticulationLabel(articulation.getType()), () ->
+                        line.modifyElement(elementIndex, ElementField.ARTICULATION,
+                            () -> owner.removeArticulation(articulation)));
+                }
+            }
+
+            case HitTarget.Attachment(var attachment) -> deleteAttachment(line, attachment);
+
+            case HitTarget.Accidental(var owner) -> deleteAccidental(line, owner);
+
             // Nothing to delete. Listed one per kind rather than folded into a `default` arm so
             // that adding a selectable kind fails to compile here and forces the question of
             // what Delete should do with it. A `default` would answer "nothing" silently, which
             // is the failure mode SelectionCoordinator.isSelected avoids for the same reason.
             //
-            // A tie, beam, tuplet and trill are toggled off by their own actions, never deleted;
-            // an accidental belongs to its note; an articulation and an attachment are removed
-            // through the palette that added them; a grace glissando is not selectable; the
-            // staff line and a lyric are handled by handleDelete before it reaches here. A note
-            // is selected as an index range rather than a target, so it never arrives here at
-            // all — the range branch in handleDelete owns it.
+            // A note is selected as an index range rather than a target, so it never arrives
+            // here at all — the range branch in handleDelete owns it. A grace-note glissando is
+            // not selectable, and the staff line and a lyric are handled by handleDelete before
+            // it reaches here.
             case HitTarget.Element _,
-                 HitTarget.Tie _,
-                 HitTarget.Beam _,
-                 HitTarget.Tuplet _,
-                 HitTarget.Trill _,
-                 HitTarget.Accidental _,
-                 HitTarget.Articulation _,
-                 HitTarget.Attachment _,
                  HitTarget.GraceGlissando _,
                  HitTarget.StaffLine _,
                  HitTarget.Lyric _ -> {
             }
         }
+    }
+
+    /**
+     * Resolves {@code owner}'s index on {@code line}, or null when there is no owner or it is
+     * no longer on the line.
+     * <p>
+     * Both failures are logged because every caller silently swallows the user's keystroke when
+     * this returns null, and a Delete that does nothing with no diagnostic is the worst outcome
+     * this feature can produce.
+     */
+    private static @Nullable Integer resolveOwnerIndex(Line line, @Nullable StaffElement owner) {
+        if (owner == null) {
+            LOG.debug("Cannot delete the selected target: it has no owner element");
+            return null;
+        }
+
+        var elementIndex = line.getElementIndex(owner);
+
+        if (elementIndex < 0) {
+            LOG.debug("Cannot delete the selected target: its owner element ({}) is not on the active line",
+                owner.getType());
+            return null;
+        }
+
+        return elementIndex;
+    }
+
+    /**
+     * What a single attachment removal changes on its owner element: the field the mutation is
+     * recorded under, and the mutation itself.
+     */
+    private record AttachmentRemovalPlan(ElementField field, Runnable mutator) {}
+
+    /**
+     * Deletes {@code attachment} from its owner element on {@code line}.
+     */
+    private void deleteAttachment(Line line, Attachment attachment) {
+        var element = attachment.getOwnerElement();
+        var elementIndex = resolveOwnerIndex(line, element);
+
+        if (element == null || elementIndex == null) {
+            return;
+        }
+
+        // Outside the modification bracket: Line.modifyElement records an ElementModification
+        // unconditionally, so a refusal from inside the bracket would leave an empty undo step.
+        // The confirm has already explained itself to the user when it returns false.
+        if (attachment instanceof TempoChangeAttachment
+            && !TempoChangeGuards.allowRemoveTempoChange(score, element)) {
+            return;
+        }
+
+        var plan = switch (attachment) {
+            case FermataAttachment _ ->
+                new AttachmentRemovalPlan(ElementField.FERMATA, () -> element.setFermata(false));
+
+            case DynamicAttachment dynamic ->
+                new AttachmentRemovalPlan(ElementField.DYNAMIC_ATTACHMENT, () -> element.removeAttachment(dynamic));
+
+            case AnnotationAttachment _ ->
+                new AttachmentRemovalPlan(ElementField.ANNOTATION, () -> AttachmentRemoval.removeAnnotation(element));
+
+            case BeatChangeAttachment _ ->
+                new AttachmentRemovalPlan(ElementField.BEAT_CHANGE, () -> AttachmentRemoval.removeBeatChange(element));
+
+            case TempoChangeAttachment _ ->
+                new AttachmentRemovalPlan(ElementField.TEMPO_CHANGE, () -> AttachmentRemoval.removeTempoChange(element));
+        };
+
+        line.withModification(OpNames.removeAttachmentLabel(attachment), () ->
+            line.modifyElement(elementIndex, plan.field(), plan.mutator()));
+    }
+
+    /**
+     * Deletes {@code owner}'s accidental, routed through the same pipeline the toolbar toggle
+     * uses so the two can never disagree about restatements and courtesy accidentals. The
+     * pipeline can refuse — its reconciliation and fit gate decide, not this method.
+     */
+    private void deleteAccidental(Line line, StaffElement owner) {
+        var elementIndex = resolveOwnerIndex(line, owner);
+
+        if (elementIndex == null || owner.getAccidental() == null) {
+            return;
+        }
+
+        // Any action in the group will do: AccidentalAction.applyToElement(element, false) is
+        // element.setAccidental(null) regardless of which accidental the action represents, and
+        // decideChanges gates on appliesTo rather than matchesElement. Scanning the group for
+        // the action matching this note would buy nothing and its no-match branch would
+        // silently eat the keystroke.
+        var accidentalAction = Actions.ACCIDENTAL_ACTION_GROUP.getActions().getFirst();
+
+        SelectionActionApplier.apply(
+            selectionCoordinator,
+            new ElementSelection(line, elementIndex, elementIndex),
+            accidentalAction,
+            false,
+            score,
+            OpNames.removeAccidentalLabel());
     }
 
     /**
@@ -891,7 +1070,7 @@ public final class ScoreViewController {
         // deleteNote must remove it along with the first selected note — a non-contiguous
         // operation that cannot be expressed as a single range. Fall back to the per-element loop.
         if (line.isHostOfPairedGraceNote(begin)) {
-            withModification(line, label, () -> {
+            line.withOptionallyNamedModification(label, () -> {
                 // Recorded before the removal so undo, which replays in reverse, restores the
                 // accidentals once the elements are back at the indices they were recorded at.
                 commitDeletionAccidentals(line, accidentalChanges);
@@ -911,7 +1090,7 @@ public final class ScoreViewController {
                 }
             }
 
-            withModification(line, label, () -> {
+            line.withOptionallyNamedModification(label, () -> {
                 // Recorded before the removal, for the reason given in the other branch.
                 commitDeletionAccidentals(line, accidentalChanges);
                 AccidentalRestatements.commitOtherLines(decision, line);
@@ -953,19 +1132,6 @@ public final class ScoreViewController {
         Line line, List<AccidentalReconciliation.AccidentalChange> accidentalChanges) {
 
         AccidentalMaterializer.applyIfAccepted(line, accidentalChanges, List.of(), () -> true);
-    }
-
-    /**
-     * Opens a modification bracket for {@code body}, naming the undo step {@code label} when it is
-     * non-null and letting the pending op-name stand otherwise. Bridges the {@code @Nullable} label
-     * that {@link #deleteElementRange} threads to {@link Line}'s non-null labeled overload.
-     */
-    private static void withModification(Line line, @Nullable String label, Runnable body) {
-        if (label != null) {
-            line.withModification(label, body);
-        } else {
-            line.withModification(body);
-        }
     }
 
     /**

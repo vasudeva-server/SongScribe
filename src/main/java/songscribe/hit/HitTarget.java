@@ -120,7 +120,7 @@ public sealed interface HitTarget {
         }
     }
 
-    /** A fermata, dynamic, metronome mark, tempo change, beat change or annotation. */
+    /** A fermata, dynamic, tempo change, beat change or annotation. */
     record Attachment(songscribe.dom.Attachment attachment) implements HitTarget {
 
         @Override

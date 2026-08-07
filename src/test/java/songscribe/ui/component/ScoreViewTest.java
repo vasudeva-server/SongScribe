@@ -22,9 +22,13 @@ package songscribe.ui.component;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.awt.Dimension;
@@ -60,6 +64,7 @@ import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
+import songscribe.dom.Tie;
 import songscribe.dom.TupletLoadPass;
 import songscribe.dom.TupletValidator;
 import songscribe.font.DocumentFonts;
@@ -1266,6 +1271,125 @@ class ScoreViewTest extends UnitTest {
             new ScoreView(null).setSong(song);
 
             assertThat(song.getLineWidthSs()).isEqualTo(UNALIGNED_LINE_WIDTH_SS);
+        }
+    }
+
+    /**
+     * {@link ScoreView#repaintTieHalves} is what makes a cross-line tie highlight on both lines.
+     * Every other {@link HitTarget} kind is drawn wholly by the line component the user clicked,
+     * which repaints itself; a tie can straddle a line boundary (#493), and the far half's
+     * component never hears about the selection change unless this reaches it.
+     */
+    @Nested
+    class RepaintTieHalves {
+
+        private static final int ANCHOR_LINE = 0;
+        private static final int END_LINE = 1;
+
+        /**
+         * A cross-line tie — one {@link Tie} in both lines' span lists, anchored on the last
+         * element of the first line and ending on the first element of the second — with a
+         * headless {@link ScoreView} whose two line components are stubbed so the repaints they
+         * are sent can be observed.
+         */
+        private record Fixture(
+            ScoreView scoreView,
+            Tie tie,
+            LineComponent anchorComponent,
+            LineComponent endComponent
+        ) {
+
+            static Fixture create() {
+                var song = new Song();
+                var anchorLine = song.getLine(ANCHOR_LINE);
+                var endLine = new Line(song);
+                var anchor = ElementType.CROTCHET.newInstance();
+                var end = ElementType.CROTCHET.newInstance();
+                var tie = new Tie(anchor, end);
+
+                song.withoutMutationTracking(() -> {
+                    anchorLine.addElement(anchor);
+                    song.addLine(endLine);
+                    endLine.addElement(end);
+                    anchorLine.addTie(tie);
+                });
+
+                var scoreView = spy(new ScoreView(null));
+                scoreView.setSong(song);
+
+                // A real LineComponent registers its line as it takes it on; there are none
+                // here, so the selection has no line to sit on until this stands in for them.
+                var coordinator = scoreView.getSelectionCoordinator();
+                coordinator.registerLine(ANCHOR_LINE, anchorLine);
+                coordinator.registerLine(END_LINE, endLine);
+
+                var anchorComponent = mock(LineComponent.class);
+                var endComponent = mock(LineComponent.class);
+                doReturn(anchorComponent).when(scoreView).getLineComponent(ANCHOR_LINE);
+                doReturn(endComponent).when(scoreView).getLineComponent(END_LINE);
+
+                return new Fixture(scoreView, tie, anchorComponent, endComponent);
+            }
+        }
+
+        @Test
+        void testACrossLineTieRepaintsTheLinesAtBothOfItsEndpoints() {
+            var fixture = Fixture.create();
+
+            fixture.scoreView().repaintTieHalves(new HitTarget.Tie(fixture.tie()));
+
+            verify(fixture.anchorComponent()).repaint();
+            verify(fixture.endComponent()).repaint();
+        }
+
+        @Test
+        void testATargetThatIsNotATieRepaintsNothing() {
+            var fixture = Fixture.create();
+
+            fixture.scoreView().repaintTieHalves(new HitTarget.StaffLine());
+
+            verify(fixture.anchorComponent(), never()).repaint();
+            verify(fixture.endComponent(), never()).repaint();
+        }
+
+        @Test
+        void testNoTargetRepaintsNothing() {
+            var fixture = Fixture.create();
+
+            fixture.scoreView().repaintTieHalves(null);
+
+            verify(fixture.anchorComponent(), never()).repaint();
+            verify(fixture.endComponent(), never()).repaint();
+        }
+
+        /**
+         * The tests above call {@link ScoreView#repaintTieHalves} with a target handed to it;
+         * this one drives the real {@link ScoreView#clearSelection}, which has to read the
+         * outgoing target <em>before</em> wiping the selection because afterwards there is
+         * nothing left to ask.
+         * <p>
+         * The far line is the assertion that matters. The clicked line repaints anyway — it is
+         * the one losing its active-line highlight — so a {@code clearSelection} that read the
+         * target one line too late, and so passed null on, would look identical there. Only the
+         * far half's component tells the two apart, and the symptom of getting it wrong is a
+         * deselected cross-line tie still drawn selected on the other line.
+         */
+        @Test
+        void testClearingACrossLineTieSelectionRepaintsBothOfItsLines() {
+            var fixture = Fixture.create();
+            var coordinator = fixture.scoreView().getSelectionCoordinator();
+
+            // What clicking the anchor half does: activate its line, then make the tie the
+            // selection on it.
+            coordinator.activateLine(ANCHOR_LINE);
+            coordinator.select(new HitTarget.Tie(fixture.tie()));
+
+            fixture.scoreView().clearSelection();
+
+            // The clicked line is asked twice — once for losing the active-line highlight, once
+            // as a tie half — and coalesced into one paint by Swing.
+            verify(fixture.anchorComponent(), atLeastOnce()).repaint();
+            verify(fixture.endComponent()).repaint();
         }
     }
 }

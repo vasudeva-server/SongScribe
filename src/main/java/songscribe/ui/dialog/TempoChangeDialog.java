@@ -25,12 +25,14 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
 import songscribe.message.mutation.ElementField;
+import songscribe.dom.AttachmentRemoval;
 import songscribe.dom.Duration;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.ui.TempoChangeGuards;
 import songscribe.ui.component.MainFrame;
 
 public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
@@ -105,28 +107,13 @@ public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
         });
     }
 
-    /**
-     * Removing a tempo change redefines the beat from that point on just as adding one does,
-     * so it goes through the same chokepoint — which is also what warns the user when the
-     * removal costs a tuplet, on the Remove button's path as on the commit path.
-     */
+    @Override
+    protected boolean canClearChange(StaffElement element) {
+        return TempoChangeGuards.allowRemoveTempoChange(getWindow(), element);
+    }
+
     @Override
     protected void clearChange(StaffElement element) {
-        var attachment = element.findAttachment(TempoChangeAttachment.class);
-
-        Song.withBeatDefiningEditOn(element, () -> {
-            if (attachment != null) {
-                element.removeAttachment(attachment);
-            }
-
-            var line = element.getParentLine();
-
-            // An element in no line cannot orphan the song-level tempo.
-            if (line == null) {
-                return;
-            }
-
-            line.getSong().clearTempoIfOrphaned(element);
-        });
+        AttachmentRemoval.removeTempoChange(element);
     }
 }

@@ -25,10 +25,17 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
+import songscribe.dom.AnnotationAttachment;
+import songscribe.dom.ArticulationType;
+import songscribe.dom.Attachment;
+import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Crescendo;
+import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
+import songscribe.dom.FermataAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.StaffElement;
+import songscribe.dom.TempoChangeAttachment;
 
 /**
  * Single home for assembling context-dependent Tier-B undo op-names (delete
@@ -197,6 +204,70 @@ public final class OpNames {
      */
     public static String deleteLineLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_DELETE_LINE);
+    }
+
+    /**
+     * Names a tie removal.
+     */
+    public static String removeTieLabel() {
+        return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TIE);
+    }
+
+    /**
+     * Names a beam removal.
+     */
+    public static String removeBeamLabel() {
+        return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_BEAM);
+    }
+
+    /**
+     * Names a tuplet removal. Shared with the tuplet action's own Remove branch — the two
+     * reach the same edit, so they must name it the same way in the undo menu.
+     */
+    public static String removeTupletLabel() {
+        return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TUPLET);
+    }
+
+    /**
+     * Names a trill removal.
+     */
+    public static String removeTrillLabel() {
+        return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TRILL);
+    }
+
+    /**
+     * Names an accidental removal.
+     */
+    public static String removeAccidentalLabel() {
+        return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_ACCIDENTAL);
+    }
+
+    /**
+     * Names an articulation removal by type: {@code Remove Staccato} or
+     * {@code Remove Accent}.
+     */
+    public static String removeArticulationLabel(ArticulationType type) {
+        return Strings.get(switch (type) {
+            case STACCATO -> Strings.ACTION_EDIT_OP_REMOVE_STACCATO;
+            case ACCENT -> Strings.ACTION_EDIT_OP_REMOVE_ACCENT;
+        });
+    }
+
+    /**
+     * Names an attachment removal by kind. The switch is exhaustive by sealing on
+     * {@link Attachment}, so a new attachment kind fails to compile here.
+     * <p>
+     * The three kinds that also have a dialog share that dialog's Remove-button key, because
+     * the Delete key and the dialog reach the same edit.
+     */
+    public static String removeAttachmentLabel(Attachment attachment) {
+        return Strings.get(switch (attachment) {
+            case FermataAttachment _ -> Strings.ACTION_EDIT_OP_REMOVE_FERMATA;
+            case DynamicAttachment _ -> Strings.ACTION_EDIT_OP_REMOVE_DYNAMIC;
+            case AnnotationAttachment _ -> Strings.ACTION_EDIT_OP_REMOVE_ANNOTATION;
+            case TempoChangeAttachment _ -> Strings.ACTION_EDIT_OP_REMOVE_TEMPO_CHANGE;
+            case BeatChangeAttachment _ -> Strings.ACTION_EDIT_OP_REMOVE_BEAT_CHANGE;
+        });
     }
 
     /**

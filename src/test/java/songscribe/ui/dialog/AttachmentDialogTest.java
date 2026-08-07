@@ -35,7 +35,9 @@ import songscribe.ui.component.MainFrame;
 import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.message.MessageCenter;
 import songscribe.message.mutation.ElementField;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.prefs.Prefs;
 import songscribe.util.UIUtils;
 
@@ -226,6 +228,41 @@ class AttachmentDialogTest extends MainFrameMockTest {
             .isEqualTo(1);
     }
 
+    // ── Row 5a: remove button vetoed by canClearChange ──
+
+    /**
+     * The veto must be checked before the modification bracket opens: {@code Line.modifyElement}
+     * records unconditionally, so a guard placed one line too late still refuses and still leaves
+     * the score untouched — but leaves a phantom undo step behind. Only the notification and
+     * modified-flag assertions here can see that.
+     */
+    @Test
+    void testRemoveButtonVetoedByCanClearChangeMakesNoModification() {
+        var song = new Song();
+        var line = song.getLine(0);
+        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.setModified(false);
+
+        var dialog = new VetoDialog(mainFrame());
+        dialog.selectedElement = line.getElement(0);
+        dialog.selectedLine = line;
+
+        try (var messageCenterMock = mockStatic(MessageCenter.class)) {
+            fireRemoveAction(dialog);
+            messageCenterMock.verify(() -> MessageCenter.post(any(SongDidChangeNotification.class)), never());
+        }
+
+        assertThat(dialog.clearChangeCallCount)
+            .as("clearChange not invoked when the removal is vetoed")
+            .isZero();
+        assertThat(song.isModified())
+            .as("a vetoed removal records no mutation")
+            .isFalse();
+        assertThat(dialog.closeCallCount)
+            .as("dialog left visible when the removal is vetoed")
+            .isZero();
+    }
+
     // ── Row 6: setData()/remove button throw when element or line is null ──
 
     @Test
@@ -356,6 +393,19 @@ class AttachmentDialogTest extends MainFrameMockTest {
             } else {
                 super.setVisible(true);
             }
+        }
+    }
+
+    /** A {@link ControlDialog} whose Remove button is always vetoed. */
+    private static class VetoDialog extends ControlDialog {
+
+        VetoDialog(MainFrame mainFrame) {
+            super(mainFrame, /* existingChange= */ null);
+        }
+
+        @Override
+        protected boolean canClearChange(StaffElement element) {
+            return false;
         }
     }
 }

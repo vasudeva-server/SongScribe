@@ -467,6 +467,11 @@ class LineSelectionHandler {
         prepareSelection();
         coordinator.select(target);
         scoreView.selectionChanged();
+
+        // The caller repaints this line only. A cross-line tie is also drawn by the line
+        // holding its other half, which reports the tie selected too and so has to repaint
+        // for the highlight to reach both halves.
+        scoreView.repaintTieHalves(target);
         return true;
     }
 

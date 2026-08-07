@@ -35,7 +35,8 @@ import songscribe.smufl.SMuFLMetadata;
  * the standard content-size implementation shared by TempoChangeAttachment
  * and BeatChangeAttachment.
  */
-public abstract class MetronomeAttachment extends Attachment {
+public abstract sealed class MetronomeAttachment extends Attachment
+    permits TempoChangeAttachment, BeatChangeAttachment {
 
     // Design constant; mirrors FlatLaf.properties: SongScribe.score.tempo.note.scale
     public static final float NOTE_SCALE = 0.8f;

@@ -220,6 +220,25 @@ public class Line implements LyricRun, SpanLookup {
         song.withModification(label, body);
     }
 
+    /**
+     * Executes {@code body} inside a modification bracket on the parent song, naming the undo
+     * step {@code label} when there is one and letting the Tier-A pending op-name stand when
+     * there is not.
+     * <p>
+     * For a caller that computes a label conditionally and would otherwise have to branch on it
+     * to pick between the two overloads above. The two overloads cannot be collapsed into one
+     * {@code @Nullable} parameter: that would be the same signature as the labeled overload, and
+     * routing every unlabeled bracket through it would change which method every existing caller
+     * — and every test that stubs one of them — actually invokes.
+     */
+    public void withOptionallyNamedModification(@Nullable String label, Runnable body) {
+        if (label != null) {
+            withModification(label, body);
+        } else {
+            withModification(body);
+        }
+    }
+
     public void setKeyAccidentalCount(int keys) {
         if (this.keys == keys) {
             return;

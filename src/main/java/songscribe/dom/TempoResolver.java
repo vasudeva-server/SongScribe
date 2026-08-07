@@ -136,6 +136,49 @@ public final class TempoResolver {
     }
 
     /**
+     * Returns true if removing the tempo change at {@code (lineIndex, elementIndex)} would
+     * orphan a later tempo change.
+     *
+     * <p>A tempo change notates a change <i>from</i> an established tempo <i>to</i> a new one.
+     * The first tempo change in the song is what gives every later change something to change
+     * from. Removing it while a later change survives leaves that later change with no
+     * reference — a marking that instructs a change from nothing, not notation that means
+     * something slightly different.
+     *
+     * <p>The element at the given position is excluded from the scan in both directions; it is
+     * the one being removed.
+     */
+    public boolean removalWouldOrphanLaterTempoChange(int lineIndex, int elementIndex) {
+        var passedPosition = false;
+
+        for (var i = 0; i < song.getLines().size(); i++) {
+            var line = song.getLine(i);
+
+            for (var index = 0; index < line.elementCount(); index++) {
+                if (i == lineIndex && index == elementIndex) {
+                    passedPosition = true;
+                    continue;
+                }
+
+                var hasTempoChange =
+                    line.getElement(index).findAttachment(TempoChangeAttachment.class) != null;
+
+                if (!hasTempoChange) {
+                    continue;
+                }
+
+                if (!passedPosition) {
+                    return false;
+                }
+
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Returns true if any element anywhere in the song carries a tempo change.
      */
     public boolean hasAnyTempoChange() {

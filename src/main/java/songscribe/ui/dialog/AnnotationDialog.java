@@ -28,6 +28,7 @@ import songscribe.ui.component.MainFrame;
 import songscribe.util.UIUtils;
 import songscribe.message.mutation.ElementField;
 import songscribe.dom.Annotation;
+import songscribe.dom.AttachmentRemoval;
 import songscribe.dom.StaffElement;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
@@ -190,10 +191,6 @@ public class AnnotationDialog extends AttachmentDialog<Annotation> {
 
     @Override
     protected void clearChange(StaffElement element) {
-        var existing = element.findAttachment(AnnotationAttachment.class);
-
-        if (existing != null) {
-            element.removeAttachment(existing);
-        }
+        AttachmentRemoval.removeAnnotation(element);
     }
 }

@@ -26,6 +26,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 import songscribe.message.mutation.ElementField;
+import songscribe.dom.AttachmentRemoval;
 import songscribe.dom.BeatChange;
 import songscribe.dom.Duration;
 import songscribe.dom.Song;
@@ -113,19 +114,8 @@ public class BeatChangeDialog extends AttachmentDialog<BeatChange> {
         });
     }
 
-    /**
-     * Removing a beat change redefines the beat from that point on just as adding one does,
-     * so it goes through the same chokepoint — which is also what warns the user when the
-     * removal costs a tuplet, on the Remove button's path as on the commit path.
-     */
     @Override
     protected void clearChange(StaffElement element) {
-        var attachment = element.findAttachment(BeatChangeAttachment.class);
-
-        if (attachment == null) {
-            return;
-        }
-
-        Song.withBeatDefiningEditOn(element, () -> element.removeAttachment(attachment));
+        AttachmentRemoval.removeBeatChange(element);
     }
 }

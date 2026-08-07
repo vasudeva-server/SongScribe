@@ -57,6 +57,10 @@ public abstract class AttachmentDialog<T> extends StandardDialog {
                 throw new IllegalStateException("no element selected");
             }
 
+            if (!canClearChange(element)) {
+                return;
+            }
+
             var elementIndex = line.getElementIndex(element);
             line.withModification(opLabel(AttachmentOp.REMOVE), () -> line.modifyElement(
                 elementIndex, getElementField(), () -> clearChange(element)));
@@ -86,6 +90,16 @@ public abstract class AttachmentDialog<T> extends StandardDialog {
     protected abstract void applyChange(StaffElement element);
 
     protected abstract void clearChange(StaffElement element);
+
+    /**
+     * Whether the Remove button may proceed. Checked before any modification bracket opens,
+     * because {@link Line#modifyElement} records an ElementModification unconditionally and a
+     * refusal inside {@link #clearChange} would leave an empty undo step behind. A subclass that
+     * refuses is responsible for telling the user why.
+     */
+    protected boolean canClearChange(StaffElement element) {
+        return true;
+    }
 
     @Override
     protected boolean getData() {

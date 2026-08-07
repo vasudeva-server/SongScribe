@@ -34,7 +34,7 @@ import songscribe.util.GraphicUtils;
  * (e.g., ♩ = ♩. meaning "quarter note equals dotted quarter").
  * They are typically placed above the staff.
  */
-public class BeatChangeAttachment extends MetronomeAttachment {
+public final class BeatChangeAttachment extends MetronomeAttachment {
 
     /** The beat change data. */
     private BeatChange beatChange;

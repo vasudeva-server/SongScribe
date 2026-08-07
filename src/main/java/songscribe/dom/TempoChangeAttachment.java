@@ -33,7 +33,7 @@ import songscribe.util.GraphicUtils;
  * Tempo attachments display tempo changes (e.g., "♩ = 120" or "Allegro").
  * They are typically placed above the staff.
  */
-public class TempoChangeAttachment extends MetronomeAttachment {
+public final class TempoChangeAttachment extends MetronomeAttachment {
 
     private Tempo tempo;
 

@@ -31,7 +31,7 @@ import songscribe.smufl.SMuFLMetadata;
  * Fermatas indicate that a note should be held longer than its written value.
  * They are typically placed above the note, centered on the note head.
  */
-public class FermataAttachment extends Attachment {
+public final class FermataAttachment extends Attachment {
 
     // SMuFL bbox-derived dimensions in staff-space units
     private static final double FERMATA_WIDTH_SS;

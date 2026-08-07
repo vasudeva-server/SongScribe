@@ -749,6 +749,28 @@ public final class Song {
     }
 
     /**
+     * Returns true if removing {@code element}'s tempo change would orphan a later tempo
+     * change. See {@link TempoResolver#removalWouldOrphanLaterTempoChange}.
+     */
+    public boolean wouldOrphanLaterTempoChange(StaffElement element) {
+        var line = element.getParentLine();
+
+        // An element in no line cannot orphan anything.
+        if (line == null) {
+            return false;
+        }
+
+        var lineIndex = indexOfLine(line);
+        var elementIndex = line.getElementIndex(element);
+
+        if (lineIndex < 0 || elementIndex < 0) {
+            return false;
+        }
+
+        return tempoResolver.removalWouldOrphanLaterTempoChange(lineIndex, elementIndex);
+    }
+
+    /**
      * The element the song's initial tempo is anchored on — the first element of the first
      * line, per {@link Line#isInitialTempoAnchor} — or null when the song has no lines or
      * its first line is empty.
