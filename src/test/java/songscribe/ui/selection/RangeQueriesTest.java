@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.BeatAt;
 import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
@@ -55,7 +56,7 @@ class RangeQueriesTest extends UnitTest {
      */
     private static Line withQuarterBeat(Line line) {
         when(line.getSong().resolveBeatAt(anyInt(), anyInt()))
-            .thenReturn(new Song.BeatAt(Duration.CROTCHET, 0, 0));
+            .thenReturn(new BeatAt(Duration.CROTCHET, 0, 0));
         return line;
     }
 

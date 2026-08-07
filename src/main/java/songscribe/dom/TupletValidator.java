@@ -387,7 +387,7 @@ public final class TupletValidator {
                 // Read the barrier against the beat that was running before this element,
                 // then let the element redefine it.
                 var barrierHere = isBeatBarrier(element, runningBeat);
-                var definedBeat = Song.beatDefinedAt(element);
+                var definedBeat = TempoResolver.beatDefinedAt(element);
 
                 if (definedBeat != null) {
                     runningBeat = definedBeat;
@@ -537,7 +537,7 @@ public final class TupletValidator {
                 return true;
             }
 
-            var definedBeat = Song.beatDefinedAt(element);
+            var definedBeat = TempoResolver.beatDefinedAt(element);
 
             if (definedBeat != null) {
                 runningBeat = definedBeat;

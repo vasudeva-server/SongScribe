@@ -42,7 +42,7 @@ class SongBeatResolutionTest extends UnitTest {
     private static final int NEAR_TEMPO_BPM = 100;
     private static final int FAR_TEMPO_BPM = 80;
 
-    private static final int NO_EVENT = Song.BeatAt.NO_DEFINING_EVENT;
+    private static final int NO_EVENT = BeatAt.NO_DEFINING_EVENT;
 
     /**
      * Appends a plain crotchet to the line, which must already belong to song and have
@@ -88,7 +88,7 @@ class SongBeatResolutionTest extends UnitTest {
         });
 
         assertThat(song.resolveBeatAt(FIRST_LINE, SECOND_ELEMENT))
-            .isEqualTo(new Song.BeatAt(Duration.CROTCHET_DOTTED, FIRST_LINE, FIRST_ELEMENT));
+            .isEqualTo(new BeatAt(Duration.CROTCHET_DOTTED, FIRST_LINE, FIRST_ELEMENT));
     }
 
     @Test
@@ -102,7 +102,7 @@ class SongBeatResolutionTest extends UnitTest {
         });
 
         assertThat(song.resolveBeatAt(FIRST_LINE, SECOND_ELEMENT))
-            .isEqualTo(new Song.BeatAt(Duration.MINIM, FIRST_LINE, FIRST_ELEMENT));
+            .isEqualTo(new BeatAt(Duration.MINIM, FIRST_LINE, FIRST_ELEMENT));
     }
 
     // -----------------------------------------------------------------------
@@ -121,7 +121,7 @@ class SongBeatResolutionTest extends UnitTest {
         });
 
         assertThat(song.resolveBeatAt(FIRST_LINE, THIRD_ELEMENT))
-            .isEqualTo(new Song.BeatAt(Duration.QUAVER, FIRST_LINE, SECOND_ELEMENT));
+            .isEqualTo(new BeatAt(Duration.QUAVER, FIRST_LINE, SECOND_ELEMENT));
     }
 
     @Test
@@ -136,7 +136,7 @@ class SongBeatResolutionTest extends UnitTest {
         });
 
         assertThat(song.resolveBeatAt(FIRST_LINE, THIRD_ELEMENT))
-            .isEqualTo(new Song.BeatAt(Duration.MINIM, FIRST_LINE, SECOND_ELEMENT));
+            .isEqualTo(new BeatAt(Duration.MINIM, FIRST_LINE, SECOND_ELEMENT));
     }
 
     // A metric-modulation marking is the more specific statement about the beat, so it
@@ -153,7 +153,7 @@ class SongBeatResolutionTest extends UnitTest {
         });
 
         assertThat(song.resolveBeatAt(FIRST_LINE, SECOND_ELEMENT))
-            .isEqualTo(new Song.BeatAt(Duration.QUAVER, FIRST_LINE, FIRST_ELEMENT));
+            .isEqualTo(new BeatAt(Duration.QUAVER, FIRST_LINE, FIRST_ELEMENT));
     }
 
     // -----------------------------------------------------------------------
@@ -173,7 +173,7 @@ class SongBeatResolutionTest extends UnitTest {
         });
 
         assertThat(song.resolveBeatAt(SECOND_LINE, FIRST_ELEMENT))
-            .isEqualTo(new Song.BeatAt(Duration.MINIM_DOTTED, FIRST_LINE, FIRST_ELEMENT));
+            .isEqualTo(new BeatAt(Duration.MINIM_DOTTED, FIRST_LINE, FIRST_ELEMENT));
     }
 
     // The beat in effect AT the anchor cannot be defined by an event that comes after it,
@@ -189,7 +189,7 @@ class SongBeatResolutionTest extends UnitTest {
         });
 
         assertThat(song.resolveBeatAt(FIRST_LINE, FIRST_ELEMENT))
-            .isEqualTo(new Song.BeatAt(Duration.CROTCHET, NO_EVENT, NO_EVENT));
+            .isEqualTo(new BeatAt(Duration.CROTCHET, NO_EVENT, NO_EVENT));
     }
 
     // -----------------------------------------------------------------------
@@ -204,7 +204,7 @@ class SongBeatResolutionTest extends UnitTest {
         song.withoutMutationTracking(() -> addPlainNote(song.getLine(FIRST_LINE)));
 
         assertThat(song.resolveBeatAt(FIRST_LINE, FIRST_ELEMENT))
-            .isEqualTo(new Song.BeatAt(Duration.MINIM, NO_EVENT, NO_EVENT));
+            .isEqualTo(new BeatAt(Duration.MINIM, NO_EVENT, NO_EVENT));
     }
 
     @Test
@@ -213,7 +213,7 @@ class SongBeatResolutionTest extends UnitTest {
         assertThat(song.getTempo()).isNull();
 
         assertThat(song.resolveBeatAt(FIRST_LINE, FIRST_ELEMENT))
-            .isEqualTo(new Song.BeatAt(Duration.CROTCHET, NO_EVENT, NO_EVENT));
+            .isEqualTo(new BeatAt(Duration.CROTCHET, NO_EVENT, NO_EVENT));
     }
 
     // -----------------------------------------------------------------------

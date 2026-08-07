@@ -410,7 +410,7 @@ class SongLineManagementTest extends UnitTest {
 
         @Test
         void testAddLine_InMiddle_DoesNotTriggerTerminalMaintenance() {
-            // Inserting at a non-append index does not call maintainTerminalOnLastLineChange,
+            // Inserting at a non-append index does not call maintainOnLastLineChange,
             // so the existing last line keeps its terminal.
             var song = new Song();
             // Add a second line via mutation-free setup: line 0 keeps its terminal.

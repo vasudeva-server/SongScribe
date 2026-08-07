@@ -75,7 +75,10 @@ undo handles them before the line op, which is correct because they target the
 *other* line.
 
 Bracket + record entry points exist on both `Song` and `Line` (`Line` delegates to
-its `Song` — use whichever the call site already holds):
+its `Song` — use whichever the call site already holds). `Song`'s are themselves
+one-line delegates to its `ModificationSession`, which owns the depth counters and
+the accumulated batch; read that class when you need the mechanism, not just the
+contract:
 
 - `withModification(Runnable)` — opens a bracket, runs the runnable, closes it
   (depth-balanced even if the runnable throws).
