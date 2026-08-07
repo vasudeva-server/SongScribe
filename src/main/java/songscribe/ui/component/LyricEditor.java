@@ -43,7 +43,6 @@ import songscribe.error.RuntimeError;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.TextEditingDidChangeNotification;
 import songscribe.message.notification.ZoomDidChangeNotification;
-import songscribe.message.mutation.ElementField;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.LyricRun;
@@ -266,6 +265,9 @@ public final class LyricEditor extends MyJTextField {
      */
     private final int activeVerse;
 
+    /** The chain rewrites this session performs on {@link #line}'s {@link #activeVerse} lyrics. */
+    private final LyricChainEditor chainEditor;
+
     private boolean focused;
 
     @Nullable private AWTEventListener outsideClickListener;
@@ -346,6 +348,7 @@ public final class LyricEditor extends MyJTextField {
         this.line = line;
         this.element = element;
         activeVerse = line.getSong().getActiveVerse();
+        chainEditor = new LyricChainEditor(line, activeVerse);
 
         var openingLyric = element.getLyricForVerse(activeVerse);
         var openingExtend = openingLyric != null ? openingLyric.extend() : null;
@@ -1107,53 +1110,7 @@ public final class LyricEditor extends MyJTextField {
         LOG.debug("{} | index={} text='{}' commit='{}' placeholder={} extender={} sel={}..{} caret={} | {}",
             action, line.getElementIndex(element), getText(), commitText(), placeholder,
             openedAsExtender, getSelectionStart(), getSelectionEnd(), getCaretPosition(),
-            lyricRowDescription());
-    }
-
-    /**
-     * A one-line rendering of every element's lyric in the edited verse, for the trace above.
-     * Each element appears as its index followed by its state: {@code -} for no lyric, {@code ~}
-     * for a carrier (no syllable of its own), otherwise the quoted text and its syllabic. The
-     * extender state and the compound flag follow when they are set. For example:
-     *
-     * <pre>0="a"/SINGLE/START 1=~/STOP 2="b"/SINGLE 3=-</pre>
-     *
-     * <p>Called only from {@link #logState}, which has already checked that tracing is on — this
-     * walks the whole line and builds a string every time.
-     */
-    private String lyricRowDescription() {
-        var description = new StringBuilder();
-        var elements = line.getElements();
-
-        for (var i = 0; i < elements.size(); i++) {
-            if (i > 0) {
-                description.append(' ');
-            }
-
-            description.append(i).append('=');
-            var lyric = elements.get(i).getLyricForVerse(activeVerse);
-
-            if (lyric == null) {
-                description.append('-');
-                continue;
-            }
-
-            if (lyric.syllabic() == null) {
-                description.append('~');
-            } else {
-                description.append('"').append(lyric.text()).append("\"/").append(lyric.syllabic());
-            }
-
-            if (lyric.extend() != Lyric.Extend.NONE) {
-                description.append('/').append(lyric.extend());
-            }
-
-            if (lyric.compound()) {
-                description.append("/compound");
-            }
-        }
-
-        return description.toString();
+            chainEditor.lyricRowDescription());
     }
 
     /**
@@ -1198,78 +1155,9 @@ public final class LyricEditor extends MyJTextField {
             return Placeholder.MELISMA;
         }
 
-        return isInsideHyphenChain() ? Placeholder.HYPHEN : null;
-    }
-
-    /**
-     * Whether {@code element} carries no syllable of its own but sits between a syllable that
-     * continues into the next word part and the syllable that part lands on — the gap a word's
-     * hyphen is drawn across. Opening such an element prefills {@link Placeholder#HYPHEN}.
-     * A gap with no syllable after it gets no placeholder: the chain dangles there, which is
-     * {@link #applyDismissAdjustment()}'s job to repair.
-     */
-    private boolean isInsideHyphenChain() {
-        if (element.getLyricForVerse(activeVerse) != null) {
-            return false;
-        }
-
-        var currentIndex = line.getElementIndex(element);
-        var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
-
-        if (backIndex < 0) {
-            return false;
-        }
-
-        var backLyric = line.getElement(backIndex).getLyricForVerse(activeVerse);
-
-        return backLyric != null
-            && Lyric.syllabicContinues(backLyric.syllabic())
-            && line.hasFollowingTextBearingLyric(currentIndex, activeVerse);
-    }
-
-    /**
-     * Ends the hyphenated word that ran through this element, called when the user clears the
-     * placeholder standing for its hyphen. Making the predecessor word-final also drops the
-     * continuation from the syllable that followed, via {@link LyricRun#setSyllableBoundary}.
-     *
-     * <p>Must be called inside an open modification bracket.
-     */
-    private void breakHyphenChain() {
-        var backIndex = line.previousLyricBearingIndex(line.getElementIndex(element), activeVerse);
-
-        if (backIndex < 0) {
-            trace("breakHyphenChain: no predecessor to end the word at");
-            return;
-        }
-
-        var backLyric = line.getElement(backIndex).getLyricForVerse(activeVerse);
-
-        // The chain may have been broken from elsewhere while the editor was open.
-        if (backLyric == null || !Lyric.syllabicContinues(backLyric.syllabic())) {
-            trace("breakHyphenChain: predecessor {} no longer continues, nothing to break",
-                backIndex);
-            return;
-        }
-
-        trace("breakHyphenChain: ending the word at {}", backIndex);
-        line.setSyllableBoundary(backIndex, activeVerse, true, false);
-    }
-
-    /**
-     * Ends the melisma that ran through this element, called when the user clears the
-     * placeholder standing for its extender. The element gives up its carrier lyric, then
-     * {@link #breakChainAtCurrentElement} closes the chain behind it and clears the carriers
-     * ahead of it.
-     *
-     * <p>Must be called inside an open modification bracket.
-     */
-    private void breakMelismaChain() {
-        var currentIndex = line.getElementIndex(element);
-        trace("breakMelismaChain: giving up the carrier at {}", currentIndex);
-
-        line.modifyElement(currentIndex, ElementField.LYRIC, () ->
-            element.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.NONE));
-        breakChainAtCurrentElement(currentIndex);
+        return chainEditor.isInsideHyphenChain(line.getElementIndex(element))
+            ? Placeholder.HYPHEN
+            : null;
     }
 
     /**
@@ -1306,10 +1194,11 @@ public final class LyricEditor extends MyJTextField {
             // The element is giving the role up, so it no longer describes this element —
             // keep the field in step with the model the way extendChainBackward does.
             placeholder = null;
+            var currentIndex = line.getElementIndex(element);
 
             switch (openingRole) {
-                case HYPHEN -> breakHyphenChain();
-                case MELISMA -> breakMelismaChain();
+                case HYPHEN -> chainEditor.breakHyphenChain(currentIndex);
+                case MELISMA -> chainEditor.breakMelismaChain(currentIndex);
             }
 
             return;
@@ -1340,11 +1229,12 @@ public final class LyricEditor extends MyJTextField {
         // This commit stops the element sustaining a melisma, so the carriers it fed are now
         // orphaned. Clear them before the write below, so the boundary fix that follows sees
         // the first real syllable ahead rather than a carrier that is about to disappear.
-        if (sustainsMelisma(existingLyric != null ? existingLyric.extend() : Lyric.Extend.NONE)
-                && !sustainsMelisma(extend)) {
+        if (LyricChainEditor.sustainsMelisma(
+                existingLyric != null ? existingLyric.extend() : Lyric.Extend.NONE)
+                && !LyricChainEditor.sustainsMelisma(extend)) {
             trace("commit: melisma dropped ({} -> {}), clearing the carriers it fed",
                 existingLyric != null ? existingLyric.extend() : null, extend);
-            clearForwardCarriers(index);
+            chainEditor.clearForwardCarriers(index);
         }
 
         line.writeLyricForVerse(index, activeVerse, text, extend,
@@ -1411,7 +1301,7 @@ public final class LyricEditor extends MyJTextField {
 
         var currentIndex = line.getElementIndex(element);
         line.withModification(commitOpName(), () -> {
-            breakChainAtCurrentElement(currentIndex);
+            chainEditor.breakChainAtCurrentElement(currentIndex);
             suppressDismissAdjustment = true;
             commitInner(kind, Lyric.Extend.NONE);
             applyDismissAdjustment();
@@ -1511,38 +1401,14 @@ public final class LyricEditor extends MyJTextField {
         openOn(score, line, line.getElement(index));
     }
 
-    /** Package-private for testing. */
-    static int findNextEligibleIndex(Line searchLine, int currentIndex, int verse) {
-        var count = searchLine.effectiveElementCount();
-
-        for (var i = currentIndex + 1; i < count; i++) {
-            if (LyricTargetResolver.isLyricTargetEligible(searchLine, i)
-                && searchLine.getElement(i).isEligibleForLyric(verse)) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
-    /** Package-private for testing. */
-    static int findPreviousEligibleIndex(Line searchLine, int currentIndex, int verse) {
-        for (var i = currentIndex - 1; i >= 0; i--) {
-            if (LyricTargetResolver.isLyricTargetEligible(searchLine, i)
-                && searchLine.getElement(i).isEligibleForLyric(verse)) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-
     private int findNextEligibleIndex() {
-        return findNextEligibleIndex(line, line.getElementIndex(element), activeVerse);
+        return LyricTargetResolver.findNextEligibleIndex(
+            line, line.getElementIndex(element), activeVerse);
     }
 
     private int findPreviousEligibleIndex() {
-        return findPreviousEligibleIndex(line, line.getElementIndex(element), activeVerse);
+        return LyricTargetResolver.findPreviousEligibleIndex(
+            line, line.getElementIndex(element), activeVerse);
     }
 
     private void handleHyphen() {
@@ -1723,40 +1589,18 @@ public final class LyricEditor extends MyJTextField {
         }
 
         var currentIndex = line.getElementIndex(element);
-        var nextElement = line.getElement(nextIndex);
 
         line.withModification(commitOpName(), () -> {
             if (openedAsExtender) {
                 // Text typed over a carrier: end the chain that ran through this element
                 // before starting a new one from it.
-                breakChainAtCurrentElement(currentIndex);
+                chainEditor.breakChainAtCurrentElement(currentIndex);
                 suppressDismissAdjustment = true;
             }
 
             commitInner(CommitKind.WORD_FINAL, Lyric.Extend.START);
             applyDismissAdjustment();
-
-            // Elements skipped between here and the carrier — such as the host of a paired
-            // grace note, which commitInner's melisma sync just marked STOP — now sit inside
-            // the chain rather than ending it.
-            for (var i = currentIndex + 1; i < nextIndex; i++) {
-                var midElement = line.getElement(i);
-
-                if (midElement.getLyricForVerse(activeVerse) == null) {
-                    continue;
-                }
-
-                var midIndex = i;
-                line.modifyElement(midIndex, ElementField.LYRIC, () ->
-                    midElement.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.CONTINUE));
-            }
-
-            line.modifyElement(nextIndex, ElementField.LYRIC, () ->
-                nextElement.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.STOP));
-
-            // commitInner's boundary fix stops at the carrier; the first syllable past the chain
-            // still has to lose any word continuation that ran through it.
-            line.adjustSuccessorAfterMelismaCarrier(nextIndex, activeVerse);
+            chainEditor.markMelismaCarrierRun(currentIndex, nextIndex);
         });
 
         // This element now holds a melisma-starting syllable, whatever role it opened with, so
@@ -1767,7 +1611,8 @@ public final class LyricEditor extends MyJTextField {
             logState("startMelismaOnNextElement done, carrier at " + nextIndex);
         }
 
-        openIndexOrDismiss(findNextEligibleIndex(line, nextIndex, activeVerse));
+        openIndexOrDismiss(
+            LyricTargetResolver.findNextEligibleIndex(line, nextIndex, activeVerse));
     }
 
     /**
@@ -1797,50 +1642,7 @@ public final class LyricEditor extends MyJTextField {
      * @param backIndex    the lyric-bearing element the chain runs back to, never negative
      */
     private void extendChainBackward(int currentIndex, int backIndex) {
-        var backElement = line.getElement(backIndex);
-        var backLyric = backElement.getLyricForVerse(activeVerse);
-
-        // Invariant: previousLyricBearingIndex only returns indices with non-null lyrics.
-        if (backLyric == null) {
-            throw RuntimeError.exit("Predecessor at " + backIndex + " lost verse " + activeVerse + " lyric between scan and rewrite");
-        }
-
-        trace("extendChainBackward: chain root {} ({}), carrier at {}",
-            backIndex, backLyric.extend(), currentIndex);
-
-        line.withModification(() -> {
-            var backExtend = backLyric.extend();
-
-            if (backExtend == Lyric.Extend.STOP) {
-                // STOP carrier: flip back to CONTINUE so the new chain extends through it.
-                line.modifyElement(backIndex, ElementField.LYRIC, () ->
-                    backElement.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.CONTINUE));
-            } else if (backExtend != Lyric.Extend.CONTINUE) {
-                // Text-bearing (NONE or START): rewrite extend to START, preserving the text.
-                // The syllable it hyphenated to is now a carrier, so the word ends here — and a
-                // syllable that opens a hyphen cannot also open a melisma, since the layout draws
-                // the hyphen and drops the extender. Compound follows: it requires a continuing
-                // syllabic.
-                var backSyllabic = wordFinalSyllabic(backLyric.syllabic());
-                line.modifyElement(backIndex, ElementField.LYRIC, () ->
-                    backElement.setLyricForVerse(activeVerse,
-                        backSyllabic, false,
-                        backLyric.text(), Lyric.Extend.START));
-            }
-            // CONTINUE carrier: leave unchanged — the chain already extends through it.
-
-            for (var i = backIndex + 1; i < currentIndex; i++) {
-                var midElement = line.getElement(i);
-                line.modifyElement(i, ElementField.LYRIC, () ->
-                    midElement.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.CONTINUE));
-            }
-
-            line.modifyElement(currentIndex, ElementField.LYRIC, () ->
-                element.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.STOP));
-
-            // Any syllable this element hyphenated to now follows a melisma, so it starts a word.
-            line.adjustSuccessorAfterMelismaCarrier(currentIndex, activeVerse);
-        });
+        chainEditor.buildBackwardChain(currentIndex, backIndex);
 
         // This element is now the chain's carrier, whatever role it opened with, so the
         // commit that follows must not end that role on its way out. Clearing the field is
@@ -1852,20 +1654,6 @@ public final class LyricEditor extends MyJTextField {
         suppressDismissAdjustment = true;
         logState("extendChainBackward done");
         advance();
-    }
-
-    /**
-     * Returns the word-final counterpart of a text-bearing syllable's {@code syllabic}:
-     * {@code BEGIN} collapses to {@code SINGLE} and {@code MIDDLE} to {@code END}; already
-     * word-final values pass through.
-     */
-    private static Lyric.Syllabic wordFinalSyllabic(Lyric.@Nullable Syllabic syllabic) {
-        return switch (syllabic) {
-            case BEGIN -> Lyric.Syllabic.SINGLE;
-            case MIDDLE -> Lyric.Syllabic.END;
-            case SINGLE, END -> syllabic;
-            case null -> throw RuntimeError.exit("Text-bearing lyric is missing syllabic");
-        };
     }
 
     // Re-entrant guard: clearing focused before the bracket opens prevents a second
@@ -1919,7 +1707,7 @@ public final class LyricEditor extends MyJTextField {
             // carriers up to the next STOP or text-bearing element.
             trace("dismissAdjustment: text replaced the carrier at {}, breaking its chain",
                 currentIndex);
-            breakChainAtCurrentElement(currentIndex);
+            chainEditor.breakChainAtCurrentElement(currentIndex);
             return;
         }
 
@@ -1936,86 +1724,6 @@ public final class LyricEditor extends MyJTextField {
 
         trace("dismissAdjustment: repairing neighbors of {}", currentIndex);
         line.adjustNeighborsForLyricDeletion(currentIndex, activeVerse);
-    }
-
-    private void terminatePrecedingContinueChain(int currentIndex) {
-        var backIndex = line.previousLyricBearingIndex(currentIndex, activeVerse);
-
-        if (backIndex < 0) {
-            return;
-        }
-
-        var backLyric = line.getElement(backIndex).getLyricForVerse(activeVerse);
-
-        if (backLyric == null) {
-            return;
-        }
-
-        var backExtend = backLyric.extend();
-
-        if (backExtend == Lyric.Extend.CONTINUE) {
-            trace("terminatePrecedingChain: {} CONTINUE -> STOP", backIndex);
-            rewriteLyricExtend(backIndex, backLyric, Lyric.Extend.STOP);
-        } else if (backExtend == Lyric.Extend.START) {
-            // START directly precedes the break point — the whole chain collapses.
-            trace("terminatePrecedingChain: {} START -> NONE, the chain collapses", backIndex);
-            rewriteLyricExtend(backIndex, backLyric, Lyric.Extend.NONE);
-        }
-    }
-
-    /** Whether a lyric with this extender state hands a melisma on to the elements after it. */
-    private static boolean sustainsMelisma(Lyric.Extend extend) {
-        return extend == Lyric.Extend.START || extend == Lyric.Extend.CONTINUE;
-    }
-
-    private void clearForwardCarriers(int currentIndex) {
-        var effectiveCount = line.effectiveElementCount();
-
-        for (var i = currentIndex + 1; i < effectiveCount; i++) {
-            var forwardElement = line.getElement(i);
-            var forwardLyric = forwardElement.getLyricForVerse(activeVerse);
-
-            if (forwardLyric == null) {
-                continue;
-            }
-
-            var extend = forwardLyric.extend();
-
-            if (extend != Lyric.Extend.CONTINUE && extend != Lyric.Extend.STOP) {
-                // Text-bearing (extend NONE or START): halt without modification.
-                trace("clearForwardCarriers: stopped at the syllable on {}", i);
-                return;
-            }
-
-            var forwardIndex = i;
-            trace("clearForwardCarriers: clearing the {} carrier on {}", extend, forwardIndex);
-            line.modifyElement(forwardIndex, ElementField.LYRIC, () ->
-                forwardElement.setLyricForVerse(activeVerse, null, false, null, Lyric.Extend.NONE));
-
-            if (extend == Lyric.Extend.STOP) {
-                return;
-            }
-        }
-    }
-
-    // Must be called inside an open modification bracket.
-    void breakChainAtCurrentElement(int currentIndex) {
-        terminatePrecedingContinueChain(currentIndex);
-        clearForwardCarriers(currentIndex);
-
-        // When the current element is a paired grace note, the carrier cleared just above may
-        // have been its host's, which would leave the grace's own melisma without its STOP.
-        // The sync converges whichever state the clearing landed in.
-        if (line.isPairedGraceNote(currentIndex)) {
-            line.syncGraceHostMelisma(currentIndex);
-        }
-    }
-
-    private void rewriteLyricExtend(int index, Lyric existing, Lyric.Extend newExtend) {
-        var indexElement = line.getElement(index);
-        line.modifyElement(index, ElementField.LYRIC, () ->
-            indexElement.setLyricForVerse(activeVerse,
-                existing.syllabic(), existing.compound(), existing.text(), newExtend));
     }
 
     /**

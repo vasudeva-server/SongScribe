@@ -88,6 +88,22 @@ one (`Fragment.capture`): it ends every chain that would otherwise point at an
 element the run no longer contains. It is composed from the deletion repairs, since
 "everything around this run is gone" is exactly what a deletion produces.
 
+## The editor's chain rewrites live on `LyricChainEditor`
+
+`LyricRun`'s repairs answer "an element changed, make the chains around it
+well-formed again". The rewrites an open editor session *asks for* — clearing a
+placeholder ends the word or gives up the carrier, `_` builds a chain backward from
+a predecessor or forward to a new carrier — are a level above that, and live on
+`LyricChainEditor`, constructed by `LyricEditor` with the line and the verse the
+session captured.
+
+Every one of them is written in terms of the `LyricRun` repairs and
+`modifyElement`, takes element indices rather than components, and touches no
+Swing, so it can be exercised without a text field. Only `buildBackwardChain` opens
+its own modification bracket; the rest must be called inside one the editor has
+already opened, because the editor pairs them with its own commit in a single
+undoable step.
+
 ## One row, always
 
 The lyrics band is one row deep, whatever the song carries. `LayoutResult` has a

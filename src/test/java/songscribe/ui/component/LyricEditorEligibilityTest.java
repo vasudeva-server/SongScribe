@@ -92,14 +92,14 @@ class LyricEditorEligibilityTest extends UnitTest {
 
     @Test
     void testFindNextFromBeforeGraceLandsOnGrace() {
-        var next = LyricEditor.findNextEligibleIndex(line, INDEX_NORMAL_BEFORE, VERSE);
+        var next = LyricTargetResolver.findNextEligibleIndex(line, INDEX_NORMAL_BEFORE, VERSE);
         assertThat(next).isEqualTo(INDEX_GRACE);
     }
 
     @Test
     void testFindNextFromGraceSkipsHostLandsOnNormalAfter() {
         // Advancing from the grace must skip the host and land on the next normal note.
-        var next = LyricEditor.findNextEligibleIndex(line, INDEX_GRACE, VERSE);
+        var next = LyricTargetResolver.findNextEligibleIndex(line, INDEX_GRACE, VERSE);
         assertThat(next).isEqualTo(INDEX_NORMAL_AFTER);
     }
 
@@ -108,14 +108,14 @@ class LyricEditorEligibilityTest extends UnitTest {
     @Test
     void testFindPreviousFromNormalAfterSkipsHostLandsOnGrace() {
         // Retreating from the note after the host must skip the host and land on the grace.
-        var previous = LyricEditor.findPreviousEligibleIndex(line, INDEX_NORMAL_AFTER, VERSE);
+        var previous = LyricTargetResolver.findPreviousEligibleIndex(line, INDEX_NORMAL_AFTER, VERSE);
         assertThat(previous).isEqualTo(INDEX_GRACE);
     }
 
     @Test
     void testFindPreviousFromHostLandsOnGrace() {
         // Retreating from the host itself must land on the grace (host is skipped for navigation).
-        var previous = LyricEditor.findPreviousEligibleIndex(line, INDEX_HOST, VERSE);
+        var previous = LyricTargetResolver.findPreviousEligibleIndex(line, INDEX_HOST, VERSE);
         assertThat(previous).isEqualTo(INDEX_GRACE);
     }
 
