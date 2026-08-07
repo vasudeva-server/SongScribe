@@ -148,10 +148,11 @@ class ScoreViewTest extends UnitTest {
             // documentFonts is set but song is null — must return silently.
             scoreView.rebuildLyricRenderMetrics();
 
-            // The song == null guard must leave the field null. Without the guard the method
-            // would silently build metrics from the installed fonts, so this assertion is what
-            // catches the guard being removed.
-            assertThat(scoreView.lyricRenderMetrics).isNull();
+            // The song == null guard must leave the metrics unset. Without the guard the method
+            // would silently build them from the installed fonts, so this assertion is what
+            // catches the guard being removed. findLyricRenderMetrics() is the nullable reader —
+            // getLyricRenderMetrics() fatally exits when unset.
+            assertThat(scoreView.findLyricRenderMetrics()).isNull();
         }
 
         @Test
@@ -163,9 +164,9 @@ class ScoreViewTest extends UnitTest {
 
             scoreView.rebuildLyricRenderMetrics();
 
-            // The documentFonts == null guard must leave the field null (and not NPE on
+            // The documentFonts == null guard must leave the metrics unset (and not NPE on
             // documentFonts.getLyricsFont()).
-            assertThat(scoreView.lyricRenderMetrics).isNull();
+            assertThat(scoreView.findLyricRenderMetrics()).isNull();
         }
 
         @Test

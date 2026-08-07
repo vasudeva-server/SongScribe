@@ -157,14 +157,14 @@ class ScoreViewSetFontsTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // T8: applyDocumentFonts applies the SUBTITLE font to SubtitleComponent
+    // T8: applyFonts applies the SUBTITLE font to SubtitleComponent
     // -------------------------------------------------------------------------
 
     /**
-     * T8: {@link ScoreView#applyDocumentFonts()} must propagate the {@link FontKey#SUBTITLE}
+     * T8: {@link DocumentFontManager#applyFonts()} must propagate the {@link FontKey#SUBTITLE}
      * font to the {@link SubtitleComponent}. Verified by injecting a real
      * {@link MainPanel} via the package-private {@code setMainPanel} so that
-     * {@code applyDocumentFonts} does not short-circuit at its {@code mainPanel == null}
+     * {@code applyFonts} does not short-circuit at its {@code mainPanel == null}
      * guard, then calling {@code installDocumentFonts} which invokes it.
      */
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -187,12 +187,12 @@ class ScoreViewSetFontsTest extends UnitTest {
             var expectedFont = new Font(SUBTITLE_TEST_FAMILY, Font.ITALIC, SUBTITLE_TEST_SIZE);
             customFonts.setFont(FontKey.SUBTITLE, expectedFont);
 
-            // installDocumentFonts sets documentFonts and calls applyDocumentFonts().
+            // installDocumentFonts sets documentFonts and calls applyFonts().
             scoreView.installDocumentFonts(customFonts);
 
             var subtitleComponent = mainPanel.getSubtitleComponent();
             assertThat(subtitleComponent.getFont())
-                .as("applyDocumentFonts must set the SUBTITLE font on SubtitleComponent")
+                .as("applyFonts must set the SUBTITLE font on SubtitleComponent")
                 .isEqualTo(expectedFont);
         }
     }
