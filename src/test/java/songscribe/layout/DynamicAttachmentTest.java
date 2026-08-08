@@ -79,11 +79,6 @@ class DynamicAttachmentTest extends UnitTest {
         }
 
         @Test
-        void testFortePianoHasNullGlyph() {
-            assertThat(DynamicType.FORTEPIANO.getGlyph()).isNull();
-        }
-
-        @Test
         void testFortissimoHasCorrectGlyph() {
             assertThat(DynamicType.FORTISSIMO.getGlyph()).isEqualTo(SMuFLGlyph.DYNAMIC_FF);
         }
@@ -114,11 +109,6 @@ class DynamicAttachmentTest extends UnitTest {
         }
 
         @Test
-        void testSforzandoHasNullGlyph() {
-            assertThat(DynamicType.SFORZANDO.getGlyph()).isNull();
-        }
-
-        @Test
         void testSymbolReturnsExpectedStringForAllTypes() {
             assertThat(DynamicType.PIANISSIMO.getSymbol()).isEqualTo("pp");
             assertThat(DynamicType.PIANO.getSymbol()).isEqualTo("p");
@@ -126,18 +116,24 @@ class DynamicAttachmentTest extends UnitTest {
             assertThat(DynamicType.MEZZO_FORTE.getSymbol()).isEqualTo("mf");
             assertThat(DynamicType.FORTE.getSymbol()).isEqualTo("f");
             assertThat(DynamicType.FORTISSIMO.getSymbol()).isEqualTo("ff");
-            assertThat(DynamicType.SFORZANDO.getSymbol()).isEqualTo("sfz");
-            assertThat(DynamicType.FORTEPIANO.getSymbol()).isEqualTo("fp");
         }
 
+        // Every declared type must resolve to real font metrics, not merely name a glyph constant.
+        // A type whose glyph is missing from the SMuFL metadata would draw nothing while still
+        // reserving a footprint, which is exactly the invisible-but-space-taking mark that removing
+        // sfz and fp was meant to rule out (refs #510).
         @Test
-        void testUiTypesHaveNonNullGlyphs() {
-            assertThat(DynamicType.PIANISSIMO.getGlyph()).isNotNull();
-            assertThat(DynamicType.PIANO.getGlyph()).isNotNull();
-            assertThat(DynamicType.MEZZO_PIANO.getGlyph()).isNotNull();
-            assertThat(DynamicType.MEZZO_FORTE.getGlyph()).isNotNull();
-            assertThat(DynamicType.FORTE.getGlyph()).isNotNull();
-            assertThat(DynamicType.FORTISSIMO.getGlyph()).isNotNull();
+        void testEveryTypeResolvesToRealGlyphMetrics() {
+            for (var type : DynamicType.values()) {
+                var attachment = new DynamicAttachment(type);
+
+                assertThat(attachment.getContentWidthSs())
+                    .as("%s must have a drawable width", type)
+                    .isGreaterThan(0.0);
+                assertThat(attachment.getContentHeightSs())
+                    .as("%s must have a drawable height", type)
+                    .isGreaterThan(0.0);
+            }
         }
     }
 
@@ -183,16 +179,13 @@ class DynamicAttachmentTest extends UnitTest {
             assertThat(attachment.getContentWidthSs()).isEqualTo(bbox.width());
         }
 
+        // The shared dynamics baseline hangs a glyph by how far its ink drops below the text
+        // baseline. Getting that wrong tilts a "p" or "f" off the line its hairpin sits on.
         @Test
-        void testNullGlyphTypeFallsBackToDefaultHeight() {
-            var attachment = new DynamicAttachment(DynamicType.SFORZANDO);
-            assertThat(attachment.getContentHeightSs()).isEqualTo(1.75);
-        }
-
-        @Test
-        void testNullGlyphTypeFallsBackToDefaultWidth() {
-            var attachment = new DynamicAttachment(DynamicType.SFORZANDO);
-            assertThat(attachment.getContentWidthSs()).isEqualTo(2.5);
+        void testContentBottomSsDelegatesToSmuflBBox() {
+            var attachment = new DynamicAttachment(DynamicType.FORTE);
+            var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.DYNAMIC_FORTE);
+            assertThat(attachment.getContentBottomSs()).isEqualTo(bbox.bottom());
         }
     }
 }

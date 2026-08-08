@@ -180,22 +180,33 @@ The fermata is placed `FERMATA_PADDING_SS` above whatever is already reserved in
 
 ### Example 8: Dynamics placement
 
-**Non-range dynamics** (f, p, mf, etc.):
-- Own padding constants, distinct from fermata: `DYNAMIC_PADDING_SS` = `0.60 ss` (from its nearest neighbor) and `DYNAMIC_STAFF_PADDING_SS` = `0.10 ss` (staff clamp floor)
-- Stacked in the structural tier, after hairpins and after fermata/trill have already reserved space in the same skyline — so where they share an X range, text dynamics end up further out than fermata, trill, and hairpins
+**Grouping and shared baseline**:
+- Hairpins and text dynamics are grouped together and share one reference line. A text dynamic on the element immediately before a hairpin's anchor, or immediately after its end, joins that hairpin's group; a dynamic can never sit on or inside the span itself, because the editor strips point dynamics from `[anchor, end]` when a hairpin is added (`MusicEditOperations.stripPointDynamics`) and disables the dynamic action inside an existing one (`DynamicMarkingAction`). A text dynamic adjacent to no hairpin keeps its own independent placement. This follows LilyPond's `DynamicLineSpanner` (`lily/dynamic-align-engraver.cc`).
 
-**Range dynamics** (crescendo, diminuendo hairpins):
-1. **Position**: Always above the staff
-2. **Margin**: `HAIRPIN_MARGIN_SS` = `1.0 ss` (single margin, not separate top/bottom values)
-3. **Span**: Like trills, each note in the span demands its own clearance; the hairpin seats at the most outward requirement
-4. **Collision detection**: Uses the cumulative skyline
-5. **Stacked before text dynamics** within the structural tier (`StructuralStacker.stackRemaining()` runs hairpins, then text dynamics, then endings) — so, where they overlap in X, text dynamics end up outside hairpins, both of which end up outside fermata/trill
-6. **Coordination with non-range dynamics**: Not automatically implemented. `Hairpin` only exposes manual, user-driven endpoint offsets (`x1ShiftSs`, `x2ShiftSs`, `yShiftSs`), applied post-layout with no collision re-run. There is no code that automatically draws a hairpin endpoint just outside an adjacent text dynamic's margin — a user must set the shift explicitly.
+**Alignment within a group**:
+- Within a group, the two member types align differently on the shared reference line, as LilyPond does: a hairpin's full height is centred on it (`Hairpin.self-alignment-Y = CENTER`), while a text dynamic's glyph baseline sits `DYNAMIC_TEXT_BASELINE_OFFSET_SS` below it (`DynamicText.Y-offset`, "center on an 'm'") so its x-height centre lands on the line. Centring the glyph's bounding box instead would leave `p`, `f` and `mf` at visibly different heights.
+
+**Endpoint bound padding**:
+- A hairpin endpoint pulls back by `Hairpin.BOUND_PADDING_SS` from an adjacent text dynamic — LilyPond's `Hairpin.bound-padding` rule from `lily/hairpin.cc`. It is an assignment from the dynamic's extent, not a clamp, so a wedge preceded by a `p` legitimately extends past its anchor column's origin. With no adjacent dynamic the endpoints are the anchor column's origin and the end notehead's right edge.
+- Two further endpoint rules are implemented but **not reachable from the editor yet**: back-to-back hairpins meet at the shared column centre ∓ `Hairpin.BACK_TO_BACK_PADDING_SS`, and a hairpin ending on a rest stops at the rest's left edge. `MusicEditOperations.isHairpinEligibleSpan` requires the end to be a pitched note, and `resolveHairpinAction` blocks an opposite-type neighbour while `Line.addHairpin` absorbs a same-type one, so neither configuration can currently be created. Both are ordinary engraving practice — back-to-back hairpins appear in 25 files of the ABC corpus and rest-bounded ones in two — so the geometry is kept ready for the editor work that will produce them (issue #743), and `HairpinEndpointsTest` drives it directly.
+- LilyPond's remaining bound rule, padding away from a non-musical bound (`Item::is_non_musical`), is **not** implemented. It exists because LilyPond bounds spanners on `NoteColumn`s that may be barlines; a SongScribe bound is always a note, and no hairpin in the corpus is bounded by a barline.
+
+**Default endpoints and exclusions**:
+- Default endpoints are unchanged and match LilyPond: `NoteColumn`'s `bound-alignment-interfaces` is `(rhythmic-head-interface stem-interface)`, so LilyPond anchors on notehead edges too, excluding accidentals and augmentation dots.
+
+**Manual offsets**:
+- The `x1ShiftSs` / `x2ShiftSs` / `yShiftSs` manual offsets still exist and are still applied post-layout by `VerticalStackingCalculator.applyDecorationOffsets` with no collision re-run; they are now a manual override on top of automatic coordination rather than the only mechanism.
+
+**Stacking**:
+- Stacked in the structural tier. Hairpins and text dynamics are both subject to the same cumulative skyline stacking; they also clear fermata and trill where those elements have already reserved space. Hairpins and dynamics themselves are not strictly pre/post-ordered by the grouping — the grouping applies at the *reference line* level, not the stacking pass.
+
+**Margins and dimensions**:
+- `HAIRPIN_MARGIN_SS` = `1.0 ss` still governs a group's clearance, and the mouth height is now `Hairpin.HAIRPIN_OPENING_HEIGHT_SS`, matching LilyPond's `Hairpin.height` doubled.
 
 ```
-Example: "p" with diminuendo starting at same note (manual endpoint shift applied by the user)
+Example: "p" with diminuendo starting at the next note (automatic coordination)
 
-    p─────<          ← Hairpin start manually shifted clear of "p"
+    p────<           ← Hairpin anchored at next note, end pullback applied
     tr                ← Trill
     ⌢                ← Fermata
     >                ← Accent
@@ -281,7 +292,9 @@ All above-staff decorations share one algorithm: stack against a cumulative `Sta
 - **Flat-box stacking** (`StackingUtils.stackAbove` / `placeAndReserveClamped` with `StaffExtents.Profiles.flat`) — used by tempo, beat change, annotations, hairpins, text dynamics, and fermata (fermata's glyph is round, but its collision footprint is a flat rectangle).
 - **Outline-aware skyline stacking** (`ShapeProfile.outerEdge`/`innerEdge`) — used by staccato, accent, and trill, whose glyphs (dot, wedge, "tr" flourish) are reserved and cleared by their actual silhouette rather than a bounding rectangle.
 
-Tiers, nearest-to-staff first: note-attached articulations → tuplet brackets → outer scripts (fermata, then trill) → structural decorations (hairpins, then text dynamics, then endings) → system decorations (tempo, then beat change, then annotations) → attribution (first line only, topmost).
+Tiers, nearest-to-staff first: note-attached articulations → tuplet brackets → outer scripts (fermata, then trill) → structural decorations (hairpins and text dynamics together, then endings) → system decorations (tempo, then beat change, then annotations) → attribution (first line only, topmost).
+
+Hairpins and text dynamics are one tier, not two: they are placed group by group so a hairpin and the dynamic beside it share a reference line (see Example 8), which is impossible if a second sweep stacks outside whatever the first reserved.
 
 ### Below Staff
 
@@ -299,7 +312,7 @@ The definitive tier/pass order, from `VerticalStackingCalculator.calculate()`:
 2. `StructuralStacker.stackTuplets()` — tuplet brackets
 3. `NoteAttachedStacker.stackOuterScripts()` — fermata (all columns), then trills (per line)
 4. `seedAccidentalsIntoStructural()` — accidental bounds seeded so structural elements clear them (scripts above ignore them)
-5. `StructuralStacker.stackRemaining()` — hairpins, then text dynamics, then endings
+5. `StructuralStacker.stackRemaining()` — hairpin/text-dynamic groups in left-to-right order (`DynamicGrouper`), then endings
 6. `SystemStacker.stack()` — per column: tempo, then beat change, then annotations
 7. `stackAttribution()` — first line only, topmost
 8. `applyManualOffsets()` — post-layout user offsets (no collision re-run)
@@ -308,4 +321,4 @@ The definitive tier/pass order, from `VerticalStackingCalculator.calculate()`:
 
 ## Open Questions
 
-- The hairpin/text-dynamic endpoint coordination described in Example 8 (rule 6) is not implemented as automatic behavior — only manual per-hairpin shifts exist. Is automatic coordination still wanted, or should that rule be dropped from the design intent entirely?
+- None outstanding. (The former question — whether hairpin/text-dynamic coordination should be automatic rather than manual-only — was answered by implementing it; see Example 8, refs #510.)

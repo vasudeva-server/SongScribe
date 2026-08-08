@@ -216,7 +216,7 @@ class StructuralTierStackingTest extends UnitTest {
         }
 
         @Test
-        void testAdjacentHairpinsStackDiminuendoAboveCrescendo() {
+        void testAdjacentHairpinsShareOneBaseline() {
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var note3 = createNote(0, false);
@@ -225,10 +225,9 @@ class StructuralTierStackingTest extends UnitTest {
             line.addElement(note2);
             line.addElement(note3);
 
-            // Adjacent (musically non-overlapping) hairpins: crescendo note1→note2,
-            // diminuendo note2→note3. The crescendo's span extends NOTE_HEAD_WIDTH_SS
-            // past note2's anchor; combined with the query margin, the diminuendo query
-            // overlaps the crescendo's reservation, so the diminuendo stacks above it.
+            // Back-to-back hairpins: crescendo note1→note2, diminuendo note2→note3. They hang on
+            // the same column, so DynamicGrouper puts them in one group and they are placed on a
+            // single shared reference line rather than one stacking outside the other's reservation.
             var crescendo = new Crescendo(note1, note2);
             var diminuendo = new Diminuendo(note2, note3);
             line.addSpan(crescendo);
@@ -250,9 +249,191 @@ class StructuralTierStackingTest extends UnitTest {
 
             assertThat(crescLayout.ySs()).isLessThan(0.0);
             assertThat(dimLayout.ySs()).isLessThan(0.0);
-            // Diminuendo stacks above (more negative Y) because its query region
-            // overlaps the crescendo's reservation.
-            assertThat(dimLayout.ySs()).isLessThan(crescLayout.ySs());
+            // Same height, same shared reference line, so the two wedges are level.
+            assertThat(dimLayout.ySs()).isCloseTo(crescLayout.ySs(), within(TOLERANCE));
+        }
+
+        @Test
+        void testDynamicBeforeHairpinAnchorSharesReferenceLineWithHairpin() {
+            // note1 carries a text dynamic immediately before the crescendo's anchor (note2), so
+            // DynamicGrouper puts both marks in one group and StructuralStacker gives them a
+            // common reference line rather than separately stacked bounding-box centers.
+            var note1 = createNote(0, false);
+            var dynamic = new DynamicAttachment(note1, DynamicAttachment.DynamicType.MEZZO_FORTE);
+            note1.addAttachment(dynamic);
+            var note2 = createNote(0, false);
+            var note3 = createNote(0, false);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+            line.addElement(note3);
+
+            var crescendo = new Crescendo(note2, note3);
+            line.addSpan(crescendo);
+
+            var result = stackColumns(
+                List.of(
+                    columnFor(note1, NOTE1_X_SS),
+                    columnFor(note2, NOTE2_X_SS),
+                    columnFor(note3, NOTE3_X_SS)),
+                line);
+
+            var hairpinLayout = require(
+                result.getDecorationLayout(crescendo),
+                "crescendo DecorationLayout");
+            var dynamicLayout = require(
+                result.findAttachmentDecorationLayout(note1, DynamicAttachment.class),
+                "text dynamics DecorationLayout");
+
+            var hairpinReferenceYSs = hairpinLayout.ySs() + hairpinLayout.heightSs() / 2;
+            var dynamicReferenceYSs = dynamicLayout.ySs() + dynamicLayout.heightSs()
+                - dynamic.getContentBottomSs()
+                - StructuralStacker.DYNAMIC_TEXT_BASELINE_OFFSET_SS;
+
+            // Not the same bounding-box center: the two members deliberately hang at different
+            // offsets below the shared line (half the hairpin's height vs. the dynamic's baseline
+            // drop plus descent), so only the derived reference line, not ySs() + heightSs() / 2 on
+            // both sides, is expected to match.
+            assertThat(dynamicReferenceYSs).isCloseTo(hairpinReferenceYSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testSingletonDynamicAdjacentToNoHairpinUsesUnchangedSoloPath() {
+            // note1's dynamic sits two elements away from the crescendo's anchor (note3), so
+            // DynamicGrouper gives it a singleton group placed via the unchanged
+            // placeAndReserveClamped path rather than the grouped shared-baseline path.
+            var note1 = createNote(0, false);
+            var dynamic = new DynamicAttachment(note1, DynamicAttachment.DynamicType.FORTE);
+            note1.addAttachment(dynamic);
+            var gapNote = createNote(0, false);
+            var note3 = createNote(0, false);
+            var note4 = createNote(0, false);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(gapNote);
+            line.addElement(note3);
+            line.addElement(note4);
+
+            var crescendo = new Crescendo(note3, note4);
+            line.addSpan(crescendo);
+
+            var result = stackDirectly(
+                List.of(
+                    columnFor(note1, NOTE1_X_SS),
+                    columnFor(gapNote, NOTE1_X_SS + 10.0),
+                    columnFor(note3, NOTE2_X_SS),
+                    columnFor(note4, NOTE3_X_SS)),
+                line);
+
+            var dynamicLayout = require(
+                result.findAttachmentDecorationLayout(note1, DynamicAttachment.class),
+                "text dynamics DecorationLayout");
+
+            var expectedYSs = StackingUtils.STAFF_TOP_INK_Y_SS
+                - NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS - dynamicLayout.heightSs();
+            assertThat(dynamicLayout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testDynamicAfterHairpinEndSharesReferenceLineWithHairpin() {
+            // The mirror of the test above: the dynamic sits immediately *after* the crescendo's
+            // end rather than before its anchor. Group membership for this side is covered in
+            // DynamicGrouperTest; what is pinned here is that the resulting placement really puts
+            // both marks on one reference line, which membership alone does not prove.
+            var note1 = createNote(0, false);
+            var note2 = createNote(0, false);
+            var note3 = createNote(0, false);
+            var dynamic = new DynamicAttachment(note3, DynamicAttachment.DynamicType.PIANO);
+            note3.addAttachment(dynamic);
+            var line = detachedLine();
+            line.addElement(note1);
+            line.addElement(note2);
+            line.addElement(note3);
+
+            var crescendo = new Crescendo(note1, note2);
+            line.addSpan(crescendo);
+
+            var result = stackColumns(
+                List.of(
+                    columnFor(note1, NOTE1_X_SS),
+                    columnFor(note2, NOTE2_X_SS),
+                    columnFor(note3, NOTE3_X_SS)),
+                line);
+
+            var hairpinLayout = require(
+                result.getDecorationLayout(crescendo),
+                "crescendo DecorationLayout");
+            var dynamicLayout = require(
+                result.findAttachmentDecorationLayout(note3, DynamicAttachment.class),
+                "text dynamics DecorationLayout");
+
+            var hairpinReferenceYSs = hairpinLayout.ySs() + hairpinLayout.heightSs() / 2;
+            var dynamicReferenceYSs = dynamicLayout.ySs() + dynamicLayout.heightSs()
+                - dynamic.getContentBottomSs()
+                - StructuralStacker.DYNAMIC_TEXT_BASELINE_OFFSET_SS;
+
+            assertThat(dynamicReferenceYSs).isCloseTo(hairpinReferenceYSs, within(TOLERANCE));
+        }
+
+        @Test
+        void testGroupWithNoResolvableMemberPlacesNothing() {
+            // Both marks are grouped, but neither element was given a column — the situation when
+            // a group's members belong to a line region this layout pass is not laying out. The
+            // shared reference line starts at positive infinity and must never reach a placement:
+            // if it did, both marks would be written at an absurd Y instead of being skipped.
+            var dynamicNote = createNote(0, false);
+            var dynamic = new DynamicAttachment(dynamicNote, DynamicAttachment.DynamicType.FORTE);
+            dynamicNote.addAttachment(dynamic);
+            var anchorNote = createNote(0, false);
+            var endNote = createNote(0, false);
+            var strangerNote = createNote(0, false);
+            var line = detachedLine();
+            line.addElement(dynamicNote);
+            line.addElement(anchorNote);
+            line.addElement(endNote);
+
+            var crescendo = new Crescendo(anchorNote, endNote);
+            line.addSpan(crescendo);
+
+            // A column for an element that is not in the group, so the stacking pass runs with a
+            // non-empty column list yet resolves neither group member.
+            var result = stackDirectly(List.of(columnFor(strangerNote, NOTE1_X_SS)), line);
+
+            assertThat(result.getDecorationLayout(crescendo))
+                .as("an unresolvable hairpin is skipped, not placed at the infinite reference line")
+                .isNull();
+            assertThat(result.findAttachmentDecorationLayout(dynamicNote, DynamicAttachment.class))
+                .as("an unresolvable dynamic is skipped too")
+                .isNull();
+        }
+
+        @Test
+        void testGroupWithOneResolvableMemberPlacesItWhereALoneHairpinWouldGo() {
+            // A two-member group in which only the hairpin resolves. It goes through the grouped
+            // two-pass path rather than the single-member path, and the two must agree: taking the
+            // most outward of one demand is that demand. If the passes ever disagreed, a hairpin
+            // would jump vertically the moment a neighbouring dynamic lost its column.
+            var dynamicNote = createNote(0, false);
+            var dynamic = new DynamicAttachment(dynamicNote, DynamicAttachment.DynamicType.FORTE);
+            dynamicNote.addAttachment(dynamic);
+            var anchorNote = createNote(0, false);
+            var endNote = createNote(0, false);
+            var line = detachedLine();
+            line.addElement(dynamicNote);
+            line.addElement(anchorNote);
+            line.addElement(endNote);
+
+            var crescendo = new Crescendo(anchorNote, endNote);
+            line.addSpan(crescendo);
+
+            // No column for dynamicNote, so the group has two members but one resolvable placement.
+            var result = stackDirectly(
+                List.of(columnFor(anchorNote, NOTE1_X_SS), columnFor(endNote, NOTE2_X_SS)), line);
+
+            var expectedYSs = StackingUtils.anchorCeilingSs(0)
+                - StructuralStacker.HAIRPIN_MARGIN_SS - crescendo.getContentHeightSs();
+            var layout = require(result.getDecorationLayout(crescendo), "crescendo layout");
+            assertThat(layout.ySs()).isCloseTo(expectedYSs, within(TOLERANCE));
         }
 
         @Test
@@ -280,7 +461,7 @@ class StructuralTierStackingTest extends UnitTest {
 
         @Test
         void testDiminuendoYEqualsAnchorCeilingMinusMarginMinusHeight() {
-            // Diminuendo follows the same stackSpanElement path as crescendo.
+            // Diminuendo follows the same placement path as crescendo.
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();
@@ -792,8 +973,8 @@ class StructuralTierStackingTest extends UnitTest {
     class SpanElementGuards {
 
         @Test
-        void testStackSpanElementSkipsNullAnchor() {
-            // stackSpanElement checks anchor/end for null before column lookup.
+        void testHairpinWithNullAnchorIsSkipped() {
+            // Resolving the span's columns fails on a null anchor, so no layout is written.
             var note1 = createNote(0, false);
             var note2 = createNote(0, false);
             var line = detachedLine();

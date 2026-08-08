@@ -127,7 +127,9 @@ Each `Spring` governs the delta-X between one adjacent column pair, `prev` to `c
                                                   + MIN_GLISSANDO_RESERVATION_SS
                                                                 (prev has a glissando)
              , grace compression floor  rest − GRACE_HOST_COMPRESSION_ALLOWANCE_SS
-                                                                (prev is a grace note) )
+                                                                (prev is a grace note)
+             , hairpin reservation      MINIMUM_LENGTH_SS − curr.noteheadWidth
+                                                                (only when prev has a hairpin ending at curr) )
 
   compliance = max(0, rest − strut)     ← rest ≤ strut ⇒ the gap starts frozen
 

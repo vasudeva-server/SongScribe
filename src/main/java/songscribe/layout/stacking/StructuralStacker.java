@@ -26,17 +26,20 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Line;
+import songscribe.dom.LineElement;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Direction;
 import songscribe.dom.CollisionRegion;
-import songscribe.dom.Crescendo;
-import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
+import songscribe.dom.Hairpin;
 import songscribe.engraving.LineThickness;
 import songscribe.layout.ElementColumn;
 import songscribe.layout.EndingBracketGeometry;
+import songscribe.layout.HairpinEndpoints;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.NoteGeometry;
@@ -98,6 +101,18 @@ public class StructuralStacker {
     public static final double TUPLET_NUMBER_MARGIN_SS =
         TUPLET_BRACKET_PADDING_SS - Tuplet.bracketLineOffsetSs();
 
+    /**
+     * How far below a dynamics group's shared reference line a text dynamic's glyph baseline sits,
+     * from LilyPond's {@code DynamicText.Y-offset} ({@code scale-by-font-size -0.6}, commented
+     * "center on an 'm'"). Placing the baseline here puts the glyph's x-height center on the line,
+     * which is stable across glyphs whose ascenders and descenders differ.
+     * <p>
+     * Not to be confused with {@link NoteAttachedStacker#DYNAMIC_PADDING_SS}, which happens to
+     * share this value but comes from {@code DynamicLineSpanner.padding} and means something else
+     * entirely. Do not collapse the two.
+     */
+    public static final double DYNAMIC_TEXT_BASELINE_OFFSET_SS = 0.6;
+
     private final StackingContext context;
     private final StaffExtents structuralExtents;
 
@@ -118,20 +133,21 @@ public class StructuralStacker {
     }
 
     /**
-     * Stacks the rest of the structural tier in order: hairpins, text dynamics, endings.
+     * Stacks the rest of the structural tier in order: hairpins and text dynamics, then endings.
+     * <p>
+     * Hairpins and text dynamics are placed together, group by group, rather than as two separate
+     * sweeps: a hairpin and the dynamic beside it share one reference line (see
+     * {@link DynamicGrouper}), which is impossible when the second sweep stacks outside whatever
+     * the first one reserved.
      */
     public void stackRemaining() {
-        var columns = context.getColumns();
         var line = context.getLine();
         var columnsByElement = context.getColumnsByElement();
         var builder = context.getBuilder();
 
-        // Tier 3b: Hairpins (crescendo/diminuendo)
-        stackHairpins(line, columnsByElement, builder);
-
-        // Tier 3c: Text dynamics (DynamicAttachment on notes)
-        for (var column : columns) {
-            stackTextDynamics(column, builder);
+        // Tier 3b/3c: hairpins and text dynamics, in left-to-right group order
+        for (var group : DynamicGrouper.group(line)) {
+            stackDynamicsGroup(group, line, columnsByElement, builder);
         }
 
         // Tier 3d: Volta brackets (endings)
@@ -514,27 +530,200 @@ public class StructuralStacker {
     }
 
     /**
-     * Stacks all hairpins (crescendo/diminuendo) for the line.
+     * Places one {@link DynamicGrouper.Group}.
+     * <p>
+     * A group of one has no baseline to share, so it goes through the same single-element path it
+     * always did. A group of two or more is placed in two passes: every member's own demand is
+     * computed first, then all of them are placed against the most outward of those demands. The
+     * split is the whole point — a member that reserved its footprint before its neighbours had
+     * been measured would push those neighbours off the shared line, which is exactly the defect
+     * this replaces.
      */
-    private void stackHairpins(
+    private void stackDynamicsGroup(
+        DynamicGrouper.Group group,
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
         LayoutResultBuilder builder) {
 
-        for (var crescendo : line.findSpans(Crescendo.class)) {
-            stackSpanElement(crescendo, crescendo.getContentHeightSs(), HAIRPIN_MARGIN_SS, columnsByElement, builder);
+        var members = group.members();
+
+        if (members.size() == 1) {
+            stackSoloMember(members.getFirst(), line, columnsByElement, builder);
+            return;
         }
 
-        for (var diminuendo : line.findSpans(Diminuendo.class)) {
-            stackSpanElement(diminuendo, diminuendo.getContentHeightSs(), HAIRPIN_MARGIN_SS, columnsByElement, builder);
+        // Pass 1: resolve each member's footprint and the reference line it would demand alone,
+        // reserving nothing.
+        var placements = new ArrayList<DynamicPlacement>(members.size());
+        var groupReferenceYSs = Double.POSITIVE_INFINITY;
+
+        for (var member : members) {
+            var placement = resolvePlacement(member, line, columnsByElement);
+
+            if (placement == null) {
+                continue;
+            }
+
+            placements.add(placement);
+            // All dynamics sit above the staff, so the most outward demand is the smallest Y.
+            groupReferenceYSs = Math.min(groupReferenceYSs, placement.referenceYSs());
         }
+
+        // Pass 2: place and reserve left to right, each member's inner edge derived from the
+        // shared line by inverting the relation pass 1 used to compute its demand.
+        for (var placement : placements) {
+            var widthSs = placement.widthSs();
+
+            StackingUtils.placeAtInnerEdge(Direction.UP, structuralExtents, placement.element(),
+                placement.xSs(), widthSs, placement.heightSs(),
+                groupReferenceYSs + placement.innerEdgeOffsetSs(),
+                StaffExtents.Profile.flat(widthSs), placement.marginSs(), builder);
+        }
+    }
+
+    /**
+     * Places a group of one, which shares its line with nothing and so needs neither of the two
+     * passes: a lone hairpin stacks at its anchored ceiling and a lone text dynamic at its clamped
+     * support, exactly as each did before grouping existed.
+     */
+    private void stackSoloMember(
+        DynamicGrouper.Member member,
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        LayoutResultBuilder builder) {
+
+        if (member instanceof DynamicGrouper.Member.OfHairpin hairpinMember) {
+            stackHairpin(hairpinMember.hairpin(), line, columnsByElement, builder);
+        } else if (member instanceof DynamicGrouper.Member.OfDynamic dynamicMember) {
+            var column = columnsByElement.get(line.getElement(dynamicMember.elementIndex()));
+
+            if (column != null) {
+                stackTextDynamics(column, builder);
+            }
+        }
+    }
+
+    /**
+     * Resolves a group member's footprint and the reference line it demands on its own, or
+     * {@code null} when the member has no geometry in this line (an endpoint that resolves to no
+     * column). Reserves nothing.
+     */
+    private @Nullable DynamicPlacement resolvePlacement(
+        DynamicGrouper.Member member,
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement) {
+
+        if (member instanceof DynamicGrouper.Member.OfHairpin hairpinMember) {
+            return resolveHairpinPlacement(hairpinMember.hairpin(), line, columnsByElement);
+        }
+
+        if (member instanceof DynamicGrouper.Member.OfDynamic dynamicMember) {
+            var column = columnsByElement.get(line.getElement(dynamicMember.elementIndex()));
+
+            if (column == null) {
+                return null;
+            }
+
+            return resolveDynamicPlacement(dynamicMember.dynamic(), column);
+        }
+
+        return null;
+    }
+
+    /**
+     * A hairpin's placement. LilyPond centers the wedge's full Y-extent on the group's line
+     * ({@code Hairpin.self-alignment-Y} is {@code CENTER}), so its inner edge — the bottom, above
+     * the staff — sits half its height below the line.
+     */
+    private @Nullable DynamicPlacement resolveHairpinPlacement(
+        Hairpin hairpin,
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement) {
+
+        var endpoints = HairpinEndpoints.compute(hairpin, line, columnsByElement);
+
+        if (endpoints == null) {
+            return null;
+        }
+
+        var xSs = endpoints.x1Ss();
+        var widthSs = endpoints.widthSs();
+        var heightSs = hairpin.getContentHeightSs();
+        var innerEdgeOffsetSs = heightSs / 2;
+        var innerEdgeYSs = StackingUtils.anchoredInnerEdgeYSs(Direction.UP, structuralExtents,
+            xSs, widthSs, HAIRPIN_MARGIN_SS, endpoints.spanColumns().anchor().getStaffPosition());
+
+        return new DynamicPlacement(hairpin, xSs, widthSs, heightSs, HAIRPIN_MARGIN_SS,
+            innerEdgeOffsetSs, innerEdgeYSs - innerEdgeOffsetSs);
+    }
+
+    /**
+     * A text dynamic's placement. Unlike a hairpin, the glyph is not centered on the group's line:
+     * LilyPond drops its baseline {@link #DYNAMIC_TEXT_BASELINE_OFFSET_SS} below it, so the
+     * x-height center rather than the bounding-box center lands on the line. Its inner edge — the
+     * glyph's bottom — is therefore that drop plus however far the ink descends past the baseline.
+     */
+    private DynamicPlacement resolveDynamicPlacement(
+        DynamicAttachment dynamic, ElementColumn column) {
+
+        var xSs = HairpinEndpoints.dynamicLeftEdgeSs(column, dynamic);
+        var widthSs = HairpinEndpoints.dynamicWidthSs(dynamic);
+        var innerEdgeOffsetSs = DYNAMIC_TEXT_BASELINE_OFFSET_SS + dynamic.getContentBottomSs();
+        var innerEdgeYSs = StackingUtils.clampedInnerEdgeYSs(Direction.UP, structuralExtents,
+            xSs, StaffExtents.Profile.flat(widthSs),
+            NoteAttachedStacker.DYNAMIC_PADDING_SS, NoteAttachedStacker.DYNAMIC_STAFF_PADDING_SS,
+            StackingUtils.STRUCTURAL_HORIZONTAL_MARGIN_SS);
+
+        return new DynamicPlacement(dynamic, xSs, widthSs, dynamic.getContentHeightSs(),
+            NoteAttachedStacker.DYNAMIC_PADDING_SS, innerEdgeOffsetSs,
+            innerEdgeYSs - innerEdgeOffsetSs);
+    }
+
+    /**
+     * One group member resolved for placement.
+     * <p>
+     * {@code innerEdgeOffsetSs} is what makes the two member kinds interchangeable in the passes:
+     * it is how far the member's inner edge sits below the group's reference line, so pass 1 reads
+     * {@code referenceYSs = innerEdgeYSs - innerEdgeOffsetSs} and pass 2 inverts it. Half the
+     * height for a centered hairpin, the baseline drop plus the glyph's descent for a text dynamic.
+     *
+     * @param referenceYSs the reference line this member would demand on its own
+     */
+    private record DynamicPlacement(
+        LineElement element,
+        double xSs, double widthSs, double heightSs, double marginSs,
+        double innerEdgeOffsetSs, double referenceYSs) {
+    }
+
+    /**
+     * Stacks one hairpin. Its horizontal endpoints come from {@link HairpinEndpoints}, not from the
+     * anchor and end column positions the way a tuplet bracket's do: a hairpin's tips are pulled
+     * back from adjacent text dynamics and neighbouring hairpins, so they are not a plain function
+     * of where its two bound columns sit.
+     */
+    private void stackHairpin(
+        Hairpin hairpin,
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        LayoutResultBuilder builder) {
+
+        var endpoints = HairpinEndpoints.compute(hairpin, line, columnsByElement);
+
+        if (endpoints == null) {
+            return;
+        }
+
+        stackAbove(structuralExtents, hairpin,
+            endpoints.x1Ss(), endpoints.widthSs(),
+            hairpin.getContentHeightSs(), HAIRPIN_MARGIN_SS,
+            endpoints.spanColumns().anchor().getStaffPosition(), builder);
     }
 
 
     /**
      * Stacks text dynamics (DynamicAttachment) for the given column.
      * <p>
-     * Positions text dynamics (pp, p, mp, mf, f, ff, sfz, fp) in the structural tier
+     * Positions text dynamics (pp, p, mp, mf, f, ff) in the structural tier
      * using collision detection against previously placed elements.
      */
     private void stackTextDynamics(
@@ -548,9 +737,8 @@ public class StructuralStacker {
             return;
         }
 
-        var contentWidthSs = dynamic.getContentWidthSs();
-        var centeredXSs = column.getXSs()
-            + NoteGeometry.getNoteheadCenterXSs(note) - contentWidthSs / 2.0;
+        var contentWidthSs = HairpinEndpoints.dynamicWidthSs(dynamic);
+        var centeredXSs = HairpinEndpoints.dynamicLeftEdgeSs(column, dynamic);
         StackingUtils.placeAndReserveClamped(Direction.UP, structuralExtents, dynamic,
             centeredXSs, contentWidthSs, dynamic.getContentHeightSs(),
             StaffExtents.Profiles.flat(contentWidthSs),
@@ -618,39 +806,6 @@ public class StructuralStacker {
                 ENDING_MARGIN_SS,
                 staffPosition, builder);
         }
-    }
-
-    /**
-     * Stacks a span element (hairpin, tuplet) that requires both anchor and end notes.
-     * <p>
-     * Resolves anchor/end columns, computes span width via the span,
-     * and delegates to {@link StackingUtils#stackAbove}.
-     */
-    private void stackSpanElement(
-        Span element,
-        double heightSs,
-        double marginSs,
-        Map<StaffElement, ElementColumn> columnsByElement,
-        LayoutResultBuilder builder) {
-
-        var spanColumns = ElementColumn.resolveSpan(element, columnsByElement);
-
-        if (spanColumns == null) {
-            return;
-        }
-
-        var anchor = spanColumns.anchor();
-        var anchorColumn = spanColumns.anchorColumn();
-        var endColumn = spanColumns.endColumn();
-
-        var staffPosition = anchor.getStaffPosition();
-        var anchorXSs = anchorColumn.getXSs();
-        var endXSs = endColumn.getXSs();
-        var widthSs = element.getSpanWidthSs(anchorXSs, endXSs);
-
-        stackAbove(structuralExtents, element, anchorXSs, widthSs,
-            heightSs, marginSs,
-            staffPosition, builder);
     }
 
 }

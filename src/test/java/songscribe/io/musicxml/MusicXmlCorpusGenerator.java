@@ -328,7 +328,7 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
     private static Song songArticulations() {
         var dynamics = List.of(
             DynamicAttachment.DynamicType.PIANISSIMO, DynamicAttachment.DynamicType.MEZZO_FORTE,
-            DynamicAttachment.DynamicType.FORTE, DynamicAttachment.DynamicType.SFORZANDO);
+            DynamicAttachment.DynamicType.FORTE, DynamicAttachment.DynamicType.FORTISSIMO);
 
         return buildSong(
             line -> {

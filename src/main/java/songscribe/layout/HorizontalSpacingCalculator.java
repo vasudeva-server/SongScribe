@@ -28,10 +28,12 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import songscribe.dom.Hairpin;
 import songscribe.dom.KeySignature;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
+import songscribe.dom.Span;
 import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.util.LogUtils;
@@ -294,7 +296,7 @@ public final class HorizontalSpacingCalculator {
      * @return The spring governing the gap between {@code prev} and {@code curr}
      */
     public static Spring buildSpring(ElementColumn prev, ElementColumn curr, double lineRestSs) {
-        return buildSpring(prev, curr, lineRestSs, null, null);
+        return buildSpring(prev, curr, lineRestSs, null, null, null);
     }
 
     /**
@@ -310,6 +312,11 @@ public final class HorizontalSpacingCalculator {
      * @param prev       Previous column
      * @param curr       Current column
      * @param lineRestSs The song's line rest; each base rest is a reducing factor of it
+     * @param line       The line the pair is being spaced on, or {@code null} when the pair is not
+     *                   a pair of that line's own adjacent elements — a paste-position lookup, an
+     *                   insertion preview, or the flush-right terminal. Only the hairpin
+     *                   minimum-length reservation consults it, and only a real line can answer
+     *                   whether a hairpin runs from {@code prev} to {@code curr}.
      * @param beforePrev The column before {@code prev}, or {@code null} at the line start
      * @param afterCurr  The column after {@code curr}, or {@code null} at the line end
      * @return The spring governing the gap between {@code prev} and {@code curr}
@@ -318,6 +325,7 @@ public final class HorizontalSpacingCalculator {
         ElementColumn prev,
         ElementColumn curr,
         double lineRestSs,
+        @Nullable Line line,
         @Nullable ElementColumn beforePrev,
         @Nullable ElementColumn afterCurr) {
 
@@ -328,7 +336,9 @@ public final class HorizontalSpacingCalculator {
                 syllableCollisionFloorSs(prev, curr, beforePrev, afterCurr),
                 Math.max(
                     glissandoReservationFloorSs(prev, curr),
-                    graceCompressionFloorSs(prev, restSs))));
+                    Math.max(
+                        graceCompressionFloorSs(prev, restSs),
+                        hairpinReservationFloorSs(line, prev, curr)))));
 
         // A grace→host gap takes no lyric lift: its ideal is a fixed distance that must not grow
         // with the line's syllables. It still compresses, bounded by the floor above. A tight
@@ -378,8 +388,12 @@ public final class HorizontalSpacingCalculator {
      * With lyrics factored out, that pass reduces to the per-pair tight rests below, which keeps
      * non-lyric beam spacing identical to the old engine.
      *
-     * @param columns List of columns in note order
-     * @param line    The line containing these columns; reserved for line-scoped spacing context
+     * @param columns List of columns in note order. These need not be the line's own elements in
+     *                the line's own order — an insertion preview splices a not-yet-added column in
+     *                — so any line-scoped floor must key off the pair's elements rather than off
+     *                their position in this list.
+     * @param line    The line containing these columns; supplies the line rest and the line-scoped
+     *                spacing context
      * @return Springs for gaps {@code (i, i+1)}, in column order
      */
     public static List<Spring> buildSprings(List<ElementColumn> columns, Line line) {
@@ -389,7 +403,8 @@ public final class HorizontalSpacingCalculator {
         for (var i = 1; i < columns.size(); i++) {
             var beforePrev = i >= 2 ? columns.get(i - 2) : null;
             var afterCurr = i + 1 < columns.size() ? columns.get(i + 1) : null;
-            springs.add(buildSpring(columns.get(i - 1), columns.get(i), lineRestSs, beforePrev, afterCurr));
+            springs.add(
+                buildSpring(columns.get(i - 1), columns.get(i), lineRestSs, line, beforePrev, afterCurr));
         }
 
         return springs;
@@ -992,6 +1007,42 @@ public final class HorizontalSpacingCalculator {
         return rightExtentFacingSs(prev, curr)
             - curr.getLeftExtentSs()
             + NoteGeometry.MIN_GLISSANDO_RESERVATION_SS;
+    }
+
+    /**
+     * Returns the delta-X a hairpin needs to reach {@link Hairpin#MINIMUM_LENGTH_SS}, or 0 when no
+     * hairpin on {@code line} runs from {@code prev}'s element to {@code curr}'s. The hairpin is
+     * drawn from {@code prev}'s origin to {@code curr}'s origin plus {@code curr}'s notehead width,
+     * so a drawn length of at least {@code MINIMUM_LENGTH_SS} requires an origin-to-origin delta of
+     * at least {@code MINIMUM_LENGTH_SS - noteheadWidth}.
+     * <p>
+     * The question is asked about the two <em>elements</em> being spaced, not about their position
+     * in the column list. That distinction is the whole point: an insertion preview splices a
+     * not-yet-added column between a hairpin's anchor and its end, and a column caching "a hairpin
+     * ends at whatever follows me" would then reserve the wedge's length against the newly typed
+     * note instead. An element the line does not contain resolves to index -1, which no resolved
+     * span bound ever equals, so such a pair correctly reserves nothing.
+     * <p>
+     * This only constrains a hairpin whose anchor and end are adjacent columns. LilyPond's spacing
+     * rod spans the whole interval; SongScribe's {@link Spring} model has only per-pair struts. This
+     * is not a meaningful gap — 69% of corpus hairpins span exactly two adjacent notes, and every
+     * longer one is already wider than {@code MINIMUM_LENGTH_SS}.
+     */
+    private static double hairpinReservationFloorSs(
+        @Nullable Line line, ElementColumn prev, ElementColumn curr) {
+
+        if (line == null) {
+            return 0;
+        }
+
+        var anchorIndex = line.getElementIndex(prev.getElement());
+        var endIndex = line.getElementIndex(curr.getElement());
+
+        if (!line.hasSpan(Hairpin.class, Span.exactly(anchorIndex, endIndex))) {
+            return 0;
+        }
+
+        return Hairpin.MINIMUM_LENGTH_SS - curr.getNoteheadWidthSs();
     }
 
     // ==========================================================================

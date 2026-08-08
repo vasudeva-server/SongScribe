@@ -76,7 +76,7 @@ class HairpinTest extends UnitTest {
         @Test
         void testGetSpanWidthSsClampedToMinimumWhenGeometryIsTooNarrow() {
             // anchorX == endX => geometry = NOTE_HEAD_WIDTH_SS, which is less than
-            // HAIRPIN_OPENING_HEIGHT_SS (1.25), so the clamp applies.
+            // HAIRPIN_OPENING_HEIGHT_SS, so the clamp applies.
             var anchor = new StaffElement(ElementType.CROTCHET);
             var end = new StaffElement(ElementType.CROTCHET);
             var hairpin = createHairpin(anchor, end);

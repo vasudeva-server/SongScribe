@@ -669,7 +669,7 @@ public class NoteAttachedStacker {
     private static double articulationFootprintXSs(
         StaffElement note, double columnXSs, double widthSs) {
 
-        return columnXSs + NoteGeometry.getNoteheadCenterXSs(note) - widthSs / 2.0;
+        return NoteGeometry.centeredOverNoteheadXSs(note, columnXSs, widthSs);
     }
 
     /**

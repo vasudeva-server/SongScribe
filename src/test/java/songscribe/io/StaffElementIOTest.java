@@ -388,9 +388,10 @@ class StaffElementIOTest extends UnitTest {
             assertThat(dynamic.getType()).isEqualTo(DynamicType.FORTE);
         }
 
-        // T32: Round-trip preserves dynamic type for all UI types, including SFORZANDO
+        // T32: Round-trip preserves dynamic type for every supported type. Enumerated rather than
+        // listed by name so a newly added type is covered without editing this annotation.
         @ParameterizedTest
-        @EnumSource(value = DynamicType.class, names = {"PIANISSIMO", "PIANO", "MEZZO_PIANO", "MEZZO_FORTE", "FORTE", "FORTISSIMO", "SFORZANDO", "FORTEPIANO"})
+        @EnumSource(DynamicType.class)
         void testRoundTripPreservesDynamicType(DynamicType dynamicType) throws Exception {
             var comp1 = parseXml(buildXmlWithDynamic(dynamicType.name()));
             var comp2 = legacyRoundTrip(comp1);

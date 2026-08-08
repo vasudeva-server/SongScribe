@@ -89,7 +89,7 @@ public final class TupletRenderer {
         for (var tuplet : line.findSpans(Tuplet.class)) {
             var decorLayout = layoutResult.getDecorationLayout(tuplet);
 
-            // StructuralStacker.stackSpanElement writes no layout for a tuplet whose
+            // StructuralStacker.stackTuplets writes no layout for a tuplet whose
             // anchor/end note (or their column) is missing. This loop iterates the same
             // model collection, so a null layout here is an expected incomplete tuplet — skip it.
             if (decorLayout == null) {

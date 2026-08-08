@@ -74,12 +74,7 @@ public final class DynamicMarkingRenderer implements ElementRenderer<StaffElemen
             return;
         }
 
-        var dynamicType = attachment.getType();
-        var glyph = dynamicType.getGlyph();
-
-        if (glyph == null) {
-            return;
-        }
+        var glyph = attachment.getType().getGlyph();
 
         LayoutResult layoutResult;
 

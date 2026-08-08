@@ -676,6 +676,22 @@ public final class NoteGeometry {
     }
 
     /**
+     * Returns the absolute X of the left edge of a {@code widthSs}-wide glyph centerd over
+     * {@code note}'s notehead — an articulation, a text dynamic, anything drawn over the head.
+     * <p>
+     * This is the one place the centering is expressed, so a dynamic and an articulation over the
+     * same note can never drift apart: change the rule here and both move together.
+     *
+     * @param note      the note the glyph sits over
+     * @param columnXSs the absolute X of the note's column
+     * @param widthSs   the glyph's width in staff spaces
+     * @return the glyph's absolute left edge in staff spaces
+     */
+    public static double centeredOverNoteheadXSs(StaffElement note, double columnXSs, double widthSs) {
+        return columnXSs + getNoteheadCenterXSs(note) - widthSs / 2.0;
+    }
+
+    /**
      * Returns the X origin for a grace note's flag glyph, given the stem's left edge X
      * (both in staff spaces). SMuFL flag glyphs anchor at the stem's left edge, but the
      * scaled grace glyph's internal stem connection is only {@link ElementType#GRACE_NOTE_SCALE}

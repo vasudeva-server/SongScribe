@@ -341,6 +341,12 @@ public final class StackingUtils {
      * element's already-computed inner edge (nearest the staff), positions the element outward
      * from it by {@code heightSs}, reserves {@code reserveProfile} along its outer edge, and writes
      * the decoration layout.
+     * <p>
+     * {@code innerEdgeYSs} need not be the edge this element would demand on its own: a caller
+     * placing several elements on one shared baseline — {@link DynamicGrouper}'s hairpin/text
+     * dynamic groups — computes one Y for the whole group and then derives each member's inner
+     * edge from it. That is precisely why the inner edge is a parameter here rather than being
+     * recomputed inside.
      *
      * @param innerEdgeYSs        the element's inner edge in staff-space units (bottom above,
      *                            top below)
@@ -350,7 +356,7 @@ public final class StackingUtils {
      *                            LayoutResult.DecorationLayout}
      * @return the element's outer Y in staff-space units (top above, bottom below)
      */
-    private static double placeAtInnerEdge(
+    static double placeAtInnerEdge(
         Direction direction,
         StaffExtents extents,
         LineElement element,
@@ -415,30 +421,46 @@ public final class StackingUtils {
         double paddingSs, double staffPaddingSs, double horizonPaddingSs,
         LayoutResultBuilder builder) {
 
+        var innerEdgeYSs = clampedInnerEdgeYSs(direction, extents, xSs, profiles.inner(),
+            paddingSs, staffPaddingSs, horizonPaddingSs);
+
+        return placeAtInnerEdge(direction, extents, element, xSs, widthSs, heightSs,
+            innerEdgeYSs, profiles.outer(), paddingSs, builder);
+    }
+
+    /**
+     * The inner edge {@link #placeAndReserveClamped} would compute for this footprint, without
+     * placing or reserving anything.
+     * <p>
+     * Split out so a caller that must know an element's unaided demand before deciding where to
+     * put it — {@link DynamicGrouper}'s shared-baseline pass, which asks every member of a group
+     * what it wants before placing any of them — reads it from here rather than repeating the
+     * support/staff-clamp arithmetic.
+     *
+     * @param innerProfile the element's inner edge, {@link StaffExtents.Profiles#inner()}
+     * @return the element's inner edge in staff-space units (bottom above, top below)
+     */
+    static double clampedInnerEdgeYSs(
+        Direction direction,
+        StaffExtents extents,
+        double xSs, StaffExtents.Profile innerProfile,
+        double paddingSs, double staffPaddingSs, double horizonPaddingSs) {
+
         var above = direction.isUp();
-        var support = extents.clearance(above, xSs, profiles.inner(), paddingSs, horizonPaddingSs);
+        var support = extents.clearance(above, xSs, innerProfile, paddingSs, horizonPaddingSs);
         // The staff clamp pads to the staff line's ink edge, not its centerline — padding is
         // ink-to-ink (see STAFF_TOP_INK_Y_SS).
         var staffEdgeYSs = above ? STAFF_TOP_INK_Y_SS : STAFF_BOT_INK_Y_SS;
 
         // The element's inner edge (nearest the staff): the more-outward of the support's demand and
         // staffEdge ∓ staffPadding. Above, "more outward" is the smaller Y; below, the larger.
-        double innerEdgeYSs;
-
         if (above) {
             var staffInnerYSs = staffEdgeYSs - staffPaddingSs;
-            innerEdgeYSs = support.present()
-                ? Math.min(support.ySs(), staffInnerYSs)
-                : staffInnerYSs;
-        } else {
-            var staffInnerYSs = staffEdgeYSs + staffPaddingSs;
-            innerEdgeYSs = support.present()
-                ? Math.max(support.ySs(), staffInnerYSs)
-                : staffInnerYSs;
+            return support.present() ? Math.min(support.ySs(), staffInnerYSs) : staffInnerYSs;
         }
 
-        return placeAtInnerEdge(direction, extents, element, xSs, widthSs, heightSs,
-            innerEdgeYSs, profiles.outer(), paddingSs, builder);
+        var staffInnerYSs = staffEdgeYSs + staffPaddingSs;
+        return support.present() ? Math.max(support.ySs(), staffInnerYSs) : staffInnerYSs;
     }
 
     /**
@@ -454,25 +476,35 @@ public final class StackingUtils {
         int staffPosition,
         LayoutResultBuilder builder) {
 
-        var anchorSs = direction.isUp() ? anchorCeilingSs(staffPosition) : anchorFloorSs(staffPosition);
-        return stackAtAnchor(direction, extents, element, xSs, widthSs, heightSs, marginSs,
-            anchorSs, builder);
+        var innerEdgeYSs =
+            anchoredInnerEdgeYSs(direction, extents, xSs, widthSs, marginSs, staffPosition);
+
+        return placeAtInnerEdge(direction, extents, element, xSs, widthSs, heightSs,
+            innerEdgeYSs, StaffExtents.Profile.flat(widthSs), marginSs, builder);
     }
 
-    private static double stackAtAnchor(
+    /**
+     * The inner edge {@link #stackAtAnchor} would compute for this footprint, without placing or
+     * reserving anything: the more-outward of the anchored ceiling/floor and whatever the extents
+     * already hold under the footprint, moved one {@code marginSs} further out.
+     * <p>
+     * Split out for the same reason as {@link #clampedInnerEdgeYSs} — {@link DynamicGrouper} needs
+     * each group member's unaided demand before it places any of them.
+     *
+     * @return the element's inner edge in staff-space units (bottom above, top below)
+     */
+    static double anchoredInnerEdgeYSs(
         Direction direction,
         StaffExtents extents,
-        LineElement element,
-        double xSs, double widthSs, double heightSs, double marginSs,
-        double anchorSs,
-        LayoutResultBuilder builder) {
+        double xSs, double widthSs, double marginSs,
+        int staffPosition) {
 
         var above = direction.isUp();
+        var anchorSs = above ? anchorCeilingSs(staffPosition) : anchorFloorSs(staffPosition);
         var currentSs = yGetExpanded(extents, above, xSs, widthSs);
         var boundSs = above ? Math.min(currentSs, anchorSs) : Math.max(currentSs, anchorSs);
 
-        return placeAndReserve(direction, extents, element, xSs, widthSs, heightSs, boundSs,
-            marginSs, builder);
+        return above ? boundSs - marginSs : boundSs + marginSs;
     }
 
     private static double stackAtCenter(

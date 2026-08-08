@@ -32,7 +32,9 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.dom.Crescendo;
 import songscribe.dom.ElementType;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -575,7 +577,151 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     }
 
     // ==========================================================================
-    // Grace–host lyric union struts (5-arg buildSpring, neighbour-aware)
+    // Hairpin minimum-length reservation floor (#510)
+    // ==========================================================================
+
+    /** A prev right extent narrow enough that the note-collision floor stays under the hairpin floor. */
+    private static final double NARROW_ANCHOR_RIGHT_EXTENT_SS = 0.3;
+
+    /**
+     * The end note's notehead width. Deliberately non-zero and different from every other width in
+     * this fixture: the floor is {@code MINIMUM_LENGTH_SS − noteheadWidth}, so a zero width would
+     * make the subtraction contribute nothing and the assertions would hold even if the production
+     * code dropped that term or applied it to the wrong column.
+     */
+    private static final double END_NOTEHEAD_WIDTH_SS = 0.4;
+
+    /** Wider than the whole minimum drawn length, so the floor it yields is negative. */
+    private static final double OVERWIDE_END_NOTEHEAD_WIDTH_SS = Hairpin.MINIMUM_LENGTH_SS + 1.0;
+
+    // The note-collision floor for the pair below: prev's right extent plus the minimum column gap,
+    // curr's left extent being zero.
+    private static final double NARROW_PAIR_COLLISION_FLOOR_SS =
+        NARROW_ANCHOR_RIGHT_EXTENT_SS + HorizontalSpacingCalculator.MIN_COLUMN_GAP_SS;
+
+    /** A two-element line with its columns, so the floor is asked about elements the line contains. */
+    private record HairpinFixture(Line line, ElementColumn anchorColumn, ElementColumn endColumn) {}
+
+    private static ElementColumn columnFor(
+        StaffElement element, double leftExtentSs, double rightExtentSs) {
+
+        return new ElementColumn(
+            element, Collections.emptyList(), leftExtentSs, rightExtentSs, 0.0, 0.0, null, 0.0, false);
+    }
+
+    /**
+     * Builds a two-crotchet line, optionally with a crescendo spanning both, plus the columns for
+     * those two elements. The columns wrap the line's own elements, which is what lets the spacing
+     * floor resolve the pair back to the hairpin.
+     */
+    private static HairpinFixture hairpinFixture(boolean withHairpin, double endNoteheadWidthSs) {
+        var line = detachedLine();
+        var anchor = ElementType.CROTCHET.newInstance();
+        var end = ElementType.CROTCHET.newInstance();
+        line.addElement(anchor);
+        line.addElement(end);
+
+        if (withHairpin) {
+            line.addSpan(new Crescendo(anchor, end));
+        }
+
+        var endColumn = columnFor(end, NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS);
+        endColumn.setNoteheadWidthSs(endNoteheadWidthSs);
+
+        return new HairpinFixture(
+            line, columnFor(anchor, NO_LEFT_EXTENT_SS, NARROW_ANCHOR_RIGHT_EXTENT_SS), endColumn);
+    }
+
+    private static Spring hairpinSpring(HairpinFixture fixture, ElementColumn currColumn) {
+        return HorizontalSpacingCalculator.buildSpring(
+            fixture.anchorColumn(), currColumn, DEFAULT_LINE_REST_SS, fixture.line(), null, null);
+    }
+
+    @Test
+    void testBuildSpringReservesTheHairpinMinimumLengthLessTheEndNoteheadWidth() {
+        var fixture = hairpinFixture(true, END_NOTEHEAD_WIDTH_SS);
+
+        var spring = hairpinSpring(fixture, fixture.endColumn());
+
+        var expectedFloorSs = Hairpin.MINIMUM_LENGTH_SS - END_NOTEHEAD_WIDTH_SS;
+        // Guard the fixture: the hairpin floor must actually exceed the note-collision floor, or the
+        // equality below would pass even with the reservation missing.
+        assertThat(expectedFloorSs).isGreaterThan(NARROW_PAIR_COLLISION_FLOOR_SS);
+
+        assertThat(spring.strutSs()).isCloseTo(expectedFloorSs, within(TOLERANCE));
+    }
+
+    @Test
+    void testBuildSpringIgnoresTheHairpinFloorWhenTheLineHasNoHairpin() {
+        var fixture = hairpinFixture(false, END_NOTEHEAD_WIDTH_SS);
+
+        var spring = hairpinSpring(fixture, fixture.endColumn());
+
+        assertThat(spring.strutSs()).isCloseTo(NARROW_PAIR_COLLISION_FLOOR_SS, within(TOLERANCE));
+        assertThat(spring.strutSs())
+            .as("with no hairpin on the line, the gap must not reserve the hairpin minimum length")
+            .isLessThan(Hairpin.MINIMUM_LENGTH_SS - END_NOTEHEAD_WIDTH_SS);
+    }
+
+    @Test
+    void testBuildSpringIgnoresTheHairpinFloorWhenNoLineIsSupplied() {
+        var fixture = hairpinFixture(true, END_NOTEHEAD_WIDTH_SS);
+
+        // A paste-position lookup or a flush-right terminal spaces a pair with no line to ask.
+        var spring = HorizontalSpacingCalculator.buildSpring(
+            fixture.anchorColumn(), fixture.endColumn(), DEFAULT_LINE_REST_SS);
+
+        assertThat(spring.strutSs()).isCloseTo(NARROW_PAIR_COLLISION_FLOOR_SS, within(TOLERANCE));
+    }
+
+    // #510: the reservation belongs to the gap between a hairpin's own two elements, not to
+    // "whatever column happens to follow the anchor". An insertion preview splices a not-yet-added
+    // column between the two, and reserving the wedge's length against that new note would both
+    // widen the wrong gap and mis-answer the line-fit check.
+    @Test
+    void testBuildSpringIgnoresTheHairpinFloorWhenTheFollowingColumnIsNotTheHairpinsEnd() {
+        var fixture = hairpinFixture(true, END_NOTEHEAD_WIDTH_SS);
+        var insertedColumn = columnFor(
+            ElementType.CROTCHET.newInstance(), NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS);
+        insertedColumn.setNoteheadWidthSs(END_NOTEHEAD_WIDTH_SS);
+
+        var spring = hairpinSpring(fixture, insertedColumn);
+
+        assertThat(spring.strutSs())
+            .as("a column the line does not contain must not inherit the hairpin's reservation")
+            .isCloseTo(NARROW_PAIR_COLLISION_FLOOR_SS, within(TOLERANCE));
+    }
+
+    @Test
+    void testBuildSpringLetsOtherFloorsWinWhenTheEndNoteheadOutgrowsTheHairpinMinimum() {
+        var fixture = hairpinFixture(true, OVERWIDE_END_NOTEHEAD_WIDTH_SS);
+
+        var spring = hairpinSpring(fixture, fixture.endColumn());
+
+        // The hairpin floor goes negative here, which must simply lose to the collision floor
+        // rather than pulling the strut below it.
+        assertThat(Hairpin.MINIMUM_LENGTH_SS - OVERWIDE_END_NOTEHEAD_WIDTH_SS).isNegative();
+        assertThat(spring.strutSs()).isCloseTo(NARROW_PAIR_COLLISION_FLOOR_SS, within(TOLERANCE));
+    }
+
+    /**
+     * A neighbour-aware spring on a pair with no line context. The grace and lyric-union cases
+     * below turn on the outer neighbours alone, so they pass no line; only the hairpin
+     * minimum-length floor above reads one.
+     */
+    private static Spring springWithNeighbours(
+        ElementColumn prev,
+        ElementColumn curr,
+        double lineRestSs,
+        @Nullable ElementColumn beforePrev,
+        @Nullable ElementColumn afterCurr) {
+
+        return HorizontalSpacingCalculator.buildSpring(
+            prev, curr, lineRestSs, null, beforePrev, afterCurr);
+    }
+
+    // ==========================================================================
+    // Grace–host lyric union struts (neighbour-aware buildSpring)
     // ==========================================================================
 
     // Bug 1 regression: a wide grace lyric must NOT inflate the grace→host strut. The grace defers
@@ -587,7 +733,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         var host = plainColumn();
         var afterHost = plainColumn();
 
-        var spring = HorizontalSpacingCalculator.buildSpring(
+        var spring = springWithNeighbours(
             grace, host, DEFAULT_LINE_REST_SS, null, afterHost);
 
         var expectedRestSs = GRACE_RIGHT_EXTENT_SS + GRACE_HOST_REST_SS;
@@ -609,7 +755,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         var host = plainColumn();
         var next = plainColumn();
 
-        var spring = HorizontalSpacingCalculator.buildSpring(
+        var spring = springWithNeighbours(
             host, next, DEFAULT_LINE_REST_SS, grace, null);
 
         var expectedStrutSs = WIDE_GRACE_HOST_RIGHT_EXTENT_SS + SPACE_COLLISION_GAP_SS;
@@ -629,9 +775,9 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         var host = plainColumn();
         var next = plainColumn();
 
-        var graceToHost = HorizontalSpacingCalculator.buildSpring(
+        var graceToHost = springWithNeighbours(
             grace, host, DEFAULT_LINE_REST_SS, null, next);
-        var hostToNext = HorizontalSpacingCalculator.buildSpring(
+        var hostToNext = springWithNeighbours(
             host, next, DEFAULT_LINE_REST_SS, grace, null);
 
         assertThat(graceToHost.strutSs()).isCloseTo(
@@ -655,7 +801,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         assertThat(MELISMA_SPILL_SYLLABLE_WIDTH_SS).isLessThan(UNION_WIDTH_SS);
         assertThat(MELISMA_SPILL_CONTENT_WIDTH_SS).isGreaterThan(UNION_WIDTH_SS);
 
-        var spring = HorizontalSpacingCalculator.buildSpring(
+        var spring = springWithNeighbours(
             host, next, DEFAULT_LINE_REST_SS, grace, null);
 
         // Syllable and melisma are centered on the union, so the melisma ends as far past the union's
@@ -678,9 +824,9 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         var host = plainColumn();
         var next = plainColumn();
 
-        var spring = HorizontalSpacingCalculator.buildSpring(
+        var spring = springWithNeighbours(
             host, next, DEFAULT_LINE_REST_SS, grace, null);
-        var melismaSpring = HorizontalSpacingCalculator.buildSpring(
+        var melismaSpring = springWithNeighbours(
             melismaHostColumn(), next, DEFAULT_LINE_REST_SS,
             melismaGraceColumn(MELISMA_SPILL_SYLLABLE_WIDTH_SS), null);
 
@@ -698,11 +844,11 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     void testBuildSpringReservesTheMelismaTailWhicheverVerseTheColumnsCarry() {
         var next = plainColumn();
 
-        var firstVerseSpring = HorizontalSpacingCalculator.buildSpring(
+        var firstVerseSpring = springWithNeighbours(
             melismaHostColumn(Lyric.FIRST_VERSE), next, DEFAULT_LINE_REST_SS,
             melismaGraceColumn(MELISMA_SPILL_SYLLABLE_WIDTH_SS, Lyric.FIRST_VERSE), null);
 
-        var laterVerseSpring = HorizontalSpacingCalculator.buildSpring(
+        var laterVerseSpring = springWithNeighbours(
             melismaHostColumn(LATER_VERSE), next, DEFAULT_LINE_REST_SS,
             melismaGraceColumn(MELISMA_SPILL_SYLLABLE_WIDTH_SS, LATER_VERSE), null);
 
@@ -723,7 +869,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         var host = melismaHostColumn();
         var next = plainColumn();
 
-        var spring = HorizontalSpacingCalculator.buildSpring(
+        var spring = springWithNeighbours(
             host, next, DEFAULT_LINE_REST_SS, grace, null);
 
         var expectedStrutSs = WIDE_GRACE_HOST_RIGHT_EXTENT_SS + SPACE_COLLISION_GAP_SS;
