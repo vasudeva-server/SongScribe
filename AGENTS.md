@@ -45,3 +45,4 @@ When spawning a fresh subagent (with `subagent_type`) for Java work, include in 
 - **Creating a new singleton class**: [Singletons](.agents/guides/singletons.md).
 - **SMuFL glyph names, codepoints, or ranges**: look up at `https://w3c.github.io/smufl/latest/index.html?search=<search terms>`.
 - **LilyPond source**: If the user mentions LilyPond source, it is found at ~/Developer/projects/lilypond/lily/.
+- **ABC corpus**: If the user mentions the ABC corpus, it is the .abc files in the numbered directories in ~/Documents/Centre/Music/SongScribe\ songs/ABC. 
