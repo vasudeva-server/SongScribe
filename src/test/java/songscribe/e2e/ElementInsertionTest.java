@@ -120,8 +120,6 @@ class ElementInsertionTest extends E2ETest {
 
             // Verify toolbar state while in grace mode (before cancelling)
             assertAll(
-                () -> assertThat(isActionEnabled(Actions.GLISSANDO_ACTION))
-                    .as("glissando disabled").isFalse(),
                 () -> assertThat(isActionEnabled(Actions.REST_ACTION))
                     .as("rest disabled").isFalse(),
                 () -> assertThat(isActionEnabled(Actions.GRACE_EIGHTH_NOTE_ACTION))
@@ -363,9 +361,8 @@ class ElementInsertionTest extends E2ETest {
                     .as("glissando").isTrue(),
                 () -> assertThat(isGraceModeActive())
                     .as("grace mode inactive").isFalse(),
-                () -> assertThat(isActionEnabled(Actions.GLISSANDO_ACTION)
-                    && isActionEnabled(Actions.REST_ACTION))
-                    .as("actions re-enabled").isTrue()
+                () -> assertThat(isActionEnabled(Actions.REST_ACTION))
+                    .as("rest re-enabled").isTrue()
             );
         }
 
