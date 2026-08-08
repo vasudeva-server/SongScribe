@@ -37,7 +37,6 @@ import songscribe.util.LogUtils;
  *
  * <pre>
  *  SIGN CONVENTION
- *  ───────────────
  *  LayoutEngine (SongScribe space)  : ss, Y-DOWN positive, y=0 = middle staff line
  *  BeamScoring  (LilyPond space)    : ss, Y-UP   positive, y=0 = middle staff line
  *

@@ -69,18 +69,11 @@ import songscribe.util.UIUtils;
  * around the hook so that whatever outermost modification bracket opens
  * <em>synchronously</em> during dispatch captures that name.
  *
- * <pre>
- * actionPerformed(e)  // final template                            ┐
- *   ├─ UndoController.setPendingOpName(getUndoOpName())            │
- *   │                                                              │ dispatch
- *   ├─ performAction(e)  // subclass hook                          │ window
- *   │     └─ …edit… → song.withModification(() -> {                │
- *   │            depth 0 → 1: capturedOpName = pending op-name     │  bracket
- *   │            applyChange(mutation, mutator)                    │  captures
- *   │        })  // bracket closes → SongDidChangeNotification     │  the name
- *   │                                                              │
- *   └─ finally: UndoController.setPendingOpName(priorOpName)  ─────┘  restore
- * </pre>
+ * <p>The template sets the pending op-name from {@link #getUndoOpName()}, calls
+ * {@link #performAction(ActionEvent)}, and restores the prior pending name in a {@code finally}.
+ * Any modification bracket the hook opens within that dispatch window captures the pending name as
+ * it goes from depth 0 to depth 1, and posts it with the {@code SongDidChangeNotification} when the
+ * bracket closes.
  *
  * <p>Capture works only for brackets opened on the synchronous dispatch stack (modal
  * dialogs block, so they qualify). A bracket opened off-stack ({@code invokeLater},

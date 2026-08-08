@@ -33,16 +33,8 @@ import module java.desktop;
  * <p>
  * {@code slur_shape} control points — P1 = (indent, height), P2 = (width − indent, height) —
  * bow the outer curve away from the baseline, with the inner curve offset back toward it to
- * form the tapered lens:
- *
- * <pre>
- *   start                                              end
- *     ╭──indent──┤  height  ├──indent──╮
- *     ●╲          outer(P1)  outer(P2)  ╱●
- *       ╲________________________________╱
- *        ╲       inner(P1)  inner(P2)   ╱
- *         ╰────────────────────────────╯
- * </pre>
+ * form the tapered lens. Both curves share the start and end points, so the lens closes to a
+ * point at each end.
  */
 public final class BezierBow {
 
@@ -86,16 +78,9 @@ public final class BezierBow {
     /**
      * Builds the filled bow lens from its cubic Bézier control points: an outer curve
      * (start → end) and a reversed inner curve (end → start), sharing start/end points. The
-     * shared endpoints create the natural tapering at the ends.
-     * <p>
-     * Control-point layout:
-     *
-     * <pre>
-     *   start ↗                       ↖ end
-     *        ╭────outer(cp1,cp2)──────╮
-     *        │                        │
-     *        ╰────inner(cp1,cp2)──────╯
-     * </pre>
+     * shared endpoints create the natural tapering at the ends. The outer curve's two control
+     * points bow the lens away from the chord; the inner curve's two bow it back, less far, so the
+     * two meet at the shared start and end points.
      *
      * @param startX    outer curve start x
      * @param startY    outer curve start y

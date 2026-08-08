@@ -56,7 +56,7 @@ import songscribe.hit.HitTarget;
  *
  * <pre>
  *   LAYOUT SOURCE                                 TARGET                    PRIORITY
- *   ───────────────────────────────────────       ─────────────────────     ──────────
+ *
  *   Line elements + element columns          ──▶  Element                   ELEMENT
  *     (via ElementHitGeometry, expanded)
  *   LayoutResult.getLyricBoxes               ──▶  Lyric                     LYRIC

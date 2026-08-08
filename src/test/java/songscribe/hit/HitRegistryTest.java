@@ -36,18 +36,10 @@ import static org.assertj.core.api.Assertions.assertThat;
  * ties broken by smallest bounding-box area, hover queries restricted to the regions
  * that opted in, and unordered rectangle intersection.
  *
- * <p>Geometry is three concentric squares in layout space, so every region containing a
- * point also contains the smaller ones inside it:
- *
- * <pre>
- *   ┌──────────────────── outer ──────────────────┐
- *   │            ┌────── middle ──────┐           │
- *   │            │      ┌─ inner ─┐   │           │
- *   │            │      │    ✱    │   │  ✱ ✱      │
- *   │            │      └─────────┘   │           │
- *   │            └────────────────────┘           │
- *   └─────────────────────────────────────────────┘
- * </pre>
+ * <p>Geometry is three nested squares in layout space — inner inside middle inside outer — so
+ * every region containing a point also contains the smaller ones inside it. A probe point can
+ * therefore be placed to fall inside all three, inside the outer two only, or inside the outer
+ * one only.
  */
 class HitRegistryTest extends UnitTest {
 

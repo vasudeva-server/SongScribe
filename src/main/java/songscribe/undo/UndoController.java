@@ -75,46 +75,24 @@ import songscribe.ui.component.MainFrame;
  * that recorded batch through {@link MutationReplayer} inside an open bracket and the
  * model's replay mode. SongScribe is single-document, so one stack pair is correct.
  *
- * <pre>
- *  forward edit                UndoController                    Song / Line
- *  ────────────                ─────────────                     ───────────
- *  user edits ──▶ Song.endModification ──▶ SongDidChangeNotification
- *                                           │  (applyingReplay == false)
- *                                           ▼
- *                                    push UndoStep(mutations, opName) onto undoStack
- *                                    clear redoStack
- *                                    evict oldest if size &gt; undoStackMaxDepth (default 50)
- *                                    post UndoStateDidChangeNotification
+ * <p>On a forward edit, {@code Song.endModification} posts a {@link SongDidChangeNotification} with
+ * {@code applyingReplay == false}; the handler pushes an {@code UndoStep} of the batch's mutations
+ * and op-name onto the undo stack, clears the redo stack, evicts the oldest step once the stack
+ * exceeds {@value #DEFAULT_UNDO_STACK_MAX_DEPTH} entries, and posts an
+ * {@code UndoStateDidChangeNotification}.
  *
- *  Edit-menu label (composeLabel, per direction):
- *         step = stack.peek()
- *         step == null            ──▶ "Undo" / "Redo"            (empty stack)
- *         step.opName != null     ──▶ "Undo <declared op-name>"  (declared, verbatim)
- *         step.opName == null     ──▶ "Undo <type-based label>"  (fallback via
- *                                     opNameKey(dominantMutation(step.mutations)))
+ * <p>Undo and redo peek their respective stack, set {@code applyingReplay}, and replay the step's
+ * mutations — reversed for undo, forward for redo — through {@link MutationReplayer} inside a normal
+ * modification bracket in replay mode. That bracket posts its own {@code SongDidChangeNotification},
+ * which the recording handler ignores because {@code applyingReplay} is set, but which
+ * {@code ScoreViewController} still repaints from. On success the step moves to the other stack, the
+ * modified-vs-clean flag is recomputed, and an {@code UndoStateDidChangeNotification} is posted.
  *
- *  Undo:  peek step from undoStack
- *         applyingReplay = true
- *         song.withModification(() -&gt; song.withReplay(() -&gt;
- *             for m in reverse(step): MutationReplayer.applyUndo(scoreView, m)))
- *         applyingReplay = false          ──▶ posts a SongDidChangeNotification
- *                                             (handler sees applyingReplay==true → ignores)
- *                                             (ScoreViewController still repaints from it)
- *         on success: pop from undoStack, push onto redoStack
- *         recompute modified vs clean
- *         post UndoStateDidChangeNotification
+ * <p>The Edit-menu label comes from {@code composeLabel}: a bare "Undo"/"Redo" for an empty stack,
+ * the step's declared op-name verbatim when it has one, and otherwise a type-based fallback derived
+ * from the batch's dominant mutation.
  *
- *  Redo:  peek step from redoStack
- *         applyingReplay = true
- *         song.withModification(() -&gt; song.withReplay(() -&gt;
- *             for m in forward(step): MutationReplayer.applyRedo(scoreView, m)))
- *         applyingReplay = false
- *         on success: pop from redoStack, push onto undoStack
- *         recompute modified vs clean
- *         post UndoStateDidChangeNotification
- * </pre>
- *
- * Keep this diagram in sync if the flow changes.
+ * <p>See {@code docs/undo.md} for the step-by-step flow and the design rationale.
  */
 public final class UndoController {
 

@@ -290,14 +290,11 @@ final class MusicXmlSpanIndex {
         // Endings (measure-level): one SongScribe Ending expands to one or two
         // MusicXML voltas, folded onto the <barline> elements Phase 2 emits.
         //
-        //   anchor               split (REPEAT_RIGHT /         end
-        //   (REPEAT_LEFT or       REPEAT_LEFT_RIGHT)           (terminal barline)
-        //    SINGLE_BARLINE)
-        //        |                      |                          |
-        //   [1 start]            [1 stop] [2 start]            [2 stop]
-        //        '------ volta 1 -------'  '------- volta 2 -------'
-        //
-        // Every ending has a split, so it always expands to two voltas.
+        // Volta 1 runs from the anchor (a REPEAT_LEFT or SINGLE_BARLINE) to the split (a
+        // REPEAT_RIGHT or REPEAT_LEFT_RIGHT); volta 2 runs from that same split to the terminal
+        // end barline. So the anchor carries [1 start], the split carries both [1 stop] and
+        // [2 start], and the end carries [2 stop]. Every ending has a split, so it always
+        // expands to two voltas.
         //
         // Markers are bucketed per element index as left-barline vs right-barline
         // children so the element loop can attach them to the correct <barline>

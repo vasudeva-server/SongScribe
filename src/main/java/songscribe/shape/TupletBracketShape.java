@@ -30,15 +30,10 @@ import module java.desktop;
  * A sloped bracket gives each corner its own Y, so the horizontal segments tilt with the note
  * contour. The verticals still hang straight down from their (sloped) corners by a fixed arm
  * height. The four corner Ys are supplied by the caller; this class only orders the points.
- * <pre>
- *   left corner                          right corner
- *   (leftXSs, leftYSs)                    (rightXSs, rightYSs)
- *        o___________                       ___________o
- *        |           \___         gap   ___/           |
- *        |               o (gapLeftYSs)  o (gapRightYSs)|
- *        |                                              |
- *        o (leftXSs, armBottomYSs)   (rightXSs, armBottomYSs) o
- * </pre>
+ * Each arm therefore runs from {@code (x, armBottomYSs)} up to its corner {@code (x, cornerYSs)}
+ * and in across the sloped bracket line to the gap edge at {@code gapYSs}. See
+ * {@code docs/layout-geometry.md} for the annotated diagram.
+ * <p>
  * All coordinates are plain staff-space values; the caller derives the number gap from the shaped
  * glyph and does the font drawing. This class holds no layout or renderer dependency.
  */

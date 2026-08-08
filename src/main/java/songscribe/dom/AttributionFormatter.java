@@ -39,20 +39,19 @@ import songscribe.util.StringUtils;
  * or AWT imports.
  *
  * <h3>Display pipeline</h3>
- * <pre>
- *  SongMetadata
- *      └──► buildCredits(data, showTranslation)
- *               (assign connector per person/lyricsSource; emit roles in
- *                canonical order: Words, Music, [Arrangement], [Translation])
- *      └──► groupCreditsToLines(credits, sharedAuthor)
- *               (stable group by (person, connector) via LinkedHashMap;
- *                Oxford-join roles within each group; when the lyricist and
- *                composer are the same person, render that name on its own line)
- *      └──► buildSubAttributionLines(data)
- *               (date line: [Month [Day, ]] year; place line)
- *      └──► List&lt;AttributionLine&gt;
- *               (ATTRIBUTION lines first, then SUB_ATTRIBUTION lines)
- * </pre>
+ * A {@code SongMetadata} passes through four stages:
+ * <ol>
+ *   <li>{@code buildCredits(data, showTranslation)} assigns a connector per person or lyrics
+ *       source and emits the roles in canonical order: Words, Music, then Arrangement and
+ *       Translation where present.
+ *   <li>{@code groupCreditsToLines(credits, sharedAuthor)} groups stably by (person, connector)
+ *       via a {@code LinkedHashMap} and Oxford-joins the roles within each group. When the
+ *       lyricist and composer are the same person, that name is rendered on its own line.
+ *   <li>{@code buildSubAttributionLines(data)} produces the date line — {@code [Month [Day, ]]
+ *       year} — and the place line.
+ *   <li>The result is a {@code List<AttributionLine>} with the {@code ATTRIBUTION} lines first,
+ *       then the {@code SUB_ATTRIBUTION} lines.
+ * </ol>
  *
  * <p>All methods are static; no instances are needed.
  */

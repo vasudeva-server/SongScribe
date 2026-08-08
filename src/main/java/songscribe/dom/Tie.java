@@ -261,29 +261,18 @@ public class Tie extends Span {
      *
      * <p>The <em>visual</em> arc direction ({@code tieDir}, a {@link StaffElement.Direction}
      * where UP = arc bulges up = tie above) follows LilyPond's {@code get_default_dir}
-     * fallthrough tree, keying off <em>both</em> noteheads' stems:
+     * fallthrough tree, keying off <em>both</em> noteheads' stems. Each rule below is tried in
+     * order; a rule that does not apply falls through to the next.
      *
-     * <pre>
-     *                  tieDirection(left, right)
-     *                           │
-     *         ┌─────────────────┴──────────────────┐
-     *    both have stems?                      not both
-     *         │ yes                                 │
-     *    both UP? ── yes ─→ DOWN                     │
-     *         │ no                                   │
-     *         └───────────────┐          ┌───────────┴───────────┐
-     *                         │     only left stem?        only right stem?
-     *                         │        │ yes                    │ yes
-     *                         │   opposite(left)          opposite(right)
-     *                         │        │                        │
-     *                    (fall through)                    (neither stem)
-     *                         │                                  │
-     *                         │                    staff pos vs middle line:
-     *                         │                     above → UP · below → DOWN
-     *                         │                     on middle → (fall through)
-     *                         └──────────────┬───────────────────┘
-     *                                   NEUTRAL → UP
-     * </pre>
+     * <ol>
+     *   <li>Both noteheads have stems, and both point UP: DOWN.
+     *   <li>Both have stems but disagree: fall through to the final default.
+     *   <li>Only the left notehead has a stem: the opposite of that stem's direction.
+     *   <li>Only the right notehead has a stem: the opposite of that stem's direction.
+     *   <li>Neither has a stem: decide by staff position relative to the middle line — above the
+     *       middle gives UP, below gives DOWN, and exactly on the middle line falls through.
+     *   <li>Default (NEUTRAL): UP.
+     * </ol>
      *
      * <p>The single inversion from musical "above" to Y-down "arc sign" lives in the
      * {@code .opposite()} call below — and nowhere else. {@code tieDir = UP} (tie above)

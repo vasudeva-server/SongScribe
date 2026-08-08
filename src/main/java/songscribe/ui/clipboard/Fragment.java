@@ -44,37 +44,24 @@ import songscribe.dom.TempoChangeAttachment;
  * <p>This is the one place "clone + re-anchor" is defined, used by both capture
  * and every paste:
  *
- * <pre>
- *   copy:   Line ──capture(line,begin,end)──> Fragment{elements[], priorAccidentals[], spans[]}  ──> ClipboardManager.fragment
- *                     ├─ effectiveDeleteEnd() extends past trailing breath mark
- *                     ├─ drop orphan paired grace note at the tail
- *                     ├─ clone elements → IdentityHashMap&lt;orig,clone&gt;
- *                     ├─ resolve each element's effective accidental against the ORIGINAL
- *                     ├─ FINAL_DOUBLE_BARLINE → DOUBLE_BARLINE
- *                     ├─ drop the tempo at the initial-tempo anchor (song's first element)
- *                     ├─ DetachedLyricRun.endDanglingChains — every syllabic or melisma
- *                     │  chain leaving the run ends inside it
- *                     └─ span kept iff BOTH endpoints ∈ map keys
- *                           └─ span.copy(map[anchor], map[end])
+ * <p>{@code capture} extends the run past a trailing breath mark, drops an orphan paired grace note
+ * at the tail, clones the elements into an identity map from original to clone, resolves each
+ * element's effective accidental against the <em>original</em> line, demotes a final double barline
+ * to a plain one, drops the tempo sitting on the song's initial-tempo anchor, and ends every
+ * syllabic or melisma chain that would otherwise leave the run. A span survives only when both its
+ * endpoints are in the map, and is copied onto the corresponding clones.
  *
- *   paste:  ClipboardManager.fragment ──instantiate()──> Fragment{fresh clones, priorAccidentals[] unchanged, fresh spans}
- *                                                             ├─ each clone's xOffset zeroed — a fragment
- *                                                             │  carries semantic content, not layout corrections
- *                                                             │
- *                                                             ├─ PasteSpanReconciliation.reconcile — BEFORE any
- *                                                             │  mutation: straddled destination spans removed,
- *                                                             │  fragment spans a straddle invalidates dropped
- *                                                             ├─ clones inserted into the destination line
- *                                                             ├─ .dropTupletsRejectedByTarget — pasted tuplets the
- *                                                             │  destination's beat context rejects dropped; the
- *                                                             │  notes stay, only the bracket goes
- *                                                             └─ surviving spans added
- *
- *           (the stored Fragment is NEVER inserted, so paste N times ⇒ N independent results)
- * </pre>
+ * <p>{@code instantiate} produces fresh clones and fresh spans, leaving the recorded prior
+ * accidentals as they are. Each clone's {@code xOffset} is zeroed — a fragment carries semantic
+ * content, not layout corrections. {@code PasteSpanReconciliation.reconcile} then runs <em>before
+ * any mutation</em>, removing straddled destination spans and invalidating fragment spans that
+ * straddle a dropped one. The clones are inserted into the destination line, tuplets the
+ * destination's beat context rejects have their brackets dropped (the notes stay), and the
+ * surviving spans are added.
  *
  * <p>Because the stored {@code Fragment} is never itself inserted, repeated pastes
- * are independent by construction.
+ * are independent by construction. See section 1 of {@code docs/clipboard.md} for the full
+ * diagram.
  *
  * @param elements         The captured elements, cloned from the source line
  * @param priorAccidentals The effective accidental each element had on its source line,

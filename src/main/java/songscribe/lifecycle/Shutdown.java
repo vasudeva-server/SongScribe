@@ -32,38 +32,18 @@ import org.slf4j.LoggerFactory;
  * through one ordered, vetoable sequence; owns the JVM shutdown hook so
  * thread-safe cleanup runs even on emergency exits.
  *
- * <pre>
- *   User-invoked quit paths              Emergency exit paths
- *   -------------------------            --------------------
- *   QuitAction              -+           RuntimeError.exit()
- *   MainFrame.windowClosing -+           SIGTERM
- *   CloseWindowAction       -+-> now()   last non-daemon thread ends
- *   Desktop quit (macOS)    -+      |             |
- *   UIConverter.windowClose -+      v             |
- *                              Confirm phase      |
- *                              (reg. order,       |
- *                               vetoable, EDT)    |
- *                                    |            |
- *                              veto? | no         |
- *                                    v            |
- *                              EDT cleanup        |
- *                              (LIFO, EDT)        |
- *                                    |            |
- *                                    v            |
- *                              JVM cleanup        |
- *                              (LIFO, EDT)        |
- *                                    |            |
- *                                    v            |
- *                              System.exit(0) ----+
- *                                                 v
- *                                       Registry-owned JVM
- *                                       shutdown hook runs
- *                                       JVM tasks LIFO on
- *                                       hook thread. The
- *                                       CleanupTask wrapper
- *                                       guarantees at-most-
- *                                       once across paths.
- * </pre>
+ * <p>The user-invoked paths — {@code QuitAction}, {@code MainFrame.windowClosing},
+ * {@code CloseWindowAction}, the macOS Desktop quit, and {@code UIConverter}'s window close — all
+ * call {@link #now()}. That runs the confirm phase on the EDT in registration order, where any
+ * handler may veto; if none does, the EDT cleanup tasks run LIFO, then the JVM cleanup tasks run
+ * LIFO, then {@code System.exit(0)}.
+ *
+ * <p>The emergency paths — {@code RuntimeError.exit()}, SIGTERM, and the last non-daemon thread
+ * ending — skip straight to JVM exit. Either way the registry-owned shutdown hook runs the JVM
+ * tasks LIFO on the hook thread, and the {@code CleanupTask} wrapper guarantees each runs at most
+ * once across both paths.
+ *
+ * <p>See {@code docs/lifecycle.md} for the full diagram.
  */
 public final class Shutdown {
 

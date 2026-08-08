@@ -252,7 +252,7 @@ public class SongSettingsDialog extends StandardDialog {
         song.postWithModification(new SongMetadataDidChangeNotification(newMetadata));
     }
 
-    // ── Package-private static helpers ──
+    // Package-private static helpers.
     //
     // These pure-logic units are inlined into the tab classes' Swing-bound
     // methods at their call sites. Per "Testability Over Encapsulation" they live

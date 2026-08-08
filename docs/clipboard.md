@@ -15,16 +15,31 @@ elements and re-anchor the spans that touch them." Both copy (`capture`) and eve
 paste (`instantiate`) go through it:
 
 ```
-  copy:   Line ──capture(line,begin,end)──> Fragment{elements[], spans[]}  ──> ClipboardManager.fragment
+  copy:   Line ──capture(line,begin,end)──> Fragment{elements[], priorAccidentals[], spans[]}  ──> ClipboardManager.fragment
                     ├─ effectiveDeleteEnd() extends past trailing breath mark
                     ├─ drop orphan paired grace note at the tail
                     ├─ clone elements → IdentityHashMap<orig,clone>
+                    ├─ resolve each element's effective accidental against the ORIGINAL
                     ├─ FINAL_DOUBLE_BARLINE → DOUBLE_BARLINE
+                    ├─ drop the tempo at the initial-tempo anchor (song's first element)
+                    ├─ DetachedLyricRun.endDanglingChains — every syllabic or melisma
+                    │  chain leaving the run ends inside it
                     └─ span kept iff BOTH endpoints ∈ map keys
                           └─ span.copy(map[anchor], map[end])
 
-  paste:  ClipboardManager.fragment ──instantiate()──> Fragment{fresh clones, fresh spans}
+  paste:  ClipboardManager.fragment ──instantiate()──> Fragment{fresh clones, priorAccidentals[] unchanged, fresh spans}
+                                                            ├─ each clone's xOffset zeroed — a fragment
+                                                            │  carries semantic content, not layout corrections
                                                             │
+                                                            ├─ PasteSpanReconciliation.reconcile — BEFORE any
+                                                            │  mutation: straddled destination spans removed,
+                                                            │  fragment spans a straddle invalidates dropped
+                                                            ├─ clones inserted into the destination line
+                                                            ├─ .dropTupletsRejectedByTarget — pasted tuplets the
+                                                            │  destination's beat context rejects dropped; the
+                                                            │  notes stay, only the bracket goes
+                                                            └─ surviving spans added
+
           (the stored Fragment is NEVER inserted, so paste N times ⇒ N independent results)
 ```
 
@@ -330,7 +345,8 @@ modal "click to place" state.
             ^                                 │                 preview element suppressed]
             │                                 │
             │                          mouseMoved on a line
-            │                                 │  └─> findInsertionIndex → track (lc, index), repaint old+new
+            │                                 │  └─> findInsertionIndex → track (lc, index),
+            │                                 │      retarget insertion marker overlay
             │                                 │
             │        ┌── click / Return ──────┤   (Return with no tracked point ⇒ no-op, stay ACTIVE)
             │        │      └─> tryInsertFragment(index, no deleteRange)

@@ -147,18 +147,10 @@ public final class MusicEditOperations {
      * than removed wholesale. A single-element remainder is dropped, because a beam needs two
      * members:
      *
-     * <pre>
-     *    a         p   t         e
-     *    ├────────────────────────┤        before:  one beam [a,e]
-     *    ├─────────┤   ├──────────┤        after:   [a,p] and [t,e]
-     *
-     *    a=p       t             e
-     *    ├────────────────────────┤   →    ├──────────┤        only [t,e] survives
-     *    a         p           t=e
-     *    ├────────────────────────┤   →    ├─────────┤         only [a,p] survives
-     *    a=p     t=e
-     *    ├─────────┤                  →    (no beam)
-     * </pre>
+     * <p>Breaking a beam {@code [a,e]} between the two selected elements {@code p} and {@code t}
+     * yields the two remainders {@code [a,p]} and {@code [t,e]}, minus any remainder of fewer than
+     * two members. So the left remainder is dropped when {@code a == p}, the right one when
+     * {@code t == e}, and when both hold the beam disappears entirely.
      *
      * The break is a {@link Line#removeBeaming} followed by up to two {@link Line#addBeaming}
      * calls so every step is a tracked mutation and undo restores the original span; mutating
@@ -636,23 +628,17 @@ public final class MusicEditOperations {
      * {@link #findHairpinsNearSelection}, each classified from its own anchor and
      * end indices:
      *
-     * <pre>
-     * ┌── no candidate ─────────────────────────────────────┬─► count &gt;= 2 ──► CAN_ADD
-     * │                                                     └─► count &lt;  2 ──► INELIGIBLE
-     * │       count = #{ i in [begin, end] : isPitchedNote(i) }
-     * │
-     * ├── an OPPOSITE-type hairpin is among the candidates ─────────────────► BLOCKED
-     * │
-     * ├── selection lies entirely inside one same-type hairpin ─────────────► BLOCKED
-     * │   (no extension possible)
-     * │
-     * └── same-type candidates only, and the selection reaches
-     *     outside their spans (left, right, or both) ── NO count requirement
-     *           │
-     *           ├─ union span crosses a structural boundary ──────────────► BLOCKED
-     *           │
-     *           └─ otherwise ──────────────► EXTEND_CRESCENDO / EXTEND_DIMINUENDO
-     * </pre>
+     * <ul>
+     *   <li><b>No candidate.</b> Counting the pitched notes in {@code [begin, end]}, two or more
+     *       give {@code CAN_ADD} and fewer give {@code INELIGIBLE}.
+     *   <li><b>An opposite-type hairpin is among the candidates:</b> {@code BLOCKED}.
+     *   <li><b>The selection lies entirely inside one same-type hairpin:</b> {@code BLOCKED}, since
+     *       no extension is possible.
+     *   <li><b>Same-type candidates only, with the selection reaching outside their spans</b> to
+     *       the left, the right, or both — no count requirement here. {@code BLOCKED} if the union
+     *       span crosses a structural boundary, otherwise {@code EXTEND_CRESCENDO} or
+     *       {@code EXTEND_DIMINUENDO}.
+     * </ul>
      *
      * <b>Extend eligibility</b> means all four of: the selection includes notes
      * inside or touching a same-type hairpin; it includes notes outside that
@@ -670,33 +656,21 @@ public final class MusicEditOperations {
      * both types are candidates the result is {@code BLOCKED} regardless of which
      * action the user picks.
      *
-     * <pre>
-     * Worked examples (no hairpins anywhere near the selection)
-     * ─────────────────────────────────────────────────────────
-     *   ♪gr ♩  ♩  𝄽  ♩       count = 3  ✓   begin = grace ✓  CAN_ADD
-     *   ♪gr ♩                count = 1  ✗   grace + host is one note
-     *   ♩                    count = 1  ✗   single note, nothing to extend → INELIGIBLE
-     *   ♩  𝄽  ♪gr            end is a grace note        ✗  Step 1
-     *   ♩  𝄽  𝄽              end is a rest              ✗  Step 1
-     *   ♩  ♩  ┃┃ ♩           spansStructuralBoundary    ✗  Step 1
-     *   ♩  ♩  │  ♩           single barline is fine     ✓  CAN_ADD
+     * <p><b>Worked examples, with no hairpins anywhere near the selection.</b> A grace note,
+     * three notes and a rest is {@code CAN_ADD}: the count is 3, and beginning on a grace note is
+     * allowed. A grace note plus its host is one note, so the count is 1 and it is not. A lone note
+     * is {@code INELIGIBLE} — nothing to extend. Ending on a grace note or on a rest fails Step 1,
+     * as does a selection spanning a structural boundary; a plain single barline inside the
+     * selection is fine and still gives {@code CAN_ADD}.
      *
-     * Single-note extend
-     * ──────────────────
-     *   ♩  ♩  ♩  ♩          selection = the 4th note only
-     *   └─cresc─┘  ▲
-     *              └─ adjacent to the crescendo → EXTEND_CRESCENDO
+     * <p><b>Single-note extend.</b> Selecting only the note immediately after a crescendo gives
+     * {@code EXTEND_CRESCENDO}, because adjacency counts as a relation. Selecting that same note
+     * with no hairpin nearby gives {@code INELIGIBLE}.
      *
-     *   ♩  ♩  ♩  ♩          same note, no hairpin → INELIGIBLE
-     *
-     * Same-type absorb vs. opposite-type block
-     * ────────────────────────────────────────
-     *   ♩ ♩ ♩  ♩ ♩ ♩  ♩ ♩ ♩
-     *   └cresc┘ └─sel─┘ └cresc┘   → EXTEND_CRESCENDO, union [0,8]
-     *
-     *   ♩ ♩ ♩  ♩ ♩ ♩  ♩ ♩ ♩
-     *   └cresc┘ └─sel─┘ └─dim─┘   → BLOCKED (opposite type present)
-     * </pre>
+     * <p><b>Same-type absorb versus opposite-type block.</b> A selection sitting between two
+     * crescendos extends into one wide gesture spanning all three groups. The same selection
+     * between a crescendo and a diminuendo is {@code BLOCKED}, because an opposite-type hairpin is
+     * a candidate.
      */
     public HairpinResolution resolveHairpinAction() {
         var range = coordinator.getRange();

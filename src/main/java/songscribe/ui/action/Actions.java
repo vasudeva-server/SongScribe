@@ -52,14 +52,9 @@ import songscribe.util.UIUtils;
  * Playback actions are in the playback package.
  *
  * <p>Constants are populated by {@link #initialize(MainFrame)}, which must be called
- * before any constant is first read. The expected call sequence is:
- *
- * <pre>
- * MainFrame.getInstance()
- *   └─► MainFrame.initFrame()
- *         └─► Actions.initialize(this)
- *               └─► first constant use (e.g. MODE_ACTION_GROUP.select(...))
- * </pre>
+ * before any constant is first read. {@code MainFrame.getInstance()} calls
+ * {@code MainFrame.initFrame()}, which calls {@code Actions.initialize(this)}; only after that
+ * does the first constant use (for example {@code MODE_ACTION_GROUP.select(...)}) occur.
  */
 // The action constants are @NonNull but populated lazily by initialize() (which needs
 // the MainFrame, unavailable at class-load), not at declaration. NullAway.Init suppresses

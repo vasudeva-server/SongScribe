@@ -464,15 +464,10 @@ public final class ScoreViewController {
             return;
         }
 
-        // Three mutually exclusive cases, checked in order:
-        //   full relayout?  ──yes──▶ invalidate every LinePanel's layout
-        //          │no
-        //          ▼
-        //   line insert/delete? ──yes──▶ rebuild the LinePanel list (add/remove panels)
-        //          │no
-        //          ▼
-        //   line-scoped change?  ──yes──▶ invalidate every LinePanel the change affects
-        //                                 (one, or two for a span straddling a boundary)
+        // Three mutually exclusive cases, checked in order: a full relayout invalidates every
+        // LinePanel's layout; a line insert or delete rebuilds the LinePanel list; and a
+        // line-scoped change invalidates only the LinePanels the change affects (one, or two
+        // for a span straddling a line boundary).
         //
         // Font, metadata, and layout changes (e.g. a Song Settings commit) all
         // require re-laying out every line, not just repainting: invalidating each
@@ -744,41 +739,25 @@ public final class ScoreViewController {
      * selected. The lyric branch owns its own cleanup and returns; every other branch falls
      * through to the shared tail.
      *
-     * <pre>
-     * Backspace / Delete
-     *         │
-     *         ▼
-     *    handleDelete()
-     *         │
-     *         ├─ HitTarget.Lyric ─────────────► modifyElement(LYRIC) ──► restoreSelectedActionStates()
-     *         │                                                          clearSelection(); repaint(); return
-     *         │
-     *         ├─ range != null ───────────────► deleteElementRange()  ─┐
-     *         │                                                        │
-     *         ├─ selectedTarget != null ──────► deleteSelectedTarget() ┤
-     *         │        │                                               │
-     *         │        ├── Slide      ─► modifyElement(SLIDE)          │
-     *         │        ├── Ending     ─► removeSpan                    │
-     *         │        ├── Hairpin    ─► removeCrescendo/Diminuendo    │
-     *         │        ├── Tie        ─► removeTie      ── both lines  │
-     *         │        ├── Beam       ─► removeBeaming                 │
-     *         │        ├── Tuplet     ─► removeTuplet                  │
-     *         │        ├── Trill      ─► removeSpan  (explicit label)  │
-     *         │        ├── Articulatn ─► modifyElement(ARTICULATION)   │
-     *         │        ├── Attachment ─► deleteAttachment() ──┐        │
-     *         │        │                   ├ Fermata     FERMATA       │
-     *         │        │                   ├ Dynamic     DYNAMIC_ATT   │
-     *         │        │                   ├ Annotation  ANNOTATION    │
-     *         │        │                   ├ BeatChange  BEAT_CHANGE   │
-     *         │        │                   └ TempoChange TEMPO_CHANGE  │ veto
-     *         │        └── Accidental ─► SelectionActionApplier.apply ─┤
-     *         │                          (restatements, reconciliation,│
-     *         │                           fit gate — can refuse)       │
-     *         ├─ canDeleteLine() ─────────────► song.removeLine()     ─┤
-     *         │                                                        ▼
-     *         └────────────────────────────► restoreSelectedActionStates()
-     *                                         score.deselect()
-     * </pre>
+     * <p>The branches, checked in order:
+     *
+     * <ul>
+     *   <li>A selected {@code HitTarget.Lyric} clears the lyric via {@code modifyElement(LYRIC)},
+     *       then restores action states, clears the selection, repaints and returns — it does not
+     *       reach the shared tail.
+     *   <li>A non-null element range deletes it with {@code deleteElementRange()}.
+     *   <li>A non-null selected target dispatches on its kind in {@code deleteSelectedTarget()}: a
+     *       slide, articulation or attachment goes through {@code modifyElement}; an ending or
+     *       trill through {@code removeSpan}; a hairpin, tie, beam or tuplet through its own
+     *       remover, with a tie removed from both lines it touches. An attachment resolves further
+     *       to its own field (fermata, dynamic, annotation, beat change, tempo change). An
+     *       accidental goes through {@code SelectionActionApplier.apply}, which runs restatements,
+     *       reconciliation and the fit gate, and may refuse the deletion outright.
+     *   <li>Otherwise, if {@code canDeleteLine()} allows it, the line itself is removed.
+     * </ul>
+     *
+     * <p>Every branch but the lyric one falls through to the shared tail, which restores the
+     * selected action states and deselects the score.
      */
     void handleDelete() {
         var song = score.getSong();

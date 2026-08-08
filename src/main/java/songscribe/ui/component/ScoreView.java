@@ -99,24 +99,14 @@ import songscribe.ui.selection.SelectionCoordinator;
  * This class is responsible for managing and drawing the music score
  * and its lyrics. It also handles user input for editing the score.
  *
- * <pre>
- * Page layout hierarchy:
+ * <p>A {@code ScorePanel} inside the scroll pane centers this view, which is sized to the full
+ * page and bordered by the page margins. Its children are the {@code LyricEditor} (absolute
+ * bounds, topmost, and present only while a lyric is being edited), the per-line
+ * {@code LineOverlayComponent}s (absolute bounds, above the score and below the editor), and a
+ * {@code MainPanel} that stacks the title, subtitle, margin strut, {@code StaffPanel} of
+ * {@code LinePanel}s, text panel and footnotes down the Y axis.
  *
- *   JScrollPane
- *   └── ScorePanel [GridBagLayout, gray background]
- *       └── ScoreView [BorderLayout, white background, full page size]
- *           │  EmptyBorder: top/bottom = 0.5", left/right = horizontal margin
- *           ├── LyricEditor            (absolute bounds, topmost; only while editing a lyric)
- *           ├── LineOverlayComponent × N (absolute bounds, above the score, below the editor)
- *           └── MainPanel [BoxLayout Y_AXIS, CENTER]
- *               ├── TitleComponent
- *               ├── SubtitleComponent
- *               ├── ScoreMarginStrut
- *               ├── StaffPanel [StaffLinesLayout]
- *               │   └── LinePanel × N
- *               ├── TextPanel
- *               └── FootnotesComponent
- * </pre>
+ * <p>See {@code docs/score-view-hierarchy.md} for the full containment tree.
  */
 
 public final class ScoreView

@@ -62,21 +62,11 @@ public final class TempoResolver {
      * Returns the beat in effect at a position, found by walking backward from that
      * position to the nearest preceding beat-defining event.
      *
-     * <pre>
-     * resolveBeatAt(line 3, element 5)
-     *
-     *   line 0   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
-     *   line 1   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
-     *   line 2   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
-     *   line 3   [e0 e1 e2 e3 e4 e5] &lt;- scanned backward from e5 only
-     *                             ^
-     *                             anchor
-     *
-     *   first hit wins, whichever kind it is:
-     *       BeatChangeAttachment  -&gt; beatChange().beat()
-     *       TempoChangeAttachment -&gt; tempo().tempoType()
-     *   no hit -&gt; song tempo -&gt; quarter note
-     * </pre>
+     * <p>The walk starts at the anchor element and runs backward through its line, then through
+     * every earlier line in full. The first hit wins, whichever kind it is: a
+     * {@code BeatChangeAttachment} yields {@code beatChange().beat()} and a
+     * {@code TempoChangeAttachment} yields {@code tempo().tempoType()}. With no hit at all the
+     * result falls back to the song tempo, and failing that to a quarter note.
      *
      * <p>Precedence is positional, not by type: the nearest preceding beat-defining event
      * wins regardless of which kind it is. When one element carries both, the
@@ -198,16 +188,8 @@ public final class TempoResolver {
      * earlier line in full — and returns the first element for which {@code probe} produces
      * a non-null value, together with where it was found.
      *
-     * <pre>
-     * walkBackFrom(line 3, element 5)
-     *
-     *   line 0   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
-     *   line 1   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
-     *   line 2   [e0 e1 e2 ... eN]   &lt;- scanned in full, backward
-     *   line 3   [e0 e1 e2 e3 e4 e5] &lt;- scanned backward from e5 only
-     *                             ^
-     *                             start
-     * </pre>
+     * <p>The start element's own line is scanned backward from that element only; every earlier
+     * line is scanned backward in full.
      *
      * <p>Cost is O(elements before the start), with no cache. Both callers — the tempo
      * lookup and the beat lookup — share this walk so that a change to what "before this

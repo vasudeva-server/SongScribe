@@ -306,42 +306,15 @@ public class MainFrame extends JFrame implements Printable {
      * Runs on the {@code "startup-gate"} thread. Waits for the minimum splash duration
      * floor to pass, then waits for MIDI init (capped), then schedules reveal() on the EDT.
      *
-     * Target startup sequence:
-     * <pre>
-     * [main thread]                          [EDT]                         [bg threads]
-     * SongScribe.main
-     *   set macOS props
-     *   invokeLater(MainFrame.main) ──────►  initMinimalTheme():
-     *                                          install Source Sans 3 Regular only
-     *                                          setPreferredFontFamily(FAMILY)
-     *                                          registerCustomDefaultsSource + AppearanceManager.init
-     *                                        showSplash(); force first paint
-     *                                          (splash JLabels now render in Source Sans, not fallback)
-     *                                        splashShownAtMs = now
-     *                                        midiReadyLatch =
-     *                                          openMidiAsync() ───────────► "midi-init":
-     *                                                                         openMidi() (capped via await)
-     *                                                                         finally latch.countDown()
-     *                                        installEagerFonts():
-     *                                          remaining Source Sans faces + TiroBangla (~1.1 s)
-     *                                        build main window (initFrame, NOT shown)
-     *                                        pendingStartupAction = &lt;autoload|arg|select&gt;
-     *                                        startStartupGate() ──────────► "startup-gate":
-     *                                                                         sleep(remainingFloor)
-     *                                                                         latch.await(remainingCap)
-     *                                                                         invokeLater(reveal) ─┐
-     *                                                                                              │
-     *                             reveal (EDT): ◄──────────────────────────────────────────────────┘
-     *                               drainStartupErrors():
-     *                                 fatal present → throw RuntimeError.exit(fatal.message())
-     *                                                 (logs + shows fatal dialog over splash + System.exit;
-     *                                                  splash NOT hidden, window NOT revealed)
-     *                               hideSplash(); setVisible(true)
-     *                               preWarmDialogPeer / ActivationGate.install / requestFocusInWindow
-     *                               for each non-fatal: showWarning(...)
-     *                               maybeShowWhatsNew()
-     *                               pendingStartupAction.run()
-     * </pre>
+     * <p>The EDT installs a minimal theme, shows the splash and forces its first paint, kicks off
+     * MIDI init on the {@code "midi-init"} thread, installs the remaining fonts, builds the main
+     * window without showing it, records the pending startup action, and starts this gate. The gate
+     * then sleeps out the splash floor, awaits the MIDI latch up to the cap, and schedules
+     * {@code reveal()} back on the EDT, which drains startup errors — exiting on a fatal one
+     * without hiding the splash — then hides the splash, shows the window, warns about any
+     * non-fatal errors, and runs the pending startup action.
+     *
+     * <p>See {@code docs/lifecycle.md} for the full cross-thread sequence.
      */
     private static void runStartupGate() {
         var elapsedMs = System.currentTimeMillis() - splashShownAtMs;
@@ -512,11 +485,9 @@ public class MainFrame extends JFrame implements Printable {
     public void initFrame() {
         // Initialize action constants before anything else in this method uses them.
         //
-        // Startup sequence:
-        //   MainFrame.getInstance()        — constructs the singleton via InstanceHolder
-        //     └─► MainFrame.initFrame()    — wires the UI; called from main()
-        //           └─► Actions.initialize(this)  — populates all Actions.* constants
-        //                 └─► first constant use  — MenuController.init(this)
+        // main() constructs the singleton, which calls initFrame() to wire the UI; initFrame()
+        // calls Actions.initialize(this) to populate the Actions.* constants, and the first read
+        // of one of those constants is MenuController.init(this). See docs/lifecycle.md.
         Actions.initialize(this);
         PlaybackController.initialize(this);
 
@@ -647,12 +618,8 @@ public class MainFrame extends JFrame implements Printable {
     }
 
     private void initContent() {
-        // We lay out the content in a border layout:
-        // +---------------------+
-        // | NORTH: Toolbar      |
-        // | CENTER: ScoreView       |
-        // | SOUTH: StatusBar    |
-        // +---------------------+
+        // We lay out the content in a border layout: the toolbar in NORTH, the ScoreView in
+        // CENTER, and the status bar in SOUTH.
         var contentPane = getContentPane();
         contentPane.setLayout(new BorderLayout());
 

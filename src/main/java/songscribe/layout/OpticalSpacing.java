@@ -68,34 +68,25 @@ import songscribe.engraving.Staff;
  * <p>A "knee" (a beam that changes stem direction mid-group) is explicitly out of scope —
  * LilyPond has a separate {@code knee_correction} for it that this port does not implement.
  *
- * <pre>
- *   Screen-down Ss axis (negative = higher on the staff):
+ * <p>On the screen-down Ss axis (negative is higher on the staff), each column's vertical span runs
+ * from {@code getAbsoluteTopYSs} to {@code getAbsoluteBottomYSs} — notehead plus stem — and
+ * {@code verticalOverlapSs = min(bottoms) - max(tops)}, positive only where the two spans intersect.
+ * The ramp is {@code min(overlapSs / STEM_OVERLAP_SATURATION_SS, 1.0)}.
  *
- *     -Ss --- stem tip (UP stem)
- *           |
- *           |       prev (UP)        curr (DOWN)
- *     top --|       +---+             +---+   &lt;- getAbsoluteTopYSs  (smaller / higher)
- *           |  o====|   |       o=====|   |
- *       0 --+---- staff middle line ---------
- *           |       |   |notehead    |   |
- *     bot --|       +---+             +---+   &lt;- getAbsoluteBottomYSs (larger / lower)
- *           |                          |
- *     +Ss --                          +-- stem tip (DOWN stem)
+ * <ul>
+ *   <li>A stem-up column followed by a stem-down one, with overlap and no knee, widens by
+ *       {@code ramp} times {@link #OPPOSITE_STEM_MAX_CORRECTION_SS}; stem-down followed by stem-up
+ *       narrows by the same amount.
+ *   <li>Two same-direction columns whose staff positions differ by more than
+ *       {@link #SAME_DIRECTION_THRESHOLD_SS} shift by
+ *       {@link #SAME_DIRECTION_MAX_CORRECTION_SS}, widening when {@code curr} is the higher of the
+ *       two.
+ *   <li>A barline followed by a stem-down column, where the staff span and the column overlap,
+ *       widens by {@code ramp} times {@link #DOWNSTEM_BARLINE_MAX_CORRECTION_SS}.
+ *   <li>Every other pairing is uncorrected.
+ * </ul>
  *
- *     verticalOverlapSs = min(bottoms) - max(tops)   (&gt; 0 only where the spans intersect)
- *
- *     A grace note is a stem-UP row like any other, on its shorter grace stem.
- *
- *     prev       curr        fires when                                  correction (Ss)
- *     -------------------------------------------------------------------------------------------
- *     stem UP    stem DOWN   overlap&gt;0, not knee                          +ramp * OPPOSITE_STEM_MAX_CORRECTION_SS
- *     stem DOWN  stem UP     overlap&gt;0, not knee                          -ramp * OPPOSITE_STEM_MAX_CORRECTION_SS
- *     stem X     stem X      |deltaPos|&gt;SAME_DIRECTION_THRESHOLD_SS       +-SAME_DIRECTION_MAX_CORRECTION_SS
- *                                                                         (widen if curr higher)
- *     barline    stem DOWN   overlap(staff span, curr)&gt;0                  +ramp * DOWNSTEM_BARLINE_MAX_CORRECTION_SS
- *     otherwise                                                           0
- *         ramp = min(overlapSs / STEM_OVERLAP_SATURATION_SS, 1.0)
- * </pre>
+ * <p>See {@code docs/layout-geometry.md} for the annotated diagram and the correction table.
  */
 public final class OpticalSpacing {
 

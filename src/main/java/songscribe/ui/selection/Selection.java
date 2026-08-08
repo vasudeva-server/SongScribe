@@ -33,24 +33,13 @@ import songscribe.message.mutation.Mutation;
 /**
  * The one thing selected in the score, in whichever of its two shapes.
  *
- * <pre>
- *   RANGE                                    TARGET
- *   Selection.Range(line, begin, end, …)     Selection.Target(HitTarget)
+ * <p>A {@code Selection.Range(line, begin, end, …)} is a contiguous run of elements: it spans many
+ * of them and names none individually, and it is what the tie, beam and tuplet toggles are built
+ * from. A {@code Selection.Target(HitTarget)} is the opposite — it names exactly one thing and
+ * spans nothing, including the staff line itself, as {@code StaffLine}. A target is what a click
+ * resolves to: an accidental, one articulation, a tie curve, a hairpin, a lyric, and so on.
  *
- *   ● ● ● ● ● ● ● ●                          ● ● ● ♯● ● ● ●
- *     └───────┘                                    ↑
- *      3 notes                                  one accidental
- *
- *   spans many elements, names none           names exactly one thing,
- *   of them individually                      spans nothing — including the
- *                                             staff line itself, as StaffLine
- *
- *   what the tie / beam / tuplet              what a click resolves to: an
- *   toggles are built from                    accidental, one articulation,
- *                                             a tie curve, a hairpin, a lyric…
- * </pre>
- *
- * A range cannot name an accidental or a single articulation, and a target cannot express a
+ * <p>A range cannot name an accidental or a single articulation, and a target cannot express a
  * multi-element span, so neither shape can be expressed in the other's terms. What they can
  * share is the <em>field</em>: {@link SelectionCoordinator} holds one
  * {@code @Nullable Selection}, so "a range displaces a target" and "a target displaces a
@@ -77,19 +66,14 @@ public sealed interface Selection {
      * below it retargets it unless the indices are spliced to follow their elements. That is
      * what {@link #splicedFor} does, one mutation at a time:
      *
-     * <pre>
-     *                      b ─────────────── e
-     *                      │                 │
-     *   insert at i:   i ≤ b        b &lt; i ≤ e        i &gt; e
-     *                  b+1, e+1     b, e+1           b, e
-     *                  (range      (new element     (untouched)
-     *                   slides)     joins it)
+     * <p>For a range {@code [b, e]} and an insertion at {@code i}: {@code i <= b} slides the whole
+     * range to {@code [b+1, e+1]}; {@code b < i <= e} widens it to {@code [b, e+1]}, so the new
+     * element joins the selection; and {@code i > e} leaves it untouched.
      *
-     *   delete [f..t]:  t &lt; b       overlaps          f &gt; e
-     *                   b−k, e−k    b → first survivor at or after f    b, e
-     *                   (k = t−f+1) e → last survivor before f          (untouched)
-     *                               empty ⇒ clear
-     * </pre>
+     * <p>For a deletion of {@code [f, t]}, where {@code k = t − f + 1}: a deletion entirely before
+     * the range shifts it to {@code [b−k, e−k]}; one entirely after leaves it untouched; and an
+     * overlapping one moves {@code b} to the first survivor at or after {@code f} and {@code e} to
+     * the last survivor before {@code f}, clearing the selection if nothing survives.
      *
      * {@code begin} and {@code end} do <b>not</b> use the same boundary predicate. An insertion
      * at {@code i == begin} slides the whole range right; a deletion at {@code i == begin} is an

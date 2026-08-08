@@ -352,15 +352,7 @@ public class ElementColumnBuilder {
      * For stem-down or stemless elements, this is the top edge of the element's own glyph bounding
      * box ({@link ElementType#getNoteheadTopOffsetSs()}) — a rest reaches far higher than a
      * notehead, and a barline spans half the staff height — rather than a fixed notehead
-     * half-height.
-     *
-     * <pre>
-     * Stem up:            Stem down:
-     *   |  <- top (tip)     ==o==  <- top (notehead top)
-     *   |                     |
-     *   |                     |
-     *  ==o==                  |  <- bottom (tip)
-     * </pre>
+     * half-height. See {@code docs/layout-geometry.md} for the annotated diagram.
      *
      * A stem forced into its unnatural direction is shortened (Ross &amp; Gourlay), so the reported
      * tip floats correspondingly lower — this keeps {@code getAbsoluteTopYSs()} on the real tip.

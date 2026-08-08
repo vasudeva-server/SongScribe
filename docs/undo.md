@@ -7,6 +7,83 @@ but which explains the shape of the engine after the fact.
 
 ------------------------------------------------------------------------
 
+## Runtime flow
+
+### Recording a forward edit
+
+```
+ forward edit                UndoController                    Song / Line
+
+ user edits ──▶ Song.endModification ──▶ SongDidChangeNotification
+                                          │  (applyingReplay == false)
+                                          ▼
+                                   push UndoStep(mutations, opName) onto undoStack
+                                   clear redoStack
+                                   evict oldest if size > undoStackMaxDepth
+                                   post UndoStateDidChangeNotification
+```
+
+### Edit-menu label (`composeLabel`, per direction)
+
+```
+        step = stack.peek()
+        step == null            ──▶ "Undo" / "Redo"            (empty stack)
+        step.opName != null     ──▶ "Undo <declared op-name>"  (declared, verbatim)
+        step.opName == null     ──▶ "Undo <type-based label>"  (fallback via
+                                    opNameKey(dominantMutation(step.mutations)))
+```
+
+### Undo
+
+```
+        peek step from undoStack
+        applyingReplay = true
+        song.withModification(() -> song.withReplay(() ->
+            for m in reverse(step): MutationReplayer.applyUndo(scoreView, m)))
+        applyingReplay = false          ──▶ posts a SongDidChangeNotification
+                                            (handler sees applyingReplay==true → ignores)
+                                            (ScoreViewController still repaints from it)
+        on success: pop from undoStack, push onto redoStack
+        recompute modified vs clean
+        post UndoStateDidChangeNotification
+```
+
+### Redo
+
+```
+        peek step from redoStack
+        applyingReplay = true
+        song.withModification(() -> song.withReplay(() ->
+            for m in forward(step): MutationReplayer.applyRedo(scoreView, m)))
+        applyingReplay = false
+        on success: pop from redoStack, push onto undoStack
+        recompute modified vs clean
+        post UndoStateDidChangeNotification
+```
+
+## Where an undo step's op-name comes from
+
+Two tiers declare the name that ends up on an `UndoStep`.
+
+**Tier A — `UIAction`.** `actionPerformed` is a `final` template. It sets
+`UndoController.setPendingOpName(getUndoOpName())`, calls the subclass's
+`performAction` hook, and restores the prior pending name in a `finally`. Any
+modification bracket that opens *synchronously* inside that dispatch window captures
+the pending name as it goes from depth 0 to depth 1. Modal dialogs block, so they
+qualify. A bracket opened off-stack — `invokeLater`, a `Timer`, a `SwingWorker`, or a
+non-modal dialog — opens after the `finally` has already cleared `pendingOpName`.
+
+**Tier B — the labeled overload.** Those off-stack sites call
+`withModification(String label, Runnable)` and declare their name directly.
+
+**Inside the bracket.** On the 0 → 1 depth transition the session captures
+`label != null ? label : pendingOpName`. Each `applyChange(mutation, mutator)` runs
+its mutator and appends the mutation to the accumulated list, throwing if the depth is
+0 (no open bracket). When the outermost bracket closes, the depth returns to 0 and the
+session posts `SongDidChangeNotification(accumulatedMutations, capturedOpName)`.
+
+------------------------------------------------------------------------
+
 ## Why a normal bracket during replay (not `withoutMutationTracking`)
 
 The replay bracket posts a `SongDidChangeNotification` so

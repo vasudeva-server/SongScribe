@@ -433,28 +433,14 @@ final class MusicXmlHeaderReader {
      * a credit (display-only), and the reader MUST take head and ignore the credit
      * or a hand-edited credit corrupts the model.
      *
-     * <pre>
-     *                          WRITER                          READER
-     *   Song field ─────────────┬─────────────────┐
-     *                           │                 │
-     *    ┌──────────────────────▼───┐   ┌─────────▼────────────┐
-     *    │ HEAD (identification/     │   │ CREDIT (&lt;credit&gt;)    │
-     *    │  movement/miscellaneous)  │   │  fonts + positions   │
-     *    └──────────┬────────────────┘   └───┬──────────────┬───┘
-     *               │                         │              │
-     *    ┌──────────▼──────────┐  ┌───────────▼───┐  ┌───────▼─────────────┐
-     *    │ CANONICAL           │  │ DISPLAY-ONLY  │  │ WRITE-FORWARD       │
-     *    │ read → model        │  │ ignored;      │  │ ignored;            │
-     *    │                     │  │ re-derived    │  │ recomputed/constant │
-     *    ├─────────────────────┤  ├───────────────┤  ├─────────────────────┤
-     *    │ subtitle credit     │  │ title credit  │  │ rights, software,   │
-     *    │ 4 score-below credit│  │ composer/     │  │ encoding-date,      │
-     *    │ attribution rel-y   │  │  lyricist/    │  │ supports, scaling,  │
-     *    │                     │  │  arranger/    │  │ music-font,         │
-     *    │                     │  │  date/rights/ │  │ default-x/default-y │
-     *    │                     │  │  place credits│  │ (external renderer) │
-     *    └─────────────────────┘  └───────────────┘  └─────────────────────┘
-     * </pre>
+     * <p>The three classes are: <b>canonical</b>, read into the model (the subtitle credit, the
+     * four score-below credits, and the attribution relative-y); <b>display-only</b>, ignored here
+     * and re-derived on write (the title credit and the composer, lyricist, arranger, date, rights
+     * and place credits); and <b>write-forward</b>, ignored here and recomputed or constant on
+     * write (rights, software, encoding-date, supports, scaling, music-font, and the
+     * {@code default-x}/{@code default-y} an external renderer needs).
+     *
+     * <p>See {@code docs/musicxml-reader.md} for the full routing table.
      */
     private void dispatchCredit() throws SAXException {
         var parsedSong = reader.songOrNull();

@@ -994,11 +994,6 @@ public class LayoutEngine {
         // purely note-relative and independent of any articulation, matching LilyPond, where the
         // tie and the note's scripts (staccato, accent) are placed independently.
         //
-        //   left note          tie          right note
-        //   ┌───────┐   start ↗   ↖ end   ┌───────┐
-        //   │  ●  ⟋─┼────╮       ╭────┼─⟍  ●  │
-        //   └───────┘    ╰───────╯    └───────┘
-        //
         // When the seat row lands on the left note's up-displaced augmentation dot, the whole tie
         // lifts a further quarter-space to clear it (the dot never moves) — LilyPond's dot-row case.
         // The dot belongs to the left note and sits under the arc's path, so the check applies only
@@ -1013,10 +1008,9 @@ public class LayoutEngine {
         // once it clears the box (LilyPond get_attachment's edge-vs-center step). dir = +1 for the
         // left endpoint (tie extends rightward), -1 for the right.
         //
-        // An open end has no notehead to attach to and terminates at a line edge instead:
-        //
-        //   line A:  … ● ● ●─────►┊   runs on to the right staff edge
-        //   line B:  𝄞 # ┊◄────● ● …   enters where the music starts, past the header
+        // An open end has no notehead to attach to and terminates at a line edge instead: the half
+        // leaving the earlier line runs on to the right staff edge, and the half entering the later
+        // line starts where the music does, past the clef and key signature.
         //
         // That is LilyPond's rule in tie-formatting-problem.cc set_column_chord_outline: when the
         // bound item is a line-break column rather than a note (`bounds[0]->break_status_dir()`),

@@ -107,13 +107,12 @@ public class Line implements LyricRun, SpanLookup {
      * reader safe — {@link #elements} is a plain {@code ArrayList}, so a rebuild racing a
      * structural change was never safe and this field does not change that.
      *
-     * <pre>
-     *   elements written  ──► attach/detach ──► elementIndexMap = null
-     *        addElement ×2, setElement, removeElement, removeRange
+     * <p>Every write to {@link #elements} — both {@code addElement} overloads, {@code setElement},
+     * {@code removeElement} and {@code removeRange} — goes through {@code attach} or
+     * {@code detach}, which null this field out. {@link #getElementIndex} rebuilds the map when it
+     * finds it null, and otherwise serves a cached lookup.
      *
-     *   getElementIndex() ──► null? rebuild : cached lookup
-     * </pre>
-     * Writes to {@link #spans} are absent from that picture because they cannot reach it:
+     * <p>Writes to {@link #spans} are absent from that picture because they cannot reach it:
      * a span holds no position in {@code elements}, and {@link #appendChild} /
      * {@link #removeChild} touch the span list alone.
      */
@@ -277,13 +276,8 @@ public class Line implements LyricRun, SpanLookup {
     // parentLine. Every mutation of `elements` funnels through one of them from inside
     // the applyChange mutator lambda, so parentage moves with the recorded change:
     //
-    //     addElement(StaffElement) ──┐
-    //     addElement(int, …) ────────┼──► attach
-    //     setElement ────────────────┘
-    //
-    //     setElement ────────────────┐
-    //     removeElement ─────────────┼──► detach
-    //     removeRange ───────────────┘
+    // Both addElement overloads attach; removeElement and removeRange detach; setElement does
+    // both, detaching the outgoing element and attaching the incoming one.
     //
     // A span is never attached to a line at all. Its inherited parentLine stays null for
     // its whole life, and Span.isIn(Line) derives parentage from where its endpoints sit,

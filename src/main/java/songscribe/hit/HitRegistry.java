@@ -37,24 +37,12 @@ import org.jspecify.annotations.Nullable;
  *
  * <h2>How overlapping regions resolve</h2>
  *
- * <pre>
- *   PRIORITY                         a click at ✱ resolves like this:
- *   (highest first)
- *   ─────────────────────────        ┌───────────── Ending ─────────────┐
- *   LYRIC                            │        ▲ articulation            │
- *   ARTICULATION / ATTACHMENT        │      ╭─┴──────────────╮ Tie bbox │
- *   ACCIDENTAL                       │      │    ✱           │          │
- *   ELEMENT                          │  ♯   ●   note head    │   ●      │
- *   SLIDE                            │      ╰────────────────╯          │
- *   HAIRPIN                          └──────────────────────────────────┘
- *   ENDING
- *   TIE                              ✱ is inside Ending and Tie only
- *   BEAM                             → highest priority containing it wins → TIE
- *   STAFF_LINE
- * </pre>
- *
  * <p>Rule: of all regions whose shape contains the point, the highest priority wins.
- * Equal priorities are broken by <b>smallest bounding-box area</b>.
+ * Equal priorities are broken by <b>smallest bounding-box area</b>. The priorities, highest
+ * first, are {@code LYRIC}, {@code ARTICULATION}/{@code ATTACHMENT}, {@code ACCIDENTAL},
+ * {@code ELEMENT}, {@code SLIDE}, {@code HAIRPIN}, {@code ENDING}, {@code TIE}, {@code BEAM},
+ * {@code STAFF_LINE}. So a click that lands inside an ending's box and a tie's bounding box but
+ * on neither a notehead nor an articulation resolves to the tie, the higher of the two.
  *
  * <p>The area tiebreak is why a note head sitting inside an ending's box needs no
  * hand-ordering of registrations: {@code ELEMENT} already outranks {@code ENDING}. The

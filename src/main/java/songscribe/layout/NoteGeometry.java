@@ -560,24 +560,13 @@ public final class NoteGeometry {
      * lines, so compute it once (via {@link #getLedgerLineGeometry}) and call {@link #extentAtSs} per
      * line rather than recomputing the head/accidental geometry for each.
      *
-     * <p>Coordinate convention (note-relative, X right-positive, Y down-positive):
+     * <p>Coordinates are note-relative, X right-positive and Y down-positive. A ledger line runs
+     * from {@code ledgerLeft} to {@code ledgerRight}, overhanging the notehead by the ledger factor
+     * times the head width ({@code headRight - headLeft}) on each side. Where an accidental spans
+     * the ledger's y, {@link #extentAtSs} pulls {@code ledgerLeft} in to the clamp midpoint
+     * {@code (accRight + headLeft) / 2}, which always lands right of {@code ledgerLeft}.
      *
-     * <pre>
-     *                       note origin (x = 0)
-     *                            |
-     *         headLeft           |          headRight
-     *            |               |              |
-     *    --------+---------------+--------------+--------   ← a ledger line (one of several),
-     *    |       |          width = headRight - headLeft    drawn at note-relative y = yOffsetSs
-     *    |       |                              |       |   (Y increases downward)
-     * ledgerLeft |                              |  ledgerRight
-     *    <-------->                             <-------->
-     *    lf · width                             lf · width
-     *
-     *    accidental clamp midpoint = (accRight + headLeft) / 2
-     *      lands between the accidental's right edge and headLeft, i.e. right of ledgerLeft;
-     *      extentAtSs() pulls ledgerLeft in to this midpoint where an accidental spans the ledger's y.
-     * </pre>
+     * <p>See {@code docs/layout-geometry.md} for the annotated diagram.
      */
     public record LedgerLineGeometry(
         LedgerExtentSs baseExtentSs,

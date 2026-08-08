@@ -50,38 +50,25 @@ import songscribe.util.UIUtils;
 /**
  * Manages the paste-mode state machine — placement of a clipboard fragment by
  * clicking (or pressing Return over) an insertion point on a line.
- * <pre>
- *                     Cmd+V, no selection
- *         INACTIVE ─────────────────────────> ACTIVE ──────────> [paste-mode pill shown, all actions
- *             ^                                 │                 disabled, preview element suppressed]
- *             │                                 │
- *             │                          mouseMoved on a line
- *             │                                 │  └─> findInsertionIndex → track (lc, index),
- *             │                                 │      retarget insertion marker overlay
- *             │                                 │
- *             │        ┌── click / Return ──────┤   (Return with no tracked point ⇒ no-op, stay ACTIVE)
- *             │        │      └─> tryInsertFragment(index, no deleteRange)
- *             │        │             ├─ LINE_FULL ─> error dialog ─> STAY ACTIVE
- *             │        │             └─ INSERTED  ─> exit  (clipboard retained)
- *             │        │
- *             └────────┴── Escape (before DeselectCommand; selection left intact)
- *                      ├── click outside any line
- *                      └── app backgrounded
  *
- *         ALL exits funnel through ONE exit():
- *             active=false → post notification → remove paste-mode pill → remove ComponentListener
+ * <p>Cmd+V with no selection moves INACTIVE to ACTIVE: the paste-mode overlay appears, every action is
+ * disabled, and the preview element is suppressed. Mouse movement over a line resolves an insertion
+ * index and retargets the insertion marker overlay. A click, or Return over a tracked point, calls
+ * {@code tryInsertFragment}; LINE_FULL shows an error dialog and stays ACTIVE, while INSERTED exits
+ * with the clipboard retained. Escape, a click outside any line, or the app being backgrounded also
+ * exit. While ACTIVE, presses on a line are inert — no line select, no lyric select, no pitch drag —
+ * so the click that follows is always a placement or a cancel.
  *
- *         While ACTIVE, presses on a line are inert — no line select, no lyric select, no
- *         pitch drag — so the click that follows is always a placement or a cancel.
- * </pre>
- * All exits route through the single {@link #exit()} funnel, mirroring
+ * <p>See section 5 of {@code docs/clipboard.md} for the full state diagram.
+ *
+ * <p>All exits route through the single {@link #exit()} funnel, mirroring
  * {@code GraceModeManager.finish(boolean)}. Open-coding teardown per exit path
  * would be five paths of duplicated steps, and a missed listener removal is
  * invisible — each enter/exit cycle would leak a live listener on the layered
  * pane. Mirrors {@link GraceModeManager}'s single-flag / static-instance shape.
  * <p>
  * "Overlay" means two different things in this class, deliberately kept distinct: the
- * paste-mode <b>pill</b> ({@link #overlay}, a {@link PasteOverlay}) is a banner in viewport space
+ * paste-mode <b>overlay</b> ({@link #overlay}, a {@link PasteOverlay}) is a banner in viewport space
  * hosted on {@link MainFrame}'s {@link JLayeredPane}, while the insertion-point <b>marker</b>
  * ({@link #insertionMarkerOverlay}, an {@code InsertionMarkerOverlay}) is a
  * {@code LineOverlayComponent} in page space, hosted by {@link ScoreView} and sized to exactly
@@ -106,7 +93,7 @@ public final class PasteModeManager {
 
     private int targetIndex = -1;
 
-    // The overlay pill and the layered-pane bounds listener it needs while active.
+    // The overlay and the layered-pane bounds listener it needs while active.
     // Both are created in enter() and torn down in the single exit() funnel.
     @Nullable
     private PasteOverlay overlay;
@@ -236,7 +223,7 @@ public final class PasteModeManager {
      * Locates the LineComponent currently under the mouse pointer, if any, and
      * immediately tracks it as the insertion target so the marker appears the
      * instant paste mode is entered rather than waiting for the first real
-     * {@code mouseMoved} event. Must run before the overlay pill is added to
+     * {@code mouseMoved} event. Must run before the overlay is added to
      * the layered pane: once added, its full-bleed bounds would be the topmost
      * hit there, shadowing the score underneath from {@link UIUtils#getComponentUnderMouse}.
      */

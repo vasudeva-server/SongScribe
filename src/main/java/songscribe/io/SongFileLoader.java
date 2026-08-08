@@ -44,27 +44,19 @@ public final class SongFileLoader {
     private SongFileLoader() {}
 
     /*
-     * Open-dispatch decision tree:
+     * Open-dispatch, keyed on the file's extension (matched case-insensitively):
      *
-     *  file
-     *   │
-     *   ▼  SongFileLoader.load(file)
-     *   │   hasExtension(file, …)  (case-insensitive)
-     *   │
-     *   ├─ .mssw ─────────────► SongLoader.load(file)   (unchanged legacy path)
-     *   │                        └─► Success │ IoError │ ParseError │ NewerVersion
-     *   │
-     *   ├─ .musicxml | .xml ──► MusicXmlReader.read(file)
-     *   │      startElement: root ≠ <score-partwise>            ─► UnsupportedFormatException
-     *   │      startElement: version missing/unparseable/<4.0   ─► UnsupportedFormatException
-     *   │      endDocument:  <software> null/blank/¬startsWith(PACKAGE_NAME) ─► ForeignSoftwareException
-     *   │      (otherwise) ─► Success (carrying the tuplet load report, if any)
-     *   │      catch ForeignSoftwareException  ► WrongSoftware(file, software)
-     *   │      catch UnsupportedFormatException ► UnsupportedFileFormat(file, detail)
-     *   │      catch SAXException              ► ParseError(file, e)
-     *   │      catch IOException               ► IoError(file, e)
-     *   │
-     *   └─ else (.pdf, .txt, none, …) ► UnsupportedFileFormat(file, ext)
+     * .mssw goes to the unchanged legacy SongLoader path, which yields Success, IoError,
+     * ParseError or NewerVersion.
+     *
+     * .musicxml and .xml go to MusicXmlReader.read. That reader rejects a root element other than
+     * <score-partwise>, and a version that is missing, unparseable or below 4.0, with an
+     * UnsupportedFormatException; at endDocument it rejects a <software> value that is null, blank,
+     * or does not start with the package name with a ForeignSoftwareException. Otherwise it returns
+     * Success, carrying the tuplet load report if there is one. The catch clauses below map those
+     * exceptions plus SAXException and IOException onto the corresponding SongLoadResult cases.
+     *
+     * Anything else (.pdf, .txt, no extension, …) is an UnsupportedFileFormat naming the extension.
      */
     public static SongLoadResult load(File file) {
         if (FileUtils.hasExtension(file, FileExtensions.SONGWRITER)) {

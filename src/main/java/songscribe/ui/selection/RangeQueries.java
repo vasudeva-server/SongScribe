@@ -292,32 +292,15 @@ public final class RangeQueries {
      * pitched notes} — which excludes rests, barlines, repeats, breath marks and grace notes —
      * of different pitch, as {@link Line#isSamePitchAsFollower} defines that condition.
      *
-     * <pre>{@code
-     * GLISSANDO SOURCE RESOLUTION       A glissando lives on its SOURCE and connects forward.
+     * <p>A glissando lives on its <em>source</em> and connects forward, so the source is resolved
+     * from the selection's size first: a single-element selection takes {@code begin() - 1} (the
+     * element before it, which the glissando would run from), a two-element selection takes
+     * {@code begin()} itself, and any other size yields -1.
      *
-     *   size 1:  [ N ]                  source = begin() - 1
-     *          ↑ begin                  ┌───┐   ┌───┐
-     *                                   │ p │~~~│ N │      p = begin()-1
-     *                                   └───┘   └───┘
-     *   size 2:  [ N   N ]              source = begin()
-     *          ↑ begin ↑ end            ┌───┐   ┌───┐
-     *                                   │ N │~~~│ N │
-     *                                   └───┘   └───┘
-     *   any other size  →  -1
-     *
-     *   source resolved
-     *         │
-     *         ▼
-     *   source.hasGlissando()? ──yes──► return source     (removal: no further gate)
-     *         │ no
-     *         ▼
-     *   source >= 0  AND  source+1 < elementCount()
-     *     AND  both source and source+1 isPitchedNote()
-     *     AND  !isSamePitchAsFollower(source)  ──no──► -1
-     *         │ yes
-     *         ▼
-     *   return source                                     (addition)
-     * }</pre>
+     * <p>With the source resolved, a source that already {@code hasGlissando()} is returned
+     * immediately — removal needs no further gate. Otherwise the addition gate applies: the source
+     * must be in range with a successor, both it and its successor must be pitched notes, and
+     * {@code isSamePitchAsFollower(source)} must be false. Failing any of those yields -1.
      */
     public static int glissandoSourceIndex(Selection.Range range) {
         var line = range.line();

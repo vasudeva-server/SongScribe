@@ -49,45 +49,16 @@ import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * Manages the grace note pairing state machine.
- * <pre>
- *                          mouseDown + grace action selected
- *                          + room check passes
- *                     ┌─────────────────────────┐
- *                     │                         ▼
- *               ┌──────────┐            ┌─────────────┐
- *               │ INACTIVE │            │ GRACE_NOTE  │
- *               └──────────┘            └──────┬──────┘
- *                     ▲                        │
- *                     │              ┌─────────┼──────────┐
- *                     │              │         │          │
- *                     │         drag-left   click/    drag-right
- *                     │         or Esc     no next    + next note
- *                     │              │      note       exists
- *                     │              │         │          │
- *                     │              │         ▼          │
- *                     │              │  ┌────────────┐    │
- *                     │              │  │ GRACE_NOTE │    │
- *                     │              │  │  _INSERT   │    │
- *                     │              │  └─────┬──────┘    │
- *                     │              │        │           │
- *                     │              │   click│left-click │
- *                     │              │   Esc  │line change│
- *                     │              │   ┌────┼────┐      │
- *                     │              │   │    │    │      │
- *                     │              ▼   ▼    ▼    │      ▼
- *                     │         ┌──────────┐  ┌──────────────┐
- *                     │         │ FINISH   │  │ GRACE_NOTE   │
- *                     │         │ (cancel) │  │   _PAIRED    │
- *                     │         └────┬─────┘  └──────┬───────┘
- *                     │              │               │
- *                     │              │               ▼
- *                     │              │         ┌──────────┐
- *                     │              └────────►│ FINISH   │
- *                     │                        │(success) │
- *                     │                        └────┬─────┘
- *                     │                             │
- *                     └─────────────────────────────┘
- * </pre>
+ *
+ * <p>A mouse-down while a grace action is selected moves {@code INACTIVE} to {@code GRACE_NOTE},
+ * provided the room check passes. From there a drag-left or Escape cancels; a drag-right onto an
+ * existing next note pairs directly ({@code GRACE_NOTE_PAIRED}); and a click, or a drag-right with
+ * no next note, enters {@code GRACE_NOTE_INSERT} to preview a host note the user has yet to create.
+ * {@code GRACE_NOTE_INSERT} either cancels (click miss or Escape) or commits to
+ * {@code GRACE_NOTE_PAIRED} on a left-click or line change. Both cancel and success paths run
+ * through {@code FINISH}, which tears the interaction down and returns to {@code INACTIVE}.
+ *
+ * <p>See {@code docs/grace-note-pairing.md} for the full state diagram and per-edge notes.
  */
 public final class GraceModeManager {
 

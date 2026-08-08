@@ -31,9 +31,9 @@ import songscribe.util.StringUtils;
  * re-constructing a record from an already-normalized record is a no-op.
  *
  * <h3>Normalization pipeline</h3>
+ * The compact constructor turns raw widget text (or {@code SongData}) into a cleaned, canonical
+ * record, per field:
  * <pre>
- *  raw widget text / SongData ──► SongMetadata(compact constructor) ──► cleaned, canonical record
- *
  *     title    : stripLinefeeds -> processText(…, true)
  *                  (processText = trim + collapse-spaces + toTypographic + unconditional ă->a)
  *     place    : processText(…, false)  (trim + toTypographic; no ă->a)

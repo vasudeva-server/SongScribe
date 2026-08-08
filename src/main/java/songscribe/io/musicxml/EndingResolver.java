@@ -49,11 +49,9 @@ final class EndingResolver {
     // -------------------------------------------------------------------------
     // Endings (two voltas ─► one Ending — inverts the writer's split expansion):
     //
-    //   anchor barline          split barline(s)            end barline
-    //   <ending 1 start>        <ending 1 stop>             <ending 2 stop>
-    //                           <ending 2 start>
-    //        |                        |     |                    |
-    //        '------- volta 1 -------'      '----- volta 2 ------'
+    // The writer splits one Ending into two voltas: volta 1 runs from the anchor barline
+    // (<ending 1 start>) to the split barline (<ending 1 stop>), and volta 2 runs from the same
+    // split barline (<ending 2 start>) to the end barline (<ending 2 stop>).
     //
     //   1 start ─► pendingEndingAnchor (the barline StaffElement)
     //   2 stop  ─► Ending(anchor, this barline); the split is recomputed live

@@ -35,15 +35,8 @@ import songscribe.util.StringUtils;
  * Handles wrap, centering, and measurement. Subclasses supply the text via
  * {@link #songText()} and an optional leading gap via {@link #topGapPx()}.
  * <p>
- * Layout (when {@link #songText()} is non-empty):
- * <pre>
- *   +---------------------------------------------------+  ---
- *   |                  (topGapPx rows)                  |   |  topGap
- *   +---------------------------------------------------+  ---
- *   |              centered, wrapped text               |   |  textBlock
- *   +---------------------------------------------------+  ---
- *   total height = topGap + textBlock
- * </pre>
+ * When {@link #songText()} is non-empty the component stacks {@link #topGapPx()} rows of leading
+ * gap above the centered, wrapped text block, so its total height is the gap plus the block.
  * When {@link #songText()} is empty the component collapses to {@code (0, 0)}
  * and no gap is emitted — a subtitle with no text takes up no space.
  * <p>

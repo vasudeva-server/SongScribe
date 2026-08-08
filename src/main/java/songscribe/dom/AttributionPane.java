@@ -43,8 +43,7 @@ import songscribe.util.GraphicsState;
  *
  * <h3>Lifecycle: measure → cache → render</h3>
  * <pre>
- *  Invalidation points
- *  ───────────────────
+ *  Invalidation points:
  *  setSong(song)              → clears both cache slots [Song metadata change]
  *  setOverrideLines(lines)    → clears both cache slots [override lines change]
  *  fonts / zoom change (passed as params) → each slot is keyed on font identity and
@@ -54,15 +53,13 @@ import songscribe.util.GraphicsState;
  *  Natural-scale and zoomed measurements are cached separately, so the layout pass
  *  (always natural) and the paint pass (at the view zoom) never evict each other.
  *
- *  Measure / cache
- *  ───────────────
+ *  Measure / cache:
  *  getContentWidthPx(aFont, saFont)  → builds lines via formatter if the natural slot
  *                                       is empty or its fonts differ; stores MeasuredCache
  *  getContentHeightPx(aFont, saFont) → same slot; sums line heights + margins
  *  Both always measure at NATURAL_ZOOM_FACTOR, so the size is zoom-invariant.
  *
- *  Render
- *  ──────
+ *  Render:
  *  render(g2, xPx, yPx, widthPx, aFont, saFont, zoomFactor) → reuses the matching slot
  *                                                   (same fonts + zoom) or re-measures
  * </pre>

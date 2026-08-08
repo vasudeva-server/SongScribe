@@ -49,27 +49,15 @@ public abstract class LineElement {
      * the authoritative answer to "is this element live in the document?"; no membership
      * scan is needed to decide.
      * <p>
-     * Two kinds of element reach this field; a {@link Span} never does:
-     * <pre>
-     *                          Line
-     *                           │
-     *     ┌─────────────────────┼──────────────────────┐
-     *     │  elements (List&lt;StaffElement&gt;)             │  spans (List&lt;Span&gt;)
-     *     │                                            │
-     *     ▼                                            ▼
-     *   StaffElement                                Span  (tie, beam, tuplet,
-     *     parentLine ◄── Line.attach / Line.detach     parentLine stays null
-     *     │              ONLY writer  ── structural     for its whole life;
-     *     │                                            Span.isIn(Line) derives
-     *     │  children (List&lt;LineElement&gt;)              parentage from its endpoints
-     *     ▼
-     *   Articulation, FermataAttachment, …
-     *     parentLine ◄── LineElement.addChild /
-     *                    removeChild, and
-     *                    propagateParentLine
-     *                    when the host attaches
-     *                    or detaches
-     * </pre>
+     * Two kinds of element reach this field; a {@link Span} never does. A {@code StaffElement}
+     * lives in {@code Line.elements}, and {@code Line.attach}/{@code Line.detach} are the only
+     * writers of its {@code parentLine}. Its children — {@code Articulation},
+     * {@code FermataAttachment} and the rest — get theirs from {@code LineElement.addChild} and
+     * {@code removeChild}, and from {@code propagateParentLine} when the host attaches or
+     * detaches. A {@code Span} (tie, beam, tuplet, …) lives in {@code Line.spans} instead; its
+     * {@code parentLine} stays null for its whole life, and {@code Span.isIn(Line)} derives
+     * parentage from its endpoints.
+     * <p>
      * For an element in Line's {@code elements} list the invariant is
      * {@code parentLine == L ⟺ L.elements contains this}, holding at
      * modification-bracket boundaries. Inside a bracket a re-parent may briefly have

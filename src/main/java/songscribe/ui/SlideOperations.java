@@ -50,26 +50,20 @@ import songscribe.undo.OpNames;
  * slide" test and {@code applyTo()} is the mutation, so one kernel serves both slide kinds and
  * the test and the mutation cannot drift apart.
  *
- * <pre>
- * SLIDE TOGGLE DECISION   (indices = one glissando source, or every pitched index in a range)
+ * <p>The toggle decision, over the affected indices — one glissando source, or every pitched index
+ * in a range:
  *
- *   indices empty ────────────────────────────────────────► REFUSED
- *          │
- *          ▼
- *   every index zone.matches(element)? ──yes──► REMOVE all
- *          │ no                                 label = deleteSlideLabel(getSlide())
- *          ▼
- *   ADD to every index that does not match yet
- *   label = addSlideLabel(zone == SlideZone.FALL)
- *     ── a mixed selection ADDS, it never clears ──
- *          │
- *          ▼
- *   NOT hasRoomForSlides(line, addedIndices, zone)? ──────► modify nothing,
- *          │                                                 line-full error dialog,
- *          │ room is fine                                     REPORTED
- *          ▼
- *   ONE line.withModification(label, …) bracket  ⇒  exactly one undo step, MODIFIED
- * </pre>
+ * <ol>
+ *   <li>No indices at all: {@code REFUSED}.
+ *   <li>If {@code zone.matches(element)} holds for <em>every</em> index, remove the slide from all
+ *       of them, labeling the step with {@code deleteSlideLabel(getSlide())}.
+ *   <li>Otherwise add to every index that does not match yet, labeled with
+ *       {@code addSlideLabel}. A mixed selection therefore always adds; it never clears.
+ *   <li>If {@code hasRoomForSlides} refuses the added indices, nothing is modified: the line-full
+ *       error dialog is shown and the result is {@code REPORTED}.
+ *   <li>Otherwise one {@code line.withModification(label, …)} bracket applies the change, giving
+ *       exactly one undo step and a {@code MODIFIED} result.
+ * </ol>
  */
 public final class SlideOperations {
 

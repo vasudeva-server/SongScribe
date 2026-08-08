@@ -62,82 +62,23 @@ import songscribe.util.UIUtils;
  * In-place lyric editor overlay parented to {@link ScoreView}. Edits the active-verse lyric
  * of a single {@link StaffElement} with width and baseline matching the rendered lyric box.
  *
- * <pre>
- *  ┌───────────────────────────────────────────────────────────┐
- *  │ LyricEditor lifecycle                                     │
- *  │                                                           │
- *  │   EditLyricAction / Enter / double-click                  │
- *  │           │                                               │
- *  │           ▼                                               │
- *  │   new LyricEditor(line, element)                          │
- *  │   editor.setBounds(...)                                   │
- *  │   if existing lyric: setText, selectAll, caret end        │
- *  │   else if on a melisma carrier:  setText("_"), selectAll  │
- *  │   else if inside a hyphen chain: setText("-"), selectAll  │
- *  │   editor.attachListeners()                                │
- *  │   score.add(editor); setVisible(true); requestFocus       │
- *  │           │                                               │
- *  │           ▼                                               │
- *  │   ┌──── ACTIVE ─────────────────────────────────┐         │
- *  │   │                                             │         │
- *  │   │  user keystroke                             │         │
- *  │   │   - char insert/delete → recompute width    │         │
- *  │   │   - len > {@value #MAX_LENGTH_CHARS} →reject│         │
- *  │   │   - newline → strip                         │         │
- *  │   │                                             │         │
- *  │   │  Tab/Space  → commit + advance              │         │
- *  │   │  Enter      → commit + dismiss              │         │
- *  │   │  Escape     → applyDismissAdjustment +      │         │
- *  │   │               dismiss (no commit)           │         │
- *  │   │  focus-lost → commit + applyDismissAdjust   │         │
- *  │   │               + dismiss                     │         │
- *  │   │  Alt-A      → insert ā (Alt-Shift-A: Ā)     │         │
- *  │   │  Alt-N      → insert ñ (Alt-Shift-N: Ñ)     │         │
- *  │   │                                             │         │
- *  │   │  Boundary keys:                             │         │
- *  │   │  ┌────────┬───────────────┬───────────────┐ │         │
- *  │   │  │ Key    │ State         │ Effect        │ │         │
- *  │   │  ├────────┼───────────────┼───────────────┤ │         │
- *  │   │  │ -      │ non-empty     │ commit as     │ │         │
- *  │   │  │        │               │ syllable →adv │ │         │
- *  │   │  │ -      │ empty         │ advance only  │ │         │
- *  │   │  │ =, +   │ non-empty,    │ commit as     │ │         │
- *  │   │  │        │ caret-at-end  │ compound →adv │ │         │
- *  │   │  │ =, +   │ empty or mid  │ beep, stay    │ │         │
- *  │   │  │        │               │ open          │ │         │
- *  │   │  │ _      │ non-empty,    │ drop text,    │ │         │
- *  │   │  │        │ all selected  │ extend chain  │ │         │
- *  │   │  │        │               │ backward →adv │ │         │
- *  │   │  │ _      │ non-empty,    │ commit as     │ │         │
- *  │   │  │        │ caret-at-end, │ START, next   │ │         │
- *  │   │  │        │ next has no   │ becomes STOP  │ │         │
- *  │   │  │        │ syllable      │ → adv past it │ │         │
- *  │   │  │ _      │ non-empty,    │ beep, stay    │ │         │
- *  │   │  │        │ otherwise     │ open          │ │         │
- *  │   │  │ _      │ empty         │ extend chain  │ │         │
- *  │   │  │        │               │ backward →adv │ │         │
- *  │   │  └────────┴───────────────┴───────────────┘ │         │
- *  │   └─────────────────────────────────────────────┘         │
- *  │           │                                               │
- *  │           ▼                                               │
- *  │   advance(): scan forward for eligible element            │
- *  │     eligible: !rest, OR rest with existing lyric          │
- *  │     found: dismiss this, new LyricEditor(line, next)      │
- *  │     none:  dismiss()                                      │
- *  │                                                           │
- *  │   applyDismissAdjustment(): on every dismiss, walk back   │
- *  │     to repair dangling extender or syllable chains.       │
- *  │     Suppressed when extendChainBackward has just built a  │
- *  │     well-formed chain.                                     │
- *  │                                                           │
- *  │   dismiss(): score.remove(this); editor reference cleared │
- *  │                                                           │
- *  │ Invariant: while editor is active, no external code path  │
- *  │ may mutate the song or fire any toolbar keystroke.        │
- *  │ Enforced by DISABLE_WHEN_EDITING_TEXT on every toolbar    │
- *  │ UIAction. LyricEditorActionAuditTest locks the whitelist. │
- *  └───────────────────────────────────────────────────────────┘
- * </pre>
+ * <p>An {@code EditLyricAction}, Enter, or a double-click constructs the editor, sizes it to the
+ * lyric box, prefills it (with the existing lyric, or a placeholder — see below), attaches its
+ * listeners, and adds it to the score with focus. While it is open, character edits recompute its
+ * width, text longer than {@value #MAX_LENGTH_CHARS} characters is rejected, and newlines are
+ * stripped. Tab and Space commit and advance; Enter commits and dismisses; Escape dismisses without
+ * committing; focus-lost commits and dismisses. Escape, focus-lost and Enter all run
+ * {@code applyDismissAdjustment} to repair a dangling extender or syllable chain. The boundary keys
+ * {@code -}, {@code =}/{@code +} and {@code _} each end the syllable and decide what kind of chain
+ * it joins, beeping and staying open where the caret position or emptiness makes that impossible.
+ * {@code advance()} scans forward for the next element that is not a rest (or is a rest that
+ * already has a lyric), reopening the editor there or dismissing if there is none.
+ *
+ * <p>See {@code docs/lyric-editor.md} for the full lifecycle, including the per-key boundary table.
+ *
+ * <p>Invariant: while the editor is active, no external code path may mutate the song or fire any
+ * toolbar keystroke. This is enforced by {@code DISABLE_WHEN_EDITING_TEXT} on every toolbar
+ * {@code UIAction}; {@code LyricEditorActionAuditTest} locks the whitelist.
  *
  * <p>An element with no syllable of its own opens prefilled with a selected placeholder naming
  * the role it plays for a neighbor: {@code -} when a word's hyphen spans it (given "a" "-" "mi",

@@ -44,50 +44,14 @@ import songscribe.io.LegacyAccidentals;
  * {@link #appendStaffElement} assembles them into a {@link StaffElement} at
  * {@code </note>}.
  *
- * <p>Where-state subtree (note children and their {@code <notations>} descendants):
+ * <p>{@code <duration>} and {@code <alter>} are read but ignored — duration is recomputed from
+ * {@code <type>} and the pitch comes from {@code <step>}/{@code <octave>} — as is the sounding
+ * {@code <tie>}, which is write-forward only. {@code <dot>} and {@code <normal-dot>} repeat and are
+ * counted. {@code <beam>} is honored only for {@code number="1"}. A {@code <breath-mark>}
+ * articulation is not a field at all: it appends a separate {@code BREATH_MARK} element after the
+ * note. Each {@code <lyric>} contributes one pending {@link Lyric} for its verse number.
  *
- * <pre>
- *   MEASURE
- *     └─ NOTE ── relative-x (attr)        ─► xOffset
- *          ├─ GRACE  (marker)             ─► isGrace
- *          ├─ REST   (marker)             ─► isRest
- *          ├─ PITCH
- *          │    ├─ STEP   (text)          ─► step
- *          │    ├─ ALTER  (text)          ─► ignored (pitch from step/octave)
- *          │    └─ OCTAVE (text)          ─► octave
- *          ├─ DURATION (text)             ─► ignored (recomputed from type)
- *          ├─ NOTE_TYPE (text)            ─► typeToken
- *          ├─ DOT (marker, repeats)       ─► dotCount++
- *          ├─ ACCIDENTAL (text+attr)      ─► accidental glyph + parentheses
- *          ├─ STEM (text)                 ─► upper / stemDirectionAuto=false
- *          ├─ TIE (sound, @type)          ─► ignored (write-forward only)
- *          ├─ TIME_MODIFICATION
- *          │    ├─ ACTUAL_NOTES (text)    ─► actualNotes (tuplet grade)
- *          │    ├─ NORMAL_NOTES (text)    ─► normalNotes
- *          │    ├─ NORMAL_TYPE  (text)    ─► normalTypeToken
- *          │    └─ NORMAL_DOT (marker, repeats) ─► normalDotCount++
- *          ├─ BEAM (@number, text)        ─► beam1Type (number=1 only)
- *          ├─ NOTATIONS
- *          │    ├─ ARTICULATIONS
- *          │    │    ├─ ACCENT      ─► ACCENT articulation
- *          │    │    ├─ STACCATO    ─► STACCATO articulation
- *          │    │    ├─ FALLOFF     ─► setFall()
- *          │    │    └─ BREATH_MARK ─► append BREATH_MARK element after note
- *          │    ├─ FERMATA            ─► FermataAttachment
- *          │    ├─ DYNAMICS
- *          │    │    └─ DYNAMIC_MARK ─► DynamicAttachment
- *          │    ├─ SLIDE (@type)      ─► slideType (glissando pairing done by
- *          │    │                        MusicXmlReader.resolveSlide)
- *          │    ├─ TIED (@type)       ─► tiedStart / tiedStop
- *          │    ├─ TUPLET (@type,@rel-y) ─► tupletStart / tupletStop
- *          │    └─ ORNAMENTS
- *          │         ├─ TRILL_MARK        ─► (decorative; pairing via WAVY_LINE)
- *          │         └─ WAVY_LINE (@type) ─► trillStart / trillStop
- *          └─ LYRIC (@number)             ─► one pending Lyric per verse
- *               ├─ SYLLABIC (text)        ─► syllabic token
- *               ├─ LYRIC_TEXT (text)      ─► syllable text (compound marker stripped)
- *               └─ EXTEND (@type)         ─► melisma extender state
- * </pre>
+ * <p>See {@code docs/musicxml-reader.md} for the full element-to-field mapping.
  *
  * <p>The span-marker fields ({@code beam1Type}, {@code tiedStart}/{@code
  * tiedStop}, {@code tupletStart}/{@code tupletStop} + the stated {@code <time-modification>}

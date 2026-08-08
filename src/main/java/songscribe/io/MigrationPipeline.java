@@ -47,13 +47,8 @@ final class MigrationPipeline {
     // Valid ss values are well below this; observed buggy px values are 700+.
     static final double LEGACY_LINE_WIDTH_PX_MIN = 400.0;
 
-    // ┌─────────────────────────── PRE-ASSEMBLY ───────────────────────────┐
-    // │ 1 legacy-format        isBefore(2,0)              → FormatMigrator.migrate(lines, 1)        │
-    // │ 2 annotation-dynamics  isBefore(2,3)              → migrateAnnotationDynamics              │
-    // │ 3 final-terminal       isBefore(2,4)              → migrateFinalTerminal                   │
-    // │ 4 pixels-to-ss         isBefore(2,1)  ┌ scalars ┐ → migratePixelsToStaffSpace              │
-    // │ 5 line-width-fix       v2 & minor<3 & lineWidthSs>=MIN └ lineWidthSs /= pps                │
-    // └─────────────────────────────────────────────────────────────────────┘
+    // Stages that run before the Song is assembled, in declaration order. Each is gated on the
+    // file's format version, except the line-width fix, which is gated on the value itself.
     static final List<SongMigration> PRE_ASSEMBLY = List.of(
         versioned(StageId.LEGACY_FORMAT, 2, 0, ctx -> FormatMigrator.migrate(ctx.lines, ctx.legacyLineOffsets, 1)),
         versioned(StageId.ANNOTATION_DYNAMICS, 2, 3, ctx -> FormatMigrator.migrateAnnotationDynamics(ctx.lines)),
@@ -68,11 +63,8 @@ final class MigrationPipeline {
             ctx -> ctx.majorVersion == 2 && ctx.minorVersion < 3 && ctx.lineWidthSs >= LEGACY_LINE_WIDTH_PX_MIN,
             ctx -> ctx.lineWidthSs /= ScaleContext.DEFAULT_PIXELS_PER_STAFF_SPACE));
 
-    // ┌────────────────────────── POST-ASSEMBLY (ctx.song set) ─────────────┐
-    // │ 7 legacy-lyrics        !lyrics.isBlank() && isBefore(2,6) → importLegacyLyrics             │
-    // │ 8 grace-host-melisma   always                            → line.repairGraceHostMelismas()  │
-    // │ 9 syllabic-backfill    always                            → line.backfillSyllabic()         │
-    // └─────────────────────────────────────────────────────────────────────┘
+    // Stages that run once ctx.song is set. Only the legacy-lyrics import is conditional; the
+    // grace-host melisma repair and syllabic backfill run for every file.
     static final List<SongMigration> POST_ASSEMBLY = List.of(
         new SongMigration(StageId.LEGACY_LYRICS,
             ctx -> !ctx.lyrics.isBlank() && ctx.isBefore(2, PER_NOTE_LYRIC_VERSION),

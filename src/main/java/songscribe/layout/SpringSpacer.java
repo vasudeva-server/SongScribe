@@ -70,33 +70,22 @@ public final class SpringSpacer {
      * equals its natural length, and the water-fill below leaves it there. That is the only way a
      * gap can be immovable — there is no separate pinning flag.
      *
-     * <pre>
-     *   natural = SUM max(rest_i, strut_i)
+     * <p>When the natural span {@code SUM max(rest_i, strut_i)} already fits in
+     * {@code availableSpanSs}, every gap keeps its natural length and the solve is O(n) with no
+     * loop — the line is simply ragged right. Otherwise the floor sum {@code SUM strut_i} decides:
+     * if even that overflows, the chain is infeasible; if it fits, the gaps are compressed by a
+     * weighted water-fill to the unit {@code U} that makes
+     * {@code SUM clamp(w_i·U, strut_i, natural_i)} equal {@code availableSpanSs}. Each gap then
+     * takes {@code clamp(w_i·U, strut_i, natural_i)}: frozen on its strut where the weighted level
+     * falls below it, capped at natural where it rises above (gaps never stretch), and at the
+     * weighted level in between.
      *
-     *          natural &lt;= availableSpanSs                 natural &gt; availableSpanSs
-     *                   |                                           |
-     *                   v                                           v
-     *          +------------------+          floorSum = SUM strut_i
-     *          |     SOLVED       |                            |
-     *          | gap = natural    |            floorSum &gt; available   floorSum &lt;= available
-     *          | (ragged right,   |                    |                     |
-     *          |  O(n), no loop)  |                    v                     v
-     *          +------------------+             +-------------+       WEIGHTED WATER-FILL to unit U:
-     *                                           | INFEASIBLE  |       SUM clamp(w_i·U, strut_i,
-     *                                           | (struts do  |           natural_i) = availableSpanSs
-     *                                           |  not fit)   |
-     *                                           +-------------+
-     *                                                                        |
-     *                                                                        v
-     *                                           length_i = clamp(w_i·U, strut_i, natural_i)
-     *                                             - w_i·U &lt; strut_i  : freeze on the strut (floor)
-     *                                             - w_i·U &gt; natural_i: cap at natural (no stretch)
-     *                                             - otherwise        : the weighted level w_i·U
+     * <p>{@code U} is found by levelling the still-free gaps, clamping the single most-violated
+     * one, and re-levelling the rest — so the loop is bounded by {@code springs.size()} passes.
+     * Exceeding that bound is a solver bug, not a layout condition, and throws rather than
+     * mis-spacing.
      *
-     *   U is found by levelling the still-free gaps, clamping the single most-violated one, and
-     *   re-levelling the rest — so the loop is bounded by springs.size() passes. Exceeding that
-     *   bound is a solver bug, not a layout condition, and throws rather than mis-spacing.
-     * </pre>
+     * <p>See {@code docs/layout-geometry.md} for the decision diagram.
      *
      * @param springs         the gaps between adjacent column origins, in left-to-right order
      * @param availableSpanSs the maximum allowed sum of gap lengths (delta-X Ss)

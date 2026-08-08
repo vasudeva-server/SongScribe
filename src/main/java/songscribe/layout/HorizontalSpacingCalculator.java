@@ -272,29 +272,20 @@ public final class HorizontalSpacingCalculator {
      * {@code factor} (see {@link #restFactorFor}); at the {@code 2.5} default line rest the factors
      * reproduce the legacy absolute gaps ({@code 2.5} normal, {@code 1.5} tight beam). The grace
      * gap is a fixed absolute distance that never scales with the line rest.
-     * <pre>
-     *   prev ──────────────── delta-X ───────────────▶ curr
      *
-     *   base rest  ┌ grace note prev ──▶ prevRight + GRACE_HOST_REST_SS     (fixed, never scales)
-     *              ├ same beam group ──▶ rightExtentExclAug + factor × lineRest  (0.6× both ≤16th,
-     *              │                                                              else 1.0×)
-     *              └ otherwise ────────▶ rightExtentExclAug + lineRest                      (1.0×)
+     * <p>The base rest is {@code prevRight + GRACE_HOST_REST_SS} when {@code prev} is a grace note,
+     * and otherwise {@code prev}'s right extent excluding augmentation dots plus the line rest,
+     * reduced to 0.6× within a beam group whose members are all sixteenths or shorter. The strut is
+     * the largest of four floors: the note-collision floor, the syllable-collision floor where
+     * either column bears a syllable, the glissando reservation where {@code prev} has one, and the
+     * grace compression floor where {@code prev} is a grace note. Compliance is
+     * {@code max(0, rest − strut)}, so a gap whose rest does not clear its strut starts frozen.
      *
-     *   strut = max( note-collision floor    prevRight + MIN_COLUMN_GAP_SS + |currLeft|
-     *              , syllable-collision floor prevSyl/2 + prev.minCollisionGapToNextSyllable
-     *                                                   + currSyl/2   (either bears a syllable;
-     *                                                     floor = 1 space, or bare hyphen if hyphenated)
-     *              , glissando reservation    prevRight − currLeft
-     *                                                   + MIN_GLISSANDO_RESERVATION_SS
-     *                                                                 (prev has a glissando)
-     *              , grace compression floor  rest − GRACE_HOST_COMPRESSION_ALLOWANCE_SS
-     *                                                                 (prev is a grace note) )
+     * <p>{@code prevRight} is {@code rightExtentFacingSs(prev, curr)} — {@code prev}'s full right
+     * extent, except that a grace note's flag is not charged when it hangs clear of {@code curr}'s
+     * left-facing band.
      *
-     *   compliance = max(0, rest − strut)     ← rest ≤ strut ⇒ the gap starts frozen
-     *
-     *   prevRight = rightExtentFacingSs(prev, curr) — prev's full right extent, except that a grace
-     *               note's flag is not charged when it hangs clear of curr's left-facing band
-     * </pre>
+     * <p>See {@code docs/layout-geometry.md} for the full recipe with each floor's formula.
      *
      * @param prev       Previous column
      * @param curr       Current column

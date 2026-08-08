@@ -34,27 +34,15 @@ import songscribe.smufl.SMuFLMetadata;
  *       dots, accidental), used as the attachment points of a connecting glissando.
  * </ul>
  *
- * <p>Column extent diagram (note-local space, X=0 at notehead glyph origin):
- * <pre>
- *   Stem up:
- *
- *     accidental  notehead    stem-right
- *     |           |<-- notehead -->|stem|
- *     |←  left   →|               |←right
- *
- *   Stem down:
- *
- *     accidental  stem  notehead
- *     |           |stem |<-- notehead -->|
- *     |←  left   →|    ←left            →right
- * </pre>
- * Full-extent left is driven by: accidental (if present), stem left edge (stem-down),
- * or notehead left edge.
- * Full-extent right is driven by: stem right edge (stem-up), notehead right edge,
- * or augmentation dots.
+ * <p>Extents are in note-local space, X=0 at the notehead glyph origin. Full-extent left is driven
+ * by the accidental if present, else the stem's left edge when the stem points down, else the
+ * notehead's left edge. Full-extent right is driven by the stem's right edge when the stem points
+ * up, else the notehead's right edge or the augmentation dots.
  * The stem-free glissando-attach extent drops the stem contribution entirely, so its
  * left/right are driven only by the accidental, notehead, and augmentation dots.
  * Ledger lines are excluded — they are reference lines, not ink the glissando must avoid.
+ *
+ * <p>See {@code docs/layout-geometry.md} for the annotated diagram.
  *
  * <p>The flag is deliberately excluded from both extents because both glissando endpoints
  * are pinned at notehead-center Y, so the flag (which lives near the stem tip, far

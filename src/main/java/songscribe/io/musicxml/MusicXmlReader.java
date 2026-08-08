@@ -58,29 +58,15 @@ import songscribe.util.Utils;
  * {@code getCurrentLine}, {@code songOrNull}).
  * <p>
  * <b>{@link Where} state-transition graph.</b> The transitions are driven from
- * several files via {@code reader.setWhere(...)}. Ownership is annotated per group
- * (states not yet extracted remain inline in this orchestrator):
+ * several files via {@code reader.setWhere(...)}. {@code NONE} advances to
+ * {@code SCORE_PARTWISE} on the root element; that state is the hub from which the header states
+ * (movement, identification, defaults, credit — owned by {@link MusicXmlHeaderReader}) and the
+ * content states ({@code PART_LIST}/{@code PART} down to the {@code MEASURE} hub — owned by
+ * {@code MusicXmlMeasureReader}) descend. The {@code MEASURE} hub's dispatch stays inline here and
+ * fans out to its leaf states plus {@code NOTE} ({@code MusicXmlNoteReader}) and
+ * {@code DIRECTION} ({@code MusicXmlDirectionReader}).
  *
- * <pre>
- *   NONE ──&lt;score-partwise&gt;──▶ SCORE_PARTWISE            [orchestrator: lifecycle]
- *
- *   SCORE_PARTWISE (hub) ──┬─▶ MOVEMENT_TITLE / MOVEMENT_NUMBER   ┐
- *                          ├─▶ IDENTIFICATION ─▶ CREATOR          │
- *                          │                   ├▶ RIGHTS          │
- *                          │                   ├▶ ENCODING ─▶ SOFTWARE / ENCODING_DATE
- *                          │                   └▶ MISCELLANEOUS ─▶ MISCELLANEOUS_FIELD
- *                          ├─▶ DEFAULTS ─▶ DEFAULTS_SCALING       │  MusicXmlHeaderReader
- *                          │            ├▶ DEFAULTS_PAGE_LAYOUT ─▶ DEFAULTS_PAGE_WIDTH
- *                          │            └▶ DEFAULTS_STAFF_LAYOUT  │
- *                          ├─▶ CREDIT ─▶ CREDIT_TYPE / CREDIT_WORDS┘
- *                          ├─▶ PART_LIST ─▶ SCORE_PART            ┐
- *                          └─▶ PART ─▶ MEASURE (hub)             │  MusicXmlMeasureReader
- *                                       ├▶ ATTRIBUTES ─▶ KEY ─▶ FIFTHS  (measure leaf states;
- *                                       ├▶ BARLINE ─▶ BAR_STYLE   │   the MEASURE dispatch
- *                                       ├▶ &lt;print new-system&gt;      ┘   hub stays inline)
- *                                       ├▶ NOTE ...               (MusicXmlNoteReader)
- *                                       └▶ DIRECTION ...          (MusicXmlDirectionReader)
- * </pre>
+ * <p>See {@code docs/musicxml-reader.md} for the full state graph with per-group ownership.
  *
  * States moved to {@link MusicXmlHeaderReader}: {@code MOVEMENT_TITLE},
  * {@code MOVEMENT_NUMBER}, {@code IDENTIFICATION}, {@code CREATOR}, {@code RIGHTS},

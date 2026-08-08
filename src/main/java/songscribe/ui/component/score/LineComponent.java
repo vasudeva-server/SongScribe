@@ -481,17 +481,14 @@ public class LineComponent extends ScoreComponent
         middleLineYSs = calculateMiddleLineYSs();
         middleLineYSsValid = true;
 
-        // ── Paint pipeline: the zoom factor is applied EXACTLY ONCE ─────────────────
+        // Paint pipeline: the zoom factor is applied EXACTLY ONCE, by the g2.scale(pxPerSs ×
+        // factor) below.
         //
-        //   g2.scale(pxPerSs × factor)              <- single factor application, here
-        //        │
-        //        ├─► LineRenderer + all element renderers draw in Ss; they NEVER
-        //        │   re-multiply by pxPerSs or factor (a ssToPx inside a renderer is a bug).
-        //        │
-        //        └─► exception: LyricTextRenderer strips this transform and re-derives its
-        //            own integer-pixel coords from LineInvariants.getViewPixelsPerStaffSpace()
-        //            (= pxPerSs × factor) — the only reader of the zoomed scale inside a
-        //            render pass.
+        //   LineRenderer and all element renderers draw in Ss; they NEVER re-multiply by pxPerSs
+        //   or factor (a ssToPx inside a renderer is a bug). The one exception is
+        //   LyricTextRenderer, which strips this transform and re-derives its own integer-pixel
+        //   coords from LineInvariants.getViewPixelsPerStaffSpace() (= pxPerSs × factor) — the
+        //   only reader of the zoomed scale inside a render pass.
         //
         //   Attribution below is drawn in pixel space OUTSIDE the transform, so it applies
         //   the factor explicitly (positions/sizes × factor, fonts via zoomedFont).
@@ -502,7 +499,6 @@ public class LineComponent extends ScoreComponent
         //   factor — see LineOverlayComponent.paintComponent. It reads the zoomed scale from
         //   getViewPixelsPerStaffSpace() below rather than re-multiplying inline, and the rule
         //   still holds within each pass: no renderer applies the factor a second time.
-        // ────────────────────────────────────────────────────────────────────────────
         var scale = getViewPixelsPerStaffSpace();
 
         // Layout always produces a result — an over-full line is placed on its collision floors

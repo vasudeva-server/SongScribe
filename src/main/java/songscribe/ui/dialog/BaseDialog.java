@@ -238,23 +238,18 @@ public abstract class BaseDialog {
     /*
      * Selection / lifecycle flow
      *
-     * setVisible(true) ──► hasSidebar ?
-     *      │                    │
-     *      │ no                 │ yes
-     *      ▼                    ▼
-     *  tabWillShow          tabList.getSelectedIndex() == 0 ?
-     *  on ALL tabs          ├─ yes ─► selectTab(0)            (no-op setSelectedIndex fires no event → call directly)
-     *  + content padding    └─ no  ─► setSelectedIndex(0) ──► ListSelectionListener
-     *                                                               │ valueIsAdjusting? ─ yes ─► return
-     *                                                               └─ no ─► selectTab(idx)
+     * setVisible(true) with no sidebar fires tabWillShow on ALL tabs and applies the content
+     * padding. With a sidebar it selects the first tab: if the list is already on index 0,
+     * selectTab(0) is called directly, because a no-op setSelectedIndex fires no event;
+     * otherwise setSelectedIndex(0) drives the ListSelectionListener, which returns early
+     * while valueIsAdjusting and otherwise calls selectTab(idx).
      *
-     * selectTab(index):
-     *      index < 0 ? ─ yes ─► return
-     *      └─ no ─► for each registered tab t at position i:
-     *                   i == index ? t.tabWillShow() : t.tabWillHide()   ← hide fires on ALL others (incl. already-hidden)
-     *               CardLayout.show(tabCards, String.valueOf(index))
+     * selectTab(index) returns immediately for a negative index. Otherwise, for each registered
+     * tab t at position i it calls t.tabWillShow() when i == index and t.tabWillHide() otherwise
+     * — so hide fires on ALL others, including already-hidden ones — then shows the matching
+     * CardLayout card, named String.valueOf(index).
      *
-     * setVisible(false) ──► tabWillHide on ALL tabs (unchanged)
+     * setVisible(false) fires tabWillHide on ALL tabs (unchanged).
      *
      * INVARIANT (append-only): tabs-list index  ==  list-model index  ==  CardLayout card name (String.valueOf(index)).
      *   addTab only appends, keeping all three in lockstep. Removing/reordering a tab would break card lookup silently.

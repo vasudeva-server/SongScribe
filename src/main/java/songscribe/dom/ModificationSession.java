@@ -360,25 +360,13 @@ public final class ModificationSession {
      * Applies a single mutation within an open modification bracket.
      * <p>
      * Runs {@code mutator}, then records {@code mutation} in the accumulated list.
-     * <p>
-     * <pre>
-     * withModification([label], () -&gt; {                     ┐
-     *   ├─ depth 0 → 1: capturedOpName =                    │
-     *   │     label != null ? label : pendingOpName         │
-     *   │                                                    │
-     *   ├─ applyChange(mutation₁, mutator₁)                 │ caller's
-     *   │     ├─ throws if depth == 0                       │ bracket
-     *   │     ├─ mutator₁.run()                             │
-     *   │     └─ accumulatedMutations.add(mutation₁)        │
-     *   │                                                    │
-     *   ├─ applyChange(mutation₂, mutator₂)                 │
-     *   │     └─ ...                                         │
-     *   │                                                    │
-     * })  // bracket closes                                  │
-     *   ├─ depth → 0                                         │
-     *   └─ post SongDidChangeNotification(                   │
-     *          accumulated, capturedOpName)          ────────┘
-     * </pre>
+     *
+     * <p>The caller's {@code withModification} bracket captures the op-name on the depth 0 to 1
+     * transition — its explicit label if it has one, otherwise the pending op-name. Each
+     * {@code applyChange} call inside the bracket runs its mutator and appends its mutation.
+     * When the outermost bracket closes, the depth returns to 0 and a
+     * {@code SongDidChangeNotification} carrying the accumulated mutations and the captured
+     * op-name is posted. See {@code docs/undo.md} for the surrounding flow.
      *
      * @throws IllegalStateException if called outside a modification bracket
      */
