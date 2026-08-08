@@ -21,6 +21,29 @@ class FooTest extends UnitTest {
 }
 ```
 
+## Creating Staff Elements
+
+Never call `ElementType.X.newInstance()` in a test, and never write a local
+`note()` / `crotchet()` helper. Use `songscribe.dom.StaffElementFactory` — it is
+public and already covers the common element types:
+
+```java
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+
+var note = crotchet();
+var grace = graceQuaver();
+var note = StaffElementFactory.createNote(staffPosition, upper);   // pitched
+```
+
+Available: `semibreve`, `crotchet`, `quaver`, `graceQuaver`, `crotchetRest`,
+`repeatLeft`, `repeatRight`, `repeatLeftRight`, `singleBarline`, `doubleBarline`,
+`finalDoubleBarline`, `createNote(staffPosition, upper)`.
+
+If the type you need is missing, add a method to `StaffElementFactory` rather
+than reaching for `newInstance()` at the call site — a per-class `note()` helper
+is the duplication this factory exists to prevent.
+
 ## MainFrame Singleton Mocking
 
 Most UI-dependent tests need to mock the `MainFrame.getInstance()` singleton chain.

@@ -456,26 +456,28 @@ public class Line implements LyricRun, SpanLookup {
                 .toList();
             invalidatedSpans.forEach(this::removeInvalidatedSpan);
 
-            // When prepending to a non-empty first line, the previous first element
-            // carried the initial tempo — move it to the new first element. The
-            // removal is a tracked modification; the attachment on the incoming
-            // element needs no record because the element is not yet in the document,
-            // so the ElementInsertion below captures its attached state.
+            // When this insertion makes `element` the song's new first element, the old
+            // first element carried the initial tempo — move it across, per the rule
+            // Song.transferInitialTempoToAnchor documents. The old anchor may be on another
+            // line: inserting into an empty leading line displaces the tempo from the line
+            // below, and leaving it there would make it a change from nothing.
             //
-            // Not routed through Song.withBeatDefiningEdit: the displacement is the one
-            // beat-defining write that cannot change the beat anywhere. The tempo leaves
-            // element 0 of line 0 and lands back on element 0 of line 0 — the same
-            // document position, carrying the same Tempo — so resolveBeatAt returns the
-            // same beat for every position in the song and no tuplet can be invalidated.
-            if (isInitialTempoAnchor(index) && !elements.isEmpty()) {
-                var displacedFirstElement = elements.getFirst();
+            // The removal from the old anchor is a tracked modification and happens whether
+            // or not the tempo survives the move — that element is no longer the song's
+            // first either way, and the transfer drops the displaced tempo when the incoming
+            // element already carries one of its own.
+            var displacedAnchorLine =
+                insertionMakesSongFirstElement(index) ? song.initialTempoAnchorLine() : null;
+
+            if (displacedAnchorLine != null) {
+                var displacedAnchor = displacedAnchorLine.getElement(0);
                 var displacedTempo =
-                    displacedFirstElement.findAttachment(TempoChangeAttachment.class);
+                    displacedAnchor.findAttachment(TempoChangeAttachment.class);
 
                 if (displacedTempo != null) {
-                    modifyElement(0, ElementField.TEMPO_CHANGE,
-                        () -> displacedFirstElement.removeAttachment(displacedTempo));
-                    element.addAttachment(displacedTempo.copy(element));
+                    displacedAnchorLine.modifyElement(0, ElementField.TEMPO_CHANGE,
+                        () -> displacedAnchor.removeAttachment(displacedTempo));
+                    song.transferInitialTempoToIncomingElement(displacedTempo, element);
                 }
             }
         }
@@ -601,8 +603,9 @@ public class Line implements LyricRun, SpanLookup {
 
     /**
      * Whether {@code elementIndex} of this line is where the song's initial tempo is
-     * anchored — the first element of the first line, the position
-     * {@link #attachInitialTempoIfNeeded} mirrors it onto.
+     * anchored — the first element of the first <em>non-empty</em> line, the position
+     * {@link #attachInitialTempoIfNeeded} mirrors it onto. A leading empty line is not
+     * the anchor line.
      *
      * <p>A {@link TempoChangeAttachment} at that position is the song's own tempo, never
      * an independent per-note tempo change. Nothing in the model distinguishes the two —
@@ -611,7 +614,52 @@ public class Line implements LyricRun, SpanLookup {
      * it finds there as the song's tempo.
      */
     public boolean isInitialTempoAnchor(int elementIndex) {
-        return elementIndex == 0 && song.indexOfLine(this) == 0;
+        // The index test comes first deliberately: it short-circuits, so every element at a
+        // non-zero index skips both O(lines) scans. Copy and paste ask this per element, and
+        // only one of them can be at index 0.
+        if (elementIndex != 0) {
+            return false;
+        }
+
+        var anchorLineIndex = song.firstNonEmptyLineIndex();
+
+        // A song with no elements at all anchors nothing.
+        return anchorLineIndex >= 0 && song.indexOfLine(this) == anchorLineIndex;
+    }
+
+    /**
+     * Whether inserting at {@code index} of this line would make the incoming element the
+     * song's first — index 0 of a line with nothing but empty lines before it.
+     *
+     * <p>Wider than {@link #isInitialTempoAnchor}, deliberately: that predicate answers
+     * "where does the tempo sit now", which an empty leading line can never be, while this
+     * one answers "what will lead the song once this element is in". Inserting into a leading
+     * empty line puts the incoming element ahead of the current anchor on the line below.
+     *
+     * <p>Public because UI code has to ask the same question before it mutates anything: an
+     * insertion path that gated on {@link #isInitialTempoAnchor} instead would never prompt
+     * for a paste into a leading empty line, and the user would silently lose their starting
+     * tempo to the pasted note's own.
+     */
+    public boolean insertionMakesSongFirstElement(int index) {
+        // The index test comes first for the same reason it does in isInitialTempoAnchor.
+        if (index != 0) {
+            return false;
+        }
+
+        var lineIndex = song.indexOfLine(this);
+
+        // A line that is not in the song yet leads nothing — construction and load paths
+        // populate a line before inserting it, and its elements must not disturb the song's
+        // current anchor.
+        if (lineIndex < 0) {
+            return false;
+        }
+
+        var anchorLineIndex = song.firstNonEmptyLineIndex();
+
+        // A song with no elements at all: whatever goes in first leads it.
+        return anchorLineIndex < 0 || lineIndex <= anchorLineIndex;
     }
 
     /**
@@ -741,8 +789,12 @@ public class Line implements LyricRun, SpanLookup {
      * element with it, else null. Read before the removal, while the anchor is still in
      * place. Suppressed during replay: the recorded batch already carries the companion
      * modification.
+     *
+     * <p>Package-private rather than private because {@link Song#removeLine} asks the same
+     * question of the line it is about to delete — removing a whole line removes from its
+     * element 0.
      */
-    private @Nullable TempoChangeAttachment initialTempoBeingRemoved(int from) {
+    @Nullable TempoChangeAttachment initialTempoBeingRemoved(int from) {
         if (song.isReplaying() || !isInitialTempoAnchor(from)) {
             return null;
         }
@@ -760,22 +812,14 @@ public class Line implements LyricRun, SpanLookup {
      * <p>Emitted after the primary deletion, since the new first element only reaches index
      * 0 once the removal has happened. Reverse-order undo therefore strips this tempo again
      * before re-inserting the element that owned it.
+     *
+     * <p>The new anchor line is resolved through the song, not through this line: a deletion
+     * that empties this line moves the anchor down to the first line that still has elements,
+     * and dropping the tempo there would leave any later tempo change instructing a change
+     * from nothing.
      */
     private void reanchorInitialTempo(@Nullable TempoChangeAttachment displacedTempo) {
-        if (displacedTempo == null || elements.isEmpty()) {
-            return;
-        }
-
-        var newFirstElement = elements.getFirst();
-
-        // A tempo already on the new first element is the song's tempo in its own right —
-        // attachInitialTempoIfNeeded defers to an existing attachment, and so does this.
-        if (newFirstElement.findAttachment(TempoChangeAttachment.class) != null) {
-            return;
-        }
-
-        modifyElement(0, ElementField.TEMPO_CHANGE,
-            () -> newFirstElement.addAttachment(displacedTempo.copy(newFirstElement)));
+        song.transferInitialTempoToAnchor(displacedTempo, song.initialTempoAnchorLine());
     }
 
     @Override
@@ -910,6 +954,28 @@ public class Line implements LyricRun, SpanLookup {
         }
 
         return end;
+    }
+
+    /**
+     * A paired grace note immediately before {@code begin} cannot outlive its host, so it
+     * must be included in a deletion range that begins at {@code begin}. Returns
+     * {@code begin} extended back over that grace note, or {@code begin} unchanged if there
+     * is none. Pure query — mutates nothing.
+     */
+    public int effectiveDeleteBegin(int begin) {
+        return isHostOfPairedGraceNote(begin) ? begin - 1 : begin;
+    }
+
+    /** The inclusive element range a deletion actually removes. */
+    public record DeleteBounds(int begin, int end) {}
+
+    /**
+     * The range a deletion of {@code begin} through {@code end} actually removes, widened at
+     * both ends by {@link #effectiveDeleteBegin} and {@link #effectiveDeleteEnd}. Every query
+     * that asks about a deletion must ask about this range, not the caller's raw selection.
+     */
+    public DeleteBounds effectiveDeleteRange(int begin, int end) {
+        return new DeleteBounds(effectiveDeleteBegin(begin), effectiveDeleteEnd(end));
     }
 
     /**
@@ -1551,20 +1617,6 @@ public class Line implements LyricRun, SpanLookup {
         for (var tuplet : findTupletsOverlapping(begin, end)) {
             removeTuplet(tuplet);
         }
-    }
-
-
-    public int getFirstTempoChange() {
-        // On the first line the base tempo is anchored on the first element
-        // (see isInitialTempoAnchor), so the tempo marking belongs to that element.
-        if (isInitialTempoAnchor(0) && elementCount() > 0) {
-            return 0;
-        }
-
-        return IntStream.range(0, elementCount())
-            .filter(n -> getElement(n).findAttachment(TempoChangeAttachment.class) != null)
-            .findFirst()
-            .orElse(-1);
     }
 
     public boolean isAnnotation() {

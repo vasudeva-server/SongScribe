@@ -74,8 +74,41 @@ public final class UndoTestSupport {
      * Runs {@code edit} inside one modification bracket and returns the recorded
      * batch from the resulting notification. Throws if the edit recorded nothing
      * (which would indicate a broken test setup, not a passing no-op).
+     *
+     * <p>For a raw DOM mutator, which opens no bracket of its own. The bracket opened here
+     * swallows any bracket {@code edit} does open, so this cannot tell one undo step from
+     * several — for an edit that brackets itself, use {@link #captureSingleBatch}.
      */
     public static List<Mutation> captureBatch(Song song, Runnable edit) {
+        return onlyBatchOf(song, recordNotifications(() -> song.withModification(edit)));
+    }
+
+    /**
+     * Runs {@code edit} with no bracket around it and returns the batch from the single
+     * notification it must have posted — the assertion {@link #captureBatch} structurally
+     * cannot make. Use this for anything that brackets itself, such as a controller action.
+     *
+     * <p>An edit that applies a companion mutation in a <em>second</em> bracket opened after
+     * its own has closed posts two notifications, and two notifications are two undo steps:
+     * the user has to press Undo twice and passes through an intermediate state they never
+     * asked for. Wrapped in an outer bracket that difference is invisible, because only the
+     * outermost bracket publishes — which is exactly why such a bug survives a
+     * {@code captureBatch}-based undo/redo round trip.
+     */
+    public static List<Mutation> captureSingleBatch(Song song, Runnable edit) {
+        var captured = recordNotifications(edit);
+
+        if (captured.size() > 1) {
+            throw new IllegalStateException(
+                "The edit posted " + captured.size() + " SongDidChangeNotifications; a single"
+                    + " logical action must be a single undo step");
+        }
+
+        return onlyBatchOf(song, captured);
+    }
+
+    /** Every {@link SongDidChangeNotification} batch {@code action} posts, in order. */
+    private static List<List<Mutation>> recordNotifications(Runnable action) {
         var captured = new ArrayList<List<Mutation>>();
 
         // Highest priority so this capture handler runs before any other subscriber on
@@ -92,11 +125,15 @@ public final class UndoTestSupport {
         MessageCenter.subscribe(listener);
 
         try {
-            song.withModification(edit);
+            action.run();
         } finally {
             MessageCenter.unsubscribe(listener);
         }
 
+        return captured;
+    }
+
+    private static List<Mutation> onlyBatchOf(Song song, List<List<Mutation>> captured) {
         if (captured.isEmpty()) {
             throw new IllegalStateException(
                 "The edit posted no SongDidChangeNotification (trackingSuspended="

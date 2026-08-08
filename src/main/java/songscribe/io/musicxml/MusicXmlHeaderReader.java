@@ -26,7 +26,6 @@ import org.xml.sax.SAXException;
 import songscribe.Constants;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
-import songscribe.dom.TempoChangeAttachment;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.io.musicxml.MusicXmlReader.Where;
@@ -396,10 +395,10 @@ final class MusicXmlHeaderReader {
     }
 
     /**
-     * Restores the song-level base tempo after assembly. The base tempo is
-     * anchored on the first element of the first line (see
-     * {@code Line.isInitialTempoAnchor}), so when that element carries a
-     * {@link TempoChangeAttachment}, its tempo is the song's base tempo.
+     * Restores the song-level base tempo after assembly, by mirroring the initial tempo
+     * anchor's tempo change onto the song. {@link Song#syncTempoFromAnchor} is the single
+     * statement of that anchor→song rule; this is the only place a MusicXML load sets the
+     * song tempo.
      */
     void applyInitialTempo() {
         var song = reader.songOrNull();
@@ -408,17 +407,7 @@ final class MusicXmlHeaderReader {
             return;
         }
 
-        var anchor = song.initialTempoAnchor();
-
-        if (anchor == null) {
-            return;
-        }
-
-        var attachment = anchor.findAttachment(TempoChangeAttachment.class);
-
-        if (attachment != null) {
-            song.setTempo(attachment.getTempo());
-        }
+        song.syncTempoFromAnchor();
     }
 
     // -------------------------------------------------------------------------

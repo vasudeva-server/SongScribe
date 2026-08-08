@@ -74,8 +74,9 @@ public final class TempoResolver {
      * specific statement about the beat than a tempo marking's note value.
      *
      * <p>Cost is O(elements before the anchor), with no cache.
-     * {@code Line.attachInitialTempoIfNeeded} guarantees a beat-defining event at line 0,
-     * element 0 whenever the song has a tempo, so the walk terminates quickly in practice.
+     * {@code Line.attachInitialTempoIfNeeded} guarantees a beat-defining event on the first
+     * element of the first non-empty line whenever the song has a tempo, so the walk
+     * terminates quickly in practice.
      * A maintained beat index on {@code Song} was rejected: it would trade microseconds for
      * an invalidation invariant that every structural mutation would have to honor, and a
      * stale index produces exactly the silent wrong-beat failure this method exists to

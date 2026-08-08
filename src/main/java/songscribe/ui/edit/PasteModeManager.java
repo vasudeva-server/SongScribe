@@ -36,6 +36,7 @@ import songscribe.dom.ViewPx;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.PasteModeDidChangeNotification;
+import songscribe.ui.InitialTempoConfirms;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.PasteOverlay;
@@ -409,6 +410,12 @@ public final class PasteModeManager {
         }
 
         var index = targetIndex;
+
+        // Read before the paste, while the anchor is still where it was: only a paste that
+        // takes over as the song's first element has anything to warn about.
+        var displacesSongFirstElement =
+            ScoreViewController.pasteDisplacesSongFirstElement(line, index, null);
+
         // Placement bypasses UIAction.actionPerformed (it is driven by a mouse click
         // or Return keypress, not a Cmd+V dispatch), so the Tier-A op-name capture
         // that PasteAction relies on must be set here around the bracket instead.
@@ -420,6 +427,14 @@ public final class PasteModeManager {
             outcome = line.withModificationResult(() -> controller.tryInsertFragment(line, index, null));
         } finally {
             UndoController.setPendingOpName(priorOpName);
+        }
+
+        if (outcome == ScoreViewController.FragmentInsertOutcome.INSERTED
+                && displacesSongFirstElement) {
+            // Click-to-place paste displaces the starting tempo on exactly the same terms as
+            // Cmd+V does, so it owes the user the same warning — raised here, after the bracket
+            // has closed and the song is in its final shape.
+            InitialTempoConfirms.warnIfTempoAndBeatChange(scoreView, line.getSong());
         }
 
         if (outcome == ScoreViewController.FragmentInsertOutcome.INSERTED

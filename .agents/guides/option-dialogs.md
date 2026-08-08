@@ -9,7 +9,7 @@ All user-facing `JOptionPane`-based dialogs must go through `songscribe.ui.Optio
 
 ### Strings keys, not raw strings
 
-This is the most important rule and the easiest to get wrong. Every method below — *except* `showOptionDialog` and `showErrorMessageWithString` — takes `Strings` **keys**, not literal text. The method resolves them via `Strings.get(...)` internally. See [Strings](strings.md).
+This is the most important rule and the easiest to get wrong. Every method below — *except* `showErrorMessageWithString` — takes `Strings` **keys** for its title and message, not literal text. The method resolves them via `Strings.get(...)` internally. See [Strings](strings.md).
 
 ```java
 // CORRECT — pass keys
@@ -33,7 +33,7 @@ The message-style methods (`showInfoMessage`, `showWarningMessage`, `showErrorMe
 | `showConfirmDialog(parent, titleKey, messageKey, optionType, messageType, suppressedDefault)` | Confirmations with an explicit suppressed/headless return value |
 | `showInputDialog(parent, titleKey, messageKey)` | Text input prompts; returns `@Nullable String`, suppressed default is `null` |
 | `showInputDialog(parent, titleKey, messageKey, suppressedDefault)` | Input prompt with an explicit suppressed/headless return value |
-| `showOptionDialog(parent, title, message, optionType, messageType, icon, options, initialValue)` | Multi-option dialogs. Note: `title` and `message` here are **raw** (not keys) — resolve them yourself with `Strings.get` |
+| `showOptionDialog(parent, titleKey, messageKey, optionType, messageType, icon, options, initialValue, args...)` | Multi-option dialogs; suppressed default is `CLOSED_OPTION`. Title and message are keys like everywhere else — but the `options` array holds the button **labels**, which are already-resolved text, so resolve those yourself with `Strings.get` |
 
 `parent` is `@Nullable Component`; pass `null` when there is no owning window.
 

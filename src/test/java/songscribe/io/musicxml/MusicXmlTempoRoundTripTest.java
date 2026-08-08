@@ -286,6 +286,36 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
             reloaded.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "recovered base tempo");
     }
 
+    @Test
+    void testInitialTempoOnTheFirstNonEmptyLineRoundTripsPastALeadingEmptyLine() throws Exception {
+        // A leading empty line is not the anchor line, so the base tempo lives on the first
+        // element of line 2. Both the write side and the read side (applyInitialTempo, via
+        // Song.syncTempoFromAnchor) have to look past the empty line to find it.
+        var baseTempo = new Tempo(BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
+
+        var song = buildSong(
+            line -> { },
+            line -> {
+                var note = ElementType.CROTCHET.newInstance();
+                line.addElement(note);
+                attachTempo(note, baseTempo);
+            }
+        );
+        song.withoutMutationTracking(() -> song.setTempo(baseTempo));
+
+        var reloaded = roundTrip(song);
+
+        assertThat(reloaded.getLines()).as("line count").hasSize(TWO_LINE_COUNT);
+        assertThat(reloaded.getLine(0).isEmpty())
+            .as("the leading empty line survives the round-trip")
+            .isTrue();
+        assertTempoEquals(
+            tempoOf(reloaded.getLine(SECOND_LINE_INDEX), 0),
+            BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "anchor tempo on the first non-empty line");
+        assertTempoEquals(
+            reloaded.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "recovered base tempo");
+    }
+
     // -------------------------------------------------------------------------
     // Schema validation
     // -------------------------------------------------------------------------

@@ -19,6 +19,8 @@
  */
 package songscribe.dom;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.midi.MidiSequenceBuilder;
 
 public class Tempo {
@@ -95,6 +97,29 @@ public class Tempo {
      */
     public Tempo copy() {
         return new Tempo(visibleTempo, tempoType, tempoDescription, showTempo);
+    }
+
+    /**
+     * Whether two tempos — either of which may be null — describe the same tempo.
+     *
+     * <p>Deliberately not {@code equals}/{@code hashCode}: a {@code Tempo} is mutable, so
+     * value equality on it would be unsafe the moment an instance entered a hash-based
+     * collection. Callers that need to tell a copied tempo from a changed one ask this
+     * instead.
+     */
+    public static boolean haveSameValue(@Nullable Tempo a, @Nullable Tempo b) {
+        if (a == b) {
+            return true;
+        }
+
+        if (a == null || b == null) {
+            return false;
+        }
+
+        return a.visibleTempo == b.visibleTempo
+            && a.tempoType == b.tempoType
+            && a.tempoDescription.equals(b.tempoDescription)
+            && a.showTempo == b.showTempo;
     }
 
 }

@@ -45,6 +45,7 @@ import songscribe.layout.LayoutResult;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.PasteModeDidChangeNotification;
+import songscribe.ui.OptionDialogs;
 import songscribe.ui.ViewScale;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
@@ -64,6 +65,11 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.InitialTempoTestSupport.ORIGINAL_TEMPO_BPM;
+import static songscribe.dom.InitialTempoTestSupport.attachBeatChange;
+import static songscribe.dom.InitialTempoTestSupport.attachTempo;
+import static songscribe.dom.InitialTempoTestSupport.tempoOf;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * Unit tests for {@link PasteModeManager}, the paste-mode state machine documented in its
@@ -83,6 +89,9 @@ class PasteModeManagerTest extends UnitTest {
 
     private static final int FIRST_INSERTION_INDEX = 2;
     private static final int SECOND_INSERTION_INDEX = 5;
+
+    // Placing here takes over as the song's first element; FIRST_INSERTION_INDEX does not.
+    private static final int SONG_FIRST_ELEMENT_INDEX = 0;
 
     private MockedStatic<MainFrame> mainFrameMock;
     private JLayeredPane layeredPane;
@@ -525,6 +534,78 @@ class PasteModeManagerTest extends UnitTest {
             assertThat(pasteModeManager.isInProgress()).isTrue();
             assertThat(pasteModeManager.getTargetLineComponent()).isEqualTo(lineComponent);
             assertThat(pasteModeManager.getTargetIndex()).isEqualTo(FIRST_INSERTION_INDEX);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // placeAtTarget()'s tempo-and-beat-change warning — the fourth call site of
+    // InitialTempoConfirms.warnIfTempoAndBeatChange, and the only one this test class owns
+    // -------------------------------------------------------------------------
+
+    @Nested
+    class PlaceAtTargetInitialTempoWarning {
+
+        private Line line;
+        private ScoreViewController controller;
+
+        /**
+         * A real {@link Song} and {@link Line} rather than {@code lineStub()}'s mocks: the
+         * warning gate asks the song where its first element is and what that element carries,
+         * and a mock answers neither.
+         */
+        @BeforeEach
+        void setUp() {
+            var song = new Song();
+            song.withoutMutationTracking(() -> song.setLineWidthSs(LINE_WIDTH_SS));
+            line = song.getLine(0);
+
+            var songFirstElement = crotchet();
+            song.withoutMutationTracking(() -> {
+                line.addElement(songFirstElement);
+                line.addElement(crotchet());
+                line.addElement(crotchet());
+            });
+
+            // The state the warning is about — reachable with no paste involved at all, since
+            // the beat-change dialog attaches a beat change to any note the user picks.
+            attachTempo(songFirstElement, tempoOf(ORIGINAL_TEMPO_BPM));
+            attachBeatChange(songFirstElement);
+
+            controller = mock(ScoreViewController.class);
+            when(scoreView.getController()).thenReturn(controller);
+
+            pasteModeManager.setActive(true);
+        }
+
+        /** Tracks the given insertion point, then places the fragment there. */
+        private void placeAt(int insertionIndex) {
+            var layoutResult = mock(LayoutResult.class);
+            when(layoutResult.findInsertionIndex(anyDouble(), eq(line))).thenReturn(insertionIndex);
+            var lineComponent = lineComponentFor(line, layoutResult);
+            when(controller.tryInsertFragment(eq(line), eq(insertionIndex), isNull()))
+                .thenReturn(ScoreViewController.FragmentInsertOutcome.INSERTED);
+
+            pasteModeManager.mouseMoved(lineComponent, mouseMovedEvent(lineComponent, insideContentXPx()));
+            pasteModeManager.place();
+        }
+
+        @Test
+        void testPlacingAtTheSongsFirstElementWarnsAboutTheTempoAndBeatChange() {
+            try (var dialogs = mockStatic(OptionDialogs.class)) {
+                placeAt(SONG_FIRST_ELEMENT_INDEX);
+
+                dialogs.verify(() -> OptionDialogs.showWarningMessage(any(), any(), any()));
+            }
+        }
+
+        @Test
+        void testPlacingAwayFromTheSongsFirstElementRaisesNoWarning() {
+            try (var dialogs = mockStatic(OptionDialogs.class)) {
+                placeAt(FIRST_INSERTION_INDEX);
+
+                dialogs.verify(
+                    () -> OptionDialogs.showWarningMessage(any(), any(), any()), never());
+            }
         }
     }
 
