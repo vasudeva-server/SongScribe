@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -1981,6 +1982,32 @@ class ScoreViewControllerTest extends UnitTest {
             controller.modeDidChange(notificationFor(Mode.EDIT));
 
             verify(scoreMock).setPreviewElement(previewElementStub);
+        }
+
+        /**
+         * The two edit-entry steps are order-critical, and nothing else enforces the order.
+         * {@link EditModeManager#makePreviewElement()} reads
+         * {@code Actions.NON_DURATION_ACTION_GROUP.getSelected()} with no {@code isEnabled()}
+         * check, so what keeps a reflected-only entry such as the final double barline out of
+         * the armed insertion pen is that {@code clearSelection()} runs first: it restores the
+         * user's pre-selection pen through {@code ActionReflector.restoreActionStates()} before
+         * the preview element is derived. Swapping the two lines would arm whatever the
+         * selection had reflected — silently turning the final double barline into a drawing
+         * pen — and every other assertion in this class would still pass.
+         */
+        @Test
+        void testModeDidChangeClearsSelectionBeforeDerivingThePreviewElement() {
+            var ordered = inOrder(scoreMock, EditModeManager.class);
+
+            controller.modeDidChange(notificationFor(Mode.EDIT));
+
+            ordered.verify(scoreMock).clearSelection();
+            // The cast picks InOrder's MockedStatic overload; without it the method reference
+            // matches verify(T, VerificationMode) just as well and the call is ambiguous.
+            ordered.verify(
+                editModeManagerMock,
+                (MockedStatic.Verification) EditModeManager::makePreviewElement
+            );
         }
 
     }

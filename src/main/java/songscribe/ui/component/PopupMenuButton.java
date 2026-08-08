@@ -23,23 +23,16 @@ package songscribe.ui.component;
 import module java.desktop;
 
 import java.util.List;
-import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
-import songscribe.message.MessageCenter;
 import songscribe.ui.action.UIAction;
-import songscribe.message.notification.MenuWillOpenNotification;
 import songscribe.util.UIUtils;
 
 /**
- * A button that when clicked is selected and displays a popup menu. If the button is clicked
- * while the popup menu is visible, the popup menu is hidden. The button is deselected whenever
- * the popup menu is hidden.
+ * A {@link BasePopupButton} whose popup is a menu built from a list of actions.
  */
-public class PopupButton
-    extends ToolbarToggleButton
-    implements ActionListener, PopupMenuListener {
+public class PopupMenuButton extends BasePopupButton {
 
     /**
      * How the actions handed to the constructor are rendered in the popup.
@@ -55,23 +48,18 @@ public class PopupButton
         RADIO
     }
 
-    private final JPopupMenu popup;
-
-    // We need to know if the popup menu was canceled by clicking the button
-    private boolean popupWasCanceledByButton = false;
-
     // The action that is currently selected in the popup menu and is used
     // to configure the button's appearance.
     private @Nullable UIAction currentAction;
 
-    public PopupButton(
+    public PopupMenuButton(
         List<? extends UIAction> actions,
         @Nullable UIAction defaultAction
     ) {
         this(actions.toArray(new UIAction[0]), defaultAction, ItemStyle.AUTO);
     }
 
-    public PopupButton(
+    public PopupMenuButton(
         List<? extends UIAction> actions,
         @Nullable UIAction defaultAction,
         ItemStyle itemStyle
@@ -79,21 +67,19 @@ public class PopupButton
         this(actions.toArray(new UIAction[0]), defaultAction, itemStyle);
     }
 
-    public PopupButton(UIAction[] actions, @Nullable UIAction defaultAction) {
+    public PopupMenuButton(UIAction[] actions, @Nullable UIAction defaultAction) {
         this(actions, defaultAction, ItemStyle.AUTO);
     }
 
-    public PopupButton(UIAction[] actions, @Nullable UIAction defaultAction, ItemStyle itemStyle) {
-        super(null);
-        popup = new JPopupMenu();
+    public PopupMenuButton(UIAction[] actions, @Nullable UIAction defaultAction, ItemStyle itemStyle) {
+        super();
+
+        var popup = requirePopup();
 
         for (var action : actions) {
             popup.add(makeItem(action, itemStyle));
         }
 
-        currentAction = defaultAction;
-        addActionListener(this);
-        popup.addPopupMenuListener(this);
         setCurrentAction(defaultAction);
     }
 
@@ -109,16 +95,12 @@ public class PopupButton
         return new JMenuItem(action);
     }
 
-    protected JPopupMenu getPopup() {
-        return popup;
-    }
-
     public void addSeparator() {
-        popup.addSeparator();
+        requirePopup().addSeparator();
     }
 
     public void addItem(JMenuItem item) {
-        popup.add(item);
+        requirePopup().add(item);
     }
 
     public @Nullable Action getCurrentAction() {
@@ -146,36 +128,5 @@ public class PopupButton
 
     protected void configureButtonFromAction(UIAction action) {
         UIUtils.configureButtonFromAction(this, action);
-    }
-
-    @Override
-    public void actionPerformed(ActionEvent e) {
-        // If the popup was canceled by clicking the button, we don't want to show it again
-        if (popupWasCanceledByButton) {
-            popupWasCanceledByButton = false;
-            setSelected(false);
-        } else if (popup.isVisible()) {
-            popup.setVisible(false);
-        } else {
-            var parentInsets = getParent().getInsets();
-            popup.show(this, parentInsets.left, getHeight());
-        }
-    }
-
-    @Override
-    public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
-        MessageCenter.post(new MenuWillOpenNotification(popup));
-    }
-
-    // This is called before popupMenuWillBecomeInvisible
-    @Override
-    public void popupMenuCanceled(PopupMenuEvent e) {
-        var component = UIUtils.getComponentUnderMouse();
-        popupWasCanceledByButton = Objects.equals(component, this);
-    }
-
-    @Override
-    public void popupMenuWillBecomeInvisible(PopupMenuEvent e) {
-        setSelected(false);
     }
 }

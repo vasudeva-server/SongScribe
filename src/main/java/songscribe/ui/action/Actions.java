@@ -115,8 +115,11 @@ public final class Actions {
     public static ElementTypeAction[] REPEAT_ACTIONS;
     public static ElementTypeAction[] BARLINE_ACTIONS;
 
-    // Deliberately outside BARLINE_ACTIONS: that array is what BarToolbar and
-    // NON_DURATION_ACTION_GROUP consume, and this entry belongs to neither (issue #713).
+    // A full member of BARLINE_ACTIONS and therefore of NON_DURATION_ACTION_GROUP and the
+    // barline popup panel. Kept as its own field so BarlineMenu can identify it by name rather
+    // than by array index. What keeps it from acting as a drawing pen is the
+    // score.clearSelection()-before-syncPreviewElementWithSelectedDuration() ordering in
+    // ScoreViewController.modeDidChange, not its enablement.
     public static FinalDoubleBarlineAction FINAL_DOUBLE_BARLINE_ACTION;
 
     public static ElementTypeAction BREATH_MARK_ACTION;
@@ -268,11 +271,12 @@ public final class Actions {
             ElementTypeAction.createRightRepeatAction(mainFrame),
             ElementTypeAction.createLeftRightRepeatAction(mainFrame),
         };
+        FINAL_DOUBLE_BARLINE_ACTION = FinalDoubleBarlineAction.createAction(mainFrame);
         BARLINE_ACTIONS = new ElementTypeAction[]{
             ElementTypeAction.createDoubleBarlineAction(mainFrame),
             ElementTypeAction.createSingleBarlineAction(mainFrame),
+            FINAL_DOUBLE_BARLINE_ACTION,
         };
-        FINAL_DOUBLE_BARLINE_ACTION = FinalDoubleBarlineAction.createAction(mainFrame);
         BREATH_MARK_ACTION = ElementTypeAction.createBreathMarkAction(mainFrame);
         NON_DURATION_ACTION_GROUP = new NonDurationActionGroup();
 

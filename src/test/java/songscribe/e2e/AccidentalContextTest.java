@@ -68,7 +68,7 @@ class AccidentalContextTest extends E2ETest {
     private static final int INHERITING_F_INDEX_AFTER_BARLINE = 4;
     private static final int ELEMENT_COUNT_AFTER_BARLINE = 5;
 
-    /** {@code Actions.BARLINE_ACTIONS} is {double, single}. */
+    /** {@code Actions.BARLINE_ACTIONS} is {double, single, final double}. */
     private static final int SINGLE_BARLINE_ACTION_INDEX = 1;
 
     /**

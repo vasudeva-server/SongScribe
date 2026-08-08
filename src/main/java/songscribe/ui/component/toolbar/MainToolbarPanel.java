@@ -52,7 +52,7 @@ public final class MainToolbarPanel extends JPanel {
         toolsPanel.add(createAccidentalToolbarPanel());
         toolsPanel.add(createArticulationToolbarPanel());
         toolsPanel.add(createConnectionToolbarPanel());
-        toolsPanel.add(createBarToolbarPanel());
+        toolsPanel.add(createBarlineToolbarPanel());
         toolsPanel.add(createStaffAnnotationToolbarPanel());
         add(toolsPanel, BorderLayout.WEST);
 
@@ -118,9 +118,9 @@ public final class MainToolbarPanel extends JPanel {
         return panel;
     }
 
-    private static JPanel createBarToolbarPanel() {
+    private static JPanel createBarlineToolbarPanel() {
         var panel = createToolbarPanel(RIGHT_BORDER);
-        panel.add(new BarToolbar());
+        panel.add(new BarlineToolbar());
         return panel;
     }
 

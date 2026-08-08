@@ -63,6 +63,7 @@ import songscribe.layout.PageModel;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
+import songscribe.ui.component.BasePopupButton;
 import songscribe.ui.component.MainFrame;
 import songscribe.layout.ElementHitGeometry;
 import songscribe.ui.component.ScoreView;
@@ -248,10 +249,49 @@ public abstract class E2ETest {
 
     /**
      * Clicks a toolbar button by its action command (which is also its component name).
+     * <p>
+     * An action whose button lives in a popup panel rather than directly on a toolbar cannot be
+     * found while the popup is closed — {@code robot.finder()} matches only the realized, showing
+     * component tree. When the direct lookup fails, the popup hosting the action is opened and the
+     * lookup retried.
      */
     protected void clickToolbarButton(UIAction action) {
-        var button = findButtonByName(action.getActionCommand());
+        AbstractButton button;
+
+        try {
+            button = findButtonByName(action.getActionCommand());
+        } catch (ComponentLookupException e) {
+            openPopupHostingAction(action, e);
+            button = findButtonByName(action.getActionCommand());
+        }
+
         robot.click(button);
+        pause();
+    }
+
+    /**
+     * Opens the popup of the {@link BasePopupButton} that hosts {@code action}, so that the
+     * action's own button joins the showing component tree and becomes findable.
+     *
+     * @param lookupFailure the failure that prompted this search. It is rethrown when no popup
+     *     hosts the action, so a button that is genuinely absent reports its own absence instead
+     *     of being masked by a confusing secondary failure about a missing popup.
+     */
+    private void openPopupHostingAction(UIAction action, ComponentLookupException lookupFailure) {
+        BasePopupButton popupButton;
+
+        try {
+            popupButton = robot.finder().find(new GenericTypeMatcher<>(BasePopupButton.class) {
+                @Override
+                protected boolean isMatching(BasePopupButton candidate) {
+                    return candidate.hostsAction(action);
+                }
+            });
+        } catch (ComponentLookupException noPopupHostsAction) {
+            throw lookupFailure;
+        }
+
+        robot.click(popupButton);
         pause();
     }
 

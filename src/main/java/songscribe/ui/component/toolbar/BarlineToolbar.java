@@ -18,27 +18,19 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.component;
+package songscribe.ui.component.toolbar;
 
-import net.engio.mbassy.listener.Handler;
-
-import songscribe.Strings;
-import songscribe.message.MessageCenter;
 import songscribe.ui.action.Actions;
-import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.util.GraphicUtils;
+import songscribe.ui.component.BarlinePopupButton;
+import songscribe.ui.component.StickyToggleButton;
 
-public class StaffAnnotationPopupButton extends PopupMenuButton {
+public class BarlineToolbar extends Toolbar {
 
-    public StaffAnnotationPopupButton() {
-        super(Actions.STAFF_ANNOTATION_ACTIONS, null);
-        setIcon(GraphicUtils.getScaledSVGIcon("plus.svg", 20, true));
-        setToolTipText(Strings.get(Strings.TOOLTIP_STAFF_ANNOTATIONS));
-        MessageCenter.subscribe(this);
-    }
+    public BarlineToolbar() {
+        for (var action : Actions.REPEAT_ACTIONS) {
+            add(new StickyToggleButton(action));
+        }
 
-    @Handler
-    public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
-        setEnabledFromActions(Actions.STAFF_ANNOTATION_ACTIONS);
+        add(new BarlinePopupButton());
     }
 }

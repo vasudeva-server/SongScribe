@@ -18,20 +18,23 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-package songscribe.ui.component.toolbar;
+package songscribe.ui.component;
 
+import songscribe.Strings;
 import songscribe.ui.action.Actions;
-import songscribe.ui.component.StickyToggleButton;
+import songscribe.util.GraphicUtils;
 
-public class BarToolbar extends Toolbar {
+/**
+ * The toolbar button that drops out a panel of the barline actions.
+ */
+public class BarlinePopupButton extends PopupToolbarButton {
 
-    public BarToolbar() {
-        for (var action : Actions.REPEAT_ACTIONS) {
-            add(new StickyToggleButton(action));
-        }
+    private static final String ICON = "barlines.svg";
+    private static final int ICON_SIZE_PX = 30;
 
-        for (var action : Actions.BARLINE_ACTIONS) {
-            add(new StickyToggleButton(action));
-        }
+    public BarlinePopupButton() {
+        super(Actions.BARLINE_ACTIONS);
+        setIcon(GraphicUtils.getScaledSVGIcon(ICON, ICON_SIZE_PX, true));
+        setToolTipText(Strings.get(Strings.TOOLTIP_BARLINES));
     }
 }

@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import songscribe.UnitTest;
+import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -314,5 +315,18 @@ public final class ReflectionTestHelper {
         requireActiveLine(coordinator);
         coordinator.clearActiveSelection();
         coordinator.getActionReflector().restoreActionStates();
+    }
+
+    /**
+     * The {@link Actions#BARLINE_ACTIONS} entry that draws {@code type}.
+     */
+    public static ElementTypeAction barlineActionFor(ElementType type) {
+        for (var action : Actions.BARLINE_ACTIONS) {
+            if (action.getType() == type) {
+                return action;
+            }
+        }
+
+        throw new AssertionError("no barline action draws " + type);
     }
 }

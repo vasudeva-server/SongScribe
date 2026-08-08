@@ -25,9 +25,10 @@ import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.withSettings;
-
-import java.awt.event.ActionEvent;
+import static songscribe.ui.component.PopupButtonTestSupport.clickButton;
+import static songscribe.ui.component.PopupButtonTestSupport.showPopup;
 
 import javax.swing.event.PopupMenuEvent;
 
@@ -40,7 +41,7 @@ import songscribe.ui.action.UIAction;
 import songscribe.util.UIUtils;
 
 /**
- * Unit tests for {@link PopupButton} covering:
+ * Unit tests for {@link PopupMenuButton} covering:
  * <ul>
  *   <li>Row 25 — {@code setCurrentAction(null)}: is a no-op — no NPE thrown,
  *       {@code currentAction} is set to null, {@code configureButtonFromAction} is not called</li>
@@ -49,11 +50,15 @@ import songscribe.util.UIUtils;
  *   <li>Row 27 — {@code actionPerformed} when {@code popupWasCanceledByButton} is true:
  *       clears flag and deselects button without showing the popup</li>
  *   <li>Row 29 — {@code popupMenuWillBecomeInvisible}: deselects the button</li>
+ *   <li>{@code actionPerformed} while the popup is open: hides it, so a second click on the
+ *       button closes the menu</li>
+ *   <li>{@code hostsAction}: true for an action bound to an item in the popup, false for an
+ *       action that is not in the popup</li>
  * </ul>
  */
-class PopupButtonTest extends UnitTest {
+class PopupMenuButtonTest extends UnitTest {
 
-    private PopupButton button;
+    private PopupMenuButton button;
 
     @BeforeAll
     static void setUpClass() throws Exception {
@@ -63,7 +68,7 @@ class PopupButtonTest extends UnitTest {
     @BeforeEach
     void setUp() {
         // Construct with an empty action array and no default action
-        button = new PopupButton(new UIAction[0], null);
+        button = new PopupMenuButton(new UIAction[0], null);
     }
 
     // -----------------------------------------------------------------------
@@ -77,7 +82,15 @@ class PopupButtonTest extends UnitTest {
 
     @Test
     void testSetCurrentActionNullSetsCurrentActionToNull() {
+        // Start from a real action, since the field is already null after construction and
+        // clearing nothing would prove nothing.
+        var action = mockAction("initial");
+        button.setCurrentAction(action);
+
+        assertThat(button.getCurrentAction()).as("precondition").isEqualTo(action);
+
         button.setCurrentAction(null);
+
         assertThat(button.getCurrentAction()).isNull();
     }
 
@@ -120,8 +133,22 @@ class PopupButtonTest extends UnitTest {
 
         // Pre-select so we can observe the deselect
         button.setSelected(true);
-        button.actionPerformed(new ActionEvent(button, ActionEvent.ACTION_PERFORMED, ""));
+        clickButton(button);
         assertThat(button.isSelected()).isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // A second click on the button closes the menu it opened
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testClickingTheButtonWhileThePopupIsOpenHidesIt() {
+        var popupButton = new PopupMenuButton(new UIAction[] { mockAction("hosted") }, null);
+        var popup = showPopup(popupButton);
+
+        clickButton(popupButton);
+
+        assertThat(popup.isVisible()).isFalse();
     }
 
     // -----------------------------------------------------------------------
@@ -133,5 +160,30 @@ class PopupButtonTest extends UnitTest {
         button.setSelected(true);
         button.popupMenuWillBecomeInvisible(new PopupMenuEvent(button));
         assertThat(button.isSelected()).isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // hostsAction: true for an action in the popup, false for a foreign action
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testHostsActionTrueForActionInPopup() {
+        var hostedAction = mockAction("hosted");
+        var popupButton = new PopupMenuButton(new UIAction[] { hostedAction }, null);
+        assertThat(popupButton.hostsAction(hostedAction)).isTrue();
+    }
+
+    @Test
+    void testHostsActionFalseForForeignAction() {
+        var hostedAction = mockAction("hosted");
+        var foreignAction = mockAction("foreign");
+        var popupButton = new PopupMenuButton(new UIAction[] { hostedAction }, null);
+        assertThat(popupButton.hostsAction(foreignAction)).isFalse();
+    }
+
+    private static UIAction mockAction(String actionCommand) {
+        var action = mock(UIAction.class);
+        when(action.getActionCommand()).thenReturn(actionCommand);
+        return action;
     }
 }

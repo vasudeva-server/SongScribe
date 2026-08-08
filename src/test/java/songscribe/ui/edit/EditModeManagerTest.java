@@ -30,6 +30,8 @@ import javax.swing.ActionMap;
 import javax.swing.InputMap;
 import javax.swing.JRootPane;
 
+import java.util.List;
+
 import songscribe.UnitTest;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
@@ -42,10 +44,13 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.ModeDidChangeNotification;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.UIAction;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.playback.PlayThread;
+import songscribe.ui.selection.ActionReflector;
+import songscribe.ui.selection.ReflectionTestHelper;
 import songscribe.ui.selection.SelectionCoordinator;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -161,6 +166,55 @@ class EditModeManagerTest extends UnitTest {
             Actions.NON_DURATION_ACTION_GROUP.setSelected(Actions.REPEAT_ACTIONS[0], true);
             var element = EditModeManager.makePreviewElement();
             assertThat(element.getType()).isEqualTo(Actions.REPEAT_ACTIONS[0].getType());
+        }
+
+        /**
+         * The consequence of this method reading the group's selection with no
+         * {@code isEnabled()} check: the final double barline is a full member of
+         * {@code NON_DURATION_ACTION_GROUP}, so while a terminal selection has it checked it
+         * <em>is</em> what a preview element derived right then would be. Nothing here stops
+         * that — what stops it is that leaving the selection restores the user's own pen
+         * first, which is the ordering
+         * {@code ScoreViewControllerTest.testModeDidChangeClearsSelectionBeforeDerivingThePreviewElement}
+         * pins. This test owns the other half: that the restore really does hand the pen back.
+         */
+        @Test
+        void testRestoringActionStatesTakesTheReflectedFinalDoubleBarlineBackOutOfThePen() {
+            var userPen = ReflectionTestHelper.barlineActionFor(ElementType.SINGLE_BARLINE);
+            var reflector = reflectorManaging(userPen, Actions.FINAL_DOUBLE_BARLINE_ACTION);
+
+            Actions.DURATION_ACTION_GROUP.clearSelection();
+            Actions.NON_DURATION_ACTION_GROUP.setSelected(userPen, true);
+
+            // Selecting the terminal snapshots the pen, then reflection checks the entry
+            // standing for the terminal's type — which the group answers by unchecking the pen.
+            reflector.saveActionStates();
+            Actions.FINAL_DOUBLE_BARLINE_ACTION.setSelected(true);
+
+            assertThat(EditModeManager.makePreviewElement().getType())
+                .as("pre-condition: enablement is not what keeps the reflected entry out")
+                .isEqualTo(ElementType.FINAL_DOUBLE_BARLINE);
+
+            reflector.restoreActionStates();
+
+            assertThat(EditModeManager.makePreviewElement().getType())
+                .as("the restore hands the user's own pen back")
+                .isEqualTo(ElementType.SINGLE_BARLINE);
+        }
+
+        /**
+         * An {@link ActionReflector} whose managed set is exactly {@code actions}, reached
+         * through the coordinator that owns it — the reflector's own constructor is
+         * package-private to {@code songscribe.ui.selection}.
+         */
+        private ActionReflector reflectorManaging(UIAction... actions) {
+            var coordinator = ReflectionTestHelper.createCoordinator(
+                List.of(ElementType.CROTCHET.newInstance()),
+                List.of(),
+                List.of(actions)
+            );
+
+            return coordinator.getActionReflector();
         }
     }
 

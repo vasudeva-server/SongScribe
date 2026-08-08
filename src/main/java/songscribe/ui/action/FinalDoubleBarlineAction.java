@@ -27,14 +27,11 @@ import songscribe.dom.StaffElement;
 import songscribe.ui.component.MainFrame;
 
 /**
- * The final double barline entry, at the foot of <b>Notation ▸ Barline</b>. Unlike every other
- * barline entry it applies to the song's auto-maintained terminal alone (issue #713): it arms no
- * pen and retypes no ordinary barline, so it is enabled only while the terminal is selected, and
- * it is checked while that terminal is a {@code FINAL_DOUBLE_BARLINE}.
- * <p>
- * That is why it stays out of {@code BarToolbar} and {@code NON_DURATION_ACTION_GROUP} — a
- * toolbar button reads as something to draw with, and the group exists to make the armed pen
- * types mutually exclusive.
+ * The final double barline entry, at the foot of <b>Notation ▸ Barline</b> and in the barline
+ * popup panel in {@code BarlineToolbar}. Unlike every other barline entry it applies to the song's
+ * auto-maintained terminal alone (issue #713): it arms no pen and retypes no ordinary barline, so
+ * it is enabled only while the terminal is selected, and it is checked while that terminal is a
+ * {@code FINAL_DOUBLE_BARLINE}.
  * <p>
  * Everything else comes from {@link ElementTypeAction}: {@code matchesElement} compares the
  * terminal against this entry's own type, and {@code performAction} routes through
@@ -51,7 +48,7 @@ public final class FinalDoubleBarlineAction extends ElementTypeAction {
         super(
             mainFrame,
             Kind.NON_DURATION, ElementType.FINAL_DOUBLE_BARLINE,
-            Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE), "@\uF34A", 24,
+            Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE), "final-barline.svg", 30,
             "final-double-barline", Strings.get(Strings.ACTION_BARLINE_FINAL_DOUBLE_TOOLTIP),
             0, 0,
             null,

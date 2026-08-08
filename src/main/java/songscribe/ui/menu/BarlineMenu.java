@@ -28,10 +28,15 @@ import songscribe.Strings;
 
 /**
  * The barline palette. The final double barline trails the drawable barlines because it is not
- * one of them: it acts on the song's auto-maintained terminal alone, which is also why it has no
- * toolbar button. The right repeat that is its counterpart for the terminal lives in
- * {@link RepeatsMenu}, where it doubles as an ordinary drawable repeat — see
- * {@code FinalDoubleBarlineAction} (issue #713).
+ * one of them: it acts on the song's auto-maintained terminal alone. It sits in the barline popup
+ * panel in {@code BarlineToolbar} and in {@code NON_DURATION_ACTION_GROUP} alongside the drawable
+ * barlines. What keeps it from acting as a drawing pen is the {@code score.clearSelection()}-
+ * before-{@code syncPreviewElementWithSelectedDuration()} ordering in
+ * {@code ScoreViewController.modeDidChange}, not its enablement. What confines it to the song's
+ * auto-maintained terminal is {@code Flag.REQUIRES_SINGLE_SELECTION} plus its {@code appliesTo}
+ * override ({@code Song.isAutoMaintainedTerminalOfItsSong}). The right repeat that is its
+ * counterpart for the terminal lives in {@link RepeatsMenu}, where it doubles as an ordinary
+ * drawable repeat — see {@code FinalDoubleBarlineAction} (issue #713).
  */
 public class BarlineMenu extends JMenu {
 
@@ -39,9 +44,11 @@ public class BarlineMenu extends JMenu {
         super(Strings.get(Strings.MENU_NOTATION_BARLINES));
 
         for (var action : BARLINE_ACTIONS) {
+            if (action == FINAL_DOUBLE_BARLINE_ACTION) {
+                addSeparator();
+            }
+
             add(new JRadioButtonMenuItem(action));
         }
-
-        add(new JRadioButtonMenuItem(FINAL_DOUBLE_BARLINE_ACTION));
     }
 }

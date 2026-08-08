@@ -35,7 +35,7 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 
-public class TupletPopupButton extends PopupButton {
+public class TupletPopupButton extends PopupMenuButton {
 
     public TupletPopupButton() {
         super(
@@ -62,7 +62,7 @@ public class TupletPopupButton extends PopupButton {
      */
     @Override
     public void popupMenuWillBecomeVisible(PopupMenuEvent e) {
-        TupletMenuItems.rebuild(getPopup());
+        TupletMenuItems.rebuild(requirePopup());
         super.popupMenuWillBecomeVisible(e);
     }
 
@@ -99,11 +99,7 @@ public class TupletPopupButton extends PopupButton {
     }
 
     private void handleChange(@Nullable ScoreViewController ctrl) {
-        // Disable button if none of its actions are enabled
-        setEnabled(
-            Actions.TOGGLE_TUPLET_ACTIONS.stream().anyMatch(UIAction::isEnabled)
-        );
-
+        setEnabledFromActions(Actions.TOGGLE_TUPLET_ACTIONS);
         updateDefaultAction(ctrl);
     }
 
