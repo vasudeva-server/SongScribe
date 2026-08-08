@@ -116,6 +116,18 @@ var baz = foo.getBaz();
 A chain used exactly once needs no local — don't introduce a variable just to
 name an intermediate step.
 
+## Boolean "type" parameters
+
+Avoid using boolean parameters that represent a type, mode or state. Use an enum instead.
+
+```java
+// Bad — boolean parameter represents a mode
+public void setMode(boolean isEditMode);
+
+// Good - use an enum
+public void setMode(Mode mode);
+```
+
 ## Initialize static fields
 
 Explicityly initialize static fields whenever possible, do not rely on the compiler default.
