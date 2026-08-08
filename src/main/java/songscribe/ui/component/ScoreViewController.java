@@ -183,7 +183,10 @@ public final class ScoreViewController {
 
     @Handler
     public void handleUpdatePreviewElement(UpdatePreviewElementCommand message) {
-        updatePreviewElement();
+        switch (message.getScope()) {
+            case DECORATIONS -> updatePreviewElement();
+            case ELEMENT -> syncPreviewElementWithSelectedDuration();
+        }
     }
 
     /**

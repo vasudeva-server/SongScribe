@@ -92,6 +92,6 @@ public class PreviewElementAction extends SelectableUIAction {
             return;
         }
 
-        MessageCenter.post(new UpdatePreviewElementCommand());
+        MessageCenter.post(new UpdatePreviewElementCommand(UpdatePreviewElementCommand.Scope.DECORATIONS));
     }
 }

@@ -144,7 +144,7 @@ public final class AccidentalAction extends NoteOnlyAction implements UIAction.W
         toggleOnKeyboardShortcut(e);
 
         if (!applyToSelectionIfActive()) {
-            MessageCenter.post(new UpdatePreviewElementCommand());
+            MessageCenter.post(new UpdatePreviewElementCommand(UpdatePreviewElementCommand.Scope.DECORATIONS));
             return;
         }
 

@@ -27,4 +27,31 @@ import songscribe.message.Message;
  * the music sheet's active note. This allows the ScoreView class
  * to listen for these messages and update the active note accordingly.
  */
-public class UpdatePreviewElementCommand extends Message {}
+public class UpdatePreviewElementCommand extends Message {
+
+    /** How much of the preview element the command has to rebuild. */
+    public enum Scope {
+        /**
+         * Re-apply the decoration toggles (dots, accidental, articulations) to the
+         * existing preview element. Its type is unchanged.
+         */
+        DECORATIONS,
+
+        /**
+         * Recreate the preview element from the selected actions. Required whenever the
+         * element's <em>type</em> may have changed — rest mode, or the duration/non-duration
+         * selection — since decorating in place cannot turn a rest back into a note.
+         */
+        ELEMENT
+    }
+
+    private final Scope scope;
+
+    public UpdatePreviewElementCommand(Scope scope) {
+        this.scope = scope;
+    }
+
+    public Scope getScope() {
+        return scope;
+    }
+}

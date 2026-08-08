@@ -22,21 +22,29 @@ package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import songscribe.RequiresDisplay;
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.DocumentDidLoadNotification;
+import songscribe.dom.ElementType;
 import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 import songscribe.ui.Mode;
+import songscribe.ui.MusicEditOperations;
 import songscribe.ui.ViewScale;
+import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.ScoreViewController;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
@@ -57,9 +65,11 @@ import songscribe.ui.selection.SelectionCoordinator;
 @RequiresDisplay
 class ActionsResetOnDocumentLoadTest extends UnitTest {
 
+    private ScoreView mockScore;
+
     @BeforeEach
     void setUp() {
-        var mockScore = mock(ScoreView.class);
+        mockScore = mock(ScoreView.class);
         var mockCoordinator = mock(SelectionCoordinator.class);
         when(mockScore.getSelectionCoordinator()).thenReturn(mockCoordinator);
         when(mockScore.getMode()).thenReturn(Mode.EDIT);
@@ -118,5 +128,38 @@ class ActionsResetOnDocumentLoadTest extends UnitTest {
             () -> assertThat(Actions.ACCIDENTAL_IN_PARENS_ACTION.isSelected())
                 .as("accidental-in-parens off").isFalse()
         );
+    }
+
+    /**
+     * The toolbar toggles above are only half the reset: the preview element the score
+     * draws and inserts has to follow them. Rest mode is cleared silently, so a preview
+     * update that merely re-applied decorations would leave a rest in place — the toolbar
+     * would say "notes" while the score previewed and inserted rests.
+     */
+    @Test
+    void testDocumentDidLoadRebuildsPreviewElementAsANote() {
+        Actions.REST_ACTION.setSelected(true);
+
+        // A real controller so the reset travels the production path: the posted preview
+        // command, not a canned reaction to it.
+        var controller = new ScoreViewController(
+            mockScore,
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try {
+            MessageCenter.post(new DocumentDidLoadNotification(new Song()));
+
+            // The last preview element set is the one the user is left with; earlier
+            // handlers in the same dispatch may still see rest mode on.
+            var previewElement = ArgumentCaptor.forClass(StaffElement.class);
+            verify(mockScore, atLeastOnce()).setPreviewElement(previewElement.capture());
+
+            assertThat(previewElement.getValue().getType()).isEqualTo(ElementType.CROTCHET);
+        } finally {
+            MessageCenter.unsubscribe(controller);
+        }
     }
 }

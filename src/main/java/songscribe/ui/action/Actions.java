@@ -407,12 +407,15 @@ public final class Actions {
         FERMATA_ACTION.reset();
         TRILL_ACTION.reset();
 
-        // Re-decorate the preview from the now-cleared toggles. We cannot rely on the
+        // Rebuild the preview from the now-cleared toggles. We cannot rely on the
         // DURATION_ACTION_GROUP.select() above to rebuild it: when the quarter note is
         // already the selected duration (the common case on document load) that select()
         // is a no-op and posts nothing, so the preview would otherwise keep a previous
-        // document's decorations even though the toolbar shows them cleared.
-        MessageCenter.post(new UpdatePreviewElementCommand());
+        // document's decorations even though the toolbar shows them cleared. It has to be
+        // a full rebuild rather than a re-decoration because REST_ACTION and
+        // NON_DURATION_ACTION_GROUP are cleared silently after the select() above, and the
+        // element's type — rest or barline — cannot be decorated back into a note.
+        MessageCenter.post(new UpdatePreviewElementCommand(UpdatePreviewElementCommand.Scope.ELEMENT));
     }
 
     /**
