@@ -61,6 +61,7 @@ import static org.mockito.AdditionalAnswers.answerVoid;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -1957,8 +1958,8 @@ class GraceModeManagerTest extends UnitTest {
             // Sample the offer at the moment the insertion runs — the only moment it holds.
             var clicked = new boolean[1];
             var deferredDuringClick = new boolean[1];
-            previewMock.when(() -> PreviewElementManager.handleClick(any(LineComponent.class)))
-                .thenAnswer(answerVoid((LineComponent lc) -> {
+            previewMock.when(() -> PreviewElementManager.handleClick(any(LineComponent.class), eq(true)))
+                .thenAnswer(answerVoid((LineComponent lc, Boolean forceInsert) -> {
                     clicked[0] = true;
                     deferredDuringClick[0] = GraceModeManager.deferInsertionRepairs();
                 }));

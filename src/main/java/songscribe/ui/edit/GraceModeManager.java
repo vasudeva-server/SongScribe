@@ -583,7 +583,13 @@ public final class GraceModeManager {
         deferringInsertionRepairs = true;
 
         try {
-            line.getSong().withoutMutationTracking(() -> PreviewElementManager.handleClick(lineComponent));
+            // forceInsert=true: a grace note must always be inserted before whatever the cursor
+            // is over, never replace it — clicking directly on an existing note's head would
+            // otherwise take handleClick's replace branch and silently destroy that note, which
+            // enterGraceNotePaired below has no way to recover on undo (it only records an
+            // ElementInsertion).
+            line.getSong().withoutMutationTracking(
+                () -> PreviewElementManager.handleClick(lineComponent, true));
         } finally {
             deferringInsertionRepairs = false;
         }
