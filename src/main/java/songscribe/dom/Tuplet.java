@@ -309,7 +309,7 @@ public class Tuplet extends Span {
      * @param line       the owning line (pre-replacement state)
      */
     @Override
-    public boolean isInvalidatedByReplacement(
+    protected boolean isInvalidatedByReplacement(
         StaffElement oldElement, StaffElement newElement, Line line
     ) {
         var oldType = oldElement.getType();

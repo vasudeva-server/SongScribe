@@ -694,7 +694,7 @@ public final class ScoreViewController {
 
         // Confirm before discarding an ending invalidated by the deletion, and do
         // it first: declining must leave both the clipboard and the score untouched.
-        if (!confirmEndingInvalidatedByDeletion(line, line.getElements(begin, end))) {
+        if (!confirmEndingInvalidatedByDeletion(line, begin, end)) {
             return;
         }
 
@@ -805,7 +805,7 @@ public final class ScoreViewController {
             var begin = range.begin();
             var end = range.end();
 
-            if (line.hasEndingInvalidatedByDeletion(line.getElements(begin, end))) {
+            if (line.hasEndingInvalidatedByDeletion(begin, end)) {
                 if (!EndingConfirms.confirmInvalidation(score)) {
                     return;
                 }
@@ -1038,12 +1038,13 @@ public final class ScoreViewController {
     }
 
     /**
-     * Returns true when the caller may proceed with a deletion of {@code elements}:
+     * Returns true when the caller may proceed with a deletion of {@code [begin, end]}:
      * either it discards no ending, or the user confirmed discarding one. Callers
      * must run this before mutating anything — declining leaves the score untouched.
      */
-    private boolean confirmEndingInvalidatedByDeletion(Line line, List<StaffElement> elements) {
-        return !line.hasEndingInvalidatedByDeletion(elements) || EndingConfirms.confirmInvalidation(score);
+    private boolean confirmEndingInvalidatedByDeletion(Line line, int begin, int end) {
+        return !line.hasEndingInvalidatedByDeletion(begin, end)
+            || EndingConfirms.confirmInvalidation(score);
     }
 
     /**
@@ -1342,8 +1343,7 @@ public final class ScoreViewController {
                 // mutated. Skipped when the paste-replace's own deletion already invalidates an
                 // ending: handlePaste has confirmed that, and the ending is going either way.
                 var deletionAlreadyConfirmed = deleteRange != null
-                    && line.hasEndingInvalidatedByDeletion(
-                        line.getElements(deleteRange.begin(), deleteRange.end()));
+                    && line.hasEndingInvalidatedByDeletion(deleteRange.begin(), deleteRange.end());
 
                 if (!deletionAlreadyConfirmed) {
                     var insertedTypes = fragment.elements().stream().map(StaffElement::getType).toList();
@@ -1502,8 +1502,7 @@ public final class ScoreViewController {
         // A paste-replace deletes before it inserts, so it can discard an ending the
         // same way Delete and Cut can — confirm on the same terms. Declining leaves
         // the score, the selection, and the clipboard untouched.
-        if (!confirmEndingInvalidatedByDeletion(
-                line, line.getElements(deleteRange.begin(), deleteRange.end()))) {
+        if (!confirmEndingInvalidatedByDeletion(line, deleteRange.begin(), deleteRange.end())) {
             return;
         }
 

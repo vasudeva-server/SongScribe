@@ -44,9 +44,11 @@ import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Duration;
+import songscribe.dom.ElementChange;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
+import songscribe.dom.SpanOutcome;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
@@ -195,9 +197,12 @@ class PasteSpanReconciliationTest extends UnitTest {
             var tie = new Tie(line.getElement(SPAN_ANCHOR_INDEX), line.getElement(SPAN_END_INDEX));
             line.addSpan(tie);
 
-            assertThat(tie.isInvalidatedByInsertion(INTERIOR_INDEX, ElementType.SINGLE_BARLINE, line))
+            var insertion = ElementChange.forInsertion(
+                line, INTERIOR_INDEX, ElementType.SINGLE_BARLINE.newInstance());
+
+            assertThat(tie.outcomeFor(insertion, line))
                 .as("drawing a barline in between the tied notes leaves the tie")
-                .isFalse();
+                .isSameAs(SpanOutcome.Simple.KEEP);
 
             var result = PasteSpanReconciliation.reconcile(
                 line, INTERIOR_INDEX, null,

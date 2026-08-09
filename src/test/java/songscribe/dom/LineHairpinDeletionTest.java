@@ -33,8 +33,10 @@ import songscribe.UnitTest;
  * hairpins.
  *
  * <p>Deleting an element a hairpin is anchored to shortens the hairpin to the nearest
- * surviving element instead of destroying it; the hairpin is only removed when fewer
- * than two of its elements survive. Deleting everything that separated two same-type
+ * surviving element instead of destroying it; the hairpin is only removed when what
+ * survives holds fewer than {@link Hairpin#MIN_COLUMNS} columns — which two elements can
+ * fail to do, since a grace note shares its host's column. Deleting everything that
+ * separated two same-type
  * hairpins merges them into one, matching the merge {@code Line.addCrescendo} performs
  * when the user draws a hairpin flush against another.
  */
@@ -149,6 +151,24 @@ class LineHairpinDeletionTest extends UnitTest {
 
             assertThat(line.findSpans(Crescendo.class))
                 .as("a hairpin left with one element must be removed")
+                .isEmpty();
+        }
+
+        /**
+         * A hairpin anchored on a grace note covers a single column across that note and
+         * its host, so a deletion that leaves only the pair has nothing left to slope
+         * across — two surviving elements are not always two columns.
+         */
+        @Test
+        void testDeletingDownToAGraceHostPairRemovesTheHairpin() {
+            song.withoutMutationTracking(() ->
+                line.setElement(IDX_1, new StaffElement(ElementType.GRACE_QUAVER)));
+            addCrescendo(IDX_1, IDX_3);
+
+            song.withModification(() -> line.removeElement(IDX_3));
+
+            assertThat(line.findSpans(Crescendo.class))
+                .as("a hairpin left with one column must be removed")
                 .isEmpty();
         }
 

@@ -61,11 +61,6 @@ public final class MusicEditOperations {
 
     private static final int MIN_CONTENT_ELEMENTS = 4;
 
-    // A brand new hairpin needs two columns to slope across. A pitched note is one;
-    // so is a rest at the end of the span, which bounds a wedge in its own right.
-    // Extending an existing hairpin has no such requirement.
-    private static final int MIN_HAIRPIN_COLUMNS = 2;
-
     // Mutable so the same MusicEditOperations instance can outlive a document
     // load — ScoreView holds it across setSong(), avoiding stale references.
     private Song song;
@@ -605,13 +600,13 @@ public final class MusicEditOperations {
      * covers the whole selection has nothing to extend → {@code BLOCKED}.
      * <p>
      * <b>Step 2 — validate the resolved span.</b> An endpoint the selection supplies
-     * must be one the user could place ({@link Line#canAnchorHairpin},
-     * {@link Line#canEndHairpin}) → {@code INELIGIBLE} otherwise; an endpoint
+     * must be one the user could place ({@link Hairpin#canAnchorAt},
+     * {@link Hairpin#canEndAt}) → {@code INELIGIBLE} otherwise; an endpoint
      * inherited from the hairpin being extended stays put, unchecked. The span may not
      * cross a repeat or a non-single barline. It may share at most one element with an
      * opposite-type hairpin — where one wedge ends and the next begins — and more than
      * that is a collision → {@code BLOCKED}. Finally, a new hairpin (never an
-     * extension) needs {@link #MIN_HAIRPIN_COLUMNS} columns to slope across.
+     * extension) needs {@value Hairpin#MIN_COLUMNS} columns to slope across.
      * <p>
      * The two "not now" states differ in why: {@code INELIGIBLE} means the span itself
      * cannot carry a hairpin, whatever else is on the line; {@code BLOCKED} means
@@ -727,7 +722,8 @@ public final class MusicEditOperations {
             return blockedHairpinResolution();
         }
 
-        if (!isExtend && countHairpinColumns(line, spanBegin, spanEnd) < MIN_HAIRPIN_COLUMNS) {
+        // Extending an existing hairpin has no such requirement — it only widens.
+        if (!isExtend && !Hairpin.hasEnoughColumns(line.getElements(), spanBegin, spanEnd)) {
             return ineligibleHairpinResolution();
         }
 
@@ -741,37 +737,6 @@ public final class MusicEditOperations {
 
     private static HairpinResolution blockedHairpinResolution() {
         return new HairpinResolution(HairpinActionState.BLOCKED, -1, -1);
-    }
-
-    /**
-     * Counts the pitched notes in the inclusive element range {@code [begin, end]}.
-     * Grace notes and rests do not count.
-     */
-    private static int countPitchedNotes(Line line, int begin, int end) {
-        var count = 0;
-
-        for (var index = begin; index <= end; index++) {
-            if (line.getElement(index).getType().isPitchedNote()) {
-                count++;
-            }
-        }
-
-        return count;
-    }
-
-    /**
-     * Counts what a new hairpin has to slope across in {@code [begin, end]}: every
-     * pitched note, plus a rest at the end, which bounds a wedge in its own right.
-     * Grace notes and interior rests do not count.
-     */
-    private static int countHairpinColumns(Line line, int begin, int end) {
-        var count = countPitchedNotes(line, begin, end);
-
-        if (line.getElement(end).getType().isRest()) {
-            count++;
-        }
-
-        return count;
     }
 
     // ========== First-Second Ending Operations ==========

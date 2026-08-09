@@ -1963,14 +1963,28 @@ class LineMutationTest extends UnitTest {
     @Nested
     class HasEndingInvalidatedByDeletion {
 
+        /**
+         * Asks the pre-flight check about deleting the contiguous run from {@code first}
+         * through {@code last}, resolving their positions so each test still names the
+         * elements it deletes.
+         */
+        private boolean invalidatedByDeleting(StaffElement first, StaffElement last) {
+            return line.hasEndingInvalidatedByDeletion(
+                line.getElementIndex(first), line.getElementIndex(last));
+        }
+
+        /** Asks the pre-flight check about deleting {@code only}. */
+        private boolean invalidatedByDeleting(StaffElement only) {
+            return invalidatedByDeleting(only, only);
+        }
+
         @Test
         void testReturnsTrueWhenAnchorIsDeleted() {
             var fixture = EndingLineFixture.primary(song);
             var anchor = fixture.anchor();
-            var ending = fixture.ending();
 
             // Deleting the anchor element must trigger invalidation.
-            assertThat(line.hasEndingInvalidatedByDeletion(List.of(anchor)))
+            assertThat(invalidatedByDeleting(anchor))
                 .as("deleting the anchor element should invalidate the ending")
                 .isTrue();
         }
@@ -1980,7 +1994,7 @@ class LineMutationTest extends UnitTest {
             var fixture = EndingLineFixture.primary(song);
             var end = fixture.end();
 
-            assertThat(line.hasEndingInvalidatedByDeletion(List.of(end)))
+            assertThat(invalidatedByDeleting(end))
                 .as("deleting the end element should invalidate the ending")
                 .isTrue();
         }
@@ -1991,7 +2005,7 @@ class LineMutationTest extends UnitTest {
             var note1 = fixture.note1();
 
             // Deleting a note inside the first sub-span (not all content) must not invalidate.
-            assertThat(line.hasEndingInvalidatedByDeletion(List.of(note1)))
+            assertThat(invalidatedByDeleting(note1))
                 .as("deleting one interior note should not invalidate the ending")
                 .isFalse();
         }
@@ -2003,18 +2017,9 @@ class LineMutationTest extends UnitTest {
             var note2 = fixture.note2();
 
             // Deleting both content notes in the first sub-span empties it — invalidation.
-            assertThat(line.hasEndingInvalidatedByDeletion(List.of(note1, note2)))
+            assertThat(invalidatedByDeleting(note1, note2))
                 .as("deleting all content in the first sub-span should invalidate the ending")
                 .isTrue();
-        }
-
-        @Test
-        void testReturnsFalseForEmptyDeletionList() {
-            EndingLineFixture.primary(song);
-
-            assertThat(line.hasEndingInvalidatedByDeletion(List.of()))
-                .as("an empty deletion list must not invalidate any ending")
-                .isFalse();
         }
 
         @Test
@@ -2036,7 +2041,7 @@ class LineMutationTest extends UnitTest {
             var tuplet = Tuplet.withUnresolvedRatio(e0, e2, tripletGrade);
             song.withoutMutationTracking(() -> line.addTuplet(tuplet));
 
-            assertThat(line.hasEndingInvalidatedByDeletion(List.of(e0)))
+            assertThat(invalidatedByDeleting(e0))
                 .as("deleting a tuplet boundary note must not trigger an ending confirmation")
                 .isFalse();
         }

@@ -601,7 +601,7 @@ class ScoreViewControllerTest extends UnitTest {
             when(coordinatorMock.getSelectedTarget()).thenReturn(null);
             when(coordinatorMock.getRange()).thenReturn(new Selection.Range(lineMock, 0, 1, 0));
             when(lineMock.getElements(0, 1)).thenReturn(List.of(noteA, noteB));
-            when(lineMock.hasEndingInvalidatedByDeletion(any())).thenReturn(true);
+            when(lineMock.hasEndingInvalidatedByDeletion(anyInt(), anyInt())).thenReturn(true);
 
             var controller = new ScoreViewController(
                 scoreMock,

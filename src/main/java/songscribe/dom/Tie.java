@@ -164,7 +164,7 @@ public class Tie extends Span {
      * @param line          the line receiving the insertion (pre-insertion state)
      */
     @Override
-    public boolean isInvalidatedByInsertion(int insertedIndex, ElementType insertedType, Line line) {
+    protected boolean isInvalidatedByInsertion(int insertedIndex, ElementType insertedType, Line line) {
         if (isLegalSeparator(insertedType)) {
             return false;
         }
@@ -200,7 +200,7 @@ public class Tie extends Span {
      * @param line       the line receiving the replacement (pre-replacement state)
      */
     @Override
-    public boolean isInvalidatedByReplacement(
+    protected boolean isInvalidatedByReplacement(
         StaffElement oldElement, StaffElement newElement, Line line
     ) {
         var endpoints = resolveIn(line);

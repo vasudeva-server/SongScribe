@@ -23,8 +23,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -448,13 +446,9 @@ public class Line implements LyricRun, SpanLookup {
                 removeTuplet(tuplet);
             }
 
-            var insertedType = element.getType();
-            // Companion removals precede the primary insertion so reverse-order undo
+            // Companion span changes precede the primary insertion so reverse-order undo
             // restores the primary element before re-adding dependent spans.
-            var invalidatedSpans = spans.stream()
-                .filter(r -> r.isInvalidatedByInsertion(index, insertedType, this))
-                .toList();
-            invalidatedSpans.forEach(this::removeInvalidatedSpan);
+            applySpanOutcomes(ElementChange.forInsertion(this, index, element));
         }
 
         applyChange(
@@ -493,13 +487,10 @@ public class Line implements LyricRun, SpanLookup {
         // The anchor re-pointing in the mutator below still runs — it is
         // self-inverting and required for span references to stay valid.
         if (!song.isReplaying()) {
-            // Pre-compute before the mutator so findRepeatSplitElement sees the pre-replacement line.
-            // Companion removals precede the primary replacement so reverse-order undo
+            // Decided before the mutator so findRepeatSplitElement sees the pre-replacement line.
+            // Companion span changes precede the primary replacement so reverse-order undo
             // restores the primary element before re-adding dependent spans.
-            var invalidatedSpans = spans.stream()
-                .filter(r -> r.isInvalidatedByReplacement(oldElement, element, this))
-                .toList();
-            invalidatedSpans.forEach(this::removeInvalidatedSpan);
+            applySpanOutcomes(ElementChange.forReplacement(this, index, element));
         }
 
         applyChange(
@@ -588,17 +579,10 @@ public class Line implements LyricRun, SpanLookup {
         // removals — re-deriving them would double-apply.
         if (!song.isReplaying()) {
             removeOverlappingTuplets(index, index);
-            var deletedList = List.of(deleted);
-            adjustHairpinsForDeletion(deletedList);
 
-            // Companion removals precede the primary deletion so reverse-order undo
+            // Companion span changes precede the primary deletion so reverse-order undo
             // re-inserts the element before re-adding the spans anchored to it.
-            var invalidated = spans.stream()
-                .filter(r -> !(r instanceof Hairpin))
-                .filter(r -> r.isInvalidatedBy(deletedList)
-                    || r.isInvalidatedByDeletion(deletedList, this))
-                .toList();
-            invalidated.forEach(this::removeInvalidatedSpan);
+            applySpanOutcomes(ElementChange.forDeletion(this, index, index));
         }
 
         applyChange(
@@ -628,16 +612,10 @@ public class Line implements LyricRun, SpanLookup {
         // removals — re-deriving them would double-apply.
         if (!song.isReplaying()) {
             removeOverlappingTuplets(from, to);
-            adjustHairpinsForDeletion(deletedElements);
 
-            // Companion removals precede the primary deletion so reverse-order undo
+            // Companion span changes precede the primary deletion so reverse-order undo
             // re-inserts the elements before re-adding the spans anchored to them.
-            var invalidated = spans.stream()
-                .filter(r -> !(r instanceof Hairpin))
-                .filter(r -> r.isInvalidatedBy(deletedElements)
-                    || r.isInvalidatedByDeletion(deletedElements, this))
-                .toList();
-            invalidated.forEach(this::removeInvalidatedSpan);
+            applySpanOutcomes(ElementChange.forDeletion(this, from, to));
         }
 
         applyChange(
@@ -1142,308 +1120,96 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * Reshapes this line's hairpins around the pending deletion of {@code deletedElements},
-     * which must still be present in the line.
+     * Asks every span on this line what should happen to it when {@code change} lands, and
+     * carries out those answers — the single sweep behind every element insertion,
+     * replacement and deletion.
      * <p>
-     * A hairpin whose endpoint is deleted pulls in to the nearest surviving element rather
-     * than being dropped, and same-type hairpins the deletion leaves with nothing between
-     * them become one — the same one-gesture-one-hairpin rule {@link #addHairpin} applies
-     * when the user draws a hairpin flush against another. Only a hairpin left with fewer
-     * than two elements is removed, having no gesture left to show.
+     * Called <b>before</b> the change is applied, so each span judges itself against the
+     * projection rather than the mutated line, and so the companion span mutations are
+     * recorded before the primary element mutation: undo replays a step in reverse, and
+     * has to restore the element before the spans that point at it.
      * <p>
-     * A reshaped hairpin is expressed as a tracked removal plus a tracked addition of a
-     * copy, since a span has no modification mutation of its own. Hairpins are
-     * therefore excluded from the invalidation pass in {@link #removeElement} and
-     * {@link #removeRange}: this method is the whole of their response to a deletion.
+     * Every span is asked first and acted on afterwards. Acting inside the loop would both
+     * mutate the {@code spans} list being walked and let one span's removal change what a
+     * later span is judged against.
+     * <p>
+     * A {@link SpanOutcome.Reshape} is the one answer this line cannot act on span by span:
+     * same-type hairpins the change leaves with nothing between them become one, which no
+     * span can decide on its own because none of them knows its siblings. The reshaped
+     * spans are therefore grouped by hairpin kind and handed to {@link #mergeAdjacentSpans},
+     * which expresses each reshape as a tracked removal plus a tracked addition of a copy,
+     * since a span has no modification mutation of its own.
+     *
+     * @param change the pending change, not yet applied to this line
      */
-    private void adjustHairpinsForDeletion(List<StaffElement> deletedElements) {
-        var hairpins = findSpans(Hairpin.class);
-
-        // Every deletion in the app reaches this method, but most songs hold no hairpin
-        // at all. Leave before building the survivor bookkeeping, which is a full pass
-        // over the line and would be discarded unused.
-        if (hairpins.isEmpty()) {
+    private void applySpanOutcomes(ElementChange change) {
+        if (spans.isEmpty()) {
             return;
         }
 
-        var doomed = new HashSet<>(deletedElements);
+        var doomed = new ArrayList<Span>();
+        var reshapedByKind = new LinkedHashMap<Hairpin.Kind, List<HairpinSpan>>();
 
-        // The post-deletion element order, computed while the doomed elements are still
-        // in place so each hairpin's surviving endpoints can be resolved against it.
-        // survivorIndices records each survivor's new position as the list is built, so
-        // resolving an endpoint later is a lookup rather than another scan.
-        var survivors = new ArrayList<StaffElement>();
-        var survivorIndices = new HashMap<StaffElement, Integer>();
-
-        for (var element : elements) {
-            if (!doomed.contains(element)) {
-                survivorIndices.computeIfAbsent(element, k -> survivors.size());
-                survivors.add(element);
+        for (var span : spans) {
+            switch (span.outcomeFor(change, this)) {
+                case SpanOutcome.Simple.KEEP -> { }
+                case SpanOutcome.Simple.REMOVE -> doomed.add(span);
+                case SpanOutcome.Reshape reshape -> collectReshape(reshapedByKind, span, reshape);
             }
         }
 
-        var spansByType = new LinkedHashMap<Class<?>, List<HairpinSpan>>();
+        doomed.forEach(this::removeInvalidatedSpan);
 
-        for (var hairpin : hairpins) {
-            var anchorIndex = hairpin.getAnchorElementIndex();
-            var endIndex = hairpin.getEndElementIndex();
-
-            // A hairpin not anchored in this line is not this deletion's to reshape.
-            if (anchorIndex < 0 || endIndex < 0) {
-                continue;
-            }
-
-            var span = survivingSpanOf(hairpin, anchorIndex, endIndex, survivors, survivorIndices);
-
-            if (span == null) {
-                removeInvalidatedSpan(hairpin);
-                continue;
-            }
-
-            spansByType.computeIfAbsent(hairpin.getClass(), type -> new ArrayList<>()).add(span);
-        }
-
-        for (var spans : spansByType.values()) {
-            mergeAdjacentSpans(spans, survivors);
+        // The projection is asked for per kind rather than hoisted: there are at most two
+        // kinds, and a change nothing reshaped must not build one at all.
+        for (var hairpinSpans : reshapedByKind.values()) {
+            mergeAdjacentSpans(hairpinSpans, change.projectedElements());
         }
     }
 
     /**
-     * Returns the span {@code hairpin} occupies among {@code survivors} once the pending
-     * deletion is applied, or null when what survives cannot carry a hairpin — a wedge
-     * needs a note to start on and another to end on.
-     *
-     * @param anchorIndex     the hairpin's anchor index in the pre-deletion line
-     * @param endIndex        the hairpin's end index in the pre-deletion line
-     * @param survivorIndices each surviving element's post-deletion position
-     */
-    private @Nullable HairpinSpan survivingSpanOf(
-        Hairpin hairpin,
-        int anchorIndex,
-        int endIndex,
-        List<? extends StaffElement> survivors,
-        Map<StaffElement, Integer> survivorIndices
-    ) {
-        // Nothing outside the range can fall between two elements inside it, so what
-        // survives of the range is still described by its first and last position.
-        var first = -1;
-        var last = -1;
-
-        for (var i = anchorIndex; i <= endIndex; i++) {
-            // Absent means the element is one of the doomed ones.
-            var survivorIndex = survivorIndices.get(elements.get(i));
-
-            if (survivorIndex == null) {
-                continue;
-            }
-
-            if (first < 0) {
-                first = survivorIndex;
-            }
-
-            last = survivorIndex;
-        }
-
-        if (first < 0) {
-            return null;
-        }
-
-        var begin = resolveBeginIndex(hairpin, first, last, survivors);
-        var end = resolveEndIndex(hairpin, first, last, survivors);
-
-        // One note, or none, leaves no gesture to draw.
-        if (begin < 0 || end < 0 || begin >= end) {
-            return null;
-        }
-
-        return new HairpinSpan(hairpin, begin, end);
-    }
-
-    /**
-     * Returns the post-deletion position of {@code hairpin}'s anchor, given that its
-     * elements survive from {@code first} through {@code last}, or -1 when none of them
-     * can begin a hairpin.
+     * Files {@code reshape} under {@code span}'s kind, ready for the merge pass.
      * <p>
-     * A surviving anchor stays where it is — a hairpin an older build left anchored on a
-     * rest is not this deletion's to correct. A deleted one moves in to the first element
-     * that can begin one: a pitched note, or a grace note whose host is one, matching what
-     * the app allows when the hairpin is drawn.
+     * Only a hairpin can reshape: the merge that consumes these answers replaces a run with
+     * a copy of a hairpin, and there is nothing it could do with any other kind of span.
      */
-    private static int resolveBeginIndex(
-        Hairpin hairpin,
-        int first,
-        int last,
-        List<? extends StaffElement> survivors
+    private static void collectReshape(
+        Map<Hairpin.Kind, List<HairpinSpan>> reshapedByKind,
+        Span span,
+        SpanOutcome.Reshape reshape
     ) {
-        if (survivors.get(first) == hairpin.getAnchorElement()) {
-            return first;
+        if (!(span instanceof Hairpin hairpin)) {
+            throw new IllegalStateException(
+                "Only a hairpin may answer Reshape, but " + span.getClass().getSimpleName() + " did");
         }
 
-        for (var i = first; i <= last; i++) {
-            if (canAnchorHairpin(survivors, i, last)) {
-                return i;
-            }
-        }
-
-        return -1;
+        reshapedByKind
+            .computeIfAbsent(hairpin.getKind(), kind -> new ArrayList<>())
+            .add(new HairpinSpan(hairpin, reshape.begin(), reshape.end()));
     }
 
     /**
      * Returns whether the element at {@code index} can begin a hairpin: a pitched note,
      * or a grace note whose host is one.
      * <p>
-     * See {@link #canEndHairpin(int)} for the matching predicate at the other end of a
-     * hairpin — a rest may end a hairpin but, unlike a pitched note, may never anchor
-     * one; LilyPond's rest rule is right-side only.
+     * The rule lives on {@link Hairpin#canAnchorAt}; this exists only so a caller
+     * holding a {@code Line} and an index need not reach for the element list.
      *
      * @param lastIndex the last index a hairpin may reach, bounding the host lookahead
      */
     public boolean canAnchorHairpin(int index, int lastIndex) {
-        return canAnchorHairpin(elements, index, lastIndex);
-    }
-
-    /**
-     * Returns whether the element at {@code index} in {@code candidates} can begin a
-     * hairpin.
-     * <p>
-     * A pitched note always can. A grace note belongs to the note it precedes, so it
-     * can begin one when that note is pitched — anchoring on the grace note rather than
-     * its host keeps the hairpin over what the user actually selected. Anything else,
-     * including a grace note with no host within reach, cannot.
-     * <p>
-     * Both the menu's eligibility test and the post-deletion reshaping read this, so a
-     * deletion can never leave a hairpin anchored somewhere the user could not have
-     * placed one.
-     *
-     * @param candidates the elements to test against, in document order
-     * @param lastIndex  the last usable index, bounding the host lookahead
-     */
-    private static boolean canAnchorHairpin(List<? extends StaffElement> candidates, int index, int lastIndex) {
-        var type = candidates.get(index).getType();
-
-        return type.isPitchedNote()
-            || (type.isGraceNote()
-                && index < lastIndex
-                && candidates.get(index + 1).getType().isPitchedNote());
+        return Hairpin.canAnchorAt(elements, index, lastIndex);
     }
 
     /**
      * Returns whether the element at {@code index} can end a hairpin: a pitched note, or
      * the first rest after one.
      * <p>
-     * See {@link #canAnchorHairpin(int, int)} for the matching predicate at the other
-     * end of a hairpin.
+     * The rule lives on {@link Hairpin#canEndAt}; this exists only so a caller holding a
+     * {@code Line} and an index need not reach for the element list.
      */
     public boolean canEndHairpin(int index) {
-        return canEndHairpin(elements, index);
-    }
-
-    /**
-     * Returns whether the element at {@code index} in {@code candidates} can end a
-     * hairpin.
-     * <p>
-     * A pitched note always can. A rest can when it is the first one after a pitched
-     * note, so a hairpin ends on at most one rest — a wedge running on across a second
-     * has nothing left to slope over. Interior rests are unaffected; this is a rule
-     * about where a hairpin stops, not what it may cross.
-     * <p>
-     * Both the menu's eligibility test and the post-deletion reshaping read this, so the
-     * two can never disagree about what a hairpin may end on.
-     *
-     * @param candidates the elements to test against, in document order
-     */
-    private static boolean canEndHairpin(List<? extends StaffElement> candidates, int index) {
-        var type = candidates.get(index).getType();
-
-        if (type.isPitchedNote()) {
-            return true;
-        }
-
-        // LilyPond ends a hairpin at a rest's left edge rather than past its glyph
-        // (hairpin.cc:268-271), so a rest bounds a wedge as legitimately as a note —
-        // but only the one that closes the run of notes.
-        return type.isRest() && precedingDurationIsPitchedNote(candidates, index);
-    }
-
-    /**
-     * Returns whether the nearest duration element before {@code index} is a pitched
-     * note, false when there is none.
-     * <p>
-     * Non-durations are skipped rather than treated as separators: a grace note sits
-     * between a rest and whatever precedes it without making that rest the first of its
-     * run.
-     */
-    private static boolean precedingDurationIsPitchedNote(
-        List<? extends StaffElement> candidates,
-        int index
-    ) {
-        for (var i = index - 1; i >= 0; i--) {
-            var type = candidates.get(i).getType();
-
-            if (type.isDuration()) {
-                return type.isPitchedNote();
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Returns whether {@code hairpin} still has endpoints the user could have placed once the
-     * element at {@code index} has been replaced by {@code replacement}.
-     * <p>
-     * Only an endpoint is at stake. A replacement anywhere else — inside the hairpin or off it
-     * entirely — leaves it alone, since the endpoint rules govern where a wedge stops, not what
-     * it crosses.
-     * <p>
-     * Must be called on the <em>pre-replacement</em> line state, while the element at
-     * {@code index} is still in the line.
-     */
-    public boolean hairpinSurvivesReplacement(Hairpin hairpin, int index, StaffElement replacement) {
-        var anchorIndex = hairpin.getAnchorElementIndex();
-        var endIndex = hairpin.getEndElementIndex();
-
-        // A hairpin whose endpoints are not both in this line has nothing here to judge.
-        if (anchorIndex < 0 || endIndex < 0) {
-            return true;
-        }
-
-        if (index != anchorIndex && index != endIndex) {
-            return true;
-        }
-
-        // Both predicates read the neighbours of the index they are given — the host after an
-        // anchor, the run of durations before an end — so they are asked about the line as it
-        // will be, rather than having their rules restated over the incoming element alone.
-        var candidates = new ArrayList<StaffElement>(elements);
-        candidates.set(index, replacement);
-
-        return canAnchorHairpin(candidates, anchorIndex, endIndex) && canEndHairpin(candidates, endIndex);
-    }
-
-    /**
-     * Returns the post-deletion position of {@code hairpin}'s end, given that its elements
-     * survive from {@code first} through {@code last}, or -1 when none of them can end a
-     * hairpin. A surviving end stays where it is; a deleted one moves in to the last
-     * surviving note or rest.
-     */
-    private static int resolveEndIndex(
-        Hairpin hairpin,
-        int first,
-        int last,
-        List<? extends StaffElement> survivors
-    ) {
-        if (survivors.get(last) == hairpin.getEndElement()) {
-            return last;
-        }
-
-        for (var i = last; i >= first; i--) {
-            if (canEndHairpin(survivors, i)) {
-                return i;
-            }
-        }
-
-        return -1;
+        return Hairpin.canEndAt(elements, index);
     }
 
     /**
@@ -1744,17 +1510,41 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
-     * Returns true if deleting {@code deletedElements} would remove any Ending in this line.
-     * Checks both {@link Span#isInvalidatedBy} (anchor/end deleted) and
-     * {@link Span#isInvalidatedByDeletion} (subclass-specific conditions).
+     * Returns true if deleting the elements at {@code [from, to]} — inclusive, and the same
+     * position twice for a single element — would remove any Ending in this line. See
+     * {@link #removesConfirmableSpan} for which spans are consulted and why the answer cannot
+     * disagree with the deletion it precedes.
      * <p>
-     * {@code deletedElements} must reflect the pre-deletion line state.
+     * The positions are read against the pre-deletion line, so call this before deleting.
      */
-    public boolean hasEndingInvalidatedByDeletion(List<StaffElement> deletedElements) {
+    public boolean hasEndingInvalidatedByDeletion(int from, int to) {
+        return removesConfirmableSpan(() -> ElementChange.forDeletion(this, from, to));
+    }
+
+    /**
+     * Whether the change {@code changeSupplier} describes would remove any span whose loss
+     * warrants a confirmation prompt.
+     * <p>
+     * Asks those spans the same question {@link #applySpanOutcomes} does, so a prompt and
+     * the edit it precedes can never disagree about what the edit costs. Only spans that
+     * ask to be confirmed are consulted: a tie an insertion displaces goes silently, so it
+     * must not raise the ending confirm.
+     * <p>
+     * The supplier is not invoked when this line carries no such span, which is the common
+     * case — only an {@link Ending} asks to be confirmed. That guard is what keeps a paste
+     * from building one change per pasted element type for a line that has no ending to
+     * lose.
+     */
+    private boolean removesConfirmableSpan(Supplier<ElementChange> changeSupplier) {
+        if (spans.stream().noneMatch(Span::requiresInvalidationConfirm)) {
+            return false;
+        }
+
+        var change = changeSupplier.get();
+
         return spans.stream()
             .filter(Span::requiresInvalidationConfirm)
-            .anyMatch(r -> r.isInvalidatedBy(deletedElements) ||
-                           r.isInvalidatedByDeletion(deletedElements, this));
+            .anyMatch(span -> span.outcomeFor(change, this) == SpanOutcome.Simple.REMOVE);
     }
 
     /**
@@ -1776,18 +1566,17 @@ public class Line implements LyricRun, SpanLookup {
 
     /**
      * Returns true if inserting an element of {@code insertedType} at {@code insertedIndex}
-     * would remove any Ending in this line.
-     * <p>
-     * Only spans whose loss warrants a prompt are consulted, matching
-     * {@link #hasEndingInvalidatedByDeletion}: a tie an insertion displaces goes silently,
-     * so it must not raise the ending confirm.
+     * would remove any Ending in this line. See {@link #removesConfirmableSpan} for which
+     * spans are consulted and why.
      * <p>
      * Call before {@link #addElement(int, StaffElement)}.
      */
     public boolean hasEndingInvalidatedByInsertion(int insertedIndex, ElementType insertedType) {
-        return spans.stream()
-            .filter(Span::requiresInvalidationConfirm)
-            .anyMatch(r -> r.isInvalidatedByInsertion(insertedIndex, insertedType, this));
+        // The caller has a type rather than the element it will eventually insert. The
+        // endings this consults read no more of an inserted element than its type, so a
+        // fresh one stands in.
+        return removesConfirmableSpan(
+            () -> ElementChange.forInsertion(this, insertedIndex, insertedType.newInstance()));
     }
 
     /**

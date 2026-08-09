@@ -21,7 +21,6 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -32,8 +31,8 @@ import songscribe.dom.*;
 
 /**
  * Unit tests for the Ending invalidation and classification methods:
- * {@link Ending#checkReplacement}, {@link Ending#isInvalidatedByDeletion},
- * {@link Ending#isInvalidatedByReplacement}, and {@link Ending#isInvalidatedByInsertion}.
+ * {@link Ending#checkReplacement} and {@link Ending#outcomeFor}, which is the single hook
+ * {@link Line} consults for every shape of element change.
  *
  * <p>Primary canonical line layout used across most tests:
  * <pre>
@@ -78,159 +77,223 @@ class EndingInvalidationTest extends UnitTest {
         ending      = fixture.ending();
     }
 
+    /**
+     * The outcome {@code ending} reports for deleting the contiguous run from {@code first}
+     * through {@code last} of {@code line}, judged against the projected line.
+     * <p>
+     * Takes the endpoints as elements and resolves their positions here, so each test still
+     * names what it deletes rather than counting indices.
+     */
+    private static SpanOutcome outcomeForDeleting(
+        Ending ending, Line line, StaffElement first, StaffElement last
+    ) {
+        return ending.outcomeFor(
+            ElementChange.forDeletion(line, line.getElementIndex(first), line.getElementIndex(last)),
+            line);
+    }
+
+    /** The outcome {@code ending} reports for deleting {@code only} from {@code line}. */
+    private static SpanOutcome outcomeForDeleting(Ending ending, Line line, StaffElement only) {
+        return outcomeForDeleting(ending, line, only, only);
+    }
+
+    /**
+     * The outcome {@code ending} reports for inserting a fresh {@code insertedType} at
+     * {@code index} of {@code line}, judged against the projected line.
+     */
+    private static SpanOutcome outcomeForInserting(
+        Ending ending, Line line, int index, ElementType insertedType
+    ) {
+        return ending.outcomeFor(
+            ElementChange.forInsertion(line, index, insertedType.newInstance()), line);
+    }
+
+    /**
+     * The outcome {@code ending} reports for replacing {@code oldElement} with
+     * {@code newElement}, judged against the projected line.
+     */
+    private static SpanOutcome outcomeForReplacing(
+        Ending ending, Line line, StaffElement oldElement, StaffElement newElement
+    ) {
+        return ending.outcomeFor(
+            ElementChange.forReplacement(
+                line, line.getElementIndex(oldElement), newElement),
+            line);
+    }
+
     // -----------------------------------------------------------------------
-    // isInvalidatedByDeletion
+    // outcomeFor, deletion
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class IsInvalidatedByDeletion {
+    class WhenElementsAreDeleted {
 
         @Test
         void testAllFirstSpanContentDeletedReturnsTrue() {
             // Condition 4: deleting all content in the first sub-span (note1, note2)
-            assertThat(ending.isInvalidatedByDeletion(List.of(note1, note2), line)).isTrue();
+            assertThat(outcomeForDeleting(ending, line, note1, note2))
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testAllSecondSpanContentDeletedReturnsTrue() {
             // Condition 4: deleting all content in the second sub-span (note4, note5)
-            assertThat(ending.isInvalidatedByDeletion(List.of(note4, note5), line)).isTrue();
+            assertThat(outcomeForDeleting(ending, line, note4, note5))
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
-        void testAnchorDeletedReturnsFalse() {
-            // Anchor deletion is handled by the base isInvalidatedBy; not re-checked here
-            assertThat(ending.isInvalidatedByDeletion(List.of(anchor), line)).isFalse();
+        void testAnchorDeletedRemovesTheEnding() {
+            // Not the ending's own rule but the base endpoint rule, which outcomeFor asks first
+            assertThat(outcomeForDeleting(ending, line, anchor))
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testOneFirstSpanNoteDeletedReturnsFalse() {
             // Condition 4 requires ALL content in a sub-span to be deleted; one note remains
-            assertThat(ending.isInvalidatedByDeletion(List.of(note1), line)).isFalse();
+            assertThat(outcomeForDeleting(ending, line, note1))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testOneSecondSpanNoteDeletedReturnsFalse() {
             // Same as above for the second sub-span
-            assertThat(ending.isInvalidatedByDeletion(List.of(note4), line)).isFalse();
+            assertThat(outcomeForDeleting(ending, line, note4))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testSplitDeletedReturnsTrue() {
             // Condition 2: the REPEAT_RIGHT that separates first/second sub-spans is deleted
-            assertThat(ending.isInvalidatedByDeletion(List.of(split), line)).isTrue();
+            assertThat(outcomeForDeleting(ending, line, split))
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
     }
 
     // -----------------------------------------------------------------------
-    // isInvalidatedByInsertion
+    // outcomeFor, insertion
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class IsInvalidatedByInsertion {
+    class WhenAnElementIsInserted {
 
         @Test
         void testBarlineAfterEndReturnsFalse() {
             // Index 7 is >= endIndex (6), so outside the span
-            assertThat(ending.isInvalidatedByInsertion(7, ElementType.SINGLE_BARLINE, line)).isFalse();
+            assertThat(outcomeForInserting(ending, line, 7, ElementType.SINGLE_BARLINE))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testBarlineAtAnchorReturnsFalse() {
             // Index 0 is <= anchorIndex (0), so not interior
-            assertThat(ending.isInvalidatedByInsertion(0, ElementType.SINGLE_BARLINE, line)).isFalse();
+            assertThat(outcomeForInserting(ending, line, 0, ElementType.SINGLE_BARLINE))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testBarlineInFirstSpanInteriorReturnsTrue() {
             // Condition 5: inserting a barline at index 2 (interior of first sub-span)
-            assertThat(ending.isInvalidatedByInsertion(2, ElementType.SINGLE_BARLINE, line)).isTrue();
+            assertThat(outcomeForInserting(ending, line, 2, ElementType.SINGLE_BARLINE))
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testBarlineInSecondSpanInteriorReturnsTrue() {
             // Condition 5: inserting a repeat barline at index 5 (interior of second sub-span)
-            assertThat(ending.isInvalidatedByInsertion(5, ElementType.REPEAT_LEFT, line)).isTrue();
+            assertThat(outcomeForInserting(ending, line, 5, ElementType.REPEAT_LEFT))
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testNoteInFirstSpanInteriorReturnsFalse() {
             // Non-barline/non-repeat insertions never invalidate the ending
-            assertThat(ending.isInvalidatedByInsertion(2, ElementType.CROTCHET, line)).isFalse();
+            assertThat(outcomeForInserting(ending, line, 2, ElementType.CROTCHET))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testBarlineAtSplitIndexReturnsTrue() {
             // The split boundary is not exempt: inserting at splitIndex (3) puts the new
             // barline *before* the existing split, leaving the first sub-span with two.
-            assertThat(ending.isInvalidatedByInsertion(3, ElementType.SINGLE_BARLINE, line)).isTrue();
+            assertThat(outcomeForInserting(ending, line, 3, ElementType.SINGLE_BARLINE))
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
     }
 
     // -----------------------------------------------------------------------
-    // isInvalidatedByReplacement
+    // outcomeFor, replacement
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
-    class IsInvalidatedByReplacement {
+    class WhenAnElementIsReplaced {
 
         @Test
         void testAnchorReplacedWithDoubleBarlineReturnsFalse() {
             // #306: Condition 1 — DOUBLE_BARLINE is a barline, an allowed anchor type
             var newElement = new StaffElement(ElementType.DOUBLE_BARLINE);
-            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, anchor, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testAnchorReplacedWithRepeatLeftReturnsFalse() {
             // Condition 1: REPEAT_LEFT is an allowed anchor type
             var newElement = new StaffElement(ElementType.REPEAT_LEFT);
-            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, anchor, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testAnchorReplacedWithRepeatRightReturnsFalse() {
             // #306: Condition 1 — REPEAT_RIGHT is a repeat, an allowed anchor type
             var newElement = new StaffElement(ElementType.REPEAT_RIGHT);
-            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, anchor, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testAnchorReplacedWithGraceNoteReturnsTrue() {
             // Condition 1: GRACE_QUAVER is neither content, barline, nor repeat — invalidates
             var newElement = new StaffElement(ElementType.GRACE_QUAVER);
-            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isTrue();
+            assertThat(outcomeForReplacing(ending, line, anchor, newElement))
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testAnchorReplacedWithSingleBarlineReturnsFalse() {
             // Condition 1: SINGLE_BARLINE is an allowed anchor type (same as existing)
             var newElement = new StaffElement(ElementType.SINGLE_BARLINE);
-            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, anchor, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testAnchorReplacedWithNoteReturnsFalse() {
             // #306: Condition 1 — a content element is now a valid anchor type
             var newElement = new StaffElement(ElementType.CROTCHET);
-            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, anchor, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testAnchorReplacedWithRepeatLeftRightReturnsFalse() {
             // #306: Condition 1 — REPEAT_LEFT_RIGHT is now a valid anchor type (isRepeat())
             var newElement = new StaffElement(ElementType.REPEAT_LEFT_RIGHT);
-            assertThat(ending.isInvalidatedByReplacement(anchor, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, anchor, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testEndReplacedWithDoubleBarlineReturnsFalse() {
             // Condition 3: DOUBLE_BARLINE is a barline — end replacement is allowed
             var newElement = new StaffElement(ElementType.DOUBLE_BARLINE);
-            assertThat(ending.isInvalidatedByReplacement(end, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, end, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
@@ -238,36 +301,41 @@ class EndingInvalidationTest extends UnitTest {
             // #306: Condition 3 — a note end needs no split compensation; a content
             // replacement is a valid end regardless of split type.
             var newElement = new StaffElement(ElementType.CROTCHET);
-            assertThat(ending.isInvalidatedByReplacement(end, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, end, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testEndReplacedWithRepeatLeftReturnsFalse() {
             // Condition 3: REPEAT_LEFT is a repeat — end replacement is allowed
             var newElement = new StaffElement(ElementType.REPEAT_LEFT);
-            assertThat(ending.isInvalidatedByReplacement(end, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, end, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testMiddleNoteReplacedWithBarlineReturnsFalse() {
             // A middle content element is not the anchor, split, or end — no condition applies
             var newElement = new StaffElement(ElementType.SINGLE_BARLINE);
-            assertThat(ending.isInvalidatedByReplacement(note1, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, note1, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testSplitReplacedWithRepeatLeftReturnsTrue() {
             // Condition 2: REPEAT_LEFT is not an allowed split type
             var newElement = new StaffElement(ElementType.REPEAT_LEFT);
-            assertThat(ending.isInvalidatedByReplacement(split, newElement, line)).isTrue();
+            assertThat(outcomeForReplacing(ending, line, split, newElement))
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testSplitReplacedWithRepeatLeftRightEndNotRightRepeatReturnsFalse() {
             // Condition 2: REPEAT_RIGHT → REPEAT_LEFT_RIGHT returns CompensateEnd, not Invalidate,
-            // so isInvalidatedByReplacement returns false. The UI layer handles the compensating change.
+            // so the ending is kept. The UI layer handles the compensating change.
             var newElement = new StaffElement(ElementType.REPEAT_LEFT_RIGHT);
-            assertThat(ending.isInvalidatedByReplacement(split, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, split, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
@@ -286,7 +354,8 @@ class EndingInvalidationTest extends UnitTest {
                 line2.addElement(end2);
             });
             var ending2 = new Ending(anchor2, end2);
-            assertThat(ending2.isInvalidatedByReplacement(split2, new StaffElement(ElementType.REPEAT_LEFT_RIGHT), line2)).isFalse();
+            assertThat(outcomeForReplacing(ending2, line2, split2, new StaffElement(ElementType.REPEAT_LEFT_RIGHT)))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @SuppressWarnings("PackageVisibleInnerClass")
@@ -318,20 +387,23 @@ class EndingInvalidationTest extends UnitTest {
             @Test
             void testEndReplacedWithSingleBarlineReturnsFalse() {
                 // Condition 3: SINGLE_BARLINE end with REPEAT_LEFT_RIGHT split returns CompensateSplit,
-                // not Invalidate, so isInvalidatedByReplacement returns false. UI handles the compensating change.
-                assertThat(ending2.isInvalidatedByReplacement(end2, new StaffElement(ElementType.SINGLE_BARLINE), line2)).isFalse();
+                // not Invalidate, so the ending is kept. UI handles the compensating change.
+                assertThat(outcomeForReplacing(ending2, line2, end2, new StaffElement(ElementType.SINGLE_BARLINE)))
+                .isSameAs(SpanOutcome.Simple.KEEP);
             }
 
             @Test
             void testEndReplacedWithRepeatRightReturnsFalse() {
                 // Condition 3: REPEAT_RIGHT is allowed when split is REPEAT_LEFT_RIGHT
-                assertThat(ending2.isInvalidatedByReplacement(end2, new StaffElement(ElementType.REPEAT_RIGHT), line2)).isFalse();
+                assertThat(outcomeForReplacing(ending2, line2, end2, new StaffElement(ElementType.REPEAT_RIGHT)))
+                .isSameAs(SpanOutcome.Simple.KEEP);
             }
 
             @Test
             void testEndReplacedWithRepeatLeftRightReturnsFalse() {
                 // Condition 3: REPEAT_LEFT_RIGHT is allowed when split is REPEAT_LEFT_RIGHT
-                assertThat(ending2.isInvalidatedByReplacement(end2, new StaffElement(ElementType.REPEAT_LEFT_RIGHT), line2)).isFalse();
+                assertThat(outcomeForReplacing(ending2, line2, end2, new StaffElement(ElementType.REPEAT_LEFT_RIGHT)))
+                .isSameAs(SpanOutcome.Simple.KEEP);
             }
         }
 
@@ -339,14 +411,16 @@ class EndingInvalidationTest extends UnitTest {
         void testSplitReplacedWithRepeatRightReturnsFalse() {
             // Condition 2: REPEAT_RIGHT is an allowed split type (same as existing)
             var newElement = new StaffElement(ElementType.REPEAT_RIGHT);
-            assertThat(ending.isInvalidatedByReplacement(split, newElement, line)).isFalse();
+            assertThat(outcomeForReplacing(ending, line, split, newElement))
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testSplitReplacedWithSingleBarlineReturnsTrue() {
             // Condition 2: SINGLE_BARLINE is not an allowed split type
             var newElement = new StaffElement(ElementType.SINGLE_BARLINE);
-            assertThat(ending.isInvalidatedByReplacement(split, newElement, line)).isTrue();
+            assertThat(outcomeForReplacing(ending, line, split, newElement))
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
     }
 

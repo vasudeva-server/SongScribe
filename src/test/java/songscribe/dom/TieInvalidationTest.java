@@ -41,7 +41,7 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.undo.UndoTestSupport;
 
 /**
- * Unit tests for {@link Tie#isInvalidatedByInsertion} and {@link Tie#isInvalidatedByReplacement},
+ * Unit tests for {@link Tie#outcomeFor} under an insertion and under a replacement,
  * and their wiring through {@link Line#addElement(int, StaffElement)} and
  * {@link Line#setElement(int, StaffElement)} (issue #726). An element inserted between the two
  * tied notes removes the tie unless it is a legal separator; a replacement removes it unless the
@@ -144,8 +144,26 @@ class TieInvalidationTest extends UnitTest {
         line = song.getLine(0);
     }
 
+    /**
+     * The outcome {@code tie} reports for inserting a fresh {@code insertedType} at
+     * {@code index} of {@link #line}, judged against the projected line.
+     */
+    private SpanOutcome outcomeForInserting(Tie tie, int index, ElementType insertedType) {
+        return tie.outcomeFor(
+            ElementChange.forInsertion(line, index, insertedType.newInstance()), line);
+    }
+
+    /**
+     * The outcome {@code tie} reports for replacing the element at {@code index} of
+     * {@link #line} with {@code replacement}, judged against the projected line.
+     */
+    private SpanOutcome outcomeForReplacing(Tie tie, int index, StaffElement replacement) {
+        return tie.outcomeFor(
+            ElementChange.forReplacement(line, index, replacement), line);
+    }
+
     // -----------------------------------------------------------------------
-    // isInvalidatedByInsertion — adjacent tie
+    // outcomeFor, insertion — adjacent tie
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -161,46 +179,46 @@ class TieInvalidationTest extends UnitTest {
 
         @Test
         void testInsertedNoteInvalidates() {
-            assertThat(tie.isInvalidatedByInsertion(END_INDEX, ElementType.CROTCHET, line))
+            assertThat(outcomeForInserting(tie, END_INDEX, ElementType.CROTCHET))
                 .as("a note between the tied notes must remove the tie")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testInsertedRestInvalidates() {
-            assertThat(tie.isInvalidatedByInsertion(END_INDEX, ElementType.CROTCHET_REST, line))
+            assertThat(outcomeForInserting(tie, END_INDEX, ElementType.CROTCHET_REST))
                 .as("a rest between the tied notes must remove the tie")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testInsertedGraceNoteInvalidates() {
             // A grace note takes no written time but is no legal separator either — a tie
             // over one is a state canToggleTie would never have let the user create.
-            assertThat(tie.isInvalidatedByInsertion(END_INDEX, ElementType.GRACE_QUAVER, line))
+            assertThat(outcomeForInserting(tie, END_INDEX, ElementType.GRACE_QUAVER))
                 .as("a grace note between the tied notes must remove the tie")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testInsertedBarlineRetains() {
-            assertThat(tie.isInvalidatedByInsertion(END_INDEX, ElementType.SINGLE_BARLINE, line))
+            assertThat(outcomeForInserting(tie, END_INDEX, ElementType.SINGLE_BARLINE))
                 .as("a tie across a barline is ordinary notation")
-                .isFalse();
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testInsertedRepeatRetains() {
-            assertThat(tie.isInvalidatedByInsertion(END_INDEX, ElementType.REPEAT_LEFT, line))
+            assertThat(outcomeForInserting(tie, END_INDEX, ElementType.REPEAT_LEFT))
                 .as("a tie across a repeat is ordinary notation")
-                .isFalse();
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testInsertedBreathMarkRetains() {
-            assertThat(tie.isInvalidatedByInsertion(END_INDEX, ElementType.BREATH_MARK, line))
+            assertThat(outcomeForInserting(tie, END_INDEX, ElementType.BREATH_MARK))
                 .as("a breath mark takes no time, so the tied notes stay adjacent")
-                .isFalse();
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
@@ -209,30 +227,30 @@ class TieInvalidationTest extends UnitTest {
             // Line.addElement's own guard would refuse a mid-line final double barline,
             // leaving this branch of the rule otherwise unreachable from the line API.
             assertThat(
-                tie.isInvalidatedByInsertion(END_INDEX, ElementType.FINAL_DOUBLE_BARLINE, line))
+                outcomeForInserting(tie, END_INDEX, ElementType.FINAL_DOUBLE_BARLINE))
                 .as("nothing may sound across the end of the piece (refs #527)")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testInsertedNoteAtAnchorRetains() {
             // Inserting at the anchor's index displaces the anchor rightwards, landing the
             // new note before the tie rather than inside it.
-            assertThat(tie.isInvalidatedByInsertion(ANCHOR_INDEX, ElementType.CROTCHET, line))
+            assertThat(outcomeForInserting(tie, ANCHOR_INDEX, ElementType.CROTCHET))
                 .as("a note before the anchor is outside the tie")
-                .isFalse();
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
         void testInsertedNoteAfterEndRetains() {
-            assertThat(tie.isInvalidatedByInsertion(AFTER_END_INDEX, ElementType.CROTCHET, line))
+            assertThat(outcomeForInserting(tie, AFTER_END_INDEX, ElementType.CROTCHET))
                 .as("a note after the end note is outside the tie")
-                .isFalse();
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
     }
 
     // -----------------------------------------------------------------------
-    // isInvalidatedByInsertion — tie straddling a separator
+    // outcomeFor, insertion — tie straddling a separator
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -248,29 +266,29 @@ class TieInvalidationTest extends UnitTest {
 
         @Test
         void testInsertedNoteBeforeSeparatorInvalidates() {
-            assertThat(tie.isInvalidatedByInsertion(SEPARATOR_INDEX, ElementType.CROTCHET, line))
+            assertThat(outcomeForInserting(tie, SEPARATOR_INDEX, ElementType.CROTCHET))
                 .as("a note between the anchor and the barline is inside the tie")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testInsertedNoteAfterSeparatorInvalidates() {
-            assertThat(tie.isInvalidatedByInsertion(SEPARATED_END_INDEX, ElementType.CROTCHET, line))
+            assertThat(outcomeForInserting(tie, SEPARATED_END_INDEX, ElementType.CROTCHET))
                 .as("a note between the barline and the end note is inside the tie")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testSecondInsertedBarlineRetains() {
             assertThat(
-                tie.isInvalidatedByInsertion(SEPARATED_END_INDEX, ElementType.SINGLE_BARLINE, line))
+                outcomeForInserting(tie, SEPARATED_END_INDEX, ElementType.SINGLE_BARLINE))
                 .as("a second barline still takes no time")
-                .isFalse();
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
     }
 
     // -----------------------------------------------------------------------
-    // isInvalidatedByInsertion — unresolvable endpoint
+    // outcomeFor, insertion — unresolvable endpoint
     // -----------------------------------------------------------------------
 
     @Test
@@ -279,13 +297,13 @@ class TieInvalidationTest extends UnitTest {
         // Without the guard, every index below the end would read as inside the tie.
         var tie = buildDetachedAnchorTie();
 
-        assertThat(tie.isInvalidatedByInsertion(END_INDEX, ElementType.CROTCHET, line))
+        assertThat(outcomeForInserting(tie, END_INDEX, ElementType.CROTCHET))
             .as("a tie with an unresolvable anchor contains nothing")
-            .isFalse();
+            .isSameAs(SpanOutcome.Simple.KEEP);
     }
 
     // -----------------------------------------------------------------------
-    // isInvalidatedByReplacement
+    // outcomeFor, replacement
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -304,37 +322,36 @@ class TieInvalidationTest extends UnitTest {
          * {@code type} left at its default staff position and with no explicit accidental —
          * matching the notes {@link #buildAdjacentTie} laid down.
          */
-        private boolean invalidatedByReplacing(int index, ElementType type) {
-            return tie.isInvalidatedByReplacement(
-                line.getElement(index), type.newInstance(), line);
+        private SpanOutcome outcomeForReplacing(int index, ElementType type) {
+            return TieInvalidationTest.this.outcomeForReplacing(tie, index, type.newInstance());
         }
 
         @Test
         void testEndpointBecomingRestInvalidates() {
-            assertThat(invalidatedByReplacing(END_INDEX, ElementType.CROTCHET_REST))
+            assertThat(outcomeForReplacing(END_INDEX, ElementType.CROTCHET_REST))
                 .as("a tie into a rest is a state canToggleTie would refuse")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testEndpointBecomingBarlineInvalidates() {
-            assertThat(invalidatedByReplacing(ANCHOR_INDEX, ElementType.SINGLE_BARLINE))
+            assertThat(outcomeForReplacing(ANCHOR_INDEX, ElementType.SINGLE_BARLINE))
                 .as("a tie out of a barline is a state canToggleTie would refuse")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testEndpointBecomingGraceNoteInvalidates() {
-            assertThat(invalidatedByReplacing(END_INDEX, ElementType.GRACE_QUAVER))
+            assertThat(outcomeForReplacing(END_INDEX, ElementType.GRACE_QUAVER))
                 .as("a grace note is no tie endpoint (refs #592)")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testEndpointChangingDurationRetains() {
-            assertThat(invalidatedByReplacing(END_INDEX, ElementType.MINIM))
+            assertThat(outcomeForReplacing(END_INDEX, ElementType.MINIM))
                 .as("the same note written longer sounds the same, so the tie stands")
-                .isFalse();
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
 
         @Test
@@ -342,10 +359,9 @@ class TieInvalidationTest extends UnitTest {
             var replacement = ElementType.CROTCHET.newInstance();
             replacement.setStaffPosition(DIFFERENT_STAFF_POSITION);
 
-            assertThat(tie.isInvalidatedByReplacement(
-                line.getElement(END_INDEX), replacement, line))
+            assertThat(TieInvalidationTest.this.outcomeForReplacing(tie, END_INDEX, replacement))
                 .as("a tie joins two notes of one pitch, so a moved endpoint breaks it")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
@@ -353,22 +369,21 @@ class TieInvalidationTest extends UnitTest {
             var replacement = ElementType.CROTCHET.newInstance();
             replacement.setAccidental(StaffElement.Accidental.SHARP);
 
-            assertThat(tie.isInvalidatedByReplacement(
-                line.getElement(END_INDEX), replacement, line))
+            assertThat(TieInvalidationTest.this.outcomeForReplacing(tie, END_INDEX, replacement))
                 .as("an accidental the note it replaces did not carry changes the pitch")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testReplacementOutsideTieRetains() {
-            assertThat(invalidatedByReplacing(AFTER_END_INDEX, ElementType.CROTCHET_REST))
+            assertThat(outcomeForReplacing(AFTER_END_INDEX, ElementType.CROTCHET_REST))
                 .as("the element after the end note is no part of the tie")
-                .isFalse();
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
     }
 
     // -----------------------------------------------------------------------
-    // isInvalidatedByReplacement — tie straddling a separator
+    // outcomeFor, replacement — tie straddling a separator
     // -----------------------------------------------------------------------
 
     @SuppressWarnings("PackageVisibleInnerClass")
@@ -382,28 +397,27 @@ class TieInvalidationTest extends UnitTest {
             tie = buildSeparatedTie();
         }
 
-        private boolean invalidatedByReplacingSeparator(ElementType type) {
-            return tie.isInvalidatedByReplacement(
-                line.getElement(SEPARATOR_INDEX), type.newInstance(), line);
+        private SpanOutcome outcomeForReplacingSeparator(ElementType type) {
+            return outcomeForReplacing(tie, SEPARATOR_INDEX, type.newInstance());
         }
 
         @Test
         void testSeparatorBecomingNoteInvalidates() {
-            assertThat(invalidatedByReplacingSeparator(ElementType.CROTCHET))
+            assertThat(outcomeForReplacingSeparator(ElementType.CROTCHET))
                 .as("a note between the tied notes takes time they may not be parted by")
-                .isTrue();
+                .isSameAs(SpanOutcome.Simple.REMOVE);
         }
 
         @Test
         void testSeparatorBecomingRepeatRetains() {
-            assertThat(invalidatedByReplacingSeparator(ElementType.REPEAT_LEFT))
+            assertThat(outcomeForReplacingSeparator(ElementType.REPEAT_LEFT))
                 .as("one legal separator swapped for another leaves the tie legal")
-                .isFalse();
+                .isSameAs(SpanOutcome.Simple.KEEP);
         }
     }
 
     // -----------------------------------------------------------------------
-    // isInvalidatedByReplacement — unresolvable endpoint
+    // outcomeFor, replacement — unresolvable endpoint
     // -----------------------------------------------------------------------
 
     @Test
@@ -413,10 +427,9 @@ class TieInvalidationTest extends UnitTest {
         // tie, and turning one of them into a rest would wrongly remove it.
         var tie = buildDetachedAnchorTie();
 
-        assertThat(tie.isInvalidatedByReplacement(
-            line.getElement(END_INDEX), ElementType.CROTCHET_REST.newInstance(), line))
+        assertThat(outcomeForReplacing(tie, END_INDEX, ElementType.CROTCHET_REST.newInstance()))
             .as("a tie with an unresolvable anchor contains nothing")
-            .isFalse();
+            .isSameAs(SpanOutcome.Simple.KEEP);
     }
 
     // -----------------------------------------------------------------------
@@ -428,9 +441,9 @@ class TieInvalidationTest extends UnitTest {
         var tie = buildAdjacentTie();
 
         assertAll(
-            () -> assertThat(tie.isInvalidatedByInsertion(END_INDEX, ElementType.CROTCHET, line))
+            () -> assertThat(outcomeForInserting(tie, END_INDEX, ElementType.CROTCHET))
                 .as("precondition: this insertion does invalidate the tie")
-                .isTrue(),
+                .isSameAs(SpanOutcome.Simple.REMOVE),
             () -> assertThat(line.hasEndingInvalidatedByInsertion(END_INDEX, ElementType.CROTCHET))
                 .as("a tie goes silently, so it must not raise the ending confirm")
                 .isFalse()
@@ -584,7 +597,7 @@ class TieInvalidationTest extends UnitTest {
 
     /**
      * A tie whose anchor is the last note of one line and whose end is the first note of the
-     * next. {@link Tie#isInvalidatedByInsertion} and {@link Tie#isInvalidatedByReplacement}
+     * next. {@link Tie#outcomeFor}, under an insertion and under a replacement,
      * resolve both endpoints through {@link Tie#resolveIn}, which asks the line performing the
      * edit — so the far endpoint always resolves to an edge bound rather than to the -1 the far
      * line's own index would give. These tests exercise that through the {@link Line#addElement}

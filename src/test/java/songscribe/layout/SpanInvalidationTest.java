@@ -21,7 +21,7 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.List;
+import java.util.Arrays;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.params.ParameterizedTest;
@@ -56,59 +56,117 @@ class SpanInvalidationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
-    // isInvalidatedBy — all concrete subtypes
+    // Fixture
+    // -----------------------------------------------------------------------
+
+    /** Index of the span's anchor in every layout below. */
+    private static final int ANCHOR_INDEX = 0;
+
+    /** Number of quavers in the layout the interior tests need room in. */
+    private static final int LAYOUT_WITH_INTERIOR_SIZE = 5;
+
+    /** Index of the span's end in {@link #LAYOUT_WITH_INTERIOR_SIZE}'s layout. */
+    private static final int INTERIOR_END_INDEX = LAYOUT_WITH_INTERIOR_SIZE - 1;
+
+    /** Number of quavers in the layout whose span covers the first two of three notes. */
+    private static final int LAYOUT_WITH_OUTSIDER_SIZE = 3;
+
+    /** Index of the span's end in every layout but {@link #LAYOUT_WITH_INTERIOR_SIZE}'s. */
+    private static final int END_INDEX = 1;
+
+    /** Index of the note past the span in {@link #LAYOUT_WITH_OUTSIDER_SIZE}'s layout. */
+    private static final int OUTSIDE_INDEX = 2;
+
+    /** A line of {@code noteCount} plain quavers, unattached to a song. */
+    private static Line quaverLine(int noteCount) {
+        var types = new ElementType[noteCount];
+        Arrays.fill(types, ElementType.QUAVER);
+
+        return lineWith(types);
+    }
+
+    /**
+     * The outcome {@code span} reports for deleting the contiguous run from {@code first}
+     * through {@code last} of {@code line}, judged against the projected line.
+     * <p>
+     * Takes the endpoints as elements and resolves their positions here, so each test still
+     * names what it deletes rather than counting indices.
+     */
+    private static SpanOutcome outcomeForDeleting(
+        Span span, Line line, StaffElement first, StaffElement last
+    ) {
+        return span.outcomeFor(
+            ElementChange.forDeletion(line, line.getElementIndex(first), line.getElementIndex(last)),
+            line);
+    }
+
+    /** The outcome {@code span} reports for deleting {@code only} from {@code line}. */
+    private static SpanOutcome outcomeForDeleting(Span span, Line line, StaffElement only) {
+        return outcomeForDeleting(span, line, only, only);
+    }
+
+    // -----------------------------------------------------------------------
+    // outcomeFor, deletion — all concrete subtypes
+    //
+    // A surviving span is asserted as "not Remove" rather than as Keep, because a hairpin
+    // answers every deletion it survives with a Reshape carrying its projected endpoints.
     // -----------------------------------------------------------------------
 
     @ParameterizedTest(name = "{0}: anchor deleted → invalidated")
     @MethodSource("spanFactories")
     void testAnchorDeletedInvalidates(String name, SpanFactory factory) {
-        var anchor = new StaffElement(ElementType.QUAVER);
-        var end = new StaffElement(ElementType.QUAVER);
-        var element = factory.create(anchor, end);
+        var line = quaverLine(LAYOUT_WITH_OUTSIDER_SIZE);
+        var anchor = line.getElement(ANCHOR_INDEX);
+        var element = factory.create(anchor, line.getElement(END_INDEX));
 
-        assertThat(element.isInvalidatedBy(List.of(anchor))).isTrue();
+        assertThat(outcomeForDeleting(element, line, anchor))
+            .isSameAs(SpanOutcome.Simple.REMOVE);
     }
 
     @ParameterizedTest(name = "{0}: end deleted → invalidated")
     @MethodSource("spanFactories")
     void testEndDeletedInvalidates(String name, SpanFactory factory) {
-        var anchor = new StaffElement(ElementType.QUAVER);
-        var end = new StaffElement(ElementType.QUAVER);
-        var element = factory.create(anchor, end);
+        var line = quaverLine(LAYOUT_WITH_OUTSIDER_SIZE);
+        var end = line.getElement(END_INDEX);
+        var element = factory.create(line.getElement(ANCHOR_INDEX), end);
 
-        assertThat(element.isInvalidatedBy(List.of(end))).isTrue();
+        assertThat(outcomeForDeleting(element, line, end))
+            .isSameAs(SpanOutcome.Simple.REMOVE);
     }
 
     @ParameterizedTest(name = "{0}: both endpoints deleted → invalidated")
     @MethodSource("spanFactories")
     void testBothDeletedInvalidates(String name, SpanFactory factory) {
-        var anchor = new StaffElement(ElementType.QUAVER);
-        var end = new StaffElement(ElementType.QUAVER);
+        var line = quaverLine(LAYOUT_WITH_OUTSIDER_SIZE);
+        var anchor = line.getElement(ANCHOR_INDEX);
+        var end = line.getElement(END_INDEX);
         var element = factory.create(anchor, end);
 
-        assertThat(element.isInvalidatedBy(List.of(anchor, end))).isTrue();
+        assertThat(outcomeForDeleting(element, line, anchor, end))
+            .isSameAs(SpanOutcome.Simple.REMOVE);
     }
 
     @ParameterizedTest(name = "{0}: only middle elements deleted → not invalidated")
     @MethodSource("spanFactories")
     void testMiddleDeletedNotInvalidates(String name, SpanFactory factory) {
-        var anchor = new StaffElement(ElementType.QUAVER);
-        var middle1 = new StaffElement(ElementType.QUAVER);
-        var middle2 = new StaffElement(ElementType.QUAVER);
-        var end = new StaffElement(ElementType.QUAVER);
-        var element = factory.create(anchor, end);
+        // Three interior notes with two of them deleted, so the one that survives leaves the
+        // span content an ending demands as well as the two endpoints every span demands.
+        var line = quaverLine(LAYOUT_WITH_INTERIOR_SIZE);
+        var element = factory.create(line.getElement(ANCHOR_INDEX), line.getElement(INTERIOR_END_INDEX));
+        var middle1 = line.getElement(ANCHOR_INDEX + 1);
+        var middle2 = line.getElement(ANCHOR_INDEX + 2);
 
-        assertThat(element.isInvalidatedBy(List.of(middle1, middle2))).isFalse();
+        assertThat(outcomeForDeleting(element, line, middle1, middle2))
+            .isNotSameAs(SpanOutcome.Simple.REMOVE);
     }
 
     @ParameterizedTest(name = "{0}: unrelated element deleted → not invalidated")
     @MethodSource("spanFactories")
     void testExternalDeletedNotInvalidates(String name, SpanFactory factory) {
-        var anchor = new StaffElement(ElementType.QUAVER);
-        var end = new StaffElement(ElementType.QUAVER);
-        var external = new StaffElement(ElementType.QUAVER);
-        var element = factory.create(anchor, end);
+        var line = quaverLine(LAYOUT_WITH_OUTSIDER_SIZE);
+        var element = factory.create(line.getElement(ANCHOR_INDEX), line.getElement(END_INDEX));
 
-        assertThat(element.isInvalidatedBy(List.of(external))).isFalse();
+        assertThat(outcomeForDeleting(element, line, line.getElement(OUTSIDE_INDEX)))
+            .isNotSameAs(SpanOutcome.Simple.REMOVE);
     }
 }

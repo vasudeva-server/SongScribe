@@ -233,7 +233,7 @@ public class Ending extends Span {
      */
     @Override
     @SuppressWarnings("SlowListContainsAll")
-    public boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
+    protected boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
         // Condition 2: REPEAT_RIGHT split element is deleted
         var splitElement = findRepeatSplitElement(line);
 
@@ -356,7 +356,7 @@ public class Ending extends Span {
      * @param line       the owning line
      */
     @Override
-    public boolean isInvalidatedByReplacement(
+    protected boolean isInvalidatedByReplacement(
         StaffElement oldElement, StaffElement newElement, Line line
     ) {
         return checkReplacement(oldElement, newElement, line) instanceof EndingEffect.Invalidate;
@@ -373,7 +373,7 @@ public class Ending extends Span {
      * @param line          the owning line (pre-insertion state)
      */
     @Override
-    public boolean isInvalidatedByInsertion(
+    protected boolean isInvalidatedByInsertion(
         int insertedIndex, ElementType insertedType, Line line
     ) {
         if (!insertedType.isBarLine() && !insertedType.isRepeat()) {

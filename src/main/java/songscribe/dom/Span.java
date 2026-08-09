@@ -134,36 +134,110 @@ public abstract class Span extends LineElement {
      * A span is invalidated when its anchor or end element is among the deleted elements,
      * because the range can no longer be rendered without both endpoints. Subclasses may override
      * this method if their invalidation condition is more nuanced.
+     * <p>
+     * This is an implementation detail of the default {@link #outcomeFor}, which is the only
+     * caller and the only entry point {@link Line} uses. A new span type should override
+     * {@code outcomeFor} instead — a boolean predicate can only ever say "remove me", so a
+     * type that implements this one silently forfeits {@link SpanOutcome.Reshape}.
      *
      * @param deletedElements the elements that were removed from the line
      * @return {@code true} if this span should be removed as a result of the deletion
      */
-    public boolean isInvalidatedBy(List<StaffElement> deletedElements) {
+    protected boolean isInvalidatedBy(List<StaffElement> deletedElements) {
         return deletedElements.contains(anchorElement) || deletedElements.contains(endElement);
     }
 
     /**
      * Returns true if inserting an element of {@code insertedType} at {@code insertedIndex}
      * invalidates this span. Default is false; subclasses may override.
+     * <p>
+     * An implementation detail of the default {@link #outcomeFor} — see {@link #isInvalidatedBy}
+     * for why a new span type should override {@code outcomeFor} rather than this.
      */
-    public boolean isInvalidatedByInsertion(int insertedIndex, ElementType insertedType, Line line) {
+    protected boolean isInvalidatedByInsertion(int insertedIndex, ElementType insertedType, Line line) {
         return false;
     }
 
     /**
      * Returns true if deleting the given elements invalidates this span beyond what
      * {@link #isInvalidatedBy} already detects. Default is false; subclasses may override.
+     * <p>
+     * An implementation detail of the default {@link #outcomeFor} — see {@link #isInvalidatedBy}
+     * for why a new span type should override {@code outcomeFor} rather than this.
      */
-    public boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
+    protected boolean isInvalidatedByDeletion(List<StaffElement> deletedElements, Line line) {
         return false;
     }
 
     /**
      * Returns true if replacing {@code oldElement} with {@code newElement} invalidates
      * this span. Default is false; subclasses may override.
+     * <p>
+     * An implementation detail of the default {@link #outcomeFor} — see {@link #isInvalidatedBy}
+     * for why a new span type should override {@code outcomeFor} rather than this.
      */
-    public boolean isInvalidatedByReplacement(StaffElement oldElement, StaffElement newElement, Line line) {
+    protected boolean isInvalidatedByReplacement(StaffElement oldElement, StaffElement newElement, Line line) {
         return false;
+    }
+
+    /**
+     * Decides what should happen to this span when {@code change} lands on {@code line}.
+     * <p>
+     * <b>The decision is made before the change lands.</b> {@code line} still holds its
+     * pre-change elements; every judgement must be made against
+     * {@link ElementChange#projectedElements}, which is what the line will look like
+     * afterwards, and never against the line's current elements. Undo replays a step's
+     * mutations in reverse, so the companion span mutation this answer produces has to be
+     * recorded <em>before</em> the primary element mutation — deciding after the fact would
+     * record a span already re-pointed at the new element, and undo would restore it broken.
+     * {@code line} is passed only so an implementor can ask the line questions the projection
+     * cannot answer on its own, such as which spans it carries.
+     * <p>
+     * <b>A replacement re-points, it does not delete.</b> {@link Line#setElement} points any
+     * span whose anchor or end was the replaced element at the replacement. So under
+     * {@link ElementChange.Replacement}, a span whose endpoint is
+     * {@link ElementChange.Replacement#oldElement} must be read as having that endpoint
+     * become {@link ElementChange.Replacement#newElement} — <em>not</em> as having lost an
+     * endpoint. Reading the old element as deleted would silently remove every span whose
+     * endpoint is edited.
+     * <p>
+     * The default is a bridge over the four per-shape predicates — {@link #isInvalidatedBy},
+     * {@link #isInvalidatedByInsertion}, {@link #isInvalidatedByDeletion} and
+     * {@link #isInvalidatedByReplacement} — routing each change shape to exactly the
+     * predicate the line consults for it today, so a subclass that overrides only those
+     * keeps behaving as it always has. A subclass overriding {@code outcomeFor} need not
+     * implement any of them.
+     * <p>
+     * A boolean predicate can only ever say "remove me". {@link SpanOutcome.Reshape} is here
+     * for a subclass whose span survives an edit in a different shape, and whose
+     * {@code [begin, end]} are indices into {@link ElementChange#projectedElements}.
+     *
+     * @param change the pending change, not yet applied to {@code line}
+     * @param line   the line being changed, still in its pre-change state
+     */
+    public SpanOutcome outcomeFor(ElementChange change, Line line) {
+        return isInvalidatedByChange(change, line) ? SpanOutcome.Simple.REMOVE : SpanOutcome.Simple.KEEP;
+    }
+
+    /**
+     * Routes {@code change} to the one per-shape predicate {@link Line} consulted for it
+     * before {@link #outcomeFor} existed. Separated from {@code outcomeFor} so the
+     * boolean-to-outcome mapping is written once rather than once per shape.
+     */
+    private boolean isInvalidatedByChange(ElementChange change, Line line) {
+        return switch (change) {
+            case ElementChange.Insertion insertion ->
+                isInvalidatedByInsertion(insertion.index(), insertion.inserted().getType(), line);
+
+            case ElementChange.Replacement replacement ->
+                isInvalidatedByReplacement(replacement.oldElement(), replacement.newElement(), line);
+
+            case ElementChange.Deletion deletion -> {
+                var deletedElements = deletion.deletedElements();
+
+                yield isInvalidatedBy(deletedElements) || isInvalidatedByDeletion(deletedElements, line);
+            }
+        };
     }
 
     /**

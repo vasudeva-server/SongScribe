@@ -23,6 +23,8 @@ package songscribe.dom;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
@@ -32,7 +34,8 @@ import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
 
 /**
- * Tests for {@link Hairpin} — getContentHeightSs and getSpanWidthSs.
+ * Tests for {@link Hairpin} — getContentHeightSs, getSpanWidthSs and the endpoint rule
+ * {@link Hairpin#canAnchorAt}, which the menu and the post-deletion reshaping both read.
  *
  * <p>Hairpin is abstract (sealed); tests use {@link Crescendo} as the concrete subclass,
  * since the tested methods are fully implemented in Hairpin.
@@ -41,6 +44,15 @@ class HairpinTest extends UnitTest {
 
     // Floating-point tolerance for comparisons where exact arithmetic is expected.
     private static final double DOUBLE_EPSILON = 1e-9;
+
+    /**
+     * A non-zero anchor X. At zero, measuring the span as {@code endX + anchorX} reads the
+     * same as {@code endX - anchorX}, so no assertion could tell the two apart.
+     */
+    private static final double ANCHOR_X_SS = 3.0;
+
+    /** How far past the minimum a span is taken when the geometry branch is the subject. */
+    private static final double ABOVE_MINIMUM_SS = 2.0;
 
     private static Crescendo createHairpin(StaffElement anchor, StaffElement end) {
         return new Crescendo(anchor, end);
@@ -103,9 +115,10 @@ class HairpinTest extends UnitTest {
             var end = new StaffElement(ElementType.CROTCHET);
             var hairpin = createHairpin(anchor, end);
 
-            // Use a span large enough that geometry dominates.
-            var anchorXSs = 0.0;
-            var endXSs = Hairpin.HAIRPIN_OPENING_HEIGHT_SS + 2.0;
+            // Use a span large enough that geometry dominates, measured from a non-zero
+            // anchor so that the width is the distance between the endpoints and not their sum.
+            var anchorXSs = ANCHOR_X_SS;
+            var endXSs = ANCHOR_X_SS + Hairpin.HAIRPIN_OPENING_HEIGHT_SS + ABOVE_MINIMUM_SS;
             var expectedWidthSs = endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS;
 
             assertThat(expectedWidthSs)
@@ -156,6 +169,42 @@ class HairpinTest extends UnitTest {
             assertThat(hairpin.getSpanWidthSs(anchorXSs, endXSs))
                 .isCloseTo(
                     endXSs - anchorXSs + SMuFLConstants.NOTE_HEAD_WIDTH_SS, within(DOUBLE_EPSILON));
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // canAnchorAt — the grace note's host lookahead is bounded by the range
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class CanAnchorAt {
+
+        /** Positions in a two-element candidate list: a grace note and the note it precedes. */
+        private static final int GRACE_INDEX = 0;
+        private static final int HOST_INDEX = 1;
+
+        private List<StaffElement> graceThenHost() {
+            return List.of(
+                new StaffElement(ElementType.GRACE_QUAVER), new StaffElement(ElementType.CROTCHET));
+        }
+
+        @Test
+        void testAGraceNoteAnchorsWhenItsHostIsInsideTheRange() {
+            assertThat(Hairpin.canAnchorAt(graceThenHost(), GRACE_INDEX, HOST_INDEX))
+                .as("a grace note begins a hairpin on its host's behalf, so the user keeps the "
+                    + "endpoint they selected")
+                .isTrue();
+        }
+
+        @Test
+        void testAGraceNoteCannotAnchorWhenItsHostIsPastTheRange() {
+            // The lookahead has to stop at lastIndex. Reading one past it would find the host
+            // and allow an anchor on a grace note the range does not reach the column of —
+            // which is what the menu asks about when only the grace note is selected.
+            assertThat(Hairpin.canAnchorAt(graceThenHost(), GRACE_INDEX, GRACE_INDEX))
+                .as("with its host outside the range there is no column to borrow")
+                .isFalse();
         }
     }
 }

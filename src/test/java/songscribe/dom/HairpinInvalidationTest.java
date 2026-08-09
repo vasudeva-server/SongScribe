@@ -35,17 +35,19 @@ import songscribe.UnitTest;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.mutation.CrescendoRemoval;
+import songscribe.message.mutation.ElementInsertion;
 import songscribe.message.mutation.ElementReplacement;
 import songscribe.message.notification.SongDidChangeNotification;
 
 /**
- * Unit tests for {@link Hairpin#isInvalidatedByReplacement} and its wiring through
- * {@link Line#setElement(int, StaffElement)}.
+ * Unit tests for {@link Hairpin#outcomeFor} and its wiring through
+ * {@link Line#setElement(int, StaffElement)} and {@link Line#addElement(int, StaffElement)}.
  *
- * <p>{@code setElement} re-points a span at whatever replaces its endpoint, so without the
+ * <p>{@code setElement} re-points a span at whatever replaces its endpoint, and
+ * {@code addElement} can push a span's end into second place in its run, so without the
  * override a hairpin quietly comes to rest on an element the menu would never have let the user
- * end or anchor it on. The rules are {@link Line#hairpinSurvivesReplacement}'s, which are the
- * menu's and the deletion reshaping's too.
+ * end or anchor it on. The rules are {@link Hairpin#canAnchorAt}, {@link Hairpin#canEndAt} and
+ * {@link Hairpin#hasEnoughColumns}, which are the menu's and the deletion reshaping's too.
  *
  * <p>The fixture, with the crescendo running from index 0 to the rest at index 3:
  * <pre>
@@ -88,9 +90,26 @@ class HairpinInvalidationTest extends UnitTest {
         song.withoutMutationTracking(() -> line.addCrescendo(crescendo));
     }
 
-    /** Asks the predicate what replacing the element at {@code index} with {@code type} would do. */
+    /** Asks {@link Hairpin#outcomeFor} what replacing the element at {@code index} with {@code type} would do. */
     private boolean isInvalidatedByReplacing(int index, ElementType type) {
-        return crescendo.isInvalidatedByReplacement(line.getElement(index), type.newInstance(), line);
+        var change = ElementChange.forReplacement(line, index, type.newInstance());
+        return crescendo.outcomeFor(change, line) == SpanOutcome.Simple.REMOVE;
+    }
+
+    /** Asks {@link Hairpin#outcomeFor} what inserting {@code type} at {@code index} would do. */
+    private boolean isInvalidatedByInserting(int index, ElementType type) {
+        var change = ElementChange.forInsertion(line, index, type.newInstance());
+        return crescendo.outcomeFor(change, line) == SpanOutcome.Simple.REMOVE;
+    }
+
+    /** Asks {@link Hairpin#outcomeFor} what deleting the run {@code [from, to]} would do. */
+    private SpanOutcome outcomeForDeleting(int from, int to) {
+        return crescendo.outcomeFor(ElementChange.forDeletion(line, from, to), line);
+    }
+
+    /** Asks {@link Hairpin#outcomeFor} what deleting the element at {@code index} would do. */
+    private SpanOutcome outcomeForDeleting(int index) {
+        return outcomeForDeleting(index, index);
     }
 
     // -----------------------------------------------------------------------
@@ -188,6 +207,146 @@ class HairpinInvalidationTest extends UnitTest {
     }
 
     // -----------------------------------------------------------------------
+    // outcomeFor — insertion
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class WhenAnElementIsInserted {
+
+        @Test
+        void testInsertingARestAtTheEndIndexInvalidates() {
+            // The reported bug: inserting a rest at the end index pushes the crescendo's end
+            // rest into second place in its run, a shape canEndAt forbids.
+            assertThat(isInvalidatedByInserting(END_INDEX, ElementType.CROTCHET_REST))
+                .as("the end rest is pushed into second place in its run")
+                .isTrue();
+        }
+
+        @Test
+        void testInsertingANoteAtTheEndIndexSurvives() {
+            assertThat(isInvalidatedByInserting(END_INDEX, ElementType.CROTCHET))
+                .as("a note before the end rest leaves it first in its run")
+                .isFalse();
+        }
+
+        @Test
+        void testInsertingARestAtTheInteriorIndexSurvives() {
+            assertThat(isInvalidatedByInserting(INTERIOR_INDEX, ElementType.CROTCHET_REST))
+                .as("an interior rest is what a wedge crosses, not where it stops")
+                .isFalse();
+        }
+
+        @Test
+        void testInsertingARestAtTheAnchorIndexSurvives() {
+            assertThat(isInvalidatedByInserting(ANCHOR_INDEX, ElementType.CROTCHET_REST))
+                .as("the inserted rest lands before the anchor, which still holds")
+                .isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // outcomeFor — a deletion reshapes the span
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testDeletingTheEndRestReshapesTheCrescendoOntoTheNoteBeforeIt() {
+        assertThat(outcomeForDeleting(END_INDEX))
+            .as("the end is pulled in to the last surviving note, which is still pitched")
+            .isEqualTo(new SpanOutcome.Reshape(ANCHOR_INDEX, BEFORE_END_INDEX));
+    }
+
+    @Test
+    void testDeletingDownToTwoNotesReshapesTheCrescendo() {
+        assertThat(outcomeForDeleting(BEFORE_END_INDEX, END_INDEX))
+            .as("two pitched notes are two columns, which a wedge can still slope across")
+            .isEqualTo(new SpanOutcome.Reshape(ANCHOR_INDEX, INTERIOR_INDEX));
+    }
+
+    @Test
+    void testDeletingTheAnchorReportsTheReshapeInProjectedPositions() {
+        // Deleting ahead of what survives is what tells the two numberings apart. The anchor
+        // is pulled in to the first note that can begin a hairpin and the end rest survives,
+        // so in the projected line they sit at 0 and one before where the rest was — while a
+        // reshape mistakenly carrying pre-deletion positions would report 1 and END_INDEX.
+        assertThat(outcomeForDeleting(ANCHOR_INDEX))
+            .as("a reshape reports positions in the projected line, not in the old one")
+            .isEqualTo(new SpanOutcome.Reshape(ANCHOR_INDEX, END_INDEX - 1));
+    }
+
+    @Test
+    void testDeletingDownToAGraceHostPairRemovesTheCrescendo() {
+        // Anchoring on a grace note is legal while the crescendo still reaches the end
+        // rest, so this leaves the deletion to be the thing that narrows it.
+        song.withoutMutationTracking(() ->
+            line.setElement(ANCHOR_INDEX, new StaffElement(ElementType.GRACE_QUAVER)));
+
+        assertThat(outcomeForDeleting(BEFORE_END_INDEX, END_INDEX))
+            .as("a grace note and its host are two elements but one column, too narrow to "
+                + "slope across")
+            .isSameAs(SpanOutcome.Simple.REMOVE);
+    }
+
+    @Test
+    void testAHairpinCoveringOnlyTheFirstElementIsNotReadAsBelongingToAnotherLine() {
+        // Position 0 is a real position, not the sentinel that means "this endpoint is not in
+        // this line". A hairpin spanning a single element cannot be drawn and the menu will
+        // not create one, but an older file can carry one — and reading its end position as
+        // absent would keep it untouched forever instead of cleaning it up.
+        var degenerate = new Crescendo(line.getElement(ANCHOR_INDEX), line.getElement(ANCHOR_INDEX));
+
+        assertThat(degenerate.outcomeFor(ElementChange.forDeletion(line, END_INDEX, END_INDEX), line))
+            .as("a hairpin over a single element is one column, which no wedge can slope across")
+            .isSameAs(SpanOutcome.Simple.REMOVE);
+    }
+
+    // -----------------------------------------------------------------------
+    // outcomeFor — the span is left too narrow to slope across
+    // -----------------------------------------------------------------------
+
+    /**
+     * The crescendo narrowed to the two notes at {@code ANCHOR_INDEX} and
+     * {@code INTERIOR_INDEX} — the narrowest span the menu will create, where losing a
+     * single column leaves nothing to slope across.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class WhenTheHairpinCoversTwoNotes {
+
+        @BeforeEach
+        void narrowTheCrescendo() {
+            song.withoutMutationTracking(() -> {
+                line.removeCrescendo(crescendo);
+                crescendo = new Crescendo(line.getElement(ANCHOR_INDEX), line.getElement(INTERIOR_INDEX));
+                line.addCrescendo(crescendo);
+            });
+        }
+
+        @Test
+        void testTheAnchorBecomingAGraceNoteInvalidates() {
+            // The grace note may anchor on its host's behalf, and the host is the end, so
+            // both endpoint rules pass and only the column count catches this.
+            assertThat(isInvalidatedByReplacing(ANCHOR_INDEX, ElementType.GRACE_QUAVER))
+                .as("a grace note shares its host's column, leaving one column to slope across")
+                .isTrue();
+        }
+
+        @Test
+        void testTheAnchorBecomingAnotherNoteSurvives() {
+            assertThat(isInvalidatedByReplacing(ANCHOR_INDEX, ElementType.CROTCHET))
+                .as("two pitched notes are still two columns")
+                .isFalse();
+        }
+
+        @Test
+        void testInsertingANoteBetweenTheEndpointsSurvives() {
+            assertThat(isInvalidatedByInserting(INTERIOR_INDEX, ElementType.CROTCHET))
+                .as("an insertion only ever widens the span, so it cannot starve it of columns")
+                .isFalse();
+        }
+    }
+
+    // -----------------------------------------------------------------------
     // Line.setElement wiring
     // -----------------------------------------------------------------------
 
@@ -245,6 +404,73 @@ class HairpinInvalidationTest extends UnitTest {
                 () -> assertThat(crescendo.getEndElement())
                     .as("the surviving crescendo must point at the note that replaced its end")
                     .isSameAs(replacement),
+                () -> assertThat(captureSingleDidChange().getMutations())
+                    .filteredOn(CrescendoRemoval.class::isInstance)
+                    .as("no crescendo removal must be recorded")
+                    .isEmpty()
+            );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Line.addElement wiring
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class AddElementWiring {
+
+        @BeforeEach
+        void mockBus() {
+            mockMessageCenter();
+        }
+
+        @AfterEach
+        void closeBusMock() {
+            closeMessageCenterMock();
+        }
+
+        @Test
+        void testInsertingARestAtTheEndIndexRemovesTheHairpin() {
+            song.withModification(() ->
+                line.addElement(END_INDEX, new StaffElement(ElementType.CROTCHET_REST)));
+
+            var mutations = captureSingleDidChange().getMutations();
+            assertAll(
+                () -> assertThat(line.findSpans(Crescendo.class))
+                    .as("the crescendo must not survive its end rest being pushed into second "
+                        + "place")
+                    .isEmpty(),
+                () -> assertThat(mutations)
+                    .filteredOn(CrescendoRemoval.class::isInstance)
+                    .extracting(mutation -> ((CrescendoRemoval) mutation).crescendo())
+                    .as("the removal must be recorded so undo can restore the crescendo")
+                    .containsExactly(crescendo),
+                // Reverse-order undo re-adds the hairpin only once the line is back to its
+                // previous shape, which holds only if the removal was recorded before the
+                // insertion.
+                () -> assertThat(mutations)
+                    .as("the crescendo removal must precede the insertion that caused it")
+                    .element(0)
+                    .isInstanceOf(CrescendoRemoval.class),
+                () -> assertThat(mutations)
+                    .filteredOn(ElementInsertion.class::isInstance)
+                    .as("the inserted rest must still be installed")
+                    .hasSize(1)
+            );
+        }
+
+        @Test
+        void testInsertingANoteBetweenTheEndpointsRecordsNoRemoval() {
+            song.withModification(() ->
+                line.addElement(INTERIOR_INDEX, new StaffElement(ElementType.CROTCHET)));
+
+            assertAll(
+                () -> assertThat(line.findSpans(Crescendo.class))
+                    .as("an insertion between the endpoints only widens the span, so it holds")
+                    .containsExactly(crescendo),
+                // A removal recorded for an insertion the hairpin survives would put a step in
+                // the undo history that undoes something that never happened.
                 () -> assertThat(captureSingleDidChange().getMutations())
                     .filteredOn(CrescendoRemoval.class::isInstance)
                     .as("no crescendo removal must be recorded")

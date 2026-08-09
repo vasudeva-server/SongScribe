@@ -41,7 +41,7 @@ resolveHairpinAction(kind)                    selection = [begin, end]
           overlappingBeyondEndpoint(spanBegin, spanEnd))? ──yes──> BLOCKED
         │ no        └── one shared endpoint is allowed; ≥2 shared is not
         ▼
-  !isExtend && countHairpinColumns(…) < MIN_HAIRPIN_COLUMNS? ─yes─> INELIGIBLE
+  !isExtend && !Hairpin.hasEnoughColumns(…)? ────────────────yes─> INELIGIBLE
         │ no
         ▼
   isExtend ? EXTEND : CAN_ADD   over [spanBegin, spanEnd]
@@ -82,13 +82,15 @@ tips do not touch — see `docs/line-layout.md`, Example 8.
 
 ## The rest rule and its asymmetry
 
-A hairpin may **end** on a rest (`Line.canEndHairpin`) but may never
-**anchor** on one (`Line.canAnchorHairpin`, unchanged). This follows LilyPond
+A hairpin may **end** on a rest (`Hairpin.canEndAt`) but may never **anchor**
+on one (`Hairpin.canAnchorAt`, unchanged). `Line.canEndHairpin` and
+`Line.canAnchorHairpin` are thin instance conveniences that delegate to these
+— the rule itself lives on `Hairpin`. This follows LilyPond
 (`hairpin.cc:268-271`): a wedge closing on a rest reads naturally — the
 diminuendo trails off into silence — but a wedge cannot meaningfully begin
 from silence.
 
-**At most one rest**, though. `canEndHairpin` accepts a rest only when the
+**At most one rest**, though. `Hairpin.canEndAt` accepts a rest only when the
 nearest duration element before it is a pitched note, so a hairpin ends on
 the rest that closes a run of notes and not on a second one after it — a
 wedge running on across further rests has nothing left to slope over.
@@ -101,34 +103,54 @@ the second one count as the first of its run.
 This is a rule about where a hairpin *stops*, not about what it may *cross*:
 interior rests, however many, are unaffected.
 
-`Line.resolveEndIndex` reads the same predicate, so deleting a hairpin's end
-element pulls the end in to the first surviving rest rather than the last —
-the model can never hold a shape the menu would refuse to create.
+`Hairpin.resolveEndIndex` reads the same predicate, so deleting a hairpin's
+end element pulls the end in to the first surviving rest rather than the
+last — the model can never hold a shape the menu would refuse to create.
 
-## Replacing an endpoint removes the hairpin
+## A hairpin is revalidated after every element change
 
-`Line.setElement` re-points a span at whatever replaces its endpoint. Left to
-itself that quietly produces shapes the menu would never allow: replace the
-rest a hairpin ends on with a grace note and the hairpin ends on the grace
-note; replace an anchor note with a rest and the hairpin is anchored on
-silence.
+A hairpin is re-checked against `Hairpin.outcomeFor` after **every** change to
+the line's elements — insertion, replacement or deletion — not only
+replacement. See `docs/span-invalidation.md` for the general framework this
+sits on top of (the projected-element-list hook every span type answers, and
+why decisions are made before the change lands); this section covers only the
+rules `Hairpin.outcomeFor` applies.
 
-`Hairpin.isInvalidatedByReplacement` closes both, by asking
-`Line.hairpinSurvivesReplacement` — which runs the same `canAnchorHairpin` and
-`canEndHairpin` predicates against the line as it will be. A replacement that
-leaves an endpoint invalid removes the hairpin, silently, the way ties and
-tuplets go; undo restores it. Only endpoints are consulted, so a replacement
-inside the hairpin, or off it entirely, leaves it alone.
+An insertion or a replacement that leaves an endpoint invalid **removes** the
+hairpin, silently, the way ties and tuplets go; undo restores it. Left
+unchecked, `Line.setElement`'s re-pointing would quietly produce shapes the
+menu would never allow — replace the rest a hairpin ends on with a grace note
+and the hairpin ends on the grace note; replace an anchor note with a rest and
+the hairpin is anchored on silence — and an insertion can do the same, for
+example pushing a hairpin's end rest into second place in its run. The
+hairpin is removed rather than shortened for these two shapes because neither
+one deletes an element for the hairpin to pull back to: there is no reliable
+"move the end there instead" to reach for.
 
-The hairpin is removed rather than shortened because the invalidation
-framework offers no reshaping hook at replacement time, and because the host
-of an incoming grace note does not exist yet when the question is asked —
-there is no reliable "move the end there instead" to reach for.
+A **deletion**, by contrast, **reshapes** the hairpin to its nearest valid
+endpoints rather than removing it, because a deletion always leaves a shorter
+run of surviving elements for the hairpin to pull back onto.
+
+In every case the rules consulted are exactly `Hairpin.canAnchorAt`,
+`Hairpin.canEndAt` and `Hairpin.hasEnoughColumns` — the same three the menu
+itself reads when deciding whether a selection is eligible for a new hairpin
+(the first two through `Line.canAnchorHairpin` / `Line.canEndHairpin`). The
+model can therefore never hold a shape the menu would refuse to create:
+whatever a fresh hairpin could not anchor on, end on, or slope across, a
+surviving hairpin cannot be left with either.
+
+The column rule is the one that two legal endpoints do not imply. A grace note
+shares its host's column, so a hairpin anchored on a grace note and ending on
+its host has two elements but a single column — both endpoints legal, nothing
+to slope across. Deleting everything after the host of such a hairpin, or
+replacing a two-note hairpin's anchor with a grace note, therefore **removes**
+the hairpin rather than leaving that shape behind. An insertion can only ever
+widen the span, so it never costs a hairpin its columns.
 
 A trailing rest counts toward the two-column minimum
-(`MIN_HAIRPIN_COLUMNS`): one pitched note followed by a rest is enough
+(`Hairpin.MIN_COLUMNS`): one pitched note followed by a rest is enough
 columns for a new hairpin to slope across, even though the rest itself
-carries no dynamic. `countHairpinColumns` counts every pitched note in
+carries no dynamic. `Hairpin.hasEnoughColumns` counts every pitched note in
 `[begin, end]` plus one more if the element at `end` is a rest; interior
 rests and grace notes never count.
 

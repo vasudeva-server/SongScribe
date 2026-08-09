@@ -28,7 +28,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 
 /**
- * Unit tests for {@link Tuplet#isInvalidatedByReplacement} (issue #726), which decides whether
+ * Unit tests for {@link Tuplet#outcomeFor} under a replacement (issue #726), which decides whether
  * replacing one element with another leaves a tuplet bracket rhythmically invalid. The rule moved
  * here from a hand-written sweep in the preview-element click path, so that every caller of
  * {@link Line#setElement} gets it rather than only that one.
@@ -86,10 +86,18 @@ class TupletInvalidationTest extends UnitTest {
         song.withoutMutationTracking(() -> line.addTuplet(triplet));
     }
 
+    /**
+     * The outcome {@code tuplet} reports for replacing the element at {@code index} of
+     * {@link #line} with {@code replacement}, judged against the projected line.
+     */
+    private SpanOutcome outcomeForReplacing(Tuplet tuplet, int index, StaffElement replacement) {
+        return tuplet.outcomeFor(
+            ElementChange.forReplacement(line, index, replacement), line);
+    }
+
     /** Replaces the element at {@code index} with a fresh, undotted {@code type}. */
-    private boolean invalidatedByReplacing(int index, ElementType type) {
-        return triplet.isInvalidatedByReplacement(
-            line.getElement(index), type.newInstance(), line);
+    private SpanOutcome outcomeForReplacing(int index, ElementType type) {
+        return outcomeForReplacing(triplet, index, type.newInstance());
     }
 
     // -----------------------------------------------------------------------
@@ -98,9 +106,9 @@ class TupletInvalidationTest extends UnitTest {
 
     @Test
     void testInnerNoteChangingValueInvalidates() {
-        assertThat(invalidatedByReplacing(INNER_NOTE_INDEX, ElementType.CROTCHET))
+        assertThat(outcomeForReplacing(INNER_NOTE_INDEX, ElementType.CROTCHET))
             .as("a longer note under the bracket unbalances the group")
-            .isTrue();
+            .isSameAs(SpanOutcome.Simple.REMOVE);
     }
 
     @Test
@@ -108,33 +116,32 @@ class TupletInvalidationTest extends UnitTest {
         var replacement = ElementType.QUAVER.newInstance();
         replacement.setDotCount(ONE_DOT);
 
-        assertThat(triplet.isInvalidatedByReplacement(
-            line.getElement(INNER_NOTE_INDEX), replacement, line))
+        assertThat(outcomeForReplacing(triplet, INNER_NOTE_INDEX, replacement))
             .as("a dot lengthens the note, so the group no longer adds up")
-            .isTrue();
+            .isSameAs(SpanOutcome.Simple.REMOVE);
     }
 
     @Test
     void testInnerNoteBecomingRestInvalidates() {
         // Same written duration, but a tuplet needs non-rest notes to bracket
         // (Tuplet.hasValidSpan), so this goes too rather than being second-guessed here.
-        assertThat(invalidatedByReplacing(INNER_NOTE_INDEX, ElementType.QUAVER_REST))
+        assertThat(outcomeForReplacing(INNER_NOTE_INDEX, ElementType.QUAVER_REST))
             .as("a rest where the group needs a note drops the bracket")
-            .isTrue();
+            .isSameAs(SpanOutcome.Simple.REMOVE);
     }
 
     @Test
     void testInnerNoteReplacedByAnIdenticalNoteRetains() {
-        assertThat(invalidatedByReplacing(INNER_NOTE_INDEX, ElementType.QUAVER))
+        assertThat(outcomeForReplacing(INNER_NOTE_INDEX, ElementType.QUAVER))
             .as("nothing about the group's rhythm changed")
-            .isFalse();
+            .isSameAs(SpanOutcome.Simple.KEEP);
     }
 
     @Test
     void testEndpointChangingValueInvalidates() {
-        assertThat(invalidatedByReplacing(END_INDEX, ElementType.CROTCHET))
+        assertThat(outcomeForReplacing(END_INDEX, ElementType.CROTCHET))
             .as("the bracket's own end note is as much part of the group as its middle")
-            .isTrue();
+            .isSameAs(SpanOutcome.Simple.REMOVE);
     }
 
     // -----------------------------------------------------------------------
@@ -143,23 +150,23 @@ class TupletInvalidationTest extends UnitTest {
 
     @Test
     void testInnerBarlineBecomingRepeatRetains() {
-        assertThat(invalidatedByReplacing(INNER_BARLINE_INDEX, ElementType.REPEAT_LEFT))
+        assertThat(outcomeForReplacing(INNER_BARLINE_INDEX, ElementType.REPEAT_LEFT))
             .as("neither a barline nor a repeat takes time the group is built on")
-            .isFalse();
+            .isSameAs(SpanOutcome.Simple.KEEP);
     }
 
     @Test
     void testInnerBarlineBecomingNoteInvalidates() {
-        assertThat(invalidatedByReplacing(INNER_BARLINE_INDEX, ElementType.QUAVER))
+        assertThat(outcomeForReplacing(INNER_BARLINE_INDEX, ElementType.QUAVER))
             .as("a note where there was no duration adds time the bracket never covered")
-            .isTrue();
+            .isSameAs(SpanOutcome.Simple.REMOVE);
     }
 
     @Test
     void testInnerNoteBecomingBarlineInvalidates() {
-        assertThat(invalidatedByReplacing(INNER_NOTE_INDEX, ElementType.SINGLE_BARLINE))
+        assertThat(outcomeForReplacing(INNER_NOTE_INDEX, ElementType.SINGLE_BARLINE))
             .as("the group loses a note it was counting")
-            .isTrue();
+            .isSameAs(SpanOutcome.Simple.REMOVE);
     }
 
     // -----------------------------------------------------------------------
@@ -168,9 +175,9 @@ class TupletInvalidationTest extends UnitTest {
 
     @Test
     void testReplacementOutsideTupletRetains() {
-        assertThat(invalidatedByReplacing(OUTSIDE_INDEX, ElementType.CROTCHET))
+        assertThat(outcomeForReplacing(OUTSIDE_INDEX, ElementType.CROTCHET))
             .as("the note past the end is no part of the group")
-            .isFalse();
+            .isSameAs(SpanOutcome.Simple.KEEP);
     }
 
     @Test
@@ -181,10 +188,9 @@ class TupletInvalidationTest extends UnitTest {
             ElementType.QUAVER.newInstance(), line.getElement(END_INDEX), TRIPLET_SIZE);
         song.withoutMutationTracking(() -> line.addTuplet(detached));
 
-        assertThat(detached.isInvalidatedByReplacement(
-            line.getElement(INNER_NOTE_INDEX), ElementType.CROTCHET.newInstance(), line))
+        assertThat(outcomeForReplacing(detached, INNER_NOTE_INDEX, ElementType.CROTCHET.newInstance()))
             .as("a tuplet with an unresolvable anchor contains nothing")
-            .isFalse();
+            .isSameAs(SpanOutcome.Simple.KEEP);
     }
 
     // -----------------------------------------------------------------------
