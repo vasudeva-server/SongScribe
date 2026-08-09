@@ -516,6 +516,84 @@ class ElementInsertionTest extends E2ETest {
                     .as("grace mode inactive").isFalse()
             );
         }
+
+        /**
+         * Regression test for the ghost-preview and click suppression between a paired grace
+         * note and its host (issue #750): no element type may be inserted in that gap, but
+         * inserting immediately before the pair and replacing the host directly must both keep
+         * working.
+         */
+        @Order(5)
+        @Test
+        void testInsertionBetweenGraceAndHostIsBlocked() {
+            var graceIndex = song().getLine(0).effectiveElementCount();
+            var hostIndex = graceIndex + 1;
+
+            selectDuration(Actions.GRACE_EIGHTH_NOTE_ACTION);
+            clickAt(insertionPoint(0, 0));
+            performLayout(0);
+
+            selectDuration(Actions.HALF_NOTE_ACTION);
+            clickAt(insertionPoint(0, -2));
+            performLayout(0);
+
+            var countAfterPair = song().getLine(0).effectiveElementCount();
+
+            // A click in the gap between the grace note and its host, with an ordinary
+            // (non-grace) preview element selected, must be ignored entirely.
+            selectDuration(Actions.QUARTER_NOTE_ACTION);
+            clickAt(insertionPointBefore(0, hostIndex, 0));
+            performLayout(0);
+
+            assertAll(
+                () -> assertThat(song().getLine(0).effectiveElementCount())
+                    .as("a click between the grace note and its host is ignored")
+                    .isEqualTo(countAfterPair),
+                () -> assertThat(song().getLine(0).getElement(hostIndex).getType())
+                    .as("the host is untouched by the ignored click")
+                    .isEqualTo(ElementType.MINIM)
+            );
+
+            // Inserting immediately before the paired grace note is still allowed.
+            clickAt(insertionPointBefore(0, graceIndex, 0));
+            performLayout(0);
+
+            var line = song().getLine(0);
+            var shiftedGraceIndex = graceIndex + 1;
+            var shiftedHostIndex = hostIndex + 1;
+
+            assertAll(
+                () -> assertThat(line.effectiveElementCount())
+                    .as("insertion before the pair succeeds")
+                    .isEqualTo(countAfterPair + 1),
+                () -> assertThat(line.getElement(graceIndex).getType())
+                    .as("the new note lands before the grace note")
+                    .isEqualTo(ElementType.CROTCHET),
+                () -> assertThat(line.getElement(shiftedGraceIndex).getType())
+                    .as("the grace note is pushed one slot later")
+                    .isEqualTo(ElementType.GRACE_QUAVER),
+                () -> assertThat(line.getElement(shiftedGraceIndex).hasGlissando())
+                    .as("the pairing survives the insertion before it")
+                    .isTrue(),
+                () -> assertThat(line.getElement(shiftedHostIndex).getType())
+                    .as("the host is undisturbed")
+                    .isEqualTo(ElementType.MINIM)
+            );
+
+            // Clicking directly on the host's head still replaces it normally.
+            selectDuration(Actions.EIGHTH_NOTE_ACTION);
+            clickAt(noteScreenPosition(0, shiftedHostIndex));
+            performLayout(0);
+
+            assertAll(
+                () -> assertThat(song().getLine(0).effectiveElementCount())
+                    .as("replacing the host does not change the element count")
+                    .isEqualTo(countAfterPair + 1),
+                () -> assertThat(song().getLine(0).getElement(shiftedHostIndex).getType())
+                    .as("the host was replaced with the selected duration")
+                    .isEqualTo(ElementType.QUAVER)
+            );
+        }
     }
 
 

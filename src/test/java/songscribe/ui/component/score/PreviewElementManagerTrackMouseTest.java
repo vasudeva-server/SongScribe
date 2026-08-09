@@ -50,7 +50,9 @@ import songscribe.ui.edit.GraceModeManager;
  *   <li>an out-of-range staff position clears the preview</li>
  *   <li>a null layout result (mid-drag) resets the match flags without clearing</li>
  *   <li>the auto-maintained terminal suppresses the preview</li>
- *   <li>a grace preview inside an existing grace/host pair is suppressed</li>
+ *   <li>any preview type is suppressed in the gap between a paired grace note and its host</li>
+ *   <li>inserting immediately before a paired grace note is still allowed</li>
+ *   <li>clicking directly on the host to replace it is not suppressed</li>
  * </ul>
  */
 class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase {
@@ -250,30 +252,77 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
             .isEqualTo(-1);
     }
 
-    @Test
-    void testGraceInsidePairSuppressesPreview() {
-        // Layout:  [grace(CONNECTED glissando)] [host] [terminal]
+    /** Adds a paired grace note (index 0) and its host (index 1) to {@link #line}. */
+    private void addPairedGraceAndHost() {
         song.withoutMutationTracking(() -> {
             var grace = ElementType.GRACE_QUAVER.newInstance();
             grace.setGlissando();
             line.addElement(grace);
             line.addElement(ElementType.CROTCHET.newInstance());
         });
+    }
+
+    @Test
+    void testInsertionBetweenGraceAndHostSuppressesPreview() {
+        // Layout:  [grace(CONNECTED glissando)] [host] [terminal]
+        addPairedGraceAndHost();
 
         when(lc.getMiddleLineYSs()).thenReturn(0.0);
-        setPreviewElement(ElementType.GRACE_QUAVER.newInstance());
-        // Insertion at the paired grace note's index, not over an element head.
-        stubLayout(0, -1);
+        // A plain note, not a grace note — the suppression is not specific to grace previews.
+        setPreviewElement(ElementType.CROTCHET.newInstance());
+        // Insertion at the host's index, not over an element head: the gap between the pair.
+        stubLayout(1, -1);
         PreviewElementManager.setCurrentXIndex(PRESET_X_INDEX);
 
         PreviewElementManager.trackMouse(lc, mouseEvent(0, 0, false));
 
         assertThat(PreviewElementManager.getCurrentInsertionLine())
-            .as("a grace preview inside an existing grace/host pair is suppressed")
+            .as("any preview type is suppressed in the gap between a grace note and its host")
             .isNull();
         assertThat(PreviewElementManager.getCurrentXIndex())
             .as("clearing resets the x-index to -1")
             .isEqualTo(-1);
+    }
+
+    @Test
+    void testInsertionBeforePairedGraceNoteIsAllowed() {
+        // Layout:  [grace(CONNECTED glissando)] [host] [terminal]
+        addPairedGraceAndHost();
+
+        when(lc.getMiddleLineYSs()).thenReturn(0.0);
+        setPreviewElement(ElementType.CROTCHET.newInstance());
+        // Insertion at the grace note's own index, not over an element head: before the pair.
+        stubLayout(0, -1);
+
+        PreviewElementManager.trackMouse(lc, mouseEvent(0, 0, false));
+
+        assertThat(PreviewElementManager.getCurrentInsertionLine())
+            .as("inserting immediately before a paired grace note is not suppressed")
+            .isSameAs(lc);
+        assertThat(PreviewElementManager.getCurrentXIndex())
+            .as("the insertion index is the grace note's own slot")
+            .isEqualTo(0);
+    }
+
+    @Test
+    void testReplacingHostIsNotSuppressed() {
+        // Layout:  [grace(CONNECTED glissando)] [host] [terminal]
+        addPairedGraceAndHost();
+
+        when(lc.getMiddleLineYSs()).thenReturn(0.0);
+        setPreviewElement(ElementType.CROTCHET.newInstance());
+        // The mouse sits directly over the host's head, so it matches an element rather than
+        // resolving to a bare gap.
+        stubLayout(1, 1);
+
+        PreviewElementManager.trackMouse(lc, mouseEvent(0, 0, false));
+
+        assertThat(PreviewElementManager.getCurrentInsertionLine())
+            .as("clicking directly on the host to replace it is not suppressed")
+            .isSameAs(lc);
+        assertThat(PreviewElementManager.isXPosSsMatchesElement())
+            .as("the host counts as a replacement target")
+            .isTrue();
     }
 
     @Test

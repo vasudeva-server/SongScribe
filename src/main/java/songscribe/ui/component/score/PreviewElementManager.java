@@ -695,11 +695,14 @@ public final class PreviewElementManager {
 
         var previewElement = EditModeManager.getPreviewElement();
 
-        // Hide the preview element when a grace note is selected and the mouse
-        // is between an existing grace/host pair — insertion there is not allowed.
-        if (previewElement != null
-            && previewElement.getType().isGraceNote()
-            && line.isInsideGraceHostPair(xIndex)) {
+        // Hide the preview element when the mouse is in the gap between an existing grace/host
+        // pair — no element type may be inserted there, since it would break the pairing. Gated on
+        // elementAtX < 0 so a click directly on the host's own head still replaces it normally;
+        // only a plain gap-insert at the host's slot is blocked. isHostOfPairedGraceNote (unlike
+        // isInsideGraceHostPair) does not also match the grace note's own slot, so inserting
+        // immediately before the grace note — including when it is the line's first element —
+        // remains allowed.
+        if (previewElement != null && (elementAtX < 0) && line.isHostOfPairedGraceNote(xIndex)) {
             if (currentPreviewLine == lc) {
                 clearPreviewElement();
             }
