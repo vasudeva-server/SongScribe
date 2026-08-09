@@ -4,7 +4,8 @@
 # unit tests against many mutated copies of the production code, so keep the
 # scope narrow.
 #
-# Usage: ./scripts/mutation-test.sh [target]
+# Usage: ./scripts/mutation-test.sh [--open] [target]
+#   --open  Open the HTML report in the browser when done. Optional.
 #   target  Fully-qualified class or comma-separated package globs to mutate.
 #           Optional; when omitted, the default logic-package scope in
 #           build.gradle.kts is used.
@@ -13,6 +14,7 @@
 #   ./scripts/mutation-test.sh                               # default logic-package scope
 #   ./scripts/mutation-test.sh songscribe.util.StringUtils   # a single class
 #   ./scripts/mutation-test.sh 'songscribe.smufl.*'          # a single package (quote the glob)
+#   ./scripts/mutation-test.sh --open songscribe.util.StringUtils  # also open the report
 
 set -euo pipefail
 
@@ -22,10 +24,21 @@ GRADLEW="$PROJECT_DIR/gradlew"
 
 source "$SCRIPT_DIR/set-java-home.sh"
 
+OPEN_REPORT=0
+ARGS=()
+
+for arg in "$@"; do
+  if [[ "$arg" == "--open" ]]; then
+    OPEN_REPORT=1
+  else
+    ARGS+=("$arg")
+  fi
+done
+
 GRADLE_ARGS=()
 
-if [[ -n "${1:-}" ]]; then
-  TARGET="$1"
+if [[ -n "${ARGS[0]:-}" ]]; then
+  TARGET="${ARGS[0]}"
   GRADLE_ARGS+=("-PpitestTarget=$TARGET")
 
   # Derive the test-class scope from the target so the minion only runs tests
@@ -53,4 +66,7 @@ REPORT="$PROJECT_DIR/build/reports/pitest/index.html"
 echo ""
 echo "Mutation report: $REPORT"
 echo "Surviving mutants (machine-readable): $PROJECT_DIR/build/reports/pitest/mutations.xml"
-open "$REPORT" 2>/dev/null || true
+
+if [[ "$OPEN_REPORT" -eq 1 ]]; then
+  open "$REPORT" 2>/dev/null || true
+fi
