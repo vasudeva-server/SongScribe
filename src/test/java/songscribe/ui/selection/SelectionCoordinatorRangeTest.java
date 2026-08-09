@@ -67,6 +67,14 @@ class SelectionCoordinatorRangeTest extends UnitTest {
     /** Index of the terminal barline appended after the two notes of a two-note song line. */
     private static final int TERMINAL_ELEMENT_INDEX = 2;
 
+    // The selection sequence issue #748 specifies: a drag of 5..7, then Shift+clicks at 9 and
+    // at 1, on a line long enough to hold them all.
+    private static final int SEQUENCE_ELEMENT_COUNT = 12;
+    private static final int SEQUENCE_ANCHOR_INDEX = 5;
+    private static final int SEQUENCE_DRAG_END_INDEX = 7;
+    private static final int SEQUENCE_RIGHT_CLICK_INDEX = 9;
+    private static final int SEQUENCE_LEFT_CLICK_INDEX = 1;
+
     /**
      * A coordinator with {@code line} registered at index 0 and activated, so a range can be
      * selected on it.
@@ -179,6 +187,34 @@ class SelectionCoordinatorRangeTest extends UnitTest {
             });
     }
 
+    /**
+     * A plain click discards whatever anchor the previous drag or click established and puts
+     * it on the element just clicked. That is the half of the anchor contract
+     * {@link #testTheAnchorSurvivesEveryExtensionUntilANewSelectionIsMade} does not cover:
+     * extensions leave the anchor alone, a new selection moves it (issue #748).
+     * <p>
+     * The click here lands to the <em>left</em> of the range the drag left behind, so an
+     * implementation that carried the old anchor forward would leave it outside the new
+     * single-element range entirely, not merely on the wrong element.
+     */
+    @Test
+    void testSelectSingleElementMovesTheAnchorOffTheOneTheDragLeft() {
+        var coordinator = coordinatorOn(crotchetLine(SEQUENCE_ELEMENT_COUNT));
+        coordinator.selectRange(SEQUENCE_ANCHOR_INDEX, SEQUENCE_DRAG_END_INDEX);
+
+        assertThat(coordinator.selectSingleElement(LINE_0, SEQUENCE_LEFT_CLICK_INDEX)).isTrue();
+
+        assertThat(coordinator.getRange())
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).as("begin").isEqualTo(SEQUENCE_LEFT_CLICK_INDEX);
+                assertThat(range.end()).as("end").isEqualTo(SEQUENCE_LEFT_CLICK_INDEX);
+                assertThat(range.anchor())
+                    .as("the drag's anchor is gone, replaced by the clicked element")
+                    .isEqualTo(SEQUENCE_LEFT_CLICK_INDEX);
+            });
+    }
+
     @Test
     void testSelectSingleElementReportsFailureWhenNoLineIsRegisteredAtThatIndex() {
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
@@ -233,7 +269,7 @@ class SelectionCoordinatorRangeTest extends UnitTest {
 
     @Test
     void testExtendSelectionToWithAnchorAfterIndexSetsBeginToIndexEndToAnchor() {
-        // Reversed drag: anchor at index 2, extending back to index 0.
+        // A click at index 2, extended back past its own anchor to index 0.
         var coordinator = coordinatorOn(crotchetLine(3));
         coordinator.selectSingleElement(LINE_0, 2);
 
@@ -245,6 +281,49 @@ class SelectionCoordinatorRangeTest extends UnitTest {
                 assertThat(range.begin()).isEqualTo(0);
                 assertThat(range.end()).isEqualTo(2);
                 assertThat(range.anchor()).isEqualTo(2);
+            });
+    }
+
+    /**
+     * The element a selection was made at anchors every extension that follows, however many
+     * there are and whichever side of it they land on, until a plain click or a drag makes a
+     * new selection (issue #748).
+     * <p>
+     * Walks the Shift+click half of the sequence the issue specifies: a drag selects
+     * {@code 5..7}, a Shift+click at 9 grows it, and a Shift+click at 1 — past the anchor —
+     * grows it the other way. The anchor is element 5 throughout, so it is {@code begin} until
+     * the extension crosses it and {@code end} afterwards.
+     */
+    @Test
+    void testTheAnchorSurvivesEveryExtensionUntilANewSelectionIsMade() {
+        var coordinator = coordinatorOn(crotchetLine(SEQUENCE_ELEMENT_COUNT));
+
+        coordinator.selectRange(SEQUENCE_ANCHOR_INDEX, SEQUENCE_DRAG_END_INDEX);
+        assertThat(coordinator.getRange())
+            .as("the drag anchors at its first element")
+            .isNotNull()
+            .satisfies(range -> assertThat(range.anchor()).isEqualTo(SEQUENCE_ANCHOR_INDEX));
+
+        coordinator.extendSelectionTo(SEQUENCE_RIGHT_CLICK_INDEX);
+        assertThat(coordinator.getRange())
+            .as("extended to the right of the anchor")
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).isEqualTo(SEQUENCE_ANCHOR_INDEX);
+                assertThat(range.end()).isEqualTo(SEQUENCE_RIGHT_CLICK_INDEX);
+                assertThat(range.anchor()).isEqualTo(SEQUENCE_ANCHOR_INDEX);
+            });
+
+        coordinator.extendSelectionTo(SEQUENCE_LEFT_CLICK_INDEX);
+        assertThat(coordinator.getRange())
+            .as("extended past the anchor to its left")
+            .isNotNull()
+            .satisfies(range -> {
+                assertThat(range.begin()).isEqualTo(SEQUENCE_LEFT_CLICK_INDEX);
+                assertThat(range.end()).isEqualTo(SEQUENCE_ANCHOR_INDEX);
+                assertThat(range.anchor())
+                    .as("still the element the selection was made at")
+                    .isEqualTo(SEQUENCE_ANCHOR_INDEX);
             });
     }
 

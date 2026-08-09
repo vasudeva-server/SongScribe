@@ -822,8 +822,15 @@ public class LineComponent extends ScoreComponent
     /**
      * The index in {@code line} of the element {@code clickHit} resolved to, or -1 when the
      * click landed on anything else.
+     * <p>
+     * Package-private because every handler in this package that turns a resolved hit into an
+     * element it can act on asks this same question — the double-click lyric editor here, the
+     * pitch drag in {@link NoteDragHandler}, and Shift+click extension in
+     * {@link LineSelectionHandler}. Answering it in one place is what keeps a future change to
+     * what counts as a hit element — a new {@link HitTarget} kind, say — from having to be
+     * remembered three times.
      */
-    private static int elementIndexOf(@Nullable HitTarget clickHit, Line line) {
+    static int elementIndexOf(@Nullable HitTarget clickHit, Line line) {
         if (clickHit instanceof HitTarget.Element(var element)) {
             return line.getElementIndex(element);
         }

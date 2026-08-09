@@ -268,7 +268,9 @@ public final class ReflectionTestHelper {
         coordinator.getActionReflector().saveActionStates();
         requireActiveLine(coordinator);
 
-        // Anchored at fromIndex, so a backwards range reads as a drag that started at its end.
+        // Anchored at fromIndex, so a backwards range reads as a selection made at fromIndex
+        // and then extended leftward past its own anchor — the one way an anchor ends up on a
+        // range's end, since a click or a drag always anchors at begin.
         coordinator.selectRange(
             Math.min(fromIndex, toIndex), Math.max(fromIndex, toIndex), fromIndex);
     }

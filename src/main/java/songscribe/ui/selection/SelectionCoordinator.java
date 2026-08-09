@@ -292,6 +292,12 @@ public final class SelectionCoordinator {
      * The one entry point for setting a range: a click, a drag, an arrow-key extension and a
      * post-mutation re-derivation all land here, so a range replaces a target by the same
      * assignment that sets it.
+     * <p>
+     * No production caller supplies an anchor of its own — every one of them goes through
+     * {@link #selectRange(int, int)} and anchors at {@code begin} (issue #748), and the
+     * anchor only comes to rest on {@code end} later, when {@link #extendSelectionTo} carries
+     * the range past it. The explicit-anchor form is what those two are built from, and what
+     * tests use to construct a crossed range directly.
      */
     public void selectRange(int begin, int end, int anchor) {
         var line = getActiveLine();

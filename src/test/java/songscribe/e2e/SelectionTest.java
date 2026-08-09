@@ -186,24 +186,71 @@ class SelectionTest extends E2ETest {
             );
         }
 
-        @Order(3)
-        @Test
-        void testDragSelect() {
+        /**
+         * How far left of and above the first note the rubber-band press starts, in pixels.
+         * Small on purpose, unlike {@link #DRAG_OVERSHOOT_PX}: QUARTER_TEMPO's tempo marking
+         * sits above and just left of that note and is independently clickable, and a press
+         * landing on it selects the marking instead of starting a drag, so the drag never
+         * begins.
+         */
+        private static final int DRAG_START_INSET_PX = 5;
+
+        /** How far past the last note the rubber band is dragged, in pixels. */
+        private static final int DRAG_OVERSHOOT_PX = 20;
+
+        /** WHOLE, HALF and QUARTER — the three elements {@link #dragSelectFirstThreeNotes} sweeps. */
+        private static final int DRAGGED_SELECTION_SIZE = 3;
+
+        /** Rubber-bands across the first three notes, leaving WHOLE..QUARTER selected. */
+        private void dragSelectFirstThreeNotes() {
             enterSelectMode();
             var note1Pos = noteScreenPosition(0, Sel1.WHOLE.index);
             var note3Pos = noteScreenPosition(0, Sel1.QUARTER.index);
-            // Only 5px, not 20: QUARTER_TEMPO's tempo marking sits above and just left of this
-            // note, and is now independently clickable. A press that lands on it selects the
-            // marking instead of starting a rubber-band drag, so the drag never begins.
-            var dragStart = new Point(note1Pos.x - 5, note1Pos.y - 5);
-            var dragEnd = new Point(note3Pos.x + 20, note3Pos.y + 20);
+            var dragStart =
+                new Point(note1Pos.x - DRAG_START_INSET_PX, note1Pos.y - DRAG_START_INSET_PX);
+            var dragEnd = new Point(note3Pos.x + DRAG_OVERSHOOT_PX, note3Pos.y + DRAG_OVERSHOOT_PX);
             robot.pressMouse(dragStart, LEFT_BUTTON);
             pause();
             robot.moveMouse(dragEnd);
             pause();
             robot.releaseMouseButtons();
             pause();
-            assertThat(scoreView().getSelectionSize()).as("drag-select").isEqualTo(3);
+        }
+
+        @Order(3)
+        @Test
+        void testDragSelect() {
+            dragSelectFirstThreeNotes();
+
+            assertThat(scoreView().getSelectionSize())
+                .as("drag-select")
+                .isEqualTo(DRAGGED_SELECTION_SIZE);
+        }
+
+        /**
+         * The sequence issue #748 reports: sweep a range with a rubber band, then Shift+click
+         * past its right end.
+         * <p>
+         * A drag anchors on the first element it swept, so the click has to grow the selection
+         * outward from there. Anchoring on the element the drag finished at instead would
+         * collapse the range back to just that element and the clicked one — the user watches
+         * their selection shrink when they asked it to grow.
+         */
+        @Order(4)
+        @Test
+        void testShiftClickAfterADragGrowsTheSelectionFromItsFirstElement() {
+            dragSelectFirstThreeNotes();
+
+            shiftClickAt(noteScreenPosition(0, Sel1.EIGHTH.index));
+
+            assertAll(
+                () -> assertThat(scoreView().getSelectionSize())
+                    .as("the click added one element to the drag's three")
+                    .isEqualTo(DRAGGED_SELECTION_SIZE + 1),
+                () -> assertThat(scoreView().isElementSelected(Sel1.WHOLE.index, 0))
+                    .as("the element the drag started from is still selected")
+                    .isTrue()
+            );
         }
 
     }

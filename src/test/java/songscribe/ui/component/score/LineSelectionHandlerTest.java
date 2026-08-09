@@ -74,6 +74,7 @@ import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
@@ -363,48 +364,6 @@ class LineSelectionHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // hitTestElementIndex
-    // -------------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class HitTestElementIndex {
-
-        private Line line;
-
-        @BeforeEach
-        void configureCommonStubs() {
-            line = givenLine();
-        }
-
-        @Test
-        void testPointOnAnElementReturnsItsIndex() {
-            givenClickableAtOrigin(
-                new HitTarget.Element(line.getElement(1)), HitPriority.ELEMENT, false);
-
-            assertThat(handler.hitTestElementIndex(originPoint())).isEqualTo(1);
-        }
-
-        /**
-         * A lyric outranks the element beneath it, so a point resolving to a lyric reports no
-         * element — the callers that ask this question (the double-click lyric editor, the
-         * drag anchor) must not treat lyric text as the note under the cursor.
-         */
-        @Test
-        void testPointOnANonElementTargetReturnsMinusOne() {
-            givenClickableAtOrigin(
-                new HitTarget.Lyric(line.getElement(0), LYRIC_VERSE), HitPriority.LYRIC, true);
-
-            assertThat(handler.hitTestElementIndex(originPoint())).isEqualTo(-1);
-        }
-
-        @Test
-        void testPointOnNothingReturnsMinusOne() {
-            assertThat(handler.hitTestElementIndex(originPoint())).isEqualTo(-1);
-        }
-    }
-
-    // -------------------------------------------------------------------------
     // isWithinHeaderX
     // -------------------------------------------------------------------------
 
@@ -591,8 +550,12 @@ class LineSelectionHandlerTest extends UnitTest {
 
             pressThenDragToCorner();
 
-            assertThat(selectedRange().begin()).isEqualTo(0);
-            assertThat(selectedRange().end()).isEqualTo(1);
+            var range = selectedRange();
+            assertThat(range.begin()).as("begin").isEqualTo(0);
+            assertThat(range.end()).as("end").isEqualTo(1);
+            assertThat(range.anchor())
+                .as("the band anchors at the first element it caught")
+                .isEqualTo(0);
         }
 
         /**
@@ -639,16 +602,48 @@ class LineSelectionHandlerTest extends UnitTest {
         }
 
         /**
-         * A drag that starts on a note anchors there, so extending afterwards grows the
-         * selection from the note the user grabbed rather than from whichever end happens to
-         * be nearer.
+         * A band drawn right-to-left anchors at its first element too, not at the end the drag
+         * started from.
          * <p>
-         * Shift is held because that is the one gesture that can rubber-band from a note at
-         * all: an unmodified press on a note selects it and counts as handled, which stops the
-         * drag before it begins.
+         * The anchor is where the user's selection grows from, and a selection reads the same
+         * to them whichever way they swept it out: the elements are in the same place and the
+         * first Shift+Right has to extend it, not shrink it.
          */
         @Test
-        void testAnchorIsTheElementUnderTheDragStart() {
+        void testABandDrawnRightToLeftStillAnchorsAtItsFirstElement() {
+            positionElement(0, NEAR_X_SS);
+            positionElement(1, FAR_X_SS);
+
+            pressAt(pressEvent(DRAG_TARGET_X, DRAG_TARGET_Y));
+            handler.handleDrag(dragEvent(ORIGIN_X_PX, 0));
+
+            var range = selectedRange();
+            assertThat(range.begin()).as("begin").isEqualTo(0);
+            assertThat(range.end()).as("end").isEqualTo(1);
+            assertThat(range.anchor()).as("anchor").isEqualTo(0);
+        }
+
+        /**
+         * What the press landed on has no say in the anchor, even when it names an element the
+         * band went on to sweep.
+         * <p>
+         * The band catches both elements here, and the press is stubbed to resolve to the
+         * second of them rather than the first. The two answers come from deliberately
+         * different geometry — the sweep tests each element's true drawn bounds, while the hit
+         * registry pads anything narrower or shorter than a minimum size so it stays clickable
+         * — so a press really can name an element other than the one the band starts at.
+         * <p>
+         * This is the case that separates the current rule from reading the press point, which
+         * is how the anchor used to be chosen: that would anchor on element 1, and the user's
+         * first Shift+Right afterwards would shrink the selection to 1..1 instead of growing it
+         * to 0..2 (issue #748).
+         * <p>
+         * Shift is held because that is the one gesture that can rubber-band from an element at
+         * all. An unmodified press on one is consumed before any drag can begin — on a note it
+         * starts a pitch drag, on anything else it selects the element and counts as handled.
+         */
+        @Test
+        void testTheElementUnderTheDragStartIsNotTheAnchor() {
             positionElement(0, NEAR_X_SS);
             positionElement(1, FAR_X_SS);
             givenClickableAtOrigin(
@@ -657,46 +652,11 @@ class LineSelectionHandlerTest extends UnitTest {
             pressAt(shiftPressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
             handler.handleDrag(dragEvent(DRAG_TARGET_X, DRAG_TARGET_Y));
 
-            assertThat(selectedRange().anchor()).isEqualTo(1);
-        }
-
-        /**
-         * The drag start can resolve to an element the rubber band never caught, because the
-         * two answers come from deliberately different geometry: the sweep tests each element's
-         * true visual bounds, while the hit registry pads anything narrower or shorter than a
-         * minimum size so it stays clickable. Press inside that padding and drag away from the
-         * element and the press names an element outside {@code begin..end} — the drag rectangle
-         * grows from the press point, so nothing makes it reach back over that element.
-         * <p>
-         * {@link Selection.Range} rejects an anchor outside its own span, so an unclamped anchor
-         * would throw {@link IllegalArgumentException} out of a mouse handler. This application
-         * turns an uncaught exception on the event thread into a fatal dialog and an exit, so
-         * the cost of getting this wrong is the user losing their unsaved score to an ordinary
-         * drag.
-         */
-        @Test
-        void testAnchorOutsideTheSweptRangeIsClampedIntoIt() {
-            register(threeNoteLine());
-            positionElement(0, ELEMENT_0_X_SS);
-            positionElement(1, ELEMENT_1_X_SS);
-            positionElement(2, ELEMENT_2_X_SS);
-
-            // Only element 0 lies within the swept span; the press is stubbed to resolve to
-            // element 2, which the band is nowhere near.
-            var unsweptElementIndex = 2;
-            givenClickableAtOrigin(
-                new HitTarget.Element(line.getElement(unsweptElementIndex)),
-                HitPriority.ELEMENT,
-                false);
-
-            pressAt(shiftPressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
-            handler.handleDrag(dragEvent(DRAG_TARGET_X, DRAG_TARGET_Y));
-
             var range = selectedRange();
             assertThat(range.begin()).as("begin").isEqualTo(0);
-            assertThat(range.end()).as("end").isEqualTo(0);
+            assertThat(range.end()).as("end").isEqualTo(1);
             assertThat(range.anchor())
-                .as("the anchor is clamped onto the only element the band actually caught")
+                .as("the anchor is the first element swept, not the one under the press")
                 .isEqualTo(0);
         }
 
@@ -1187,6 +1147,136 @@ class LineSelectionHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
+    // handleClick
+    // -------------------------------------------------------------------------
+
+    /**
+     * The Shift+click half of range selection — the gesture that grows an existing selection
+     * out to the element just clicked, from wherever its anchor sits (issue #748).
+     * <p>
+     * A click only reaches this path when its press was left unhandled, and a Shift+press on
+     * an element is the one press that qualifies: every unmodified press on an element is
+     * consumed on the way down, either by the pitch-drag handler or by the press handler
+     * selecting it outright. Each test here therefore presses first, exactly as
+     * {@code LineComponent} does, so {@code handleClick} sees the press target the real
+     * sequence would have left behind.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class HandleClick {
+
+        private SelectionCoordinator coordinator;
+        private Line line;
+
+        @BeforeEach
+        void configureCommonStubs() {
+            line = givenLine();
+            when(lc.getLineIndex()).thenReturn(0);
+            when(mockScoreView.getMode()).thenReturn(Mode.SELECT);
+            coordinator = mock(SelectionCoordinator.class);
+            when(coordinator.getLine(0)).thenReturn(line);
+            when(mockScoreView.getSelectionCoordinator()).thenReturn(coordinator);
+        }
+
+        /** Makes the second element the only clickable thing, so a press at the origin names it. */
+        private void givenSecondElementClickable() {
+            givenClickableAtOrigin(
+                new HitTarget.Element(line.getElement(1)), HitPriority.ELEMENT, false);
+        }
+
+        /**
+         * The selection a previous click or drag left behind, which is what gives
+         * {@code handleClick} an anchor to extend from. Its shape does not matter here — only
+         * that a range exists — since the anchor arithmetic itself belongs to the coordinator.
+         */
+        private void givenExistingRange() {
+            when(coordinator.getRange()).thenReturn(new Selection.Range(line, 0, 0, 0));
+        }
+
+        @Test
+        void testShiftClickOnAnElementExtendsTheSelectionToItsIndex() {
+            givenSecondElementClickable();
+            givenExistingRange();
+
+            pressAt(shiftPressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
+
+            assertThat(handler.handleClick(shiftClickEvent(ORIGIN_X_PX, MIDLINE_Y_PX)))
+                .as("the click is handled")
+                .isTrue();
+            verify(mockScoreView).extendSelectionTo(1);
+        }
+
+        /**
+         * With nothing selected there is no anchor, so the click extends nothing rather than
+         * extending from an index it would have to invent.
+         */
+        @Test
+        void testShiftClickWithNothingSelectedExtendsNothing() {
+            givenSecondElementClickable();
+
+            pressAt(shiftPressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
+
+            assertThat(handler.handleClick(shiftClickEvent(ORIGIN_X_PX, MIDLINE_Y_PX)))
+                .as("the click is still handled — selection is active, there is just nothing to do")
+                .isTrue();
+            verify(mockScoreView, never()).extendSelectionTo(anyInt());
+        }
+
+        /**
+         * Without Shift the click extends nothing: the press already selected the element on
+         * its own, and extending on top of that would grow a range the user never asked for.
+         */
+        @Test
+        void testAnUnmodifiedClickOnAnElementExtendsNothing() {
+            givenSecondElementClickable();
+            givenExistingRange();
+
+            pressAt(pressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
+
+            assertThat(handler.handleClick(clickEvent(ORIGIN_X_PX, MIDLINE_Y_PX)))
+                .as("the click is handled")
+                .isTrue();
+            verify(mockScoreView, never()).extendSelectionTo(anyInt());
+        }
+
+        /**
+         * A Shift+click on something that is not an element — a lyric here — has no index to
+         * extend to, so it leaves the selection alone rather than extending to whatever element
+         * happens to lie underneath.
+         */
+        @Test
+        void testShiftClickOnANonElementTargetExtendsNothing() {
+            givenClickableAtOrigin(
+                new HitTarget.Lyric(line.getElement(1), LYRIC_VERSE), HitPriority.LYRIC, true);
+            givenExistingRange();
+
+            pressAt(shiftPressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
+
+            handler.handleClick(shiftClickEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
+
+            verify(mockScoreView, never()).extendSelectionTo(anyInt());
+        }
+
+        /**
+         * Outside SELECT mode the click is refused outright and reported unhandled, so
+         * {@code LineComponent} goes on to treat it as an EDIT-mode gesture.
+         */
+        @Test
+        void testClickIsNotHandledOutsideSelectMode() {
+            when(mockScoreView.getMode()).thenReturn(Mode.EDIT);
+            givenSecondElementClickable();
+            givenExistingRange();
+
+            pressAt(shiftPressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
+
+            assertThat(handler.handleClick(shiftClickEvent(ORIGIN_X_PX, MIDLINE_Y_PX)))
+                .as("the click falls through to EDIT-mode handling")
+                .isFalse();
+            verify(mockScoreView, never()).extendSelectionTo(anyInt());
+        }
+    }
+
+    // -------------------------------------------------------------------------
     // handleEditModePress
     // -------------------------------------------------------------------------
 
@@ -1546,10 +1636,17 @@ class LineSelectionHandlerTest extends UnitTest {
         return viewPx(ss) * 2;
     }
 
-    private MouseEvent pressEvent(int x, int y) {
+    /** No modifier keys held, for the event builders that spell out an unmodified gesture. */
+    private static final int NO_MODIFIERS = 0;
+
+    private MouseEvent mouseEvent(int id, int modifiers, int x, int y) {
         // Use the 10-arg constructor that sets xAbs/yAbs (screen coords) so
         // MouseEvent.getXOnScreen() / getYOnScreen() do not NPE in handler code.
-        return new MouseEvent(lc, MouseEvent.MOUSE_PRESSED, 0L, 0, x, y, x, y, 1, false, MouseEvent.BUTTON1);
+        return new MouseEvent(lc, id, 0L, modifiers, x, y, x, y, 1, false, MouseEvent.BUTTON1);
+    }
+
+    private MouseEvent pressEvent(int x, int y) {
+        return mouseEvent(MouseEvent.MOUSE_PRESSED, NO_MODIFIERS, x, y);
     }
 
     private MouseEvent pressEvent(Point point) {
@@ -1596,12 +1693,18 @@ class LineSelectionHandlerTest extends UnitTest {
     }
 
     private MouseEvent shiftPressEvent(int x, int y) {
-        return new MouseEvent(
-            lc, MouseEvent.MOUSE_PRESSED, 0L, InputEvent.SHIFT_DOWN_MASK,
-            x, y, x, y, 1, false, MouseEvent.BUTTON1);
+        return mouseEvent(MouseEvent.MOUSE_PRESSED, InputEvent.SHIFT_DOWN_MASK, x, y);
     }
 
     private MouseEvent dragEvent(int x, int y) {
-        return new MouseEvent(lc, MouseEvent.MOUSE_DRAGGED, 0L, 0, x, y, x, y, 1, false, MouseEvent.BUTTON1);
+        return mouseEvent(MouseEvent.MOUSE_DRAGGED, NO_MODIFIERS, x, y);
+    }
+
+    private MouseEvent clickEvent(int x, int y) {
+        return mouseEvent(MouseEvent.MOUSE_CLICKED, NO_MODIFIERS, x, y);
+    }
+
+    private MouseEvent shiftClickEvent(int x, int y) {
+        return mouseEvent(MouseEvent.MOUSE_CLICKED, InputEvent.SHIFT_DOWN_MASK, x, y);
     }
 }

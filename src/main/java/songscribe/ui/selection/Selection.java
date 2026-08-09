@@ -60,7 +60,14 @@ import songscribe.message.mutation.Mutation;
 public sealed interface Selection {
 
     /**
-     * An index range on one line, anchored at the end the user extended from.
+     * An index range on one line, anchored at the element the selection was made from.
+     * <p>
+     * The anchor is the element a plain click or a drag selected from — {@code begin} in both
+     * cases — and it stays on that element until the next plain click or drag, however many
+     * times Shift+click or Shift+arrow extends the range around it (issue #748). It is
+     * therefore {@code begin} of the range it anchors until an extension crosses it, after
+     * which it is {@code end}: extend leftward past the anchor and the range grows to its
+     * left while the anchor stays where the user put it.
      * <p>
      * A range names elements by index, so any mutation that inserts or removes elements at or
      * below it retargets it unless the indices are spliced to follow their elements. That is
@@ -86,8 +93,12 @@ public sealed interface Selection {
          * @throws IllegalArgumentException if the range is empty or reversed, or if the anchor
          *     lies outside it. A range that selects nothing is not stored at all — the
          *     coordinator holds null for that — so constructing one is a caller bug rather than
-         *     a state to represent. The anchor names the end the user extended from, so an
-         *     anchor outside the span it anchors is equally a caller bug.
+         *     a state to represent. The anchor holds inside the range for two separate
+         *     reasons, neither of which is this check: an extension derives both ends from the
+         *     anchor itself, so it cannot place the anchor outside them; a splice can, every
+         *     time a mutation deletes the anchored element, and {@link #spliced} clamps it
+         *     back before constructing anything. So reaching this throw means a caller invented
+         *     an anchor of its own, not that a routine path overshot.
          */
         public Range {
             if (begin < 0 || end < begin) {

@@ -132,17 +132,13 @@ class NoteDragHandler {
 
         dragMoved = false;
 
-        if (!(hitTarget instanceof HitTarget.Element(var hitElement))) {
-            return false;
-        }
-
         var line = lc.getLine();
 
         if (line == null) {
             return false;
         }
 
-        var hitIndex = line.getElementIndex(hitElement);
+        var hitIndex = LineComponent.elementIndexOf(hitTarget, line);
 
         if (hitIndex < 0) {
             return false;

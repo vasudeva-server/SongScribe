@@ -27,7 +27,6 @@ import java.awt.event.MouseEvent;
 import org.jspecify.annotations.Nullable;
 
 import songscribe.Strings;
-import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.ViewPx;
 import songscribe.hit.HitRegistry;
@@ -186,20 +185,6 @@ class LineSelectionHandler {
     }
 
     /**
-     * Returns the index of the element hit by the given view-pixel point, or -1 if the point
-     * resolves to something other than an element.
-     */
-    int hitTestElementIndex(Point viewPoint) {
-        var line = lc.getLine();
-
-        if (line == null || !(hitTestViewPoint(viewPoint) instanceof HitTarget.Element(var element))) {
-            return -1;
-        }
-
-        return line.getElementIndex(element);
-    }
-
-    /**
      * Returns whether the given point, in view pixels, is horizontally within the staff
      * header, regardless of its Y. Unlike the registry's staff-line region, which is bounded
      * vertically too, this covers the whole header column, since no element can be inserted
@@ -221,11 +206,12 @@ class LineSelectionHandler {
 
         pressTarget = hitTarget;
 
-        var range = lc.getScoreView().getSelectionCoordinator().getRange();
+        var scoreView = lc.getScoreView();
+        var range = scoreView.getSelectionCoordinator().getRange();
 
         // Don't clear selection on shift+click (preserve for extend)
         if (!e.isShiftDown() || range == null) {
-            lc.getScoreView().clearSelection();
+            scoreView.clearSelection();
         }
 
         // Select the hit element immediately on press.
@@ -364,16 +350,16 @@ class LineSelectionHandler {
         }
 
         // Shift+click on a note head: extend selection from anchor
+        var scoreView = lc.getScoreView();
         var line = lc.getLine();
 
         if (e.isShiftDown()
-            && pressTarget instanceof HitTarget.Element(var element)
             && line != null
-            && lc.getScoreView().getSelectionCoordinator().getRange() != null) {
-            var elementIndex = line.getElementIndex(element);
+            && scoreView.getSelectionCoordinator().getRange() != null) {
+            var elementIndex = LineComponent.elementIndexOf(pressTarget, line);
 
             if (elementIndex >= 0) {
-                lc.getScoreView().extendSelectionTo(elementIndex);
+                scoreView.extendSelectionTo(elementIndex);
                 playNoteIfPitched(elementIndex);
             }
         }
@@ -561,8 +547,12 @@ class LineSelectionHandler {
     }
 
     /**
-     * Replaces the selection with the elements the rubber band covers, anchored at the end
-     * nearest where the drag started.
+     * Replaces the selection with the elements the rubber band covers, anchored at the first
+     * of them.
+     * <p>
+     * The anchor is {@code begin} whichever direction the band was drawn in, and whatever the
+     * press point landed on. It is the fixed point every later Shift+click and Shift+arrow
+     * extends from, and nothing but a new plain click or drag may move it (issue #748).
      * <p>
      * The whole range is computed before anything is selected, so a drag event assigns the
      * selection exactly once no matter how many elements it sweeps.
@@ -620,34 +610,6 @@ class LineSelectionHandler {
             return;
         }
 
-        coordinator.selectRange(begin, end, dragAnchor(line, begin, end));
-    }
-
-    /**
-     * The end of {@code begin..end} the drag started from, which stays put while the other
-     * end follows the pointer. The element under the drag start point when there is one,
-     * otherwise whichever end is horizontally nearer to it.
-     * <p>
-     * The element under the drag start is clamped into {@code begin..end}, because it can land
-     * outside. The sweep in {@link #calculateLineSelectionFromDrag} catches elements by their
-     * true visual bounds, while {@link #hitTestElementIndex} answers from the registry's click
-     * rects, which pad anything narrower or shorter than a minimum size so it stays clickable.
-     * Press inside that padding and drag away from the element and the press resolves to an
-     * element the band never caught — the drag rectangle grows from the press point, so nothing
-     * makes it reach back over that element's own bounds.
-     * {@link songscribe.ui.selection.Selection.Range} rejects an anchor outside its own span,
-     * so without this clamp such a drag would throw out of a mouse handler.
-     */
-    private int dragAnchor(Line line, int begin, int end) {
-        var anchorIndex = hitTestElementIndex(dragStart);
-
-        if (anchorIndex != -1) {
-            return Math.clamp(anchorIndex, begin, end);
-        }
-
-        var distToBegin = Math.abs(dragStart.x - line.getElement(begin).getXOffsetPx());
-        var distToEnd = Math.abs(dragStart.x - line.getElement(end).getXOffsetPx());
-
-        return (distToBegin <= distToEnd) ? begin : end;
+        coordinator.selectRange(begin, end);
     }
 }
