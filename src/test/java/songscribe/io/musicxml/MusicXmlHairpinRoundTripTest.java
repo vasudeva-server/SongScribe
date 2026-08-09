@@ -35,6 +35,7 @@ import org.xml.sax.InputSource;
 
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
+import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Song;
@@ -479,6 +480,46 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
             diminuendos.getFirst(), Diminuendo.class,
             BACK_TO_BACK_SHARED_INDEX, BACK_TO_BACK_DIMINUENDO_END,
             0.0, 0.0, 0.0, "back-to-back diminuendo");
+    }
+
+    @Test
+    void testDynamicOnTheSharedElementOfBackToBackHairpinsRoundTrips() throws Exception {
+        // A text dynamic on a hairpin bound rides inside <notations><dynamics> on the note
+        // (MusicXmlNotationsWriter:54), while the wedges are <direction> siblings emitted before
+        // it (MusicXmlHairpinWriter.writeHairpinWedges), so the two are orthogonal — this pins
+        // that neither one's read/write path disturbs the other's.
+        var song = buildBackToBackOppositeHairpinSong();
+        var line = song.getLine(0);
+        var sharedElement = line.getElement(BACK_TO_BACK_SHARED_INDEX);
+        sharedElement.addAttachment(
+            new DynamicAttachment(sharedElement, DynamicAttachment.DynamicType.FORTE));
+
+        var song2 = roundTrip(song);
+        var line2 = song2.getLine(0);
+        var crescendos = line2.getCrescendos();
+        var diminuendos = line2.getDiminuendos();
+
+        assertThat(crescendos)
+            .as("crescendo count after shared-dynamic round-trip")
+            .hasSize(1);
+        assertThat(diminuendos)
+            .as("diminuendo count after shared-dynamic round-trip")
+            .hasSize(1);
+        assertHairpinEquals(
+            crescendos.getFirst(), Crescendo.class,
+            BACK_TO_BACK_CRESCENDO_ANCHOR, BACK_TO_BACK_SHARED_INDEX,
+            0.0, 0.0, 0.0, "shared-dynamic crescendo");
+        assertHairpinEquals(
+            diminuendos.getFirst(), Diminuendo.class,
+            BACK_TO_BACK_SHARED_INDEX, BACK_TO_BACK_DIMINUENDO_END,
+            0.0, 0.0, 0.0, "shared-dynamic diminuendo");
+
+        var reloadedSharedElement = line2.getElement(BACK_TO_BACK_SHARED_INDEX);
+        var reloadedDynamic = reloadedSharedElement.findAttachment(DynamicAttachment.class);
+        assertThat(reloadedDynamic).as("shared element must still carry its dynamic").isNotNull();
+        assertThat(reloadedDynamic.getType())
+            .as("reloaded dynamic type")
+            .isEqualTo(DynamicAttachment.DynamicType.FORTE);
     }
 
     @Test

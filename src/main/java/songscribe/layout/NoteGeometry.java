@@ -666,7 +666,7 @@ public final class NoteGeometry {
     /**
      * Returns the X of the notehead's center relative to the note's column X, in staff spaces.
      * <p>
-     * Anything that must sit centerd over the notehead — an articulation, a dynamic, a fermata —
+     * Anything that must sit centered over the notehead — an articulation, a dynamic, a fermata —
      * measures from here, not from the column X: the column is as wide as the whole element, and an
      * accent or a dynamic is wider than the head itself.
      */
@@ -676,7 +676,7 @@ public final class NoteGeometry {
     }
 
     /**
-     * Returns the absolute X of the left edge of a {@code widthSs}-wide glyph centerd over
+     * Returns the absolute X of the left edge of a {@code widthSs}-wide glyph centered over
      * {@code note}'s notehead — an articulation, a text dynamic, anything drawn over the head.
      * <p>
      * This is the one place the centering is expressed, so a dynamic and an articulation over the

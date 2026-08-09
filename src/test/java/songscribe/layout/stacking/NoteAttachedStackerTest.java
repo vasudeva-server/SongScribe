@@ -615,7 +615,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
     @Test
     void testFermataBoxIsCenteredOnTheNoteheadNotTheColumnX() {
-        // The fermata's collision box — and the decoration-layout x derived from it — is centerd on
+        // The fermata's collision box — and the decoration-layout x derived from it — is centered on
         // the notehead, exactly where FermataRenderer draws the glyph. Anchoring it at the column x
         // (as this once did) offset the box from the glyph by half the width difference between the
         // fermata and the notehead, so the drawn glyph's inner bottom corner under-cleared a tie to
@@ -635,7 +635,7 @@ class NoteAttachedStackerTest extends UnitTest {
         var boxCenterSs = layout.xSs() + fermata.getContentWidthSs() / 2.0;
         var noteheadCenterSs = START_NOTE_X_SS + NoteGeometry.getNoteheadCenterXSs(note);
         assertThat(boxCenterSs)
-            .describedAs("the fermata box must be centerd on the notehead, not the column x")
+            .describedAs("the fermata box must be centered on the notehead, not the column x")
             .isCloseTo(noteheadCenterSs, within(TOLERANCE));
     }
 
@@ -1042,7 +1042,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
         // Above accent clears the protruding arc by one articulation margin — measured against its
         // wedge, not its box. The arc begins at the note's column X, which is right of the accent's
-        // left edge (the accent is wider than the notehead it is centerd on), so even widened by
+        // left edge (the accent is wider than the notehead it is centered on), so even widened by
         // SCRIPT_HORIZON_PADDING_SS the arc never reaches the wedge's zero-offset cap. Over the arc,
         // the accent's edge has already climbed away from its bounding box by this much. The wedge
         // profile is piecewise, so this reproduces the exact contact only to a sub-pixel tolerance.

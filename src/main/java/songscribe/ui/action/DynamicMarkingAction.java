@@ -140,7 +140,7 @@ public final class DynamicMarkingAction extends NoteOnlyAction {
         var line = selection.line();
         var noteIndex = selection.begin();
 
-        if (line.isInHairpinRange(noteIndex)) {
+        if (line.isInsideHairpin(noteIndex)) {
             setEnabled(false);
             return false;
         }

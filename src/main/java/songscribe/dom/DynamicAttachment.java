@@ -176,6 +176,27 @@ public final class DynamicAttachment extends Attachment {
     }
 
     /**
+     * The glyph's advance width in staff-space units — the box the font declares for the
+     * character, which for the italic dynamic glyphs is narrower than the ink the glyph actually
+     * paints. This is the box a neighbouring hairpin pads away from; see
+     * {@link #getLeftSideBearingSs()}.
+     */
+    public double getAdvanceWidthSs() {
+        return SMuFLMetadata.requireAdvanceWidth(type.getGlyph());
+    }
+
+    /**
+     * The signed distance from the glyph origin to the left edge of its ink, in staff spaces.
+     * Negative for the dynamic glyphs whose swashes overhang to the left of their advance box
+     * (Bravura's {@code dynamicForte} by {@code -0.564}), which is what makes the ink box and the
+     * advance box differ. Callers holding an absolute ink left edge subtract this to recover the
+     * glyph origin, and hence the advance box.
+     */
+    public double getLeftSideBearingSs() {
+        return glyphBBox().left();
+    }
+
+    /**
      * Returns the glyph's bottom edge relative to its text baseline, in staff-space units.
      * Positive, since a dynamic's descender drops below the baseline.
      * <p>

@@ -711,13 +711,20 @@ class MutationReplayerRoundTripTest extends UnitTest {
         private static final DynamicAttachment.DynamicType POINT_DYNAMIC =
             DynamicAttachment.DynamicType.FORTE;
 
+        /**
+         * Interior to the merged span [0, 3] and outside the selection, so the strip
+         * reaches it. Element 0 would become the merged span's anchor, where a dynamic is
+         * deliberately kept (issue #744).
+         */
+        private static final int POINT_DYNAMIC_INDEX = 1;
+
         private record Fixture(Song song, Line line, MusicEditOperations operations) {}
 
         /**
-         * A four-note song whose first two notes carry a crescendo and whose first note
+         * A four-note song whose first two notes carry a crescendo and whose second note
          * carries a point dynamic, with [2, 3] selected. {@code addHairpinToSelection}
-         * then extends the crescendo to [0, 3] and strips the dynamic from element 0 —
-         * a note outside the selection.
+         * then extends the crescendo to [0, 3] and strips the dynamic from element
+         * {@value #POINT_DYNAMIC_INDEX} — a note outside the selection.
          */
         private Fixture extendFixture() {
             var song = songWithNotes(NOTE_COUNT);
@@ -725,8 +732,8 @@ class MutationReplayerRoundTripTest extends UnitTest {
 
             song.withoutMutationTracking(() -> {
                 line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1)));
-                var first = line.getElement(0);
-                first.addAttachment(new DynamicAttachment(first, POINT_DYNAMIC));
+                var dynamicElement = line.getElement(POINT_DYNAMIC_INDEX);
+                dynamicElement.addAttachment(new DynamicAttachment(dynamicElement, POINT_DYNAMIC));
             });
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -767,19 +774,19 @@ class MutationReplayerRoundTripTest extends UnitTest {
 
             // Point dynamics are not part of the native serialization, so the strip is
             // asserted directly on the model rather than through assertRoundTrip.
-            assertThat(line.getElement(0).findAttachment(DynamicAttachment.class))
+            assertThat(line.getElement(POINT_DYNAMIC_INDEX).findAttachment(DynamicAttachment.class))
                 .as("the add must strip the point dynamic, else the round trip is vacuous")
                 .isNull();
 
             var scoreView = UndoTestSupport.scoreViewFor(song);
 
             UndoTestSupport.replayUndo(scoreView, batch);
-            assertThat(line.getElement(0).findAttachment(DynamicAttachment.class))
+            assertThat(line.getElement(POINT_DYNAMIC_INDEX).findAttachment(DynamicAttachment.class))
                 .as("undo must restore the stripped point dynamic")
                 .isNotNull();
 
             UndoTestSupport.replayRedo(scoreView, batch);
-            assertThat(line.getElement(0).findAttachment(DynamicAttachment.class))
+            assertThat(line.getElement(POINT_DYNAMIC_INDEX).findAttachment(DynamicAttachment.class))
                 .as("redo must strip the point dynamic again")
                 .isNull();
         }

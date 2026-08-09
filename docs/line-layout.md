@@ -181,15 +181,54 @@ The fermata is placed `FERMATA_PADDING_SS` above whatever is already reserved in
 ### Example 8: Dynamics placement
 
 **Grouping and shared baseline**:
-- Hairpins and text dynamics are grouped together and share one reference line. A text dynamic on the element immediately before a hairpin's anchor, or immediately after its end, joins that hairpin's group; a dynamic can never sit on or inside the span itself, because the editor strips point dynamics from `[anchor, end]` when a hairpin is added (`MusicEditOperations.stripPointDynamics`) and disables the dynamic action inside an existing one (`DynamicMarkingAction`). A text dynamic adjacent to no hairpin keeps its own independent placement. This follows LilyPond's `DynamicLineSpanner` (`lily/dynamic-align-engraver.cc`).
+- Hairpins and text dynamics are grouped together and share one reference line. A text dynamic may sit on any hairpin bound — its anchor element or its end element — or immediately outside it (the element before the anchor, or after the end); either way it joins that hairpin's group. Only the *strict interior* of a hairpin's span is forbidden: the editor enforces this at the UI level via `SpanLookup.isInsideHairpin`, read by `DynamicMarkingAction.updateEnabledState` to disable the dynamic actions inside an existing hairpin's range, and at the mutation level via `MusicEditOperations.stripInteriorPointDynamics`, which strips point dynamics from the strict interior `(anchor, end)` — not the bounds themselves — when a hairpin is added or extended over them. This is an editor invariant, not a layout one: an imported dynamic that is strictly inside a wedge falls through to its own independent group rather than joining the hairpin's. A text dynamic adjacent to no hairpin also keeps its own independent placement. This follows LilyPond's `DynamicLineSpanner` (`lily/dynamic-align-engraver.cc`).
 
 **Alignment within a group**:
 - Within a group, the two member types align differently on the shared reference line, as LilyPond does: a hairpin's full height is centred on it (`Hairpin.self-alignment-Y = CENTER`), while a text dynamic's glyph baseline sits `DYNAMIC_TEXT_BASELINE_OFFSET_SS` below it (`DynamicText.Y-offset`, "center on an 'm'") so its x-height centre lands on the line. Centring the glyph's bounding box instead would leave `p`, `f` and `mf` at visibly different heights.
 
 **Endpoint bound padding**:
-- A hairpin endpoint pulls back by `Hairpin.BOUND_PADDING_SS` from an adjacent text dynamic — LilyPond's `Hairpin.bound-padding` rule from `lily/hairpin.cc`. It is an assignment from the dynamic's extent, not a clamp, so a wedge preceded by a `p` legitimately extends past its anchor column's origin. With no adjacent dynamic the endpoints are the anchor column's origin and the end notehead's right edge.
-- Two further endpoint rules are implemented and now **reachable from the editor**: back-to-back hairpins meet at the shared column centre ∓ `Hairpin.BACK_TO_BACK_PADDING_SS`, and a hairpin ending on a rest stops at the rest's left edge. Both are ordinary engraving practice — back-to-back hairpins appear in 25 files of the ABC corpus and rest-bounded ones in two (issue #743) — see [Hairpin Editing Rules](hairpin-editing.md) for the editor decision tree that produces them; this document covers only their layout geometry.
+- The rules below are assignments from the neighboring element's extent, not clamps, so a wedge preceded by a `p` legitimately extends past its anchor column's origin.
+
+```
+Hairpin tip placement — first matching rule wins
+(HairpinEndpoints.leftEndpointSs / rightEndpointSs; LilyPond hairpin.cc:184-290)
+
+  LEFT tip (anchor side)                  RIGHT tip (end side)
+  ────────────────────────────────        ────────────────────────────────
+  1. dynamic on the anchor element?       1. dynamic on the end element?
+     → advance box right + BOUND_PADDING     → advance box left − BOUND_PADDING
+       (hairpin.cc:216-220)                    (hairpin.cc:216-220)
+       │ no                                    │ no
+  2. a hairpin ends on the anchor?        2. a hairpin starts on the end?
+     → notehead center + B2B_PADDING         → notehead center − B2B_PADDING
+       (hairpin.cc:222-257)                    (hairpin.cc:222-257)
+       │ no                                    │ no
+  3. dynamic at anchorIndex − 1?          3. dynamic at endIndex + 1?
+     → advance box right + BOUND_PADDING     → advance box left − BOUND_PADDING
+       │ no                                    │ no
+  4. anchor column origin                 4. end element is a rest?
+                                             → rest left edge (hairpin.cc:268-271)
+                                               │ no
+                                          5. end notehead right edge
+
+Minimum length: widening moves the RIGHT tip and nothing else, so
+  · right tip placed by rule 1 or 3 → do not widen; clamp only a negative
+    width to zero, as LilyPond does (hairpin.cc:292-298). Widening here
+    would drive the wedge back under the glyph the padding just cleared.
+  · otherwise → widen to Hairpin.MINIMUM_LENGTH_SS. Safe even when a
+    dynamic placed the LEFT tip: widening carries the right tip away from
+    that glyph, and a dynamic on the right would have taken the branch
+    above.
+```
+
+- "Advance box" in rules 1 and 3 is the glyph's **advance width**, not its ink bounding box, and the distinction is worth about half a staff space. The italic dynamic glyphs paint well outside the box the font declares for them — Bravura's `dynamicForte` has an ink box of `[-0.564, +1.456]` against an advance width of `1.456` — so padding from the ink puts the wedge roughly twice as far from the glyph as LilyPond does. LilyPond's `e` is the `DynamicText` grob extent, which is the advance width (Emmentaler's `f` declares `1.468`, near-identical to Bravura's `1.456`), so measuring from the advance box is what reproduces its spacing. `HairpinEndpoints.dynamicAdvanceLeftEdgeSs` recovers that box from the ink left edge by removing the glyph's left side bearing. Note the asymmetry this leaves: the gap tightens only on the side where a given glyph's ink overhangs its box, which for Bravura's dynamics is the left.
+- The dynamic **glyph itself** is still centered over the notehead by its **ink** box (`HairpinEndpoints.dynamicLeftEdgeSs`, read by `StructuralStacker`), because that is what looks centered to the eye. Only the wedge's stopping point uses the advance box.
+- Rule 2 is the back-to-back case, and it is now **reachable from the editor**: with no dynamic on the shared element, two back-to-back wedges meet at the shared column centre ∓ `Hairpin.BACK_TO_BACK_PADDING_SS`, so their tips do not touch. Rule 1 outranks it — a dynamic on the shared element (as in `<f>`) pulls both wedges back to the glyph's edges instead of stopping at the notehead center. A hairpin ending on a rest stops at the rest's left edge (rule 4). Both are ordinary engraving practice — back-to-back hairpins appear in 25 files of the ABC corpus and rest-bounded ones in two (issue #743) — see [Hairpin Editing Rules](hairpin-editing.md) for the editor decision tree that produces them and for the dynamic-on-a-bound rule; this document covers only their layout geometry.
 - LilyPond's remaining bound rule, padding away from a non-musical bound (`Item::is_non_musical`), is **not** implemented. It exists because LilyPond bounds spanners on `NoteColumn`s that may be barlines; a SongScribe bound is always a note, and no hairpin in the corpus is bounded by a barline.
+
+**Reserving room for the pullback**:
+- A dynamic on a bound moves that bound's tip inward by roughly two staff spaces, so a hairpin spanning two adjacent notes needs a wider gap between them than the plain `MINIMUM_LENGTH_SS - noteheadWidth`. `HorizontalSpacingCalculator.hairpinReservationFloorSs` reserves that extra distance, which is why an `f<` on a compressed line pushes its two notes apart instead of collapsing to an invisible wedge — the same trade LilyPond makes with its spacing rod. `HairpinEndpoints.dynamicLeftTipOffsetSs` / `dynamicRightTipOffsetSs` state the pullback once, as an offset from the column origin, so the calculator can ask for it before any column has a resolved X; both classes read the same number, and `HorizontalSpacingCalculatorSpringTest` pins that they agree by placing a pair at the reserved gap and measuring the wedge that comes out.
+- Three tip rules are deliberately **not** reserved for. A dynamic on the element *outside* the span (rule 3) pulls a tip by an amount that depends on a neighbouring pair's spring, which SongScribe's per-pair strut model cannot see. The back-to-back rule (2) and the rest rule (4) also shorten the wedge, and both went unreserved before dynamics on bounds existed; they stay that way.
 
 **Default endpoints and exclusions**:
 - Default endpoints are unchanged and match LilyPond: `NoteColumn`'s `bound-alignment-interfaces` is `(rhythmic-head-interface stem-interface)`, so LilyPond anchors on notehead edges too, excluding accidentals and augmentation dots.

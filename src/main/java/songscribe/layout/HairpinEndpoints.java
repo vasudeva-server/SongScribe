@@ -46,14 +46,11 @@ import songscribe.dom.StaffElement;
  * legitimately starts left of its anchor column's origin: the wedge runs from just clear of the
  * {@code p} to the end note, which is the intended appearance.
  * <p>
- * The back-to-back and rest rules below are <em>not reachable from the editor today</em>, and that
- * is deliberate rather than an oversight. {@code MusicEditOperations.isHairpinEligibleSpan}
- * requires a hairpin's end to be a pitched note, so it never lands on a rest, and
- * {@code resolveHairpinAction} blocks an opposite-type neighbour while {@code Line.addHairpin}
- * absorbs a same-type one, so two hairpins never share an element. Both configurations are
- * nonetheless ordinary engraving practice — back-to-back hairpins appear in 25 files of the ABC
- * corpus and rest-bounded ones in two — so the geometry is kept ready for the editor work that
- * will produce them (refs #743). The unit tests drive it directly.
+ * Every rule below is reachable from the editor. Back-to-back hairpins and rest-bounded ones
+ * became reachable when issue #743 landed ({@code MusicEditOperations.resolveHairpinAction}, see
+ * {@code docs/hairpin-editing.md}), and a text dynamic may now sit on a hairpin's <em>own</em>
+ * bound — its anchor or end element — as well as on the element outside it (issue #744). So
+ * {@code f<}, {@code >p} and {@code <f>} are all shapes this class has to place.
  * <p>
  * LilyPond's remaining bound rule, padding away from a non-musical bound ({@code hairpin.cc:283},
  * {@code Item::is_non_musical}), is <em>not</em> ported. It exists because LilyPond bounds spanners
@@ -117,83 +114,178 @@ public final class HairpinEndpoints {
         var anchorColumn = spanColumns.anchorColumn();
         var endColumn = spanColumns.endColumn();
 
-        var x1Ss = leftEndpointSs(hairpin, line, columnsByElement, anchorColumn, anchorIndex);
-        var x2Ss = rightEndpointSs(hairpin, line, columnsByElement, endColumn, endIndex);
+        var leftTip = leftEndpointSs(hairpin, line, columnsByElement, anchorColumn, anchorIndex);
+        var rightTip = rightEndpointSs(hairpin, line, columnsByElement, endColumn, endIndex);
 
-        // Last-resort guard for the degenerate case. LilyPond instead warns "crescendo too small"
-        // and collapses the width to 0 (hairpin.cc:293-299); extending rightward keeps the wedge
-        // visible. The spacing floor in HorizontalSpacingCalculator makes this rare.
-        if (x2Ss - x1Ss < Hairpin.MINIMUM_LENGTH_SS) {
+        var x1Ss = leftTip.xSs();
+        var x2Ss = rightTip.xSs();
+
+        if (rightTip.placedByDynamic()) {
+            // Widening moves the right tip and nothing else, so here it would drive the wedge
+            // straight back under the glyph the padding just cleared. LilyPond does not widen at
+            // all — it warns and collapses a negative width (hairpin.cc:292-298) — so do only that
+            // much. This does move a dynamic-placed tip, but only out of a negative width.
+            x2Ss = Math.max(x2Ss, x1Ss);
+        } else if (x2Ss - x1Ss < Hairpin.MINIMUM_LENGTH_SS) {
+            // LilyPond warns "crescendo too small" and collapses to 0; extending rightward keeps
+            // the wedge visible. Safe even when a dynamic placed the *left* tip: widening moves
+            // the right tip away from that glyph, and a dynamic anywhere on the right would have
+            // placed the right tip instead, taking the branch above. The spacing floor in
+            // HorizontalSpacingCalculator.hairpinReservationFloorSs makes this rare.
             x2Ss = x1Ss + Hairpin.MINIMUM_LENGTH_SS;
         }
 
         return new Endpoints(x1Ss, x2Ss, spanColumns);
     }
 
+    /** Which end of the wedge is being resolved — LilyPond's {@code d} in {@code x_points[d]}. */
+    private enum Side {
+        LEFT,
+        RIGHT
+    }
+
+    /**
+     * A resolved tip.
+     * <p>
+     * Only the <em>right</em> tip's {@code placedByDynamic} is consulted, by the minimum-length
+     * rule in {@link #compute} — widening moves the right tip alone, so the left tip's provenance
+     * cannot change the outcome. The flag rides on both sides because one helper resolves both;
+     * dropping it from the left would stop the two mirror methods mirroring for no gain.
+     */
+    private record Tip(double xSs, boolean placedByDynamic) {
+    }
+
+    /**
+     * The tip a text dynamic on element {@code index} would impose on {@code side} of a wedge, or
+     * {@code null} when that element carries no dynamic or has no column in this line.
+     * <p>
+     * Applies LilyPond's {@code x_points[d] = e[-d] - d * padding} ({@code hairpin.cc:218-220}):
+     * on the left, the dynamic's right edge plus padding; on the right, its left edge minus
+     * padding. Those edges are the glyph's <em>advance</em> box, not its ink — LilyPond's
+     * {@code e} is the {@code DynamicText} grob extent, which is the advance width. See
+     * {@link #dynamicAdvanceLeftEdgeSs}. Deliberately unclamped — the result may legitimately
+     * fall outside the hairpin's own columns.
+     * <p>
+     * When the caller asks about the hairpin's own bound this re-looks-up a column {@link #compute}
+     * already holds as {@code spanColumns.anchorColumn()} / {@code endColumn()}. That is
+     * deliberate: one helper serving both the own-bound and the adjacent-element callers is worth
+     * one map lookup on the rare shapes that have a dynamic on a bound at all — the common case
+     * returns before the lookup. Do not split it into two variants.
+     */
+    private static @Nullable Tip dynamicTipSs(
+        Line line,
+        Map<StaffElement, ElementColumn> columnsByElement,
+        int index,
+        Side side
+    ) {
+        // Range-guarded here so callers may pass anchorIndex - 1 and endIndex + 1 unchecked.
+        if (index < 0 || index >= line.elementCount()) {
+            return null;
+        }
+
+        var element = line.getElement(index);
+        var dynamic = element.findAttachment(DynamicAttachment.class);
+
+        if (dynamic == null) {
+            return null;
+        }
+
+        var column = columnsByElement.get(element);
+
+        if (column == null) {
+            return null;
+        }
+
+        var offsetSs = side == Side.LEFT
+            ? dynamicLeftTipOffsetSs(element, dynamic)
+            : dynamicRightTipOffsetSs(element, dynamic);
+
+        return new Tip(column.getXSs() + offsetSs, true);
+    }
+
     /**
      * The left tip, applying the first matching rule in {@code Hairpin::print}'s precedence order:
-     * a back-to-back hairpin ending on the anchor column, then a text dynamic on the element
-     * before the anchor, then the anchor column's own origin.
+     * a text dynamic on the anchor element itself, then a back-to-back hairpin ending on the anchor
+     * column, then a text dynamic on the element before the anchor, then the anchor column's own
+     * origin.
+     * <p>
+     * The own-bound rule outranks back-to-back because LilyPond tests
+     * {@code has_interface<Text_interface> (b)} ({@code hairpin.cc:216}) before its
+     * {@code adjacent-spanners} scan ({@code hairpin.cc:222}).
      */
-    private static double leftEndpointSs(
+    private static Tip leftEndpointSs(
         Hairpin hairpin,
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
         ElementColumn anchorColumn,
         int anchorIndex
     ) {
+        // Own bound first: in <f> both this and the back-to-back rule apply, and LilyPond checks
+        // the bound's text interface (hairpin.cc:216) before the adjacent-spanners scan (:222), so
+        // the wedge clears the glyph rather than stopping at the notehead center. Do not reorder.
+        var ownBound = dynamicTipSs(line, columnsByElement, anchorIndex, Side.LEFT);
+
+        if (ownBound != null) {
+            return ownBound;
+        }
+
         if (hasOtherHairpin(hairpin, line, (anchorBound, endBound) -> endBound.isAt(anchorIndex))) {
             // hairpin.cc:257 — x_points[d] = e.center() - d * padding / 3, with d == LEFT == -1.
-            return anchorColumn.getNoteheadCenterXSs() + Hairpin.BACK_TO_BACK_PADDING_SS;
+            return new Tip(
+                anchorColumn.getNoteheadCenterXSs() + Hairpin.BACK_TO_BACK_PADDING_SS, false);
         }
 
-        var previousDynamic = dynamicAt(line, anchorIndex - 1);
+        var previous = dynamicTipSs(line, columnsByElement, anchorIndex - 1, Side.LEFT);
 
-        if (previousDynamic != null) {
-            var previousColumn = columnsByElement.get(line.getElement(anchorIndex - 1));
-
-            if (previousColumn != null) {
-                // hairpin.cc:218-220 — x_points[d] = e[-d] - d * padding: the dynamic's right
-                // edge plus padding. Deliberately unclamped, so this may fall left of the anchor.
-                return dynamicLeftEdgeSs(previousColumn, previousDynamic)
-                    + dynamicWidthSs(previousDynamic) + Hairpin.BOUND_PADDING_SS;
-            }
+        if (previous != null) {
+            return previous;
         }
 
-        return anchorColumn.getXSs();
+        return new Tip(anchorColumn.getXSs(), false);
     }
 
     /**
      * The right tip, mirroring {@link #leftEndpointSs} with the extra rest rule: LilyPond ends a
-     * hairpin at a rest's left edge rather than past its glyph.
+     * hairpin at a rest's left edge rather than past its glyph. The precedence is a text dynamic on
+     * the end element itself, then a back-to-back hairpin anchored on the end column, then a text
+     * dynamic on the element after the end, then the rest rule, then past the notehead.
+     * <p>
+     * As on the left, the own-bound rule outranks back-to-back per {@code hairpin.cc:216} vs
+     * {@code :222}.
      */
-    private static double rightEndpointSs(
+    private static Tip rightEndpointSs(
         Hairpin hairpin,
         Line line,
         Map<StaffElement, ElementColumn> columnsByElement,
         ElementColumn endColumn,
         int endIndex
     ) {
-        if (hasOtherHairpin(hairpin, line, (anchorBound, endBound) -> anchorBound.isAt(endIndex))) {
-            return endColumn.getNoteheadCenterXSs() - Hairpin.BACK_TO_BACK_PADDING_SS;
+        // Own bound first, for the same reason as on the left. It also outranks the rest rule
+        // below, which is LilyPond's ordering; that combination is unreachable from the editor
+        // because DynamicMarkingAction extends NoteOnlyAction, so a rest never carries a dynamic.
+        var ownBound = dynamicTipSs(line, columnsByElement, endIndex, Side.RIGHT);
+
+        if (ownBound != null) {
+            return ownBound;
         }
 
-        var nextDynamic = dynamicAt(line, endIndex + 1);
+        if (hasOtherHairpin(hairpin, line, (anchorBound, endBound) -> anchorBound.isAt(endIndex))) {
+            return new Tip(
+                endColumn.getNoteheadCenterXSs() - Hairpin.BACK_TO_BACK_PADDING_SS, false);
+        }
 
-        if (nextDynamic != null) {
-            var nextColumn = columnsByElement.get(line.getElement(endIndex + 1));
+        var next = dynamicTipSs(line, columnsByElement, endIndex + 1, Side.RIGHT);
 
-            if (nextColumn != null) {
-                return dynamicLeftEdgeSs(nextColumn, nextDynamic) - Hairpin.BOUND_PADDING_SS;
-            }
+        if (next != null) {
+            return next;
         }
 
         if (endColumn.isRest()) {
             // hairpin.cc:268-271 — x_points[RIGHT] = e[LEFT].
-            return endColumn.getLeftEdgeXSs();
+            return new Tip(endColumn.getLeftEdgeXSs(), false);
         }
 
-        return endColumn.getXSs() + endColumn.getNoteheadWidthSs();
+        return new Tip(endColumn.getXSs() + endColumn.getNoteheadWidthSs(), false);
     }
 
     /**
@@ -212,18 +304,6 @@ public final class HairpinEndpoints {
         var neighbor = line.findFirstSpan(Hairpin.class, matches);
 
         return neighbor != null && neighbor != hairpin;
-    }
-
-    /**
-     * The text dynamic attached to element {@code index} of {@code line}, or {@code null} when
-     * that index is off either end of the line or its element carries no dynamic.
-     */
-    private static @Nullable DynamicAttachment dynamicAt(Line line, int index) {
-        if (index < 0 || index >= line.elementCount()) {
-            return null;
-        }
-
-        return line.getElement(index).findAttachment(DynamicAttachment.class);
     }
 
     /**
@@ -247,5 +327,66 @@ public final class HairpinEndpoints {
      */
     public static double dynamicWidthSs(DynamicAttachment dynamic) {
         return dynamic.getContentWidthSs();
+    }
+
+    /**
+     * The distance from a column's origin to the left edge of the advance box of a text dynamic
+     * sitting on {@code element} — the glyph origin, recovered from the ink left edge by removing
+     * the left side bearing.
+     * <p>
+     * A hairpin pads away from this box rather than from the ink box because that is the box
+     * LilyPond measures: its {@code DynamicText} grob extent is the advance width (Emmentaler's
+     * {@code f} declares {@code 1.468}, Bravura's {@code dynamicForte} {@code 1.456}), while the
+     * ink of both overhangs it. Padding from the ink instead doubled the visible gap.
+     * <p>
+     * The glyph itself stays centered by its <em>ink</em> box (see {@link #dynamicLeftEdgeSs}), so
+     * this changes only where a neighbouring wedge stops, never where the dynamic is drawn.
+     * <p>
+     * Expressed as an offset from the column origin rather than an absolute X so that
+     * {@code HorizontalSpacingCalculator}, which builds its springs before any column has a
+     * resolved position, can reserve room for the same pullback this class will later apply.
+     */
+    private static double advanceLeftEdgeOffsetSs(
+        StaffElement element,
+        DynamicAttachment dynamic
+    ) {
+        return NoteGeometry.getNoteheadCenterXSs(element)
+            - dynamicWidthSs(dynamic) / 2.0
+            - dynamic.getLeftSideBearingSs();
+    }
+
+    /**
+     * The distance from a column's origin to the left tip a wedge takes when the dynamic on
+     * {@code element} is what places it: past the advance box's right edge, plus the bound padding.
+     */
+    static double dynamicLeftTipOffsetSs(StaffElement element, DynamicAttachment dynamic) {
+        return advanceLeftEdgeOffsetSs(element, dynamic)
+            + dynamic.getAdvanceWidthSs()
+            + Hairpin.BOUND_PADDING_SS;
+    }
+
+    /**
+     * The distance from a column's origin to the right tip a wedge takes when the dynamic on
+     * {@code element} is what places it: short of the advance box's left edge by the bound padding.
+     * Normally negative — the tip stops left of the note's own origin.
+     */
+    static double dynamicRightTipOffsetSs(StaffElement element, DynamicAttachment dynamic) {
+        return advanceLeftEdgeOffsetSs(element, dynamic) - Hairpin.BOUND_PADDING_SS;
+    }
+
+    /**
+     * The absolute X of a text dynamic's advance box's left edge in staff spaces. See
+     * {@link #advanceLeftEdgeOffsetSs} for what that box is and why a hairpin measures from it.
+     */
+    static double dynamicAdvanceLeftEdgeSs(ElementColumn column, DynamicAttachment dynamic) {
+        return column.getXSs() + advanceLeftEdgeOffsetSs(column.getElement(), dynamic);
+    }
+
+    /**
+     * The absolute X of a text dynamic's advance box's right edge in staff spaces, the companion of
+     * {@link #dynamicAdvanceLeftEdgeSs}.
+     */
+    static double dynamicAdvanceRightEdgeSs(ElementColumn column, DynamicAttachment dynamic) {
+        return dynamicAdvanceLeftEdgeSs(column, dynamic) + dynamic.getAdvanceWidthSs();
     }
 }

@@ -413,6 +413,31 @@ public abstract class Span extends LineElement {
     }
 
     /**
+     * A predicate matching a span that covers {@code elementIndex} strictly inside its
+     * range — the bound elements themselves do not count.
+     * <p>
+     * A text dynamic may sit on a hairpin's bound, where the wedge pads away from it, but
+     * never under the wedge, so the editor asks about the strict interior rather than the
+     * inclusive range.
+     * <p>
+     * Off-edge and absent bounds read exactly as in {@link #containing}, which rejects
+     * {@link SpanBound#ABSENT} outright, and {@link SpanBound#isAt} is false for
+     * {@link SpanBound#BEFORE_LINE} / {@link SpanBound#AFTER_LINE} — so a bound with no
+     * position in the asking line cannot exempt an element, and every element the half
+     * covers reads as interior.
+     */
+    public static IndexPredicate strictlyContaining(int elementIndex) {
+        // Built once here rather than inside the lambda: this predicate is tested
+        // against every span on the line, on every selection change.
+        var contains = containing(elementIndex);
+
+        return (anchorBound, endBound) ->
+            contains.test(anchorBound, endBound)
+                && !anchorBound.isAt(elementIndex)
+                && !endBound.isAt(elementIndex);
+    }
+
+    /**
      * A predicate matching a span whose anchor and end are exactly the given indices.
      * <p>
      * Only a resolved position can equal a queried one — an off-edge bound is never coerced

@@ -77,6 +77,45 @@ class DynamicGrouperTest extends UnitTest {
     }
 
     @Test
+    void testDynamicOnHairpinAnchorJoinsItsGroup() {
+        var anchorNote = createNote(0, false);
+        anchorNote.addAttachment(
+            new DynamicAttachment(anchorNote, DynamicAttachment.DynamicType.MEZZO_FORTE));
+        var endNote = createNote(0, false);
+
+        var line = detachedLine();
+        line.addElement(anchorNote);
+        line.addElement(endNote);
+
+        var crescendo = new Crescendo(anchorNote, endNote);
+        line.addSpan(crescendo);
+
+        var groups = DynamicGrouper.group(line);
+
+        assertThat(groups).hasSize(1);
+        assertThat(groups.getFirst().members()).hasSize(2);
+    }
+
+    @Test
+    void testDynamicOnHairpinEndJoinsItsGroup() {
+        var anchorNote = createNote(0, false);
+        var endNote = createNote(0, false);
+        endNote.addAttachment(new DynamicAttachment(endNote, DynamicAttachment.DynamicType.PIANO));
+
+        var line = detachedLine();
+        line.addElement(anchorNote);
+        line.addElement(endNote);
+
+        var crescendo = new Crescendo(anchorNote, endNote);
+        line.addSpan(crescendo);
+
+        var groups = DynamicGrouper.group(line);
+
+        assertThat(groups).hasSize(1);
+        assertThat(groups.getFirst().members()).hasSize(2);
+    }
+
+    @Test
     void testDynamicImmediatelyAfterHairpinEndJoinsItsGroup() {
         var anchorNote = createNote(0, false);
         var endNote = createNote(0, false);
@@ -142,6 +181,29 @@ class DynamicGrouperTest extends UnitTest {
 
         assertThat(groups).hasSize(1);
         assertThat(groups.getFirst().members()).hasSize(2);
+    }
+
+    @Test
+    void testDynamicOnTheSharedElementOfTwoHairpinsJoinsTheirSingleGroup() {
+        var note1 = createNote(0, false);
+        var note2 = createNote(0, false);
+        note2.addAttachment(new DynamicAttachment(note2, DynamicAttachment.DynamicType.FORTE));
+        var note3 = createNote(0, false);
+
+        var line = detachedLine();
+        line.addElement(note1);
+        line.addElement(note2);
+        line.addElement(note3);
+
+        var crescendo = new Crescendo(note1, note2);
+        var diminuendo = new Diminuendo(note2, note3);
+        line.addSpan(crescendo);
+        line.addSpan(diminuendo);
+
+        var groups = DynamicGrouper.group(line);
+
+        assertThat(groups).hasSize(1);
+        assertThat(groups.getFirst().members()).hasSize(3);
     }
 
     @Test
@@ -257,6 +319,43 @@ class DynamicGrouperTest extends UnitTest {
         assertThat(groups).hasSize(1);
         assertThat(groups.getFirst().members())
             .as("only the dynamic on this line is grouped; the foreign hairpin is dropped")
+            .singleElement()
+            .isInstanceOf(DynamicGrouper.Member.OfDynamic.class);
+    }
+
+    @Test
+    void testDynamicStrictlyInsideAHairpinFormsItsOwnGroup() {
+        // The editor (SpanLookup.isInsideHairpin, MusicEditOperations.stripInteriorPointDynamics)
+        // never lets this shape arise through user action, but MusicXmlNoteReader and the legacy
+        // .mssw path build directly on the model and consult neither, so an imported file can still
+        // land a dynamic strictly inside a hairpin's range. That case must fall through to a
+        // cluster of its own rather than being swallowed into the hairpin's group.
+        var anchorNote = createNote(0, false);
+        var interiorNote = createNote(0, false);
+        interiorNote.addAttachment(
+            new DynamicAttachment(interiorNote, DynamicAttachment.DynamicType.FORTE));
+        var endNote = createNote(0, false);
+
+        var line = detachedLine();
+        line.addElement(anchorNote);
+        line.addElement(interiorNote);
+        line.addElement(endNote);
+
+        var crescendo = new Crescendo(anchorNote, endNote);
+        line.addSpan(crescendo);
+
+        var groups = DynamicGrouper.group(line);
+
+        // Counting the groups alone would not distinguish "the dynamic stood apart" from "the
+        // dynamic joined the hairpin and something else produced a second group", so name what
+        // has to be in each one.
+        assertThat(groups).hasSize(2);
+        assertThat(groups.getFirst().members())
+            .as("the hairpin keeps its group to itself")
+            .singleElement()
+            .isInstanceOf(DynamicGrouper.Member.OfHairpin.class);
+        assertThat(groups.get(1).members())
+            .as("the interior dynamic stands alone rather than joining the wedge it sits under")
             .singleElement()
             .isInstanceOf(DynamicGrouper.Member.OfDynamic.class);
     }

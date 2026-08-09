@@ -512,15 +512,21 @@ public final class MusicEditOperations {
 
             // mergeOverlappingSpans widens the added hairpin in place, so its indices
             // after the add are the merged range — which can reach past what the
-            // resolution computed. A point dynamic stranded inside a hairpin breaks the
-            // invariant DynamicMarkingAction.updateEnabledState() relies on.
-            stripPointDynamics(line, added.getAnchorElementIndex(), added.getEndElementIndex());
+            // resolution computed. A point dynamic on the merged hairpin's anchor or end
+            // element survives — the wedge pads away from it — but one stranded strictly
+            // inside breaks the invariant DynamicMarkingAction.updateEnabledState() relies on.
+            stripInteriorPointDynamics(line, added.getAnchorElementIndex(), added.getEndElementIndex());
         });
     }
 
     /**
-     * Removes the point dynamic (p, mf, ff …) from every element in the inclusive
-     * range {@code [begin, end]}.
+     * Removes the point dynamic (p, mf, ff …) from every element strictly inside the
+     * hairpin range {@code [anchorIndex, endIndex]}, leaving the two bound elements
+     * alone.
+     * <p>
+     * A text dynamic may sit on a hairpin's anchor or end element, where the wedge pads
+     * away from it; only the wedge's interior is off limits. A two-element hairpin has an
+     * empty interior, so nothing is stripped.
      * <p>
      * Each removal goes through {@link Line#modifyElement} rather than
      * {@code StaffElement.removeAttachment}, which records no mutation: undo would
@@ -528,8 +534,10 @@ public final class MusicEditOperations {
      * {@code modifyElement} nests inside an already-open modification bracket, so one
      * undo reverses both the hairpin and the strip.
      */
-    private void stripPointDynamics(Line line, int begin, int end) {
-        for (var index = begin; index <= end; index++) {
+    private void stripInteriorPointDynamics(Line line, int anchorIndex, int endIndex) {
+        // Not line.isInsideHairpin(index): that asks about *any* hairpin, so with two
+        // back-to-back hairpins it would strip dynamics outside the one being added.
+        for (var index = anchorIndex + 1; index < endIndex; index++) {
             var element = line.getElement(index);
             var existing = element.findAttachment(DynamicAttachment.class);
 

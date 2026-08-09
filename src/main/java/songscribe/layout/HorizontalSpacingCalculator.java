@@ -28,12 +28,14 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import songscribe.dom.DynamicAttachment;
 import songscribe.dom.Hairpin;
 import songscribe.dom.KeySignature;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Span;
+import songscribe.dom.StaffElement;
 import songscribe.engraving.StaffHeaderMetrics;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.util.LogUtils;
@@ -1011,10 +1013,17 @@ public final class HorizontalSpacingCalculator {
 
     /**
      * Returns the delta-X a hairpin needs to reach {@link Hairpin#MINIMUM_LENGTH_SS}, or 0 when no
-     * hairpin on {@code line} runs from {@code prev}'s element to {@code curr}'s. The hairpin is
-     * drawn from {@code prev}'s origin to {@code curr}'s origin plus {@code curr}'s notehead width,
-     * so a drawn length of at least {@code MINIMUM_LENGTH_SS} requires an origin-to-origin delta of
-     * at least {@code MINIMUM_LENGTH_SS - noteheadWidth}.
+     * hairpin on {@code line} runs from {@code prev}'s element to {@code curr}'s.
+     * <p>
+     * The wedge is drawn from {@code prev}'s origin plus a left-tip offset to {@code curr}'s origin
+     * plus a right-tip offset, so reaching {@code MINIMUM_LENGTH_SS} needs an origin-to-origin
+     * delta of at least {@code MINIMUM_LENGTH_SS + leftOffset - rightOffset}. With no dynamic on
+     * either bound those offsets are 0 and {@code curr}'s notehead width, reproducing the plain
+     * {@code MINIMUM_LENGTH_SS - noteheadWidth}. A text dynamic on a bound moves that bound's tip
+     * inward by roughly two staff spaces ({@code HairpinEndpoints.dynamicLeftTipOffsetSs} /
+     * {@code dynamicRightTipOffsetSs}), and reserving for it is what stops an {@code f<} from
+     * being squashed to nothing on a compressed line — LilyPond likewise pushes the notes apart
+     * rather than shortening the wedge (see {@link Hairpin#MINIMUM_LENGTH_SS}).
      * <p>
      * The question is asked about the two <em>elements</em> being spaced, not about their position
      * in the column list. That distinction is the whole point: an insertion preview splices a
@@ -1027,6 +1036,12 @@ public final class HorizontalSpacingCalculator {
      * rod spans the whole interval; SongScribe's {@link Spring} model has only per-pair struts. This
      * is not a meaningful gap — 69% of corpus hairpins span exactly two adjacent notes, and every
      * longer one is already wider than {@code MINIMUM_LENGTH_SS}.
+     * <p>
+     * Three of {@code HairpinEndpoints}' tip rules are deliberately <em>not</em> reserved for. A
+     * dynamic on the element <em>outside</em> the span pulls a tip by an amount that depends on a
+     * neighbouring pair's spring, which a per-pair strut cannot see. The back-to-back and rest
+     * rules both move a tip <em>inward</em> as well, and both went unreserved before dynamics on
+     * bounds existed; they stay that way rather than widening this method's remit unasked.
      */
     private static double hairpinReservationFloorSs(
         @Nullable Line line, ElementColumn prev, ElementColumn curr) {
@@ -1035,14 +1050,48 @@ public final class HorizontalSpacingCalculator {
             return 0;
         }
 
-        var anchorIndex = line.getElementIndex(prev.getElement());
-        var endIndex = line.getElementIndex(curr.getElement());
+        var anchorElement = prev.getElement();
+        var endElement = curr.getElement();
+        var anchorIndex = line.getElementIndex(anchorElement);
+        var endIndex = line.getElementIndex(endElement);
 
         if (!line.hasSpan(Hairpin.class, Span.exactly(anchorIndex, endIndex))) {
             return 0;
         }
 
-        return Hairpin.MINIMUM_LENGTH_SS - curr.getNoteheadWidthSs();
+        return Hairpin.MINIMUM_LENGTH_SS
+            + hairpinLeftTipOffsetSs(anchorElement)
+            - hairpinRightTipOffsetSs(endElement, curr.getNoteheadWidthSs());
+    }
+
+    /**
+     * How far right of the anchor's own origin a wedge's left tip starts: clear of the padded
+     * advance box of a text dynamic sitting on the anchor, or 0 when it carries none.
+     */
+    private static double hairpinLeftTipOffsetSs(StaffElement anchorElement) {
+        var dynamic = anchorElement.findAttachment(DynamicAttachment.class);
+
+        if (dynamic == null) {
+            return 0;
+        }
+
+        return HairpinEndpoints.dynamicLeftTipOffsetSs(anchorElement, dynamic);
+    }
+
+    /**
+     * How far right of the end's own origin a wedge's right tip stops: short of the padded advance
+     * box of a text dynamic sitting on the end, or past the notehead when it carries none.
+     */
+    private static double hairpinRightTipOffsetSs(
+        StaffElement endElement, double noteheadWidthSs) {
+
+        var dynamic = endElement.findAttachment(DynamicAttachment.class);
+
+        if (dynamic == null) {
+            return noteheadWidthSs;
+        }
+
+        return HairpinEndpoints.dynamicRightTipOffsetSs(endElement, dynamic);
     }
 
     // ==========================================================================

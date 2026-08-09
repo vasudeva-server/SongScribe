@@ -187,5 +187,42 @@ class DynamicAttachmentTest extends UnitTest {
             var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.DYNAMIC_FORTE);
             assertThat(attachment.getContentBottomSs()).isEqualTo(bbox.bottom());
         }
+
+        // A neighbouring hairpin pads away from the glyph's *advance* box, not its ink box
+        // (HairpinEndpoints.dynamicLeftTipOffsetSs). The two differ because the italic dynamics
+        // paint outside the box the font declares for them, so the advance width and the left side
+        // bearing are what carry that distinction. These are the only assertions in the suite that
+        // pin them against the font directly: every hairpin-geometry test derives its expected
+        // position by calling the same production helper it is checking, so a silent reversion to
+        // the ink box would pass there and fail only here.
+        @Test
+        void testAdvanceWidthSsDelegatesToSmuflAdvanceWidth() {
+            var attachment = new DynamicAttachment(DynamicType.FORTE);
+            assertThat(attachment.getAdvanceWidthSs())
+                .isEqualTo(SMuFLMetadata.requireAdvanceWidth(SMuFLGlyph.DYNAMIC_FORTE));
+        }
+
+        @Test
+        void testLeftSideBearingSsDelegatesToSmuflBBoxLeftEdge() {
+            var attachment = new DynamicAttachment(DynamicType.FORTE);
+            var bbox = SMuFLMetadata.requireBBox(SMuFLGlyph.DYNAMIC_FORTE);
+            assertThat(attachment.getLeftSideBearingSs()).isEqualTo(bbox.left());
+        }
+
+        // The whole point of the advance box is that it is not the ink box. If the font ever
+        // stopped distinguishing them for this glyph, the two assertions above would still pass
+        // while every hairpin next to an "f" silently moved.
+        @Test
+        void testForteInkOverhangsItsAdvanceBoxOnTheLeft() {
+            var attachment = new DynamicAttachment(DynamicType.FORTE);
+
+            assertThat(attachment.getLeftSideBearingSs())
+                .as("forte's ink starts left of its glyph origin, which is what makes the "
+                    + "advance box and the ink box differ")
+                .isNegative();
+            assertThat(attachment.getAdvanceWidthSs())
+                .as("forte's advance box is narrower than the ink it paints")
+                .isLessThan(attachment.getContentWidthSs());
+        }
     }
 }

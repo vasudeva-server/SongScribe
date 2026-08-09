@@ -264,10 +264,15 @@ public interface SpanLookup {
     }
 
     /**
-     * Returns true if the given note index falls within any hairpin (crescendo or diminuendo) range.
+     * Returns true if the given note index falls strictly inside any hairpin (crescendo or
+     * diminuendo), its bound elements excluded.
+     * <p>
+     * This is the editor's rule for where a text dynamic may go: a dynamic may sit on a
+     * hairpin's anchor or end element, but never under the wedge. See
+     * {@code docs/hairpin-editing.md}.
      */
-    default boolean isInHairpinRange(int noteIndex) {
-        return hasSpan(Hairpin.class, Span.containing(noteIndex));
+    default boolean isInsideHairpin(int noteIndex) {
+        return hasSpan(Hairpin.class, Span.strictlyContaining(noteIndex));
     }
 
     /**

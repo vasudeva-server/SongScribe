@@ -39,6 +39,7 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
+import songscribe.dom.Line;
 import songscribe.ui.selection.ElementSelection;
 
 class DynamicMarkingActionTest extends MainFrameMockTest {
@@ -134,11 +135,48 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
     @Nested
     class EnabledState {
 
+        /** Enough notes for a hairpin plus a note on either side of it. */
+        private static final int HAIRPIN_LINE_NOTE_COUNT = 5;
+
+        /** The span of the hairpin the tests below build: notes 1 through 3 of that line. */
+        private static final int HAIRPIN_ANCHOR_INDEX = 1;
+        private static final int HAIRPIN_INTERIOR_INDEX = 2;
+        private static final int HAIRPIN_END_INDEX = 3;
+
         private void setupRootPaneStub() {
             var mockRootPane = mock(JRootPane.class);
             when(mockRootPane.getInputMap(anyInt())).thenReturn(new InputMap());
             when(mockRootPane.getActionMap()).thenReturn(new ActionMap());
             when(mockEnv().frame().getRootPane()).thenReturn(mockRootPane);
+        }
+
+        private Line hairpinLine() {
+            var line = detachedLine();
+
+            for (var i = 0; i < HAIRPIN_LINE_NOTE_COUNT; i++) {
+                line.addElement(StaffElementFactory.crotchet());
+            }
+
+            return line;
+        }
+
+        /**
+         * Points the mocked selection at the single note {@code noteIndex} of {@code line} and
+         * returns a forte action that has just recomputed its enabled state for it.
+         */
+        private DynamicMarkingAction forteActionForSingleNote(Line line, int noteIndex) {
+            setupRootPaneStub();
+
+            when(mockEnv().score().getSelectionSize()).thenReturn(1);
+            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
+            when(mockEnv().coordinator().isApplicableToSelection(any())).thenReturn(true);
+            when(mockEnv().coordinator().getSelection())
+                .thenReturn(new ElementSelection(line, noteIndex, noteIndex));
+
+            var action = DynamicMarkingAction.createForteAction(mainFrame());
+            action.updateEnabledState();
+
+            return action;
         }
 
         @Test
@@ -180,93 +218,74 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
 
         @Test
         void testDisabledWhenNoteInsideCrescendoRange() {
-            setupRootPaneStub();
-            var line = detachedLine();
+            var line = hairpinLine();
+            line.addSpan(new Crescendo(
+                line.getElement(HAIRPIN_ANCHOR_INDEX), line.getElement(HAIRPIN_END_INDEX)));
 
-            for (var i = 0; i < 4; i++) {
-                line.addElement(StaffElementFactory.crotchet());
-            }
+            var action = forteActionForSingleNote(line, HAIRPIN_INTERIOR_INDEX);
 
-            line.addSpan(new Crescendo(line.getElement(0), line.getElement(3)));
-            var selection = new ElementSelection(line, 1, 1);
-
-            when(mockEnv().score().getSelectionSize()).thenReturn(1);
-            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
-            when(mockEnv().coordinator().isApplicableToSelection(any())).thenReturn(true);
-            when(mockEnv().coordinator().getSelection()).thenReturn(selection);
-
-            var action = DynamicMarkingAction.createForteAction(mainFrame());
-            action.updateEnabledState();
-            assertThat(action.isEnabled()).isFalse();
+            assertThat(action.isEnabled())
+                .as("a note under the wedge cannot take a dynamic")
+                .isFalse();
         }
 
         @Test
         void testDisabledWhenNoteInsideDiminuendoRange() {
-            setupRootPaneStub();
-            var line = detachedLine();
+            var line = hairpinLine();
+            line.addSpan(new Diminuendo(
+                line.getElement(HAIRPIN_ANCHOR_INDEX), line.getElement(HAIRPIN_END_INDEX)));
 
-            for (var i = 0; i < 4; i++) {
-                line.addElement(StaffElementFactory.crotchet());
-            }
+            var action = forteActionForSingleNote(line, HAIRPIN_INTERIOR_INDEX);
 
-            line.addSpan(new Diminuendo(line.getElement(0), line.getElement(3)));
-            var selection = new ElementSelection(line, 1, 1);
-
-            when(mockEnv().score().getSelectionSize()).thenReturn(1);
-            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
-            when(mockEnv().coordinator().isApplicableToSelection(any())).thenReturn(true);
-            when(mockEnv().coordinator().getSelection()).thenReturn(selection);
-
-            var action = DynamicMarkingAction.createForteAction(mainFrame());
-            action.updateEnabledState();
-            assertThat(action.isEnabled()).isFalse();
+            assertThat(action.isEnabled())
+                .as("the rule is about the wedge, not its direction, so a diminuendo bars it too")
+                .isFalse();
         }
 
-        // Row 26: isInHairpinRange uses inclusive bounds — anchor (index 0) and end (index 3)
-        // both fall inside the range [0..3] and must disable the action.
+        // A text dynamic may sit on any hairpin bound — anchor or end — because the wedge pads
+        // away from it. Only the strict interior of the range is off limits.
 
         @Test
-        void testDisabledWhenNoteIsAtHairpinAnchorBoundary() {
-            setupRootPaneStub();
-            var line = detachedLine();
+        void testEnabledWhenNoteIsAtHairpinAnchorBoundary() {
+            var line = hairpinLine();
+            line.addSpan(new Crescendo(
+                line.getElement(HAIRPIN_ANCHOR_INDEX), line.getElement(HAIRPIN_END_INDEX)));
 
-            for (var i = 0; i < 4; i++) {
-                line.addElement(StaffElementFactory.crotchet());
-            }
+            var action = forteActionForSingleNote(line, HAIRPIN_ANCHOR_INDEX);
 
-            line.addSpan(new Crescendo(line.getElement(0), line.getElement(3)));
-            var selection = new ElementSelection(line, 0, 0);
-
-            when(mockEnv().score().getSelectionSize()).thenReturn(1);
-            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
-            when(mockEnv().coordinator().isApplicableToSelection(any())).thenReturn(true);
-            when(mockEnv().coordinator().getSelection()).thenReturn(selection);
-
-            var action = DynamicMarkingAction.createForteAction(mainFrame());
-            action.updateEnabledState();
-            assertThat(action.isEnabled()).isFalse();
+            assertThat(action.isEnabled())
+                .as("the anchor is a bound the wedge pads away from, so f< is offerable")
+                .isTrue();
         }
 
         @Test
-        void testDisabledWhenNoteIsAtHairpinEndBoundary() {
-            setupRootPaneStub();
-            var line = detachedLine();
+        void testEnabledWhenNoteIsAtHairpinEndBoundary() {
+            var line = hairpinLine();
+            line.addSpan(new Crescendo(
+                line.getElement(HAIRPIN_ANCHOR_INDEX), line.getElement(HAIRPIN_END_INDEX)));
 
-            for (var i = 0; i < 4; i++) {
-                line.addElement(StaffElementFactory.crotchet());
-            }
+            var action = forteActionForSingleNote(line, HAIRPIN_END_INDEX);
 
-            line.addSpan(new Crescendo(line.getElement(0), line.getElement(3)));
-            var selection = new ElementSelection(line, 3, 3);
+            assertThat(action.isEnabled())
+                .as("the end is a bound the wedge pads away from, so <f is offerable")
+                .isTrue();
+        }
 
-            when(mockEnv().score().getSelectionSize()).thenReturn(1);
-            when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
-            when(mockEnv().coordinator().isApplicableToSelection(any())).thenReturn(true);
-            when(mockEnv().coordinator().getSelection()).thenReturn(selection);
+        @Test
+        void testEnabledWhenNoteIsSharedByBackToBackHairpins() {
+            var line = hairpinLine();
+            // Two opposite hairpins meeting on the interior note, which is a bound of each — the
+            // <f> shape. Belonging to two hairpins at once must not make it interior to either.
+            line.addSpan(new Crescendo(
+                line.getElement(HAIRPIN_ANCHOR_INDEX), line.getElement(HAIRPIN_INTERIOR_INDEX)));
+            line.addSpan(new Diminuendo(
+                line.getElement(HAIRPIN_INTERIOR_INDEX), line.getElement(HAIRPIN_END_INDEX)));
 
-            var action = DynamicMarkingAction.createForteAction(mainFrame());
-            action.updateEnabledState();
-            assertThat(action.isEnabled()).isFalse();
+            var action = forteActionForSingleNote(line, HAIRPIN_INTERIOR_INDEX);
+
+            assertThat(action.isEnabled())
+                .as("the note two hairpins share is a bound of both, so <f> is offerable")
+                .isTrue();
         }
     }
 

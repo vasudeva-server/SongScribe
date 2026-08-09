@@ -73,7 +73,7 @@ class FermataRendererTest extends UnitTest {
     @Test
     void testDrawnGlyphIsCenteredOnTheNotehead() {
         // The renderer's x contract: it draws the glyph origin as storedX - FERMATA_BBOX_LEFT_SS,
-        // where storedX is the stacker's already-notehead-centerd visual-left edge. The glyph's
+        // where storedX is the stacker's already-notehead-centered visual-left edge. The glyph's
         // visual center (origin + bboxLeft + width/2) must therefore land exactly on the notehead
         // center. Reverting the renderer to centeredGlyphX (which re-applies the centering the
         // stored x already carries) shifts the drawn glyph by noteheadCenter - width/2 and this
@@ -96,7 +96,7 @@ class FermataRendererTest extends UnitTest {
         var noteheadCenterSs = ELEMENT_X_SS + NoteGeometry.getNoteheadCenterXSs(note);
 
         assertThat(drawnGlyphCenterSs)
-            .describedAs("the drawn fermata glyph must be visually centerd on the notehead")
+            .describedAs("the drawn fermata glyph must be visually centered on the notehead")
             .isCloseTo(noteheadCenterSs, within(FLOAT_TOLERANCE_SS));
     }
 

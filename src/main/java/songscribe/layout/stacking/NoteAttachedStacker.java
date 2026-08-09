@@ -660,7 +660,7 @@ public class NoteAttachedStacker {
     }
 
     /**
-     * X of an articulation's collision footprint — the glyph's left edge, centerd on the notehead,
+     * X of an articulation's collision footprint — the glyph's left edge, centered on the notehead,
      * which is exactly where {@code ArticulationRenderer} draws it. The note's column x is not the
      * footprint: an accent is wider than a notehead, so anchoring its box at the column x pushes the
      * box off the glyph by half the width difference and makes it collide with whatever sits to the
@@ -719,7 +719,7 @@ public class NoteAttachedStacker {
      * StackingUtils#placeAndReserveClamped}. Shared by the full pipeline's fermata pass and the
      * no-tie preview so the two agree on fermata placement.
      * <p>
-     * The collision footprint is centerd on the notehead, exactly where {@code FermataRenderer}
+     * The collision footprint is centered on the notehead, exactly where {@code FermataRenderer}
      * draws the glyph — not anchored at the column x. Anchoring at the column x offsets the box
      * from the glyph by half the difference between the fermata's width and the notehead's, so it
      * clears the tie at the wrong x and the drawn glyph's inner bottom corner ends up nearer the

@@ -78,7 +78,49 @@ before this predicate existed.
 
 At layout time, the shared element's endpoints pull back from the notehead
 center by `Hairpin.BACK_TO_BACK_PADDING_SS` on each side, so the two wedges'
-tips do not touch — see `docs/line-layout.md`, Example 8.
+tips do not touch — see `docs/line-layout.md`, Example 8. This holds only when
+the shared element carries no dynamic. When it does — `<f>` — the dynamic's
+own-bound rule takes precedence instead; see
+[Text dynamics at a hairpin bound](#text-dynamics-at-a-hairpin-bound) below.
+
+## Text dynamics at a hairpin bound
+
+A text dynamic (`p`, `mf`, `f` …) may sit on **any hairpin bound** — a
+hairpin's anchor element or its end element. It may never sit **strictly
+inside** a hairpin's range. So `f<`, `>p` and `<f>` are all legal, and only
+the wedge's interior is off limits. This is LilyPond's uniform bound rule
+(`lily/hairpin.cc:216-220`, the `has_interface<Text_interface>(b)` branch pads
+the wedge away from a dynamic text that *is* its bound).
+
+`<f>` on a single note — a leading crescendo, an `f`, and a trailing
+diminuendo, all anchored on that one note — is the configuration issue #744
+was filed for. The hairpins were never the problem: #743 already made two
+opposite-type hairpins sharing one element creatable (see "Back-to-back
+hairpins" above). What was missing was the UI half — the dynamic itself could
+not be placed: `DynamicMarkingAction.updateEnabledState` disabled all six
+dynamic actions on any element inside a hairpin's *inclusive* range, so the
+shared bound was off limits along with the true interior.
+
+The editor enforces the bound-or-outside rule through two symbols:
+
+- `SpanLookup.isInsideHairpin` — read by
+  `DynamicMarkingAction.updateEnabledState` to decide whether the dynamic
+  actions are enabled for the current selection. It reports true only for a
+  hairpin's strict interior, never for either bound.
+- `MusicEditOperations.stripInteriorPointDynamics` — strips any point dynamic
+  that falls in a hairpin's strict interior when the hairpin is added or
+  extended over it. A dynamic already sitting on what becomes a bound is left
+  alone.
+
+The rule is bound-wide — covering `f<` and `>p` as well as `<f>` — rather than
+shared-note-only, and that is deliberate: it needs no invalidation machinery.
+Deleting one of two back-to-back hairpins that shared a dynamic-bearing
+element leaves the surviving hairpin with that same element as its own bound
+— `f>` after deleting the crescendo out of `f<>`, say — which is itself a
+legal shape under this rule. Nothing is ever left stranded that the menu
+would refuse to create, so there is no cleanup sweep to hook into
+`Line.applySpanOutcomes` or the hairpin arm of
+`ScoreViewController.deleteSelectedTarget`.
 
 ## The rest rule and its asymmetry
 

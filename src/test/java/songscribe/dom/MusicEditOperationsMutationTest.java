@@ -509,20 +509,28 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
     /**
      * Four crotchets whose first two already carry a crescendo, with a point dynamic
-     * on element 0. Selecting [2, 3] then extends that crescendo to [0, 3], so element
-     * 0 lies inside the merged range but two notes outside the selection.
+     * on {@code dynamicIndex}. Selecting [2, 3] then extends that crescendo to [0, 3].
      */
-    private Env setupExtendEnv() {
+    private Env buildExtendEnv(int dynamicIndex) {
         var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet());
         var line = env.line();
 
         song.withoutMutationTracking(() -> {
             line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1)));
-            var first = line.getElement(0);
-            first.addAttachment(new DynamicAttachment(first, POINT_DYNAMIC));
+            var element = line.getElement(dynamicIndex);
+            element.addAttachment(new DynamicAttachment(element, POINT_DYNAMIC));
         });
 
         return env;
+    }
+
+    /**
+     * {@link #buildExtendEnv} with the point dynamic on element 1 — interior to the
+     * merged range [0, 3] and still two notes outside the selection, so it must be
+     * stripped.
+     */
+    private Env setupExtendEnv() {
+        return buildExtendEnv(1);
     }
 
     private static List<Crescendo> crescendosOf(Line line) {
@@ -551,7 +559,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
         env.operations().addHairpinToSelection(Hairpin.Kind.CRESCENDO);
 
-        assertThat(env.line().getElement(0).findAttachment(DynamicAttachment.class))
+        assertThat(env.line().getElement(1).findAttachment(DynamicAttachment.class))
             .as("a point dynamic inside the merged hairpin range must be stripped "
                 + "even though it sits outside the selection")
             .isNull();
@@ -569,7 +577,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var mutations = captureSingleDidChange().getMutations();
         replayUndo(mutations);
 
-        var restored = line.getElement(0).findAttachment(DynamicAttachment.class);
+        var restored = line.getElement(1).findAttachment(DynamicAttachment.class);
 
         assertThat(restored)
             .as("one undo must restore the stripped point dynamic — a raw "
@@ -588,6 +596,83 @@ class MusicEditOperationsMutationTest extends UnitTest {
             () -> assertThat(original.getEndElementIndex())
                 .as("undo must restore the pre-extend crescendo end")
                 .isEqualTo(1));
+    }
+
+    @Test
+    void testAddHairpinKeepsPointDynamicOnTheMergedSpanAnchor() {
+        var env = buildExtendEnv(0);
+        var line = env.line();
+        ReflectionTestHelper.selectRange(env.coordinator(), EXTEND_SELECTION_BEGIN, EXTEND_SELECTION_END);
+
+        env.operations().addHairpinToSelection(Hairpin.Kind.CRESCENDO);
+
+        assertThat(line.getElement(0).findAttachment(DynamicAttachment.class))
+            .as("a point dynamic on the merged hairpin's anchor element is a legal bound, "
+                + "not strict interior, so it must survive the strip")
+            .isNotNull();
+    }
+
+    @Test
+    void testAddHairpinKeepsPointDynamicOnTheMergedSpanEnd() {
+        var env = buildExtendEnv(EXTEND_SELECTION_END);
+        var line = env.line();
+        ReflectionTestHelper.selectRange(env.coordinator(), EXTEND_SELECTION_BEGIN, EXTEND_SELECTION_END);
+
+        env.operations().addHairpinToSelection(Hairpin.Kind.CRESCENDO);
+
+        assertThat(line.getElement(EXTEND_SELECTION_END).findAttachment(DynamicAttachment.class))
+            .as("a point dynamic on the merged hairpin's end element is a legal bound, "
+                + "not strict interior, so it must survive the strip")
+            .isNotNull();
+    }
+
+    @Test
+    void testAddHairpinOverTwoElementsStripsNothing() {
+        var env = setupEnv(crotchet(), crotchet());
+        var line = env.line();
+
+        song.withoutMutationTracking(() -> {
+            var anchor = line.getElement(0);
+            anchor.addAttachment(new DynamicAttachment(anchor, POINT_DYNAMIC));
+            var end = line.getElement(1);
+            end.addAttachment(new DynamicAttachment(end, POINT_DYNAMIC));
+        });
+
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
+        env.operations().addHairpinToSelection(Hairpin.Kind.CRESCENDO);
+
+        assertAll(
+            () -> assertThat(line.getElement(0).findAttachment(DynamicAttachment.class))
+                .as("a two-element hairpin has an empty interior, so its anchor dynamic must not be stripped")
+                .isNotNull(),
+            () -> assertThat(line.getElement(1).findAttachment(DynamicAttachment.class))
+                .as("a two-element hairpin has an empty interior, so its end dynamic must not be stripped")
+                .isNotNull());
+    }
+
+    @Test
+    void testStripAgreesWithIsInsideHairpin() {
+        var env = setupEnv(crotchet(), crotchet(), crotchet(), crotchet());
+        var line = env.line();
+
+        song.withoutMutationTracking(() -> {
+            for (var index = 0; index < line.elementCount(); index++) {
+                var element = line.getElement(index);
+                element.addAttachment(new DynamicAttachment(element, POINT_DYNAMIC));
+            }
+        });
+
+        ReflectionTestHelper.selectRange(env.coordinator(), 0, EXTEND_SELECTION_END);
+        env.operations().addHairpinToSelection(Hairpin.Kind.CRESCENDO);
+
+        for (var index = 0; index < line.elementCount(); index++) {
+            var stripped = line.getElement(index).findAttachment(DynamicAttachment.class) == null;
+
+            assertThat(line.isInsideHairpin(index))
+                .as("index %d: stripInteriorPointDynamics and isInsideHairpin must agree on strict interior",
+                    index)
+                .isEqualTo(stripped);
+        }
     }
 
     @Test

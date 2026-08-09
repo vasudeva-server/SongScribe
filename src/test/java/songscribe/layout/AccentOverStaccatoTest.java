@@ -71,7 +71,7 @@ class AccentOverStaccatoTest extends UnitTest {
 
     private static final double ACCENT_WIDTH_SS = AccentShape.accent().getBounds2D().getWidth();
 
-    /** Both glyphs are centerd on the notehead, so the dot sits centerd within the accent's box. */
+    /** Both glyphs are centered on the notehead, so the dot sits centered within the accent's box. */
     private static final double ACCENT_LEFT_X_SS =
         DOT_LEFT_X_SS - (ACCENT_WIDTH_SS - DOT_WIDTH_SS) / 2.0;
 
@@ -207,7 +207,7 @@ class AccentOverStaccatoTest extends UnitTest {
      * A flat inner edge that spans a support binds at that support's extreme, so the support's shape
      * is invisible to it. The accent's outer edge peaks at its <em>left</em> end and recedes 0.42 ss
      * by its tip; every element that stacks above an accent — dynamic, hairpin, tuplet bracket — is
-     * flat-bottomed and centerd on the note column, so it covers that peak and reads box height.
+     * flat-bottomed and centered on the note column, so it covers that peak and reads box height.
      * Reserving the accent's wedge would move none of them.
      * <p>
      * Note the exactness: this is not "close to zero", it is zero. The same theorem makes a
@@ -220,7 +220,7 @@ class AccentOverStaccatoTest extends UnitTest {
         var accentTopYSs = DOT_EDGE_Y_SS;
         var accentOuterEdge = ShapeProfile.outerEdge(AccentShape.accent(), true);
 
-        // Wider than the accent and centerd on it: a dynamic, a hairpin, a tuplet bracket.
+        // Wider than the accent and centered on it: a dynamic, a hairpin, a tuplet bracket.
         var elementWidthSs = accentWidthSs + 1.0;
         var elementXSs = DOT_LEFT_X_SS - (elementWidthSs - accentWidthSs) / 2.0;
         var elementProfile = StaffExtents.Profile.flat(elementWidthSs);
@@ -235,7 +235,7 @@ class AccentOverStaccatoTest extends UnitTest {
         var horizonSs = 0.75;
 
         assertThat(wedged.clearance(true, elementXSs, elementProfile, ACCENT_PADDING_SS, horizonSs).ySs())
-            .describedAs("a flat, centerd element binds at the accent's apex either way")
+            .describedAs("a flat, centered element binds at the accent's apex either way")
             .isEqualTo(
                 boxed.clearance(true, elementXSs, elementProfile, ACCENT_PADDING_SS, horizonSs).ySs());
     }

@@ -43,11 +43,16 @@ import songscribe.dom.SpanBound;
  * <ul>
  *   <li>Two hairpins whose inclusive element ranges share an element are in one group — that is
  *       the back-to-back {@code < >} case, where both hang on the same column.</li>
- *   <li>A text dynamic joins a hairpin's group when it sits on the element immediately outside
- *       the span, at {@code anchorIndex - 1} or {@code endIndex + 1}. It can never sit on or
- *       inside {@code [anchorIndex, endIndex]}: the editor strips point dynamics from that range
- *       when a hairpin is added and refuses to add one there afterwards, so there is deliberately
- *       no interior case here.</li>
+ *   <li>A text dynamic joins a hairpin's group when it sits on one of the hairpin's own bounds
+ *       ({@code anchorIndex} or {@code endIndex}) or on the element immediately outside the span
+ *       ({@code anchorIndex - 1} or {@code endIndex + 1}). This is an editor invariant, not a
+ *       model one: {@code SpanLookup.isInsideHairpin} refuses to add a dynamic strictly inside a
+ *       hairpin's range, and {@code MusicEditOperations.stripInteriorPointDynamics} removes one a
+ *       new or extended hairpin swallows, so the editor never produces a dynamic strictly inside
+ *       {@code (anchorIndex, endIndex)}. A file built by {@code MusicXmlNoteReader} or the legacy
+ *       {@code .mssw} path consults neither, so an imported dynamic can still land strictly inside
+ *       a hairpin — that case falls through to a cluster of its own, which is deliberate and must
+ *       not be removed as dead code.</li>
  *   <li>A text dynamic adjacent to no hairpin is a group of its own.</li>
  * </ul>
  */
@@ -112,8 +117,8 @@ public final class DynamicGrouper {
      * leftmost member.
      * <p>
      * Element index order is X order: columns are laid out in reading order, and a hairpin's
-     * drawn left tip may be pulled back only as far as the dynamic at {@code anchorIndex - 1},
-     * which is in the same group anyway.
+     * drawn left tip may be pulled back only as far as a dynamic at {@code anchorIndex - 1} or
+     * sitting on {@code anchorIndex} itself, both of which are in the same group anyway.
      * <p>
      * A hairpin whose endpoints do not both resolve to a position in {@code line} is skipped
      * entirely — it belongs to another line and has no geometry here.
@@ -223,13 +228,16 @@ public final class DynamicGrouper {
         }
 
         /**
-         * Whether a text dynamic on element {@code index} sits immediately outside one of this
-         * cluster's hairpins.
+         * Whether a text dynamic on element {@code index} sits on, or immediately outside, one of
+         * this cluster's hairpin bounds.
          */
         private boolean abuts(int index) {
             for (var member : members) {
                 if (member instanceof Member.OfHairpin hairpin
-                    && (index == hairpin.anchorIndex() - 1 || index == hairpin.endIndex() + 1)) {
+                    && (index == hairpin.anchorIndex() - 1
+                        || index == hairpin.anchorIndex()
+                        || index == hairpin.endIndex()
+                        || index == hairpin.endIndex() + 1)) {
                     return true;
                 }
             }

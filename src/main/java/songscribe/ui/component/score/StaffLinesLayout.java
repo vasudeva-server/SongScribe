@@ -195,7 +195,7 @@ public class StaffLinesLayout implements LayoutManager2 {
             var width = parent.getWidth() - insets.left - insets.right;
 
             for (var i = 0; i < geometry.count(); i++) {
-                // Positions round to nearest so lines stay centerd on their midline;
+                // Positions round to nearest so lines stay centered on their midline;
                 // sizes round up so no content is clipped at the component edge.
                 var y = viewScale.toViewPx(new Ss(geometry.topYSs(i))).roundedPx();
                 var height = viewScale.toViewPx(new Ss(geometry.heightSs(i))).ceilPx();

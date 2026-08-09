@@ -26,13 +26,16 @@ import static org.mockito.Mockito.when;
 
 import java.awt.Font;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
+import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
@@ -530,7 +533,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         assertThat(HYPHEN_COLLISION_GAP_SS).isLessThan(SPACE_COLLISION_GAP_SS);
     }
 
-    // A lone syllable still reserves its own footprint in the collision floor — the notehead-centerd
+    // A lone syllable still reserves its own footprint in the collision floor — the notehead-centered
     // half that overhangs toward the gap plus one inter-syllable space — even though its unlyriced
     // neighbour has nothing to collide with. A wide enough lone syllable makes that reservation exceed
     // the note-collision floor, so it is the binding constraint.
@@ -702,6 +705,124 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
         // rather than pulling the strut below it.
         assertThat(Hairpin.MINIMUM_LENGTH_SS - OVERWIDE_END_NOTEHEAD_WIDTH_SS).isNegative();
         assertThat(spring.strutSs()).isCloseTo(NARROW_PAIR_COLLISION_FLOOR_SS, within(TOLERANCE));
+    }
+
+    // ==========================================================================
+    // Hairpin reservation with a text dynamic on a bound (#744)
+    // ==========================================================================
+
+    /**
+     * Which bound of the fixture's crescendo carries the text dynamic. A dynamic on the anchor
+     * pushes the wedge's left tip right; one on the end pulls its right tip left. Either way the
+     * drawn wedge is shorter than the plain origin-to-notehead span, so the pair must reserve more.
+     */
+    private enum DynamicBound {
+        ANCHOR,
+        END
+    }
+
+    /** The plain reservation, with no dynamic on either bound, for direction comparisons. */
+    private static final double PLAIN_HAIRPIN_FLOOR_SS =
+        Hairpin.MINIMUM_LENGTH_SS - END_NOTEHEAD_WIDTH_SS;
+
+    /** {@link #hairpinFixture} with a forte attached to one of the crescendo's two bounds. */
+    private static HairpinFixture hairpinFixtureWithDynamicOn(DynamicBound bound) {
+        var fixture = hairpinFixture(true, END_NOTEHEAD_WIDTH_SS);
+        var column = bound == DynamicBound.ANCHOR ? fixture.anchorColumn() : fixture.endColumn();
+        var element = column.getElement();
+        element.addAttachment(
+            new DynamicAttachment(element, DynamicAttachment.DynamicType.FORTE));
+
+        return fixture;
+    }
+
+    private static Map<StaffElement, ElementColumn> columnsOf(HairpinFixture fixture) {
+        var columnsByElement = new HashMap<StaffElement, ElementColumn>();
+        columnsByElement.put(fixture.anchorColumn().getElement(), fixture.anchorColumn());
+        columnsByElement.put(fixture.endColumn().getElement(), fixture.endColumn());
+
+        return columnsByElement;
+    }
+
+    /**
+     * Places the pair exactly the reserved distance apart and returns the wedge that
+     * {@link HairpinEndpoints} then draws in that gap.
+     */
+    private static HairpinEndpoints.Endpoints wedgeAtReservedGap(HairpinFixture fixture) {
+        var spring = hairpinSpring(fixture, fixture.endColumn());
+
+        // Guard the fixture: the hairpin reservation must be the floor that wins, or the gap
+        // below would be some other floor's and prove nothing about this one.
+        assertThat(spring.strutSs()).isGreaterThan(NARROW_PAIR_COLLISION_FLOOR_SS);
+
+        fixture.anchorColumn().setXSs(0.0);
+        fixture.endColumn().setXSs(spring.strutSs());
+
+        var endpoints = HairpinEndpoints.compute(
+            fixture.line().getCrescendos().getFirst(), fixture.line(), columnsOf(fixture));
+
+        assertThat(endpoints).isNotNull();
+        return endpoints;
+    }
+
+    @Test
+    void testBuildSpringReservesExtraWidthForADynamicOnTheHairpinsAnchor() {
+        var fixture = hairpinFixtureWithDynamicOn(DynamicBound.ANCHOR);
+
+        var spring = hairpinSpring(fixture, fixture.endColumn());
+
+        assertThat(spring.strutSs())
+            .as("a dynamic on the anchor pushes the left tip right, so the pair needs more room "
+                + "than the plain reservation")
+            .isGreaterThan(PLAIN_HAIRPIN_FLOOR_SS);
+    }
+
+    @Test
+    void testBuildSpringReservesExtraWidthForADynamicOnTheHairpinsEnd() {
+        var fixture = hairpinFixtureWithDynamicOn(DynamicBound.END);
+
+        var spring = hairpinSpring(fixture, fixture.endColumn());
+
+        assertThat(spring.strutSs())
+            .as("a dynamic on the end pulls the right tip left, so the pair needs more room "
+                + "than the plain reservation")
+            .isGreaterThan(PLAIN_HAIRPIN_FLOOR_SS);
+    }
+
+    // The two assertions that actually matter: the distance this class reserves and the distance
+    // HairpinEndpoints needs must be the same number. Asserting the reserved gap against the
+    // reservation formula would only restate it; placing the columns at that gap and measuring the
+    // wedge that comes out fails if either side's arithmetic is wrong, or if the two disagree.
+
+    @Test
+    void testTheGapReservedForADynamicOnTheAnchorDrawsExactlyTheMinimumLength() {
+        var endpoints = wedgeAtReservedGap(hairpinFixtureWithDynamicOn(DynamicBound.ANCHOR));
+
+        assertThat(endpoints.widthSs())
+            .as("the reserved gap must draw a wedge of exactly the minimum length, neither "
+                + "squashed by an under-reservation nor padded out by the minimum-length floor")
+            .isCloseTo(Hairpin.MINIMUM_LENGTH_SS, within(TOLERANCE));
+    }
+
+    @Test
+    void testTheGapReservedForADynamicOnTheEndDrawsExactlyTheMinimumLength() {
+        var endpoints = wedgeAtReservedGap(hairpinFixtureWithDynamicOn(DynamicBound.END));
+
+        assertThat(endpoints.widthSs())
+            .as("the reserved gap must draw a wedge of exactly the minimum length")
+            .isCloseTo(Hairpin.MINIMUM_LENGTH_SS, within(TOLERANCE));
+    }
+
+    @Test
+    void testTheGapReservedWithNoDynamicStillDrawsExactlyTheMinimumLength() {
+        // The same consistency check for the pre-#744 shape, so a change to the reservation that
+        // fixed the dynamic cases by breaking the plain one cannot pass.
+        var endpoints = wedgeAtReservedGap(hairpinFixture(true, END_NOTEHEAD_WIDTH_SS));
+
+        assertThat(endpoints.widthSs())
+            .as("a hairpin with no dynamic on either bound must also draw exactly the minimum "
+                + "length in its reserved gap")
+            .isCloseTo(Hairpin.MINIMUM_LENGTH_SS, within(TOLERANCE));
     }
 
     /**

@@ -131,8 +131,8 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
     }
 
     /**
-     * The X at which to draw a glyph of the given ink bounds so that it sits centerd within its
-     * layout box, which the stacker already centerd on the notehead.
+     * The X at which to draw a glyph of the given ink bounds so that it sits centered within its
+     * layout box, which the stacker already centered on the notehead.
      * <p>
      * The box is sized from the above-staff glyph's bbox, so centering rather than drawing flush at
      * the box's left edge is what keeps a glyph whose own bbox differs — a future below-staff
@@ -146,7 +146,7 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
 
     /**
      * Draws a single articulation glyph centered within its layout box, which the stacker already
-     * centerd on the notehead.
+     * centered on the notehead.
      */
     private static void drawArticulationGlyph(
         Graphics2D g2,
@@ -161,7 +161,7 @@ public final class ArticulationRenderer implements ElementRenderer<StaffElement>
     }
 
     /**
-     * Draws the accent wedge centered within its layout box, which the stacker already centerd on
+     * Draws the accent wedge centered within its layout box, which the stacker already centered on
      * the notehead. Unlike the SMuFL articulation glyphs, the wedge is drawn as a filled
      * {@link AccentShape#accent()} path rather than a music-font glyph.
      */

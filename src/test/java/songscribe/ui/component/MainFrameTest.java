@@ -56,6 +56,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 
 import javax.swing.JRootPane;
 
@@ -1107,6 +1108,27 @@ class MainFrameTest extends UnitTest {
     class PerformStartupAction {
 
         /**
+         * {@code performStartupAction} asks {@link ModifierState#isAltPressed()}, which on macOS
+         * polls the <em>real</em> keyboard through the OS rather than reading anything this test
+         * controls. Left unmocked, every test here silently depends on whether someone happens to
+         * be holding Option while the suite runs: the three that assert something happens fail,
+         * and the ones that assert nothing happens pass for the wrong reason. Pin it false for the
+         * whole class; {@link #testAltKeyForcesDoNothingRegardlessOfPref} overrides it to true.
+         */
+        private MockedStatic<ModifierState> modifierStateMock;
+
+        @BeforeEach
+        void setUpModifierState() {
+            modifierStateMock = mockStatic(ModifierState.class);
+            modifierStateMock.when(ModifierState::isAltPressed).thenReturn(false);
+        }
+
+        @AfterEach
+        void tearDownModifierState() {
+            modifierStateMock.close();
+        }
+
+        /**
          * When the startup action pref is {@code DO_NOTHING}, no message is posted.
          */
         @Test
@@ -1134,12 +1156,12 @@ class MainFrameTest extends UnitTest {
         @Test
         void testAltKeyForcesDoNothingRegardlessOfPref() {
             try (var prefsMock = mockStatic(Prefs.class);
-                 var modifierStateMock = mockStatic(ModifierState.class);
                  var messageCenterMock = mockStatic(MessageCenter.class)) {
 
                 prefsMock.when(() -> Prefs.getString(PrefsKey.STARTUP_ACTION))
                     .thenReturn(StartupAction.OPEN_MOST_RECENT.name());
 
+                // The only test here that wants a held Alt key, overriding the class default.
                 modifierStateMock.when(ModifierState::isAltPressed).thenReturn(true);
 
                 var recentPath = Path.of("some-song.mssw");
