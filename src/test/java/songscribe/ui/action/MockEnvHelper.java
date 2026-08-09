@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 
 import org.mockito.MockedStatic;
 
+import songscribe.dom.Song;
 import songscribe.ui.Mode;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.MainFrame;
@@ -79,6 +80,13 @@ public final class MockEnvHelper {
         when(mockScore.getMode()).thenReturn(Mode.EDIT);
         when(mockScore.getSelectionSize()).thenReturn(0);
         when(mockScore.getController()).thenReturn(mockCtrl);
+
+        // Actions constructed with this env (e.g. RevertToSavedAction) may compute their
+        // initial enabled state from the song, so give it an unmodified default like the
+        // real fresh-document state at launch.
+        var mockSong = mock(Song.class);
+        when(mockSong.isModified()).thenReturn(false);
+        when(mockScore.getSong()).thenReturn(mockSong);
 
         return new MockEnv(mockFrame, mockScore, mockCoordinator, mockCtrl);
     }

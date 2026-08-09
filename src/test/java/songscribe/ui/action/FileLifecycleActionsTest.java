@@ -326,6 +326,17 @@ class FileLifecycleActionsTest extends MainFrameMockTest {
             );
         }
 
+        // Regression test for #752: the action must not be enabled just because it was
+        // just constructed (AbstractAction's default) — at launch there is no current file
+        // and the fresh document is unmodified, so no notification this action listens for
+        // has fired yet to correct that default.
+        @Test
+        void testNotEnabledAfterConstructionWhenLaunchedWithNoCurrentFile() {
+            when(mainFrame().getCurrentFile()).thenReturn(null);
+            var action = RevertToSavedAction.createAction(mainFrame());
+            assertThat(action.isEnabled()).isFalse();
+        }
+
         private Song stubSong(boolean modified) {
             var song = mock(Song.class);
             when(song.isModified()).thenReturn(modified);

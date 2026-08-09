@@ -44,6 +44,12 @@ public final class RevertToSavedAction extends UIAction {
             "revert-to-saved",
             Flag.DISABLE_WHEN_PLAYING
         );
+
+        // UIAction's constructor never calls updateEnabledState(), so a fresh action stays
+        // enabled (AbstractAction's default) until a notification this action listens for
+        // fires. Nothing does at launch — there's no save, undo, or song change yet — so
+        // without this call the action is wrongly enabled from startup until one occurs.
+        updateEnabledState();
     }
 
     // Not flag-driven: enabled only when there is a saved file on disk to revert to
