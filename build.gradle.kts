@@ -254,6 +254,13 @@ val e2eTest = tasks.register<Test>("e2eTest") {
     classpath = sourceSets["test"].runtimeClasspath
 }
 
+tasks.register<JavaExec>("generateCorpus") {
+    description = "Regenerates the synthetic half of the MusicXML losslessness corpus"
+    group = "verification"
+    mainClass.set("songscribe.io.musicxml.MusicXmlCorpusGenerator")
+    classpath = sourceSets["test"].runtimeClasspath
+}
+
 // -- PIT mutation testing --
 
 val defaultPitestTargets = listOf(

@@ -20,16 +20,12 @@
 
 package songscribe.io.musicxml;
 
-import static org.assertj.core.api.Assumptions.assumeThat;
-
 import java.awt.Component;
 import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-
-import org.junit.jupiter.api.Test;
 
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
@@ -65,21 +61,20 @@ import songscribe.dom.Ending;
  *
  * <p>Each {@code song*()} method builds a {@link Song} that exercises one slice of
  * the SongScribe → MusicXML mapping (see {@code plans/migrations/musicxml/musicxml.md}).
- * {@link #generateCorpus()} serializes every one through the <em>legacy</em>
+ * {@link #main} serializes every one through the <em>legacy</em>
  * {@link SongIO#writeSong} into {@code src/test/resources/corpus/synthetic/}, so the
  * committed {@code .mssw} files are real native documents that the legacy reader loads.
  *
- * <p>This is a build tool, not a regression test: it is skipped unless run with
- * {@code -Dcorpus.generate=true}. Regenerate the corpus with:
+ * <p>This is a build tool, not a regression test. Regenerate the corpus with:
  *
  * <pre>{@code
- *   EXTRA_JVM_ARGS="-Dcorpus.generate=true" ./scripts/test.sh MusicXmlCorpusGenerator
+ *   ./scripts/generate-corpus.sh
  * }</pre>
  *
  * The losslessness gate that consumes the corpus is
  * {@link MusicXmlCorpusLosslessnessTest}.
  */
-class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
+public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
 
     private static final Path SYNTHETIC_DIR = Path.of("src/test/resources/corpus/synthetic");
 
@@ -171,12 +166,7 @@ class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
      */
     private record Entry(String name, Song song, DocumentFonts fonts) {}
 
-    @Test
-    void generateCorpus() throws Exception {
-        assumeThat(Boolean.getBoolean("corpus.generate"))
-            .as("corpus generation is a build tool; run with -Dcorpus.generate=true")
-            .isTrue();
-
+    public static void main(String[] args) throws Exception {
         Files.createDirectories(SYNTHETIC_DIR);
 
         for (var entry : corpus()) {
