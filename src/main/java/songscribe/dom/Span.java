@@ -314,6 +314,31 @@ public abstract class Span extends LineElement {
     }
 
     /**
+     * A predicate matching a span that overlaps {@code [begin, end]} by more than a
+     * single shared endpoint: its end falls past {@code begin} and its anchor falls
+     * before {@code end}.
+     * <p>
+     * Two hairpins may meet — one ends on the element the next begins on, and the
+     * wedges back away from that shared column (LilyPond's back-to-back rule). More
+     * than that one element in common is a genuine collision.
+     * <p>
+     * Off-edge and absent bounds read exactly as in {@link #overlapping}, and
+     * {@link SpanBound#isAt} is false for all of them — so a half-detached span
+     * matches, and the caller treats it as a collision. That is deliberate: a bound
+     * with no position cannot be shown to share only an endpoint.
+     */
+    public static IndexPredicate overlappingBeyondEndpoint(int begin, int end) {
+        // Built once here rather than inside the lambda: this predicate is tested
+        // against every span on the line, on every selection change.
+        var overlaps = overlapping(begin, end);
+
+        return (anchorBound, endBound) ->
+            overlaps.test(anchorBound, endBound)
+                && !endBound.isAt(begin)
+                && !anchorBound.isAt(end);
+    }
+
+    /**
      * A predicate matching a span whose anchor and end are exactly the given indices.
      * <p>
      * Only a resolved position can equal a queried one — an off-edge bound is never coerced

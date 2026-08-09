@@ -34,4 +34,9 @@ public final class Diminuendo extends Hairpin {
     protected Hairpin createHairpin(StaffElement newAnchor, StaffElement newEnd) {
         return new Diminuendo(newAnchor, newEnd);
     }
+
+    @Override
+    public Kind getKind() {
+        return Kind.DIMINUENDO;
+    }
 }

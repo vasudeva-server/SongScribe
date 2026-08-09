@@ -34,4 +34,9 @@ public final class Crescendo extends Hairpin {
     protected Hairpin createHairpin(StaffElement newAnchor, StaffElement newEnd) {
         return new Crescendo(newAnchor, newEnd);
     }
+
+    @Override
+    public Kind getKind() {
+        return Kind.CRESCENDO;
+    }
 }

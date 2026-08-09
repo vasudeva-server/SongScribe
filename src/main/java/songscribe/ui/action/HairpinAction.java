@@ -23,6 +23,7 @@ package songscribe.ui.action;
 import module java.desktop;
 
 import songscribe.Strings;
+import songscribe.dom.Hairpin;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.AddHairpinCommand;
 import songscribe.ui.MusicEditOperations;
@@ -30,46 +31,45 @@ import songscribe.ui.component.MainFrame;
 
 public final class HairpinAction extends UIAction {
 
-    private final boolean isCrescendo;
+    private final Hairpin.Kind kind;
 
     public static HairpinAction createCrescendoAction(MainFrame mainFrame) {
-        return new HairpinAction(mainFrame, true);
+        return new HairpinAction(mainFrame, Hairpin.Kind.CRESCENDO);
     }
 
     public static HairpinAction createDiminuendoAction(MainFrame mainFrame) {
-        return new HairpinAction(mainFrame, false);
+        return new HairpinAction(mainFrame, Hairpin.Kind.DIMINUENDO);
     }
 
-    private HairpinAction(MainFrame mainFrame, boolean isCrescendo) {
+    private HairpinAction(MainFrame mainFrame, Hairpin.Kind kind) {
+        // DISABLE_IN_REST_MODE is deliberately absent. UIAction.enableInRestMode() is a
+        // conjunction: it disables both while the rest tool is armed and whenever the
+        // selection contains a rest — and the latter is exactly the "note, rest"
+        // selection this action must support. Because super.updateEnabledState() runs
+        // before resolveHairpinAction(), no resolution logic could recover from it.
+        // Dropping the flag also makes the items available while the rest tool is
+        // armed, which is intended: input mode governs the next *inserted* element,
+        // not what a hairpin drawn over an existing selection may cover.
+        // resolveHairpinAction() is now the sole authority on rests — interior rests
+        // are fine, a trailing rest is a valid endpoint, a leading rest is INELIGIBLE.
         super(
             mainFrame,
-            Strings.get(isCrescendo ? Strings.ACTION_HAIRPIN_CRESCENDO : Strings.ACTION_HAIRPIN_DIMINUENDO),
+            Strings.get(kind == Hairpin.Kind.CRESCENDO ? Strings.ACTION_HAIRPIN_CRESCENDO : Strings.ACTION_HAIRPIN_DIMINUENDO),
             null,
             0,
-            isCrescendo ? "add-crescendo" : "add-diminuendo",
-            Strings.get(isCrescendo ? Strings.ACTION_HAIRPIN_CRESCENDO_TOOLTIP : Strings.ACTION_HAIRPIN_DIMINUENDO_TOOLTIP),
+            kind == Hairpin.Kind.CRESCENDO ? "add-crescendo" : "add-diminuendo",
+            Strings.get(kind == Hairpin.Kind.CRESCENDO ? Strings.ACTION_HAIRPIN_CRESCENDO_TOOLTIP : Strings.ACTION_HAIRPIN_DIMINUENDO_TOOLTIP),
             Flag.REQUIRES_SELECTION,
-            Flag.DISABLE_IN_REST_MODE,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_GRACE_MODE
         );
-        this.isCrescendo = isCrescendo;
+        this.kind = kind;
     }
 
-    public boolean isCrescendo() {
-        return isCrescendo;
-    }
-
-    /**
-     * The state in which this action extends rather than adds, which is the only
-     * state that relabels it.
-     */
-    private MusicEditOperations.HairpinActionState extendState() {
-        return isCrescendo
-            ? MusicEditOperations.HairpinActionState.EXTEND_CRESCENDO
-            : MusicEditOperations.HairpinActionState.EXTEND_DIMINUENDO;
+    public Hairpin.Kind getKind() {
+        return kind;
     }
 
     /**
@@ -100,12 +100,12 @@ public final class HairpinAction extends UIAction {
             return false;
         }
 
-        applyHairpinState(ctrl.resolveHairpinAction().state());
+        applyHairpinState(ctrl.resolveHairpinAction(kind).state());
         return true;
     }
 
     private void applyHairpinState(MusicEditOperations.HairpinActionState state) {
-        var isExtend = state == extendState();
+        var isExtend = state == MusicEditOperations.HairpinActionState.EXTEND;
         applyLabel(isExtend);
         setEnabled(isExtend || state == MusicEditOperations.HairpinActionState.CAN_ADD);
     }
@@ -116,6 +116,7 @@ public final class HairpinAction extends UIAction {
     private void applyLabel(boolean isExtend) {
         String nameKey;
         String tooltipKey;
+        var isCrescendo = kind == Hairpin.Kind.CRESCENDO;
 
         if (isExtend) {
             nameKey = isCrescendo
@@ -139,6 +140,6 @@ public final class HairpinAction extends UIAction {
 
     @Override
     protected void performAction(ActionEvent e) {
-        MessageCenter.post(new AddHairpinCommand(isCrescendo));
+        MessageCenter.post(new AddHairpinCommand(kind));
     }
 }

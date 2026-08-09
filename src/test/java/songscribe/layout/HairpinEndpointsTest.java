@@ -106,9 +106,9 @@ class HairpinEndpointsTest extends UnitTest {
     }
 
     /**
-     * The editor cannot yet place a hairpin on a rest, so these drive
-     * {@link HairpinEndpoints} directly. The geometry is kept because the configuration is real
-     * engraving practice — see the class Javadoc.
+     * This is a geometry test, so it drives {@link HairpinEndpoints} directly rather than through
+     * the editor. See {@code songscribe.ui.HairpinActionStateTest} for the editor path that
+     * produces a hairpin ending on a rest, and {@code docs/hairpin-editing.md} for the rules.
      */
     @Nested
     class RestAsEndElement {
@@ -139,8 +139,10 @@ class HairpinEndpointsTest extends UnitTest {
     }
 
     /**
-     * The editor absorbs same-type neighbours and blocks opposite-type ones, so these build the
-     * shared-element configuration on the model directly.
+     * This is a geometry test, so it builds the shared-element configuration on the model
+     * directly rather than through the editor. See {@code songscribe.ui.HairpinActionStateTest}
+     * for the editor path that produces back-to-back hairpins, and {@code docs/hairpin-editing.md}
+     * for the rules.
      */
     @Nested
     class BackToBackHairpins {

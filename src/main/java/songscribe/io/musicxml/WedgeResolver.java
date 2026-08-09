@@ -30,7 +30,6 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
-import songscribe.io.musicxml.WedgeTypeMapping.WedgeKind;
 
 /**
  * Measure-level hairpin wedge state machine. Binds each {@code <wedge>} to the
@@ -61,8 +60,7 @@ final class WedgeResolver {
     // -------------------------------------------------------------------------
 
     // A start <wedge> whose anchor note has not yet been seen.
-    @Nullable
-    private WedgeKind pendingStartWedgeKind = null;
+    private Hairpin.@Nullable Kind pendingStartWedgeKind = null;
 
     private int pendingStartWedgeX1Ss = 0;
     private int pendingStartWedgeYSs = 0;
@@ -71,8 +69,7 @@ final class WedgeResolver {
     @Nullable
     private StaffElement pendingWedgeAnchor = null;
 
-    @Nullable
-    private WedgeKind pendingWedgeKind = null;
+    private Hairpin.@Nullable Kind pendingWedgeKind = null;
 
     private int pendingWedgeX1Ss = 0;
     private int pendingWedgeYSs = 0;
@@ -198,10 +195,10 @@ final class WedgeResolver {
     private void buildHairpin(
         Line line,
         StaffElement anchor,
-        WedgeKind kind,
+        Hairpin.Kind kind,
         StaffElement end
     ) {
-        if (kind == WedgeKind.CRESCENDO) {
+        if (kind == Hairpin.Kind.CRESCENDO) {
             var crescendo = new Crescendo(anchor, end);
             applyHairpinShifts(crescendo);
             line.addCrescendo(crescendo);

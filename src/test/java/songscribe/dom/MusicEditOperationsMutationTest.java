@@ -36,7 +36,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.jspecify.annotations.Nullable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
@@ -447,21 +447,47 @@ class MusicEditOperationsMutationTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    void testAddDynamicsEmitsOneAddition(boolean crescendo) {
+    @EnumSource(Hairpin.Kind.class)
+    void testAddDynamicsEmitsOneAddition(Hairpin.Kind kind) {
         var env = setupEnv(crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
-        env.operations().addHairpinToSelection(crescendo);
+        env.operations().addHairpinToSelection(kind);
 
         var notification = captureSingleDidChange();
         var mutations = notification.getMutations();
         assertThat(mutations).hasSize(1);
 
-        if (crescendo) {
+        if (kind == Hairpin.Kind.CRESCENDO) {
             assertThat(mutations.getFirst()).isInstanceOf(CrescendoAddition.class);
         } else {
             assertThat(mutations.getFirst()).isInstanceOf(DiminuendoAddition.class);
         }
+    }
+
+    @Test
+    void testAddDiminuendoAnchoredOnCrescendoEndElementLeavesCrescendoUnchanged() {
+        var env = setupEnv(crotchet(), crotchet(), crotchet());
+        var line = env.line();
+
+        song.withoutMutationTracking(
+            () -> line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1))));
+
+        ReflectionTestHelper.selectRange(env.coordinator(), 1, 2);
+        env.operations().addHairpinToSelection(Hairpin.Kind.DIMINUENDO);
+
+        var notification = captureSingleDidChange();
+        var mutations = notification.getMutations();
+        assertThat(mutations).hasSize(1);
+        assertThat(mutations.getFirst()).isInstanceOf(DiminuendoAddition.class);
+
+        var crescendo = crescendosOf(line).getFirst();
+        assertAll(
+            () -> assertThat(crescendo.getAnchorElementIndex())
+                .as("the diminuendo add must not touch the crescendo's anchor")
+                .isEqualTo(0),
+            () -> assertThat(crescendo.getEndElementIndex())
+                .as("the diminuendo add must not touch the crescendo's end")
+                .isEqualTo(1));
     }
 
     // canAddDynamicsToSelection(), canRemoveDynamicsFromSelection() and
@@ -523,7 +549,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var env = setupExtendEnv();
         ReflectionTestHelper.selectRange(env.coordinator(), EXTEND_SELECTION_BEGIN, EXTEND_SELECTION_END);
 
-        env.operations().addHairpinToSelection(true);
+        env.operations().addHairpinToSelection(Hairpin.Kind.CRESCENDO);
 
         assertThat(env.line().getElement(0).findAttachment(DynamicAttachment.class))
             .as("a point dynamic inside the merged hairpin range must be stripped "
@@ -537,7 +563,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var line = env.line();
         ReflectionTestHelper.selectRange(env.coordinator(), EXTEND_SELECTION_BEGIN, EXTEND_SELECTION_END);
 
-        env.operations().addHairpinToSelection(true);
+        env.operations().addHairpinToSelection(Hairpin.Kind.CRESCENDO);
 
         // Captured before the replay, which posts a notification of its own.
         var mutations = captureSingleDidChange().getMutations();
@@ -571,9 +597,9 @@ class MusicEditOperationsMutationTest extends UnitTest {
         song.withoutMutationTracking(() ->
             line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1))));
 
-        // One note selected, adjacent to the existing crescendo → EXTEND_CRESCENDO.
+        // One note selected, adjacent to the existing crescendo → EXTEND.
         ReflectionTestHelper.selectNote(env.coordinator(), 2);
-        env.operations().addHairpinToSelection(true);
+        env.operations().addHairpinToSelection(Hairpin.Kind.CRESCENDO);
 
         var additions = captureSingleDidChange().getMutations().stream()
             .filter(CrescendoAddition.class::isInstance)
@@ -600,7 +626,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         var env = setupEnv(graceQuaver(), crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, GRACE_FIXTURE_LAST_INDEX);
 
-        env.operations().addHairpinToSelection(true);
+        env.operations().addHairpinToSelection(Hairpin.Kind.CRESCENDO);
 
         var result = crescendosOf(env.line());
         assertThat(result).hasSize(1);

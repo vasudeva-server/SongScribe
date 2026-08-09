@@ -33,6 +33,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
+import songscribe.dom.Hairpin;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -313,7 +314,7 @@ class MutationLabelTest extends UnitTest {
         ReflectionTestHelper.selectRange(coordinator, selectionBegin, selectionEnd);
 
         UndoController.resetForTest();
-        operations.addHairpinToSelection(true);
+        operations.addHairpinToSelection(Hairpin.Kind.CRESCENDO);
         return UndoController.undoLabel();
     }
 
@@ -331,7 +332,7 @@ class MutationLabelTest extends UnitTest {
         song.withoutMutationTracking(() ->
             line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1))));
 
-        // Selecting past the existing crescendo resolves to EXTEND_CRESCENDO, which must
+        // Selecting past the existing crescendo resolves to EXTEND, which must
         // declare a different op-name than the add path — the mutation batch is the same
         // shape either way, so a type-derived label could not tell them apart.
         assertThat(hairpinUndoLabel(song, EXTEND_SELECTION_BEGIN, EXTEND_SELECTION_END))

@@ -88,6 +88,41 @@ public abstract sealed class Hairpin extends Span
      */
     protected abstract Hairpin createHairpin(StaffElement newAnchor, StaffElement newEnd);
 
+    /**
+     * Which of the two hairpins this is. The single answer to that question — use it
+     * rather than {@code instanceof} or a {@code getClass()} comparison, so a caller
+     * that only needs the type never has to know the class hierarchy.
+     */
+    public abstract Kind getKind();
+
+    /**
+     * Returns true if replacing {@code oldElement} with {@code newElement} would leave this
+     * hairpin on an endpoint the user could not have placed — a non-pitched anchor, or an end
+     * that is neither a pitched note nor the first rest after one.
+     * <p>
+     * {@link Line#setElement} re-points a span at whatever replaces its endpoint, so without
+     * this a hairpin ending on a rest quietly ends on a grace note the moment that rest is
+     * replaced by one. The rules live in {@link Line#hairpinSurvivesReplacement}, beside the
+     * predicates the menu and the deletion reshaping read, so all three stay in agreement.
+     * <p>
+     * Undo restores the hairpin, so the removal is silent — see
+     * {@link #requiresInvalidationConfirm}.
+     *
+     * @param oldElement the element being replaced (still in the line at call time)
+     * @param newElement the element that will replace it
+     * @param line       the line receiving the replacement (pre-replacement state)
+     */
+    @Override
+    public boolean isInvalidatedByReplacement(StaffElement oldElement, StaffElement newElement, Line line) {
+        var replacedIndex = line.getElementIndex(oldElement);
+
+        if (replacedIndex < 0) {
+            return false;
+        }
+
+        return !line.hairpinSurvivesReplacement(this, replacedIndex, newElement);
+    }
+
     @Override
     protected final Span createCopy(StaffElement newAnchor, StaffElement newEnd) {
         var copy = createHairpin(newAnchor, newEnd);
@@ -154,5 +189,36 @@ public abstract sealed class Hairpin extends Span
             return base + ',' + x1ShiftSs + ',' + x2ShiftSs + ',' + yShiftSs + ';';
         }
         return base + ';';
+    }
+
+    /**
+     * Which of the two hairpins a crescendo or diminuendo is — a plain two-value tag
+     * rather than a {@code Class} token, since a hairpin is always constructed
+     * directly ({@code new Crescendo}/{@code new Diminuendo}), never reflectively.
+     * <p>
+     * It names the type before there is an instance to ask, which is what both the
+     * MusicXML reader (holding a wedge open while its end note is awaited) and the
+     * hairpin menu (resolving what one item would do) need. Where an instance is in
+     * hand, ask it: {@link Hairpin#getKind()}.
+     */
+    public enum Kind {
+        CRESCENDO(Crescendo.class),
+        DIMINUENDO(Diminuendo.class);
+
+        private final Class<? extends Hairpin> spanType;
+
+        Kind(Class<? extends Hairpin> spanType) {
+            this.spanType = spanType;
+        }
+
+        /** The concrete subclass this kind names, for {@code SpanLookup} queries. */
+        public Class<? extends Hairpin> spanType() {
+            return spanType;
+        }
+
+        /** The other kind — the one this may share an endpoint with. */
+        public Kind opposite() {
+            return this == CRESCENDO ? DIMINUENDO : CRESCENDO;
+        }
     }
 }

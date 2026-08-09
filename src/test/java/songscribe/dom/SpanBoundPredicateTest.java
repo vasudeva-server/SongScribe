@@ -32,16 +32,17 @@ import org.junit.jupiter.api.function.Executable;
 import songscribe.UnitTest;
 
 /**
- * Unit tests for {@link Span}'s three predicate factories as pure functions of two
+ * Unit tests for {@link Span}'s four predicate factories as pure functions of two
  * {@link SpanBound}s — every combination of the four bound kinds, for each predicate.
  * No {@link Line} is involved: {@link SpanLookupTest} covers what a real line resolves to,
  * this covers what the predicates do with it.
  *
- * <p>The three readings under test: an off-edge bound is unbounded in its direction, so a
+ * <p>The readings under test: an off-edge bound is unbounded in its direction, so a
  * cross-line half reports true for every element it passes over; {@link SpanBound#ABSENT} is
- * rejected by {@link Span#containing} because an endpoint with no position bounds nothing; and
- * no bound is ever coerced to index 0 or to a last index, so {@link Span#exactly} answers only
- * for two real positions.
+ * rejected by {@link Span#containing} because an endpoint with no position bounds nothing;
+ * {@link Span#overlappingBeyondEndpoint} excludes a span that shares only the one endpoint
+ * two back-to-back hairpins may legally meet at; and no bound is ever coerced to index 0 or
+ * to a last index, so {@link Span#exactly} answers only for two real positions.
  */
 class SpanBoundPredicateTest extends UnitTest {
 
@@ -186,6 +187,75 @@ class SpanBoundPredicateTest extends UnitTest {
                     .as("while containment still rejects it")
                     .isFalse()
             );
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Span.overlappingBeyondEndpoint(ANCHOR_INDEX, END_INDEX)
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class OverlappingBeyondEndpointEveryBoundCombination {
+
+        // Same overlap reading as `overlapping` — neither of the endpoint-sharing cases this
+        // predicate excludes arises among these four bound kinds at ANCHOR_INDEX/END_INDEX, so
+        // the matrix matches OverlappingEveryBoundCombination's; the named cases below pin the
+        // excluded cases directly.
+        private static final boolean[][] EXPECTED = {
+            {true, false, true, false},     // anchor At(1)
+            {true, false, true, false},     // anchor BEFORE_LINE
+            {false, false, false, false},   // anchor AFTER_LINE
+            {true, false, true, false},     // anchor ABSENT — not rejected, see below
+        };
+
+        @Test
+        void testOverlappingBeyondEndpointOverEveryBoundCombination() {
+            assertMatrix(
+                Span.overlappingBeyondEndpoint(ANCHOR_INDEX, END_INDEX),
+                "overlappingBeyondEndpoint(" + ANCHOR_INDEX + ", " + END_INDEX + ')',
+                EXPECTED);
+        }
+
+        @Test
+        void testSpanWhoseEndIsExactlyAtBeginIsNotMatched() {
+            assertThat(Span.overlappingBeyondEndpoint(ANCHOR_INDEX, END_INDEX)
+                .test(SpanBound.BEFORE_LINE, new SpanBound.At(ANCHOR_INDEX)))
+                .as("a span whose end sits exactly at the other's begin only shares the "
+                    + "endpoint two back-to-back hairpins may legally have")
+                .isFalse();
+        }
+
+        @Test
+        void testSpanWhoseAnchorIsExactlyAtEndIsNotMatched() {
+            assertThat(Span.overlappingBeyondEndpoint(ANCHOR_INDEX, END_INDEX)
+                .test(new SpanBound.At(END_INDEX), SpanBound.AFTER_LINE))
+                .as("the mirror case: a span whose anchor sits exactly at the other's end "
+                    + "only shares an endpoint")
+                .isFalse();
+        }
+
+        @Test
+        void testSpanOverlappingByTwoOrMoreElementsIsMatched() {
+            assertThat(Span.overlappingBeyondEndpoint(ANCHOR_INDEX, END_INDEX)
+                .test(SpanBound.BEFORE_LINE, new SpanBound.At(QUERY_INDEX)))
+                .as("more than one shared element is a genuine collision, not a legal "
+                    + "back-to-back meeting")
+                .isTrue();
+        }
+
+        @Test
+        void testAbsentAnchorIsMatched() {
+            // SpanBound.isAt is false for every Unpositioned value, so a half-detached span
+            // can never be shown to share only an endpoint and is treated as a collision.
+            // This is the conservative answer and is deliberate — contrast with
+            // OverlappingEveryBoundCombination.testAbsentAnchorIsFoundWhereContainingRejectsIt,
+            // which exists because `overlapping` must keep finding such spans for the removal
+            // sweeps.
+            assertThat(Span.overlappingBeyondEndpoint(ANCHOR_INDEX, END_INDEX)
+                .test(SpanBound.ABSENT, new SpanBound.At(END_INDEX)))
+                .as("a half-detached span cannot be shown to share only an endpoint")
+                .isTrue();
         }
     }
 

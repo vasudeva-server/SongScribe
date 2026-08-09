@@ -81,6 +81,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.FermataAttachment;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Song;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.ScaleContext;
@@ -354,7 +355,7 @@ public final class ScoreViewController {
 
     @Handler
     public void handleAddHairpin(AddHairpinCommand message) {
-        operations.addHairpinToSelection(message.isCrescendo());
+        operations.addHairpinToSelection(message.kind());
     }
 
     @Handler
@@ -403,8 +404,8 @@ public final class ScoreViewController {
         return operations.canToggleTuplet();
     }
 
-    public HairpinResolution resolveHairpinAction() {
-        return operations.resolveHairpinAction();
+    public HairpinResolution resolveHairpinAction(Hairpin.Kind kind) {
+        return operations.resolveHairpinAction(kind);
     }
 
     public EndingValidationResult canMakeFirstSecondEnding() {

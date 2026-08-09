@@ -73,12 +73,12 @@ public final class HairpinRenderer {
      * Computes the two wedge lines of a hairpin from its decoration layout.
      *
      * @param layout      The pre-computed layout (with offsets already applied)
-     * @param isCrescendo True for crescendo, false for diminuendo
+     * @param kind        Which hairpin this is — decides the wedge direction
      * @param invariants  The line's rendering invariants
      */
     static Line2D.Double[] computeHairpinLines(
         LayoutResult.DecorationLayout layout,
-        boolean isCrescendo,
+        Hairpin.Kind kind,
         LineInvariants invariants
     ) {
         var x1 = layout.xSs();
@@ -87,7 +87,9 @@ public final class HairpinRenderer {
         var bottomYSs = topYSs + layout.heightSs();
         var middleYSs = topYSs + layout.heightSs() / 2.0;
 
-        return HairpinShape.lines(x1, x2, topYSs, bottomYSs, middleYSs, isCrescendo);
+        // HairpinShape.lines' boolean means "tip on the left," not "is a crescendo" —
+        // songscribe.shape is pure geometry and must not depend on songscribe.dom.
+        return HairpinShape.lines(x1, x2, topYSs, bottomYSs, middleYSs, kind == Hairpin.Kind.CRESCENDO);
     }
 
     /**
@@ -118,7 +120,7 @@ public final class HairpinRenderer {
                 BasicStroke.JOIN_ROUND
             ));
 
-            for (var line : computeHairpinLines(layout, hairpin instanceof Crescendo, invariants)) {
+            for (var line : computeHairpinLines(layout, hairpin.getKind(), invariants)) {
                 g2.draw(line);
             }
         }

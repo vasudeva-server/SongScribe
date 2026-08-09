@@ -38,6 +38,7 @@ import org.jspecify.annotations.Nullable;
 
 import songscribe.UnitTest;
 import songscribe.dom.EndingValidationResult;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
@@ -261,7 +262,7 @@ class MusicEditOperationsNullStateTest extends UnitTest {
 
     @Test
     void testAddDynamicsToSelectionEmitsNoNotificationWhenStateNull() {
-        opsWithNullState().addHairpinToSelection(true);
+        opsWithNullState().addHairpinToSelection(Hairpin.Kind.CRESCENDO);
         verifyNoChangeNotification();
     }
 

@@ -20,17 +20,18 @@
 
 package songscribe.message.command;
 
+import songscribe.dom.Hairpin;
 import songscribe.message.Message;
 
 public class AddHairpinCommand extends Message {
 
-    private final boolean isCrescendo;
+    private final Hairpin.Kind kind;
 
-    public AddHairpinCommand(boolean isCrescendo) {
-        this.isCrescendo = isCrescendo;
+    public AddHairpinCommand(Hairpin.Kind kind) {
+        this.kind = kind;
     }
 
-    public boolean isCrescendo() {
-        return isCrescendo;
+    public Hairpin.Kind kind() {
+        return kind;
     }
 }

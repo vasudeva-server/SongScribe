@@ -23,6 +23,7 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.StringReader;
+import java.util.ArrayList;
 
 import javax.xml.parsers.DocumentBuilderFactory;
 
@@ -36,6 +37,8 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
+import songscribe.dom.Song;
+import songscribe.dom.StaffElement;
 
 class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
 
@@ -415,5 +418,88 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
             .hasSize(1);
         // note0 → index 0, note1 → index 1, note2 → index 2.
         assertHairpinEquals(crescendos.getFirst(), Crescendo.class, 0, 2, 0.0, 0.0, 0.0, "surviving crescendo");
+    }
+
+    // -------------------------------------------------------------------------
+    // Back-to-back opposite-type hairpin tests
+    // -------------------------------------------------------------------------
+
+    /** Number of notes in the back-to-back opposite-hairpin fixtures. */
+    private static final int BACK_TO_BACK_NOTE_COUNT = 9;
+
+    /** Anchor index of the crescendo in the back-to-back opposite-hairpin fixtures. */
+    private static final int BACK_TO_BACK_CRESCENDO_ANCHOR = 0;
+
+    /**
+     * The element both hairpins share in the back-to-back opposite-hairpin fixtures —
+     * the crescendo's end and the diminuendo's anchor.
+     */
+    private static final int BACK_TO_BACK_SHARED_INDEX = 4;
+
+    /** End index of the diminuendo in the back-to-back opposite-hairpin fixtures. */
+    private static final int BACK_TO_BACK_DIMINUENDO_END = 8;
+
+    private static Song buildBackToBackOppositeHairpinSong() {
+        return buildSong(line -> {
+            var notes = new ArrayList<StaffElement>();
+
+            for (var i = 0; i < BACK_TO_BACK_NOTE_COUNT; i++) {
+                var note = ElementType.CROTCHET.newInstance();
+                line.addElement(note);
+                notes.add(note);
+            }
+
+            line.addCrescendo(new Crescendo(
+                notes.get(BACK_TO_BACK_CRESCENDO_ANCHOR), notes.get(BACK_TO_BACK_SHARED_INDEX)));
+            line.addDiminuendo(new Diminuendo(
+                notes.get(BACK_TO_BACK_SHARED_INDEX), notes.get(BACK_TO_BACK_DIMINUENDO_END)));
+        });
+    }
+
+    @Test
+    void testBackToBackOppositeHairpinsRoundTrip() throws Exception {
+        // Crescendo [0,4] and diminuendo [4,8] share element 4 — the point where one
+        // wedge stops and the next starts. Neither WedgeResolver.resolveWedge's
+        // pending-stop-before-pending-start rule nor the writer's stop-before-start
+        // wedge ordering may drop either hairpin.
+        var song = buildBackToBackOppositeHairpinSong();
+
+        var song2 = roundTrip(song);
+        var line2 = song2.getLine(0);
+        var crescendos = line2.getCrescendos();
+        var diminuendos = line2.getDiminuendos();
+
+        assertThat(crescendos).as("crescendo count after back-to-back round-trip").hasSize(1);
+        assertThat(diminuendos).as("diminuendo count after back-to-back round-trip").hasSize(1);
+        assertHairpinEquals(
+            crescendos.getFirst(), Crescendo.class,
+            BACK_TO_BACK_CRESCENDO_ANCHOR, BACK_TO_BACK_SHARED_INDEX,
+            0.0, 0.0, 0.0, "back-to-back crescendo");
+        assertHairpinEquals(
+            diminuendos.getFirst(), Diminuendo.class,
+            BACK_TO_BACK_SHARED_INDEX, BACK_TO_BACK_DIMINUENDO_END,
+            0.0, 0.0, 0.0, "back-to-back diminuendo");
+    }
+
+    @Test
+    void testStopWedgePrecedesStartWedgeOnASharedNote() throws Exception {
+        var song = buildBackToBackOppositeHairpinSong();
+        var xml = writeToString(song);
+
+        // Both wedges must be present at the shared note before their relative order
+        // means anything.
+        assertThat(wedgeAttribute(xml, "stop", "type")).as("stop wedge must be present").isEqualTo("stop");
+        assertThat(wedgeAttribute(xml, "diminuendo", "type"))
+            .as("diminuendo wedge must be present")
+            .isEqualTo("diminuendo");
+
+        var stopIndex = xml.indexOf("<wedge type=\"stop\"");
+        var diminuendoIndex = xml.indexOf("<wedge type=\"diminuendo\"");
+        assertThat(stopIndex).as("stop wedge must exist in the emitted XML").isNotEqualTo(-1);
+        assertThat(diminuendoIndex).as("diminuendo wedge must exist in the emitted XML").isNotEqualTo(-1);
+        assertThat(stopIndex)
+            .as("the stop wedge must precede the diminuendo start wedge on the shared note, "
+                + "else WedgeResolver's overlap guard drops the diminuendo on reload")
+            .isLessThan(diminuendoIndex);
     }
 }

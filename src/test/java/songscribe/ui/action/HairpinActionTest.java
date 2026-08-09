@@ -36,6 +36,7 @@ import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.Strings;
+import songscribe.dom.Hairpin;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.AddHairpinCommand;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
@@ -50,21 +51,21 @@ class HairpinActionTest extends MainFrameMockTest {
     /** One note: passes REQUIRES_SELECTION, since a single-note extend is admissible. */
     private static final int SINGLE_SELECTION_SIZE = 1;
 
-    /** Span the stubbed CAN_ADD / EXTEND_* resolutions report; never read by the action. */
+    /** Span the stubbed CAN_ADD / EXTEND resolutions report; never read by the action. */
     private static final int STUB_SPAN_END = 1;
 
     /**
-     * Stubs {@code resolveHairpinAction()} with a resolution in {@code state}. The span is
-     * -1 for the states that carry none and [0, 1] otherwise, matching the record's contract.
+     * Stubs {@code resolveHairpinAction(kind)} with a resolution in {@code state}. The span
+     * is -1 for the states that carry none and [0, 1] otherwise, matching the record's
+     * contract.
      */
-    private void stubResolution(MusicEditOperations.HairpinActionState state) {
+    private void stubResolution(Hairpin.Kind kind, MusicEditOperations.HairpinActionState state) {
         var hasSpan = state == MusicEditOperations.HairpinActionState.CAN_ADD
-            || state == MusicEditOperations.HairpinActionState.EXTEND_CRESCENDO
-            || state == MusicEditOperations.HairpinActionState.EXTEND_DIMINUENDO;
+            || state == MusicEditOperations.HairpinActionState.EXTEND;
         var spanBegin = hasSpan ? 0 : -1;
         var spanEnd = hasSpan ? STUB_SPAN_END : -1;
 
-        when(mockEnv().ctrl().resolveHairpinAction()).thenReturn(
+        when(mockEnv().ctrl().resolveHairpinAction(kind)).thenReturn(
             new MusicEditOperations.HairpinResolution(state, spanBegin, spanEnd));
     }
 
@@ -76,17 +77,19 @@ class HairpinActionTest extends MainFrameMockTest {
     }
 
     /**
-     * Resolves {@code state}, then asserts the label and enabled flag both hairpin actions
-     * end up with.
+     * Resolves each item's own state, then asserts the label and enabled flag both hairpin
+     * actions end up with. The two states may differ — each menu item resolves separately.
      */
     private void assertBothActions(
-        MusicEditOperations.HairpinActionState state,
+        MusicEditOperations.HairpinActionState crescendoState,
         String crescendoLabel,
         boolean crescendoEnabled,
+        MusicEditOperations.HairpinActionState diminuendoState,
         String diminuendoLabel,
         boolean diminuendoEnabled
     ) {
-        stubResolution(state);
+        stubResolution(Hairpin.Kind.CRESCENDO, crescendoState);
+        stubResolution(Hairpin.Kind.DIMINUENDO, diminuendoState);
         var crescendo = HairpinAction.createCrescendoAction(mainFrame());
         var diminuendo = HairpinAction.createDiminuendoAction(mainFrame());
 
@@ -100,21 +103,21 @@ class HairpinActionTest extends MainFrameMockTest {
             () -> assertThat(diminuendo.isEnabled()).as("diminuendo enabled").isEqualTo(diminuendoEnabled));
     }
 
-    // Row 8: factory methods bind the isCrescendo field correctly
+    // Row 8: factory methods bind the kind field correctly
 
     @Test
-    void testCreateCrescendoActionSetsCrescendoTrue() {
+    void testCreateCrescendoActionSetsCrescendoKind() {
         var action = HairpinAction.createCrescendoAction(mainFrame());
-        assertThat(action.isCrescendo()).isTrue();
+        assertThat(action.getKind()).isEqualTo(Hairpin.Kind.CRESCENDO);
     }
 
     @Test
-    void testCreateDiminuendoActionSetsCrescendoFalse() {
+    void testCreateDiminuendoActionSetsDiminuendoKind() {
         var action = HairpinAction.createDiminuendoAction(mainFrame());
-        assertThat(action.isCrescendo()).isFalse();
+        assertThat(action.getKind()).isEqualTo(Hairpin.Kind.DIMINUENDO);
     }
 
-    // Row 9: actionPerformed posts AddHairpinCommand with the correct isCrescendo flag
+    // Row 9: actionPerformed posts AddHairpinCommand with the correct kind
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
@@ -141,7 +144,7 @@ class HairpinActionTest extends MainFrameMockTest {
 
             var captor = ArgumentCaptor.forClass(AddHairpinCommand.class);
             messageMock.verify(() -> MessageCenter.post(captor.capture()));
-            assertThat(captor.getValue().isCrescendo()).isTrue();
+            assertThat(captor.getValue().kind()).isEqualTo(Hairpin.Kind.CRESCENDO);
         }
 
         @Test
@@ -153,17 +156,22 @@ class HairpinActionTest extends MainFrameMockTest {
 
             var captor = ArgumentCaptor.forClass(AddHairpinCommand.class);
             messageMock.verify(() -> MessageCenter.post(captor.capture()));
-            // A mutant swapping the isCrescendo arg would flip this to true — this assertion catches it.
-            assertThat(captor.getValue().isCrescendo()).isFalse();
+            // A mutant swapping the kind arg would make this CRESCENDO — this assertion catches it.
+            assertThat(captor.getValue().kind()).isEqualTo(Hairpin.Kind.DIMINUENDO);
         }
     }
 
-    // Row 10: critical enablement flag combinations for REQUIRES_SELECTION,
-    //         DISABLE_IN_REST_MODE, and DISABLE_WHEN_BAR_SELECTED
+    // Row 10: critical enablement flag combinations for REQUIRES_SELECTION and
+    //         DISABLE_WHEN_BAR_SELECTED
 
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class EnabledState {
+
+        @AfterEach
+        void resetRestAction() {
+            Actions.REST_ACTION.setSelected(false);
+        }
 
         @Test
         void testDisabledWhenNoSelection() {
@@ -183,7 +191,7 @@ class HairpinActionTest extends MainFrameMockTest {
             when(mockEnv().score().getSelectionSize()).thenReturn(SINGLE_SELECTION_SIZE);
             when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
             when(mockEnv().coordinator().selectionHasDurations()).thenReturn(true);
-            stubResolution(MusicEditOperations.HairpinActionState.INELIGIBLE);
+            stubResolution(Hairpin.Kind.CRESCENDO, MusicEditOperations.HairpinActionState.INELIGIBLE);
 
             var action = HairpinAction.createCrescendoAction(mainFrame());
             action.updateEnabledState();
@@ -199,7 +207,7 @@ class HairpinActionTest extends MainFrameMockTest {
             // With an active selection: enableFromBarSelection returns true immediately,
             // and enableFromSelection (DISABLE_WHEN_BAR_SELECTED path) defers to selectionHasDurations.
             selectMultipleNotes();
-            stubResolution(MusicEditOperations.HairpinActionState.CAN_ADD);
+            stubResolution(Hairpin.Kind.CRESCENDO, MusicEditOperations.HairpinActionState.CAN_ADD);
 
             var action = HairpinAction.createCrescendoAction(mainFrame());
             action.updateEnabledState();
@@ -208,15 +216,36 @@ class HairpinActionTest extends MainFrameMockTest {
         }
 
         @Test
-        void testDisabledInRestMode() {
-            // DISABLE_IN_REST_MODE: selection contains rests → disabled even with multiple notes.
+        void testSelectionContainingRestsStaysEnabledWhenResolutionCanAdd() {
+            // DISABLE_IN_REST_MODE is gone from this action: the resolution, not a flag,
+            // decides whether a selection holding a rest may carry a hairpin.
             selectMultipleNotes();
             when(mockEnv().coordinator().selectionHasRests()).thenReturn(true);
+            stubResolution(Hairpin.Kind.CRESCENDO, MusicEditOperations.HairpinActionState.CAN_ADD);
 
             var action = HairpinAction.createCrescendoAction(mainFrame());
             action.updateEnabledState();
 
-            assertThat(action.isEnabled()).as("a selection containing rests must disable the action").isFalse();
+            assertThat(action.isEnabled())
+                .as("a rest in the selection must not disable the action — a hairpin may end on one")
+                .isTrue();
+        }
+
+        @Test
+        void testStaysEnabledWhileRestToolIsArmed() {
+            // The other half of the dropped flag: the resolution decides here too. The armed
+            // input mode governs the next inserted element, not what a hairpin drawn over an
+            // existing selection may cover.
+            selectMultipleNotes();
+            Actions.REST_ACTION.setSelected(true);
+            stubResolution(Hairpin.Kind.CRESCENDO, MusicEditOperations.HairpinActionState.CAN_ADD);
+
+            var action = HairpinAction.createCrescendoAction(mainFrame());
+            action.updateEnabledState();
+
+            assertThat(action.isEnabled())
+                .as("an armed rest tool must not disable the action")
+                .isTrue();
         }
     }
 
@@ -238,7 +267,7 @@ class HairpinActionTest extends MainFrameMockTest {
         @Test
         void testDisabledWhenResolutionIsIneligible() {
             // A resolution of INELIGIBLE is forwarded directly to setEnabled(false).
-            stubResolution(MusicEditOperations.HairpinActionState.INELIGIBLE);
+            stubResolution(Hairpin.Kind.CRESCENDO, MusicEditOperations.HairpinActionState.INELIGIBLE);
             var action = HairpinAction.createCrescendoAction(mainFrame());
 
             action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
@@ -251,7 +280,7 @@ class HairpinActionTest extends MainFrameMockTest {
         @Test
         void testEnabledWhenResolutionIsCanAdd() {
             // A resolution of CAN_ADD is forwarded directly to setEnabled(true).
-            stubResolution(MusicEditOperations.HairpinActionState.CAN_ADD);
+            stubResolution(Hairpin.Kind.DIMINUENDO, MusicEditOperations.HairpinActionState.CAN_ADD);
             var action = HairpinAction.createDiminuendoAction(mainFrame());
 
             action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
@@ -266,7 +295,7 @@ class HairpinActionTest extends MainFrameMockTest {
             // An empty selection fails REQUIRES_SELECTION, so updateEnabledState()
             // returns false and the resolved state must never override that to enabled.
             when(mockEnv().score().getSelectionSize()).thenReturn(NO_SELECTION_SIZE);
-            stubResolution(MusicEditOperations.HairpinActionState.CAN_ADD);
+            stubResolution(Hairpin.Kind.CRESCENDO, MusicEditOperations.HairpinActionState.CAN_ADD);
             var action = HairpinAction.createCrescendoAction(mainFrame());
 
             action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
@@ -281,7 +310,7 @@ class HairpinActionTest extends MainFrameMockTest {
             // A null controller short-circuits the handler entirely, leaving the action's
             // enabled state at whatever it was before the notification (false, from construction).
             when(mockEnv().score().getController()).thenReturn(null);
-            stubResolution(MusicEditOperations.HairpinActionState.CAN_ADD);
+            stubResolution(Hairpin.Kind.CRESCENDO, MusicEditOperations.HairpinActionState.CAN_ADD);
             var action = HairpinAction.createCrescendoAction(mainFrame());
 
             action.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
@@ -310,6 +339,7 @@ class HairpinActionTest extends MainFrameMockTest {
             assertBothActions(
                 MusicEditOperations.HairpinActionState.INELIGIBLE,
                 Strings.get(Strings.ACTION_HAIRPIN_CRESCENDO), false,
+                MusicEditOperations.HairpinActionState.INELIGIBLE,
                 Strings.get(Strings.ACTION_HAIRPIN_DIMINUENDO), false);
         }
 
@@ -318,6 +348,7 @@ class HairpinActionTest extends MainFrameMockTest {
             assertBothActions(
                 MusicEditOperations.HairpinActionState.BLOCKED,
                 Strings.get(Strings.ACTION_HAIRPIN_CRESCENDO), false,
+                MusicEditOperations.HairpinActionState.BLOCKED,
                 Strings.get(Strings.ACTION_HAIRPIN_DIMINUENDO), false);
         }
 
@@ -326,23 +357,35 @@ class HairpinActionTest extends MainFrameMockTest {
             assertBothActions(
                 MusicEditOperations.HairpinActionState.CAN_ADD,
                 Strings.get(Strings.ACTION_HAIRPIN_CRESCENDO), true,
+                MusicEditOperations.HairpinActionState.CAN_ADD,
                 Strings.get(Strings.ACTION_HAIRPIN_DIMINUENDO), true);
         }
 
         @Test
-        void testExtendCrescendoRelabelsOnlyTheCrescendoAction() {
+        void testCrescendoExtendWithDiminuendoBlockedRelabelsOnlyTheCrescendoAction() {
             assertBothActions(
-                MusicEditOperations.HairpinActionState.EXTEND_CRESCENDO,
+                MusicEditOperations.HairpinActionState.EXTEND,
                 Strings.get(Strings.ACTION_HAIRPIN_CRESCENDO_EXTEND), true,
+                MusicEditOperations.HairpinActionState.BLOCKED,
                 Strings.get(Strings.ACTION_HAIRPIN_DIMINUENDO), false);
         }
 
         @Test
-        void testExtendDiminuendoRelabelsOnlyTheDiminuendoAction() {
+        void testDiminuendoExtendWithCrescendoBlockedRelabelsOnlyTheDiminuendoAction() {
             assertBothActions(
-                MusicEditOperations.HairpinActionState.EXTEND_DIMINUENDO,
+                MusicEditOperations.HairpinActionState.BLOCKED,
                 Strings.get(Strings.ACTION_HAIRPIN_CRESCENDO), false,
+                MusicEditOperations.HairpinActionState.EXTEND,
                 Strings.get(Strings.ACTION_HAIRPIN_DIMINUENDO_EXTEND), true);
+        }
+
+        @Test
+        void testBackToBackSelectionEnablesExtendCrescendoAndAddDiminuendoTogether() {
+            assertBothActions(
+                MusicEditOperations.HairpinActionState.EXTEND,
+                Strings.get(Strings.ACTION_HAIRPIN_CRESCENDO_EXTEND), true,
+                MusicEditOperations.HairpinActionState.CAN_ADD,
+                Strings.get(Strings.ACTION_HAIRPIN_DIMINUENDO), true);
         }
     }
 
@@ -356,7 +399,7 @@ class HairpinActionTest extends MainFrameMockTest {
         when(mockEnv().score().getSelectionSize()).thenReturn(SINGLE_SELECTION_SIZE);
         when(mockEnv().coordinator().hasActiveSelection()).thenReturn(true);
         when(mockEnv().coordinator().selectionHasDurations()).thenReturn(true);
-        stubResolution(MusicEditOperations.HairpinActionState.INELIGIBLE);
+        stubResolution(Hairpin.Kind.CRESCENDO, MusicEditOperations.HairpinActionState.INELIGIBLE);
 
         var action = HairpinAction.createCrescendoAction(mainFrame());
         // Rest-mode change carries no selection information — it ends in the flag-only

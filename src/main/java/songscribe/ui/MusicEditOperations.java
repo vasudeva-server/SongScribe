@@ -24,7 +24,6 @@ import module java.desktop;
 
 import java.util.ArrayDeque;
 import java.util.EnumSet;
-import java.util.List;
 import java.util.HashSet;
 import java.util.TreeSet;
 
@@ -51,7 +50,6 @@ import songscribe.dom.TupletValidator;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.RangeQueries;
-import songscribe.ui.selection.Selection;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
 
@@ -63,9 +61,10 @@ public final class MusicEditOperations {
 
     private static final int MIN_CONTENT_ELEMENTS = 4;
 
-    // A brand new hairpin needs something to slope across, so it takes at least
-    // two pitched notes. Extending an existing hairpin has no such requirement.
-    private static final int MIN_HAIRPIN_NOTES = 2;
+    // A brand new hairpin needs two columns to slope across. A pitched note is one;
+    // so is a rest at the end of the span, which bounds a wedge in its own right.
+    // Extending an existing hairpin has no such requirement.
+    private static final int MIN_HAIRPIN_COLUMNS = 2;
 
     // Mutable so the same MusicEditOperations instance can outlive a document
     // load — ScoreView holds it across setSong(), avoiding stale references.
@@ -452,25 +451,23 @@ public final class MusicEditOperations {
      * Adds a hairpin over the current selection, or extends an existing same-type
      * hairpin to cover it.
      * <p>
-     * The decision and the span both come from a single {@link #resolveHairpinAction()}
-     * call — nothing here re-derives them. Two copies of that decision tree would
-     * eventually disagree, and the first divergence turns an "Extend Crescendo"
-     * click into a second stray crescendo under a mislabeled undo entry.
+     * The decision and the span both come from a single
+     * {@link #resolveHairpinAction(Hairpin.Kind)} call — nothing here re-derives them.
+     * Two copies of that decision tree would eventually disagree, and the first
+     * divergence turns an "Extend Crescendo" click into a second stray crescendo under
+     * a mislabeled undo entry.
      */
-    public void addHairpinToSelection(boolean crescendo) {
+    public void addHairpinToSelection(Hairpin.Kind kind) {
         var range = coordinator.getRange();
 
         if (range == null) {
             return;
         }
 
-        var resolution = resolveHairpinAction();
+        var resolution = resolveHairpinAction(kind);
         var resolvedState = resolution.state();
-        var extendState = crescendo
-            ? HairpinActionState.EXTEND_CRESCENDO
-            : HairpinActionState.EXTEND_DIMINUENDO;
 
-        if (resolvedState != HairpinActionState.CAN_ADD && resolvedState != extendState) {
+        if (resolvedState != HairpinActionState.CAN_ADD && resolvedState != HairpinActionState.EXTEND) {
             return;
         }
 
@@ -482,13 +479,14 @@ public final class MusicEditOperations {
         // Crescendo" — so they share one string rather than two that happen to match
         // and could later be edited apart.
         String opNameKey;
+        var isCrescendo = kind == Hairpin.Kind.CRESCENDO;
 
         if (resolvedState == HairpinActionState.CAN_ADD) {
-            opNameKey = crescendo
+            opNameKey = isCrescendo
                 ? Strings.ACTION_HAIRPIN_CRESCENDO
                 : Strings.ACTION_HAIRPIN_DIMINUENDO;
         } else {
-            opNameKey = crescendo
+            opNameKey = isCrescendo
                 ? Strings.ACTION_HAIRPIN_CRESCENDO_EXTEND
                 : Strings.ACTION_HAIRPIN_DIMINUENDO_EXTEND;
         }
@@ -502,17 +500,20 @@ public final class MusicEditOperations {
         var endElement = line.getElement(resolution.spanEnd());
 
         line.withModification(Strings.get(opNameKey), () -> {
-            Hairpin added;
-
-            if (crescendo) {
-                var hairpin = new Crescendo(anchorElement, endElement);
-                line.addCrescendo(hairpin);
-                added = hairpin;
-            } else {
-                var hairpin = new Diminuendo(anchorElement, endElement);
-                line.addDiminuendo(hairpin);
-                added = hairpin;
-            }
+            // addCrescendo/addDiminuendo rather than the raw Line.addSpan adder: they
+            // merge overlapping same-type spans, which the extend path depends on.
+            var added = switch (kind) {
+                case CRESCENDO -> {
+                    var hairpin = new Crescendo(anchorElement, endElement);
+                    line.addCrescendo(hairpin);
+                    yield (Hairpin) hairpin;
+                }
+                case DIMINUENDO -> {
+                    var hairpin = new Diminuendo(anchorElement, endElement);
+                    line.addDiminuendo(hairpin);
+                    yield (Hairpin) hairpin;
+                }
+            };
 
             // mergeOverlappingSpans widens the added hairpin in place, so its indices
             // after the add are the merged range — which can reach past what the
@@ -546,44 +547,24 @@ public final class MusicEditOperations {
         }
     }
 
-    private record HairpinScan(
-        List<Crescendo> crescendos,
-        List<Diminuendo> diminuendos
-    ) {}
-
     /**
-     * Finds every hairpin that overlaps the selection or sits within
-     * {@link Line#SPAN_ADJACENCY_REACH} of it — the same neighborhood
-     * {@code Line.mergeOverlappingSpans} absorbs when a hairpin is added.
+     * What one hairpin menu item should show for the current selection.
      * <p>
-     * The result is flat and untagged: it says which hairpins are nearby, not how
-     * each one relates to the selection. Callers derive that from the hairpin's own
-     * anchor and end indices.
-     */
-    private HairpinScan findHairpinsNearSelection(Selection.Range range) {
-        var line = range.line();
-        var scanBegin = range.begin() - Line.SPAN_ADJACENCY_REACH;
-        var scanEnd = range.end() + Line.SPAN_ADJACENCY_REACH;
-        var nearby = Span.overlapping(scanBegin, scanEnd);
-
-        return new HairpinScan(
-            line.findSpans(Crescendo.class, nearby),
-            line.findSpans(Diminuendo.class, nearby));
-    }
-
-    /**
-     * What the hairpin menu items should show for the current selection.
+     * The resolution is per menu item, not a joint verdict about both: the crescendo
+     * and diminuendo items are resolved separately and may legitimately disagree.
+     * <p>
+     * Two states mean "not now", and they differ in why. {@code INELIGIBLE} means the
+     * span itself cannot carry a hairpin, whatever else is on the line.
+     * {@code BLOCKED} means another hairpin is the obstacle.
      */
     public enum HairpinActionState {
-        /** Both menu items read "Add …", disabled — the selection cannot host a hairpin. */
+        /** This item reads "Add …", disabled — the span cannot host a hairpin. */
         INELIGIBLE,
-        /** Both items read "Add …", enabled. */
+        /** This item reads "Add …", enabled. */
         CAN_ADD,
-        /** Crescendo item reads "Extend Crescendo", enabled; diminuendo reads "Add Diminuendo", disabled. */
-        EXTEND_CRESCENDO,
-        /** Diminuendo item reads "Extend Diminuendo", enabled; crescendo reads "Add Crescendo", disabled. */
-        EXTEND_DIMINUENDO,
-        /** Both items read "Add …", disabled — hairpins are present but no extension is possible. */
+        /** This item reads "Extend …", enabled. */
+        EXTEND,
+        /** This item reads "Add …", disabled — another hairpin is in the way. */
         BLOCKED
     }
 
@@ -594,7 +575,7 @@ public final class MusicEditOperations {
      * <p>Returned by a single call so the label and the mutation cannot disagree —
      * {@code addHairpinToSelection} consumes this rather than recomputing.
      * {@code spanBegin}/{@code spanEnd} are meaningful only for
-     * {@code CAN_ADD} and {@code EXTEND_*}; both are -1 otherwise.
+     * {@code CAN_ADD} and {@code EXTEND}; both are -1 otherwise.
      */
     public record HairpinResolution(
         HairpinActionState state,
@@ -603,69 +584,61 @@ public final class MusicEditOperations {
     ) {}
 
     /**
-     * Resolves what the hairpin menu items should do for the current selection.
+     * Resolves what the {@code kind} hairpin menu item should do for the current
+     * selection.
+     * <p>
+     * The resolution is type-aware, and each menu item asks for its own: with a
+     * crescendo already on the notes just before the selection, the crescendo item
+     * extends while the diminuendo item adds a back-to-back wedge. One shared verdict
+     * could not say both.
      * <p>
      * <b>Step 0 — input guard.</b> No selection, or a selection that is a target rather
-     * than an index range (a slide, ending or hairpin selection) → {@code INELIGIBLE}. This has to come first: nothing below
-     * may touch an element index before it passes.
+     * than an index range (a slide, ending or hairpin selection) → {@code INELIGIBLE}.
+     * This has to come first: nothing below may touch an element index before it
+     * passes.
      * <p>
-     * <b>Step 1 — structural eligibility</b> of the selection's {@code begin} and
-     * {@code end} (see {@link #isHairpinEligibleSpan}). The end must be a pitched
-     * note; the start must be a pitched note or a grace note whose host is one;
-     * the range may not cross a repeat or a non-single barline. Any failure →
-     * {@code INELIGIBLE}. There is deliberately no note-count test here — count is
-     * an add-only gate and lives in Step 2, because a single note adjacent to an
-     * existing hairpin extends it.
+     * <b>Step 1 — converge the span.</b> Every {@code kind} hairpin within
+     * {@link Line#SPAN_ADJACENCY_REACH} of the span widens it, repeatedly until it
+     * stops growing, because {@code Line.addHairpin} absorbs exactly that
+     * neighborhood and absorbing one hairpin can bring a further one into reach. The
+     * presence of any such hairpin is what makes this an extension. One that already
+     * covers the whole selection has nothing to extend → {@code BLOCKED}.
      * <p>
-     * <b>Step 2 — hairpin relation analysis</b> over the candidates from
-     * {@link #findHairpinsNearSelection}, each classified from its own anchor and
-     * end indices:
+     * <b>Step 2 — validate the resolved span.</b> An endpoint the selection supplies
+     * must be one the user could place ({@link Line#canAnchorHairpin},
+     * {@link Line#canEndHairpin}) → {@code INELIGIBLE} otherwise; an endpoint
+     * inherited from the hairpin being extended stays put, unchecked. The span may not
+     * cross a repeat or a non-single barline. It may share at most one element with an
+     * opposite-type hairpin — where one wedge ends and the next begins — and more than
+     * that is a collision → {@code BLOCKED}. Finally, a new hairpin (never an
+     * extension) needs {@link #MIN_HAIRPIN_COLUMNS} columns to slope across.
+     * <p>
+     * The two "not now" states differ in why: {@code INELIGIBLE} means the span itself
+     * cannot carry a hairpin, whatever else is on the line; {@code BLOCKED} means
+     * another hairpin is the obstacle. Every return here follows that rule, including
+     * the structural-boundary check, which blocks only when a hairpin widened the span
+     * past the selection and is therefore the thing crossing the boundary.
+     * <p>
+     * <b>Do not cache this.</b> It is deliberately recomputed on every call. Two menu
+     * items resolving independently costs a handful of O(spans) scans per selection
+     * change, which is free; a cache keyed on the selection would go stale the moment
+     * a hairpin is added or undone without the selection moving, leaving both items
+     * lying about what they will do.
+     *
+     * <p><b>Worked examples.</b>
      *
      * <ul>
-     *   <li><b>No candidate.</b> Counting the pitched notes in {@code [begin, end]}, two or more
-     *       give {@code CAN_ADD} and fewer give {@code INELIGIBLE}.
-     *   <li><b>An opposite-type hairpin is among the candidates:</b> {@code BLOCKED}.
-     *   <li><b>The selection lies entirely inside one same-type hairpin:</b> {@code BLOCKED}, since
-     *       no extension is possible.
-     *   <li><b>Same-type candidates only, with the selection reaching outside their spans</b> to
-     *       the left, the right, or both — no count requirement here. {@code BLOCKED} if the union
-     *       span crosses a structural boundary, otherwise {@code EXTEND_CRESCENDO} or
-     *       {@code EXTEND_DIMINUENDO}.
+     *   <li>Crescendo on {@code [0, 4]}, selection {@code [4, 8]}: {@code CRESCENDO}
+     *       resolves to {@code EXTEND} over {@code [0, 8]}, {@code DIMINUENDO} to
+     *       {@code CAN_ADD} over {@code [4, 8]}. The two items legitimately disagree.
+     *   <li>Crescendo on {@code [0, 4]}, selection {@code [2, 8]}: {@code DIMINUENDO}
+     *       is {@code BLOCKED} — the overlap is more than the one shared endpoint.
+     *   <li>One note plus the rest after it, no hairpin nearby: {@code CAN_ADD} — the
+     *       trailing rest is the second column.
+     *   <li>A lone rest: {@code INELIGIBLE} — a rest cannot anchor a hairpin.
      * </ul>
-     *
-     * <b>Extend eligibility</b> means all four of: the selection includes notes
-     * inside or touching a same-type hairpin; it includes notes outside that
-     * hairpin's span; no opposite-type hairpin is a candidate; and the union span
-     * crosses no structural boundary. Extension may run left, right, or both
-     * directions at once.
-     * <p>
-     * Adjacency counts as a relation, because {@code Line.addHairpin} always
-     * absorbs adjacent same-type spans — treating adjacency as extension is what
-     * keeps the menu label honest about what the model is about to do. Same-type
-     * neighbours are absorbed rather than blocking: two same-type hairpins
-     * separated by the selection merge into one wide gesture, exactly what
-     * {@code mergeOverlappingSpans} would do anyway. Only an opposite-type hairpin
-     * blocks, because a crescendo and a diminuendo cannot occupy one span; when
-     * both types are candidates the result is {@code BLOCKED} regardless of which
-     * action the user picks.
-     *
-     * <p><b>Worked examples, with no hairpins anywhere near the selection.</b> A grace note,
-     * three notes and a rest is {@code CAN_ADD}: the count is 3, and beginning on a grace note is
-     * allowed. A grace note plus its host is one note, so the count is 1 and it is not. A lone note
-     * is {@code INELIGIBLE} — nothing to extend. Ending on a grace note or on a rest fails Step 1,
-     * as does a selection spanning a structural boundary; a plain single barline inside the
-     * selection is fine and still gives {@code CAN_ADD}.
-     *
-     * <p><b>Single-note extend.</b> Selecting only the note immediately after a crescendo gives
-     * {@code EXTEND_CRESCENDO}, because adjacency counts as a relation. Selecting that same note
-     * with no hairpin nearby gives {@code INELIGIBLE}.
-     *
-     * <p><b>Same-type absorb versus opposite-type block.</b> A selection sitting between two
-     * crescendos extends into one wide gesture spanning all three groups. The same selection
-     * between a crescendo and a diminuendo is {@code BLOCKED}, because an opposite-type hairpin is
-     * a candidate.
      */
-    public HairpinResolution resolveHairpinAction() {
+    public HairpinResolution resolveHairpinAction(Hairpin.Kind kind) {
         var range = coordinator.getRange();
 
         // A slide, ending or hairpin selection is a target rather than a range, and
@@ -679,63 +652,87 @@ public final class MusicEditOperations {
         var begin = range.begin();
         var end = range.end();
 
-        if (!isHairpinEligibleSpan(line, begin, end)) {
+        var spanBegin = begin;
+        var spanEnd = end;
+        var isExtend = false;
+        var grew = false;
+
+        // Line.addHairpin absorbs same-type spans within SPAN_ADJACENCY_REACH of the
+        // span it is handed, so absorbing one can bring a further one into reach.
+        // Widen until the union stops growing, or the menu label would promise a
+        // narrower hairpin than the model is about to build, and the boundary and
+        // opposite-type checks below would run against a span that never exists.
+        // Each pass either strictly widens the union or ends the loop, so this
+        // terminates in at most one pass per same-type hairpin on the line.
+        do {
+            var sameType = line.findSpans(
+                kind.spanType(),
+                Span.overlapping(
+                    spanBegin - Line.SPAN_ADJACENCY_REACH,
+                    spanEnd + Line.SPAN_ADJACENCY_REACH));
+            isExtend = !sameType.isEmpty();
+
+            var widenedBegin = spanBegin;
+            var widenedEnd = spanEnd;
+
+            for (var hairpin : sameType) {
+                var anchorIndex = hairpin.getAnchorElementIndex();
+                var endIndex = hairpin.getEndElementIndex();
+
+                // A hairpin already covering the whole selection has nothing to extend.
+                // Tested against the original selection, never the widened union: a
+                // hairpin absorbed on a later pass covers the union by construction,
+                // and would block every extension that reached it.
+                if (anchorIndex <= begin && endIndex >= end) {
+                    return blockedHairpinResolution();
+                }
+
+                widenedBegin = Math.min(widenedBegin, anchorIndex);
+                widenedEnd = Math.max(widenedEnd, endIndex);
+            }
+
+            grew = widenedBegin != spanBegin || widenedEnd != spanEnd;
+            spanBegin = widenedBegin;
+            spanEnd = widenedEnd;
+        } while (grew);
+
+        // Only an endpoint the selection supplies has to be one the user could place.
+        // An endpoint inherited from the hairpin being extended stays put — including a
+        // rest anchor an older build left behind, which is not this action's to correct.
+        var anchorComesFromSelection = spanBegin == begin;
+        var endComesFromSelection = spanEnd == end;
+
+        // spanEnd rather than end: canAnchorHairpin's lastIndex bounds the grace-note
+        // host lookahead, and the hairpin really will reach spanEnd, so the host may
+        // legitimately sit anywhere up to it.
+        if (anchorComesFromSelection && !line.canAnchorHairpin(begin, spanEnd)) {
             return ineligibleHairpinResolution();
         }
 
-        var candidates = findHairpinsNearSelection(range);
-        var crescendos = candidates.crescendos();
-        var diminuendos = candidates.diminuendos();
-
-        if (crescendos.isEmpty() && diminuendos.isEmpty()) {
-            if (countPitchedNotes(line, begin, end) < MIN_HAIRPIN_NOTES) {
-                return ineligibleHairpinResolution();
-            }
-
-            return new HairpinResolution(HairpinActionState.CAN_ADD, begin, end);
+        if (endComesFromSelection && !line.canEndHairpin(end)) {
+            return ineligibleHairpinResolution();
         }
 
-        // A crescendo and a diminuendo cannot occupy one span, so neither action
-        // can proceed once both types are in play.
-        if (!crescendos.isEmpty() && !diminuendos.isEmpty()) {
-            return blockedHairpinResolution();
-        }
-
-        List<? extends Hairpin> sameType;
-        HairpinActionState extendState;
-
-        if (crescendos.isEmpty()) {
-            sameType = diminuendos;
-            extendState = HairpinActionState.EXTEND_DIMINUENDO;
-        } else {
-            sameType = crescendos;
-            extendState = HairpinActionState.EXTEND_CRESCENDO;
-        }
-
-        var spanBegin = begin;
-        var spanEnd = end;
-
-        for (var hairpin : sameType) {
-            var anchorIndex = hairpin.getAnchorElementIndex();
-            var endIndex = hairpin.getEndElementIndex();
-
-            // A hairpin already covering the whole selection has nothing to extend.
-            if (anchorIndex <= begin && endIndex >= end) {
-                return blockedHairpinResolution();
-            }
-
-            spanBegin = Math.min(spanBegin, anchorIndex);
-            spanEnd = Math.max(spanEnd, endIndex);
-        }
-
-        // Step 1 validated only the selection. The union is wider, and songs saved
-        // by earlier builds may already hold a hairpin crossing a double barline,
-        // since the restriction did not exist then. Refuse rather than widen it.
+        // The union reaches past the selection only because a hairpin widened it, so
+        // when extending, that hairpin is the obstacle. With none in play the selection
+        // itself crosses the boundary.
         if (line.spansStructuralBoundary(spanBegin, spanEnd)) {
+            return isExtend ? blockedHairpinResolution() : ineligibleHairpinResolution();
+        }
+
+        // Two hairpins may meet on one shared element; more than that is a collision.
+        if (line.hasSpan(
+                kind.opposite().spanType(),
+                Span.overlappingBeyondEndpoint(spanBegin, spanEnd))) {
             return blockedHairpinResolution();
         }
 
-        return new HairpinResolution(extendState, spanBegin, spanEnd);
+        if (!isExtend && countHairpinColumns(line, spanBegin, spanEnd) < MIN_HAIRPIN_COLUMNS) {
+            return ineligibleHairpinResolution();
+        }
+
+        return new HairpinResolution(
+            isExtend ? HairpinActionState.EXTEND : HairpinActionState.CAN_ADD, spanBegin, spanEnd);
     }
 
     private static HairpinResolution ineligibleHairpinResolution() {
@@ -763,21 +760,18 @@ public final class MusicEditOperations {
     }
 
     /**
-     * Returns whether the inclusive element range {@code [begin, end]} can carry a
-     * hairpin at all, independent of any hairpin already on the line.
-     * <p>
-     * The end must be a pitched note. What may start one is {@link Line#canAnchorHairpin},
-     * shared with the reshaping a deletion performs so the two can never disagree about
-     * where a hairpin may begin. A lone grace note fails on the end test. Finally the
-     * range may not cross a repeat or a non-single barline.
+     * Counts what a new hairpin has to slope across in {@code [begin, end]}: every
+     * pitched note, plus a rest at the end, which bounds a wedge in its own right.
+     * Grace notes and interior rests do not count.
      */
-    private static boolean isHairpinEligibleSpan(Line line, int begin, int end) {
-        return line.getElement(end).getType().isPitchedNote() &&
-            line.canAnchorHairpin(
-                begin,
-                end
-            ) &&
-            !line.spansStructuralBoundary(begin, end);
+    private static int countHairpinColumns(Line line, int begin, int end) {
+        var count = countPitchedNotes(line, begin, end);
+
+        if (line.getElement(end).getType().isRest()) {
+            count++;
+        }
+
+        return count;
     }
 
     // ========== First-Second Ending Operations ==========

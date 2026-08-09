@@ -77,7 +77,7 @@ class HairpinRendererTest extends UnitTest {
         var topYSs = invariants.getMiddleLineYSs() + HAIRPIN_LAYOUT_Y_SS;
         var middleYSs = topYSs + HAIRPIN_HEIGHT_SS / 2.0;
 
-        var lines = HairpinRenderer.computeHairpinLines(layout, true, invariants);
+        var lines = HairpinRenderer.computeHairpinLines(layout, Hairpin.Kind.CRESCENDO, invariants);
 
         assertThat(lines).hasSize(2);
         assertThat(lines[0].y1).isEqualTo(middleYSs);
@@ -93,7 +93,7 @@ class HairpinRendererTest extends UnitTest {
         var topYSs = invariants.getMiddleLineYSs() + HAIRPIN_LAYOUT_Y_SS;
         var bottomYSs = topYSs + HAIRPIN_HEIGHT_SS;
 
-        var lines = HairpinRenderer.computeHairpinLines(layout, true, invariants);
+        var lines = HairpinRenderer.computeHairpinLines(layout, Hairpin.Kind.CRESCENDO, invariants);
 
         assertThat(lines[0].y2).isEqualTo(topYSs);
         assertThat(lines[1].y2).isEqualTo(bottomYSs);
@@ -108,7 +108,7 @@ class HairpinRendererTest extends UnitTest {
         var topYSs = invariants.getMiddleLineYSs() + HAIRPIN_LAYOUT_Y_SS;
         var middleYSs = topYSs + HAIRPIN_HEIGHT_SS / 2.0;
 
-        var lines = HairpinRenderer.computeHairpinLines(layout, false, invariants);
+        var lines = HairpinRenderer.computeHairpinLines(layout, Hairpin.Kind.DIMINUENDO, invariants);
 
         assertThat(lines).hasSize(2);
         assertThat(lines[0].y2).isEqualTo(middleYSs);
@@ -124,7 +124,7 @@ class HairpinRendererTest extends UnitTest {
         var topYSs = invariants.getMiddleLineYSs() + HAIRPIN_LAYOUT_Y_SS;
         var bottomYSs = topYSs + HAIRPIN_HEIGHT_SS;
 
-        var lines = HairpinRenderer.computeHairpinLines(layout, false, invariants);
+        var lines = HairpinRenderer.computeHairpinLines(layout, Hairpin.Kind.DIMINUENDO, invariants);
 
         assertThat(lines[0].y1).isEqualTo(topYSs);
         assertThat(lines[1].y1).isEqualTo(bottomYSs);
@@ -137,8 +137,8 @@ class HairpinRendererTest extends UnitTest {
         var layout = hairpinLayout();
         var expectedX2 = HAIRPIN_X_SS + HAIRPIN_WIDTH_SS;
 
-        var crescendoLines = HairpinRenderer.computeHairpinLines(layout, true, invariants);
-        var diminuendoLines = HairpinRenderer.computeHairpinLines(layout, false, invariants);
+        var crescendoLines = HairpinRenderer.computeHairpinLines(layout, Hairpin.Kind.CRESCENDO, invariants);
+        var diminuendoLines = HairpinRenderer.computeHairpinLines(layout, Hairpin.Kind.DIMINUENDO, invariants);
 
         for (var line : crescendoLines) {
             assertThat(line.x1).isEqualTo(HAIRPIN_X_SS);
@@ -158,8 +158,8 @@ class HairpinRendererTest extends UnitTest {
         var invariants = RenderContextTestHelper.newContext(new Song()).build();
         var layout = hairpinLayout();
 
-        var crescendoLines = HairpinRenderer.computeHairpinLines(layout, true, invariants);
-        var diminuendoLines = HairpinRenderer.computeHairpinLines(layout, false, invariants);
+        var crescendoLines = HairpinRenderer.computeHairpinLines(layout, Hairpin.Kind.CRESCENDO, invariants);
+        var diminuendoLines = HairpinRenderer.computeHairpinLines(layout, Hairpin.Kind.DIMINUENDO, invariants);
 
         // Upper line: crescendo starts at middle, diminuendo starts at top (differs)
         assertThat(crescendoLines[0].y1).isNotEqualTo(diminuendoLines[0].y1);

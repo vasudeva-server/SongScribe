@@ -35,6 +35,7 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.ui.MusicEditOperations.HairpinActionState;
@@ -45,8 +46,9 @@ import songscribe.hit.HitTarget;
 import songscribe.ui.selection.SelectionCoordinator;
 
 /**
- * Tests for {@link MusicEditOperations#resolveHairpinAction()} — the single decision
- * that drives both the hairpin menu labels and the span the add/extend mutation uses.
+ * Tests for {@link MusicEditOperations#resolveHairpinAction(Hairpin.Kind)} — the
+ * per-menu-item decision that drives that item's hairpin label and the span its
+ * add/extend mutation uses.
  *
  * <p>Grouped by the steps of that decision: the input guard, structural eligibility of
  * the selection, and the relation analysis against nearby hairpins.
@@ -62,14 +64,24 @@ class HairpinActionStateTest extends UnitTest {
     private static final int IDX_5 = 5;
     private static final int IDX_6 = 6;
     private static final int IDX_8 = 8;
+    private static final int IDX_9 = 9;
+    private static final int IDX_10 = 10;
+    private static final int IDX_14 = 14;
+    private static final int IDX_15 = 15;
+    private static final int IDX_16 = 16;
+    private static final int IDX_18 = 18;
+    private static final int IDX_19 = 19;
 
     // Line lengths the fixtures are built at
     private static final int NOTE_COUNT_3 = 3;
     private static final int NOTE_COUNT_4 = 4;
     private static final int NOTE_COUNT_5 = 5;
     private static final int NOTE_COUNT_6 = 6;
+    private static final int NOTE_COUNT_7 = 7;
     private static final int NOTE_COUNT_8 = 8;
     private static final int NOTE_COUNT_9 = 9;
+    private static final int NOTE_COUNT_10 = 10;
+    private static final int NOTE_COUNT_20 = 20;
 
     /** A line, its coordinator and the operations under test, all sharing one song mock. */
     private record Fixture(Line line, SelectionCoordinator coordinator, MusicEditOperations ops) {
@@ -94,8 +106,22 @@ class HairpinActionStateTest extends UnitTest {
             return hairpin;
         }
 
-        HairpinResolution resolve() {
-            return ops.resolveHairpinAction();
+        HairpinResolution resolve(Hairpin.Kind kind) {
+            return ops.resolveHairpinAction(kind);
+        }
+
+        /** Asserts the resolution for {@code kind} is {@code state} over [spanBegin, spanEnd]. */
+        void assertResolves(
+            Hairpin.Kind kind,
+            HairpinActionState state,
+            int spanBegin,
+            int spanEnd,
+            String because
+        ) {
+            var resolution = resolve(kind);
+            assertThat(resolution.state()).as(because).isEqualTo(state);
+            assertThat(resolution.spanBegin()).as(because).isEqualTo(spanBegin);
+            assertThat(resolution.spanEnd()).as(because).isEqualTo(spanEnd);
         }
     }
 
@@ -114,13 +140,25 @@ class HairpinActionStateTest extends UnitTest {
 
     /** Builds a fixture whose line holds {@code count} crotchets. */
     private static Fixture fixtureWithNotes(int count) {
+        return fixtureWith(crotchets(count));
+    }
+
+    /** Builds a fixture of {@code count} crotchets whose element at {@code restIndex} is a rest. */
+    private static Fixture fixtureWithRestAt(int count, int restIndex) {
+        var elements = crotchets(count);
+        elements[restIndex] = crotchetRest();
+        return fixtureWith(elements);
+    }
+
+    /** An array of {@code count} crotchets, for a caller that then substitutes one element. */
+    private static StaffElement[] crotchets(int count) {
         var elements = new StaffElement[count];
 
         for (var i = 0; i < count; i++) {
             elements[i] = crotchet();
         }
 
-        return fixtureWith(elements);
+        return elements;
     }
 
     // -----------------------------------------------------------------------
@@ -136,7 +174,7 @@ class HairpinActionStateTest extends UnitTest {
             // A coordinator with no registered line returns null from getRange().
             var ops = new MusicEditOperations(minimalSongMock(), new SelectionCoordinator(mock(ScoreView.class)));
 
-            assertThat(ops.resolveHairpinAction().state())
+            assertThat(ops.resolveHairpinAction(Hairpin.Kind.CRESCENDO).state())
                 .as("a null selection state must resolve to INELIGIBLE")
                 .isEqualTo(HairpinActionState.INELIGIBLE);
         }
@@ -149,21 +187,22 @@ class HairpinActionStateTest extends UnitTest {
             var hairpin = fixture.addCrescendo(IDX_0, IDX_2);
             fixture.coordinator().select(new HitTarget.Hairpin(hairpin));
 
-            assertThatCode(fixture::resolve)
+            assertThatCode(() -> fixture.resolve(Hairpin.Kind.CRESCENDO))
                 .as("a -1/-1 decoration selection must not reach an element index")
                 .doesNotThrowAnyException();
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("a decoration selection must resolve to INELIGIBLE")
                 .isEqualTo(HairpinActionState.INELIGIBLE);
         }
 
         @Test
         void testIneligibleResolutionCarriesNoSpan() {
-            var fixture = fixtureWith(crotchet(), crotchetRest());
-            fixture.select(IDX_0, IDX_1);
+            // A lone note with no hairpin nearby still fails the two-column gate.
+            var fixture = fixtureWithNotes(NOTE_COUNT_3);
+            fixture.select(IDX_1, IDX_1);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.CRESCENDO);
 
             assertThat(resolution.state()).isEqualTo(HairpinActionState.INELIGIBLE);
             assertThat(resolution.spanBegin())
@@ -186,7 +225,7 @@ class HairpinActionStateTest extends UnitTest {
             var fixture = fixtureWithNotes(NOTE_COUNT_3);
             fixture.select(IDX_0, IDX_2);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.CRESCENDO);
 
             assertThat(resolution.state()).isEqualTo(HairpinActionState.CAN_ADD);
             assertThat(resolution.spanBegin()).isEqualTo(IDX_0);
@@ -194,21 +233,11 @@ class HairpinActionStateTest extends UnitTest {
         }
 
         @Test
-        void testRestAtEndIsIneligible() {
-            var fixture = fixtureWith(crotchet(), crotchet(), crotchetRest());
-            fixture.select(IDX_0, IDX_2);
-
-            assertThat(fixture.resolve().state())
-                .as("a hairpin must end on a pitched note")
-                .isEqualTo(HairpinActionState.INELIGIBLE);
-        }
-
-        @Test
         void testGraceNoteAtEndIsIneligible() {
             var fixture = fixtureWith(crotchet(), crotchet(), graceQuaver());
             fixture.select(IDX_0, IDX_2);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("a grace note cannot be the end of a hairpin")
                 .isEqualTo(HairpinActionState.INELIGIBLE);
         }
@@ -218,7 +247,7 @@ class HairpinActionStateTest extends UnitTest {
             var fixture = fixtureWith(crotchetRest(), crotchet(), crotchet());
             fixture.select(IDX_0, IDX_2);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("a rest is neither a pitched note nor a grace note, so it cannot begin a hairpin")
                 .isEqualTo(HairpinActionState.INELIGIBLE);
         }
@@ -228,7 +257,7 @@ class HairpinActionStateTest extends UnitTest {
             var fixture = fixtureWith(crotchet(), doubleBarline(), crotchet());
             fixture.select(IDX_0, IDX_2);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("a selection crossing a double barline cannot host a hairpin")
                 .isEqualTo(HairpinActionState.INELIGIBLE);
         }
@@ -238,7 +267,7 @@ class HairpinActionStateTest extends UnitTest {
             var fixture = fixtureWith(crotchet(), singleBarline(), crotchet());
             fixture.select(IDX_0, IDX_2);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("a single barline is not a structural boundary")
                 .isEqualTo(HairpinActionState.CAN_ADD);
         }
@@ -250,7 +279,7 @@ class HairpinActionStateTest extends UnitTest {
             var fixture = fixtureWith(graceQuaver(), crotchet(), crotchet());
             fixture.select(IDX_0, IDX_2);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.CRESCENDO);
 
             assertThat(resolution.state()).isEqualTo(HairpinActionState.CAN_ADD);
             assertThat(resolution.spanBegin())
@@ -263,7 +292,7 @@ class HairpinActionStateTest extends UnitTest {
             var fixture = fixtureWith(graceQuaver(), crotchetRest(), crotchet());
             fixture.select(IDX_0, IDX_2);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("a grace note whose host is not a pitched note cannot begin a hairpin")
                 .isEqualTo(HairpinActionState.INELIGIBLE);
         }
@@ -275,11 +304,29 @@ class HairpinActionStateTest extends UnitTest {
             var fixture = fixtureWith(graceQuaver());
             fixture.select(IDX_0, IDX_0);
 
-            assertThatCode(fixture::resolve)
+            assertThatCode(() -> fixture.resolve(Hairpin.Kind.CRESCENDO))
                 .as("a lone grace note must be rejected without an out-of-bounds host lookup")
                 .doesNotThrowAnyException();
 
-            assertThat(fixture.resolve().state()).isEqualTo(HairpinActionState.INELIGIBLE);
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state()).isEqualTo(HairpinActionState.INELIGIBLE);
+        }
+
+        @Test
+        void testGraceNoteAnchorsAnExtensionReachingItsHost() {
+            var elements = crotchets(NOTE_COUNT_7);
+            elements[IDX_2] = graceQuaver();
+            var fixture = fixtureWith(elements);
+            fixture.addCrescendo(IDX_3, IDX_6);
+            fixture.select(IDX_2, IDX_2);
+
+            fixture.assertResolves(
+                Hairpin.Kind.CRESCENDO,
+                HairpinActionState.EXTEND,
+                IDX_2,
+                IDX_6,
+                "the host lookahead is bounded by the resolved span end, not by the selection end, "
+                    + "so the grace note's host at 3 is within reach and the grace note may anchor "
+                    + "the extension");
         }
 
         @Test
@@ -287,7 +334,7 @@ class HairpinActionStateTest extends UnitTest {
             var fixture = fixtureWith(crotchet(), crotchetRest(), crotchet());
             fixture.select(IDX_0, IDX_2);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("only the endpoints are constrained — a rest inside the span is fine")
                 .isEqualTo(HairpinActionState.CAN_ADD);
         }
@@ -306,7 +353,7 @@ class HairpinActionStateTest extends UnitTest {
             var fixture = fixtureWithNotes(NOTE_COUNT_3);
             fixture.select(IDX_1, IDX_1);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("a new hairpin needs something to slope across")
                 .isEqualTo(HairpinActionState.INELIGIBLE);
         }
@@ -317,7 +364,7 @@ class HairpinActionStateTest extends UnitTest {
             var fixture = fixtureWith(graceQuaver(), crotchet());
             fixture.select(IDX_0, IDX_1);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("a grace note does not add to the pitched-note count")
                 .isEqualTo(HairpinActionState.INELIGIBLE);
         }
@@ -338,11 +385,11 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addCrescendo(IDX_0, IDX_2);
             fixture.select(IDX_3, IDX_3);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.CRESCENDO);
 
             assertThat(resolution.state())
                 .as("a single note touching a crescendo extends it, with no count requirement")
-                .isEqualTo(HairpinActionState.EXTEND_CRESCENDO);
+                .isEqualTo(HairpinActionState.EXTEND);
             assertThat(resolution.spanBegin()).isEqualTo(IDX_0);
             assertThat(resolution.spanEnd()).isEqualTo(IDX_3);
         }
@@ -353,9 +400,9 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addCrescendo(IDX_2, IDX_4);
             fixture.select(IDX_1, IDX_1);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.CRESCENDO);
 
-            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND_CRESCENDO);
+            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND);
             assertThat(resolution.spanBegin()).isEqualTo(IDX_1);
             assertThat(resolution.spanEnd()).isEqualTo(IDX_4);
         }
@@ -366,9 +413,9 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addCrescendo(IDX_0, IDX_2);
             fixture.select(IDX_2, IDX_4);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.CRESCENDO);
 
-            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND_CRESCENDO);
+            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND);
             assertThat(resolution.spanBegin()).isEqualTo(IDX_0);
             assertThat(resolution.spanEnd()).isEqualTo(IDX_4);
         }
@@ -379,9 +426,9 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addCrescendo(IDX_2, IDX_4);
             fixture.select(IDX_0, IDX_2);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.CRESCENDO);
 
-            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND_CRESCENDO);
+            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND);
             assertThat(resolution.spanBegin()).isEqualTo(IDX_0);
             assertThat(resolution.spanEnd()).isEqualTo(IDX_4);
         }
@@ -392,9 +439,9 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addCrescendo(IDX_2, IDX_3);
             fixture.select(IDX_1, IDX_4);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.CRESCENDO);
 
-            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND_CRESCENDO);
+            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND);
             assertThat(resolution.spanBegin()).isEqualTo(IDX_1);
             assertThat(resolution.spanEnd()).isEqualTo(IDX_4);
         }
@@ -405,9 +452,9 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addDiminuendo(IDX_0, IDX_2);
             fixture.select(IDX_2, IDX_4);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.DIMINUENDO);
 
-            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND_DIMINUENDO);
+            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND);
             assertThat(resolution.spanBegin()).isEqualTo(IDX_0);
             assertThat(resolution.spanEnd()).isEqualTo(IDX_4);
         }
@@ -418,9 +465,9 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addDiminuendo(IDX_2, IDX_4);
             fixture.select(IDX_0, IDX_2);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.DIMINUENDO);
 
-            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND_DIMINUENDO);
+            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND);
             assertThat(resolution.spanBegin()).isEqualTo(IDX_0);
             assertThat(resolution.spanEnd()).isEqualTo(IDX_4);
         }
@@ -431,9 +478,9 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addDiminuendo(IDX_2, IDX_3);
             fixture.select(IDX_1, IDX_4);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.DIMINUENDO);
 
-            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND_DIMINUENDO);
+            assertThat(resolution.state()).isEqualTo(HairpinActionState.EXTEND);
             assertThat(resolution.spanBegin()).isEqualTo(IDX_1);
             assertThat(resolution.spanEnd()).isEqualTo(IDX_4);
         }
@@ -445,11 +492,11 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addCrescendo(IDX_6, IDX_8);
             fixture.select(IDX_3, IDX_5);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.CRESCENDO);
 
             assertThat(resolution.state())
                 .as("same-type neighbors are absorbed, not blocking")
-                .isEqualTo(HairpinActionState.EXTEND_CRESCENDO);
+                .isEqualTo(HairpinActionState.EXTEND);
             assertThat(resolution.spanBegin())
                 .as("the span reaches back over the left-hand crescendo it absorbs")
                 .isEqualTo(IDX_0);
@@ -468,16 +515,29 @@ class HairpinActionStateTest extends UnitTest {
     class Blocking {
 
         @Test
-        void testOppositeTypeNeighbourBlocksExtension() {
-            // The crescendo alone would extend; the diminuendo on the other side means
-            // no single hairpin can cover the union, so neither action may proceed.
+        void testOppositeTypeClearOfTheUnionDoesNotBlock() {
             var fixture = fixtureWithNotes(NOTE_COUNT_9);
             fixture.addCrescendo(IDX_0, IDX_2);
             fixture.addDiminuendo(IDX_6, IDX_8);
             fixture.select(IDX_3, IDX_5);
 
-            assertThat(fixture.resolve().state())
-                .as("an opposite-type candidate blocks the extension")
+            fixture.assertResolves(
+                Hairpin.Kind.CRESCENDO,
+                HairpinActionState.EXTEND,
+                IDX_0,
+                IDX_5,
+                "the union stops at the selection's end, short of the diminuendo, so nothing collides");
+        }
+
+        @Test
+        void testOppositeTypeOverlappingTheUnionBlocks() {
+            var fixture = fixtureWithNotes(NOTE_COUNT_9);
+            fixture.addCrescendo(IDX_0, IDX_2);
+            fixture.addDiminuendo(IDX_4, IDX_8);
+            fixture.select(IDX_3, IDX_5);
+
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
+                .as("the union shares more than one element with the diminuendo, which is a collision")
                 .isEqualTo(HairpinActionState.BLOCKED);
         }
 
@@ -488,7 +548,7 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addDiminuendo(IDX_2, IDX_6);
             fixture.select(IDX_3, IDX_5);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("a crescendo and a diminuendo cannot occupy one span")
                 .isEqualTo(HairpinActionState.BLOCKED);
         }
@@ -499,7 +559,7 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addCrescendo(IDX_0, IDX_4);
             fixture.select(IDX_1, IDX_3);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("a hairpin already covering the whole selection has nothing to extend")
                 .isEqualTo(HairpinActionState.BLOCKED);
         }
@@ -510,7 +570,7 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addCrescendo(IDX_1, IDX_3);
             fixture.select(IDX_1, IDX_3);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("coverage is inclusive at both ends, so an exact match extends nothing")
                 .isEqualTo(HairpinActionState.BLOCKED);
         }
@@ -521,7 +581,7 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addCrescendo(IDX_0, IDX_4);
             fixture.select(IDX_1, IDX_3);
 
-            var resolution = fixture.resolve();
+            var resolution = fixture.resolve(Hairpin.Kind.CRESCENDO);
 
             assertThat(resolution.spanBegin())
                 .as("a BLOCKED resolution must not hand a usable span to the execution path")
@@ -539,9 +599,274 @@ class HairpinActionStateTest extends UnitTest {
             fixture.addCrescendo(IDX_0, IDX_3);
             fixture.select(IDX_4, IDX_5);
 
-            assertThat(fixture.resolve().state())
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
                 .as("the union span is re-checked against the structural boundary")
                 .isEqualTo(HairpinActionState.BLOCKED);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 2 — back-to-back wedges
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class BackToBack {
+
+        // The next two tests are the point of the whole feature and belong together:
+        // one selection, two menu items, two different honest answers.
+
+        @Test
+        void testDiminuendoAfterCrescendoCanAdd() {
+            var fixture = fixtureWithNotes(NOTE_COUNT_9);
+            fixture.addCrescendo(IDX_0, IDX_4);
+            fixture.select(IDX_4, IDX_8);
+
+            fixture.assertResolves(
+                Hairpin.Kind.DIMINUENDO,
+                HairpinActionState.CAN_ADD,
+                IDX_4,
+                IDX_8,
+                "the crescendo shares only the element the diminuendo begins on, which is where "
+                    + "one wedge is allowed to hand off to the next");
+        }
+
+        @Test
+        void testCrescendoOnTheSameSelectionExtendsInstead() {
+            var fixture = fixtureWithNotes(NOTE_COUNT_9);
+            fixture.addCrescendo(IDX_0, IDX_4);
+            fixture.select(IDX_4, IDX_8);
+
+            fixture.assertResolves(
+                Hairpin.Kind.CRESCENDO,
+                HairpinActionState.EXTEND,
+                IDX_0,
+                IDX_8,
+                "the same selection that adds a back-to-back diminuendo extends the crescendo — "
+                    + "each menu item resolves for its own type");
+        }
+
+        @Test
+        void testCrescendoBeforeDiminuendoCanAdd() {
+            var fixture = fixtureWithNotes(NOTE_COUNT_9);
+            fixture.addDiminuendo(IDX_4, IDX_8);
+            fixture.select(IDX_0, IDX_4);
+
+            fixture.assertResolves(
+                Hairpin.Kind.CRESCENDO,
+                HairpinActionState.CAN_ADD,
+                IDX_0,
+                IDX_4,
+                "the hand-off element may be the new wedge's end just as well as its anchor");
+        }
+
+        @Test
+        void testOppositeTypeOverlappingByMoreThanOneElementBlocks() {
+            var fixture = fixtureWithNotes(NOTE_COUNT_9);
+            fixture.addCrescendo(IDX_0, IDX_4);
+            fixture.select(IDX_2, IDX_8);
+
+            assertThat(fixture.resolve(Hairpin.Kind.DIMINUENDO).state())
+                .as("the selection shares elements 2 through 4 with the crescendo, which is an "
+                    + "overlap rather than a hand-off")
+                .isEqualTo(HairpinActionState.BLOCKED);
+        }
+
+        @Test
+        void testOppositeTypeOneElementGapCanAdd() {
+            var fixture = fixtureWithNotes(NOTE_COUNT_10);
+            fixture.addCrescendo(IDX_0, IDX_4);
+            fixture.select(IDX_6, IDX_9);
+
+            fixture.assertResolves(
+                Hairpin.Kind.DIMINUENDO,
+                HairpinActionState.CAN_ADD,
+                IDX_6,
+                IDX_9,
+                "a gap of exactly one element used to be blocked while a gap of two or more was "
+                    + "allowed — nothing is shared with the crescendo, so there is nothing to block");
+        }
+
+        @Test
+        void testSelectionBetweenOppositeTypesExtendsTheSameType() {
+            var fixture = fixtureWithNotes(NOTE_COUNT_10);
+            fixture.addDiminuendo(IDX_0, IDX_3);
+            fixture.addCrescendo(IDX_6, IDX_9);
+            fixture.select(IDX_3, IDX_6);
+
+            fixture.assertResolves(
+                Hairpin.Kind.DIMINUENDO,
+                HairpinActionState.EXTEND,
+                IDX_0,
+                IDX_6,
+                "the diminuendo absorbs the selection and hands off to the crescendo on their one "
+                    + "shared element");
+        }
+
+        @Test
+        void testSelectionMeetingAnOppositeTypeTooEarlyBlocks() {
+            var fixture = fixtureWithNotes(NOTE_COUNT_10);
+            fixture.addDiminuendo(IDX_0, IDX_3);
+            fixture.addCrescendo(IDX_5, IDX_9);
+            fixture.select(IDX_3, IDX_6);
+
+            assertThat(fixture.resolve(Hairpin.Kind.DIMINUENDO).state())
+                .as("the extended diminuendo would share elements 5 and 6 with the crescendo")
+                .isEqualTo(HairpinActionState.BLOCKED);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Step 1 — the union has to converge before it is checked
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class UnionConvergence {
+
+        @Test
+        void testAbsorbedHairpinBringsAFurtherOneIntoReach() {
+            var fixture = fixtureWithNotes(NOTE_COUNT_20);
+            fixture.addCrescendo(IDX_0, IDX_4);
+            fixture.addCrescendo(IDX_10, IDX_14);
+            fixture.addCrescendo(IDX_15, IDX_18);
+            fixture.select(IDX_5, IDX_9);
+
+            fixture.assertResolves(
+                Hairpin.Kind.CRESCENDO,
+                HairpinActionState.EXTEND,
+                IDX_0,
+                IDX_18,
+                "one pass reaches only [0, 14], and the crescendo at [15, 18] is one element past "
+                    + "that, so a single-pass union would promise a narrower hairpin than "
+                    + "Line.addHairpin actually builds");
+        }
+
+        @Test
+        void testOppositeTypeCollidingOnlyWithTheConvergedUnionBlocks() {
+            var fixture = fixtureWithNotes(NOTE_COUNT_20);
+            fixture.addCrescendo(IDX_0, IDX_4);
+            fixture.addCrescendo(IDX_10, IDX_14);
+            fixture.addCrescendo(IDX_15, IDX_18);
+            fixture.addDiminuendo(IDX_16, IDX_19);
+            fixture.select(IDX_5, IDX_9);
+
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
+                .as("the diminuendo collides only with the converged union, so a single-pass "
+                    + "resolution would let the user create an overlapping pair")
+                .isEqualTo(HairpinActionState.BLOCKED);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Rests as endpoints — LilyPond's rule is right-side only
+    // -----------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class RestEndpoints {
+
+        @Test
+        void testRestAtEndCanAdd() {
+            var fixture = fixtureWith(crotchet(), crotchet(), crotchetRest());
+            fixture.select(IDX_0, IDX_2);
+
+            fixture.assertResolves(
+                Hairpin.Kind.CRESCENDO,
+                HairpinActionState.CAN_ADD,
+                IDX_0,
+                IDX_2,
+                "a rest bounds a wedge at its left edge, so it may end a hairpin");
+        }
+
+        @Test
+        void testOneNoteAndTheRestAfterItCanAdd() {
+            var fixture = fixtureWith(crotchet(), crotchetRest());
+            fixture.select(IDX_0, IDX_1);
+
+            fixture.assertResolves(
+                Hairpin.Kind.DIMINUENDO,
+                HairpinActionState.CAN_ADD,
+                IDX_0,
+                IDX_1,
+                "the 18000/17323.abc corpus shape — a diminuendo over a single note ending on the "
+                    + "next rest — where the trailing rest is the second column");
+        }
+
+        @Test
+        void testSecondTrailingRestIsIneligible() {
+            var fixture = fixtureWith(crotchet(), crotchetRest(), crotchetRest());
+            fixture.select(IDX_0, IDX_2);
+
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
+                .as("a hairpin ends on at most one rest — a wedge running on across a second has "
+                    + "nothing left to slope over")
+                .isEqualTo(HairpinActionState.INELIGIBLE);
+        }
+
+        @Test
+        void testFirstOfTwoTrailingRestsCanAdd() {
+            var fixture = fixtureWith(crotchet(), crotchetRest(), crotchetRest());
+            fixture.select(IDX_0, IDX_1);
+
+            fixture.assertResolves(
+                Hairpin.Kind.CRESCENDO,
+                HairpinActionState.CAN_ADD,
+                IDX_0,
+                IDX_1,
+                "the rest closing the run of notes may end the hairpin; only the one after it may "
+                    + "not");
+        }
+
+        @Test
+        void testLoneRestIsIneligible() {
+            var fixture = fixtureWith(crotchetRest());
+            fixture.select(IDX_0, IDX_0);
+
+            assertThat(fixture.resolve(Hairpin.Kind.DIMINUENDO).state())
+                .as("a rest cannot anchor a hairpin, so a lone rest carries nothing")
+                .isEqualTo(HairpinActionState.INELIGIBLE);
+        }
+
+        @Test
+        void testRestAfterACrescendoExtendsIt() {
+            var fixture = fixtureWithRestAt(NOTE_COUNT_5, IDX_4);
+            fixture.addCrescendo(IDX_0, IDX_3);
+            fixture.select(IDX_4, IDX_4);
+
+            fixture.assertResolves(
+                Hairpin.Kind.CRESCENDO,
+                HairpinActionState.EXTEND,
+                IDX_0,
+                IDX_4,
+                "the selected rest supplies only the end of the span, which a rest may be");
+        }
+
+        @Test
+        void testRestBeforeACrescendoIsIneligible() {
+            var fixture = fixtureWithRestAt(NOTE_COUNT_9, IDX_4);
+            fixture.addCrescendo(IDX_5, IDX_8);
+            fixture.select(IDX_4, IDX_4);
+
+            assertThat(fixture.resolve(Hairpin.Kind.CRESCENDO).state())
+                .as("the selected rest would anchor the extended span, and LilyPond's rest rule is "
+                    + "right-side only")
+                .isEqualTo(HairpinActionState.INELIGIBLE);
+        }
+
+        @Test
+        void testRestInheritedAsAnAnchorIsNotRechecked() {
+            var fixture = fixtureWithRestAt(NOTE_COUNT_9, IDX_3);
+            fixture.addCrescendo(IDX_0, IDX_5);
+            fixture.select(IDX_3, IDX_8);
+
+            fixture.assertResolves(
+                Hairpin.Kind.CRESCENDO,
+                HairpinActionState.EXTEND,
+                IDX_0,
+                IDX_8,
+                "the anchor comes from the absorbed crescendo rather than from the selected rest, "
+                    + "so the rest never has to anchor anything");
         }
     }
 }

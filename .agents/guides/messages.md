@@ -28,16 +28,16 @@ public class SaveCommand extends Message {}
 A message with payload takes its data through the constructor and exposes getters only:
 
 ```java
-// command/AddDynamicsCommand.java
-public class AddDynamicsCommand extends Message {
-    private final boolean isCrescendo;
+// command/AddHairpinCommand.java
+public class AddHairpinCommand extends Message {
+    private final Hairpin.Kind kind;
 
-    public AddDynamicsCommand(boolean isCrescendo) {
-        this.isCrescendo = isCrescendo;
+    public AddHairpinCommand(Hairpin.Kind kind) {
+        this.kind = kind;
     }
 
-    public boolean isCrescendo() {
-        return isCrescendo;
+    public Hairpin.Kind kind() {
+        return kind;
     }
 }
 ```
@@ -68,8 +68,8 @@ public final class ScoreViewController {
     }
 
     @Handler
-    public void handleAddDynamics(AddDynamicsCommand message) {
-        operations.addDynamicsToSelection(message.isCrescendo());
+    public void handleAddHairpin(AddHairpinCommand message) {
+        operations.addHairpinToSelection(message.kind());
     }
 
     @Handler

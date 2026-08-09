@@ -191,14 +191,14 @@ class LineHairpinDeletionTest extends UnitTest {
         }
 
         /**
-         * A hairpin may only end on a pitched note, so an end pulled in past a rest keeps
-         * going until it reaches one.
+         * A hairpin ends at a rest's left edge as legitimately as on a note, so an end
+         * pulled in onto a rest stops there.
          */
         @Test
-        void testDeletingTheEndPullsPastARestToTheNearestPitchedNote() {
+        void testDeletingTheEndPullsInToARest() {
             song.withoutMutationTracking(() -> line.setElement(IDX_2, new StaffElement(ElementType.CROTCHET_REST)));
             addCrescendo(IDX_0, IDX_3);
-            var newEnd = line.getElement(IDX_1);
+            var newEnd = line.getElement(IDX_2);
 
             song.withModification(() -> line.removeElement(IDX_3));
 
@@ -207,25 +207,59 @@ class LineHairpinDeletionTest extends UnitTest {
             assertAll(
                 () -> assertThat(crescendos).hasSize(1),
                 () -> assertThat(crescendos.getFirst().getEndElement())
-                    .as("the end must skip the rest and land on a pitched note")
+                    .as("a rest bounds a wedge, so the end must stop on it rather than skip past")
                     .isSameAs(newEnd)
             );
         }
 
         /**
-         * Rests between the endpoints do not count: a hairpin over note–rest–note whose
-         * last note is deleted has only one note left and must go.
+         * A hairpin may end on at most one rest, so a deleted end that leaves two of them
+         * behind stops on the first — the same rule the menu applies when offering a new
+         * hairpin over a selection.
          */
         @Test
-        void testDeletingTheEndLeavingOnePitchedNoteRemovesTheHairpin() {
+        void testDeletingTheEndPullsInToTheFirstOfTwoRests() {
+            song.withoutMutationTracking(() -> {
+                line.setElement(IDX_2, new StaffElement(ElementType.CROTCHET_REST));
+                line.setElement(IDX_3, new StaffElement(ElementType.CROTCHET_REST));
+            });
+            addCrescendo(IDX_0, IDX_4);
+            var newEnd = line.getElement(IDX_2);
+
+            song.withModification(() -> line.removeElement(IDX_4));
+
+            var crescendos = line.findSpans(Crescendo.class);
+
+            assertAll(
+                () -> assertThat(crescendos).hasSize(1),
+                () -> assertThat(crescendos.getFirst().getEndElement())
+                    .as("the second rest cannot end a hairpin, so the end walks back to the first")
+                    .isSameAs(newEnd)
+            );
+        }
+
+        /**
+         * A hairpin over note–rest–note whose last note is deleted still has two elements
+         * a wedge may span, the second of them a rest, so it survives shortened.
+         */
+        @Test
+        void testDeletingTheEndLeavingANoteAndARestKeepsTheHairpin() {
             song.withoutMutationTracking(() -> line.setElement(IDX_1, new StaffElement(ElementType.CROTCHET_REST)));
             addCrescendo(IDX_0, IDX_2);
+            var newEnd = line.getElement(IDX_1);
 
             song.withModification(() -> line.removeElement(IDX_2));
 
-            assertThat(line.findSpans(Crescendo.class))
-                .as("one pitched note cannot carry a hairpin")
-                .isEmpty();
+            var crescendos = line.findSpans(Crescendo.class);
+
+            assertAll(
+                () -> assertThat(crescendos)
+                    .as("a note and the rest after it can still carry a wedge")
+                    .hasSize(1),
+                () -> assertThat(crescendos.getFirst().getEndElement())
+                    .as("the end must move to the surviving rest")
+                    .isSameAs(newEnd)
+            );
         }
 
         /**
@@ -289,6 +323,56 @@ class LineHairpinDeletionTest extends UnitTest {
                 () -> assertThat(crescendos.getFirst().getAnchorElement()).isSameAs(anchor),
                 () -> assertThat(crescendos.getFirst().getEndElement()).isSameAs(end)
             );
+        }
+
+        /**
+         * {@code resolveEndIndex} walks backward from the last survivor in the hairpin's
+         * range, skipping any that cannot end a hairpin, until it finds one that can. Two
+         * grace notes intervene between the deleted end and a surviving rest, so this proves
+         * the walk itself rather than a rest found on the first candidate.
+         */
+        @Test
+        void testDeletingTheEndWalksBackPastGraceNotesToASurvivingRest() {
+            song.withoutMutationTracking(() -> {
+                line.setElement(IDX_2, new StaffElement(ElementType.CROTCHET_REST));
+                line.setElement(IDX_3, new StaffElement(ElementType.GRACE_QUAVER));
+            });
+            addCrescendo(IDX_0, IDX_4);
+            var newEnd = line.getElement(IDX_2);
+
+            song.withModification(() -> line.removeElement(IDX_4));
+
+            var crescendos = line.findSpans(Crescendo.class);
+
+            assertAll(
+                () -> assertThat(crescendos)
+                    .as("a rest reachable by walking back past ineligible elements still ends the hairpin")
+                    .hasSize(1),
+                () -> assertThat(crescendos.getFirst().getEndElement())
+                    .as("the end must land on the rest, skipping the intervening grace note")
+                    .isSameAs(newEnd)
+            );
+        }
+
+        /**
+         * When every surviving element in a hairpin's range is a grace note — nothing that
+         * can end a hairpin — {@code resolveEndIndex} returns -1 and the hairpin is removed,
+         * distinct from removal via too few survivors: here the anchor itself survives, but
+         * cannot serve as the end either.
+         */
+        @Test
+        void testDeletingTheEndLeavingOnlyGraceNotesRemovesTheHairpin() {
+            song.withoutMutationTracking(() -> {
+                line.setElement(IDX_0, new StaffElement(ElementType.GRACE_QUAVER));
+                line.setElement(IDX_1, new StaffElement(ElementType.GRACE_QUAVER));
+            });
+            addCrescendo(IDX_0, IDX_2);
+
+            song.withModification(() -> line.removeElement(IDX_2));
+
+            assertThat(line.findSpans(Crescendo.class))
+                .as("a range with nothing eligible to end a hairpin leaves it with no end")
+                .isEmpty();
         }
     }
 

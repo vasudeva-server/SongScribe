@@ -26,6 +26,7 @@ import org.jspecify.annotations.Nullable;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Hairpin;
+import songscribe.dom.Hairpin.Kind;
 
 /**
  * Bidirectional mapping between SongScribe {@link Hairpin} subclasses
@@ -38,25 +39,14 @@ import songscribe.dom.Hairpin;
  */
 final class WedgeTypeMapping {
 
-    /**
-     * The two hairpin kinds a start {@code <wedge>} can open. Used by the reader
-     * as a binding tag while a hairpin's end note is awaited — a plain two-value
-     * tag rather than a {@code Class} token, since the hairpin is constructed
-     * directly ({@code new Crescendo}/{@code new Diminuendo}), never reflectively.
-     */
-    enum WedgeKind {
-        CRESCENDO,
-        DIMINUENDO
-    }
-
     // -------------------------------------------------------------------------
-    // Reverse map: wedge type token → WedgeKind to open.
+    // Reverse map: wedge type token → Hairpin.Kind to open.
     // "stop" is intentionally absent — it is a structural marker, not a kind.
     // -------------------------------------------------------------------------
 
-    private static final Map<String, WedgeKind> KIND_BY_TOKEN = Map.of(
-        MusicXmlTags.WEDGE_CRESCENDO,  WedgeKind.CRESCENDO,
-        MusicXmlTags.WEDGE_DIMINUENDO, WedgeKind.DIMINUENDO
+    private static final Map<String, Hairpin.Kind> KIND_BY_TOKEN = Map.of(
+        MusicXmlTags.WEDGE_CRESCENDO,  Hairpin.Kind.CRESCENDO,
+        MusicXmlTags.WEDGE_DIMINUENDO, Hairpin.Kind.DIMINUENDO
     );
 
     private WedgeTypeMapping() {}
@@ -66,32 +56,24 @@ final class WedgeTypeMapping {
     // -------------------------------------------------------------------------
 
     /**
-     * Returns the MusicXML {@code <wedge type>} token for the given {@link Hairpin},
-     * or {@code null} if the hairpin type is not recognised.
+     * Returns the MusicXML {@code <wedge type>} token for the given {@link Hairpin}.
      *
      * <p>{@link Crescendo} maps to {@code "crescendo"};
      * {@link Diminuendo} maps to {@code "diminuendo"}.
      */
-    @Nullable
     static String wedgeType(Hairpin hairpin) {
-        if (hairpin instanceof Crescendo) {
-            return MusicXmlTags.WEDGE_CRESCENDO;
-        }
-
-        if (hairpin instanceof Diminuendo) {
-            return MusicXmlTags.WEDGE_DIMINUENDO;
-        }
-
-        return null;
+        return switch (hairpin.getKind()) {
+            case Kind.CRESCENDO -> MusicXmlTags.WEDGE_CRESCENDO;
+            case Kind.DIMINUENDO -> MusicXmlTags.WEDGE_DIMINUENDO;
+        };
     }
 
     /**
-     * Returns the {@link WedgeKind} for the given MusicXML {@code <wedge type>}
+     * Returns the {@link Hairpin.Kind} for the given MusicXML {@code <wedge type>}
      * token, or {@code null} if the token is not a start-type wedge
      * (e.g. {@code "stop"} has no corresponding kind).
      */
-    @Nullable
-    static WedgeKind wedgeKind(String wedgeType) {
+    static Hairpin.@Nullable Kind wedgeKind(String wedgeType) {
         return KIND_BY_TOKEN.get(wedgeType);
     }
 }

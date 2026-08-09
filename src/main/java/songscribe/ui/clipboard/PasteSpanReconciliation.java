@@ -95,7 +95,11 @@ import songscribe.layout.InsertionSpacingCalculator;
  * notation, and drawing one in by hand has always left the tie alone.
  *
  * <p><b>Hairpins reconcile by type</b>, because a crescendo and a diminuendo say
- * opposite things. A straddled destination hairpin is kept — and silently widened by
+ * opposite things when they <em>overlap</em> — which is all this class ever judges,
+ * since it only reconciles a destination hairpin the paste straddles. Two
+ * opposite-type hairpins may legally abut, sharing the one element where one ends
+ * and the next begins; that is not a contradiction, and this rule does not apply to
+ * it. A straddled destination hairpin is kept — and silently widened by
  * the insertion, which reads correctly over any span of notes — only while the
  * fragment says nothing that contradicts it: if the fragment carries a hairpin of a
  * <em>different</em> type, the destination's is removed and the fragment's own
@@ -390,7 +394,7 @@ public record PasteSpanReconciliation(
     ) {
         for (var span : fragmentSpans) {
             if (span instanceof Hairpin fragmentHairpin
-                    && fragmentHairpin.getClass() != hairpin.getClass()) {
+                    && fragmentHairpin.getKind() != hairpin.getKind()) {
                 return true;
             }
         }

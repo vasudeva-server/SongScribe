@@ -34,7 +34,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.jspecify.annotations.Nullable;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
@@ -67,6 +67,7 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.dom.Song;
 
 import songscribe.dom.EndingValidationResult;
+import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.SlideOperations;
@@ -289,17 +290,17 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
     // -----------------------------------------------------------------------
 
     @ParameterizedTest
-    @ValueSource(booleans = {true, false})
-    void testHandleAddDynamicsEmitsOneAddition(boolean crescendo) {
+    @EnumSource(Hairpin.Kind.class)
+    void testHandleAddDynamicsEmitsOneAddition(Hairpin.Kind kind) {
         var env = setupTest(crotchet(), crotchet());
         ReflectionTestHelper.selectRange(env.coordinator(), 0, 1);
 
-        env.scoreMessageCoordinator().handleAddHairpin(new AddHairpinCommand(crescendo));
+        env.scoreMessageCoordinator().handleAddHairpin(new AddHairpinCommand(kind));
 
         var notification = captureSingleDidChange();
         assertThat(notification.getMutations()).hasSize(1);
 
-        if (crescendo) {
+        if (kind == Hairpin.Kind.CRESCENDO) {
             assertThat(notification.getMutations().getFirst()).isInstanceOf(CrescendoAddition.class);
         } else {
             assertThat(notification.getMutations().getFirst()).isInstanceOf(DiminuendoAddition.class);

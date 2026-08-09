@@ -189,7 +189,7 @@ public final class OpNames {
      * Crescendo}, otherwise {@code Delete Diminuendo}.
      */
     public static String deleteHairpinLabel(Hairpin hairpin) {
-        return Strings.get(hairpin instanceof Crescendo
+        return Strings.get(hairpin.getKind() == Hairpin.Kind.CRESCENDO
             ? Strings.ACTION_EDIT_OP_DELETE_CRESCENDO
             : Strings.ACTION_EDIT_OP_DELETE_DIMINUENDO);
     }

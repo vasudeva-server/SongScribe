@@ -1291,6 +1291,10 @@ public class Line implements LyricRun, SpanLookup {
     /**
      * Returns whether the element at {@code index} can begin a hairpin: a pitched note,
      * or a grace note whose host is one.
+     * <p>
+     * See {@link #canEndHairpin(int)} for the matching predicate at the other end of a
+     * hairpin — a rest may end a hairpin but, unlike a pitched note, may never anchor
+     * one; LilyPond's rest rule is right-side only.
      *
      * @param lastIndex the last index a hairpin may reach, bounding the host lookahead
      */
@@ -1324,10 +1328,104 @@ public class Line implements LyricRun, SpanLookup {
     }
 
     /**
+     * Returns whether the element at {@code index} can end a hairpin: a pitched note, or
+     * the first rest after one.
+     * <p>
+     * See {@link #canAnchorHairpin(int, int)} for the matching predicate at the other
+     * end of a hairpin.
+     */
+    public boolean canEndHairpin(int index) {
+        return canEndHairpin(elements, index);
+    }
+
+    /**
+     * Returns whether the element at {@code index} in {@code candidates} can end a
+     * hairpin.
+     * <p>
+     * A pitched note always can. A rest can when it is the first one after a pitched
+     * note, so a hairpin ends on at most one rest — a wedge running on across a second
+     * has nothing left to slope over. Interior rests are unaffected; this is a rule
+     * about where a hairpin stops, not what it may cross.
+     * <p>
+     * Both the menu's eligibility test and the post-deletion reshaping read this, so the
+     * two can never disagree about what a hairpin may end on.
+     *
+     * @param candidates the elements to test against, in document order
+     */
+    private static boolean canEndHairpin(List<? extends StaffElement> candidates, int index) {
+        var type = candidates.get(index).getType();
+
+        if (type.isPitchedNote()) {
+            return true;
+        }
+
+        // LilyPond ends a hairpin at a rest's left edge rather than past its glyph
+        // (hairpin.cc:268-271), so a rest bounds a wedge as legitimately as a note —
+        // but only the one that closes the run of notes.
+        return type.isRest() && precedingDurationIsPitchedNote(candidates, index);
+    }
+
+    /**
+     * Returns whether the nearest duration element before {@code index} is a pitched
+     * note, false when there is none.
+     * <p>
+     * Non-durations are skipped rather than treated as separators: a grace note sits
+     * between a rest and whatever precedes it without making that rest the first of its
+     * run.
+     */
+    private static boolean precedingDurationIsPitchedNote(
+        List<? extends StaffElement> candidates,
+        int index
+    ) {
+        for (var i = index - 1; i >= 0; i--) {
+            var type = candidates.get(i).getType();
+
+            if (type.isDuration()) {
+                return type.isPitchedNote();
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns whether {@code hairpin} still has endpoints the user could have placed once the
+     * element at {@code index} has been replaced by {@code replacement}.
+     * <p>
+     * Only an endpoint is at stake. A replacement anywhere else — inside the hairpin or off it
+     * entirely — leaves it alone, since the endpoint rules govern where a wedge stops, not what
+     * it crosses.
+     * <p>
+     * Must be called on the <em>pre-replacement</em> line state, while the element at
+     * {@code index} is still in the line.
+     */
+    public boolean hairpinSurvivesReplacement(Hairpin hairpin, int index, StaffElement replacement) {
+        var anchorIndex = hairpin.getAnchorElementIndex();
+        var endIndex = hairpin.getEndElementIndex();
+
+        // A hairpin whose endpoints are not both in this line has nothing here to judge.
+        if (anchorIndex < 0 || endIndex < 0) {
+            return true;
+        }
+
+        if (index != anchorIndex && index != endIndex) {
+            return true;
+        }
+
+        // Both predicates read the neighbours of the index they are given — the host after an
+        // anchor, the run of durations before an end — so they are asked about the line as it
+        // will be, rather than having their rules restated over the incoming element alone.
+        var candidates = new ArrayList<StaffElement>(elements);
+        candidates.set(index, replacement);
+
+        return canAnchorHairpin(candidates, anchorIndex, endIndex) && canEndHairpin(candidates, endIndex);
+    }
+
+    /**
      * Returns the post-deletion position of {@code hairpin}'s end, given that its elements
      * survive from {@code first} through {@code last}, or -1 when none of them can end a
      * hairpin. A surviving end stays where it is; a deleted one moves in to the last
-     * surviving pitched note, which is the only thing a hairpin may end on.
+     * surviving note or rest.
      */
     private static int resolveEndIndex(
         Hairpin hairpin,
@@ -1340,7 +1438,7 @@ public class Line implements LyricRun, SpanLookup {
         }
 
         for (var i = last; i >= first; i--) {
-            if (survivors.get(i).getType().isPitchedNote()) {
+            if (canEndHairpin(survivors, i)) {
                 return i;
             }
         }

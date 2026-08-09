@@ -189,7 +189,11 @@ so a straddled one is dropped, but the fragment's own tie/trill still binds the
 fragment's own notes and is kept.
 
 **Hairpins reconcile by type**, because a crescendo and a diminuendo say opposite
-things. A hairpin is a continuous dynamic that reads correctly over any span of
+things when they *overlap* — which is all this reconciliation ever sees, since it
+only judges a destination hairpin the paste straddles. Two opposite-type hairpins
+may legally abut, sharing the one element where one ends and the next begins; that
+is not a contradiction, so this rule does not reach it. A hairpin is a continuous
+dynamic that reads correctly over any span of
 notes, so a straddled destination hairpin is kept — silently widened by the
 insertion — and the fragment's, necessarily a shorter hairpin of the same type
 inside it, is dropped as redundant. But if the fragment carries a hairpin of a

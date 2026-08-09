@@ -37,6 +37,7 @@ import songscribe.dom.Diminuendo;
 import songscribe.dom.Duration;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
+import songscribe.dom.Hairpin;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
@@ -190,6 +191,22 @@ class MutationReplayerRoundTripTest extends UnitTest {
             // Deleting an endpoint shortens the crescendo — a companion removal plus the
             // addition of a copy; undo must restore both the note and the original span.
             assertRoundTrip(song, () -> line.removeElement(0));
+        }
+
+        @Test
+        void testDeletingHairpinEndNoteWithSurvivingRestRoundTrips() {
+            var song = new Song();
+            var line = song.getLine(0);
+            UndoTestSupport.addCrotchets(song, line, 3);
+            song.withoutMutationTracking(() -> {
+                line.addElement(ElementType.CROTCHET_REST.newInstance());
+                line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(2)));
+            });
+
+            // Deleting the hairpin's end note leaves a surviving rest right after it;
+            // resolveEndIndex moves the end in to that rest rather than dropping the
+            // hairpin — undo must restore the original note and span.
+            assertRoundTrip(song, () -> line.removeElement(2));
         }
 
         @Test
@@ -732,7 +749,8 @@ class MutationReplayerRoundTripTest extends UnitTest {
             var fixture = extendFixture();
             var song = fixture.song();
             var line = fixture.line();
-            song.withoutMutationTracking(() -> fixture.operations().addHairpinToSelection(true));
+            song.withoutMutationTracking(
+                () -> fixture.operations().addHairpinToSelection(Hairpin.Kind.CRESCENDO));
 
             // The hairpin being deleted is the one mergeOverlappingSpans reshaped, not the
             // one the constructor produced; undo must restore that reshaped span.
@@ -745,7 +763,7 @@ class MutationReplayerRoundTripTest extends UnitTest {
             var song = fixture.song();
             var line = fixture.line();
             var batch = UndoTestSupport.captureBatch(
-                song, () -> fixture.operations().addHairpinToSelection(true));
+                song, () -> fixture.operations().addHairpinToSelection(Hairpin.Kind.CRESCENDO));
 
             // Point dynamics are not part of the native serialization, so the strip is
             // asserted directly on the model rather than through assertRoundTrip.
@@ -764,6 +782,25 @@ class MutationReplayerRoundTripTest extends UnitTest {
             assertThat(line.getElement(0).findAttachment(DynamicAttachment.class))
                 .as("redo must strip the point dynamic again")
                 .isNull();
+        }
+
+        @Test
+        void testAddingBackToBackDiminuendoRoundTrips() {
+            var song = songWithNotes(NOTE_COUNT);
+            var line = song.getLine(0);
+            song.withoutMutationTracking(
+                () -> line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(1))));
+
+            var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
+
+            // Selection begins on the crescendo's end element, so the diminuendo lands
+            // back to back with it rather than overlapping or extending it.
+            ReflectionTestHelper.selectRange(coordinator, 1, SELECTION_END);
+            var operations = new MusicEditOperations(song, coordinator);
+
+            // Undo must leave the crescendo intact with its original [0, 1] span — the
+            // full-state equality assertRoundTrip performs covers that implicitly.
+            assertRoundTrip(song, () -> operations.addHairpinToSelection(Hairpin.Kind.DIMINUENDO));
         }
     }
 
