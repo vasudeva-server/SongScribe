@@ -22,6 +22,7 @@ package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
@@ -30,11 +31,16 @@ import static org.mockito.Mockito.withSettings;
 import static songscribe.ui.component.PopupButtonTestSupport.clickButton;
 import static songscribe.ui.component.PopupButtonTestSupport.showPopup;
 
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.event.PopupMenuEvent;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
 import songscribe.ui.action.UIAction;
@@ -54,9 +60,19 @@ import songscribe.util.UIUtils;
  *       button closes the menu</li>
  *   <li>{@code hostsAction}: true for an action bound to an item in the popup, false for an
  *       action that is not in the popup</li>
+ *   <li>the enabled state {@code BasePopupButton} derives from the hosted actions, both as
+ *       computed at construction and as re-derived in either direction when an action fires a
+ *       property change afterwards</li>
+ *   <li>{@code ItemStyle.AUTO}: a selectable action becomes a check box item</li>
  * </ul>
  */
 class PopupMenuButtonTest extends UnitTest {
+
+    /**
+     * The property name {@link javax.swing.AbstractAction#setEnabled} fires under. Swing
+     * publishes no constant for it, so the literal lives here rather than at each use.
+     */
+    private static final String ENABLED_PROPERTY = "enabled";
 
     private PopupMenuButton button;
 
@@ -181,9 +197,103 @@ class PopupMenuButtonTest extends UnitTest {
         assertThat(popupButton.hostsAction(foreignAction)).isFalse();
     }
 
+    // -----------------------------------------------------------------------
+    // Enabled state, hoisted into BasePopupButton, is the OR of the hosted actions'
+    // enabled states.
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testButtonIsEnabledWhenOneOfTheHostedActionsIsEnabled() {
+        var popupButton = new PopupMenuButton(
+            new UIAction[] { mockAction("disabled", false), mockAction("enabled", true) },
+            null
+        );
+
+        assertThat(popupButton.isEnabled()).isTrue();
+    }
+
+    @Test
+    void testButtonIsDisabledWhenAllHostedActionsAreDisabled() {
+        var popupButton = new PopupMenuButton(
+            new UIAction[] { mockAction("first", false), mockAction("second", false) },
+            null
+        );
+
+        assertThat(popupButton.isEnabled()).isFalse();
+    }
+
+    @Test
+    void testButtonRelightsWhenAnActionBecomesEnabledAfterConstruction() {
+        var action = mockAction("hosted", false);
+        var popupButton = new PopupMenuButton(new UIAction[] { action }, null);
+
+        assertThat(popupButton.isEnabled()).as("nothing is enabled yet").isFalse();
+
+        var listeners = ArgumentCaptor.forClass(PropertyChangeListener.class);
+        verify(action, atLeastOnce()).addPropertyChangeListener(listeners.capture());
+
+        when(action.isEnabled()).thenReturn(true);
+
+        var event = new PropertyChangeEvent(action, ENABLED_PROPERTY, false, true);
+        listeners.getAllValues().forEach(listener -> listener.propertyChange(event));
+
+        assertThat(popupButton.isEnabled()).isTrue();
+    }
+
+    /**
+     * The derivation has to run both ways. A version that only ever lights the button up would
+     * leave it clickable after its actions died — the exact staleness this derivation replaced.
+     */
+    @Test
+    void testButtonGoesDarkWhenItsLastEnabledActionIsDisabledAfterConstruction() {
+        var action = mockAction("hosted", true);
+        var popupButton = new PopupMenuButton(new UIAction[] { action }, null);
+
+        assertThat(popupButton.isEnabled()).as("the action starts live").isTrue();
+
+        var listeners = ArgumentCaptor.forClass(PropertyChangeListener.class);
+        verify(action, atLeastOnce()).addPropertyChangeListener(listeners.capture());
+
+        when(action.isEnabled()).thenReturn(false);
+
+        var event = new PropertyChangeEvent(action, ENABLED_PROPERTY, true, false);
+        listeners.getAllValues().forEach(listener -> listener.propertyChange(event));
+
+        assertThat(popupButton.isEnabled()).isFalse();
+    }
+
+    /**
+     * A button with nothing behind it can only open an empty popup. The shared fixture is built
+     * from an empty action array, which is also the case that separates "any action is live"
+     * from "every action is live" — the latter is vacuously true and would light the button.
+     */
+    @Test
+    void testButtonWithNoHostedActionsIsDisabled() {
+        assertThat(button.isEnabled()).isFalse();
+    }
+
+    // -----------------------------------------------------------------------
+    // ItemStyle.AUTO gives a selectable action a check box it can show its state in
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testSelectableActionIsRenderedAsACheckBoxItem() {
+        var action = mock(UIAction.class, withSettings().extraInterfaces(UIAction.Selectable.class));
+        var popupButton = new PopupMenuButton(new UIAction[] { action }, null);
+
+        assertThat(popupButton.requirePopup().getComponent(0))
+            .as("a plain item has nowhere to show that the action is selected")
+            .isInstanceOf(JCheckBoxMenuItem.class);
+    }
+
     private static UIAction mockAction(String actionCommand) {
+        return mockAction(actionCommand, false);
+    }
+
+    private static UIAction mockAction(String actionCommand, boolean enabled) {
         var action = mock(UIAction.class);
         when(action.getActionCommand()).thenReturn(actionCommand);
+        when(action.isEnabled()).thenReturn(enabled);
         return action;
     }
 }

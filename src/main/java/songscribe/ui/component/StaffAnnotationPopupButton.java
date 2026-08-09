@@ -20,12 +20,8 @@
 
 package songscribe.ui.component;
 
-import net.engio.mbassy.listener.Handler;
-
 import songscribe.Strings;
-import songscribe.message.MessageCenter;
 import songscribe.ui.action.Actions;
-import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.util.GraphicUtils;
 
 public class StaffAnnotationPopupButton extends PopupMenuButton {
@@ -34,11 +30,5 @@ public class StaffAnnotationPopupButton extends PopupMenuButton {
         super(Actions.STAFF_ANNOTATION_ACTIONS, null);
         setIcon(GraphicUtils.getScaledSVGIcon("plus.svg", 20, true));
         setToolTipText(Strings.get(Strings.TOOLTIP_STAFF_ANNOTATIONS));
-        MessageCenter.subscribe(this);
-    }
-
-    @Handler
-    public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
-        setEnabledFromActions(Actions.STAFF_ANNOTATION_ACTIONS);
     }
 }

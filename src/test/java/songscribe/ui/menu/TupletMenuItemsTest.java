@@ -44,16 +44,13 @@ import songscribe.ui.selection.TupletToggleInfo;
  * Covers the choices {@link TupletMenuItems#rebuild} makes about what the tuplet menu
  * offers. A grade the selection cannot become is left out rather than shown greyed, the
  * grade the selection already carries is always listed so something can be checked, and a
- * selection with nothing to offer gets a disabled placeholder instead of a bare separator.
+ * selection with nothing to offer gets a disabled placeholder instead of an empty menu.
  */
 class TupletMenuItemsTest extends MainFrameMockTest {
 
     /** The grades an ordinary run of three quarter notes can become. */
     private static final Set<Integer> TRIPLET_AND_SEXTUPLET = Set.of(
         TupletAction.Tuplet.TRIPLET.getSize(), TupletAction.Tuplet.SEXTUPLET.getSize());
-
-    /** Every rebuild appends a separator and the Remove item after the grades. */
-    private static final int REMOVE_ITEM_COUNT = 1;
 
     /** The single disabled row shown when no grade is available. */
     private static final int PLACEHOLDER_ITEM_COUNT = 1;
@@ -111,8 +108,8 @@ class TupletMenuItemsTest extends MainFrameMockTest {
         var items = menuItems(menu);
 
         assertThat(items)
-            .as("the placeholder and Remove, and no grade rows at all")
-            .hasSize(PLACEHOLDER_ITEM_COUNT + REMOVE_ITEM_COUNT);
+            .as("the placeholder alone, and no grade rows at all")
+            .hasSize(PLACEHOLDER_ITEM_COUNT);
         assertThat(items.getFirst().isEnabled())
             .as("the placeholder explains the emptiness; it must not be clickable")
             .isFalse();
@@ -154,7 +151,7 @@ class TupletMenuItemsTest extends MainFrameMockTest {
             ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance(), grade);
     }
 
-    /** The grade items only — the trailing separator and Remove item are not grades. */
+    /** The grade items only — the disabled placeholder is a plain item, not a grade. */
     private static List<String> gradeItemLabels(JPopupMenu menu) {
         return menuItems(menu).stream()
             .filter(JRadioButtonMenuItem.class::isInstance)

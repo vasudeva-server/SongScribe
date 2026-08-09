@@ -24,40 +24,51 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
+import java.util.Set;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
 import songscribe.Strings;
+import songscribe.dom.Song;
+import songscribe.message.MessageCenter;
+import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
+import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.action.Actions;
+import songscribe.ui.action.TupletAction;
+import songscribe.ui.selection.TupletToggleInfo;
 
 /**
  * Unit tests for {@link TupletPopupButton} covering:
  * <ul>
- *   <li>Row 32 — {@code musicSelectionDidChange}: button disabled when no tuplet action is enabled</li>
- *   <li>Row 33 — {@code configureButtonFromAction}: overrides tooltip to fixed tuplet string
+ *   <li>where the button's direct click points — the lowest grade the selection could
+ *       actually become, left alone when no grade applies. Every one of the button's three
+ *       notification handlers exists only to keep that up to date, so each is driven here.</li>
+ *   <li>{@code configureButtonFromAction}: overrides tooltip to fixed tuplet string
  *       regardless of the action's own tooltip</li>
  * </ul>
  */
 class TupletPopupButtonTest extends MainFrameMockTest {
 
+    /**
+     * Two grades the stubbed selection is allowed to become, deliberately neither adjacent to
+     * each other nor first in the action list, so a button that simply picks the first or the
+     * last action cannot agree with the expected answer by accident.
+     */
+    private static final int LOWEST_OFFERED_GRADE = TupletAction.Tuplet.QUADRUPLET.getSize();
+    private static final int HIGHER_OFFERED_GRADE = TupletAction.Tuplet.SEXTUPLET.getSize();
+
     private TupletPopupButton button;
-    private boolean[] savedEnabledStates;
 
     @BeforeEach
     void setUp() {
-        // Save and disable all TOGGLE_TUPLET_ACTIONS to establish a known baseline;
-        // restore in @AfterEach to avoid polluting other tests.
-        var actions = Actions.TOGGLE_TUPLET_ACTIONS;
-        savedEnabledStates = new boolean[actions.size()];
-
-        for (var i = 0; i < actions.size(); i++) {
-            savedEnabledStates[i] = actions.get(i).isEnabled();
-        }
-
-        for (var action : actions) {
+        // Establish a known baseline. Nothing has to be restored afterwards: MainFrameMockTest
+        // calls Actions.initialize() before every test, which replaces these actions outright.
+        for (var action : Actions.TOGGLE_TUPLET_ACTIONS) {
             action.setEnabled(false);
         }
 
@@ -65,37 +76,76 @@ class TupletPopupButtonTest extends MainFrameMockTest {
     }
 
     @AfterEach
-    void restoreActionEnabledStates() {
-        var actions = Actions.TOGGLE_TUPLET_ACTIONS;
-
-        for (var i = 0; i < actions.size(); i++) {
-            actions.get(i).setEnabled(savedEnabledStates[i]);
-        }
-    }
-
-    private MusicSelectionDidChangeNotification makeNotification() {
-        var scoreView = mock(ScoreView.class);
-        when(scoreView.getSelectionSize()).thenReturn(0);
-        when(scoreView.getSelectionCoordinator()).thenReturn(mockEnv().coordinator());
-        return new MusicSelectionDidChangeNotification(scoreView);
+    void unsubscribeButton() {
+        // The button subscribes itself to the message bus in its constructor.
+        MessageCenter.unsubscribe(button);
     }
 
     // -----------------------------------------------------------------------
-    // Row 32: musicSelectionDidChange — button disabled when no tuplet action is enabled
+    // Enabled state derived from Actions.TOGGLE_TUPLET_ACTIONS
     // -----------------------------------------------------------------------
 
     @Test
-    void testMusicSelectionDidChangeDisabledWhenAllActionsDisabled() {
+    void testButtonIsDisabledWhenAllTupletActionsAreDisabled() {
         // All actions disabled in @BeforeEach
-        button.musicSelectionDidChange(makeNotification());
         assertThat(button.isEnabled()).isFalse();
     }
 
+    // -----------------------------------------------------------------------
+    // Where a direct click on the button lands. The three handlers below all feed the same
+    // decision; they differ only in where they get the controller from, so each is driven
+    // separately — a handler wired to the wrong call would otherwise go unnoticed.
+    // -----------------------------------------------------------------------
+
     @Test
-    void testMusicSelectionDidChangeEnabledWhenOneActionIsEnabled() {
-        Actions.TOGGLE_TUPLET_ACTIONS.getFirst().setEnabled(true);
-        button.musicSelectionDidChange(makeNotification());
-        assertThat(button.isEnabled()).isTrue();
+    void testMusicSelectionDidChangePointsTheClickAtTheLowestGradeOnOffer() {
+        offerGrades(Set.of(HIGHER_OFFERED_GRADE, LOWEST_OFFERED_GRADE));
+
+        button.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(button.getCurrentAction()).isEqualTo(actionForGrade(LOWEST_OFFERED_GRADE));
+    }
+
+    /**
+     * An edit can change which grades are valid without moving the selection or the caret — the
+     * answer depends on the notes and the beat, not only on where the selection sits.
+     */
+    @Test
+    void testSongDidChangePointsTheClickAtTheLowestGradeOnOffer() {
+        offerGrades(Set.of(HIGHER_OFFERED_GRADE, LOWEST_OFFERED_GRADE));
+
+        button.songDidChange(new SongDidChangeNotification(List.of(), mock(Song.class)));
+
+        assertThat(button.getCurrentAction()).isEqualTo(actionForGrade(LOWEST_OFFERED_GRADE));
+    }
+
+    @Test
+    void testDocumentDidLoadPointsTheClickAtTheLowestGradeOnOffer() {
+        offerGrades(Set.of(HIGHER_OFFERED_GRADE, LOWEST_OFFERED_GRADE));
+
+        button.documentDidLoad(new DocumentDidLoadNotification(mock(Song.class)));
+
+        assertThat(button.getCurrentAction()).isEqualTo(actionForGrade(LOWEST_OFFERED_GRADE));
+    }
+
+    /**
+     * The whole button is disabled when the selection could become no grade at all, so there is
+     * nothing to be gained by swapping the action underneath it — and a click that did land
+     * would fail the edit operation's own precondition.
+     */
+    @Test
+    void testTheDefaultActionIsLeftAloneWhenNoGradeIsOnOffer() {
+        offerGrades(Set.of(HIGHER_OFFERED_GRADE, LOWEST_OFFERED_GRADE));
+        button.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(button.getCurrentAction())
+            .as("precondition")
+            .isEqualTo(actionForGrade(LOWEST_OFFERED_GRADE));
+
+        offerGrades(Set.of());
+        button.musicSelectionDidChange(new MusicSelectionDidChangeNotification(mockEnv().score()));
+
+        assertThat(button.getCurrentAction()).isEqualTo(actionForGrade(LOWEST_OFFERED_GRADE));
     }
 
     // -----------------------------------------------------------------------
@@ -109,5 +159,22 @@ class TupletPopupButtonTest extends MainFrameMockTest {
         var action = Actions.TOGGLE_TUPLET_ACTIONS.getFirst();
         button.setCurrentAction(action);
         assertThat(button.getToolTipText()).isEqualTo(Strings.get(Strings.TOOLTIP_TUPLET));
+    }
+
+    // -----------------------------------------------------------------------
+    // Fixture helpers
+    // -----------------------------------------------------------------------
+
+    /** Makes the mocked selection report exactly the given grades as creatable. */
+    private void offerGrades(Set<Integer> grades) {
+        when(mockEnv().ctrl().canToggleTuplet())
+            .thenReturn(new TupletToggleInfo(!grades.isEmpty(), grades, null, false));
+    }
+
+    private static TupletAction actionForGrade(int grade) {
+        return Actions.TOGGLE_TUPLET_ACTIONS.stream()
+            .filter(action -> action.getTuplet().getSize() == grade)
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("no tuplet action for grade " + grade));
     }
 }

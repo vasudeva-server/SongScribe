@@ -43,8 +43,6 @@ public class TupletPopupButton extends PopupMenuButton {
             Actions.TOGGLE_TUPLET_ACTIONS.get(1),
             ItemStyle.RADIO
         );
-        addSeparator();
-        addItem(new JMenuItem(Actions.REMOVE_TUPLET_ACTION));
         MessageCenter.subscribe(this);
     }
 
@@ -68,7 +66,7 @@ public class TupletPopupButton extends PopupMenuButton {
 
     @Handler
     public void musicSelectionDidChange(MusicSelectionDidChangeNotification message) {
-        handleChange(message.getScoreViewController());
+        updateDefaultAction(message.getScoreViewController());
     }
 
     /**
@@ -79,12 +77,12 @@ public class TupletPopupButton extends PopupMenuButton {
      */
     @Handler
     public void songDidChange(SongDidChangeNotification message) {
-        handleChange(getScoreViewController());
+        updateDefaultAction(getScoreViewController());
     }
 
     @Handler
     public void documentDidLoad(DocumentDidLoadNotification message) {
-        handleChange(getScoreViewController());
+        updateDefaultAction(getScoreViewController());
     }
 
     /**
@@ -98,18 +96,14 @@ public class TupletPopupButton extends PopupMenuButton {
         return (scoreView != null) ? scoreView.getController() : null;
     }
 
-    private void handleChange(@Nullable ScoreViewController ctrl) {
-        setEnabledFromActions(Actions.TOGGLE_TUPLET_ACTIONS);
-        updateDefaultAction(ctrl);
-    }
-
     /**
-     * Points the button's direct click at whatever the selection most likely wants:
-     * removal when the selection is exactly an existing tuplet, otherwise the lowest
-     * grade the span could actually become. Press-and-hold still opens the popup.
+     * Points the button's direct click at the lowest grade the span could actually become.
+     * Press-and-hold still opens the popup.
      * <p>
-     * When neither applies the previous default is kept, because the whole button is
-     * disabled in that case and swapping its action would only be noise.
+     * When no grade applies the previous default is kept, because the whole button is
+     * disabled in that case and swapping its action would only be noise. Removing a tuplet
+     * is not offered here at all — the user selects the tuplet's number or bracket and
+     * deletes it directly.
      */
     private void updateDefaultAction(@Nullable ScoreViewController ctrl) {
         if (ctrl == null) {
@@ -117,11 +111,6 @@ public class TupletPopupButton extends PopupMenuButton {
         }
 
         var info = ctrl.canToggleTuplet();
-
-        if (info.coversExisting()) {
-            setCurrentAction(Actions.REMOVE_TUPLET_ACTION);
-            return;
-        }
 
         for (var action : Actions.TOGGLE_TUPLET_ACTIONS) {
             if (info.validGrades().contains(action.getTuplet().getSize())) {

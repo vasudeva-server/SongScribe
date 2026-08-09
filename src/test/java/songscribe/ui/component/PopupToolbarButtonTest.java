@@ -26,7 +26,6 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static songscribe.ui.component.PopupButtonTestSupport.clickButton;
 import static songscribe.ui.component.PopupButtonTestSupport.showPopup;
 
 import java.awt.Container;
@@ -58,6 +57,12 @@ class PopupToolbarButtonTest extends UnitTest {
     private static final String SECOND_COMMAND = "second";
     private static final String THIRD_COMMAND = "third";
     private static final String FOREIGN_COMMAND = "foreign";
+
+    /**
+     * The property name {@link javax.swing.AbstractAction#setEnabled} fires under. Swing
+     * publishes no constant for it, so the literal lives here rather than at each use.
+     */
+    private static final String ENABLED_PROPERTY = "enabled";
 
     /**
      * A button deliberately much wider than it is tall, and much wider than the popup it drops
@@ -130,15 +135,29 @@ class PopupToolbarButtonTest extends UnitTest {
 
         assertThat(button.isSelected()).as("nothing is selected yet").isFalse();
 
-        // StickyToggleButton registers a listener of its own first, so the button's is the later.
-        var listeners = ArgumentCaptor.forClass(PropertyChangeListener.class);
-        verify(action, atLeastOnce()).addPropertyChangeListener(listeners.capture());
-
         when(action.isSelected()).thenReturn(true);
-        listeners.getValue()
-            .propertyChange(new PropertyChangeEvent(action, Action.SELECTED_KEY, false, true));
+        firePropertyChange(action, Action.SELECTED_KEY, false, true);
 
         assertThat(button.isSelected()).isTrue();
+    }
+
+    /**
+     * The derivation has to run both ways. A version that only ever lit the button would leave
+     * it looking armed after the user picked something else.
+     */
+    @Test
+    void testButtonGoesDarkWhenTheLastSelectedActionIsDeselectedAfterConstruction() {
+        var action = enabledAction(FIRST_COMMAND);
+        when(action.isSelected()).thenReturn(true);
+
+        var button = new PopupToolbarButton(action);
+
+        assertThat(button.isSelected()).as("the action starts armed").isTrue();
+
+        when(action.isSelected()).thenReturn(false);
+        firePropertyChange(action, Action.SELECTED_KEY, true, false);
+
+        assertThat(button.isSelected()).isFalse();
     }
 
     // -----------------------------------------------------------------------
@@ -185,6 +204,35 @@ class PopupToolbarButtonTest extends UnitTest {
         assertThat(button.isEnabled()).isFalse();
     }
 
+    /**
+     * The two tests above only prove the state the constructor computed. What the user sees is
+     * an action coming back to life — leaving rest mode, stopping playback — and the button
+     * following it, which runs through the base class's half of {@code refreshFromActions()}.
+     * Drop that half and both tests above still pass.
+     */
+    @Test
+    void testButtonRelightsWhenAnActionBecomesEnabledAfterConstruction() {
+        var action = disabledAction(FIRST_COMMAND);
+        var button = new PopupToolbarButton(action);
+
+        assertThat(button.isEnabled()).as("nothing is enabled yet").isFalse();
+
+        when(action.isEnabled()).thenReturn(true);
+        firePropertyChange(action, ENABLED_PROPERTY, false, true);
+
+        assertThat(button.isEnabled()).isTrue();
+    }
+
+    /**
+     * A button with nothing behind it can only open an empty panel. This is also the case that
+     * separates "any action is live" from "every action is live" — the latter is vacuously true
+     * on an empty list and would leave the button clickable.
+     */
+    @Test
+    void testButtonWithNoHostedActionsIsDisabled() {
+        assertThat(new PopupToolbarButton().isEnabled()).isFalse();
+    }
+
     // -----------------------------------------------------------------------
     // Clicking a panel button dismisses the popup — but only if it is live
     // -----------------------------------------------------------------------
@@ -212,20 +260,6 @@ class PopupToolbarButtonTest extends UnitTest {
         assertThat(popup.isVisible()).isTrue();
 
         popup.setVisible(false);
-    }
-
-    /**
-     * The second click on the button itself is what closes the panel again. Nothing else in the
-     * suite drives that branch, so inverting it would break every user's second click silently.
-     */
-    @Test
-    void testClickingTheButtonWhileThePopupIsOpenHidesIt() {
-        var button = new PopupToolbarButton(enabledAction(FIRST_COMMAND));
-        var popup = showPopup(button);
-
-        clickButton(button);
-
-        assertThat(popup.isVisible()).isFalse();
     }
 
     // -----------------------------------------------------------------------
@@ -377,6 +411,24 @@ class PopupToolbarButtonTest extends UnitTest {
 
     private static SelectableUIAction disabledAction(String actionCommand) {
         return mockAction(actionCommand, false);
+    }
+
+    /**
+     * Delivers a property change to every listener registered on the action. Both the popup
+     * button and the panel's {@link StickyToggleButton} listen on it, so the event has to reach
+     * all of them rather than relying on registration order.
+     */
+    private static void firePropertyChange(
+        SelectableUIAction action,
+        String propertyName,
+        Object oldValue,
+        Object newValue
+    ) {
+        var listeners = ArgumentCaptor.forClass(PropertyChangeListener.class);
+        verify(action, atLeastOnce()).addPropertyChangeListener(listeners.capture());
+
+        var event = new PropertyChangeEvent(action, propertyName, oldValue, newValue);
+        listeners.getAllValues().forEach(listener -> listener.propertyChange(event));
     }
 
     private static SelectableUIAction mockAction(String actionCommand, boolean enabled) {

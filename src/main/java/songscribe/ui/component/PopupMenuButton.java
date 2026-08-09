@@ -72,7 +72,7 @@ public class PopupMenuButton extends BasePopupButton {
     }
 
     public PopupMenuButton(UIAction[] actions, @Nullable UIAction defaultAction, ItemStyle itemStyle) {
-        super();
+        super(List.of(actions));
 
         var popup = requirePopup();
 

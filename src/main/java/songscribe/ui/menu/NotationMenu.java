@@ -30,7 +30,6 @@ import static songscribe.ui.action.Actions.FERMATA_ACTION;
 import static songscribe.ui.action.Actions.FLIP_STEM_DIRECTION_ACTION;
 import static songscribe.ui.action.Actions.GLISSANDO_ACTION;
 import static songscribe.ui.action.Actions.MAKE_ENDING_ACTION;
-import static songscribe.ui.action.Actions.REMOVE_TUPLET_ACTION;
 import static songscribe.ui.action.Actions.REST_ACTION;
 import static songscribe.ui.action.Actions.STAFF_ANNOTATION_ACTIONS;
 import static songscribe.ui.action.Actions.TOGGLE_BEAM_ACTION;
@@ -144,9 +143,6 @@ public class NotationMenu extends JMenu {
         for (var action : TOGGLE_TUPLET_ACTIONS) {
             menu.add(new JRadioButtonMenuItem(action));
         }
-
-        menu.addSeparator();
-        menu.add(REMOVE_TUPLET_ACTION);
 
         // Which grades the selection could become is only known when the menu opens, so the
         // items above are thrown away and rebuilt then. They are still built here so that

@@ -22,7 +22,7 @@ package songscribe.ui.component;
 
 import module java.desktop;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
@@ -45,14 +45,27 @@ public class BasePopupButton
 
     private final @Nullable JPopupMenu popup;
 
+    private final List<UIAction> actions;
+
     // We need to know if the popup menu was canceled by clicking the button
     private boolean popupWasCanceledByButton = false;
 
-    protected BasePopupButton() {
+    protected BasePopupButton(List<? extends UIAction> actions) {
         super(null);
+        this.actions = List.copyOf(actions);
         popup = new JPopupMenu();
         addActionListener(this);
         popup.addPopupMenuListener(this);
+
+        // AbstractAction fires an "enabled" property change on every change, so this catches
+        // every reason an action can go dead, not just a selection change. The property name is
+        // deliberately not filtered: the derivation is a pure recomputation, so a stray extra
+        // call is harmless.
+        for (var action : this.actions) {
+            action.addPropertyChangeListener(event -> refreshFromActions());
+        }
+
+        setEnabledFromActions();
     }
 
     /**
@@ -102,9 +115,24 @@ public class BasePopupButton
     /**
      * Enables the button when at least one of the actions behind it can be performed. A button
      * that stays live while every one of its actions is dead opens a popup the user cannot use.
+     * <p>
+     * This is private precisely so the constructor can call it: an overridable method would run
+     * against a subclass whose fields have not been assigned yet.
      */
-    protected void setEnabledFromActions(Collection<? extends UIAction> actions) {
+    private void setEnabledFromActions() {
         setEnabled(actions.stream().anyMatch(UIAction::isEnabled));
+    }
+
+    /**
+     * Recomputes this button's state from its actions, called whenever any of them fires a
+     * property change. Subclasses override this to derive further state, calling {@code super}
+     * first.
+     * <p>
+     * This must remain a pure recomputation: a single selection change fires a burst of property
+     * events and the result is last-write-wins.
+     */
+    protected void refreshFromActions() {
+        setEnabledFromActions();
     }
 
     /**

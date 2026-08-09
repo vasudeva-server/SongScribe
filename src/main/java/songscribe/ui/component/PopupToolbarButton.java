@@ -58,12 +58,19 @@ public class PopupToolbarButton extends BasePopupButton {
     private final Toolbar toolbar;
 
     public PopupToolbarButton(SelectableUIAction... actions) {
+        // One list, shared with the superclass. The superclass registers listeners that call
+        // refreshFromActions(), which this class overrides to read this field — so the field has
+        // to be assigned before any other statement can run, not merely before the first listener
+        // happens to fire.
+        var hostedActions = List.of(actions);
+        super(hostedActions);
+        this.actions = hostedActions;
+
         // updateUI() reads this field, and by the time this constructor body runs the popup is
         // already live — so the null-popup check that makes updateUI() safe during the superclass
         // constructor no longer applies. Anything that could re-trigger updateUI() must stay below
         // this line.
         toolbar = new Toolbar();
-        this.actions = List.of(actions);
 
         for (var action : this.actions) {
             var button = new StickyToggleButton(action);
@@ -72,7 +79,6 @@ public class PopupToolbarButton extends BasePopupButton {
             // action performs first and the popup hides second.
             button.addActionListener(event -> requirePopup().setVisible(false));
             toolbar.add(button);
-            action.addPropertyChangeListener(event -> refreshFromActions());
         }
 
         var popup = requirePopup();
@@ -123,11 +129,11 @@ public class PopupToolbarButton extends BasePopupButton {
     }
 
     /**
-     * Recomputes this button's state from the actions. This must remain a pure recomputation: a
-     * single selection change fires a burst of property events and the result is last-write-wins.
+     * Adds the selected half of the derivation: the button is lit when any of its actions is.
      */
-    private void refreshFromActions() {
-        setEnabledFromActions(actions);
+    @Override
+    protected void refreshFromActions() {
+        super.refreshFromActions();
         setSelected(actions.stream().anyMatch(SelectableUIAction::isSelected));
     }
 

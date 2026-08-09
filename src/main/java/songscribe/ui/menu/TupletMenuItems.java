@@ -68,9 +68,6 @@ public final class TupletMenuItems {
             noneItem.setEnabled(false);
             container.add(noneItem);
         }
-
-        container.add(new JPopupMenu.Separator());
-        container.add(new JMenuItem(Actions.REMOVE_TUPLET_ACTION));
     }
 
     private static int existingGrade() {

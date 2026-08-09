@@ -21,81 +21,53 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
-import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.action.Actions;
 
 /**
- * Unit tests for {@link StaffAnnotationPopupButton} covering:
- * <ul>
- *   <li>Row 31 — {@code musicSelectionDidChange}: button enabled iff at least one action
- *       in {@link Actions#STAFF_ANNOTATION_ACTIONS} is enabled</li>
- * </ul>
+ * Unit tests for {@link StaffAnnotationPopupButton} covering the enabled state derived from
+ * {@link Actions#STAFF_ANNOTATION_ACTIONS} — disabled at construction when every action is
+ * disabled, and enabled again when an action comes back to life afterwards.
+ * <p>
+ * {@code PopupMenuButtonTest} covers that derivation against mock actions whose listeners it
+ * fires by hand. These tests are the counterpart that proves the wiring end to end: a real
+ * {@code UIAction.setEnabled} call really does produce the event the button is listening for.
+ * That is why they are worth keeping even though the logic itself lives in the base class.
  */
 class StaffAnnotationPopupButtonTest extends MainFrameMockTest {
 
     private StaffAnnotationPopupButton button;
-    private boolean[] savedEnabledStates;
 
     @BeforeEach
     void setUp() {
-        // Save the current enabled state of all STAFF_ANNOTATION_ACTIONS so we
-        // can restore them after each test (they are shared global static state).
-        var actions = Actions.STAFF_ANNOTATION_ACTIONS;
-        savedEnabledStates = new boolean[actions.size()];
-
-        for (var i = 0; i < actions.size(); i++) {
-            savedEnabledStates[i] = actions.get(i).isEnabled();
-        }
-
-        // Disable all actions to establish a known baseline
-        for (var action : actions) {
+        // Establish a known baseline. Nothing has to be restored afterwards: MainFrameMockTest
+        // calls Actions.initialize() before every test, which replaces these actions outright.
+        for (var action : Actions.STAFF_ANNOTATION_ACTIONS) {
             action.setEnabled(false);
         }
 
         button = new StaffAnnotationPopupButton();
     }
 
-    @AfterEach
-    void restoreActionEnabledStates() {
-        // Restore global action state so other tests are not affected
-        var actions = Actions.STAFF_ANNOTATION_ACTIONS;
-
-        for (var i = 0; i < actions.size(); i++) {
-            actions.get(i).setEnabled(savedEnabledStates[i]);
-        }
-    }
-
-    private MusicSelectionDidChangeNotification makeNotification() {
-        var scoreView = mock(ScoreView.class);
-        when(scoreView.getSelectionSize()).thenReturn(0);
-        when(scoreView.getSelectionCoordinator()).thenReturn(mockEnv().coordinator());
-        return new MusicSelectionDidChangeNotification(scoreView);
-    }
-
     // -----------------------------------------------------------------------
-    // Row 31: musicSelectionDidChange — enabled iff at least one action is enabled
+    // Enabled state derived from Actions.STAFF_ANNOTATION_ACTIONS
     // -----------------------------------------------------------------------
 
     @Test
-    void testMusicSelectionDidChangeDisabledWhenAllActionsDisabled() {
+    void testButtonIsDisabledWhenAllStaffAnnotationActionsAreDisabled() {
         // All actions are disabled (set up in @BeforeEach)
-        button.musicSelectionDidChange(makeNotification());
         assertThat(button.isEnabled()).isFalse();
     }
 
     @Test
-    void testMusicSelectionDidChangeEnabledWhenOneActionIsEnabled() {
-        // Enable exactly one action — the button must become enabled
+    void testButtonBecomesEnabledWhenAStaffAnnotationActionIsEnabled() {
+        // Enabling an action after construction must flip the button via the
+        // property-change listener registered by BasePopupButton.
         Actions.STAFF_ANNOTATION_ACTIONS.getFirst().setEnabled(true);
-        button.musicSelectionDidChange(makeNotification());
         assertThat(button.isEnabled()).isTrue();
     }
 }
