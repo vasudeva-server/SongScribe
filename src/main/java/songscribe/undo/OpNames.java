@@ -223,8 +223,8 @@ public final class OpNames {
     }
 
     /**
-     * Names a tuplet removal. Shared with the tuplet action's own Remove branch — the two
-     * reach the same edit, so they must name it the same way in the undo menu.
+     * Names a tuplet removal, which the user reaches by selecting the tuplet's number or
+     * bracket and deleting it.
      */
     public static String removeTupletLabel() {
         return Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TUPLET);

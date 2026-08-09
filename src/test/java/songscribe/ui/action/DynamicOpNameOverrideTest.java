@@ -48,14 +48,6 @@ class DynamicOpNameOverrideTest extends MainFrameMockTest {
     class TupletLabel {
 
         @Test
-        void testRemoveActionAlwaysNamesRemoveTuplet() {
-            var action = TupletAction.createRemoveAction(mainFrame());
-
-            assertThat(action.getUndoOpName())
-                .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_REMOVE_TUPLET));
-        }
-
-        @Test
         void testNoExistingTupletReturnsAddSizeKey() {
             // Also the no-selection-safe path: with no tuplet at the selection the add
             // action falls back to its base "Add Triplet" key without dereferencing null.

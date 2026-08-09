@@ -34,13 +34,11 @@ import songscribe.message.notification.DocumentDidLoadNotification;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreViewController;
-import songscribe.undo.OpNames;
 import songscribe.util.StringUtils;
 
 public final class TupletAction extends UIAction {
 
     public enum Tuplet {
-        REMOVE(0),
         DUPLET(2),
         TRIPLET(3),
         QUADRUPLET(4),
@@ -58,6 +56,8 @@ public final class TupletAction extends UIAction {
             return size;
         }
     }
+
+    private static final String TOOLTIP = "Create tuplet from selection";
 
     private final Tuplet tuplet;
 
@@ -85,10 +85,6 @@ public final class TupletAction extends UIAction {
         return new TupletAction(mainFrame, Tuplet.SEPTUPLET);
     }
 
-    public static TupletAction createRemoveAction(MainFrame mainFrame) {
-        return new TupletAction(mainFrame, Tuplet.REMOVE);
-    }
-
     private TupletAction(MainFrame mainFrame, Tuplet tuplet) {
         super(
             mainFrame,
@@ -96,7 +92,7 @@ public final class TupletAction extends UIAction {
             "@\uF376",
             18,
             getName(tuplet).toLowerCase(),
-            getTooltip(tuplet),
+            TOOLTIP,
             Flag.REQUIRES_MULTIPLE_SELECTION,
             Flag.DISABLE_WHEN_BAR_SELECTED,
             Flag.DISABLE_WHEN_PLAYING,
@@ -112,10 +108,6 @@ public final class TupletAction extends UIAction {
 
     private static String getName(Tuplet tuplet) {
         return StringUtils.capitalizeSentence(tuplet.name());
-    }
-
-    private static String getTooltip(Tuplet tuplet) {
-        return ((tuplet == Tuplet.REMOVE) ? "Remove" : "Create") + " tuplet from selection";
     }
 
     // Set priority to HIGH so that the action is updated before
@@ -160,11 +152,6 @@ public final class TupletAction extends UIAction {
         var info = ctrl.canToggleTuplet();
         var existing = info.existing();
 
-        if (tuplet == Tuplet.REMOVE) {
-            setEnabled(existing != null);
-            return;
-        }
-
         // Availability and selection are separate properties of the same shared action, so
         // the menu and the toolbar popup both pick them up with no rebuild. The existing
         // grade stays checked even when the span could not be turned into that grade again
@@ -180,17 +167,12 @@ public final class TupletAction extends UIAction {
      * there is no controller or no existing tuplet — never dereferencing a null element.
      *
      * <ul>
-     *   <li>Remove action → {@code Remove Tuplet}.</li>
      *   <li>No existing tuplet at the selection → {@code Add <Size>}.</li>
      *   <li>Existing tuplet present (different grade chosen) → {@code Change Tuplet Grade}.</li>
      * </ul>
      */
     @Override
     public String getUndoOpName() {
-        if (tuplet == Tuplet.REMOVE) {
-            return OpNames.removeTupletLabel();
-        }
-
         var baseAddKey = baseAddKey();
         var ctrl = getScoreViewController();
 
@@ -215,7 +197,6 @@ public final class TupletAction extends UIAction {
             case QUINTUPLET -> Strings.ACTION_EDIT_OP_ADD_QUINTUPLET;
             case SEXTUPLET -> Strings.ACTION_EDIT_OP_ADD_SEXTUPLET;
             case SEPTUPLET -> Strings.ACTION_EDIT_OP_ADD_SEPTUPLET;
-            case REMOVE -> Strings.ACTION_EDIT_OP_REMOVE_TUPLET;
         };
     }
 

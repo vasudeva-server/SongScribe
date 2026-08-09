@@ -345,12 +345,15 @@ public final class MusicEditOperations {
     }
 
     /**
-     * Handles five cases: (1) tupletSize == 0 with existing tuplet → remove; (2) no existing
-     * tuplet and tupletSize > 0 → add; (3) existing tuplet, selection spans its full span,
-     * requested grade matches → no-op; (4) existing tuplet, full coverage, different grade →
-     * remove then add in one bracket (emits TupletRemoval + TupletAddition); (5) existing
-     * tuplet, selection is a strict sub-range → rejected with {@link IllegalStateException}
-     * so a programmatic caller cannot silently replace a tuplet with a sub-range tuplet.
+     * Handles four cases: (1) no existing tuplet → add; (2) existing tuplet, selection spans
+     * its full span, requested grade matches → no-op; (3) existing tuplet, full coverage,
+     * different grade → remove then add in one bracket (emits TupletRemoval +
+     * TupletAddition); (4) existing tuplet, selection is a strict sub-range → rejected with
+     * {@link IllegalStateException} so a programmatic caller cannot silently replace a tuplet
+     * with a sub-range tuplet.
+     *
+     * <p>Deleting a tuplet is not one of them — the user selects the tuplet's number or
+     * bracket and deletes it, which runs through {@code deleteSelectedTarget()}.</p>
      *
      * <p>Callers must pass the {@link TupletToggleInfo} obtained from {@link #canToggleTuplet()}
      * so there is a single source of truth for the decision. Any branch that would have been a
@@ -392,16 +395,6 @@ public final class MusicEditOperations {
                 "toggleTuplet requires at least two non-grace elements in the selection");
         }
 
-        if (tupletSize == 0) {
-            if (existing == null) {
-                throw new IllegalStateException(
-                    "toggleTuplet(0) requires an existing tuplet at the selection");
-            }
-
-            line.withModification(() -> line.removeTuplet(existing));
-            return;
-        }
-
         if (existing == null) {
             var newTuplet = createValidatedTuplet(line, beginIndex, endIndex, tupletSize);
             line.withModification(() -> line.addTuplet(newTuplet));
@@ -410,7 +403,7 @@ public final class MusicEditOperations {
 
         // Re-picking the grade the tuplet already has does nothing. The grade is shown
         // checked (Action.SELECTED_KEY), and a checked radio item that deletes what it
-        // reports on would be a trap; Remove is the one way to delete a tuplet.
+        // reports on would be a trap.
         if (existing.getGrade() == tupletSize) {
             return;
         }

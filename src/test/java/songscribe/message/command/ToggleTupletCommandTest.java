@@ -42,8 +42,7 @@ class ToggleTupletCommandTest extends UnitTest {
             Arguments.of(Tuplet.QUADRUPLET, Tuplet.QUADRUPLET.getSize()),
             Arguments.of(Tuplet.QUINTUPLET, Tuplet.QUINTUPLET.getSize()),
             Arguments.of(Tuplet.SEXTUPLET, Tuplet.SEXTUPLET.getSize()),
-            Arguments.of(Tuplet.SEPTUPLET, Tuplet.SEPTUPLET.getSize()),
-            Arguments.of(Tuplet.REMOVE, Tuplet.REMOVE.getSize())
+            Arguments.of(Tuplet.SEPTUPLET, Tuplet.SEPTUPLET.getSize())
         );
     }
 

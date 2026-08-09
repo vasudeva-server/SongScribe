@@ -62,11 +62,9 @@ class TupletActionTest extends MainFrameMockTest {
 
     /** Every creatable grade, for spans whose validity is not what a test is about. */
     private static final Set<Integer> ALL_GRADES = Arrays.stream(TupletAction.Tuplet.values())
-        .filter(candidate -> candidate != TupletAction.Tuplet.REMOVE)
         .map(TupletAction.Tuplet::getSize)
         .collect(Collectors.toUnmodifiableSet());
 
-    private TupletAction removeAction;
     private TupletAction dupletAction;
     private TupletAction tripletAction;
     private TupletAction quadrupletAction;
@@ -90,7 +88,6 @@ class TupletActionTest extends MainFrameMockTest {
         when(mockEnv().coordinator().selectionHasDurations()).thenReturn(true);
 
         var mainFrame = mainFrame();
-        removeAction = TupletAction.createRemoveAction(mainFrame);
         dupletAction = TupletAction.createDupletAction(mainFrame);
         tripletAction = TupletAction.createTripletAction(mainFrame);
         quadrupletAction = TupletAction.createQuadrupletAction(mainFrame);
@@ -108,8 +105,6 @@ class TupletActionTest extends MainFrameMockTest {
         fireAll(new TupletToggleInfo(
             true, ALL_GRADES, makeTuplet(TupletAction.Tuplet.QUINTUPLET.getSize()), true));
 
-        assertThat(removeAction.isEnabled()).isTrue();
-
         for (var action : addActions()) {
             assertThat(action.isEnabled()).isTrue();
         }
@@ -119,11 +114,9 @@ class TupletActionTest extends MainFrameMockTest {
     }
 
     @Test
-    void testFullCoverageOfTripletChecksTripletEnablesOthersAndRemove() {
+    void testFullCoverageOfTripletChecksTripletAndEnablesOthers() {
         fireAll(new TupletToggleInfo(
             true, ALL_GRADES, makeTuplet(TupletAction.Tuplet.TRIPLET.getSize()), true));
-
-        assertThat(removeAction.isEnabled()).isTrue();
 
         for (var action : addActions()) {
             assertThat(action.isEnabled()).isTrue();
@@ -137,29 +130,23 @@ class TupletActionTest extends MainFrameMockTest {
     void testNotUniformDisablesEverything() {
         fireAll(new TupletToggleInfo(false, null, false));
 
-        assertThat(removeAction.isEnabled()).isFalse();
-
         for (var action : addActions()) {
             assertThat(action.isEnabled()).isFalse();
         }
     }
 
     @Test
-    void testPartialCoverageOfTripletEnablesRemoveDisablesAllAddActions() {
+    void testPartialCoverageOfTripletDisablesAllAddActions() {
         fireAll(new TupletToggleInfo(false, makeTuplet(TupletAction.Tuplet.TRIPLET.getSize()), false));
 
-        assertThat(removeAction.isEnabled()).isTrue();
-
         for (var action : addActions()) {
             assertThat(action.isEnabled()).isFalse();
         }
     }
 
     @Test
-    void testUniformNoTupletEnablesValidGradesDisablesRemove() {
+    void testUniformNoTupletEnablesValidGrades() {
         fireAll(new TupletToggleInfo(true, ALL_GRADES, null, false));
-
-        assertThat(removeAction.isEnabled()).isFalse();
 
         for (var action : addActions()) {
             assertThat(action.isEnabled()).isTrue();
@@ -240,12 +227,11 @@ class TupletActionTest extends MainFrameMockTest {
         }
     }
 
-    /** Fires {@code musicSelectionDidChange} on all seven actions with the given tuplet state. */
+    /** Fires {@code musicSelectionDidChange} on all six actions with the given tuplet state. */
     private void fireAll(TupletToggleInfo info) {
         when(mockEnv().ctrl().canToggleTuplet()).thenReturn(info);
         var notification = new MusicSelectionDidChangeNotification(mockEnv().score());
 
-        removeAction.musicSelectionDidChange(notification);
         dupletAction.musicSelectionDidChange(notification);
         tripletAction.musicSelectionDidChange(notification);
         quadrupletAction.musicSelectionDidChange(notification);

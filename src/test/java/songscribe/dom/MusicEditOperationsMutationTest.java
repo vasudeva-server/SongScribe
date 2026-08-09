@@ -378,22 +378,6 @@ class MusicEditOperationsMutationTest extends UnitTest {
     }
 
     @Test
-    void testToggleTupletRemoveEmitsTupletRemoval() {
-        var env = setupEnv(crotchet(), crotchet(), crotchet());
-        song.withoutMutationTracking(() -> env.line().addTuplet(Tuplet.withUnresolvedRatio(
-            env.line().getElement(0), env.line().getElement(2), TupletAction.Tuplet.TRIPLET.getSize())));
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        // The Remove action, not a matching grade — REMOVE is the only way to delete a tuplet.
-        env.operations().toggleTuplet(TupletAction.Tuplet.REMOVE.getSize(), env.operations().canToggleTuplet());
-
-        var notification = captureSingleDidChange();
-        var mutations = notification.getMutations();
-        assertThat(mutations).hasSize(1);
-        assertThat(mutations.getFirst()).isInstanceOf(TupletRemoval.class);
-        assertThat(((TupletRemoval) mutations.getFirst()).line()).isSameAs(env.line());
-    }
-
-    @Test
     void testToggleTupletGradeChangeEmitsRemovalThenAddition() {
         // With the full tuplet span selected, calling toggleTuplet with a
         // different grade must remove the existing span and add the new one
@@ -424,8 +408,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
     @Test
     void testToggleTupletMatchingGradeIsNoOp() {
         // The existing grade is shown checked, so re-picking it must confirm rather than
-        // delete: a checked radio item that removes what it reports on is a trap. Remove
-        // is the one way to delete a tuplet.
+        // delete: a checked radio item that removes what it reports on is a trap.
         var env = setupEnv(crotchet(), crotchet(), crotchet());
         var grade = TupletAction.Tuplet.TRIPLET.getSize();
         song.withoutMutationTracking(() -> env.line().addTuplet(Tuplet.withUnresolvedRatio(
@@ -457,41 +440,6 @@ class MusicEditOperationsMutationTest extends UnitTest {
 
         // The original tuplet object is still in place — the operation was a pure no-op.
         assertThat(env.line().findTupletAt(0)).isSameAs(originalTuplet);
-    }
-
-    @Test
-    void testToggleTupletWithSizeZeroRemovesExistingTuplet() {
-        // TupletAction.Tuplet.REMOVE.getSize() == 0; calling toggleTuplet with size 0
-        // must remove the existing tuplet via the tupletSize == 0 branch rather than
-        // the same-grade comparison path exercised by testToggleTupletMatchingGradeRemovesOnly.
-        var env = setupEnv(crotchet(), crotchet(), crotchet());
-        song.withoutMutationTracking(() -> env.line().addTuplet(Tuplet.withUnresolvedRatio(
-            env.line().getElement(0), env.line().getElement(2), TupletAction.Tuplet.TRIPLET.getSize())));
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        env.operations().toggleTuplet(TupletAction.Tuplet.REMOVE.getSize(), env.operations().canToggleTuplet());
-
-        var notification = captureSingleDidChange();
-        var mutations = notification.getMutations();
-        assertThat(mutations).hasSize(1);
-        var firstMutation = mutations.getFirst();
-        assertThat(firstMutation).isInstanceOf(TupletRemoval.class);
-        assertThat(((TupletRemoval) firstMutation).line()).isSameAs(env.line());
-        assertThat(env.line().findTupletAt(0))
-            .as("tuplet must be absent after removal via size-0 path")
-            .isNull();
-    }
-
-    @Test
-    void testToggleTupletWithSizeZeroAndNoExistingThrows() {
-        // size == 0 with no existing tuplet at the selection is a caller bug:
-        // toggleTuplet must throw IllegalStateException to prevent a silent no-op.
-        var env = setupEnv(crotchet(), crotchet(), crotchet());
-        ReflectionTestHelper.selectRange(env.coordinator(), 0, 2);
-        var info = env.operations().canToggleTuplet();
-
-        assertThatThrownBy(() -> env.operations().toggleTuplet(TupletAction.Tuplet.REMOVE.getSize(), info))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("toggleTuplet(0) requires an existing tuplet");
     }
 
     // -----------------------------------------------------------------------
