@@ -394,22 +394,6 @@ final class MusicXmlHeaderReader {
         ));
     }
 
-    /**
-     * Restores the song-level base tempo after assembly, by mirroring the initial tempo
-     * anchor's tempo change onto the song. {@link Song#syncTempoFromAnchor} is the single
-     * statement of that anchor→song rule; this is the only place a MusicXML load sets the
-     * song tempo.
-     */
-    void applyInitialTempo() {
-        var song = reader.songOrNull();
-
-        if (song == null) {
-            return;
-        }
-
-        song.syncTempoFromAnchor();
-    }
-
     // -------------------------------------------------------------------------
     // Private helpers
     // -------------------------------------------------------------------------

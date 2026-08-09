@@ -45,9 +45,9 @@ import songscribe.ui.action.UIAction;
  * enabled only while that terminal is selected — hence its own test rather than a third case of
  * the insertion one.
  *
- * <p>The line comes from disk rather than from real clicks because inserting the first note into
- * an empty song raises the modal tempo prompt, which swallows every click after it. Only the
- * barline work — the thing under test — goes through the real click pipeline.
+ * <p>The line comes from disk rather than from real clicks because building it up note-by-note
+ * would exercise far more of the insertion pipeline than the panel wiring this test is after.
+ * Only the barline work — the thing under test — goes through the real click pipeline.
  */
 class BarlinePanelTest extends E2ETest {
 

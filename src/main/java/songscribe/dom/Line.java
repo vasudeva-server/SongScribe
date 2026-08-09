@@ -455,31 +455,6 @@ public class Line implements LyricRun, SpanLookup {
                 .filter(r -> r.isInvalidatedByInsertion(index, insertedType, this))
                 .toList();
             invalidatedSpans.forEach(this::removeInvalidatedSpan);
-
-            // When this insertion makes `element` the song's new first element, the old
-            // first element carried the initial tempo — move it across, per the rule
-            // Song.transferInitialTempoToAnchor documents. The old anchor may be on another
-            // line: inserting into an empty leading line displaces the tempo from the line
-            // below, and leaving it there would make it a change from nothing.
-            //
-            // The removal from the old anchor is a tracked modification and happens whether
-            // or not the tempo survives the move — that element is no longer the song's
-            // first either way, and the transfer drops the displaced tempo when the incoming
-            // element already carries one of its own.
-            var displacedAnchorLine =
-                insertionMakesSongFirstElement(index) ? song.initialTempoAnchorLine() : null;
-
-            if (displacedAnchorLine != null) {
-                var displacedAnchor = displacedAnchorLine.getElement(0);
-                var displacedTempo =
-                    displacedAnchor.findAttachment(TempoChangeAttachment.class);
-
-                if (displacedTempo != null) {
-                    displacedAnchorLine.modifyElement(0, ElementField.TEMPO_CHANGE,
-                        () -> displacedAnchor.removeAttachment(displacedTempo));
-                    song.transferInitialTempoToIncomingElement(displacedTempo, element);
-                }
-            }
         }
 
         applyChange(
@@ -585,108 +560,6 @@ public class Line implements LyricRun, SpanLookup {
         );
     }
 
-    /**
-     * Returns the first pitched note on this line, or null if it has none. Used to
-     * defer the initial-tempo dialog until a host note exists: when the first note is
-     * a grace note (an ornament), the dialog waits until the following pitched host
-     * note is placed, even though the tempo itself anchors on the first element.
-     */
-    public @Nullable StaffElement firstPitchedElement() {
-        for (var element : elements) {
-            if (element.getType().isPitchedNote()) {
-                return element;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * Whether {@code elementIndex} of this line is where the song's initial tempo is
-     * anchored — the first element of the first <em>non-empty</em> line, the position
-     * {@link #attachInitialTempoIfNeeded} mirrors it onto. A leading empty line is not
-     * the anchor line.
-     *
-     * <p>A {@link TempoChangeAttachment} at that position is the song's own tempo, never
-     * an independent per-note tempo change. Nothing in the model distinguishes the two —
-     * the mirrored attachment carries no mark identifying it as such, and the tempo dialog
-     * edits it in place like any other — so every reader of that position must treat what
-     * it finds there as the song's tempo.
-     */
-    public boolean isInitialTempoAnchor(int elementIndex) {
-        // The index test comes first deliberately: it short-circuits, so every element at a
-        // non-zero index skips both O(lines) scans. Copy and paste ask this per element, and
-        // only one of them can be at index 0.
-        if (elementIndex != 0) {
-            return false;
-        }
-
-        var anchorLineIndex = song.firstNonEmptyLineIndex();
-
-        // A song with no elements at all anchors nothing.
-        return anchorLineIndex >= 0 && song.indexOfLine(this) == anchorLineIndex;
-    }
-
-    /**
-     * Whether inserting at {@code index} of this line would make the incoming element the
-     * song's first — index 0 of a line with nothing but empty lines before it.
-     *
-     * <p>Wider than {@link #isInitialTempoAnchor}, deliberately: that predicate answers
-     * "where does the tempo sit now", which an empty leading line can never be, while this
-     * one answers "what will lead the song once this element is in". Inserting into a leading
-     * empty line puts the incoming element ahead of the current anchor on the line below.
-     *
-     * <p>Public because UI code has to ask the same question before it mutates anything: an
-     * insertion path that gated on {@link #isInitialTempoAnchor} instead would never prompt
-     * for a paste into a leading empty line, and the user would silently lose their starting
-     * tempo to the pasted note's own.
-     */
-    public boolean insertionMakesSongFirstElement(int index) {
-        // The index test comes first for the same reason it does in isInitialTempoAnchor.
-        if (index != 0) {
-            return false;
-        }
-
-        var lineIndex = song.indexOfLine(this);
-
-        // A line that is not in the song yet leads nothing — construction and load paths
-        // populate a line before inserting it, and its elements must not disturb the song's
-        // current anchor.
-        if (lineIndex < 0) {
-            return false;
-        }
-
-        var anchorLineIndex = song.firstNonEmptyLineIndex();
-
-        // A song with no elements at all: whatever goes in first leads it.
-        return anchorLineIndex < 0 || lineIndex <= anchorLineIndex;
-    }
-
-    /**
-     * Attaches the song's initial tempo to the first element of this line if not already set.
-     *
-     * <p>Routed through {@link Song#withBeatDefiningEdit} because attaching a tempo defines a
-     * beat. In practice this runs only while mutation tracking is suspended (the load path),
-     * where the helper validates nothing and the load pass judges the tuplets instead — but
-     * the routing keeps the chokepoint whole if that ever changes.
-     */
-    void attachInitialTempoIfNeeded() {
-        if (elements.isEmpty()) {
-            return;
-        }
-
-        var element = elements.getFirst();
-
-        if (element.findAttachment(TempoChangeAttachment.class) == null) {
-            var initialTempo = song.getTempo();
-
-            if (initialTempo != null) {
-                Song.withBeatDefiningEditOn(element,
-                    () -> element.addAttachment(new TempoChangeAttachment(element, initialTempo)));
-            }
-        }
-    }
-
     @Override
     public StaffElement getElement(int index) {
         return elements.get(index);
@@ -728,8 +601,6 @@ public class Line implements LyricRun, SpanLookup {
             invalidated.forEach(this::removeInvalidatedSpan);
         }
 
-        var displacedTempo = initialTempoBeingRemoved(index);
-
         applyChange(
             new ElementDeletion(this, index, deleted),
             () -> {
@@ -737,8 +608,6 @@ public class Line implements LyricRun, SpanLookup {
                 elements.remove(index);
             }
         );
-
-        reanchorInitialTempo(displacedTempo);
     }
 
     /**
@@ -771,8 +640,6 @@ public class Line implements LyricRun, SpanLookup {
             invalidated.forEach(this::removeInvalidatedSpan);
         }
 
-        var displacedTempo = initialTempoBeingRemoved(from);
-
         applyChange(
             new ElementRangeDeletion(this, from, to, deletedElements),
             () -> {
@@ -780,46 +647,6 @@ public class Line implements LyricRun, SpanLookup {
                 elements.subList(from, to + 1).clear();
             }
         );
-
-        reanchorInitialTempo(displacedTempo);
-    }
-
-    /**
-     * The song's initial tempo when removing from {@code from} would take the anchor
-     * element with it, else null. Read before the removal, while the anchor is still in
-     * place. Suppressed during replay: the recorded batch already carries the companion
-     * modification.
-     *
-     * <p>Package-private rather than private because {@link Song#removeLine} asks the same
-     * question of the line it is about to delete — removing a whole line removes from its
-     * element 0.
-     */
-    @Nullable TempoChangeAttachment initialTempoBeingRemoved(int from) {
-        if (song.isReplaying() || !isInitialTempoAnchor(from)) {
-            return null;
-        }
-
-        return elements.get(from).findAttachment(TempoChangeAttachment.class);
-    }
-
-    /**
-     * Moves the song's initial tempo onto the new first element after a removal took the
-     * anchor away. The tempo describes the song, not the note it happened to sit on (see
-     * {@link #isInitialTempoAnchor}), so it must not disappear along with that note — the
-     * mirror image of the displacement {@link #addElement(int, StaffElement)} performs when
-     * an insertion pushes the anchor aside.
-     *
-     * <p>Emitted after the primary deletion, since the new first element only reaches index
-     * 0 once the removal has happened. Reverse-order undo therefore strips this tempo again
-     * before re-inserting the element that owned it.
-     *
-     * <p>The new anchor line is resolved through the song, not through this line: a deletion
-     * that empties this line moves the anchor down to the first line that still has elements,
-     * and dropping the tempo there would leave any later tempo change instructing a change
-     * from nothing.
-     */
-    private void reanchorInitialTempo(@Nullable TempoChangeAttachment displacedTempo) {
-        song.transferInitialTempoToAnchor(displacedTempo, song.initialTempoAnchorLine());
     }
 
     @Override

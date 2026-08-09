@@ -20,15 +20,21 @@
 
 package songscribe.layout.stacking;
 
+import org.jspecify.annotations.Nullable;
+
 import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.BeatChangeAttachment;
+import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResultBuilder;
 import songscribe.layout.ElementColumn;
 import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.ScaleContext;
+import songscribe.engraving.SMuFLConstants;
 import songscribe.layout.StaffExtents;
+import songscribe.dom.SongTempoMark;
 import songscribe.dom.TempoChangeAttachment;
+import songscribe.dom.TempoContent;
 
 import static songscribe.layout.stacking.StackingUtils.stackAbove;
 import static songscribe.layout.stacking.StackingUtils.stackAboveWithRegions;
@@ -57,29 +63,69 @@ public class SystemStacker {
     private final StackingContext context;
     private final StaffExtents systemExtents;
     private final DocumentFontsHolder fonts;
+    private final @Nullable SongTempoMark tempoMark;
 
     public SystemStacker(
         StackingContext context,
         StaffExtents systemExtents,
-        DocumentFontsHolder fonts) {
+        DocumentFontsHolder fonts,
+        @Nullable SongTempoMark tempoMark) {
         this.context = context;
         this.systemExtents = systemExtents;
         this.fonts = fonts;
+        this.tempoMark = tempoMark;
     }
 
     /**
-     * Stacks all system-tier decorations in order: tempo, beat changes,
-     * annotations.
+     * Stacks all system-tier decorations in order: the song's own tempo mark, then per-column
+     * tempo changes, beat changes and annotations.
      */
     public void stack() {
         var columns = context.getColumns();
         var builder = context.getBuilder();
+
+        stackTempoMark(builder);
 
         for (var column : columns) {
             stackTempo(column, builder);
             stackBeatChange(column, builder);
             stackAnnotations(column, builder);
         }
+    }
+
+    /**
+     * Stacks the song's tempo mark at the right edge of the first line's staff header.
+     * <p>
+     * Deliberately stacked before the column loop: everything a note owns is already in
+     * {@code systemExtents}, so ledger lines and high notes push the mark up, while a beat change
+     * or annotation on the first column stacks above it — the same relationship
+     * {@link #stackTempo} already has with {@link #stackBeatChange} within a column.
+     * <p>
+     * The mark reserves no horizontal space; it begins one notehead width right of the header's
+     * right edge and overhangs the music to its right.
+     */
+    private void stackTempoMark(LayoutResultBuilder builder) {
+        if (tempoMark == null) {
+            return;
+        }
+
+        var line = context.getLine();
+        var metrics = TempoContent.metrics(line.getSong().getTempo(), fonts.getAttributionFont());
+
+        // showTempo false with an empty description leaves nothing to draw.
+        if (metrics.widthSs() <= 0) {
+            return;
+        }
+
+        stackAboveWithRegions(
+            systemExtents,
+            tempoMark,
+            metrics.regions(),
+            HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line) + SMuFLConstants.NOTE_HEAD_WIDTH_SS,
+            metrics.widthSs(),
+            TEMPO_MARGIN_SS,
+            StackingUtils.TOP_STAFF_LINE_POSITION,
+            builder);
     }
 
     /**

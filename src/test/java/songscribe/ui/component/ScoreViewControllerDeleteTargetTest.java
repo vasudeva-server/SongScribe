@@ -612,8 +612,7 @@ class ScoreViewControllerDeleteTargetTest extends UnitTest {
 
     /**
      * Puts a tempo change on each note of a two-note line and deletes the one on the note at
-     * {@code selectedIndex}. Two tempo changes is the fixture the orphan rule turns on: which
-     * of the two is selected decides whether the removal is allowed.
+     * {@code selectedIndex}.
      *
      * @return the song, so the caller can assert on both notes
      */
@@ -637,8 +636,6 @@ class ScoreViewControllerDeleteTargetTest extends UnitTest {
         return song;
     }
 
-    // A later tempo change still has the earlier one to change from, so deleting it is
-    // ordinary work — the orphan rule must not refuse every tempo change it sees.
     @Test
     void testHandleDeleteAttachmentSelectionRemovesATempoChangeThatOrphansNothing() {
         var line = deleteOneOfTwoTempoChanges(1).getLine(0);
@@ -647,25 +644,6 @@ class ScoreViewControllerDeleteTargetTest extends UnitTest {
             .as("the selected tempo change is gone").isNull();
         assertThat(line.getElement(0).findAttachment(TempoChangeAttachment.class))
             .as("the earlier tempo change it changed from survives").isNotNull();
-    }
-
-    /**
-     * The song's first tempo change is what every later change changes <em>from</em>, so
-     * deleting it while a later one survives is refused. The refusal has to happen before the
-     * modification bracket opens: {@code Line.modifyElement} records unconditionally, so a
-     * refusal from inside would leave an undo step that undoes nothing.
-     */
-    @Test
-    void testHandleDeleteAttachmentSelectionRefusesATempoChangeThatWouldOrphanALaterOne() {
-        var song = deleteOneOfTwoTempoChanges(0);
-        var line = song.getLine(0);
-
-        assertThat(line.getElement(0).findAttachment(TempoChangeAttachment.class))
-            .as("the refused tempo change stays put").isNotNull();
-        assertThat(line.getElement(1).findAttachment(TempoChangeAttachment.class))
-            .as("the tempo change it protects stays put").isNotNull();
-        assertThat(song.isModified())
-            .as("a refusal must leave no undo step behind").isFalse();
     }
 
     // -----------------------------------------------------------------------

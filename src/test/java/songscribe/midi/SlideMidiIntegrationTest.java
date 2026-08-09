@@ -33,7 +33,6 @@ import songscribe.UnitTest;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Tempo;
-import songscribe.dom.TempoChangeAttachment;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,8 +44,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SuppressWarnings({ "OverlyBroadThrowsClause", "StaticVariableMayNotBeInitialized" })
 class SlideMidiIntegrationTest extends UnitTest {
 
-    // Element indices in connections.musicxml
-    private static final int TEMPO_INDEX = 0;
 
     private static final int PLAIN_NOTE_STAFF_POS = -2;
 
@@ -67,10 +64,9 @@ class SlideMidiIntegrationTest extends UnitTest {
     static void loadFixtureData() throws Exception {
         var song = loadFixture("connections");
         line = song.getLine(0);
-        var tempoAttachment = 
-            line.getElement(TEMPO_INDEX).findAttachment(TempoChangeAttachment.class);
-        assertThat(tempoAttachment).isNotNull();
-        tempo = tempoAttachment.getTempo();
+        // The fixture's tempo sits on the song's first element, which the MusicXML reader
+        // now reads as the song-level tempo rather than a per-note TempoChangeAttachment.
+        tempo = song.getTempo();
     }
 
     @SuppressWarnings("PackageVisibleInnerClass")

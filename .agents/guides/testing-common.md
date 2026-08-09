@@ -192,19 +192,6 @@ unchanged. Those are the only `.mssw` fixtures left: `damaged`, `newer-version`,
 `lyrics-date-invalid`, and `full-line`. Reach for `UnitTest.fixtureFile` (`.mssw`-only)
 just when the legacy reader itself is the subject.
 
-### Don't build state by inserting into an empty score in E2E tests
-
-In an E2E test, do not use real clicks to insert the first note into an empty song. The
-song's initial tempo anchors on the first element, so inserting it raises the automatic
-tempo prompt (`TempoChangeDialog`) — a modal dialog that swallows every click after it,
-leaving the test stuck rather than failing cleanly.
-
-Prefer one of the existing disk-based fixtures (`loadFixture(name)`) for a non-empty
-starting state. If none fits, create a new `.musicxml` fixture whose first note already
-carries a tempo, so nothing prompts. Only the behavior actually under test should go
-through the real click pipeline. See `AccidentalContextTest.loadFlattenedThenInheritingLine`
-for a worked example.
-
 ## Fixture Ordering
 
 Test methods run in name order by default, but that order is an artifact of

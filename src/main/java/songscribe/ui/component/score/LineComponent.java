@@ -415,6 +415,10 @@ public class LineComponent extends ScoreComponent
         var layoutEngine = new LayoutEngine(lyricRenderMetrics, staffRightMarginSs, view);
 
         Attribution attribution = null;
+        // The song's tempo is drawn at line 0's staff header, always — even on an empty line or
+        // an empty song. Unlike the attribution it needs no pre-measurement: the stacker derives
+        // its extent from Song.getTempo() itself.
+        var tempoMark = isFirstLine ? song.getTempoMarkElement() : null;
 
         if (isFirstLine) {
             attribution = song.getAttributionElement();
@@ -430,7 +434,7 @@ public class LineComponent extends ScoreComponent
         }
 
         var result = layoutEngine.layout(
-            line, isLastLine, hasLeadingLyricContinuation, attribution);
+            line, isLastLine, hasLeadingLyricContinuation, tempoMark, attribution);
 
         layoutResult = result;
         layoutDirty = false;

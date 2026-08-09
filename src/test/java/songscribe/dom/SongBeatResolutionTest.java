@@ -208,9 +208,11 @@ class SongBeatResolutionTest extends UnitTest {
     }
 
     @Test
-    void testFallsBackToTheQuarterNoteWhenTheSongHasNoTempo() {
+    void testFallsBackToTheQuarterNoteWhenTheSongHasTheDefaultTempo() {
         var song = new Song();
-        assertThat(song.getTempo()).isNull();
+        assertThat(song.getTempo().getTempoType())
+            .as("a fresh song's tempo type is Tempo's default")
+            .isEqualTo(Tempo.DEFAULT_TYPE);
 
         assertThat(song.resolveBeatAt(FIRST_LINE, FIRST_ELEMENT))
             .isEqualTo(new BeatAt(Duration.CROTCHET, NO_EVENT, NO_EVENT));

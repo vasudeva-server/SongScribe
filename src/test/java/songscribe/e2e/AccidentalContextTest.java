@@ -92,11 +92,10 @@ class AccidentalContextTest extends E2ETest {
     /**
      * Loads the fixture fresh for each test, since the test under it mutates the line.
      *
-     * <p>The line comes from disk rather than from four real clicks because inserting the first
-     * note into an empty song raises the automatic tempo prompt, which is modal and swallows every
-     * click after it. The fixture's first note carries the tempo the prompt would have asked for,
-     * so nothing blocks. Only the barline insertion — the thing under test — goes through the real
-     * click pipeline.
+     * <p>The line comes from disk rather than from four real clicks because building it up
+     * note-by-note would exercise far more of the insertion pipeline than the reconciliation
+     * logic this test is after. Only the barline insertion — the thing under test — goes through
+     * the real click pipeline.
      */
     @BeforeEach
     void loadFlattenedThenInheritingLine() {

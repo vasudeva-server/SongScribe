@@ -34,7 +34,6 @@ import songscribe.dom.Line;
 import songscribe.dom.LyricRun;
 import songscribe.dom.Span;
 import songscribe.dom.StaffElement;
-import songscribe.dom.TempoChangeAttachment;
 
 /**
  * An immutable, self-contained copy of a run of {@link StaffElement}s (and the
@@ -47,9 +46,9 @@ import songscribe.dom.TempoChangeAttachment;
  * <p>{@code capture} extends the run past a trailing breath mark, drops an orphan paired grace note
  * at the tail, clones the elements into an identity map from original to clone, resolves each
  * element's effective accidental against the <em>original</em> line, demotes a final double barline
- * to a plain one, drops the tempo sitting on the song's initial-tempo anchor, and ends every
- * syllabic or melisma chain that would otherwise leave the run. A span survives only when both its
- * endpoints are in the map, and is copied onto the corresponding clones.
+ * to a plain one, and ends every syllabic or melisma chain that would otherwise leave the run. A
+ * span survives only when both its endpoints are in the map, and is copied onto the corresponding
+ * clones.
  *
  * <p>{@code instantiate} produces fresh clones and fresh spans, leaving the recorded prior
  * accidentals as they are. Each clone's {@code xOffset} is zeroed — a fragment carries semantic
@@ -102,8 +101,7 @@ public record Fragment(
      * orphan grace note ({@code begin == end}), the trim drops it entirely and
      * capture returns an empty {@code Fragment}. A captured {@code FINAL_DOUBLE_BARLINE}
      * is normalized to {@code DOUBLE_BARLINE} so pasted content can never violate
-     * the song-owned invariant. The song's initial tempo is dropped when the capture
-     * starts at the song's first element. Repeats are copied verbatim, with no balance
+     * the song-owned invariant. Repeats are copied verbatim, with no balance
      * validation.
      *
      * <p>The captured lyrics are then repaired as a run of their own
@@ -139,7 +137,7 @@ public record Fragment(
 
         for (var i = begin; i <= effectiveEnd; i++) {
             var original = line.getElement(i);
-            var clone = cloneForCapture(line, original, i);
+            var clone = cloneForCapture(original);
 
             originalToClone.put(original, clone);
             elements.add(clone);
@@ -157,36 +155,23 @@ public record Fragment(
     }
 
     /**
-     * Clones {@code original} for capture, stripping the two things an element may not
-     * carry out of the song it belongs to.
+     * Clones {@code original} for capture, stripping the one thing an element may not carry
+     * out of the song it belongs to.
      *
      * <p>A {@code FINAL_DOUBLE_BARLINE} becomes a plain {@code DOUBLE_BARLINE}, so pasted
      * content can never violate the song-owned invariant that only the last line ends the
      * song. (Cloning is skipped entirely in that case — the replacement is a fresh element,
      * so nothing of the original survives to be copied.)
      *
-     * <p>A tempo attachment at the initial-tempo anchor is dropped. That tempo is the
-     * song's, not the note's — see {@link Line#isInitialTempoAnchor}, which explains why a
-     * tempo at that one position can never be an independent per-note tempo change — so
-     * pasting it elsewhere would plant a spurious tempo change. A tempo on any other
-     * element is a real tempo change and is kept.
+     * <p>A {@code TempoChangeAttachment} is always an ordinary tempo change now that the
+     * song's own tempo lives on the {@code Song}, so it is always kept.
      */
-    private static StaffElement cloneForCapture(Line line, StaffElement original, int index) {
+    private static StaffElement cloneForCapture(StaffElement original) {
         if (original.getType() == ElementType.FINAL_DOUBLE_BARLINE) {
             return ElementType.DOUBLE_BARLINE.newInstance();
         }
 
-        var clone = original.clone();
-
-        if (line.isInitialTempoAnchor(index)) {
-            var initialTempo = clone.findAttachment(TempoChangeAttachment.class);
-
-            if (initialTempo != null) {
-                clone.removeAttachment(initialTempo);
-            }
-        }
-
-        return clone;
+        return original.clone();
     }
 
     /**

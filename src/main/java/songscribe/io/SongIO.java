@@ -126,11 +126,7 @@ public final class SongIO {
         var keyType = c.getDefaultKeyType();
         XML.writeValue(pw, XML_KEYTYPE, keyType.name());
 
-        var tempo = c.getTempo();
-
-        if (tempo != null) {
-            TempoIO.writeTempo(tempo, pw, 2);
-        }
+        TempoIO.writeTempo(c.getTempo(), pw, 2);
 
         XML.setIndent(2);
 

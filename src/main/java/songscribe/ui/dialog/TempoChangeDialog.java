@@ -32,7 +32,6 @@ import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
-import songscribe.ui.TempoChangeGuards;
 import songscribe.ui.component.MainFrame;
 
 public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
@@ -46,10 +45,6 @@ public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
     public TempoChangeDialog(MainFrame mainFrame) {
         super(mainFrame, Strings.get(Strings.DIALOG_TEMPO_CHANGE_TITLE));
         contentPanel.add(BorderLayout.CENTER, tempoSection);
-    }
-
-    public static void showForElement(MainFrame mainFrame, StaffElement element, Line line) {
-        new TempoChangeDialog(mainFrame).showFor(element, line);
     }
 
     @Override
@@ -102,11 +97,6 @@ public class TempoChangeDialog extends AttachmentDialog<TempoChangeAttachment> {
                 element.addAttachment(new TempoChangeAttachment(element, tempo));
             }
         });
-    }
-
-    @Override
-    protected boolean canClearChange(StaffElement element) {
-        return TempoChangeGuards.allowRemoveTempoChange(getWindow(), element);
     }
 
     @Override

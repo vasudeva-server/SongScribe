@@ -38,6 +38,7 @@ import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.message.notification.SongDidChangeNotification;
+import songscribe.message.notification.TempoDidChangeNotification;
 import songscribe.message.notification.TupletsWereRemovedNotification;
 import songscribe.ui.component.ScoreView;
 import songscribe.undo.MutationReplayer;
@@ -371,39 +372,52 @@ class SongBeatEditTupletTest extends UnitTest {
 
             assertThat(tupletCount(song)).isEqualTo(ONE_TUPLET);
         }
-    }
-
-    // -----------------------------------------------------------------------
-    // Structural edits that move a beat-defining attachment
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class DisplacedTempoAttachment {
 
         /**
-         * Prepending to the first line moves the initial tempo from the old first element to
-         * the new one. The attachment lands back on element 0 of line 0 carrying the same
-         * tempo, so the beat in effect is unchanged everywhere and the tuplet survives —
-         * which is why {@code Line.addElement} does not route the displacement through the
-         * chokepoint.
+         * The Song Settings dialog does not call {@code setTempo}; it posts a tempo
+         * notification, which edits the live tempo in place through its own code path. That
+         * path has to route through the beat-defining chokepoint too — otherwise changing the
+         * beat from Song Settings would silently leave behind tuplets the new beat cannot
+         * express.
          */
         @Test
-        void testDisplacingTheInitialTempoLeavesTheBeatAndTheTupletAlone() {
+        void testChangingTheSongBeatThroughTheTempoNotificationRemovesTheTuplet() {
+            var song = semiquaverTripletAtSimpleBeat();
+            song.withoutMutationTracking(() -> song.getLine(FIRST_LINE_INDEX)
+                .getElement(MIDDLE_INDEX)
+                .addAttachment(tempoMarking(Duration.CROTCHET)));
+
+            assertThat(tupletCount(song))
+                .as("the marking restates the running beat, so the fixture starts valid")
+                .isEqualTo(ONE_TUPLET);
+
+            song.tempoDidChange(
+                new TempoDidChangeNotification(Duration.CROTCHET_DOTTED, null, null, null));
+
+            assertThat(tupletCount(song)).isEqualTo(NO_TUPLETS);
+        }
+
+        /**
+         * The companion to the test above: a notification that changes only the beats-per-minute
+         * leaves the beat alone, so the sweep must not take the tuplet with it.
+         */
+        @Test
+        void testATempoNotificationThatOnlyChangesTheBpmRemovesNothing() {
             var song = crotchetTripletAtSimpleBeat();
-            var line = song.getLine(FIRST_LINE_INDEX);
-            song.withoutMutationTracking(() ->
-                line.getElement(ANCHOR_INDEX).addAttachment(tempoMarking(Duration.CROTCHET)));
 
-            line.withModification(() ->
-                line.addElement(ANCHOR_INDEX, ElementType.CROTCHET.newInstance()));
+            song.tempoDidChange(
+                new TempoDidChangeNotification(null, Tempo.DEFAULT_BPM * 2, null, null));
 
-            assertThat(line.getElement(ANCHOR_INDEX).findAttachment(TempoChangeAttachment.class))
-                .as("the initial tempo must have moved to the incoming element")
-                .isNotNull();
             assertThat(tupletCount(song)).isEqualTo(ONE_TUPLET);
         }
     }
+
+    // The anchor-tracking machinery that used to move a TempoChangeAttachment along with the
+    // song's first element (so prepending an element displaced the attachment onto it) was
+    // removed with the rest of the anchor machinery: an edit that makes an already-attached
+    // element become the song's first now leaves the attachment where it is, rendering as an
+    // ordinary tempo change rather than transferring. docs/song-tempo.md, "The first-element
+    // rule is UI-only", explains why that was chosen over tracking the first element.
 
     // -----------------------------------------------------------------------
     // Replay suppression

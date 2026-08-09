@@ -70,6 +70,11 @@ class OpNameThreadingTest extends UnitTest {
     @Nested
     class CaptureMatrix {
 
+        // A song already carries Tempo's defaults, so a value-equal setTempo() call now
+        // early-returns and records no mutation. Every test here needs a real tempo edit,
+        // so it uses a tempo that actually differs from the default.
+        private static final int NON_DEFAULT_BPM = Tempo.DEFAULT_BPM * 2;
+
         private Song song;
         private MockedStatic<MessageCenter> messageCenterMock;
 
@@ -103,7 +108,7 @@ class OpNameThreadingTest extends UnitTest {
         @Test
         void testExplicitLabelOnlyIsCaptured() {
             var notification = capturePostedBatch(
-                () -> song.withModification(Strings.get(EXPLICIT_KEY), () -> song.setTempo(new Tempo())));
+                () -> song.withModification(Strings.get(EXPLICIT_KEY), () -> song.setTempo(new Tempo(NON_DEFAULT_BPM, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO))));
 
             assertThat(notification.getOpName()).isEqualTo(Strings.get(EXPLICIT_KEY));
             assertThat(notification.getMutations()).isNotEmpty();
@@ -114,7 +119,7 @@ class OpNameThreadingTest extends UnitTest {
             UndoController.setPendingOpName(Strings.get(PENDING_KEY));
 
             var notification = capturePostedBatch(
-                () -> song.withModification(() -> song.setTempo(new Tempo())));
+                () -> song.withModification(() -> song.setTempo(new Tempo(NON_DEFAULT_BPM, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO))));
 
             assertThat(notification.getOpName()).isEqualTo(Strings.get(PENDING_KEY));
         }
@@ -124,7 +129,7 @@ class OpNameThreadingTest extends UnitTest {
             UndoController.setPendingOpName(Strings.get(PENDING_KEY));
 
             var notification = capturePostedBatch(
-                () -> song.withModification(Strings.get(EXPLICIT_KEY), () -> song.setTempo(new Tempo())));
+                () -> song.withModification(Strings.get(EXPLICIT_KEY), () -> song.setTempo(new Tempo(NON_DEFAULT_BPM, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO))));
 
             assertThat(notification.getOpName()).isEqualTo(Strings.get(EXPLICIT_KEY));
         }
@@ -132,7 +137,7 @@ class OpNameThreadingTest extends UnitTest {
         @Test
         void testNeitherNameYieldsNull() {
             var notification = capturePostedBatch(
-                () -> song.withModification(() -> song.setTempo(new Tempo())));
+                () -> song.withModification(() -> song.setTempo(new Tempo(NON_DEFAULT_BPM, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO))));
 
             assertThat(notification.getOpName()).isNull();
         }
@@ -146,7 +151,7 @@ class OpNameThreadingTest extends UnitTest {
                     Strings.get(EXPLICIT_KEY),
                     () -> song.withModification(
                         Strings.get(PENDING_KEY),
-                        () -> song.setTempo(new Tempo()))));
+                        () -> song.setTempo(new Tempo(NON_DEFAULT_BPM, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO)))));
 
             assertThat(notification.getOpName()).isEqualTo(Strings.get(EXPLICIT_KEY));
         }

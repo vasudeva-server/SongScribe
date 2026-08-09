@@ -214,4 +214,53 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
             .as("canChangeTempo with exactly one element selected")
             .isTrue();
     }
+
+    // -------------------------------------------------------------------------
+    // canChangeTempo — the song's first element is off limits
+    // -------------------------------------------------------------------------
+
+    /**
+     * Builds a coordinator over a real two-note song, so the coordinator's score view answers
+     * with a song that has a genuine first element. A song mock answers null there, which
+     * leaves the first-element rule inert.
+     */
+    private SelectionCoordinator realSongCoordinator() {
+        var song = new Song();
+        var line = song.getLine(LINE_0);
+        song.withoutMutationTracking(() -> {
+            line.addElement(0, ElementType.CROTCHET.newInstance());
+            line.addElement(1, ElementType.QUAVER.newInstance());
+        });
+
+        return ReflectionTestHelper.createCoordinatorForLine(line);
+    }
+
+    /**
+     * A tempo change on the song's first element is forbidden: the song's own tempo is already
+     * drawn at the staff header there, and Song Settings is where it is edited. Without this,
+     * the user could put a second, competing tempo mark on the very first note.
+     */
+    @Test
+    void testCanChangeTempoReturnsFalseWhenTheSongsFirstElementIsSelected() {
+        var coordinator = realSongCoordinator();
+        ReflectionTestHelper.selectNote(coordinator, 0);
+
+        assertThat(coordinator.canChangeTempo())
+            .as("canChangeTempo with the song's first element selected")
+            .isFalse();
+    }
+
+    /**
+     * The companion to the test above, on the same song: every element other than the first
+     * still accepts a tempo change, so the rule cannot be satisfied by refusing everything.
+     */
+    @Test
+    void testCanChangeTempoReturnsTrueWhenALaterElementIsSelected() {
+        var coordinator = realSongCoordinator();
+        ReflectionTestHelper.selectNote(coordinator, 1);
+
+        assertThat(coordinator.canChangeTempo())
+            .as("canChangeTempo with the song's second element selected")
+            .isTrue();
+    }
 }

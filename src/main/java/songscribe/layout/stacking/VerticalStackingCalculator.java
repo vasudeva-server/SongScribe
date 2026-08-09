@@ -28,6 +28,7 @@ import songscribe.dom.Attribution;
 import songscribe.dom.LineElement;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.dom.Line;
+import songscribe.dom.SongTempoMark;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.layout.ElementColumn;
 import songscribe.dom.Ending;
@@ -71,7 +72,7 @@ public class VerticalStackingCalculator {
 
     /**
      * Calculates vertical positions for all elements in the given columns.
-     * Equivalent to {@code calculate(columns, line, builder, lineWidthSs, fonts, null)}.
+     * Equivalent to {@code calculate(columns, line, builder, lineWidthSs, fonts, null, null)}.
      */
     public void calculate(
         List<ElementColumn> columns,
@@ -79,7 +80,7 @@ public class VerticalStackingCalculator {
         LayoutResultBuilder builder,
         double lineWidthSs,
         DocumentFontsHolder fonts) {
-        calculate(columns, line, builder, lineWidthSs, fonts, null);
+        calculate(columns, line, builder, lineWidthSs, fonts, null, null);
     }
 
     /**
@@ -101,6 +102,8 @@ public class VerticalStackingCalculator {
      * @param builder      the LayoutResult builder to write decoration positions into
      * @param lineWidthSs  total width of the staff line in staff-space units
      * @param fonts        font holder for measuring elements
+     * @param tempoMark    the song's tempo mark, or null if none to stack; non-null implies this
+     *                     is the first line of the song
      * @param attribution  the attribution block element, or null if none to stack;
      *                     non-null implies this is the first line of the song
      */
@@ -110,6 +113,7 @@ public class VerticalStackingCalculator {
         LayoutResultBuilder builder,
         double lineWidthSs,
         DocumentFontsHolder fonts,
+        @Nullable SongTempoMark tempoMark,
         @Nullable Attribution attribution) {
 
         var noteAttachedExtents = new StaffExtents(lineWidthSs);
@@ -144,9 +148,10 @@ public class VerticalStackingCalculator {
         // Tiers 3b-d: the rest of the structural decorations (hairpins, dynamics, endings)
         structuralStacker.stackRemaining();
 
-        // Tier 4: system-level stacking (tempo, beat changes, annotations)
+        // Tier 4: system-level stacking (the song's tempo mark, tempo changes, beat changes,
+        // annotations)
         systemExtents.copyTopFrom(structuralExtents);
-        new SystemStacker(context, systemExtents, fonts).stack();
+        new SystemStacker(context, systemExtents, fonts, tempoMark).stack();
 
         // Tier 5 (first line only): stack the attribution block above the right-edge columns
         if (attribution != null) {

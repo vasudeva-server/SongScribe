@@ -27,8 +27,8 @@ import org.jspecify.annotations.Nullable;
  * that defines one.
  *
  * <p>Pure query logic over a {@link Song}'s lines: it reads the score and never writes
- * to it. One is owned by each {@code Song}, which delegates {@link Song#getTempoAt},
- * {@link Song#resolveBeatAt} and {@link Song#hasAnyTempoChange} here.
+ * to it. One is owned by each {@code Song}, which delegates {@link Song#getTempoAt} and
+ * {@link Song#resolveBeatAt} here.
  */
 public final class TempoResolver {
 
@@ -52,7 +52,7 @@ public final class TempoResolver {
             element -> element.findAttachment(TempoChangeAttachment.class));
 
         if (found == null) {
-            return song.getEffectiveTempo();
+            return song.getTempo();
         }
 
         return found.value().getTempo();
@@ -66,17 +66,16 @@ public final class TempoResolver {
      * every earlier line in full. The first hit wins, whichever kind it is: a
      * {@code BeatChangeAttachment} yields {@code beatChange().beat()} and a
      * {@code TempoChangeAttachment} yields {@code tempo().tempoType()}. With no hit at all the
-     * result falls back to the song tempo, and failing that to a quarter note.
+     * result falls back to the song tempo, which every song has.
      *
      * <p>Precedence is positional, not by type: the nearest preceding beat-defining event
      * wins regardless of which kind it is. When one element carries both, the
      * {@link BeatChangeAttachment} wins, because a metric-modulation marking is the more
      * specific statement about the beat than a tempo marking's note value.
      *
-     * <p>Cost is O(elements before the anchor), with no cache.
-     * {@code Line.attachInitialTempoIfNeeded} guarantees a beat-defining event on the first
-     * element of the first non-empty line whenever the song has a tempo, so the walk
-     * terminates quickly in practice.
+     * <p>Cost is O(elements before the anchor), with no cache. No attachment is involved in
+     * the fallback: the song tempo defines the beat at the start of the song directly, so a
+     * walk that reaches the front of the score always has an answer waiting.
      * A maintained beat index on {@code Song} was rejected: it would trade microseconds for
      * an invalidation invariant that every structural mutation would have to honor, and a
      * stale index produces exactly the silent wrong-beat failure this method exists to
@@ -93,13 +92,8 @@ public final class TempoResolver {
             return new BeatAt(found.value(), found.lineIndex(), found.elementIndex());
         }
 
-        var tempo = song.getTempo();
-
-        if (tempo == null) {
-            return new BeatAt(Duration.CROTCHET, BeatAt.NO_DEFINING_EVENT, BeatAt.NO_DEFINING_EVENT);
-        }
-
-        return new BeatAt(tempo.getTempoType(), BeatAt.NO_DEFINING_EVENT, BeatAt.NO_DEFINING_EVENT);
+        return new BeatAt(
+            song.getTempo().getTempoType(), BeatAt.NO_DEFINING_EVENT, BeatAt.NO_DEFINING_EVENT);
     }
 
     /**
@@ -124,64 +118,6 @@ public final class TempoResolver {
         }
 
         return null;
-    }
-
-    /**
-     * Returns true if removing the tempo change at {@code (lineIndex, elementIndex)} would
-     * orphan a later tempo change.
-     *
-     * <p>A tempo change notates a change <i>from</i> an established tempo <i>to</i> a new one.
-     * The first tempo change in the song is what gives every later change something to change
-     * from. Removing it while a later change survives leaves that later change with no
-     * reference — a marking that instructs a change from nothing, not notation that means
-     * something slightly different.
-     *
-     * <p>The element at the given position is excluded from the scan in both directions; it is
-     * the one being removed.
-     */
-    public boolean removalWouldOrphanLaterTempoChange(int lineIndex, int elementIndex) {
-        var passedPosition = false;
-
-        for (var i = 0; i < song.getLines().size(); i++) {
-            var line = song.getLine(i);
-
-            for (var index = 0; index < line.elementCount(); index++) {
-                if (i == lineIndex && index == elementIndex) {
-                    passedPosition = true;
-                    continue;
-                }
-
-                var hasTempoChange =
-                    line.getElement(index).findAttachment(TempoChangeAttachment.class) != null;
-
-                if (!hasTempoChange) {
-                    continue;
-                }
-
-                if (!passedPosition) {
-                    return false;
-                }
-
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Returns true if any element anywhere in the song carries a tempo change.
-     */
-    public boolean hasAnyTempoChange() {
-        for (var line : song.getLines()) {
-            for (var i = 0; i < line.elementCount(); i++) {
-                if (line.getElement(i).findAttachment(TempoChangeAttachment.class) != null) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
     }
 
     /**

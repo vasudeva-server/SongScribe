@@ -34,6 +34,7 @@ import songscribe.smufl.SMuFLMetadata;
 import songscribe.layout.LayoutResult;
 import songscribe.dom.MetronomeAttachment;
 import songscribe.dom.ScaleContext;
+import songscribe.dom.Tempo;
 import songscribe.util.GraphicsState;
 
 /**
@@ -124,7 +125,7 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
      * @param color    the color for both glyph and "=" text
      * @return the new X position (staff spaces) after the "=" and trailing gap
      */
-    protected double drawDurationEquals(
+    static double drawDurationEquals(
         Graphics2D g2,
         Duration duration,
         double xSs,
@@ -162,6 +163,56 @@ public abstract class MetronomeRenderer implements ElementRenderer<StaffElement>
         }
 
         return xSs;
+    }
+
+    /**
+     * Draws one tempo marking — the metronome glyph, the "=", the BPM and the description —
+     * at the given position, in staff spaces.
+     * <p>
+     * Shared by every depiction of a {@link songscribe.dom.Tempo} on the page: the per-note
+     * {@link TempoChangeRenderer} and the song-level {@link SongTempoMarkRenderer}. Both draw
+     * inside the staff-space transform, so the song's tempo cannot look different from the tempo
+     * changes that follow it. Package-private rather than {@code protected} because
+     * {@code SongTempoMarkRenderer} is a sibling in this package, not a subclass.
+     * <p>
+     * When {@link songscribe.dom.Tempo#shouldShowTempo()} is false the glyph and the BPM are
+     * omitted and only the description is drawn.
+     *
+     * @param g2       graphics context
+     * @param tempo    the tempo to depict
+     * @param xSs      starting X position (staff spaces)
+     * @param ySs      decoration-layout top Y position (staff spaces)
+     * @param attrFont the attribution font (unscaled, in pixel units)
+     * @param color    the color for the glyph and the text
+     */
+    static void drawTempo(
+        Graphics2D g2,
+        Tempo tempo,
+        double xSs,
+        double ySs,
+        Font attrFont,
+        Color color
+    ) {
+        var textBaselineYSs = ySs + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
+        var tempoBuilder = new StringBuilder(25);
+        var showTempo = tempo.shouldShowTempo();
+
+        if (showTempo) {
+            tempoBuilder.append(tempo.getVisibleTempo());
+            tempoBuilder.append(' ');
+        }
+
+        tempoBuilder.append(tempo.getTempoDescription());
+
+        if (showTempo) {
+            xSs = drawDurationEquals(g2, tempo.getTempoType(), xSs, ySs, attrFont, color);
+        }
+
+        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
+            g2.setFont(ScaleContext.scaleFont(attrFont));
+            g2.setColor(color);
+            g2.drawString(tempoBuilder.toString(), (float) xSs, (float) textBaselineYSs);
+        }
     }
 
     /**

@@ -317,11 +317,8 @@ class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
         assertThat(tempo.getTempo().getVisibleTempo()).as("base tempo bpm").isEqualTo(BASE_TEMPO_BPM);
         assertThat(tempo.getTempo().getTempoType()).as("base tempo type").isEqualTo(Duration.CROTCHET);
 
-        assertThat(reloaded.getTempo()).as("song base tempo present").isNotNull();
-
-        if (reloaded.getTempo() != null) {
-            assertThat(reloaded.getTempo().getVisibleTempo()).as("song base tempo bpm").isEqualTo(BASE_TEMPO_BPM);
-        }
+        assertThat(reloaded.getTempo().getVisibleTempo())
+            .as("song base tempo bpm").isEqualTo(BASE_TEMPO_BPM);
 
         var firstLyric = firstNote.getLyricForVerse(FIRST_VERSE);
         var secondLyric = secondNote.getLyricForVerse(FIRST_VERSE);

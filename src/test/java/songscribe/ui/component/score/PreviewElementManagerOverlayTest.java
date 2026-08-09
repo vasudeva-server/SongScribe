@@ -180,7 +180,6 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         PreviewElementManager.setCurrentPreviewLine(null);
         PreviewElementManager.setCurrentXIndex(-1);
         PreviewElementManager.setXPosSsMatchesElement(false);
-        PreviewElementManager.clearPendingTempoPrompt();
         messageCenterMock.close();
         playbackMock.close();
         editModeManagerMock.close();

@@ -197,9 +197,13 @@ class SongSetterMutationTest extends UnitTest {
 
         @Test
         void testSetTempoPostsMutation() {
-            // A fresh song has no explicit tempo; establish one without tracking so the
-            // notification captured below is solely the setTempo call under test.
+            // A fresh song already holds Tempo's exact defaults, so the value-equality guard
+            // (which runs before the tracking-suspended check) would no-op an establishing set
+            // of another all-defaults Tempo. Give oldTempo a non-default value so establishing
+            // it without tracking actually takes effect, leaving the notification captured
+            // below solely the setTempo call under test.
             var oldTempo = new Tempo();
+            oldTempo.setVisibleTempo(Tempo.DEFAULT_BPM * 2);
             song.withoutMutationTracking(() -> song.setTempo(oldTempo));
 
             var newTempo = new Tempo();
@@ -209,8 +213,25 @@ class SongSetterMutationTest extends UnitTest {
 
             var mutation = captureSingleMetadataChange();
             assertThat(mutation.field()).isEqualTo(MetadataField.TEMPO);
-            assertThat(mutation.oldValue()).isSameAs(oldTempo);
-            assertThat(mutation.newValue()).isSameAs(newTempo);
+
+            var recordedOld = mutation.oldValue();
+            var recordedNew = mutation.newValue();
+
+            assertThat(recordedOld).isInstanceOf(Tempo.class);
+            assertThat(recordedNew).isInstanceOf(Tempo.class);
+            assertThat(Tempo.haveSameValue((Tempo) recordedOld, oldTempo))
+                .as("the recorded before-state must hold the tempo the song was replacing")
+                .isTrue();
+            assertThat(Tempo.haveSameValue((Tempo) recordedNew, newTempo))
+                .as("the recorded after-state must hold the tempo the song was given")
+                .isTrue();
+
+            // The song stores a copy, so no record can hold the instance the tempo dialog
+            // later edits in place — see SongNotificationHandlerTest's
+            // testAnEarlierEditsRecordedValueSurvivesALaterEdit for the bug this prevents.
+            assertThat(recordedNew)
+                .as("a mutation record must not hold the song's live Tempo")
+                .isNotSameAs(song.getTempo());
         }
 
         @Test
@@ -222,6 +243,26 @@ class SongSetterMutationTest extends UnitTest {
 
             song.setTempo(song.getTempo());
             verifyNoNotificationPosted();
+        }
+
+        @Test
+        void testSetTempoValueEqualCopyPostsNothing() {
+            // A copied Tempo is a different instance with identical field values. The guard
+            // must recognise it as no change.
+            var existingTempo = song.getTempo();
+
+            song.setTempo(existingTempo.copy());
+            verifyNoNotificationPosted();
+        }
+
+        @Test
+        void testSetTempoValueEqualCopyLeavesTheOriginalInstanceInPlace() {
+            var existingTempo = song.getTempo();
+
+            song.setTempo(existingTempo.copy());
+            assertThat(song.getTempo())
+                .as("a no-op set must not swap in the caller's instance")
+                .isSameAs(existingTempo);
         }
 
         @Test

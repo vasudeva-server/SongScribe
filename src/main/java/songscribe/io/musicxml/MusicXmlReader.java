@@ -388,6 +388,15 @@ public final class MusicXmlReader extends DefaultHandler {
         songDefaultKeySet = set;
     }
 
+    /**
+     * Records that a {@code <measure>} has opened. Called by the measure reader from the
+     * single point where a measure starts; the metronome resolver keeps the count, since
+     * it is the only reader that cares which measure it is in.
+     */
+    void startMeasure() {
+        metronome.startMeasure();
+    }
+
     // -------------------------------------------------------------------------
     // SAX DefaultHandler overrides
     // -------------------------------------------------------------------------
@@ -617,7 +626,6 @@ public final class MusicXmlReader extends DefaultHandler {
                         // file written before the melisma was automatic may put the syllable
                         // on the host, or leave the grace's syllable with no melisma at all.
                         song.getLines().forEach(Line::repairGraceHostMelismas);
-                        headerReader.applyInitialTempo();
                         song.endSuspendMutationTracking();
                     }
 

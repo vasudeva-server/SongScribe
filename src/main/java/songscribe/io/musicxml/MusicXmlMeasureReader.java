@@ -72,6 +72,12 @@ final class MusicXmlMeasureReader {
     }
 
     void handleStartPart(String qName) {
+        if (qName.equals(MusicXmlTags.MEASURE)) {
+            // The single point where a measure opens, so it is where the
+            // first-measure flag the song-level tempo rule depends on is advanced.
+            reader.startMeasure();
+        }
+
         reader.startTransition(qName, MusicXmlTags.MEASURE, Where.MEASURE);
     }
 

@@ -81,9 +81,7 @@ import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.FermataAttachment;
-import songscribe.dom.InitialTempoTransfer;
 import songscribe.dom.Song;
-import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Span;
@@ -94,13 +92,11 @@ import songscribe.layout.AccidentalMaterializer;
 import songscribe.layout.AccidentalReconciliation;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.ui.EndingConfirms;
-import songscribe.ui.InitialTempoConfirms;
 import songscribe.ui.Mode;
 import songscribe.ui.MusicEditOperations;
 import songscribe.ui.MusicEditOperations.HairpinResolution;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.SlideOperations;
-import songscribe.ui.TempoChangeGuards;
 import songscribe.ui.action.Actions;
 import songscribe.ui.clipboard.ClipboardManager;
 import songscribe.ui.component.score.PreviewElementManager;
@@ -820,18 +816,6 @@ public final class ScoreViewController {
                 return;
             }
 
-            // The widened begin, not the raw one: a selection starting at index 1 whose element 0
-            // is a paired grace note destroys the anchor just as surely as one starting at 0.
-            // Asked before the selection is cleared, so a Cancel leaves the score untouched.
-            var tempoOutcome = line.isInitialTempoAnchor(line.effectiveDeleteBegin(begin))
-                ? confirmInitialTempoTransfer(
-                    score, song, InitialTempoTransfer.anchorAfterRemoval(song, line, begin, end))
-                : null;
-
-            if (isCancelled(tempoOutcome)) {
-                return;
-            }
-
             // Name the undo step from the categories of the user-selected elements
             // (computed before removal, while they are still present on the line).
             var selectedTypes = line.getElements(begin, end).stream()
@@ -847,27 +831,14 @@ public final class ScoreViewController {
 
             // deleteElementRange's own bracket nests inside the one opened here and passes a
             // null label, since the op name is captured only at the outermost bracket.
-            editWithInitialTempoOutcome(deleteLabel, tempoOutcome,
+            song.withModification(deleteLabel,
                 () -> deleteElementRange(line, begin, end, null, decision));
         } else if (selectedTarget != null && targetLine != null) {
             deleteSelectedTarget(targetLine, selectedTarget);
         } else if (score.canDeleteLine()) {
             var lineIndex = selectionCoordinator.getSelectedLine();
 
-            // Removing the anchor line hands the starting tempo to the first element of the
-            // next line that has any. Asked before the bracket opens; on Cancel a plain return
-            // skips the shared tail below, which would otherwise drop the user's selection.
-            var tempoOutcome = song.getLine(lineIndex).isInitialTempoAnchor(0)
-                ? confirmInitialTempoTransfer(
-                    score, song, InitialTempoTransfer.anchorAfterLineRemoval(song, lineIndex))
-                : null;
-
-            if (isCancelled(tempoOutcome)) {
-                return;
-            }
-
-            editWithInitialTempoOutcome(OpNames.deleteLineLabel(), tempoOutcome,
-                () -> song.removeLine(lineIndex));
+            song.withModification(OpNames.deleteLineLabel(), () -> song.removeLine(lineIndex));
         }
 
         // Restore the pre-selection selected states but not the enabled states — the song
@@ -875,81 +846,6 @@ public final class ScoreViewController {
         // current context, while the user's chosen duration button survives the delete.
         selectionCoordinator.getActionReflector().restoreSelectedActionStates();
         score.deselect();
-    }
-
-    /**
-     * The user's answer about the song's starting tempo, paired with that tempo as it stood
-     * before the edit. The two travel together because the attachment holding the tempo is
-     * usually gone by the time the answer is applied.
-     */
-    private record InitialTempoOutcome(InitialTempoConfirms.Decision decision, @Nullable Tempo originalTempo) {
-
-        boolean isCancelled() {
-            return decision == InitialTempoConfirms.Decision.CANCEL;
-        }
-
-        /** Applies the answer inside the caller's already-open modification bracket. */
-        void apply(Song song) {
-            InitialTempoConfirms.applyDecision(song, originalTempo, decision);
-        }
-    }
-
-    /**
-     * Whether a pending operation must be abandoned. A null outcome means no question was
-     * asked, which is never a reason to abandon anything.
-     */
-    private static boolean isCancelled(@Nullable InitialTempoOutcome outcome) {
-        return outcome != null && outcome.isCancelled();
-    }
-
-    /**
-     * Runs {@code edit} in one modification bracket named {@code label}, applying
-     * {@code tempoOutcome} inside that bracket and raising the tempo-and-beat warning once it
-     * has closed. {@code tempoOutcome} is null when the edit does not displace the song's first
-     * element, in which case there is nothing to apply and nothing to warn about.
-     *
-     * <p>One outer bracket, not two: the edits this wraps open their own bracket internally,
-     * which nests inside this one, so the user's answer about the starting tempo lands in the
-     * same undo step as the edit that raised the question. A second bracket opened after the
-     * edit's had closed would make two undo steps, and undoing only the second would strip the
-     * tempo replacement while leaving the edit that displaced the original anchor applied.
-     *
-     * <p>The warning waits until the bracket has closed: it is modal, and a modal dialog raised
-     * from inside an open bracket would block the EDT while the bracket is still open.
-     */
-    private void editWithInitialTempoOutcome(
-        String label, @Nullable InitialTempoOutcome tempoOutcome, Runnable edit) {
-
-        var song = score.getSong();
-
-        song.withModification(label, () -> {
-            edit.run();
-
-            if (tempoOutcome != null) {
-                tempoOutcome.apply(song);
-            }
-        });
-
-        if (tempoOutcome != null) {
-            InitialTempoConfirms.warnIfTempoAndBeatChange(score, song);
-        }
-    }
-
-    /**
-     * Asks what should become of the song's starting tempo once {@code prospectiveNewFirstElement}
-     * becomes the song's first, capturing the outgoing tempo first.
-     *
-     * <p>Call before mutating anything: {@link InitialTempoOutcome#isCancelled} means the whole
-     * pending operation is abandoned.
-     */
-    private static InitialTempoOutcome confirmInitialTempoTransfer(
-        @Nullable Component parent, Song song, @Nullable StaffElement prospectiveNewFirstElement) {
-
-        var attachment = InitialTempoTransfer.currentInitialTempo(song);
-
-        return new InitialTempoOutcome(
-            InitialTempoConfirms.confirmTransfer(parent, song, prospectiveNewFirstElement),
-            attachment == null ? null : attachment.getTempo());
     }
 
     /**
@@ -1088,14 +984,6 @@ public final class ScoreViewController {
         var elementIndex = resolveOwnerIndex(line, element);
 
         if (element == null || elementIndex == null) {
-            return;
-        }
-
-        // Outside the modification bracket: Line.modifyElement records an ElementModification
-        // unconditionally, so a refusal from inside the bracket would leave an empty undo step.
-        // The confirm has already explained itself to the user when it returns false.
-        if (attachment instanceof TempoChangeAttachment
-            && !TempoChangeGuards.allowRemoveTempoChange(score, element)) {
             return;
         }
 
@@ -1325,33 +1213,6 @@ public final class ScoreViewController {
         return deleteRange == null ? insertIndex : line.effectiveDeleteBegin(deleteRange.begin());
     }
 
-    /**
-     * Whether a paste inserting into {@code line} at {@code insertIndex} — first deleting
-     * {@code deleteRange} when present — would make the fragment's first clone the song's first
-     * element. A pure insert at the anchor pushes the anchor aside and a replace starting there
-     * removes it, both leaving the clone leading the song.
-     *
-     * <p>Ask this <em>before</em> the paste runs; afterwards the anchor has already moved. It
-     * is the single statement of both the condition {@link #tryInsertFragment} asks the user
-     * about and the condition under which a caller owes the user
-     * {@link InitialTempoConfirms#warnIfTempoAndBeatChange} once its bracket has closed. A paste
-     * anywhere else changes nothing about the song's first element, so it warns about nothing:
-     * a song can already have a tempo and a beat change on its first note without any paste
-     * being involved, and every paste in the piece would otherwise raise that warning.
-     *
-     * <p>{@link Line#insertionMakesSongFirstElement}, not {@link Line#isInitialTempoAnchor} —
-     * the same predicate {@link Line#addElement(int, StaffElement)} gates the DOM-side transfer
-     * on, so the question the user is asked and the displacement that actually happens can
-     * never disagree. They do disagree for a leading empty line, which is never the anchor but
-     * whose index 0 still leads the song once something is inserted there.
-     */
-    public static boolean pasteDisplacesSongFirstElement(
-        Line line, int insertIndex, InsertionSpacingCalculator.@Nullable DeletedRange deleteRange) {
-
-        return line.insertionMakesSongFirstElement(
-            pasteDisplacementIndex(line, insertIndex, deleteRange));
-    }
-
     /** Outcome of {@link #tryInsertFragment}. */
     public enum FragmentInsertOutcome {
         INSERTED,
@@ -1458,7 +1319,6 @@ public final class ScoreViewController {
         // "nothing happened, and the user has already been told why or chose it".
         var spacingResult = new InsertionSpacingCalculator.FragmentInsertionResult[1];
         var refusal = new FragmentInsertOutcome[]{FragmentInsertOutcome.CANCELLED};
-        var tempoOutcomeHolder = new InitialTempoOutcome[1];
 
         var committed = AccidentalMaterializer.applyIfAccepted(
             line, accidentalChanges, instantiated.elements(), () -> {
@@ -1492,22 +1352,6 @@ public final class ScoreViewController {
                         refusal[0] = FragmentInsertOutcome.CANCELLED;
                         return false;
                     }
-                }
-
-                // Asked last, after the fit gate and the ending confirm, so a Cancel still finds
-                // nothing mutated. Fragment.cloneForCapture strips the anchor's
-                // TempoChangeAttachment on copy, so this only ever prompts when the copied
-                // passage's first note had a per-note tempo change of its own.
-                if (pasteDisplacesSongFirstElement(line, insertIndex, deleteRange)) {
-                    var tempoOutcome = confirmInitialTempoTransfer(
-                        score, line.getSong(), instantiated.elements().getFirst());
-
-                    if (tempoOutcome.isCancelled()) {
-                        refusal[0] = FragmentInsertOutcome.CANCELLED;
-                        return false;
-                    }
-
-                    tempoOutcomeHolder[0] = tempoOutcome;
                 }
 
                 spacingResult[0] = fit;
@@ -1593,14 +1437,6 @@ public final class ScoreViewController {
             line.addElement(insertAt + k, clone);
         }
 
-        // The clones are in, so the anchor is settled and the answer given before any of this
-        // began can be applied. Inside the caller's bracket, so it shares the paste's undo step.
-        var tempoOutcome = tempoOutcomeHolder[0];
-
-        if (tempoOutcome != null) {
-            tempoOutcome.apply(line.getSong());
-        }
-
         line.adjustSyllablesForSuccessorAfterInsertion(insertAt + cloneCount - 1);
 
         // Apply the single trailing shift to every surviving element after the
@@ -1670,9 +1506,6 @@ public final class ScoreViewController {
             return;
         }
 
-        // Read before the paste, while the anchor is still where it was.
-        var displacesSongFirstElement = pasteDisplacesSongFirstElement(line, begin, deleteRange);
-
         // One bracket for the whole replace — delete + insert is a single undo
         // step. On LINE_FULL tryInsertFragment mutates nothing, so the bracket
         // closes empty, posts no notification, and the selection stays intact.
@@ -1695,12 +1528,6 @@ public final class ScoreViewController {
             // re-evaluate their enabled state from the current context.
             selectionCoordinator.getActionReflector().clearSavedActionStates();
             score.deselect();
-
-            if (displacesSongFirstElement) {
-                // After the bracket has closed — the warning is modal, and the song must already
-                // be in its final shape for the question it asks to be about anything real.
-                InitialTempoConfirms.warnIfTempoAndBeatChange(score, score.getSong());
-            }
         }
     }
 

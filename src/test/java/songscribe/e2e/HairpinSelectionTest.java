@@ -55,10 +55,9 @@ import songscribe.hit.HitTarget;
  * resolved hairpin state changes. The decision logic behind those states is unit-tested
  * in {@code HairpinActionStateTest} and is not re-tested here.
  *
- * <p>Tests run against the selection1.mssw fixture rather than a freshly built score:
- * inserting the first note into an empty song opens the automatic-tempo dialog, which
- * blocks the robot. The fixture is reloaded per test so a hairpin added by one test
- * cannot change the resolved state seen by the next.
+ * <p>Tests run against the selection1.mssw fixture rather than a freshly built score, to avoid
+ * rebuilding a multi-element line through real clicks before every test. The fixture is reloaded
+ * per test so a hairpin added by one test cannot change the resolved state seen by the next.
  */
 class HairpinSelectionTest extends E2ETest {
 

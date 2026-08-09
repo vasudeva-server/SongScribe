@@ -19,6 +19,8 @@
  */
 package songscribe.io.musicxml;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.SAXException;
 
@@ -51,6 +53,8 @@ import songscribe.io.musicxml.MusicXmlReader.Where;
  * cross-group {@code MEASURE} hub and stays inline in the orchestrator.
  */
 final class MusicXmlDirectionReader {
+
+    private static final Logger LOG = LoggerFactory.getLogger(MusicXmlDirectionReader.class);
 
     private final MusicXmlReader reader;
 
@@ -204,8 +208,35 @@ final class MusicXmlDirectionReader {
             // metronome direction carries no placement, an annotation
             // direction carries no <metronome>.
             metronome.endDirection();
+            applyPendingSongTempo();
             annotations.endDirection();
             reader.setWhere(Where.MEASURE);
         }
+    }
+
+    /**
+     * Applies the song's own tempo — the first tempo direction of the first measure — to
+     * the song under construction. The resolvers accumulate but never write to the
+     * document, so the one mark that belongs to the score rather than to a note is applied
+     * here, where the song is in reach.
+     */
+    private void applyPendingSongTempo() {
+        var songTempo = metronome.takePendingSongTempo();
+
+        if (songTempo == null) {
+            return;
+        }
+
+        var song = reader.songOrNull();
+
+        // Unreachable today — the song stub is created when <score-partwise> opens, long
+        // before any <measure>. Logged rather than dropped in silence so a future
+        // reordering of the parse cannot lose a score's tempo without a trace.
+        if (song == null) {
+            LOG.warn("Dropping the song tempo <direction>: no song under construction");
+            return;
+        }
+
+        song.setTempo(songTempo);
     }
 }

@@ -248,4 +248,87 @@ class MetronomeResolverTest extends UnitTest {
             .as("no state leaked from the dropped direction")
             .isEqualTo(TEMPO_BPM);
     }
+
+    // -------------------------------------------------------------------------
+    // The song tempo — the first tempo direction of the first measure belongs to
+    // the score, not to a note.
+    // -------------------------------------------------------------------------
+
+    /** Accumulates a complete beat-unit tempo direction and closes it. */
+    private static void addTempoDirection(MetronomeResolver resolver, int bpm) {
+        resolver.setBeatUnitToken(NoteTypeMapping.TYPE_QUARTER);
+        resolver.setVisibleTempo(bpm);
+        resolver.endDirection();
+    }
+
+    @Test
+    void testFirstTempoOfFirstMeasureBecomesTheSongTempoAndBindsToNoNote() {
+        var resolver = new MetronomeResolver();
+        resolver.startMeasure();
+        addTempoDirection(resolver, TEMPO_BPM);
+
+        var songTempo = resolver.takePendingSongTempo();
+        assertThat(songTempo).as("the first measure's first tempo is the song's own").isNotNull();
+        assertThat(songTempo.getVisibleTempo()).isEqualTo(TEMPO_BPM);
+
+        var note = newNote();
+        resolver.resolveTempo(note);
+
+        assertThat(note.findAttachment(TempoChangeAttachment.class))
+            .as("the song tempo must not also land on the following note as a tempo change")
+            .isNull();
+    }
+
+    @Test
+    void testASecondTempoInTheFirstMeasureBindsToItsNote() {
+        var resolver = new MetronomeResolver();
+        resolver.startMeasure();
+        addTempoDirection(resolver, TEMPO_BPM);
+        resolver.takePendingSongTempo();
+
+        var laterBpm = TEMPO_BPM * 2;
+        addTempoDirection(resolver, laterBpm);
+
+        assertThat(resolver.takePendingSongTempo())
+            .as("only the first tempo direction of measure 1 is the song's own")
+            .isNull();
+
+        var note = newNote();
+        resolver.resolveTempo(note);
+
+        var attachment = note.findAttachment(TempoChangeAttachment.class);
+        assertThat(attachment).as("a second measure-1 tempo is an ordinary tempo change").isNotNull();
+        assertThat(attachment.getTempo().getVisibleTempo()).isEqualTo(laterBpm);
+    }
+
+    @Test
+    void testATempoInALaterMeasureBindsToItsNote() {
+        var resolver = new MetronomeResolver();
+        resolver.startMeasure();
+        resolver.startMeasure();
+        addTempoDirection(resolver, TEMPO_BPM);
+
+        assertThat(resolver.takePendingSongTempo())
+            .as("no tempo direction outside measure 1 can be the song's own")
+            .isNull();
+
+        var note = newNote();
+        resolver.resolveTempo(note);
+
+        assertThat(note.findAttachment(TempoChangeAttachment.class))
+            .as("a tempo in a later measure binds to its note as usual")
+            .isNotNull();
+    }
+
+    @Test
+    void testTakingTheSongTempoClearsIt() {
+        var resolver = new MetronomeResolver();
+        resolver.startMeasure();
+        addTempoDirection(resolver, TEMPO_BPM);
+
+        assertThat(resolver.takePendingSongTempo()).isNotNull();
+        assertThat(resolver.takePendingSongTempo())
+            .as("the song tempo must be handed out once, not applied again on every direction")
+            .isNull();
+    }
 }

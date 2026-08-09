@@ -76,7 +76,7 @@ public class MidiSequenceBuilder {
      * @throws InvalidMidiDataException if MIDI data is invalid
      */
     public Sequence buildFullSequence() throws InvalidMidiDataException {
-        return buildSequence(0, 0, -1, -1, song.getEffectiveTempo());
+        return buildSequence(0, 0, -1, -1, song.getTempo());
     }
 
     /**

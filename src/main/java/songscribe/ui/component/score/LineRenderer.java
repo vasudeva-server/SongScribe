@@ -60,6 +60,7 @@ import songscribe.ui.renderer.LineInvariants;
 import songscribe.ui.renderer.LyricConnectorRenderer;
 import songscribe.ui.renderer.LyricTextRenderer;
 import songscribe.ui.renderer.NoteRenderer;
+import songscribe.ui.renderer.SongTempoMarkRenderer;
 import songscribe.ui.renderer.TempoChangeRenderer;
 import songscribe.ui.renderer.TieRenderer;
 import songscribe.ui.renderer.TrillRenderer;
@@ -228,7 +229,7 @@ class LineRenderer {
     }
 
     /**
-     * Renders the line beginning (clef and key signature).
+     * Renders the line beginning (clef, key signature, and on the first line the song's tempo).
      *
      * @param g2    Graphics context
      * @param invariants   Line invariants
@@ -247,6 +248,25 @@ class LineRenderer {
         if (keySig != null) {
             KeySignatureRenderer.getInstance().render(invariants, frame, keySig, g2);
         }
+
+        renderSongTempoMark(g2, invariants, frame);
+    }
+
+    /**
+     * Draws the song's tempo above the right edge of the first line's staff header. Only the
+     * line index is tested here — the renderer has no way to know which line it was handed.
+     * Whether the mark was stacked at all is the renderer's own question, and it answers it
+     * once, from the mark's decoration layout.
+     */
+    private void renderSongTempoMark(
+        Graphics2D g2, LineInvariants invariants, ElementFrame frame) {
+
+        if (invariants.getLineIndex() != 0) {
+            return;
+        }
+
+        SongTempoMarkRenderer.getInstance()
+            .render(invariants, frame, invariants.getSong().getTempoMarkElement(), g2);
     }
 
     // ==========================================================================

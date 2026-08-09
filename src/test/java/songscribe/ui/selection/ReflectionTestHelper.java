@@ -59,10 +59,17 @@ public final class ReflectionTestHelper {
      * A score-view stub reporting EDIT mode, which is what
      * {@link SelectionCoordinator#isInSelectMode()} derives its answer from. Tests that need
      * select-mode behavior build their own stub rather than using these helpers.
+     * <p>
+     * {@code getSong()} answers with the song the coordinator's line belongs to, so
+     * {@link SelectionCoordinator#canChangeTempo()} — which asks the song for its first element
+     * — sees the same document the test set up. With a song mock (the default for a detached
+     * test line) {@code firstElement()} answers null, which is simply "no first element" and
+     * leaves that rule inert rather than crashing.
      */
-    private static ScoreView editModeScoreView() {
+    private static ScoreView editModeScoreView(Song song) {
         var scoreView = mock(ScoreView.class);
         when(scoreView.getMode()).thenReturn(Mode.EDIT);
+        when(scoreView.getSong()).thenReturn(song);
         return scoreView;
     }
 
@@ -104,7 +111,7 @@ public final class ReflectionTestHelper {
         Line line,
         List<UIAction.Reflectable> actions
     ) {
-        var coordinator = new SelectionCoordinator(editModeScoreView());
+        var coordinator = new SelectionCoordinator(editModeScoreView(line.getSong()));
         coordinator.registerLine(0, line);
         coordinator.activateLine(0);
         return createCoordinator(coordinator, actions, List.of());
@@ -173,7 +180,7 @@ public final class ReflectionTestHelper {
             line.addElement(note);
         }
 
-        var coordinator = new SelectionCoordinator(editModeScoreView());
+        var coordinator = new SelectionCoordinator(editModeScoreView(song));
         coordinator.registerLine(0, line);
         coordinator.activateLine(0);
 

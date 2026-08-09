@@ -30,7 +30,6 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
-import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.font.DocumentFontsHolder;
 import songscribe.io.XML;
@@ -146,13 +145,25 @@ public final class MusicXmlWriter {
     }
 
     /**
-     * Empty-song fallback: a single attributes-only measure with no
-     * {@code <print>} and no {@code <barline>}, matching Phase 1 behavior.
+     * Empty-song fallback: a single measure containing only the song-level
+     * tempo direction and the {@code <attributes>} block — no {@code <print>}
+     * and no {@code <barline>}, matching Phase 1 behavior.
      */
     private static void writeEmptySongMeasure(Song song, PrintWriter pw) {
         MusicXmlMeasureWriter.openMeasure(pw, MusicXmlUnits.FIRST_MEASURE_NUMBER);
+        writeSongTempoDirection(song, pw);
         MusicXmlMeasureWriter.writeAttributes(song, pw);
         MusicXmlMeasureWriter.closeMeasure(pw);
+    }
+
+    /**
+     * The song tempo is a property of the score, not of any note, so it is
+     * emitted as the first child of measure 1 rather than bound to the first
+     * {@code <note>}. The reader recovers it by position: the first tempo
+     * {@code <direction>} in the first {@code <measure>}.
+     */
+    private static void writeSongTempoDirection(Song song, PrintWriter pw) {
+        MusicXmlDirectionWriter.writeTempoDirection(pw, song.getTempo());
     }
 
     /**
@@ -172,11 +183,6 @@ public final class MusicXmlWriter {
         // emit nothing — the reader carries it forward.
         var runningFifths = KeySignatureMapping.toFifths(song.getDefaultKeyType(), song.getDefaultKeyAccidentalCount());
 
-        // The first element of the first line anchors the song base tempo (see
-        // Line.isInitialTempoAnchor): its emitted tempo is its own
-        // TempoChangeAttachment if present, else song.getTempo().
-        var firstSongElement = song.initialTempoAnchor();
-
         for (var line : song.getLines()) {
             lineIndex++;
 
@@ -195,9 +201,16 @@ public final class MusicXmlWriter {
             // new-system="yes" always starts a new line.
             measureNumber++;
             MusicXmlMeasureWriter.openMeasure(pw, measureNumber);
+
+            var isFirstMeasure = measureNumber == MusicXmlUnits.FIRST_MEASURE_NUMBER;
+
+            if (isFirstMeasure) {
+                writeSongTempoDirection(song, pw);
+            }
+
             MusicXmlMeasureWriter.writePrintNewSystem(pw);
 
-            if (measureNumber == MusicXmlUnits.FIRST_MEASURE_NUMBER) {
+            if (isFirstMeasure) {
                 MusicXmlMeasureWriter.writeAttributes(song, pw);
             } else {
                 var lineFifths = MusicXmlMeasureWriter.effectiveKeyFifths(song, line);
@@ -316,14 +329,12 @@ public final class MusicXmlWriter {
                         // barline emitted immediately before the note.
                         MusicXmlMeasureWriter.writeNoteAnchoredEndingStart(pw, markers);
 
-                        // A tempo <direction> precedes the note it marks. The first
-                        // element of the first line carries the song base tempo; any
-                        // element with its own TempoChangeAttachment carries a
-                        // per-note tempo.
-                        var tempo = tempoForElement(song, firstSongElement, element);
+                        // A tempo <direction> precedes the note it marks: an element with
+                        // its own TempoChangeAttachment carries a per-note tempo.
+                        var tempoAttachment = element.findAttachment(TempoChangeAttachment.class);
 
-                        if (tempo != null) {
-                            MusicXmlDirectionWriter.writeTempoDirection(pw, tempo);
+                        if (tempoAttachment != null) {
+                            MusicXmlDirectionWriter.writeTempoDirection(pw, tempoAttachment.getTempo());
                         }
 
                         // A metric-modulation <direction> also precedes the note it
@@ -388,28 +399,6 @@ public final class MusicXmlWriter {
         }
 
         return false;
-    }
-
-    /**
-     * Resolves the tempo to emit before {@code element}, or null when it carries
-     * none. An element's own {@link TempoChangeAttachment} is a per-note tempo;
-     * the first element of the first line falls back to {@code song.getTempo()}
-     * (mirroring {@code Line.attachInitialTempoIfNeeded} at write time so the base
-     * tempo is emitted even for a not-yet-materialized song).
-     */
-    private static @Nullable Tempo tempoForElement(
-            Song song, @Nullable StaffElement firstSongElement, StaffElement element) {
-        var attachment = element.findAttachment(TempoChangeAttachment.class);
-
-        if (attachment != null) {
-            return attachment.getTempo();
-        }
-
-        if (element == firstSongElement) {
-            return song.getTempo();
-        }
-
-        return null;
     }
 
     /**

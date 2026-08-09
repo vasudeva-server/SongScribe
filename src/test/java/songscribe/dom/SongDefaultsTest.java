@@ -30,10 +30,6 @@ import songscribe.UnitTest;
 
 class SongDefaultsTest extends UnitTest {
 
-    // -----------------------------------------------------------------------
-    // clearTempoIfOrphaned
-    // -----------------------------------------------------------------------
-
     /**
      * Adds a crotchet with a TempoChangeAttachment to the given line,
      * which must already belong to song and have mutation tracking suspended.
@@ -45,98 +41,6 @@ class SongDefaultsTest extends UnitTest {
         attachmentTempo.setVisibleTempo(bpm);
         note.addAttachment(new TempoChangeAttachment(note, attachmentTempo));
         return note;
-    }
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class ClearTempoIfOrphaned {
-
-        // Branch 1: element is first of first line → song tempo is cleared,
-        // regardless of whether other per-note changes exist.
-        @Test
-        void testClearsSongTempoWhenElementIsFirstOfFirstLine() {
-            var song = new Song();
-            song.setTempo(new Tempo());
-            // addNoteWithTempo inserts before the terminal, so the note lands at index 0.
-            song.withoutMutationTracking(() -> {
-                var firstLine = song.getLine(0);
-                var note = addNoteWithTempo(song, firstLine, 100);
-                // note is at index 0 of the first line (inserted before the terminal).
-                song.clearTempoIfOrphaned(note);
-            });
-
-            assertThat(song.getTempo()).isNull();
-        }
-
-        // Branch 2: element is NOT first-of-first-line AND no per-note tempo changes
-        // exist anywhere → song tempo is cleared.
-        // (Simulates the state after the caller has already removed the attachment.)
-        @Test
-        void testClearsSongTempoWhenNoPerNoteChangesRemain() {
-            var song = new Song();
-            song.setTempo(new Tempo());
-            song.withoutMutationTracking(() -> {
-                var secondLine = new Line(song);
-                song.addLine(secondLine);
-
-                // Note with no TempoChangeAttachment — no per-note tempo changes anywhere.
-                var note = ElementType.CROTCHET.newInstance();
-                secondLine.addElement(note);
-
-                // isFirstElement=false (line index 1), hasAnyTempoChange()=false → clears.
-                song.clearTempoIfOrphaned(note);
-            });
-
-            assertThat(song.getTempo()).isNull();
-        }
-
-        // Branch 3: element is NOT first-of-first-line AND other per-note tempo
-        // changes still exist → song tempo is NOT cleared.
-        @Test
-        void testKeepsSongTempoWhenOtherPerNoteChangesRemain() {
-            var song = new Song();
-            song.setTempo(new Tempo());
-            song.withoutMutationTracking(() -> {
-                var firstLine = song.getLine(0);
-                // Add a note with a tempo change on the first line.
-                addNoteWithTempo(song, firstLine, 120);
-
-                var secondLine = new Line(song);
-                song.addLine(secondLine);
-
-                // Add a plain note (no attachment) to the second line.
-                var plainNote = ElementType.CROTCHET.newInstance();
-                secondLine.addElement(plainNote);
-
-                // isFirstElement=false (line 1), hasAnyTempoChange()=true (firstLine note) → kept.
-                song.clearTempoIfOrphaned(plainNote);
-            });
-
-            assertThat(song.getTempo()).isNotNull();
-        }
-
-        // Branch 4: the element has been removed from its line, so it is in no line at all
-        // → nothing is orphaned and the song tempo is left alone. Reached when the tempo
-        // dialog acts on a selection that a delete has already invalidated. Without the
-        // null guard this throws instead, because there is no line to ask for an index.
-        @Test
-        void testKeepsSongTempoWhenElementIsInNoLine() {
-            var song = new Song();
-            var tempo = new Tempo();
-            song.setTempo(tempo);
-            song.withoutMutationTracking(() -> {
-                var firstLine = song.getLine(0);
-                // No tempo change anywhere, so a still-attached element would clear the
-                // tempo — the detached element is the only reason it survives.
-                var note = ElementType.CROTCHET.newInstance();
-                firstLine.addElement(note);
-                firstLine.removeElement(firstLine.getElementIndex(note));
-
-                song.clearTempoIfOrphaned(note);
-            });
-
-            assertThat(song.getTempo()).isSameAs(tempo);
-        }
     }
 
     // -----------------------------------------------------------------------
@@ -200,8 +104,8 @@ class SongDefaultsTest extends UnitTest {
     @Test
     void testDefaultTempo() {
         var song = new Song();
-        assertThat(song.getTempo()).isNull();
-        var tempo = song.getEffectiveTempo();
+        var tempo = song.getTempo();
+        assertThat(tempo).as("a song always has a tempo, seeded with Tempo's defaults").isNotNull();
         assertThat(tempo.getVisibleTempo()).isEqualTo(Tempo.DEFAULT_BPM);
         assertThat(tempo.getTempoType()).isEqualTo(Tempo.DEFAULT_TYPE);
         assertThat(tempo.getTempoDescription()).isEqualTo(Tempo.DEFAULT_DESCRIPTION);
@@ -254,7 +158,7 @@ class SongDefaultsTest extends UnitTest {
     }
 
     @Test
-    void testGetTempoAtFallsBackToEffectiveTempoWhenNoChangeFound() {
+    void testGetTempoAtFallsBackToSongTempoWhenNoChangeFound() {
         var song = new Song();
         // No per-note tempo changes and no explicit song tempo; falls back to the default.
         assertThat(song.getTempoAt(0, 0))
@@ -310,27 +214,6 @@ class SongDefaultsTest extends UnitTest {
         assertThat(song.getTempoAt(0, 0))
             .extracting(Tempo::getVisibleTempo)
             .isEqualTo(EARLY_TEMPO_BPM);
-    }
-
-    // -----------------------------------------------------------------------
-    // hasAnyTempoChange
-    // -----------------------------------------------------------------------
-
-    @Test
-    void testHasAnyTempoChangeFalseOnFreshSong() {
-        var song = new Song();
-        assertThat(song.hasAnyTempoChange()).isFalse();
-    }
-
-    @Test
-    void testHasAnyTempoChangeTrueAfterAttachingTempoChange() {
-        var song = new Song();
-        song.withoutMutationTracking(() -> {
-            var line0 = song.getLine(0);
-            addNoteWithTempo(song, line0, 90);
-        });
-
-        assertThat(song.hasAnyTempoChange()).isTrue();
     }
 
     @Test

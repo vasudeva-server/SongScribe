@@ -20,17 +20,11 @@
 
 package songscribe.ui.renderer;
 
-import static songscribe.util.GraphicsState.Property.COLOR;
-import static songscribe.util.GraphicsState.Property.FONT;
-
 import module java.desktop;
 
 import songscribe.dom.StaffElement;
-import songscribe.dom.MetronomeAttachment;
-import songscribe.dom.ScaleContext;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.hit.HitTarget;
-import songscribe.util.GraphicsState;
 
 /** Renders tempo change indicators (note = number format, e.g. "♩ = 120"). */
 public final class TempoChangeRenderer extends MetronomeRenderer {
@@ -61,13 +55,12 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
     }
 
     /**
-     * Renders one tempo mark.
+     * Renders one tempo change.
      * <p>
-     * Every tempo mark on the page is a {@link TempoChangeAttachment}, including the song's
-     * initial tempo: {@code Line.attachInitialTempoIfNeeded} mirrors the song-level tempo onto
-     * the first element of the first line, and the tempo the user is offered when the first note
-     * is inserted is attached there the same way. So there is no unattached tempo to draw, and
-     * every tempo mark is addressable as a hit target.
+     * Every mark this renderer draws is attached to a note and is therefore addressable as a hit
+     * target. The song's own tempo is not one of them — it is drawn at the first line's staff
+     * header by {@link SongTempoMarkRenderer}, from the same {@code drawTempo} core, and is
+     * deliberately not hittable.
      */
     private void renderTempoChange(
         Graphics2D g2,
@@ -85,27 +78,8 @@ public final class TempoChangeRenderer extends MetronomeRenderer {
         var color = RenderingUtils.decorationColor(
             new HitTarget.Attachment(attachment), note, invariants, frame);
 
-        var xSs = setup.decorationLayout().xSs();
-        var textBaselineYSs = setup.ySs() + MetronomeAttachment.QUARTER_NOTE_HEIGHT_SS;
-        var tempoBuilder = new StringBuilder(25);
-        var showTempo = tempo.shouldShowTempo();
-
-        if (showTempo) {
-            tempoBuilder.append(tempo.getVisibleTempo());
-            tempoBuilder.append(' ');
-        }
-
-        tempoBuilder.append(tempo.getTempoDescription());
-
-        if (showTempo) {
-            xSs = drawDurationEquals(g2, tempo.getTempoType(), xSs, setup.ySs(), setup.attrFont(), color);
-        }
-
-        try (var _ = GraphicsState.save(g2, COLOR, FONT)) {
-            g2.setFont(ScaleContext.scaleFont(setup.attrFont()));
-            g2.setColor(color);
-            g2.drawString(tempoBuilder.toString(), (float) xSs, (float) textBaselineYSs);
-        }
+        drawTempo(
+            g2, tempo, setup.decorationLayout().xSs(), setup.ySs(), setup.attrFont(), color);
     }
 
 }

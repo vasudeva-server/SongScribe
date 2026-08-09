@@ -50,6 +50,11 @@ import songscribe.undo.OpNames;
  */
 class UndoOpNameLabelTest extends UnitTest {
 
+    // A song already carries Tempo's defaults, so a value-equal setTempo() call now
+    // early-returns and records no mutation. Every test here needs a real tempo edit,
+    // so it uses a tempo that actually differs from the default.
+    private static final int NON_DEFAULT_BPM = Tempo.DEFAULT_BPM * 2;
+
     private Song song;
     private MockedStatic<MainFrame> mainFrameMock;
 
@@ -87,7 +92,8 @@ class UndoOpNameLabelTest extends UnitTest {
     @Test
     void testDeclaredTierBLabelIsUsedVerbatim() {
         var label = Strings.get(Strings.ACTION_EDIT_OP_SONG_SETTINGS);
-        song.withModification(label, () -> song.setTempo(new Tempo()));
+        song.withModification(label, () -> song.setTempo(
+            new Tempo(NON_DEFAULT_BPM, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO)));
 
         assertThat(UndoController.undoLabel()).isEqualTo(expectedUndo(label));
     }
@@ -96,7 +102,8 @@ class UndoOpNameLabelTest extends UnitTest {
     void testDeclaredOpNamesLabelIsUsedVerbatim() {
         // OpNames.addLabel is the same helper the insertion sites use.
         var label = OpNames.addLabel(ElementType.CROTCHET);
-        song.withModification(label, () -> song.setTempo(new Tempo()));
+        song.withModification(label, () -> song.setTempo(
+            new Tempo(NON_DEFAULT_BPM, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO)));
 
         assertThat(UndoController.undoLabel()).isEqualTo(expectedUndo(label));
     }
@@ -105,7 +112,8 @@ class UndoOpNameLabelTest extends UnitTest {
     void testUndeclaredEditFallsBackToTypeBasedLabel() {
         // No pending name, no labeled bracket — the fallback derives the label from the
         // dominant mutation (a TEMPO metadata change → "Change Tempo").
-        song.setTempo(new Tempo());
+        song.setTempo(
+            new Tempo(NON_DEFAULT_BPM, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO));
 
         assertThat(UndoController.undoLabel())
             .isEqualTo(expectedUndo(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_TEMPO)));
@@ -121,7 +129,8 @@ class UndoOpNameLabelTest extends UnitTest {
     @Test
     void testRedoLabelCarriesDeclaredNameAfterUndo() {
         var label = OpNames.addLabel(ElementType.CROTCHET);
-        song.withModification(label, () -> song.setTempo(new Tempo()));
+        song.withModification(label, () -> song.setTempo(
+            new Tempo(NON_DEFAULT_BPM, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO)));
 
         UndoController.undo();
 

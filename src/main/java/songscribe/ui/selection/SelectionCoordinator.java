@@ -673,10 +673,20 @@ public final class SelectionCoordinator {
     }
 
     /**
-     * Returns whether tempo can be changed.
+     * Returns whether a tempo change may be added to the selected element.
+     * <p>
+     * A tempo change is forbidden on the song's first element, because the song's own tempo
+     * is already rendered at the staff header there. Song Settings is where that tempo is
+     * edited.
      */
     public boolean canChangeTempo() {
-        return getSingleSelectedElement() != null;
+        var selectedElement = getSingleSelectedElement();
+
+        if (selectedElement == null) {
+            return false;
+        }
+
+        return selectedElement != scoreView.getSong().firstElement();
     }
 
     // -------------------------------------------------------------------------

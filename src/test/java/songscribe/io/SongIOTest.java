@@ -256,21 +256,11 @@ class SongIOTest extends UnitTest {
         assertThat(xml).contains("<day>15</day>");
     }
 
-    // row 8: null tempo → no <tempo>; non-null tempo → present.
+    // row 8: a song always has a tempo, so <tempo> is always present — including for a song
+    // nobody has set a tempo on, which is what this writes.
     @Test
-    void testWriteSongTempoAbsentWhenNull() {
-        var song = new Song();
-        song.setTempo(null);
-        var xml = writeSongToString(song);
-
-        assertThat(xml).doesNotContain("<tempo>");
-    }
-
-    @Test
-    void testWriteSongTempoPresentWhenSet() {
-        var song = new Song();
-        song.setTempo(new Tempo());
-        var xml = writeSongToString(song);
+    void testWriteSongTempoIsAlwaysPresent() {
+        var xml = writeSongToString(new Song());
 
         assertThat(xml).contains("<tempo>");
     }

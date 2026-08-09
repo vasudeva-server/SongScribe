@@ -22,7 +22,6 @@ package songscribe.ui.clipboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
-import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.function.BiFunction;
@@ -697,8 +696,6 @@ class FragmentTest extends UnitTest {
         @Test
         void testMutatingPastedTempoChangeAttachmentDoesNotAffectOriginal() {
             var line = detachedLine();
-            // The tempo sits on the second element: a tempo on the song's first
-            // element is the song's initial tempo, which capture deliberately drops.
             var note = crotchet();
             var tempoAttachment = new TempoChangeAttachment(note, new Tempo());
             tempoAttachment.setUserYOffsetSs(5.0);
@@ -717,94 +714,35 @@ class FragmentTest extends UnitTest {
 
             assertThat(tempoAttachment.getUserYOffsetSs()).isEqualTo(5.0);
         }
-    }
 
-    // -----------------------------------------------------------------------
-    // The song's initial tempo is never copied
-    // -----------------------------------------------------------------------
-
-    /**
-     * A detached line's Song mock reports it as line 0, so its first element is the song's
-     * first element — the initial-tempo anchor — unless a test stubs indexOfLine otherwise.
-     */
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class InitialTempoDropped {
-
+        /**
+         * Copying used to strip the tempo change off the very first element of the line, because
+         * that one mirrored the song's own tempo and pasting it elsewhere would have planted a
+         * tempo change the user never wrote. The song now owns its tempo outright, so every
+         * attachment is an ordinary tempo change and copying keeps all of them — including one
+         * on the element the copy starts at.
+         */
         @Test
-        void testTempoOnTheSongsFirstElementIsNotCaptured() {
+        void testATempoChangeOnTheFirstCapturedElementIsKept() {
             var line = detachedLine();
-            var noteA = crotchet();
-            var noteB = crotchet();
-            line.addElement(noteA);
-            line.addElement(noteB);
-            var initialTempo = new TempoChangeAttachment(noteA, new Tempo());
-            noteA.addAttachment(initialTempo);
-
-            var fragment = Fragment.capture(line, 0, 1);
-
-            assertThat(fragment.elements()).hasSize(2);
-            assertThat(fragment.elements().getFirst().findAttachment(TempoChangeAttachment.class))
-                .as("the song's initial tempo must not travel with the copy")
-                .isNull();
-            // Capture must not disturb the source: the song keeps its initial tempo.
-            assertThat(noteA.findAttachment(TempoChangeAttachment.class)).isSameAs(initialTempo);
-        }
-
-        @Test
-        void testTempoChangeOnALaterElementOfTheCaptureIsKept() {
-            // Both elements carry a tempo, so the strip has to discriminate: only the
-            // anchor loses its tempo, and the real tempo change behind it survives.
-            var line = detachedLine();
-            var noteA = crotchet();
-            var noteB = crotchet();
-            line.addElement(noteA);
-            line.addElement(noteB);
-            noteA.addAttachment(new TempoChangeAttachment(noteA, new Tempo()));
-            noteB.addAttachment(new TempoChangeAttachment(noteB, new Tempo()));
-
-            var fragment = Fragment.capture(line, 0, 1);
-
-            assertThat(fragment.elements().getFirst().findAttachment(TempoChangeAttachment.class))
-                .as("the anchor's tempo is the song's and must be stripped")
-                .isNull();
-            assertThat(fragment.elements().get(1).findAttachment(TempoChangeAttachment.class))
-                .as("a tempo change behind the anchor is real content and must survive")
-                .isNotNull();
-        }
-
-        @Test
-        void testTempoOnACaptureNotStartingAtTheSongsFirstElementIsKept() {
-            var line = detachedLine();
-            var noteA = crotchet();
-            var noteB = crotchet();
-            line.addElement(noteA);
-            line.addElement(noteB);
-            noteB.addAttachment(new TempoChangeAttachment(noteB, new Tempo()));
-
-            var fragment = Fragment.capture(line, 1, 1);
-
-            assertThat(fragment.elements().getFirst().findAttachment(TempoChangeAttachment.class))
-                .as("a capture that skips the anchor strips nothing")
-                .isNotNull();
-        }
-
-        @Test
-        void testTempoOnTheFirstElementOfALaterLineIsKept() {
-            // Index 0 of a line that is not the song's first line holds a genuine
-            // tempo change, not the song's initial tempo.
-            var song = minimalSongMock();
-            var line = new Line(song);
             var note = crotchet();
+            var bpm = 152;
+            note.addAttachment(new TempoChangeAttachment(
+                note,
+                new Tempo(bpm, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO)));
             line.addElement(note);
-            note.addAttachment(new TempoChangeAttachment(note, new Tempo()));
-            when(song.indexOfLine(line)).thenReturn(1);
+            line.addElement(crotchet());
 
-            var fragment = Fragment.capture(line, 0, 0);
+            var pasted = Fragment.capture(line, 0, 1).instantiate();
+            var pastedAttachment =
+                pasted.elements().getFirst().findAttachment(TempoChangeAttachment.class);
 
-            assertThat(fragment.elements().getFirst().findAttachment(TempoChangeAttachment.class))
-                .as("index 0 of a later line is not the anchor, so its tempo is real content")
+            assertThat(pastedAttachment)
+                .as("a tempo change on the line's first element must survive the copy")
                 .isNotNull();
+            assertThat(pastedAttachment.getTempo().getVisibleTempo())
+                .as("the copied tempo change must carry the tempo it was written with")
+                .isEqualTo(bpm);
         }
     }
 

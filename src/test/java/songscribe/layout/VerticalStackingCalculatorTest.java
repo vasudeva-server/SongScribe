@@ -80,6 +80,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 builder,
                 staffRightSs,
                 mock(DocumentFontsHolder.class),
+                null,
                 attribution);
 
             var layout = builder.getDecorationLayout(attribution);
@@ -105,6 +106,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 builder,
                 staffRightSs,
                 mock(DocumentFontsHolder.class),
+                null,
                 attribution);
 
             var layout = require(builder.getDecorationLayout(attribution), "attribution layout");
@@ -129,6 +131,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 builder,
                 100.0,
                 mock(DocumentFontsHolder.class),
+                null,
                 attribution);
 
             var layout = require(builder.getDecorationLayout(attribution), "attribution layout");
@@ -151,6 +154,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 builder,
                 100.0,
                 mock(DocumentFontsHolder.class),
+                null,
                 attribution);
 
             var layout = require(builder.getDecorationLayout(attribution), "attribution layout");
@@ -174,6 +178,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 builder,
                 100.0,
                 mock(DocumentFontsHolder.class),
+                null,
                 attribution);
 
             var layout = require(builder.getDecorationLayout(attribution), "attribution layout");
@@ -240,6 +245,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 attrBuilder,
                 lineWidth,
                 mock(DocumentFontsHolder.class),
+                null,
                 tallAttribution);
 
             var attrAboveSs = attrBuilder.build().getContentAboveStaffSs();
@@ -266,6 +272,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 noOffsetBuilder,
                 lineWidth,
                 mock(DocumentFontsHolder.class),
+                null,
                 noOffsetAttribution);
             var noOffsetAboveSs = noOffsetBuilder.build().getContentAboveStaffSs();
 
@@ -281,6 +288,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 shiftedBuilder,
                 lineWidth,
                 mock(DocumentFontsHolder.class),
+                null,
                 shiftedAttribution);
             var shiftedAboveSs = shiftedBuilder.build().getContentAboveStaffSs();
 
@@ -310,6 +318,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 noOffsetBuilder,
                 lineWidth,
                 mock(DocumentFontsHolder.class),
+                null,
                 noOffsetAttribution);
             var noOffsetAboveSs = noOffsetBuilder.build().getContentAboveStaffSs();
 
@@ -325,6 +334,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 shiftedBuilder,
                 lineWidth,
                 mock(DocumentFontsHolder.class),
+                null,
                 shiftedAttribution);
             var shiftedAboveSs = shiftedBuilder.build().getContentAboveStaffSs();
 
@@ -366,6 +376,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
                 builder,
                 LINE_WIDTH_SS,
                 mock(DocumentFontsHolder.class),
+                null,
                 attribution);
 
             return builder.build().getContentAboveStaffSs();

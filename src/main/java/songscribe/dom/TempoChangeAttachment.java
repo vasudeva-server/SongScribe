@@ -21,11 +21,8 @@
 package songscribe.dom;
 
 import java.awt.Font;
-import java.util.ArrayList;
 
 import org.jspecify.annotations.Nullable;
-
-import songscribe.util.GraphicUtils;
 
 /**
  * Represents a tempo marking attachment on a note.
@@ -78,58 +75,7 @@ public final class TempoChangeAttachment extends MetronomeAttachment {
 
     @Override
     public ContentMetrics computeContentMetrics(Font attrFont) {
-        var regions = new ArrayList<CollisionRegion>(2);
-        var glyphWidth = glyphWidthSs();
-
-        if (glyphWidth > 0) {
-            regions.add(new CollisionRegion(0, 0, glyphWidth, QUARTER_NOTE_HEIGHT_SS));
-        }
-
-        var textWidth = textWidthSs(tempoText(), attrFont);
-
-        if (textWidth > 0) {
-            var textXOffsetSs = glyphWidth > 0 ? glyphWidth : 0;
-            var textLm = attrFont.getLineMetrics("", GraphicUtils.SCREEN_FRC);
-            var textAscentSs = ScaleContext.pxToSs(textLm.getAscent());
-            var textDescentSs = ScaleContext.pxToSs(textLm.getDescent());
-            var textYOffsetSs = QUARTER_NOTE_HEIGHT_SS - textAscentSs;
-            var textHeightSs = textAscentSs + textDescentSs;
-            regions.add(new CollisionRegion(
-                textXOffsetSs, textYOffsetSs, textWidth, textHeightSs));
-        }
-
-        var widthSs = glyphWidth + textWidth;
-
-        return new ContentMetrics(widthSs, regions);
-    }
-
-    private double glyphWidthSs() {
-        if (!tempo.shouldShowTempo()) {
-            return 0;
-        }
-
-        return noteWidthSs(tempo.getTempoType().getNote());
-    }
-
-    private String tempoText() {
-        var text = new StringBuilder(25);
-
-        if (tempo.shouldShowTempo()) {
-            text.append("= ");
-            text.append(tempo.getVisibleTempo());
-            text.append(' ');
-        }
-
-        text.append(tempo.getTempoDescription());
-        return text.toString();
-    }
-
-    private double textWidthSs(String text, Font attrFont) {
-        if (text.isEmpty()) {
-            return 0;
-        }
-
-        return ScaleContext.textWidthSs(attrFont, text).value();
+        return TempoContent.metrics(tempo, attrFont);
     }
 
 }

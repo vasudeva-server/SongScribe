@@ -19,7 +19,6 @@
  */
 package songscribe.ui.dialog;
 
-import java.awt.event.ActionEvent;
 import java.util.Collections;
 
 import org.junit.jupiter.api.AfterEach;
@@ -28,11 +27,9 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
-import songscribe.ui.component.MainFrame;
 import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
-import songscribe.dom.Song;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
 import songscribe.prefs.Prefs;
@@ -40,21 +37,14 @@ import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
 
 /**
  * Unit tests for {@link TempoChangeDialog}: populateControls null/existing,
- * applyChange (Tempo construction + show-flag inversion, add vs update),
- * clearChange (removeAttachment + clearTempoIfOrphaned), and showForElement
- * (static factory pre-sets element/line before show).
+ * applyChange (Tempo construction + show-flag inversion, add vs update), and
+ * clearChange (removeAttachment).
  */
 class TempoChangeDialogTest extends MainFrameMockTest {
-
-    /** Two tempo changes is the fixture the orphan rule turns on — one alone orphans nothing. */
-    private static final int TWO_NOTES = 2;
 
     private MockedStatic<UIUtils> uiUtilsMock;
     private MockedStatic<Prefs> prefsMock;
@@ -208,10 +198,10 @@ class TempoChangeDialogTest extends MainFrameMockTest {
             .isEqualTo(Tempo.DEFAULT_BPM);
     }
 
-    // ── Row 29: clearChange — removes attachment, then calls clearTempoIfOrphaned ──
+    // ── Row 29: clearChange — removes the attachment ──
 
     @Test
-    void testClearChangeRemovesAttachmentAndCallsClearTempoIfOrphaned() {
+    void testClearChangeRemovesAttachment() {
         // A real Line with its backing Song mock is needed so element.getParentLine() works.
         var song = minimalSongMock();
         var line = new Line(song);
@@ -226,23 +216,6 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         assertThat(element.findAttachment(TempoChangeAttachment.class))
             .as("TempoChangeAttachment removed by clearChange")
             .isNull();
-        verify(song).clearTempoIfOrphaned(element);
-    }
-
-    @Test
-    void testClearChangeCallsClearTempoIfOrphanedEvenWhenNoAttachment() {
-        var song = minimalSongMock();
-        var line = new Line(song);
-        var element = ElementType.CROTCHET.newInstance();
-        line.addElement(element);
-
-        // No attachment present — clearChange should still call clearTempoIfOrphaned
-        dialog.clearChange(element);
-
-        assertThat(element.findAttachment(TempoChangeAttachment.class))
-            .as("no attachment present either before or after clearChange")
-            .isNull();
-        verify(song).clearTempoIfOrphaned(element);
     }
 
     @Test
@@ -265,118 +238,6 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         assertThat(element.findAttachment(TempoChangeAttachment.class))
             .as("the attachment is removed whether or not the element is still in a line")
             .isNull();
-        verify(song, never()).clearTempoIfOrphaned(element);
     }
 
-    // ── Remove button — the orphan rule vetoes it, or lets it through ──
-
-    /**
-     * Puts a tempo change on each note of a two-note line, points the dialog at the one on the
-     * note at {@code selectedIndex}, and clicks Remove.
-     *
-     * <p>A real {@link Song} rather than {@link #minimalSongMock()}: the veto asks the song
-     * whether a later tempo change would be orphaned, and a mock would answer false for both
-     * notes, quietly turning the refusal case into the allowed case.
-     *
-     * @return the song, so the caller can assert on both notes
-     */
-    private Song clickRemoveOnOneOfTwoTempoChanges(int selectedIndex) {
-        var song = new Song();
-        var line = song.getLine(0);
-
-        song.withoutMutationTracking(() -> {
-            for (var i = 0; i < TWO_NOTES; i++) {
-                var note = ElementType.CROTCHET.newInstance();
-                line.addElement(note);
-                note.addAttachment(new TempoChangeAttachment(note, new Tempo()));
-            }
-        });
-
-        song.setModified(false);
-
-        var removeDialog = new CloseCountingDialog(mainFrame());
-        removeDialog.selectedElement = line.getElement(selectedIndex);
-        removeDialog.selectedLine = line;
-
-        var listeners = removeDialog.removeButton.getActionListeners();
-        listeners[0].actionPerformed(
-            new ActionEvent(removeDialog.removeButton, ActionEvent.ACTION_PERFORMED, ""));
-
-        return song;
-    }
-
-    /**
-     * The song's first tempo change is what every later change changes <em>from</em>, so the
-     * Remove button must refuse to delete it while a later one survives. The refusal has to
-     * happen before the modification bracket opens: {@code Line.modifyElement} records
-     * unconditionally, so a guard placed one line too late would still refuse and still leave
-     * the score untouched — but leave a phantom undo step behind. Only the modified-flag
-     * assertion sees that.
-     */
-    @Test
-    void testRemoveButtonRefusesATempoChangeThatWouldOrphanALaterOne() {
-        var line = clickRemoveOnOneOfTwoTempoChanges(0).getLine(0);
-
-        assertThat(line.getElement(0).findAttachment(TempoChangeAttachment.class))
-            .as("the refused tempo change stays put").isNotNull();
-        assertThat(line.getElement(1).findAttachment(TempoChangeAttachment.class))
-            .as("the tempo change it protects stays put").isNotNull();
-        assertThat(line.getSong().isModified())
-            .as("a refusal must leave no undo step behind").isFalse();
-    }
-
-    /**
-     * The positive control for the test above: a veto wired to always refuse would pass that
-     * one too. A later tempo change still has the earlier one to change from, so removing it
-     * is ordinary work the button must go through with.
-     */
-    @Test
-    void testRemoveButtonRemovesATempoChangeThatOrphansNothing() {
-        var line = clickRemoveOnOneOfTwoTempoChanges(1).getLine(0);
-
-        assertThat(line.getElement(1).findAttachment(TempoChangeAttachment.class))
-            .as("the selected tempo change is gone").isNull();
-        assertThat(line.getElement(0).findAttachment(TempoChangeAttachment.class))
-            .as("the earlier tempo change it changed from survives").isNotNull();
-    }
-
-    // ── Row 30: showForElement — static factory constructs the dialog and delegates to showFor ──
-
-    @Test
-    void testShowForElementDelegatesToShowFor() {
-        var element = ElementType.CROTCHET.newInstance();
-        var line = detachedLine();
-
-        try (var construction = mockConstruction(TempoChangeDialog.class)) {
-            TempoChangeDialog.showForElement(mainFrame(), element, line);
-
-            assertThat(construction.constructed())
-                .as("exactly one TempoChangeDialog was created")
-                .hasSize(1);
-            var captured = construction.constructed().getFirst();
-
-            verify(captured).showFor(element, line);
-        }
-    }
-
-    /**
-     * A real {@link TempoChangeDialog} that swallows its own close. Clicking Remove ends with
-     * {@code setVisible(false)}, which disposes the backing Swing window — and in a headless
-     * test that window was never built, so the real close throws before the test can assert
-     * anything. Only the close is stubbed; the Remove button's whole path, including the
-     * orphan-rule veto, runs for real.
-     */
-    private static class CloseCountingDialog extends TempoChangeDialog {
-
-        CloseCountingDialog(MainFrame mainFrame) {
-            super(mainFrame);
-        }
-
-        @Override
-        public void setVisible(boolean visible) {
-            if (visible) {
-                super.setVisible(true);
-            }
-        }
-    }
 }

@@ -77,6 +77,17 @@ class SongNotificationHandlerTest extends UnitTest {
     @Nested
     class TempoDidChange {
 
+        /** Non-default so a follow-up update carrying Tempo's defaults still counts as a change. */
+        private static final int ESTABLISHED_BPM = Tempo.DEFAULT_BPM * 2;
+        private static final String ESTABLISHED_DESCRIPTION = "Andante";
+
+        private void establishTempo() {
+            song.tempoDidChange(new TempoDidChangeNotification(
+                Duration.MINIM, ESTABLISHED_BPM, ESTABLISHED_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO
+            ));
+            messageCenterMock.clearInvocations();
+        }
+
         @Test
         void testAllNullSkipsHandler() {
             // An all-null update must not emit any notification.
@@ -86,24 +97,51 @@ class SongNotificationHandlerTest extends UnitTest {
         }
 
         @Test
-        void testInitsTempoWhenNull() {
-            // If no tempo is set on the song, the handler initializes one from defaults
-            // and applies the incoming fields.  To create the null-tempo precondition,
-            // set the song tempo to null via withModification (which emits a mutation we
-            // then discard by clearing invocations).
-            song.withModification(() -> song.setTempo(null));
-            messageCenterMock.clearInvocations();
-            assertThat(song.getTempo()).isNull();
+        void testDefaultValuedUpdateOnAFreshSongPostsNothing() {
+            // A fresh song already holds Tempo's exact defaults, so resending them is a no-op.
+            song.tempoDidChange(new TempoDidChangeNotification(
+                Tempo.DEFAULT_TYPE, Tempo.DEFAULT_BPM, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO
+            ));
 
-            var newDescription = "Allegro";
-            song.tempoDidChange(new TempoDidChangeNotification(null, null, newDescription, null));
+            messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
+        }
 
-            var tempo = song.getTempo();
-            assertThat(tempo)
-                .as("handler must initialize tempo when it was null")
-                .isNotNull();
+        @Test
+        void testUpdateMatchingCurrentValuesPostsNothing() {
+            establishTempo();
 
-            assertThat(tempo.getTempoDescription()).isEqualTo(newDescription);
+            song.tempoDidChange(new TempoDidChangeNotification(
+                Duration.MINIM, ESTABLISHED_BPM, ESTABLISHED_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO
+            ));
+
+            messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
+        }
+
+        @Test
+        void testUpdateChangingOneFieldStillPostsAMutation() {
+            establishTempo();
+
+            var newDescription = "Presto";
+            song.tempoDidChange(new TempoDidChangeNotification(
+                Duration.MINIM, ESTABLISHED_BPM, newDescription, Tempo.DEFAULT_SHOW_TEMPO
+            ));
+
+            var mutation = captureSingleDidChange().getMutations().getFirst();
+            assertThat(mutation)
+                .asInstanceOf(type(MetadataChange.class))
+                .extracting(MetadataChange::field)
+                .isEqualTo(MetadataField.TEMPO);
+        }
+
+        @Test
+        void testUpdateWithOnlyNullAndMatchingFieldsPostsNothing() {
+            // This is the case the deleted all-null pre-filter did not catch: a mix of null
+            // (leave-as-is) and matching-current-value fields must still be recognized as a no-op.
+            establishTempo();
+
+            song.tempoDidChange(new TempoDidChangeNotification(null, ESTABLISHED_BPM, null, null));
+
+            messageCenterMock.verify(() -> MessageCenter.post(any()), times(0));
         }
 
         @Test
@@ -111,20 +149,13 @@ class SongNotificationHandlerTest extends UnitTest {
             // The handler must capture a before-clone so the mutation record carries a
             // stable old-state.  After the handler runs, the mutation's oldValue must
             // not equal its newValue (they are different objects with different state).
-            var initialDescription = "Moderate";
-            var initialTempo = 120;
-
-            song.tempoDidChange(new TempoDidChangeNotification(
-                Duration.CROTCHET, initialTempo, initialDescription, true
-            ));
-            // Clear invocations so captureSingleDidChange below sees only the second call.
-            messageCenterMock.clearInvocations();
+            establishTempo();
 
             // Get a reference to the live tempo object before the second call.
             var tempoBeforeUpdate = song.getTempo();
             assertThat(tempoBeforeUpdate).isNotNull();
 
-            var updatedDescription = "Andante";
+            var updatedDescription = "Vivace";
             var updatedVisibleTempo = 80;
             song.tempoDidChange(new TempoDidChangeNotification(
                 Duration.QUAVER, updatedVisibleTempo, updatedDescription, false
@@ -144,11 +175,37 @@ class SongNotificationHandlerTest extends UnitTest {
             assertThat(oldTempoObj)
                 .asInstanceOf(type(Tempo.class))
                 .extracting(Tempo::getTempoDescription)
-                .isEqualTo(initialDescription);
+                .isEqualTo(ESTABLISHED_DESCRIPTION);
             assertThat(newTempoObj)
                 .asInstanceOf(type(Tempo.class))
                 .extracting(Tempo::getTempoDescription)
                 .isEqualTo(updatedDescription);
+        }
+
+        @Test
+        void testAnEarlierEditsRecordedValueSurvivesALaterEdit() {
+            // The handler edits the song's live Tempo in place rather than replacing it. If a
+            // mutation record held that instance, the second edit below would silently rewrite
+            // what the first edit recorded — and redoing the first edit would then apply the
+            // second edit's values instead of its own.
+            establishTempo();
+
+            var firstDescription = "Largo";
+            song.tempoDidChange(new TempoDidChangeNotification(null, null, firstDescription, null));
+
+            var firstChange = (MetadataChange) captureSingleDidChange().getMutations().getFirst();
+            messageCenterMock.clearInvocations();
+
+            song.tempoDidChange(new TempoDidChangeNotification(null, null, "Presto", null));
+
+            assertThat(firstChange.newValue())
+                .asInstanceOf(type(Tempo.class))
+                .extracting(Tempo::getTempoDescription)
+                .as("the first edit's recorded after-state must still be its own")
+                .isEqualTo(firstDescription);
+            assertThat(firstChange.newValue())
+                .as("a mutation record must not hold the song's live Tempo")
+                .isNotSameAs(song.getTempo());
         }
 
         @Test

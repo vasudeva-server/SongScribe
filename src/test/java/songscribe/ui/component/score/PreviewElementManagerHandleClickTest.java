@@ -26,8 +26,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mockStatic;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import javax.swing.JOptionPane;
@@ -44,8 +42,6 @@ import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
 import songscribe.ui.OptionDialogs;
-import songscribe.ui.component.MainFrame;
-import songscribe.ui.dialog.TempoChangeDialog;
 import songscribe.ui.edit.EditModeManager;
 
 /**
@@ -444,129 +440,4 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
         );
     }
 
-    // -----------------------------------------------------------------------
-    // First-note tempo prompt: anchors on the first element, deferred until a
-    // host (pitched) note exists
-    // -----------------------------------------------------------------------
-
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class FirstNoteTempoPrompt {
-
-        private void insertPreview(ElementType type, int xIndex) {
-            var preview = type.newInstance();
-            preview.setStaffPosition(0);
-            setPreviewElement(preview);
-            PreviewElementManager.setCurrentXIndex(xIndex);
-            PreviewElementManager.setXPosSsMatchesElement(false);
-            PreviewElementManager.handleClick(lc);
-
-            // handleClick only queues the tempo prompt; the songDidChange handler shows it
-            // once the modification bracket commits. MessageCenter is mocked here, so drive
-            // that step directly.
-            PreviewElementManager.showPendingTempoPrompt();
-        }
-
-        /**
-         * Inserting the first pitched note of the song prompts for the song tempo,
-         * anchored on that note.
-         */
-        @Test
-        void testPromptsForTempoOnFirstPitchedNote() {
-            song.setLineWidthSs(WIDE_LINE_SS);
-
-            try (var dialogMock = mockStatic(TempoChangeDialog.class);
-                 var mainFrameMock = mockStatic(MainFrame.class)) {
-                // showForElement is stubbed, so its MainFrame argument is never
-                // dereferenced — a null instance keeps the real (heavyweight) MainFrame
-                // singleton from being constructed.
-                mainFrameMock.when(MainFrame::getInstance).thenReturn(null);
-
-                insertPreview(ElementType.CROTCHET, 0);
-
-                var firstPitchedNote = line.firstPitchedElement();
-                dialogMock.verify(() -> TempoChangeDialog.showForElement(any(), eq(firstPitchedNote), eq(line)));
-
-                // The layout must be recomputed before the dialog shows, so the note is
-                // positioned at its final x rather than the stale x = 0 behind the modal.
-                verify(lc).ensureLayout();
-            }
-        }
-
-        /**
-         * A grace note as the first note must not prompt on its own: prompting only
-         * makes sense once the host note exists. The prompt fires when the host note
-         * is placed next, but anchors the tempo on the grace note (the first element).
-         */
-        @Test
-        void testDefersTempoPromptPastLeadingGraceNoteButAnchorsOnGraceNote() {
-            song.setLineWidthSs(WIDE_LINE_SS);
-
-            try (var dialogMock = mockStatic(TempoChangeDialog.class);
-                 var mainFrameMock = mockStatic(MainFrame.class)) {
-                // showForElement is stubbed, so its MainFrame argument is never
-                // dereferenced — a null instance keeps the real (heavyweight) MainFrame
-                // singleton from being constructed.
-                mainFrameMock.when(MainFrame::getInstance).thenReturn(null);
-
-                insertPreview(ElementType.GRACE_QUAVER, 0);
-
-                dialogMock.verify(() -> TempoChangeDialog.showForElement(any(), any(), any()), never());
-
-                // The grace note now sits at index 0 before the terminal; place the
-                // host note between them.
-                insertPreview(ElementType.CROTCHET, 1);
-
-                var graceNote = line.getElement(0);
-                dialogMock.verify(() -> TempoChangeDialog.showForElement(any(), eq(graceNote), eq(line)));
-
-                // The layout must be recomputed before the dialog shows (see the sibling
-                // test); the recompute happens only on the host-note insert that prompts.
-                verify(lc).ensureLayout();
-            }
-        }
-
-        /**
-         * Once the first line already has a pitched note, inserting another pitched note
-         * must not prompt again: the gate fires only on the transition to the first
-         * pitched note, not on every subsequent one.
-         */
-        @Test
-        void testDoesNotRePromptWhenPitchedNoteAlreadyExists() {
-            song.setLineWidthSs(WIDE_LINE_SS);
-
-            try (var dialogMock = mockStatic(TempoChangeDialog.class);
-                 var mainFrameMock = mockStatic(MainFrame.class)) {
-                mainFrameMock.when(MainFrame::getInstance).thenReturn(null);
-
-                insertPreview(ElementType.CROTCHET, 0);
-                insertPreview(ElementType.CROTCHET, 1);
-
-                // Only the first insert (the transition to a pitched note) prompts.
-                dialogMock.verify(() -> TempoChangeDialog.showForElement(any(), any(), any()), times(1));
-            }
-        }
-
-        /**
-         * Insertion on a line other than the first must never prompt: the song's initial
-         * tempo anchors only on the first line.
-         */
-        @Test
-        void testDoesNotPromptOnNonFirstLine() {
-            song.setLineWidthSs(WIDE_LINE_SS);
-
-            // Prepend a line so the fixture line — the one lc points at — is no longer the
-            // first line, making the gate's isFirstLine guard false.
-            song.withoutMutationTracking(() -> song.addLine(0, new Line(song)));
-
-            try (var dialogMock = mockStatic(TempoChangeDialog.class);
-                 var mainFrameMock = mockStatic(MainFrame.class)) {
-                mainFrameMock.when(MainFrame::getInstance).thenReturn(null);
-
-                insertPreview(ElementType.CROTCHET, 0);
-
-                dialogMock.verify(() -> TempoChangeDialog.showForElement(any(), any(), any()), never());
-            }
-        }
-    }
 }

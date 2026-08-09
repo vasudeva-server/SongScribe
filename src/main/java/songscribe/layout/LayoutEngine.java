@@ -42,6 +42,7 @@ import songscribe.engraving.LineThickness;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
 import songscribe.dom.Line;
+import songscribe.dom.SongTempoMark;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.layout.ElementColumn.TieColumns;
@@ -229,19 +230,38 @@ public class LayoutEngine {
      * @return LayoutResult with all positioned elements
      */
     public LayoutResult layout(Line line, boolean isLastLine, boolean hasLeadingLyricContinuation) {
-        return layout(line, isLastLine, hasLeadingLyricContinuation, null);
+        return layout(line, isLastLine, hasLeadingLyricContinuation, null, null);
     }
 
     /**
-     * Executes the complete layout pipeline for a line, optionally stacking an attribution block.
+     * Executes the complete layout pipeline for a line without the song's tempo mark.
+     * <p>
+     * For callers that lay a line out for its coordinates rather than to paint it — the headless
+     * writers reached through {@link LineLayoutProvider#headless} — where the inert header mark
+     * has nothing to contribute.
+     */
+    public LayoutResult layout(
+        Line line,
+        boolean isLastLine,
+        boolean hasLeadingLyricContinuation,
+        @Nullable Attribution attribution) {
+        return layout(line, isLastLine, hasLeadingLyricContinuation, null, attribution);
+    }
+
+    /**
+     * Executes the complete layout pipeline for a line, optionally stacking the song's tempo mark
+     * and an attribution block.
      * <p>
      * On the first line, pass the song's {@link Attribution} element (with dimensions pre-set via
      * {@link Attribution#setDimensionsSs}) to trigger attribution stacking above the right-edge
-     * columns. Passing a non-null {@code attribution} implies this is the first line.
+     * columns, and the song's {@link SongTempoMark} to place the tempo at the staff header. Passing
+     * either non-null implies this is the first line. The mark needs no pre-measurement — its
+     * content is derived from {@link songscribe.dom.Song#getTempo()} during stacking.
      *
      * @param line                        The line to lay out
      * @param isLastLine                  Whether this line is the last line of the song
      * @param hasLeadingLyricContinuation True when the previous line's lyric extender continues
+     * @param tempoMark                   The song's tempo mark element, or null if not applicable
      * @param attribution                 The attribution block element, or null if not applicable
      * @return LayoutResult with all positioned elements
      */
@@ -249,6 +269,7 @@ public class LayoutEngine {
         Line line,
         boolean isLastLine,
         boolean hasLeadingLyricContinuation,
+        @Nullable SongTempoMark tempoMark,
         @Nullable Attribution attribution) {
 
         // Accidental widths are a layout input. Initialise them here (idempotent and cheap)
@@ -296,7 +317,7 @@ public class LayoutEngine {
         // Use the song's staff width for consistent StaffExtents clamping,
         // not the content width which varies with column count.
         verticalCalculator.calculate(
-            columns, line, builder, staffRightMarginSs, fonts, attribution);
+            columns, line, builder, staffRightMarginSs, fonts, tempoMark, attribution);
 
         // Step 7b: Compute lyric box and connector geometry, for the same verse step 1 built the
         // columns for — what makes their cached syllable widths reusable there.

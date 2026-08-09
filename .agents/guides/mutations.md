@@ -66,9 +66,7 @@ helper (`removeBeaming`/`removeTie`/… — `Line.removeInvalidatedSpan`
 dispatches) so the proper removal mutation lands in the batch.
 
 **Companion-ordering rule:** companion mutations that *remove* dependent state
-(span removals, the initial-tempo displacement modification in
-`Line.addElement(int, StaffElement)`) are emitted **before** the primary structural
-mutation. Reverse-order undo then restores the primary element first, so span
+(span removals) are emitted **before** the primary structural mutation. Reverse-order undo then restores the primary element first, so span
 re-additions find their anchor elements live. Line-terminal maintenance companions
 are emitted **after** the primary `LineInsertion`/`LineDeletion` — reverse-order
 undo handles them before the line op, which is correct because they target the
@@ -115,7 +113,7 @@ withModification(() -> applyChange(new MetadataChange(field, current, newValue),
 `Line` helpers (`addElement`, `removeElement`, `removeRange`,
 `replaceElement`, `modifyElement`, `add/remove{Beaming,Tie,Tuplet,Crescendo,Diminuendo}`,
 `add/removeSpan`) wrap `applyChange` with clone snapshots and
-bookkeeping (interval shifting, range-element invalidation, initial-tempo attachment).
+bookkeeping (interval shifting, range-element invalidation).
 The span helpers are the thinnest pattern to copy when adding one. Note that the
 mutator both attaches parentage and mutates the list. For the elements held in
 `Line`'s two lists, `Line.attach`/`Line.detach` are the only writers of

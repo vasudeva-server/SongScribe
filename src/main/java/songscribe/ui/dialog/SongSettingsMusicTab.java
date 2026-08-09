@@ -152,7 +152,7 @@ final class SongSettingsMusicTab extends BaseDialog.Tab {
     @Override
     protected boolean getData() {
         var song = dialog.getSong();
-        tempoSection.setTempo(song.getEffectiveTempo());
+        tempoSection.setTempo(song.getTempo());
         setKeyComboFromSong(song);
         revertLineWidthField();
         return true;

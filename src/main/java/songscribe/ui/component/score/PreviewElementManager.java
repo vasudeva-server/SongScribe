@@ -94,11 +94,10 @@ public final class PreviewElementManager {
     private static boolean yPosSpMatchesElement = false;
 
     /**
-     * Runs after ScoreViewController's layout-invalidating handler so
-     * {@link PreviewElementInserter#showPendingTempoPrompt} sees an invalidated (recomputable)
-     * layout for the just-inserted note.
+     * Runs after {@code ScoreViewController}'s layout-invalidating handler, so the pending
+     * overlay restore sees an invalidated — and therefore recomputable — layout.
      */
-    private static final int TEMPO_PROMPT_PRIORITY = Message.LOW_PRIORITY - 1;
+    private static final int AFTER_LAYOUT_INVALIDATION_PRIORITY = Message.LOW_PRIORITY - 1;
 
     /** Last tracked mouse X in staff-space units; used by LineRenderer to avoid Swing getMousePosition() returning null. */
     private static double currentMouseXSs = 0.0;
@@ -192,10 +191,9 @@ public final class PreviewElementManager {
         retargetMouseLineAndRestorePreviewElement();
     }
 
-    @Handler(priority = TEMPO_PROMPT_PRIORITY)
+    @Handler(priority = AFTER_LAYOUT_INVALIDATION_PRIORITY)
     public void songDidChange(SongDidChangeNotification message) {
         PreviewOverlayRegistry.applyPendingRestore();
-        PreviewElementInserter.showPendingTempoPrompt();
     }
 
     /**
@@ -559,25 +557,6 @@ public final class PreviewElementManager {
      */
     static void setXPosSsMatchesElement(boolean matches) {
         xPosSsMatchesElement = matches;
-    }
-
-    /**
-     * Clears any queued first-note tempo prompt (package-private for test teardown, so a
-     * prompt left pending by one test cannot leak into the next).
-     *
-     * @see PreviewElementInserter#clearPendingTempoPrompt
-     */
-    static void clearPendingTempoPrompt() {
-        PreviewElementInserter.clearPendingTempoPrompt();
-    }
-
-    /**
-     * Shows the tempo dialog for a pending first-note anchor, if any.
-     *
-     * @see PreviewElementInserter#showPendingTempoPrompt
-     */
-    static void showPendingTempoPrompt() {
-        PreviewElementInserter.showPendingTempoPrompt();
     }
 
     /**

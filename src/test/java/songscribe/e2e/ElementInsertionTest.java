@@ -593,8 +593,8 @@ class ElementInsertionTest extends E2ETest {
 
         /**
          * Reloads the fixture so each test starts from a known, non-empty line. Non-empty
-         * matters: the first note of an empty song raises the modal tempo prompt, which
-         * would swallow the clicks that follow.
+         * matters: beaming needs a predecessor note already in place to beam the newly
+         * placed note with.
          */
         @BeforeEach
         void reloadFixture() {

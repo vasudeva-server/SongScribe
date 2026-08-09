@@ -420,7 +420,7 @@ public class SongSettingsDialog extends StandardDialog {
         boolean showTempo,
         KeySelection keySelection
     ) {
-        var tempo = song.getEffectiveTempo();
+        var tempo = song.getTempo();
         var tempoChanged = tempoType != tempo.getTempoType()
             || visibleTempo != tempo.getVisibleTempo()
             || !tempoDescription.equals(tempo.getTempoDescription())

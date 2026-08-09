@@ -36,11 +36,14 @@ import songscribe.dom.TempoChangeAttachment;
 
 /**
  * Round-trip coverage for tempo {@code <direction>} / {@code <metronome>}
- * emission and parsing (Phase 3). Songs are built in post-load (canonical)
- * form: the song base tempo is mirrored onto the first element of the first
- * line (as {@code Line.attachInitialTempoIfNeeded} does on load), so the
- * anchor invariant {@code firstElement.hasTempo ⟺ song.tempo != null} holds
- * before the round-trip.
+ * emission and parsing. The song tempo ({@link Song#getTempo()}) is a
+ * property of the score, not of any note: it is emitted exactly once, as the
+ * first child of measure 1, bound to no {@code <note>}, and is read back the
+ * same way — the first tempo {@code <direction>} in the first {@code
+ * <measure>} sets {@code song.tempo} and produces no {@link
+ * TempoChangeAttachment}. A {@code TempoChangeAttachment} in written or
+ * parsed XML is always a genuine per-note tempo change, never a mirror of the
+ * song tempo.
  */
 class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
 
@@ -54,6 +57,10 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
     // No tempo description → no <words> emitted → recovered as the empty string.
     private static final String NO_DESCRIPTION = "";
     private static final String TEMPO_DESCRIPTION = "Allegro vivace";
+
+    // Beat-unit token used by the hand-authored old-format tempo directions,
+    // matching Duration.CROTCHET (BeatUnitMapping's mapping for it).
+    private static final String QUARTER_BEAT_UNIT_TOKEN = "quarter";
 
     // Element index of the distinct mid-song per-note tempo (0 and 1 hold the
     // base-tempo note and a plain note).
@@ -88,28 +95,53 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
     }
 
     /**
-     * Attaches {@code tempo} to {@code element} exactly as the model mirrors the
-     * base tempo onto a note on load.
+     * Attaches {@code tempo} to {@code element} as a genuine per-note tempo
+     * change (never a mirror of the song tempo — that invariant is gone).
      */
     private static void attachTempo(StaffElement element, Tempo tempo) {
         element.addAttachment(new TempoChangeAttachment(element, tempo));
     }
 
     /**
-     * Builds a single-line song whose first note carries {@code baseTempo} both
-     * as an attachment and as the song base tempo (canonical post-load form).
+     * Builds a single-line, two-note song and sets {@code tempo} as the song's
+     * tempo. Neither note carries a {@link TempoChangeAttachment} — the song
+     * tempo is a property of the song alone.
      */
-    private Song buildBaseTempoSong(Tempo baseTempo) {
+    private Song buildSongWithTempo(Tempo tempo) {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            line.addElement(note0);
-            line.addElement(note1);
-            attachTempo(note0, baseTempo);
+            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(ElementType.CROTCHET.newInstance());
         });
 
-        song.withoutMutationTracking(() -> song.setTempo(baseTempo));
+        song.withoutMutationTracking(() -> song.setTempo(tempo));
         return song;
+    }
+
+    /**
+     * A hand-authored old-format tempo {@code <direction>}: the minimal
+     * beat-unit form ({@code <beat-unit>} + {@code <per-minute>}), matching
+     * what {@code MusicXmlDirectionWriter.writeTempoDirection} emits for a
+     * plain (undescribed, visible) {@link Duration#CROTCHET} tempo.
+     */
+    private static String tempoDirectionXml(int bpm) {
+        return
+            "      <" + MusicXmlTags.DIRECTION + ">\n" +
+            "        <" + MusicXmlTags.DIRECTION_TYPE + "><" + MusicXmlTags.METRONOME + ">" +
+                "<" + MusicXmlTags.BEAT_UNIT + ">" + QUARTER_BEAT_UNIT_TOKEN + "</" + MusicXmlTags.BEAT_UNIT + ">" +
+                "<" + MusicXmlTags.PER_MINUTE + ">" + bpm + "</" + MusicXmlTags.PER_MINUTE + ">" +
+                "</" + MusicXmlTags.METRONOME + "></" + MusicXmlTags.DIRECTION_TYPE + ">\n" +
+            "        <" + MusicXmlTags.SOUND + " " + MusicXmlTags.ATTR_TEMPO + "=\"" + bpm + "\"/>\n" +
+            "      </" + MusicXmlTags.DIRECTION + ">\n";
+    }
+
+    /** A minimal plain {@code <note>}, for use after {@link #tempoDirectionXml}. */
+    private static String noteXml() {
+        return
+            "      <note>\n" +
+            "        <pitch><step>B</step><octave>4</octave></pitch>\n" +
+            "        <duration>480</duration>\n" +
+            "        <type>quarter</type>\n" +
+            "      </note>\n";
     }
 
     // -------------------------------------------------------------------------
@@ -117,31 +149,33 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
     // -------------------------------------------------------------------------
 
     @Test
-    void testNoTempoStaysAbsentAfterRoundTrip() throws Exception {
-        // A song with no explicit tempo (e.g. a brand-new document) must not gain
-        // one merely by being saved and reloaded. Regression test for issue #658.
+    void testDefaultTempoIsWrittenAndRoundTrips() throws Exception {
+        // Song.tempo is non-null and seeded with Tempo's defaults, so even a
+        // song whose tempo was never touched still emits and recovers one.
         var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
 
         var xml = writeToString(song);
-        assertThat(xml).as("no <sound tempo> should be written").doesNotContain("<sound tempo");
+        assertThat(xml).as("default tempo <sound tempo> is written").contains("<" + MusicXmlTags.SOUND + " " + MusicXmlTags.ATTR_TEMPO);
 
         var reloaded = roundTrip(song);
 
-        assertThat(reloaded.getTempo()).as("reloaded song must still have no explicit tempo").isNull();
-        assertThat(tempoOf(reloaded.getLine(0), 0)).as("first note carries no tempo").isNull();
+        assertTempoEquals(
+            reloaded.getTempo(),
+            Tempo.DEFAULT_BPM, Tempo.DEFAULT_TYPE, Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO,
+            "default song tempo");
     }
 
     @Test
     void testBaseTempoOnlyRoundTrips() throws Exception {
         var baseTempo = new Tempo(BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
-        var song = buildBaseTempoSong(baseTempo);
+        var song = buildSongWithTempo(baseTempo);
 
         var reloaded = roundTrip(song);
         var line = reloaded.getLine(0);
 
         assertTempoEquals(reloaded.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "song base tempo");
-        assertTempoEquals(tempoOf(line, 0), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "first note tempo");
-        assertThat(tempoOf(line, 1)).as("plain note carries no tempo").isNull();
+        assertThat(tempoOf(line, 0)).as("first note carries no tempo attachment").isNull();
+        assertThat(tempoOf(line, 1)).as("second note carries no tempo attachment").isNull();
     }
 
     @Test
@@ -156,7 +190,6 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
-            attachTempo(note0, baseTempo);
             attachTempo(note2, perNoteTempo);
         });
         song.withoutMutationTracking(() -> song.setTempo(baseTempo));
@@ -165,7 +198,7 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
         var line = reloaded.getLine(0);
 
         assertTempoEquals(reloaded.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "song base tempo");
-        assertTempoEquals(tempoOf(line, 0), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "first note tempo");
+        assertThat(tempoOf(line, 0)).as("first note carries no tempo attachment").isNull();
         assertThat(tempoOf(line, 1)).as("middle note carries no tempo").isNull();
         assertTempoEquals(
             tempoOf(line, PER_NOTE_INDEX),
@@ -175,62 +208,35 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testHiddenTempoRoundTrips() throws Exception {
         var hiddenTempo = new Tempo(HIDDEN_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, false);
-        var song = buildBaseTempoSong(hiddenTempo);
+        var song = buildSongWithTempo(hiddenTempo);
 
         var reloaded = roundTrip(song);
         var line = reloaded.getLine(0);
 
         assertTempoEquals(reloaded.getTempo(), HIDDEN_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, false, "hidden base tempo");
-        assertTempoEquals(tempoOf(line, 0), HIDDEN_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, false, "hidden first note tempo");
+        assertThat(tempoOf(line, 0)).as("first note carries no tempo attachment").isNull();
     }
 
     @Test
     void testDottedBeatUnitRoundTrips() throws Exception {
         var dottedTempo = new Tempo(DOTTED_TEMPO_BPM, Duration.CROTCHET_DOTTED, NO_DESCRIPTION, true);
-        var song = buildBaseTempoSong(dottedTempo);
+        var song = buildSongWithTempo(dottedTempo);
 
         var reloaded = roundTrip(song);
-        var line = reloaded.getLine(0);
 
         assertTempoEquals(
             reloaded.getTempo(), DOTTED_TEMPO_BPM, Duration.CROTCHET_DOTTED, NO_DESCRIPTION, true, "dotted base tempo");
-        assertTempoEquals(
-            tempoOf(line, 0), DOTTED_TEMPO_BPM, Duration.CROTCHET_DOTTED, NO_DESCRIPTION, true, "dotted first note tempo");
     }
 
     @Test
     void testTempoDescriptionRoundTrips() throws Exception {
         var describedTempo = new Tempo(DESCRIBED_TEMPO_BPM, Duration.CROTCHET, TEMPO_DESCRIPTION, true);
-        var song = buildBaseTempoSong(describedTempo);
+        var song = buildSongWithTempo(describedTempo);
 
         var reloaded = roundTrip(song);
-        var line = reloaded.getLine(0);
 
         assertTempoEquals(
             reloaded.getTempo(), DESCRIBED_TEMPO_BPM, Duration.CROTCHET, TEMPO_DESCRIPTION, true, "described base tempo");
-        assertTempoEquals(
-            tempoOf(line, 0), DESCRIBED_TEMPO_BPM, Duration.CROTCHET, TEMPO_DESCRIPTION, true, "described first note tempo");
-    }
-
-    @Test
-    void testUnmirroredBaseTempoRoundTrips() throws Exception {
-        // A song whose base tempo is set on the song but NOT mirrored onto the
-        // first note (a not-yet-materialized song). The writer's tempoForElement
-        // must fall back to song.getTempo() for the first element and still emit
-        // the base tempo; otherwise it is silently lost on write.
-        var baseTempo = new Tempo(BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
-
-        var song = buildSong(line -> {
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
-        });
-        song.withoutMutationTracking(() -> song.setTempo(baseTempo));
-
-        var reloaded = roundTrip(song);
-        var line = reloaded.getLine(0);
-
-        assertTempoEquals(reloaded.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "unmirrored base tempo");
-        assertTempoEquals(tempoOf(line, 0), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "reconstructed first note tempo");
     }
 
     @Test
@@ -259,47 +265,39 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
     }
 
     @Test
-    void testInitialTempoAnchorsOnLeadingGraceNoteRoundTrip() throws Exception {
-        // When the first note is a grace note, the base tempo anchors on it — the
-        // first element of the first line. The anchor must survive a MusicXML
-        // round-trip on both the write (firstElementOfSong) and read
-        // (applyInitialTempo) sides.
+    void testLeadingGraceNoteDoesNotAffectSongTempoRoundTrip() throws Exception {
+        // The song tempo is written positionally (first child of measure 1),
+        // not anchored to any element, so a leading grace note makes no
+        // difference to where it is written or read.
         var baseTempo = new Tempo(BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
 
         var song = buildSong(line -> {
-            var graceNote = ElementType.GRACE_QUAVER.newInstance();
-            var hostNote = ElementType.CROTCHET.newInstance();
-            line.addElement(graceNote);
-            line.addElement(hostNote);
-            attachTempo(graceNote, baseTempo);
+            line.addElement(ElementType.GRACE_QUAVER.newInstance());
+            line.addElement(ElementType.CROTCHET.newInstance());
         });
         song.withoutMutationTracking(() -> song.setTempo(baseTempo));
 
         var reloaded = roundTrip(song);
-        var graceAnchor = reloaded.getLine(0).getElement(0);
+        var graceNote = reloaded.getLine(0).getElement(0);
 
-        var graceAttachment = graceAnchor.findAttachment(TempoChangeAttachment.class);
         assertTempoEquals(
-            graceAttachment == null ? null : graceAttachment.getTempo(),
-            BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "grace-note tempo after round-trip");
-        assertTempoEquals(
-            reloaded.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "recovered base tempo");
+            reloaded.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true,
+            "song tempo past a leading grace note");
+        assertThat(graceNote.findAttachment(TempoChangeAttachment.class))
+            .as("leading grace note carries no tempo attachment")
+            .isNull();
     }
 
     @Test
-    void testInitialTempoOnTheFirstNonEmptyLineRoundTripsPastALeadingEmptyLine() throws Exception {
-        // A leading empty line is not the anchor line, so the base tempo lives on the first
-        // element of line 2. Both the write side and the read side (applyInitialTempo, via
-        // Song.syncTempoFromAnchor) have to look past the empty line to find it.
+    void testLeadingEmptyLineDoesNotAffectSongTempoRoundTrip() throws Exception {
+        // Likewise for a leading empty line: the song tempo is written as the
+        // first child of measure 1 regardless of which line that measure
+        // belongs to, empty or not.
         var baseTempo = new Tempo(BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
 
         var song = buildSong(
             line -> { },
-            line -> {
-                var note = ElementType.CROTCHET.newInstance();
-                line.addElement(note);
-                attachTempo(note, baseTempo);
-            }
+            line -> line.addElement(ElementType.CROTCHET.newInstance())
         );
         song.withoutMutationTracking(() -> song.setTempo(baseTempo));
 
@@ -310,10 +308,85 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
             .as("the leading empty line survives the round-trip")
             .isTrue();
         assertTempoEquals(
-            tempoOf(reloaded.getLine(SECOND_LINE_INDEX), 0),
-            BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "anchor tempo on the first non-empty line");
+            reloaded.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true,
+            "song tempo past a leading empty line");
+        assertThat(tempoOf(reloaded.getLine(SECOND_LINE_INDEX), 0))
+            .as("first note of the second line carries no tempo attachment")
+            .isNull();
+    }
+
+    @Test
+    void testSongTempoIsTheFirstChildOfTheFirstMeasure() throws Exception {
+        var tempo = new Tempo(BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
+        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> song.setTempo(tempo));
+
+        var xml = writeToString(song);
+
+        var measureStart = xml.indexOf('<' + MusicXmlTags.MEASURE);
+        assertThat(measureStart).as("first <measure> tag found").isGreaterThanOrEqualTo(0);
+
+        var measureEnd = xml.indexOf("</" + MusicXmlTags.MEASURE + '>', measureStart);
+        assertThat(measureEnd).as("first </measure> tag found").isGreaterThan(measureStart);
+
+        var measureBody = xml.substring(measureStart, measureEnd);
+        var directionIndex = measureBody.indexOf('<' + MusicXmlTags.DIRECTION);
+        var printIndex = measureBody.indexOf('<' + MusicXmlTags.PRINT);
+        var attributesIndex = measureBody.indexOf('<' + MusicXmlTags.ATTRIBUTES);
+
+        assertThat(directionIndex).as("tempo <direction> present in measure 1").isGreaterThanOrEqualTo(0);
+        assertThat(printIndex).as("<print> present in measure 1").isGreaterThanOrEqualTo(0);
+        assertThat(attributesIndex).as("<attributes> present in measure 1").isGreaterThanOrEqualTo(0);
+        assertThat(directionIndex).as("tempo direction precedes <print>").isLessThan(printIndex);
+        assertThat(directionIndex).as("tempo direction precedes <attributes>").isLessThan(attributesIndex);
+    }
+
+    @Test
+    void testSongWithNoNotesStillWritesItsTempo() throws Exception {
+        var tempo = new Tempo(BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
+        var song = buildSong();
+        song.withoutMutationTracking(() -> song.setTempo(tempo));
+
+        var reloaded = roundTrip(song);
+
         assertTempoEquals(
-            reloaded.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "recovered base tempo");
+            reloaded.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "tempo of a note-less song");
+    }
+
+    @Test
+    void testTempoDirectionBoundToTheFirstNoteReadsAsTheSongTempo() throws Exception {
+        // Backward compatibility: files written before the song tempo moved to
+        // being the measure's first child carried it immediately before the
+        // first <note> instead. The reader's rule is purely positional --
+        // "first tempo direction in measure 1" -- so this still loads as the
+        // song tempo, with no attachment on the note.
+        var xml = scoreWithMeasureBody(tempoDirectionXml(BASE_TEMPO_BPM) + noteXml());
+
+        var song = parse(xml);
+
+        assertTempoEquals(
+            song.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "song tempo from old-format file");
+        assertThat(tempoOf(song.getLine(0), 0)).as("first note carries no tempo attachment").isNull();
+    }
+
+    @Test
+    void testASecondTempoDirectionInMeasureOneBindsToItsNote() throws Exception {
+        // Only the first tempo direction of measure 1 is the song tempo; a
+        // second one anywhere in that same measure is an ordinary per-note
+        // tempo change bound to the following note, exactly as today.
+        var xml = scoreWithMeasureBody(
+            tempoDirectionXml(BASE_TEMPO_BPM) + noteXml() +
+            tempoDirectionXml(PER_NOTE_TEMPO_BPM) + noteXml());
+
+        var song = parse(xml);
+        var line = song.getLine(0);
+
+        assertTempoEquals(
+            song.getTempo(), BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "song tempo from first direction");
+        assertThat(tempoOf(line, 0)).as("first note carries no tempo attachment").isNull();
+        assertTempoEquals(
+            tempoOf(line, 1),
+            PER_NOTE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true, "second direction binds to its note");
     }
 
     // -------------------------------------------------------------------------

@@ -26,6 +26,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
@@ -35,11 +36,11 @@ import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
-import songscribe.dom.Tempo;
 import songscribe.font.SourceSans3Font;
 import songscribe.layout.LyricEditFitCalculator;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.layout.PageModel;
+import songscribe.message.Message;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.KeySignatureDidChangeNotification;
 import songscribe.message.notification.TempoDidChangeNotification;
@@ -297,9 +298,9 @@ class SongSettingsDialogTest extends UnitTest {
     @Nested
     class ApplyMusicTabChanges {
 
-        private static final int TEMPO_DELTA = 20;
+        private static final int VISIBLE_TEMPO_DELTA = 20;
         private static final int SHARPS_COUNT = 2;
-        private static final int FLATS_COUNT = 3;
+        private static final int EXPECTED_POST_COUNT = 2;
         private static final int NO_POSTS = 0;
         private static final int ONE_POST = 1;
 
@@ -318,15 +319,11 @@ class SongSettingsDialogTest extends UnitTest {
             messageCenterMock.close();
         }
 
-        /** Returns the song's current effective tempo values as a convenience. */
-        private Tempo currentTempo() {
-            return song.getEffectiveTempo();
-        }
-
         @Test
         void testNoChangePostsNoMessage() {
-            // When all values match the song's current state, no notification is posted.
-            var tempo = currentTempo();
+            // Opening Song Settings and confirming it untouched must not dirty the document:
+            // every submitted value already matches the song, so neither notification is due.
+            var tempo = song.getTempo();
 
             SongSettingsDialog.applyMusicTabChanges(
                 song,
@@ -341,34 +338,32 @@ class SongSettingsDialogTest extends UnitTest {
         }
 
         @Test
-        void testTempoOnlyChangePostsTempoNotification() {
-            var tempo = currentTempo();
-            var newVisibleTempo = tempo.getVisibleTempo() + TEMPO_DELTA;
+        void testTempoOnlyChangePostsOnlyTheTempoNotification() {
+            // Each notification is gated on its own value-changed check, so editing the tempo
+            // alone must not also announce a key-signature change the user never made.
+            var tempo = song.getTempo();
 
             SongSettingsDialog.applyMusicTabChanges(
                 song,
                 tempo.getTempoType(),
-                newVisibleTempo,
+                tempo.getVisibleTempo() + VISIBLE_TEMPO_DELTA,
                 tempo.getTempoDescription(),
                 tempo.shouldShowTempo(),
                 SongSettingsDialog.canonicalKeySelectionFrom(song)
             );
 
             messageCenterMock.verify(
-                () -> MessageCenter.post(any(TempoDidChangeNotification.class)),
-                times(ONE_POST)
-            );
+                () -> MessageCenter.post(any(TempoDidChangeNotification.class)), times(ONE_POST));
             messageCenterMock.verify(
                 () -> MessageCenter.post(any(KeySignatureDidChangeNotification.class)),
-                times(NO_POSTS)
-            );
+                times(NO_POSTS));
         }
 
         @Test
-        void testKeyOnlyChangePostsKeyNotification() {
-            var tempo = currentTempo();
-            // Change to sharps (default is FLATS, 0).
-            var newKey = new SongSettingsDialog.KeySelection(KeyType.SHARPS, SHARPS_COUNT);
+        void testKeyOnlyChangePostsOnlyTheKeyNotification() {
+            // The mirror of the test above: changing the key alone must not announce a tempo
+            // change, which would record a spurious undo step for a tempo nobody edited.
+            var tempo = song.getTempo();
 
             SongSettingsDialog.applyMusicTabChanges(
                 song,
@@ -376,24 +371,21 @@ class SongSettingsDialogTest extends UnitTest {
                 tempo.getVisibleTempo(),
                 tempo.getTempoDescription(),
                 tempo.shouldShowTempo(),
-                newKey
+                new SongSettingsDialog.KeySelection(KeyType.SHARPS, SHARPS_COUNT)
             );
 
             messageCenterMock.verify(
                 () -> MessageCenter.post(any(KeySignatureDidChangeNotification.class)),
-                times(ONE_POST)
-            );
+                times(ONE_POST));
             messageCenterMock.verify(
-                () -> MessageCenter.post(any(TempoDidChangeNotification.class)),
-                times(NO_POSTS)
-            );
+                () -> MessageCenter.post(any(TempoDidChangeNotification.class)), times(NO_POSTS));
         }
 
         @Test
-        void testBothChangedPostsBothNotifications() {
-            var tempo = currentTempo();
-            var newVisibleTempo = tempo.getVisibleTempo() + TEMPO_DELTA;
-            var newKey = new SongSettingsDialog.KeySelection(KeyType.FLATS, FLATS_COUNT);
+        void testBothChangedPostsBothNotificationsCarryingTheSubmittedValues() {
+            var tempo = song.getTempo();
+            var newVisibleTempo = tempo.getVisibleTempo() + VISIBLE_TEMPO_DELTA;
+            var newKey = new SongSettingsDialog.KeySelection(KeyType.SHARPS, SHARPS_COUNT);
 
             SongSettingsDialog.applyMusicTabChanges(
                 song,
@@ -404,14 +396,40 @@ class SongSettingsDialogTest extends UnitTest {
                 newKey
             );
 
+            var messageCaptor = ArgumentCaptor.forClass(Message.class);
             messageCenterMock.verify(
-                () -> MessageCenter.post(any(TempoDidChangeNotification.class)),
-                times(ONE_POST)
+                () -> MessageCenter.post(messageCaptor.capture()),
+                times(EXPECTED_POST_COUNT)
             );
-            messageCenterMock.verify(
-                () -> MessageCenter.post(any(KeySignatureDidChangeNotification.class)),
-                times(ONE_POST)
-            );
+
+            var tempoNotifications = messageCaptor.getAllValues().stream()
+                .filter(TempoDidChangeNotification.class::isInstance)
+                .map(TempoDidChangeNotification.class::cast)
+                .toList();
+            var keyNotifications = messageCaptor.getAllValues().stream()
+                .filter(KeySignatureDidChangeNotification.class::isInstance)
+                .toList();
+
+            assertThat(tempoNotifications)
+                .as("exactly one TempoDidChangeNotification was posted")
+                .hasSize(1);
+            assertThat(keyNotifications)
+                .as("exactly one KeySignatureDidChangeNotification was posted")
+                .hasSize(1);
+
+            var tempoNotification = tempoNotifications.get(0);
+            assertThat(tempoNotification.getTempoType())
+                .as("tempo type carries the submitted value")
+                .isEqualTo(tempo.getTempoType());
+            assertThat(tempoNotification.getVisibleTempo())
+                .as("BPM carries the submitted value")
+                .isEqualTo(newVisibleTempo);
+            assertThat(tempoNotification.getTempoDescription())
+                .as("description carries the submitted value")
+                .isEqualTo(tempo.getTempoDescription());
+            assertThat(tempoNotification.getShowTempo())
+                .as("showTempo carries the submitted value")
+                .isEqualTo(tempo.shouldShowTempo());
         }
     }
 

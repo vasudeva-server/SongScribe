@@ -21,7 +21,6 @@ paste (`instantiate`) go through it:
                     ├─ clone elements → IdentityHashMap<orig,clone>
                     ├─ resolve each element's effective accidental against the ORIGINAL
                     ├─ FINAL_DOUBLE_BARLINE → DOUBLE_BARLINE
-                    ├─ drop the tempo at the initial-tempo anchor (song's first element)
                     ├─ DetachedLyricRun.endDanglingChains — every syllabic or melisma
                     │  chain leaving the run ends inside it
                     └─ span kept iff BOTH endpoints ∈ map keys

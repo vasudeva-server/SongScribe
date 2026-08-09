@@ -56,6 +56,13 @@ import songscribe.dom.TempoChangeAttachment;
  * and the metric-modulation {@code <direction>} immediately before their bound
  * {@code <note>}, so the reader uses one uniform rule — a finished direction binds
  * to the next note after it.
+ *
+ * <p>The one exception is the song tempo: the first tempo direction of the first
+ * {@code <measure>} is the score's own tempo, so it binds to no note and produces no
+ * {@link TempoChangeAttachment}. It waits in {@link #takePendingSongTempo} for the caller
+ * to apply it to the {@link songscribe.dom.Song}. A metric modulation is never a song
+ * tempo, and every later tempo direction — including a second one inside measure 1 —
+ * binds to its note as usual.
  */
 final class MetronomeResolver {
 
@@ -64,6 +71,19 @@ final class MetronomeResolver {
     // A SongScribe metric modulation always relates exactly two note values
     // (duration equals beat), so the writer emits exactly two <metronome-note>s.
     private static final int METRIC_MODULATION_NOTE_COUNT = 2;
+
+    /**
+     * How far the parse has got relative to the one measure the song-tempo rule cares
+     * about. There is no {@code </measure>} event, so {@link #IN_FIRST_MEASURE} holds
+     * from the moment measure 1 opens until measure 2 does — which is exactly the same
+     * thing at every point this is read, since a {@code <direction>} only ever appears
+     * inside a measure.
+     */
+    private enum MeasurePhase {
+        BEFORE_ANY_MEASURE,
+        IN_FIRST_MEASURE,
+        PAST_FIRST_MEASURE
+    }
 
     // -------------------------------------------------------------------------
     // Per-direction accumulation — reset after every </direction> so a wedge (or
@@ -110,9 +130,33 @@ final class MetronomeResolver {
     @Nullable
     private BeatChange pendingBeatChange = null;
 
+    // The song's own tempo, awaiting collection by takePendingSongTempo(). Bound to no
+    // note — unlike pendingTempo, which waits for the next <note> to attach itself to.
+    @Nullable
+    private Tempo pendingSongTempo = null;
+
+    // True once the song-level tempo has been claimed, so only the *first* tempo
+    // direction of measure 1 becomes the song tempo; a second one in the same
+    // measure is an ordinary tempo change.
+    private boolean songTempoTaken = false;
+
+    private MeasurePhase measurePhase = MeasurePhase.BEFORE_ANY_MEASURE;
+
     // -------------------------------------------------------------------------
     // Package API — accumulation
     // -------------------------------------------------------------------------
+
+    /**
+     * Records that a {@code <measure>} has opened, so the song-tempo rule can tell the
+     * document's first measure from every later one. Tracked by document order rather
+     * than by the {@code number} attribute, which a foreign file is not obliged to
+     * start at 1.
+     */
+    void startMeasure() {
+        measurePhase = measurePhase == MeasurePhase.BEFORE_ANY_MEASURE
+            ? MeasurePhase.IN_FIRST_MEASURE
+            : MeasurePhase.PAST_FIRST_MEASURE;
+    }
 
     /**
      * Begins a {@code <metronome>} within the current direction, recovering the
@@ -177,8 +221,10 @@ final class MetronomeResolver {
      * Finalizes the current {@code <direction>} at {@code </direction>}. Builds a
      * {@link BeatChange} from the two-note metric-modulation form, else a
      * {@link Tempo} from the complete beat-unit form (a beat-unit and a
-     * per-minute); otherwise (e.g. a wedge direction) builds nothing. Always clears
-     * the per-direction accumulation so the next direction starts clean.
+     * per-minute); otherwise (e.g. a wedge direction) builds nothing. The first
+     * tempo of the first measure waits in {@link #takePendingSongTempo} instead of
+     * waiting for a note to bind to. Always clears the per-direction accumulation
+     * so the next direction starts clean.
      */
     void endDirection() {
         if (!metronomeNotes.isEmpty()) {
@@ -206,7 +252,21 @@ final class MetronomeResolver {
         }
 
         var description = words != null ? words : "";
-        pendingTempo = new Tempo(visibleTempo, duration, description, showTempo);
+        var tempo = new Tempo(visibleTempo, duration, description, showTempo);
+
+        // The first tempo direction of the first measure is the song's tempo, not
+        // a tempo change, so it binds to no note. The test is purely positional --
+        // "first tempo direction in measure 1" -- and deliberately says nothing
+        // about where within the measure it sits: the writer now emits it as the
+        // measure's first child, but files written before that change carry it
+        // immediately before the first <note>, and both must load the same way.
+        if (!songTempoTaken && measurePhase == MeasurePhase.IN_FIRST_MEASURE) {
+            songTempoTaken = true;
+            pendingSongTempo = tempo;
+        } else {
+            pendingTempo = tempo;
+        }
+
         resetAccumulation();
     }
 
@@ -252,6 +312,22 @@ final class MetronomeResolver {
 
         element.addAttachment(new TempoChangeAttachment(element, pendingTempo));
         pendingTempo = null;
+    }
+
+    /**
+     * Hands back the song's own tempo — the first tempo direction of the first measure —
+     * and clears it, so it is applied exactly once. Returns null when none is waiting.
+     *
+     * <p>This resolver writes nothing to the document, exactly like its {@code WedgeResolver}
+     * and {@code AnnotationResolver} siblings: it accumulates, and whoever holds the
+     * {@link songscribe.dom.Song} applies. That keeps it testable on its own and keeps the
+     * one thing here that belongs to no note from being a hidden side effect of parsing a
+     * {@code </direction>}.
+     */
+    @Nullable Tempo takePendingSongTempo() {
+        var songTempo = pendingSongTempo;
+        pendingSongTempo = null;
+        return songTempo;
     }
 
     /**

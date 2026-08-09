@@ -34,7 +34,6 @@ import songscribe.io.SongIO;
 import songscribe.message.SongData;
 import songscribe.message.Message;
 import songscribe.message.MessageCenter;
-import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.LayoutChange;
 import songscribe.message.mutation.LayoutField;
 import songscribe.message.mutation.LineDeletion;
@@ -139,9 +138,10 @@ public final class Song {
         defaultLineWidthProvider = provider;
     }
 
-    // The base tempo of the song; null means the song has no explicit tempo
-    @Nullable
-    private Tempo tempo;
+    // The base tempo of the song. Every song has one — Tempo's defaults until the user
+    // changes it — so this is never null. Whether the header mark depicting it is drawn is
+    // decided by the mark's computed content width, never by nullness.
+    private Tempo tempo = new Tempo();
 
     // The canonical attribution metadata record — single source of truth for all
     // 11 attribution fields (title, number, place, year, month, day, composer,
@@ -181,6 +181,10 @@ public final class Song {
 
     // Block element carrying the attribution pane geometry and user Y offset for stacking
     private final Attribution attributionElement = new Attribution();
+
+    // Stable identity for the song tempo mark drawn at line 0's staff header. Carries no
+    // tempo of its own — see SongTempoMark.
+    private final SongTempoMark tempoMarkElement = new SongTempoMark();
 
     // Rendering surface for the attribution block — owned here so layout and render
     // both share the same cached measurement without LineComponent holding state.
@@ -353,8 +357,11 @@ public final class Song {
             data.wordsDay()
         );
 
-        // Apply remaining scalar fields
-        tempo = data.tempo();
+        // Apply remaining scalar fields. A legacy .mssw file may carry no <tempo> element at
+        // all, so the nullable parsed value is coalesced at the boundary — the song itself
+        // always has a tempo.
+        var loadedTempo = data.tempo();
+        tempo = loadedTempo != null ? loadedTempo : new Tempo();
         applyUnderLyrics(data.underLyrics());
         applyBanglaLyrics(data.banglaLyrics());
         applyTranslatedLyrics(data.translatedLyrics());
@@ -374,15 +381,6 @@ public final class Song {
 
         for (var lineIndex = 0; lineIndex < loadedLines.size(); lineIndex++) {
             lines.add(getLine(loadedLines, lineIndex));
-        }
-
-        // Loading bypasses the addElement path that normally handles this. The mark goes on
-        // the anchor line — the first non-empty one — so a file with an empty leading line
-        // still renders its starting tempo.
-        var anchorLineIndex = firstNonEmptyLineIndex();
-
-        if (anchorLineIndex >= 0) {
-            lines.get(anchorLineIndex).attachInitialTempoIfNeeded();
         }
 
         hasBeenDynamicallyLaidOut = data.hasBeenDynamicallyLaidOut();
@@ -411,22 +409,8 @@ public final class Song {
 
     // ========== Getters (public, read-only API) ==========
 
-    @Nullable
     public Tempo getTempo() {
         return tempo;
-    }
-
-    /**
-     * Returns the song's tempo, or a default 120bpm crotchet tempo if none is set.
-     * Use this in playback and export contexts where a non-null tempo is required.
-     *
-     * <p>When no tempo is set, each call returns a <em>fresh, unattached</em>
-     * {@link Tempo}: the identity is not stable across calls, and mutating the
-     * returned instance silently discards the edit rather than changing the song.
-     * To modify the song's tempo, use {@link #setTempo} instead.
-     */
-    public Tempo getEffectiveTempo() {
-        return tempo != null ? tempo : new Tempo();
     }
 
     /**
@@ -455,13 +439,6 @@ public final class Song {
      */
     public BeatAt resolveBeatAt(int lineIndex, int elementIndex) {
         return tempoResolver.resolveBeatAt(lineIndex, elementIndex);
-    }
-
-    /**
-     * Returns true if any element anywhere in the song carries a tempo change.
-     */
-    public boolean hasAnyTempoChange() {
-        return tempoResolver.hasAnyTempoChange();
     }
 
     /** Returns the canonical attribution metadata record. */
@@ -624,6 +601,11 @@ public final class Song {
         return attributionElement;
     }
 
+    /** Returns the stable song tempo mark element drawn at the first line's staff header. */
+    public SongTempoMark getTempoMarkElement() {
+        return tempoMarkElement;
+    }
+
     /** Returns the attribution rendering surface owned by this Song. */
     public AttributionPane getAttributionPane() {
         return attributionPane;
@@ -716,82 +698,36 @@ public final class Song {
     // ========== Setters (mutate + setModified + post) ==========
 
     /**
-     * Sets the song's initial tempo, dropping any tuplet the new beat invalidates.
+     * Sets the song's tempo, dropping any tuplet the new beat invalidates. No-ops when
+     * {@code tempo} holds the same four values as the current one, in which case the song
+     * keeps the instance it already has.
+     *
+     * <p>The song stores a <em>copy</em> rather than the caller's instance, so the
+     * {@link MetadataChange} recorded here holds no reference to the live {@link Tempo} —
+     * see {@link #tempoDidChange} for why that matters.
      *
      * <p>Stays public because the undo replayer and the MusicXML header reader both
      * legitimately drive it from outside the editing UI. Bypassing it is still not possible:
      * the write itself is routed through {@link #withBeatDefiningEdit}, which no-ops its
      * validation during replay and during a suspended load.
      */
-    public void setTempo(@Nullable Tempo tempo) {
-        mutateMetadata(MetadataField.TEMPO, this.tempo, tempo,
-            () -> withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX, () -> this.tempo = tempo));
-    }
-
-    /**
-     * Clears the song-level initial tempo if {@code element} losing its tempo change
-     * would orphan it. The song-level tempo is mirrored onto the first element of the
-     * first non-empty line on every reload by {@code attachInitialTempoIfNeeded}, so it
-     * must be cleared when:
-     * <ul>
-     *   <li>{@code element} is the first element of the first non-empty line (the only
-     *       place the initial tempo is anchored), or</li>
-     *   <li>no per-note tempo changes remain anywhere — otherwise the song-level tempo
-     *       would be re-attached to the first element on the next reload.</li>
-     * </ul>
-     */
-    public void clearTempoIfOrphaned(StaffElement element) {
-        var line = element.getParentLine();
-
-        // An element in no line cannot be the initial tempo anchor, so it orphans nothing.
-        if (line == null) {
+    public void setTempo(Tempo tempo) {
+        if (Tempo.haveSameValue(this.tempo, tempo)) {
             return;
         }
 
-        if (line.isInitialTempoAnchor(line.getElementIndex(element)) || !hasAnyTempoChange()) {
-            setTempo(null);
-        }
-    }
-
-    /**
-     * Returns true if removing {@code element}'s tempo change would orphan a later tempo
-     * change. See {@link TempoResolver#removalWouldOrphanLaterTempoChange}.
-     */
-    public boolean wouldOrphanLaterTempoChange(StaffElement element) {
-        var line = element.getParentLine();
-
-        // An element in no line cannot orphan anything.
-        if (line == null) {
-            return false;
-        }
-
-        var lineIndex = indexOfLine(line);
-        var elementIndex = line.getElementIndex(element);
-
-        if (lineIndex < 0 || elementIndex < 0) {
-            return false;
-        }
-
-        return tempoResolver.removalWouldOrphanLaterTempoChange(lineIndex, elementIndex);
+        mutateMetadata(MetadataField.TEMPO, this.tempo, tempo,
+            () -> withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX,
+                () -> this.tempo = tempo.copy()));
     }
 
     /**
      * The index of the first line that has any element, or -1 when the song has no lines
-     * or every line is empty. This is the line the song's initial tempo is anchored on —
-     * a leading empty line is not the anchor line, so deleting every element of line 0
-     * moves the anchor down to the next line that still has elements.
+     * or every line is empty. A leading empty line is skipped, so deleting every element of
+     * line 0 moves the answer down to the next line that still has elements.
      */
     public int firstNonEmptyLineIndex() {
-        return firstNonEmptyLineIndex(0);
-    }
-
-    /**
-     * The index of the first line at or after {@code fromIndex} that has any element, or -1
-     * when every line from there on is empty. {@code fromIndex} past the last line is not an
-     * error — it simply has nothing to find.
-     */
-    public int firstNonEmptyLineIndex(int fromIndex) {
-        for (var lineIndex = fromIndex; lineIndex < lines.size(); lineIndex++) {
+        for (var lineIndex = 0; lineIndex < lines.size(); lineIndex++) {
             if (!lines.get(lineIndex).isEmpty()) {
                 return lineIndex;
             }
@@ -801,120 +737,15 @@ public final class Song {
     }
 
     /**
-     * The element the song's initial tempo is anchored on — the first element of the first
-     * non-empty line, per {@link Line#isInitialTempoAnchor} — or null when every line is
-     * empty or the song has no lines.
+     * The song's first element — element 0 of the first non-empty line — or null when every
+     * line is empty or the song has no lines. A pure query, with no bearing on where any
+     * tempo lives: the UI rule that forbids creating a tempo change on the song's first
+     * element is its only caller.
      */
-    public @Nullable StaffElement initialTempoAnchor() {
-        var anchorLine = initialTempoAnchorLine();
-
-        return anchorLine == null ? null : anchorLine.getElement(0);
-    }
-
-    /**
-     * The line the song's initial tempo is anchored on — the first non-empty line — or null
-     * when every line is empty or the song has no lines. Its element 0 is
-     * {@link #initialTempoAnchor}.
-     */
-    @Nullable Line initialTempoAnchorLine() {
+    public @Nullable StaffElement firstElement() {
         var lineIndex = firstNonEmptyLineIndex();
 
-        return lineIndex < 0 ? null : lines.get(lineIndex);
-    }
-
-    /**
-     * Moves a displaced {@link TempoChangeAttachment} onto the first element of
-     * {@code newAnchorLine} — the removal side of the starting-tempo transfer, shared by
-     * {@link Line#removeElement}, {@link Line#removeRange} and {@link #removeLine}. Call
-     * <em>after</em> the removal, once the new anchor line has actually reached the front of
-     * the song. Its counterpart on the insertion side is
-     * {@link #transferInitialTempoToIncomingElement}.
-     *
-     * <p>The starting tempo describes the song, not the note it happened to sit on, so it
-     * must follow whichever element leads the song. Both directions defer to
-     * {@link #targetAcceptsInitialTempo} in a collision.
-     *
-     * <p>The attach is routed through the anchor line's {@link Line#modifyElement} so undo
-     * sees the field change: unlike the insertion side, the target is already in the
-     * document, so no other record will capture the attachment.
-     *
-     * <p>Deliberately not routed through {@link #withBeatDefiningEdit}, in either direction:
-     * this is the one beat-defining write that cannot change the beat anywhere. The tempo
-     * leaves the song's first element and lands back on the song's first element carrying the
-     * same {@link Tempo}, so {@code resolveBeatAt} returns the same beat for every position in
-     * the song and no tuplet can be invalidated. That holds across lines too — what matters is
-     * that the tempo stays at the head of the song, not which line the head happens to be on.
-     *
-     * <p>No-op when there is nothing to move or nowhere to move it to: removing the sole line
-     * of a song leaves no anchor at all.
-     */
-    void transferInitialTempoToAnchor(@Nullable TempoChangeAttachment displacedTempo,
-                                      @Nullable Line newAnchorLine) {
-        if (displacedTempo == null || newAnchorLine == null) {
-            return;
-        }
-
-        var newFirstElement = newAnchorLine.getElement(0);
-
-        if (!targetAcceptsInitialTempo(newFirstElement)) {
-            return;
-        }
-
-        newAnchorLine.modifyElement(0, ElementField.TEMPO_CHANGE,
-            () -> newFirstElement.addAttachment(displacedTempo.copy(newFirstElement)));
-    }
-
-    /**
-     * Moves a displaced {@link TempoChangeAttachment} onto {@code incomingElement}, an element
-     * an insertion in progress is about to make the song's first — the insertion side of the
-     * rule {@link #transferInitialTempoToAnchor} documents, and the only caller is
-     * {@link Line#addElement(int, StaffElement)}. Call <em>before</em> the element goes in.
-     *
-     * <p>The attach is plain rather than routed through {@link Line#modifyElement}: the
-     * element is not in the document yet, so it needs no record of its own — the
-     * {@code ElementInsertion} the caller is about to record captures the element with the
-     * attachment already on it.
-     */
-    void transferInitialTempoToIncomingElement(@Nullable TempoChangeAttachment displacedTempo,
-                                               StaffElement incomingElement) {
-        if (displacedTempo == null || !targetAcceptsInitialTempo(incomingElement)) {
-            return;
-        }
-
-        incomingElement.addAttachment(displacedTempo.copy(incomingElement));
-    }
-
-    /**
-     * Whether a displaced starting tempo may land on {@code target}. The DOM's default in
-     * every collision is that the target wins: a tempo change already there is the song's
-     * tempo in its own right, so the displaced one is simply dropped. The DOM never asks the
-     * user anything — it has to produce some answer synchronously, so it picks the
-     * conservative one and the UI layers a prompt on top of it.
-     */
-    private static boolean targetAcceptsInitialTempo(StaffElement target) {
-        return target.findAttachment(TempoChangeAttachment.class) == null;
-    }
-
-    /**
-     * Mirrors the anchor element's {@link TempoChangeAttachment} onto {@link #getTempo},
-     * the anchor→song direction of the two mirrored representations of the starting tempo.
-     * Clears the song tempo when there is no anchor or the anchor carries no tempo change.
-     *
-     * <p>The value comparison is required, not an optimization: a transferred attachment
-     * holds a fresh {@link Tempo} copy, and {@link #setTempo} compares by identity, so
-     * without it an unchanged tempo would record a spurious mutation into the undo step and
-     * run a beat-defining edit that can drop tuplets and warn the user for no reason.
-     */
-    public void syncTempoFromAnchor() {
-        var anchor = initialTempoAnchor();
-        var attachment = anchor == null ? null : anchor.findAttachment(TempoChangeAttachment.class);
-        var anchorTempo = attachment == null ? null : attachment.getTempo();
-
-        if (Tempo.haveSameValue(tempo, anchorTempo)) {
-            return;
-        }
-
-        setTempo(anchorTempo);
+        return lineIndex < 0 ? null : lines.get(lineIndex).getElement(0);
     }
 
     /**
@@ -1025,6 +856,11 @@ public final class Song {
      * Early-returns if {@code current} and {@code newValue} are equal; otherwise
      * opens a bracket and emits a {@link MetadataChange} recording the change.
      * Autoboxing applies for primitive callers.
+     *
+     * <p>For {@link MetadataField#TEMPO} the {@code Objects.equals} guard is an
+     * <em>identity</em> comparison: {@link Tempo} deliberately declares no
+     * {@code equals}/{@code hashCode} because it is mutated in place. TEMPO's value guard
+     * therefore lives upstream, in {@link #setTempo}.
      */
     private void mutateMetadata(
         MetadataField field, @Nullable Object current, @Nullable Object newValue, Runnable apply
@@ -1153,10 +989,6 @@ public final class Song {
      * {@link #removeSpansBetweenNonAdjacentLines} does that. It is skipped while replaying:
      * undo and redo replay the recorded span mutations themselves.
      *
-     * <p>When the removed line was the one the song's initial tempo was anchored on, that
-     * tempo follows the song's new first element via {@link #transferInitialTempoToAnchor} —
-     * a later tempo change that survived would otherwise instruct a change from nothing.
-     *
      * <pre>
      *  withModification {
      *    withAutoMaintenance {
@@ -1164,9 +996,6 @@ public final class Song {
      *
      *      for each span the removed line shared with a surviving line
      *        applyChange(&lt;typed span removal&gt; …)
-     *
-     *      if (removed line held the song's initial tempo)
-     *        transferInitialTempoToAnchor(displaced, the song's new first line)
      *
      *      if (removed line was the last line) {
      *        if (lines is now empty) {
@@ -1190,10 +1019,6 @@ public final class Song {
         var deletedLine = lines.get(index);
         var wasLast = index == lines.size() - 1;
 
-        // Read while the anchor is still in place — removing the line takes the whole line
-        // with it, so the removal starts at its element 0.
-        var displacedTempo = deletedLine.initialTempoBeingRemoved(0);
-
         withModification(() -> modifications.withAutoMaintenance(() -> {
             applyChange(
                 new LineDeletion(index, deletedLine),
@@ -1205,14 +1030,6 @@ public final class Song {
             if (!isReplaying()) {
                 removeSpansBetweenNonAdjacentLines(deletedLine);
             }
-
-            // Emitted after the primary deletion, since the new first element only becomes
-            // the anchor once the line holding the old one is gone. Reverse-order undo
-            // therefore strips the moved tempo again before re-inserting that line. It also
-            // precedes the sole-line replacement below: a song whose only line just went
-            // away has no element to carry the tempo, and the empty replacement line is not
-            // one either.
-            transferInitialTempoToAnchor(displacedTempo, initialTempoAnchorLine());
 
             if (wasLast && !isMutationTrackingSuspended() && !isReplaying()) {
                 if (!lines.isEmpty()) {
@@ -1591,55 +1408,64 @@ public final class Song {
         setMetadata(update.getMetadata());
     }
 
+    /**
+     * Applies a tempo edit to the live {@link Tempo} in place, recording the before and
+     * after values for undo.
+     *
+     * <p>Both recorded values are detached copies, never the live instance. This handler
+     * mutates that instance rather than replacing it, so a record holding it would have its
+     * "after" value silently rewritten by the <em>next</em> tempo edit — and redoing this
+     * step would then replay the later edit's values instead of its own.
+     */
     @Handler
     public void tempoDidChange(TempoDidChangeNotification update) {
-        // Skip the clone+mutation when the update record carries no actual fields.
-        if (update.getTempoType() == null
-            && update.getVisibleTempo() == null
-            && update.getTempoDescription() == null
-            && update.getShowTempo() == null) {
+        // Capture in a local so the lambda below closes over the instance rather than
+        // re-reading a field the replayer may have reassigned.
+        var currentTempo = tempo;
+
+        // Decide on a copy. An update whose fields already hold their current values must
+        // not dirty the undo step or run a beat-defining edit — the settings dialog seeds
+        // its widgets from getTempo(), so confirming it unedited resends exactly what is
+        // already there.
+        var newTempo = currentTempo.copy();
+        applyTempoUpdate(update, newTempo);
+
+        if (Tempo.haveSameValue(currentTempo, newTempo)) {
             return;
         }
 
-        // If the song has no tempo yet, initialize one so the handler can mutate it.
-        if (tempo == null) {
-            tempo = new Tempo();
-        }
+        var oldTempo = currentTempo.copy();
 
-        // Capture in a local so the lambda can reference it without NullAway complaints
-        // (NullAway cannot track @Nullable field non-nullness across lambda boundaries).
-        var currentTempo = tempo;
-
-        // Clone the old tempo before mutating it in place so the mutation record
-        // carries a stable before-state (option (a) from the Phase 3a audit).
-        var oldTempo = new Tempo(
-            currentTempo.getVisibleTempo(),
-            currentTempo.getTempoType(),
-            currentTempo.getTempoDescription(),
-            currentTempo.shouldShowTempo()
-        );
+        // The update is applied a second time, to the live instance, on purpose. Assigning
+        // newTempo would replace the instance, and applying it before the bracket would put
+        // the write outside withBeatDefiningEdit, which must run the change itself in order
+        // to invalidate tuplets against the new beat.
         withModification(() -> applyChange(
-            new MetadataChange(MetadataField.TEMPO, oldTempo, currentTempo),
+            new MetadataChange(MetadataField.TEMPO, oldTempo, newTempo),
             // The tempo type is the song's beat, so this in-place update is a
             // beat-defining write even though only a field of an existing Tempo changes.
-            () -> withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX, () -> {
-                if (update.getTempoType() != null) {
-                    currentTempo.setTempoType(update.getTempoType());
-                }
-
-                if (update.getVisibleTempo() != null) {
-                    currentTempo.setVisibleTempo(update.getVisibleTempo());
-                }
-
-                if (update.getTempoDescription() != null) {
-                    currentTempo.setTempoDescription(update.getTempoDescription());
-                }
-
-                if (update.getShowTempo() != null) {
-                    currentTempo.setShowTempo(update.getShowTempo());
-                }
-            })
+            () -> withBeatDefiningEdit(FIRST_LINE_INDEX, FIRST_ELEMENT_INDEX,
+                () -> applyTempoUpdate(update, currentTempo))
         ));
+    }
+
+    /** Copies {@code update}'s non-null fields onto {@code target}, leaving the rest alone. */
+    private static void applyTempoUpdate(TempoDidChangeNotification update, Tempo target) {
+        if (update.getTempoType() != null) {
+            target.setTempoType(update.getTempoType());
+        }
+
+        if (update.getVisibleTempo() != null) {
+            target.setVisibleTempo(update.getVisibleTempo());
+        }
+
+        if (update.getTempoDescription() != null) {
+            target.setTempoDescription(update.getTempoDescription());
+        }
+
+        if (update.getShowTempo() != null) {
+            target.setShowTempo(update.getShowTempo());
+        }
     }
 
     @Handler

@@ -113,6 +113,7 @@ class AttributionTest extends UnitTest {
             builder,
             100.0,
             mock(DocumentFontsHolder.class),
+            null,
             attribution);
 
         assertThat(builder.getDecorationLayout(attribution))
@@ -228,6 +229,7 @@ class AttributionTest extends UnitTest {
                 builder,
                 staffRightSs,
                 mock(DocumentFontsHolder.class),
+                null,
                 attribution);
 
             assertThat(builder.getDecorationLayout(attribution))
