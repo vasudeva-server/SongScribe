@@ -28,7 +28,6 @@ import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
@@ -38,6 +37,7 @@ import songscribe.util.UIUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * Unit tests for {@link TempoChangeDialog}: populateControls null/existing,
@@ -91,7 +91,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testPopulateControlsExistingForwardsTempoToSection() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var tempo = new Tempo(96, Duration.QUAVER, "Allegretto", false);
         var attachment = new TempoChangeAttachment(element, tempo);
 
@@ -116,7 +116,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeBuildsTempoCombiningShowFlagInversion() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
 
         // Configure section: 80 BPM, MINIM, "Largo", showOnlyDescription=false → showTempo=true
         dialog.tempoSection.setTempo(new Tempo(80, Duration.MINIM, "Largo", true));
@@ -145,7 +145,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeShowTempoFalseWhenShowOnlyDescriptionTrue() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
 
         // shouldShowTempo=false → section's showOnlyDescription=true → showTempo=false
         dialog.tempoSection.setTempo(new Tempo(100, Duration.CROTCHET, "Andante", false));
@@ -162,7 +162,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeUpdatesExistingAttachmentInPlace() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var original = new TempoChangeAttachment(element, new Tempo(60, Duration.CROTCHET, "Largo", true));
         element.addAttachment(original);
 
@@ -184,7 +184,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeAddsNewAttachmentWhenNoneExists() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
 
         dialog.tempoSection.setTempo(new Tempo());
         dialog.applyChange(element);
@@ -205,7 +205,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         // A real Line with its backing Song mock is needed so element.getParentLine() works.
         var song = minimalSongMock();
         var line = new Line(song);
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         line.addElement(element);
 
         var attachment = new TempoChangeAttachment(element, new Tempo(80, Duration.CROTCHET, "Largo", true));
@@ -225,7 +225,7 @@ class TempoChangeDialogTest extends MainFrameMockTest {
         // through, and asking for one anyway would throw.
         var song = minimalSongMock();
         var line = new Line(song);
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         line.addElement(element);
 
         var attachment = new TempoChangeAttachment(element, new Tempo(80, Duration.CROTCHET, "Largo", true));

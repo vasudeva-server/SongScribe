@@ -28,7 +28,6 @@ import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Duration;
 import songscribe.dom.DynamicAttachment;
-import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
@@ -36,6 +35,7 @@ import songscribe.dom.TempoChangeAttachment;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.verify;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * Unit tests for {@link AttachmentEditor#edit}: pins the attachment-kind → dialog mapping and
@@ -48,7 +48,7 @@ class AttachmentEditorTest extends MainFrameMockTest {
 
     @Test
     void testAnnotationAttachmentOpensAnnotationDialogBoundToOwner() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = detachedLine();
         line.addElement(element);
         var attachment = new AnnotationAttachment(element, new Annotation("Fine"));
@@ -66,7 +66,7 @@ class AttachmentEditorTest extends MainFrameMockTest {
 
     @Test
     void testBeatChangeAttachmentOpensBeatChangeDialogBoundToOwner() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = detachedLine();
         line.addElement(element);
         var attachment = new BeatChangeAttachment(element, new BeatChange(Duration.CROTCHET, Duration.MINIM));
@@ -84,7 +84,7 @@ class AttachmentEditorTest extends MainFrameMockTest {
 
     @Test
     void testTempoChangeAttachmentOpensTempoChangeDialogBoundToOwner() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = detachedLine();
         line.addElement(element);
         var attachment = new TempoChangeAttachment(element, new Tempo());
@@ -104,7 +104,7 @@ class AttachmentEditorTest extends MainFrameMockTest {
 
     @Test
     void testAFermataHasNoDialogSoNothingOpens() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = detachedLine();
         line.addElement(element);
         var attachment = new FermataAttachment(element);
@@ -123,7 +123,7 @@ class AttachmentEditorTest extends MainFrameMockTest {
 
     @Test
     void testADynamicHasNoDialogSoNothingOpens() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = detachedLine();
         line.addElement(element);
         var attachment = new DynamicAttachment(element, DynamicAttachment.DynamicType.FORTE);
@@ -157,7 +157,7 @@ class AttachmentEditorTest extends MainFrameMockTest {
 
     @Test
     void testOwnerNotInLineOpensNoDialogAvoidingNegativeIndexModifyElement() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         // element is owned by the attachment but never added to the line passed to edit(), so
         // line.getElementIndex(element) answers −1.
         var line = detachedLine();

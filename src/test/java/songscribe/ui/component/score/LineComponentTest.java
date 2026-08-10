@@ -32,6 +32,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.awt.Dimension;
 import java.awt.Font;
@@ -52,7 +53,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
@@ -158,7 +158,7 @@ class LineComponentTest extends UnitTest {
 
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < noteCount; i++) {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 note.setStaffPosition(staffPosition);
                 line.addElement(note);
             }
@@ -938,7 +938,7 @@ class LineComponentTest extends UnitTest {
             // bail before reaching the paste guard these tests are about.
             var song = new Song();
             var line = song.getLine(0);
-            song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+            song.withoutMutationTracking(() -> line.addElement(crotchet()));
             lc.song = song;
             lc.setLine(line, 0);
 
@@ -1136,7 +1136,7 @@ class LineComponentTest extends UnitTest {
 
             var song = new Song();
             line = song.getLine(0);
-            song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+            song.withoutMutationTracking(() -> line.addElement(crotchet()));
             lc.song = song;
             lc.setLine(line, 0);
             // Inject a clean layout so the heavyweight layout engine never runs. Its registry
@@ -1262,7 +1262,7 @@ class LineComponentTest extends UnitTest {
 
             var song = new Song();
             line = song.getLine(0);
-            element = ElementType.CROTCHET.newInstance();
+            element = crotchet();
             attachment = new TempoChangeAttachment(element, new Tempo());
             song.withoutMutationTracking(() -> {
                 line.addElement(element);
@@ -1486,7 +1486,7 @@ class LineComponentTest extends UnitTest {
 
             var song = new Song();
             line = song.getLine(0);
-            element = ElementType.CROTCHET.newInstance();
+            element = crotchet();
             song.withoutMutationTracking(() -> line.addElement(element));
             lc.song = song;
             lc.setLine(line, 0);
@@ -1610,7 +1610,7 @@ class LineComponentTest extends UnitTest {
 
             var song = new Song();
             var line = song.getLine(0);
-            element = ElementType.CROTCHET.newInstance();
+            element = crotchet();
             song.withoutMutationTracking(() -> line.addElement(element));
             lc.song = song;
             lc.setLine(line, 0);
@@ -1711,7 +1711,7 @@ class LineComponentTest extends UnitTest {
 
             var song = new Song();
             var line = song.getLine(0);
-            element = ElementType.CROTCHET.newInstance();
+            element = crotchet();
             song.withoutMutationTracking(() -> line.addElement(element));
             lc.song = song;
             lc.setLine(line, 0);

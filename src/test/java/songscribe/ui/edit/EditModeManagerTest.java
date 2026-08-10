@@ -58,6 +58,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 class EditModeManagerTest extends UnitTest {
 
@@ -193,7 +197,7 @@ class EditModeManagerTest extends UnitTest {
          */
         private ActionReflector reflectorManaging(UIAction... actions) {
             var coordinator = ReflectionTestHelper.createCoordinator(
-                List.of(ElementType.CROTCHET.newInstance()),
+                List.of(crotchet()),
                 List.of(),
                 List.of(actions)
             );
@@ -243,7 +247,7 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testSetsDotCountFromDotActionGroup() {
             Actions.DOT_ACTION_GROUP.setSelected(Actions.DOT_ACTION, true);
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             EditModeManager.decorateElement(element);
             // SINGLE dot: ordinal() = 0, +1 = 1
             assertThat(element.getDotCount()).isEqualTo(1);
@@ -252,7 +256,7 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testSetsZeroDotCountWhenDotGroupUnselected() {
             Actions.DOT_ACTION_GROUP.clearSelection();
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             EditModeManager.decorateElement(element);
             assertThat(element.getDotCount()).isEqualTo(0);
         }
@@ -262,7 +266,7 @@ class EditModeManagerTest extends UnitTest {
             // Rests must not receive accidental or articulation decorations.
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
             Actions.ACCENT_ACTION.setSelected(true);
-            var rest = ElementType.CROTCHET_REST.newInstance();
+            var rest = crotchetRest();
             EditModeManager.decorateElement(rest);
             assertThat(rest.getAccidental()).isNull();
             assertThat(rest.getArticulations()).isEmpty();
@@ -276,7 +280,7 @@ class EditModeManagerTest extends UnitTest {
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
             Actions.ACCENT_ACTION.setSelected(true);
             Actions.STACCATO_ACTION.setSelected(true);
-            var barline = ElementType.SINGLE_BARLINE.newInstance();
+            var barline = singleBarline();
             EditModeManager.decorateElement(barline);
             assertThat(barline.getDotCount()).isEqualTo(0);
             assertThat(barline.getAccidental()).isNull();
@@ -286,7 +290,7 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testSetsAccidentalFromAccidentalActionGroup() {
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             EditModeManager.decorateElement(element);
             assertThat(element.getAccidental()).isEqualTo(Actions.SHARP_ACTION.getAccidental());
         }
@@ -294,7 +298,7 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testClearsAccidentalWhenAccidentalGroupUnselected() {
             Actions.ACCIDENTAL_ACTION_GROUP.clearSelection();
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             element.setAccidental(StaffElement.Accidental.SHARP);
             EditModeManager.decorateElement(element);
             assertThat(element.getAccidental()).isNull();
@@ -304,7 +308,7 @@ class EditModeManagerTest extends UnitTest {
         void testSetsAccidentalInParenthesesWhenActionSelected() {
             Actions.ACCIDENTAL_ACTION_GROUP.setSelected(Actions.SHARP_ACTION, true);
             Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             EditModeManager.decorateElement(element);
             assertThat(element.isAccidentalInParentheses()).isTrue();
         }
@@ -312,7 +316,7 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testAddsStaccatoArticulationWhenStaccatoActionSelected() {
             Actions.STACCATO_ACTION.setSelected(true);
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             EditModeManager.decorateElement(element);
             var articulations = element.getArticulations();
             assertThat(articulations).hasSize(1);
@@ -328,7 +332,7 @@ class EditModeManagerTest extends UnitTest {
         void testAddsBothArticulationsWhenAccentAndStaccatoSelected() {
             Actions.ACCENT_ACTION.setSelected(true);
             Actions.STACCATO_ACTION.setSelected(true);
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             EditModeManager.decorateElement(element);
             assertThat(element.getArticulations())
                 .extracting(Articulation::getType)
@@ -338,7 +342,7 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testAddsAccentArticulationWhenAccentActionSelected() {
             Actions.ACCENT_ACTION.setSelected(true);
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             EditModeManager.decorateElement(element);
             var articulations = element.getArticulations();
             assertThat(articulations).hasSize(1);
@@ -361,7 +365,7 @@ class EditModeManagerTest extends UnitTest {
 
             Actions.clearNoteDecorations();
 
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             EditModeManager.decorateElement(element);
 
             assertThat(element.getDotCount()).isEqualTo(0);
@@ -393,7 +397,7 @@ class EditModeManagerTest extends UnitTest {
 
         @Test
         void testReturnsFalseForNonRepeatPreviewElement() {
-            EditModeManager.setPreviewElement(ElementType.CROTCHET.newInstance());
+            EditModeManager.setPreviewElement(crotchet());
             var line = lineWith(ElementType.CROTCHET);
             var result = EditModeManager.elementWasModified(line, 0);
             assertThat(result).isFalse();
@@ -406,7 +410,7 @@ class EditModeManagerTest extends UnitTest {
             // whether element at (elementIndex - 1) is REPEAT_RIGHT and, if so, replaces
             // it with REPEAT_LEFT_RIGHT.
             var line = lineWith(ElementType.REPEAT_RIGHT);
-            EditModeManager.setPreviewElement(ElementType.REPEAT_LEFT.newInstance());
+            EditModeManager.setPreviewElement(repeatLeft());
             // elementIndex=1 means the new element would go at index 1; element at 0 is REPEAT_RIGHT.
             var result = EditModeManager.elementWasModified(line, 1);
             assertThat(result).isTrue();
@@ -420,7 +424,7 @@ class EditModeManagerTest extends UnitTest {
             // inserted at index 0 (before the REPEAT_LEFT). elementWasModified() checks
             // whether element at elementIndex is REPEAT_LEFT and, if so, replaces it.
             var line = lineWith(ElementType.REPEAT_LEFT);
-            EditModeManager.setPreviewElement(ElementType.REPEAT_RIGHT.newInstance());
+            EditModeManager.setPreviewElement(repeatRight());
             // elementIndex=0: element at index 0 is REPEAT_LEFT → coalesce.
             var result = EditModeManager.elementWasModified(line, 0);
             assertThat(result).isTrue();
@@ -432,7 +436,7 @@ class EditModeManagerTest extends UnitTest {
         void testRepeatLeftNotAdjacentToRepeatRightReturnsFalse() {
             // Inserting REPEAT_LEFT but the previous element is NOT REPEAT_RIGHT.
             var line = lineWith(ElementType.CROTCHET);
-            EditModeManager.setPreviewElement(ElementType.REPEAT_LEFT.newInstance());
+            EditModeManager.setPreviewElement(repeatLeft());
             var result = EditModeManager.elementWasModified(line, 1);
             assertThat(result).isFalse();
         }
@@ -441,7 +445,7 @@ class EditModeManagerTest extends UnitTest {
         void testRepeatRightNotAdjacentToRepeatLeftReturnsFalse() {
             // Inserting REPEAT_RIGHT but the element at index is NOT REPEAT_LEFT.
             var line = lineWith(ElementType.CROTCHET);
-            EditModeManager.setPreviewElement(ElementType.REPEAT_RIGHT.newInstance());
+            EditModeManager.setPreviewElement(repeatRight());
             var result = EditModeManager.elementWasModified(line, 0);
             assertThat(result).isFalse();
         }
@@ -477,7 +481,7 @@ class EditModeManagerTest extends UnitTest {
         void testTurnOffAccidentalInParensAfterInsert() {
             // Set up: ACCIDENTAL_IN_PARENS selected before the insert.
             Actions.ACCIDENTAL_IN_PARENS_ACTION.setSelected(true);
-            var previewElement = ElementType.CROTCHET.newInstance();
+            var previewElement = crotchet();
             EditModeManager.setPreviewElement(previewElement);
             var line = lineWith(ElementType.CROTCHET);
             // Index 0 is the inserted element.
@@ -490,7 +494,7 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testCallsScoreActionsCallbacksAfterInsert() {
             // Verify setPreviewElement, drawWidthIfWiderLine, and repaint are all called.
-            var previewElement = ElementType.CROTCHET.newInstance();
+            var previewElement = crotchet();
             EditModeManager.setPreviewElement(previewElement);
             var line = lineWith(ElementType.CROTCHET);
             EditModeManager.previewElementDidChange(line, 0);
@@ -527,7 +531,7 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testStartsPlayThreadWhenPlayInsertedNoteAndInsertedElementIsNote() {
             EditModeManager.setPlayInsertedNote(true);
-            EditModeManager.setPreviewElement(ElementType.CROTCHET.newInstance());
+            EditModeManager.setPreviewElement(crotchet());
             var line = lineWith(ElementType.CROTCHET);
             try (
                 var playThreadConstruction =
@@ -543,7 +547,7 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testDoesNotStartPlayThreadWhenPlayInsertedNoteFalse() {
             EditModeManager.setPlayInsertedNote(false);
-            EditModeManager.setPreviewElement(ElementType.CROTCHET.newInstance());
+            EditModeManager.setPreviewElement(crotchet());
             var line = lineWith(ElementType.CROTCHET);
             try (
                 var playThreadConstruction =
@@ -559,7 +563,7 @@ class EditModeManagerTest extends UnitTest {
         void testDoesNotStartPlayThreadWhenInsertedElementIsNotNote() {
             // A REST element's type.isNote() returns false → no PlayThread.
             EditModeManager.setPlayInsertedNote(true);
-            EditModeManager.setPreviewElement(ElementType.CROTCHET_REST.newInstance());
+            EditModeManager.setPreviewElement(crotchetRest());
             var line = lineWith(ElementType.CROTCHET_REST);
             try (
                 var playThreadConstruction =
@@ -598,7 +602,7 @@ class EditModeManagerTest extends UnitTest {
             );
             // Keep a real PlayThread out of these tests; see PreviewElementDidChange.setUp.
             EditModeManager.setPlayInsertedNote(false);
-            EditModeManager.setPreviewElement(ElementType.QUAVER.newInstance());
+            EditModeManager.setPreviewElement(quaver());
         }
 
         @Test
@@ -615,7 +619,7 @@ class EditModeManagerTest extends UnitTest {
          */
         @Test
         void testArmBecomesVisibleOnlyWhenTheOutermostBracketCommits() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
 
             song.withModification(() -> {
                 song.withModification(() -> {
@@ -643,7 +647,7 @@ class EditModeManagerTest extends UnitTest {
          */
         @Test
         void testAppendPathArmsTheAppendedElement() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
 
             song.withModification(() -> {
                 line.addElement(note);
@@ -659,11 +663,11 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testInsertPathArmsTheInsertedElement() {
             var insertIndex = 1;
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
 
             song.withoutMutationTracking(() -> {
-                line.addElement(ElementType.CROTCHET.newInstance());
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
+                line.addElement(crotchet());
             });
 
             song.withModification(() -> {
@@ -684,11 +688,11 @@ class EditModeManagerTest extends UnitTest {
         @Test
         void testReplacePathArmsThePostDecrementIndex() {
             var hostIndex = 1;
-            var replacement = ElementType.CROTCHET_REST.newInstance();
+            var replacement = crotchetRest();
 
             song.withoutMutationTracking(() -> {
-                line.addElement(ElementType.QUAVER.newInstance());
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(quaver());
+                line.addElement(crotchet());
             });
 
             song.withModification(() -> {
@@ -711,7 +715,7 @@ class EditModeManagerTest extends UnitTest {
         void testUnrelatedSongChangeClearsTheTarget() {
             placeNoteAtEnd();
 
-            song.withModification(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+            song.withModification(() -> line.addElement(crotchet()));
 
             assertThat(EditModeManager.getLastInsertion())
                 .as("a song change that was not a placement clears the target")
@@ -750,7 +754,7 @@ class EditModeManagerTest extends UnitTest {
             var secondLine = new Line(song);
             song.addLine(secondLine);
 
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
 
             song.withModification(() -> {
                 secondLine.addElement(note);
@@ -780,9 +784,9 @@ class EditModeManagerTest extends UnitTest {
         void testRepeatMergeBailoutArmsANonBeamableElement() {
             var mergeIndex = 0;
 
-            song.withoutMutationTracking(() -> line.addElement(ElementType.REPEAT_LEFT.newInstance()));
+            song.withoutMutationTracking(() -> line.addElement(repeatLeft()));
 
-            EditModeManager.setPreviewElement(ElementType.REPEAT_RIGHT.newInstance());
+            EditModeManager.setPreviewElement(repeatRight());
 
             song.withModification(() -> {
                 assertThat(EditModeManager.elementWasModified(line, mergeIndex))
@@ -811,14 +815,14 @@ class EditModeManagerTest extends UnitTest {
          */
         @Test
         void testUntrackedPlacementDoesNotArm() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
 
             song.withoutMutationTracking(() -> {
                 line.addElement(note);
                 EditModeManager.previewElementDidChange(line, indexOf(note));
             });
 
-            song.withModification(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+            song.withModification(() -> line.addElement(crotchet()));
 
             assertThat(EditModeManager.getLastInsertion())
                 .as("an untracked placement leaves nothing for a later edit to adopt")
@@ -834,7 +838,7 @@ class EditModeManagerTest extends UnitTest {
          */
         @Test
         void testCancelledUntrackedPlacementLeavesNoTargetBehind() {
-            var graceNote = ElementType.QUAVER.newInstance();
+            var graceNote = quaver();
 
             song.withoutMutationTracking(() -> {
                 line.addElement(graceNote);
@@ -843,7 +847,7 @@ class EditModeManagerTest extends UnitTest {
 
             song.withoutMutationTracking(() -> line.removeElement(indexOf(graceNote)));
 
-            song.withModification(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+            song.withModification(() -> line.addElement(crotchet()));
 
             assertThat(EditModeManager.getLastInsertion())
                 .as("the cancelled placement must not resurface as the next edit's target")
@@ -895,7 +899,7 @@ class EditModeManagerTest extends UnitTest {
 
         /** Places a quaver at the end of the line and commits, the way the append path does. */
         private void placeNoteAtEnd() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
 
             song.withModification(() -> {
                 line.addElement(note);

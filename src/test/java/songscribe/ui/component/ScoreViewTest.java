@@ -30,6 +30,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.awt.Dimension;
 import java.awt.Font;
@@ -59,7 +63,6 @@ import org.xml.sax.SAXException;
 
 import songscribe.RequiresDisplay;
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
@@ -579,9 +582,9 @@ class ScoreViewTest extends UnitTest {
         void testDrawWidthIfWiderLineRescalesXOffsetsProportionallyWhenEndExceedsThreshold() {
             var scoreView = scoreViewWithLineWidth(LINE_WIDTH_PX);
             var line = detachedLine();
-            var elem0 = ElementType.CROTCHET.newInstance();
-            var elem1 = ElementType.CROTCHET.newInstance();
-            var elem2 = ElementType.CROTCHET.newInstance();
+            var elem0 = crotchet();
+            var elem1 = crotchet();
+            var elem2 = crotchet();
             elem0.setXOffsetPx(FIRST_X);
             elem1.setXOffsetPx(MID_X);
             elem2.setXOffsetPx(END_X);
@@ -611,8 +614,8 @@ class ScoreViewTest extends UnitTest {
             // content width rather than the default column-gap formula.
             var scoreView = scoreViewWithLineWidth(LINE_WIDTH_PX);
             var line = detachedLine();
-            var elem0 = ElementType.CROTCHET.newInstance();
-            var elem1 = ElementType.CROTCHET.newInstance();
+            var elem0 = crotchet();
+            var elem1 = crotchet();
             elem0.setXOffsetPx(FIRST_X);
             elem1.setXOffsetPx(END_X);  // END_X > LINE_WIDTH_PX → exceeds threshold
             line.addElement(elem0);
@@ -633,9 +636,9 @@ class ScoreViewTest extends UnitTest {
         void testDrawWidthIfWiderLineDoesNotChangeXOffsetsWhenEndNoteIsWithinThreshold() {
             var scoreView = scoreViewWithLineWidth(LINE_WIDTH_PX);
             var line = detachedLine();
-            var elem0 = ElementType.CROTCHET.newInstance();
-            var elem1 = ElementType.CROTCHET.newInstance();
-            var elem2 = ElementType.CROTCHET.newInstance();
+            var elem0 = crotchet();
+            var elem1 = crotchet();
+            var elem2 = crotchet();
             elem0.setXOffsetPx(FIRST_X);
             elem1.setXOffsetPx(MID_X);
             elem2.setXOffsetPx(END_X_WITHIN_THRESHOLD);
@@ -657,7 +660,7 @@ class ScoreViewTest extends UnitTest {
             // an index-out-of-bounds on line.getElement(effectiveCount - 1).
             var scoreView = scoreViewWithLineWidth(LINE_WIDTH_PX);
             var line = detachedLine();
-            var singleElem = ElementType.CROTCHET.newInstance();
+            var singleElem = crotchet();
             singleElem.setXOffsetPx(END_X);  // far enough to exceed threshold if rescaling ran
             line.addElement(singleElem);
 
@@ -1100,14 +1103,14 @@ class ScoreViewTest extends UnitTest {
             line = song.getLine(0);
 
             song.withoutMutationTracking(() -> {
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
 
-                var grace = ElementType.GRACE_QUAVER.newInstance();
+                var grace = graceQuaver();
                 grace.setGlissando();
                 line.addElement(grace);
 
-                line.addElement(ElementType.CROTCHET.newInstance());
-                line.addElement(ElementType.CROTCHET_REST.newInstance());
+                line.addElement(crotchet());
+                line.addElement(crotchetRest());
             });
 
             scoreView.getSelectionCoordinator().registerLine(0, line);
@@ -1211,7 +1214,7 @@ class ScoreViewTest extends UnitTest {
             // Without this guard the editor would be asked to open on element -1.
             var barlineIndex = line.elementCount();
             line.getSong().withoutMutationTracking(
-                () -> line.addElement(ElementType.SINGLE_BARLINE.newInstance()));
+                () -> line.addElement(singleBarline()));
             selectSingle(barlineIndex);
 
             try (var lyricEditor = mockStatic(LyricEditor.class)) {
@@ -1303,8 +1306,8 @@ class ScoreViewTest extends UnitTest {
                 var song = new Song();
                 var anchorLine = song.getLine(ANCHOR_LINE);
                 var endLine = new Line(song);
-                var anchor = ElementType.CROTCHET.newInstance();
-                var end = ElementType.CROTCHET.newInstance();
+                var anchor = crotchet();
+                var end = crotchet();
                 var tie = new Tie(anchor, end);
 
                 song.withoutMutationTracking(() -> {

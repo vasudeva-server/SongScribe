@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
@@ -36,7 +37,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutResult;
@@ -105,7 +105,7 @@ class PreviewElementOverlayTest extends UnitTest {
         // Baseline: every gate condition satisfied, so the overlay would show.
         editModeManagerMock.when(EditModeManager::isPreviewElementVisible).thenReturn(true);
         editModeManagerMock.when(EditModeManager::getPreviewElement)
-            .thenReturn(ElementType.CROTCHET.newInstance());
+            .thenReturn(crotchet());
 
         PreviewElementManager.setCurrentPreviewLine(lc);
         PreviewElementManager.setCurrentXIndex(0);

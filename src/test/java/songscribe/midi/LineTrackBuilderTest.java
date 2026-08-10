@@ -51,6 +51,8 @@ import songscribe.ui.playback.PlaybackController;
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.dom.StaffElementFactory.crotchet;
 import static songscribe.midi.MidiSequenceBuilder.PPQ;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 @SuppressWarnings({ "OverlyBroadThrowsClause" })
 class LineTrackBuilderTest extends UnitTest {
@@ -157,7 +159,7 @@ class LineTrackBuilderTest extends UnitTest {
         ));
 
         if (appendTrailingCrotchet) {
-            var trailing = ElementType.CROTCHET.newInstance();
+            var trailing = crotchet();
             trailing.setStaffPosition(TEST_STAFF_POSITION);
             line.addElement(trailing);
         }
@@ -481,9 +483,9 @@ class LineTrackBuilderTest extends UnitTest {
 
         @Test
         void testGraceNoteEmitsNoNoteOn() throws Exception {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setGlissando();
-            var host = ElementType.CROTCHET.newInstance();
+            var host = crotchet();
             host.setStaffPosition(-2);
             var line = detachedLine();
             line.addElement(grace);
@@ -499,10 +501,10 @@ class LineTrackBuilderTest extends UnitTest {
 
         @Test
         void testGraceNoteStoresPitchForSlideIn() throws Exception {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setStaffPosition(1);
             grace.setGlissando();
-            var host = ElementType.CROTCHET.newInstance();
+            var host = crotchet();
             host.setStaffPosition(-2);
             var line = detachedLine();
             line.addElement(grace);
@@ -540,11 +542,11 @@ class LineTrackBuilderTest extends UnitTest {
         @Test
         void testTieAnchorEmitsNoteOnNoteTieEndDoesNot() throws Exception {
             var line = detachedLine();
-            var note0 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
             note0.setStaffPosition(-2);
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note1 = crotchet();
             note1.setStaffPosition(-2);
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note2 = crotchet();
             note2.setStaffPosition(-2);
             line.addElement(note0);
             line.addElement(note1);
@@ -567,9 +569,9 @@ class LineTrackBuilderTest extends UnitTest {
         @Test
         void testTieEndEmitsNoteOffAnchorDoesNot() throws Exception {
             var line = detachedLine();
-            var note0 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
             note0.setStaffPosition(-2);
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note1 = crotchet();
             note1.setStaffPosition(-2);
             line.addElement(note0);
             line.addElement(note1);
@@ -590,10 +592,10 @@ class LineTrackBuilderTest extends UnitTest {
         void testNonPitchedNextElementFallsBackToNormalNoteOff() throws Exception {
             // A note with CONNECTED glissando followed by a rest must use normal note-off
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(-2);
             note.setGlissando();
-            var rest = ElementType.CROTCHET_REST.newInstance();
+            var rest = crotchetRest();
             line.addElement(note);
             line.addElement(rest);
 
@@ -621,10 +623,10 @@ class LineTrackBuilderTest extends UnitTest {
         void testConnectedNoteOffAtDurationMinusOne() throws Exception {
             // CONNECTED glissando: note-off must be at duration − 1 to avoid pitch-reset race
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(-2);
             note.setGlissando();
-            var nextNote = ElementType.CROTCHET.newInstance();
+            var nextNote = crotchet();
             nextNote.setStaffPosition(-4);
             line.addElement(note);
             line.addElement(nextNote);
@@ -644,7 +646,7 @@ class LineTrackBuilderTest extends UnitTest {
         void testConnectedFallbackWhenLastElement() throws Exception {
             // CONNECTED with no next element → normal note-off, no pitch bend
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(-2);
             note.setGlissando();
             line.addElement(note);
@@ -664,11 +666,11 @@ class LineTrackBuilderTest extends UnitTest {
         void testConnectedFallbackWhenNextIsRest() throws Exception {
             // CONNECTED with rest as next element → normal note-off, no pitch bend
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(-2);
             note.setGlissando();
             line.addElement(note);
-            line.addElement(ElementType.CROTCHET_REST.newInstance());
+            line.addElement(crotchetRest());
 
             var track = buildTrack(line, new Tempo());
             var bendEvents = eventsByCommand(track, ShortMessage.PITCH_BEND);
@@ -684,7 +686,7 @@ class LineTrackBuilderTest extends UnitTest {
         @Test
         void testSlideOutEmitsExpressionCcEvents() throws Exception {
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(-2);
             note.setFall();
             line.addElement(note);
@@ -717,7 +719,7 @@ class LineTrackBuilderTest extends UnitTest {
         void testSlideOutShortenedByStaccato() throws Exception {
             // With staccato (33% duration) the note-off must be earlier than full duration
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(-2);
             note.setFall();
             note.addArticulation(new Articulation(ArticulationType.STACCATO));
@@ -728,7 +730,7 @@ class LineTrackBuilderTest extends UnitTest {
 
             // Without staccato for comparison
             var lineNormal = detachedLine();
-            var noteNormal = ElementType.CROTCHET.newInstance();
+            var noteNormal = crotchet();
             noteNormal.setStaffPosition(-2);
             noteNormal.setFall();
             lineNormal.addElement(noteNormal);
@@ -752,10 +754,10 @@ class LineTrackBuilderTest extends UnitTest {
 
         @Test
         void testNoteOnVelocityIsReducedByGraceRatio() throws Exception {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setStaffPosition(1);
             grace.setGlissando();
-            var host = ElementType.CROTCHET.newInstance();
+            var host = crotchet();
             host.setStaffPosition(-2);
             var line = detachedLine();
             line.addElement(grace);
@@ -776,10 +778,10 @@ class LineTrackBuilderTest extends UnitTest {
 
         @Test
         void testPitchBendResetAtEndOfSlide() throws Exception {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setStaffPosition(1);
             grace.setGlissando();
-            var host = ElementType.CROTCHET.newInstance();
+            var host = crotchet();
             host.setStaffPosition(-2);
             var line = detachedLine();
             line.addElement(grace);
@@ -804,10 +806,10 @@ class LineTrackBuilderTest extends UnitTest {
 
         @Test
         void testExpressionResetAtEndOfSlide() throws Exception {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setStaffPosition(1);
             grace.setGlissando();
-            var host = ElementType.CROTCHET.newInstance();
+            var host = crotchet();
             host.setStaffPosition(-2);
             var line = detachedLine();
             line.addElement(grace);
@@ -841,7 +843,7 @@ class LineTrackBuilderTest extends UnitTest {
         @Test
         void testTempoChangeElementEmitsSetTempoMetaEvent() throws Exception {
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(-2);
             var fastTempo = new Tempo(180, Duration.CROTCHET, "Fast", true);
             note.addAttachment(new TempoChangeAttachment(fastTempo));
@@ -880,7 +882,7 @@ class LineTrackBuilderTest extends UnitTest {
         void testOverload3FlushesGlissandoPendingResets() throws Exception {
             // A SLIDE_OUT note leaves pending resets. Overload[3] must flush them.
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(-2);
             note.setFall();
             line.addElement(note);
@@ -909,7 +911,7 @@ class LineTrackBuilderTest extends UnitTest {
         void testOverload4DoesNotFlushGlissandoPendingResets() throws Exception {
             // Overload[4] takes an external GlissandoMidiHelper; flushing is the caller's job.
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(-2);
             note.setFall();
             line.addElement(note);

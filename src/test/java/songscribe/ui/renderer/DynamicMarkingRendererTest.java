@@ -27,6 +27,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 
@@ -36,7 +37,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.DynamicAttachment;
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
@@ -62,7 +62,7 @@ class DynamicMarkingRendererTest extends UnitTest {
      */
     private static Color renderedGlyphColor(boolean selected) {
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
 
         var attachment = new DynamicAttachment(DynamicAttachment.DynamicType.FORTE);

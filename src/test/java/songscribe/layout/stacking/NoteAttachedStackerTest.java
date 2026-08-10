@@ -24,6 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
 
 import java.util.List;
 
@@ -34,7 +36,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
-import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
@@ -198,7 +199,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
         @Test
         void testLowestNoteBotSsIsSetToNoteheadCenterPlusRadius() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(LEDGER_LINE_BELOW_SP);
 
             var context = contextWith(List.of(mockColumnAt(note, START_NOTE_X_SS)));
@@ -729,7 +730,7 @@ class NoteAttachedStackerTest extends UnitTest {
 
         var lineWithRest = detachedLine();
         lineWithRest.addElement(anchorNote);
-        lineWithRest.addElement(ElementType.CROTCHET_REST.newInstance());
+        lineWithRest.addElement(crotchetRest());
         lineWithRest.addElement(endNote);
         var trillWithRest = new Trill(anchorNote, endNote);
         lineWithRest.addSpan(trillWithRest);
@@ -1096,14 +1097,14 @@ class NoteAttachedStackerTest extends UnitTest {
     }
 
     private static StaffElement stemUpNote(int staffPosSp) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(staffPosSp);
         note.setUpper(true);
         return note;
     }
 
     private static StaffElement stemDownNote(int staffPosSp) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(staffPosSp);
         note.setUpper(false);
         return note;

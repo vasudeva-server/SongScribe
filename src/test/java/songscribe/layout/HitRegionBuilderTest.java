@@ -22,6 +22,10 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.awt.Font;
 import java.awt.geom.Point2D;
@@ -158,9 +162,9 @@ class HitRegionBuilderTest extends UnitTest {
         song.setLineWidthSs(UNCONSTRAINED_LINE_WIDTH_SS);
         var line = song.getLine(0);
 
-        var anchorBarline = ElementType.SINGLE_BARLINE.newInstance();
-        var split = ElementType.REPEAT_RIGHT.newInstance();
-        var endBarline = ElementType.SINGLE_BARLINE.newInstance();
+        var anchorBarline = singleBarline();
+        var split = repeatRight();
+        var endBarline = singleBarline();
         sourceNote = noteAt(SOURCE_SP);
         var targetNote = noteAt(TARGET_SP);
         var thirdNote = noteAt(SOURCE_SP);
@@ -246,7 +250,7 @@ class HitRegionBuilderTest extends UnitTest {
     }
 
     private static StaffElement noteAt(int staffPosition, boolean upper) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setUpper(upper);
         note.setStaffPosition(staffPosition);
         return note;
@@ -254,7 +258,7 @@ class HitRegionBuilderTest extends UnitTest {
 
     /** A stem-up quaver at the given staff position — beamable, unlike {@link #noteAt}. */
     private static StaffElement quaverAt(int staffPosition) {
-        var note = ElementType.QUAVER.newInstance();
+        var note = quaver();
         note.setUpper(true);
         note.setStaffPosition(staffPosition);
         return note;

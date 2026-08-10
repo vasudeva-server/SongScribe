@@ -27,6 +27,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.List;
 
@@ -79,7 +82,7 @@ class SlideRendererTest extends UnitTest {
         var source = sourceType.newInstance();
         source.setUpper(true);
         source.setGlissando();
-        var target = ElementType.CROTCHET.newInstance();
+        var target = crotchet();
         target.setUpper(true);
 
         if (targetHasAccidental) {
@@ -151,13 +154,13 @@ class SlideRendererTest extends UnitTest {
     private static Line makeTwoNoteLineWithGlissando(
         int staffPos1, StaffElement.@Nullable Accidental acc1,
         int staffPos2, StaffElement.@Nullable Accidental acc2) {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setUpper(true);
         note1.setStaffPosition(staffPos1);
         note1.setAccidental(acc1);
         note1.setGlissando();
 
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setUpper(true);
         note2.setStaffPosition(staffPos2);
         note2.setAccidental(acc2);
@@ -242,7 +245,7 @@ class SlideRendererTest extends UnitTest {
 
     @Test
     void testDetermineSlideColor_slideSelected_returnsSelectionColor() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setGlissando();
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isSelected(new HitTarget.Slide(note), 0)).thenReturn(true);
@@ -257,9 +260,9 @@ class SlideRendererTest extends UnitTest {
 
     @Test
     void testDetermineSlideColor_anotherSlideSelected_returnsBlack() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setGlissando();
-        var other = ElementType.CROTCHET.newInstance();
+        var other = crotchet();
         other.setGlissando();
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isSelected(new HitTarget.Slide(other), 0)).thenReturn(true);
@@ -274,7 +277,7 @@ class SlideRendererTest extends UnitTest {
 
     @Test
     void testDetermineSlideColor_noSelectionProvider_returnsBlack() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setGlissando();
         var invariants = baseBuilder()
             .setSelectionProvider(null)
@@ -289,7 +292,7 @@ class SlideRendererTest extends UnitTest {
     void testDetermineSlideColor_playingNote_returnsPlayingColor() {
         // getElementColor returns non-BLACK for the playing note → early return
         // before the slide's own selection is consulted
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setGlissando();
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
         when(selectionProvider.isSelected(new HitTarget.Slide(note), 0)).thenReturn(true);
@@ -310,7 +313,7 @@ class SlideRendererTest extends UnitTest {
 
     /** A two-element line: the first note carries {@code slide}, the second is its neighbour. */
     private Line slidePairLine(StaffElement owner) {
-        var neighbour = ElementType.CROTCHET.newInstance();
+        var neighbour = crotchet();
         neighbour.setStaffPosition(2);
         var line = detachedLine();
         line.addElement(owner);
@@ -323,7 +326,7 @@ class SlideRendererTest extends UnitTest {
         // The glissando is drawn from note 0; selecting note 1 — the note it lands on — must
         // color it, exactly as selecting note 0 does. Without this the user selects one end of
         // a glissando and the line stays black.
-        var source = ElementType.CROTCHET.newInstance();
+        var source = crotchet();
         source.setGlissando();
         var builder = baseBuilder();
         RenderContextTestHelper.enableSelection(builder, slidePairLine(source), 1);
@@ -337,7 +340,7 @@ class SlideRendererTest extends UnitTest {
     void testDetermineSlideColor_fallDoesNotInheritFollowingNoteSelection() {
         // A fall is a standalone trailing glyph with no target note, so the element after its
         // host is an unrelated neighbour and must not color it.
-        var host = ElementType.CROTCHET.newInstance();
+        var host = crotchet();
         host.setFall();
         var builder = baseBuilder();
         RenderContextTestHelper.enableSelection(builder, slidePairLine(host), 1);
@@ -351,7 +354,7 @@ class SlideRendererTest extends UnitTest {
     void testDetermineSlideColor_glissandoWithNeitherEndSelected_returnsBlack() {
         // The companion to the two above: with nothing selected the glissando is black, so those
         // tests are pinning the selection and not something that colors it unconditionally.
-        var source = ElementType.CROTCHET.newInstance();
+        var source = crotchet();
         source.setGlissando();
         var invariants = baseBuilder()
             .setCurrentLine(slidePairLine(source))
@@ -372,7 +375,7 @@ class SlideRendererTest extends UnitTest {
         // Pins noteContextAt's wiring: the fall anchor comes from the stem-full extent, the
         // glissando attach edges from the stem-free extent (left < right, so a glissLeft/glissRight
         // swap is caught), and cySs from the staff position.
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setUpper(false);
         note.setStaffPosition(0);
 
@@ -400,7 +403,7 @@ class SlideRendererTest extends UnitTest {
      * Creates an up-stem crotchet (leading note).
      */
     private static StaffElement upStemNote() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setUpper(true);
         return note;
     }
@@ -446,7 +449,7 @@ class SlideRendererTest extends UnitTest {
     private static Line graceNoteLine() {
         NoteGeometry.initializeAccidentalWidths();
 
-        var source = ElementType.GRACE_QUAVER.newInstance();
+        var source = graceQuaver();
         source.setStaffPosition(PREVIEW_STAFF_POSITION);
 
         var line = detachedLine();
@@ -456,7 +459,7 @@ class SlideRendererTest extends UnitTest {
     }
 
     private static StaffElement hostPreviewElement() {
-        var previewElement = ElementType.CROTCHET.newInstance();
+        var previewElement = crotchet();
         previewElement.setStaffPosition(PREVIEW_STAFF_POSITION);
         return previewElement;
     }
@@ -545,7 +548,7 @@ class SlideRendererTest extends UnitTest {
         // beamed is noteContextAt's one input that is not read off the note, and it reaches the
         // geometry through dot placement: an unbeamed up-stem quaver carries a flag, which pushes
         // its augmentation dot — and with it the right attach edge — further out.
-        var note = ElementType.QUAVER.newInstance();
+        var note = quaver();
         note.setUpper(true);
         note.setStaffPosition(PREVIEW_STAFF_POSITION);
         note.setDotCount(1);

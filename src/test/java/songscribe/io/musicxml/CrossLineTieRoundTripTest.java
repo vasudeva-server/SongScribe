@@ -21,12 +21,12 @@
 package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
@@ -64,7 +64,7 @@ class CrossLineTieRoundTripTest extends MusicXmlRoundTripSupport {
         var notes = new ArrayList<StaffElement>(count);
 
         for (var i = 0; i < count; i++) {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             line.addElement(note);
             notes.add(note);
         }
@@ -90,12 +90,12 @@ class CrossLineTieRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song = buildSong(
             line -> {
-                var note0 = ElementType.CROTCHET.newInstance();
+                var note0 = crotchet();
                 line.addElement(note0);
                 elements[0] = note0;
             },
             line -> {
-                var note1 = ElementType.CROTCHET.newInstance();
+                var note1 = crotchet();
                 line.addElement(note1);
                 elements[1] = note1;
                 line.addTie(new Tie(elements[0], note1));
@@ -131,14 +131,14 @@ class CrossLineTieRoundTripTest extends MusicXmlRoundTripSupport {
         // in the same line and return null.
         var song = buildSong(
             line -> {
-                var note0 = ElementType.CROTCHET.newInstance();
-                var note1 = ElementType.CROTCHET.newInstance();
+                var note0 = crotchet();
+                var note1 = crotchet();
                 line.addElement(note0);
                 line.addElement(note1);
                 line.addTie(new Tie(note0, note1));
             },
             line -> {
-                var note2 = ElementType.CROTCHET.newInstance();
+                var note2 = crotchet();
                 line.addElement(note2);
             }
         );
@@ -160,8 +160,8 @@ class CrossLineTieRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song = buildSong(
             line -> {
-                var note0 = ElementType.CROTCHET.newInstance();
-                var note1 = ElementType.CROTCHET.newInstance();
+                var note0 = crotchet();
+                var note1 = crotchet();
                 line.addElement(note0);
                 line.addElement(note1);
                 elements[0] = note0;
@@ -169,8 +169,8 @@ class CrossLineTieRoundTripTest extends MusicXmlRoundTripSupport {
                 line.addTie(new Tie(note0, note1));
             },
             line -> {
-                var note2 = ElementType.CROTCHET.newInstance();
-                var note3 = ElementType.CROTCHET.newInstance();
+                var note2 = crotchet();
+                var note3 = crotchet();
                 line.addElement(note2);
                 line.addElement(note3);
                 elements[2] = note2;

@@ -30,6 +30,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.repeatRight;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +42,6 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.engraving.SMuFLConstants;
@@ -83,9 +84,9 @@ class EndingRendererTest extends UnitTest {
      */
     private LineWithEnding makeLineWithEnding() {
         var line = detachedLine();
-        var note1 = ElementType.CROTCHET.newInstance();
-        var split = ElementType.REPEAT_RIGHT.newInstance();
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
+        var split = repeatRight();
+        var note2 = crotchet();
         line.addElement(note1);
         line.addElement(split);
         line.addElement(note2);
@@ -361,9 +362,9 @@ class EndingRendererTest extends UnitTest {
     @Test
     void testHitTestEnding_overlappingEndings_returnsFirstInDocumentOrder() {
         var line = detachedLine();
-        var note1 = ElementType.CROTCHET.newInstance();
-        var split = ElementType.REPEAT_RIGHT.newInstance();
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
+        var split = repeatRight();
+        var note2 = crotchet();
         line.addElement(note1);
         line.addElement(split);
         line.addElement(note2);

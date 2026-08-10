@@ -22,12 +22,12 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -49,8 +49,8 @@ class FallColumnExtentTest extends UnitTest {
 
     @Test
     void testFallWidensRightExtentByGapPlusGlyphAdvance() {
-        var plain = ElementType.CROTCHET.newInstance();
-        var withFall = ElementType.CROTCHET.newInstance();
+        var plain = crotchet();
+        var withFall = crotchet();
         withFall.setFall();
 
         var plainRightSs = ElementColumnBuilder.calculateRightExtentSs(plain, false, StaffElement.Direction.UP);
@@ -68,9 +68,9 @@ class FallColumnExtentTest extends UnitTest {
     void testFallReservesRoomEvenWithNoFollowingElement() {
         // The extent is computed from the element alone, so the fall's room is reserved regardless
         // of whether a next note, a barline, or the end of the line follows it.
-        var withFall = ElementType.CROTCHET.newInstance();
+        var withFall = crotchet();
         withFall.setFall();
-        var plain = ElementType.CROTCHET.newInstance();
+        var plain = crotchet();
 
         var fallRightSs = ElementColumnBuilder.calculateRightExtentSs(withFall, false, StaffElement.Direction.UP);
         var plainRightSs = ElementColumnBuilder.calculateRightExtentSs(plain, false, StaffElement.Direction.UP);

@@ -20,6 +20,17 @@
 
 package songscribe.io.musicxml;
 
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.doubleBarline;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.minim;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatLeftRight;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
+
 import java.awt.Component;
 import java.io.PrintWriter;
 import java.nio.file.Files;
@@ -204,28 +215,28 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
     private static Song songStructuralBarlines() {
         return buildSong(
             // A bare line break: an empty line with no barline element.
-            line -> line.addElement(ElementType.CROTCHET.newInstance()),
+            line -> line.addElement(crotchet()),
             // Single and double barlines mid-line.
             line -> {
-                line.addElement(ElementType.CROTCHET.newInstance());
-                line.addElement(ElementType.SINGLE_BARLINE.newInstance());
-                line.addElement(ElementType.CROTCHET.newInstance());
-                line.addElement(ElementType.DOUBLE_BARLINE.newInstance());
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
+                line.addElement(singleBarline());
+                line.addElement(crotchet());
+                line.addElement(doubleBarline());
+                line.addElement(crotchet());
             },
             // A straddling repeat, then a forward/backward repeat pair.
             line -> {
-                line.addElement(ElementType.REPEAT_LEFT.newInstance());
-                line.addElement(ElementType.CROTCHET.newInstance());
-                line.addElement(ElementType.REPEAT_RIGHT.newInstance());
-                line.addElement(ElementType.CROTCHET.newInstance());
-                line.addElement(ElementType.REPEAT_LEFT_RIGHT.newInstance());
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(repeatLeft());
+                line.addElement(crotchet());
+                line.addElement(repeatRight());
+                line.addElement(crotchet());
+                line.addElement(repeatLeftRight());
+                line.addElement(crotchet());
             },
             // Terminal line ends in the final double barline (a valid terminal).
             line -> {
-                line.addElement(ElementType.CROTCHET.newInstance());
-                line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());
+                line.addElement(crotchet());
+                line.addElement(finalDoubleBarline());
             }
         );
     }
@@ -256,19 +267,19 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
                 }
             },
             line -> {
-                var oneDot = ElementType.MINIM.newInstance();
+                var oneDot = minim();
                 oneDot.setDotCount(ONE_DOT);
                 line.addElement(oneDot);
 
-                var twoDots = ElementType.MINIM.newInstance();
+                var twoDots = minim();
                 twoDots.setDotCount(TWO_DOTS);
                 line.addElement(twoDots);
 
-                var grace = ElementType.GRACE_QUAVER.newInstance();
+                var grace = graceQuaver();
                 grace.setUpper(true);
                 grace.setStemDirectionAuto(false);
                 line.addElement(grace);
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             }
         );
     }
@@ -287,14 +298,14 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
         return buildSong(
             line -> {
                 for (var pitch : pitches) {
-                    var note = ElementType.CROTCHET.newInstance();
+                    var note = crotchet();
                     note.setStaffPosition(pitch);
                     line.addElement(note);
                 }
             },
             line -> {
                 for (var accidental : accidentals) {
-                    var note = ElementType.CROTCHET.newInstance();
+                    var note = crotchet();
                     note.setStaffPosition(C4);
                     note.setAccidental(accidental);
                     line.addElement(note);
@@ -302,7 +313,7 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
             },
             // Cautionary / parenthesized accidental (accidental must be set first).
             line -> {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 note.setStaffPosition(C4);
                 note.setAccidental(StaffElement.Accidental.SHARP);
                 note.setAccidentalInParentheses(true);
@@ -322,61 +333,61 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
 
         return buildSong(
             line -> {
-                var accented = ElementType.CROTCHET.newInstance();
+                var accented = crotchet();
                 line.addElement(accented);
                 accented.addArticulation(new Articulation(accented, ArticulationType.ACCENT));
 
-                var staccato = ElementType.CROTCHET.newInstance();
+                var staccato = crotchet();
                 line.addElement(staccato);
                 staccato.addArticulation(new Articulation(staccato, ArticulationType.STACCATO));
 
-                var fermata = ElementType.CROTCHET.newInstance();
+                var fermata = crotchet();
                 line.addElement(fermata);
                 fermata.addAttachment(new FermataAttachment(fermata));
             },
             line -> {
                 for (var dynamic : dynamics) {
-                    var note = ElementType.CROTCHET.newInstance();
+                    var note = crotchet();
                     line.addElement(note);
                     note.addAttachment(new DynamicAttachment(note, dynamic));
                 }
             },
             line -> {
-                var up = ElementType.CROTCHET.newInstance();
+                var up = crotchet();
                 up.setUpper(true);
                 up.setStemDirectionAuto(false);
                 line.addElement(up);
 
-                var down = ElementType.CROTCHET.newInstance();
+                var down = crotchet();
                 down.setUpper(false);
                 down.setStemDirectionAuto(false);
                 line.addElement(down);
 
                 // Auto stem: leave a fresh instance untouched.
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
 
-                var shifted = ElementType.CROTCHET.newInstance();
+                var shifted = crotchet();
                 shifted.setXOffsetPx(X_OFFSET_PX);
                 line.addElement(shifted);
             },
             line -> {
                 // Connected glissando slide: stored on the start note only.
-                var glissStart = ElementType.CROTCHET.newInstance();
+                var glissStart = crotchet();
                 glissStart.setStaffPosition(C5);
                 glissStart.setGlissando();
                 line.addElement(glissStart);
-                var glissEnd = ElementType.CROTCHET.newInstance();
+                var glissEnd = crotchet();
                 glissEnd.setStaffPosition(C4);
                 line.addElement(glissEnd);
 
                 // Fall on a single note.
-                var falling = ElementType.CROTCHET.newInstance();
+                var falling = crotchet();
                 falling.setFall();
                 line.addElement(falling);
 
                 // Breath mark is a trailing line element after the note it follows.
-                line.addElement(ElementType.CROTCHET.newInstance());
-                line.addElement(ElementType.BREATH_MARK.newInstance());
+                line.addElement(crotchet());
+                line.addElement(breathMark());
             }
         );
     }
@@ -428,7 +439,7 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
             },
             // A single-note trill and a multi-note trill with a y offset.
             line -> {
-                var single = ElementType.CROTCHET.newInstance();
+                var single = crotchet();
                 line.addElement(single);
                 line.addSpan(new Trill(single));
 
@@ -439,13 +450,13 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
             },
             // First/second endings around a repeat.
             line -> {
-                var anchor = ElementType.REPEAT_LEFT.newInstance();
-                var split = ElementType.REPEAT_RIGHT.newInstance();
-                var end = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+                var anchor = repeatLeft();
+                var split = repeatRight();
+                var end = finalDoubleBarline();
                 line.addElement(anchor);
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
                 line.addElement(split);
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
                 line.addElement(end);
                 line.addSpan(new Ending(anchor, end));
             }
@@ -468,11 +479,11 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
                 line.setKeyType(Song.DEFAULT_KEY_TYPE);
                 line.setKeyAccidentalCount(Song.DEFAULT_KEY_ACCIDENTAL_COUNT);
 
-                var first = ElementType.CROTCHET.newInstance();
+                var first = crotchet();
                 line.addElement(first);
                 first.addAttachment(new TempoChangeAttachment(first, baseTempo));
 
-                var perNote = ElementType.CROTCHET.newInstance();
+                var perNote = crotchet();
                 line.addElement(perNote);
                 perNote.addAttachment(new TempoChangeAttachment(perNote, perNoteTempo));
             },
@@ -480,11 +491,11 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
                 line.setKeyType(KeyType.SHARPS);
                 line.setKeyAccidentalCount(THREE_SHARPS);
 
-                var described = ElementType.CROTCHET.newInstance();
+                var described = crotchet();
                 line.addElement(described);
                 described.addAttachment(new TempoChangeAttachment(described, describedTempo));
 
-                var modulated = ElementType.CROTCHET.newInstance();
+                var modulated = crotchet();
                 line.addElement(modulated);
                 modulated.addAttachment(new BeatChangeAttachment(modulated, metricModulation));
             },
@@ -492,14 +503,14 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
                 line.setKeyType(KeyType.NONE);
                 line.setKeyAccidentalCount(ABSENT_DATE_PART);
 
-                var hidden = ElementType.CROTCHET.newInstance();
+                var hidden = crotchet();
                 line.addElement(hidden);
                 hidden.addAttachment(new TempoChangeAttachment(hidden, hiddenTempo));
             },
             line -> {
                 line.setKeyType(KeyType.FLATS);
                 line.setKeyAccidentalCount(TWO_FLATS);
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             }
         );
 
@@ -515,41 +526,41 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
         return buildSong(
             // A hyphenated word split BEGIN / MIDDLE / END, verse 1, plus a verse-2 line.
             line -> {
-                var begin = ElementType.CROTCHET.newInstance();
+                var begin = crotchet();
                 line.addElement(begin);
                 begin.lyrics.add(new Lyric(VERSE_1, "Ky", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
                 begin.lyrics.add(new Lyric(VERSE_2, "one", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 
-                var middle = ElementType.CROTCHET.newInstance();
+                var middle = crotchet();
                 line.addElement(middle);
                 middle.lyrics.add(new Lyric(VERSE_1, "ri", Lyric.Extend.NONE, Lyric.Syllabic.MIDDLE, false));
                 middle.lyrics.add(new Lyric(VERSE_2, "two", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 
-                var end = ElementType.CROTCHET.newInstance();
+                var end = crotchet();
                 line.addElement(end);
                 end.lyrics.add(new Lyric(VERSE_1, "e", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
             },
             // A compound-word boundary (compound requires BEGIN/MIDDLE).
             line -> {
-                var compound = ElementType.CROTCHET.newInstance();
+                var compound = crotchet();
                 line.addElement(compound);
                 compound.lyrics.add(new Lyric(VERSE_1, "self", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, true));
 
-                var rest = ElementType.CROTCHET.newInstance();
+                var rest = crotchet();
                 line.addElement(rest);
                 rest.lyrics.add(new Lyric(VERSE_1, "giving", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
             },
             // A melisma: START carries text, STOP/CONTINUE are text-less carriers.
             line -> {
-                var start = ElementType.CROTCHET.newInstance();
+                var start = crotchet();
                 line.addElement(start);
                 start.lyrics.add(new Lyric(VERSE_1, "oh", Lyric.Extend.START, Lyric.Syllabic.SINGLE, false));
 
-                var cont = ElementType.CROTCHET.newInstance();
+                var cont = crotchet();
                 line.addElement(cont);
                 cont.lyrics.add(new Lyric(VERSE_1, "", Lyric.Extend.CONTINUE, null, false));
 
-                var stop = ElementType.CROTCHET.newInstance();
+                var stop = crotchet();
                 line.addElement(stop);
                 stop.lyrics.add(new Lyric(VERSE_1, "", Lyric.Extend.STOP, null, false));
             }
@@ -561,7 +572,7 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
     // -------------------------------------------------------------------------
 
     private static Song songHeaderAndCredits() {
-        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        var song = buildSong(line -> line.addElement(crotchet()));
         populateHeader(song);
         return song;
     }
@@ -597,19 +608,19 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
     private static Song songAnnotations() {
         return buildSong(
             line -> {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 note.addAttachment(new AnnotationAttachment(note,
                     annotation("dolce", Component.LEFT_ALIGNMENT, Annotation.Placement.ABOVE, ANNOTATION_ABOVE_Y_SS)));
             },
             line -> {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 note.addAttachment(new AnnotationAttachment(note,
                     annotation("rit.", Component.CENTER_ALIGNMENT, Annotation.Placement.BELOW, ANNOTATION_BELOW_Y_SS)));
             },
             line -> {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 note.addAttachment(new AnnotationAttachment(note,
                     annotation("fine", Component.RIGHT_ALIGNMENT, Annotation.Placement.ABOVE, ANNOTATION_ABOVE_Y_SS)));
@@ -637,7 +648,7 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
                 line.setKeyType(Song.DEFAULT_KEY_TYPE);
                 line.setKeyAccidentalCount(Song.DEFAULT_KEY_ACCIDENTAL_COUNT);
 
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 note.setStaffPosition(C4);
                 line.addElement(note);
                 note.addAttachment(new TempoChangeAttachment(note, baseTempo));
@@ -649,13 +660,13 @@ public class MusicXmlCorpusGenerator extends MusicXmlRoundTripSupport {
                 line.setKeyType(KeyType.SHARPS);
                 line.setKeyAccidentalCount(ONE_SHARP);
 
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 note.setStaffPosition(F4);
                 line.addElement(note);
                 note.lyrics.add(new Lyric(VERSE_1, "Song", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
                 note.addAttachment(new AnnotationAttachment(note,
                     annotation("rit.", Component.CENTER_ALIGNMENT, Annotation.Placement.BELOW, ANNOTATION_BELOW_Y_SS)));
-                line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());
+                line.addElement(finalDoubleBarline());
             }
         );
 

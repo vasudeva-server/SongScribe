@@ -22,13 +22,14 @@ package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.hit.HitTarget;
@@ -56,7 +57,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     private SelectionCoordinator oneLineSongCoordinator() {
         var song = new Song();
         var line = song.getLine(LINE_0);
-        song.withoutMutationTracking(() -> line.addElement(0, ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(0, crotchet()));
 
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
         coordinator.registerLine(LINE_0, line);
@@ -71,7 +72,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     private SelectionCoordinator twoLineSongCoordinator() {
         var song = new Song();
         var firstLine = song.getLine(LINE_0);
-        song.withoutMutationTracking(() -> firstLine.addElement(0, ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> firstLine.addElement(0, crotchet()));
         song.addLine(new Line(song));
 
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
@@ -164,7 +165,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     @Test
     void testCanChangeTempoReturnsFalseWithNoActiveSelection() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of()
         );
         // Nothing is selected.
@@ -185,7 +186,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     @Test
     void testCanChangeTempoReturnsFalseWithMultiElementSelection() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER.newInstance()),
+            List.of(crotchet(), quaver()),
             List.of()
         );
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -205,7 +206,7 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
     @Test
     void testCanChangeTempoReturnsTrueWithSingleElementSelected() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER.newInstance()),
+            List.of(crotchet(), quaver()),
             List.of()
         );
         ReflectionTestHelper.selectNote(coordinator, 0);
@@ -228,8 +229,8 @@ class CanDeleteLineAndChangeTempoTest extends UnitTest {
         var song = new Song();
         var line = song.getLine(LINE_0);
         song.withoutMutationTracking(() -> {
-            line.addElement(0, ElementType.CROTCHET.newInstance());
-            line.addElement(1, ElementType.QUAVER.newInstance());
+            line.addElement(0, crotchet());
+            line.addElement(1, quaver());
         });
 
         return ReflectionTestHelper.createCoordinatorForLine(line);

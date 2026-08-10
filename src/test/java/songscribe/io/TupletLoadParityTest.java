@@ -21,6 +21,8 @@ package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.io.PrintWriter;
 import java.io.StringReader;
@@ -94,11 +96,11 @@ class TupletLoadParityTest extends UnitTest {
 
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < TRIPLET_NOTE_COUNT; i++) {
-                line.addElement(ElementType.QUAVER.newInstance());
+                line.addElement(quaver());
             }
 
             for (var i = 0; i < INVALID_NOTE_COUNT; i++) {
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             }
 
             line.addTuplet(new Tuplet(

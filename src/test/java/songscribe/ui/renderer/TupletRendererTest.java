@@ -31,6 +31,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +43,6 @@ import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.dom.Tuplet;
 import songscribe.hit.HitTarget;
@@ -110,9 +110,9 @@ class TupletRendererTest extends UnitTest {
      */
     private static LineInvariants buildInvariantsWithTuplet(boolean isUpper, boolean addBeam) {
         var line = detachedLine();
-        var anchor = ElementType.QUAVER.newInstance();
+        var anchor = quaver();
         anchor.setUpper(isUpper);
-        var end = ElementType.QUAVER.newInstance();
+        var end = quaver();
         end.setUpper(isUpper);
         line.addElement(anchor);
         line.addElement(end);
@@ -147,9 +147,9 @@ class TupletRendererTest extends UnitTest {
      */
     private static Color renderedTupletColor(boolean selected) {
         var line = detachedLine();
-        var anchor = ElementType.QUAVER.newInstance();
+        var anchor = quaver();
         anchor.setUpper(true);
-        var end = ElementType.QUAVER.newInstance();
+        var end = quaver();
         end.setUpper(true);
         line.addElement(anchor);
         line.addElement(end);
@@ -310,8 +310,8 @@ class TupletRendererTest extends UnitTest {
     void testRenderTupletsFromLine_nullDecorLayout_skipsWithoutDrawing() {
         // A tuplet with no decoration layout must be skipped silently
         var line = detachedLine();
-        var anchor = ElementType.QUAVER.newInstance();
-        var end = ElementType.QUAVER.newInstance();
+        var anchor = quaver();
+        var end = quaver();
         line.addElement(anchor);
         line.addElement(end);
         var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
@@ -350,9 +350,9 @@ class TupletRendererTest extends UnitTest {
      */
     private static LineInvariants buildInvariantsWithSlopedTuplet(double dySs, boolean addBeam) {
         var line = detachedLine();
-        var anchor = ElementType.QUAVER.newInstance();
+        var anchor = quaver();
         anchor.setUpper(true);
-        var end = ElementType.QUAVER.newInstance();
+        var end = quaver();
         end.setUpper(true);
         line.addElement(anchor);
         line.addElement(end);
@@ -530,8 +530,8 @@ class TupletRendererTest extends UnitTest {
     void testRenderTupletsFromLine_nullAnchorNote_skipsWithoutDrawing() {
         // A tuplet whose anchor element is null must be skipped silently
         var line = detachedLine();
-        var anchor = ElementType.QUAVER.newInstance();
-        var end = ElementType.QUAVER.newInstance();
+        var anchor = quaver();
+        var end = quaver();
         line.addElement(anchor);
         line.addElement(end);
         var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);
@@ -564,8 +564,8 @@ class TupletRendererTest extends UnitTest {
         // an end note to measure. A tuplet whose end element has gone away — deleted, or its column
         // pruned — must be skipped silently rather than throwing while painting the score.
         var line = detachedLine();
-        var anchor = ElementType.QUAVER.newInstance();
-        var end = ElementType.QUAVER.newInstance();
+        var anchor = quaver();
+        var end = quaver();
         line.addElement(anchor);
         line.addElement(end);
         var tuplet = Tuplet.withUnresolvedRatio(anchor, end, 3);

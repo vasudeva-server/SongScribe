@@ -32,6 +32,12 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
@@ -205,12 +211,12 @@ class LineSelectionHandlerTest extends UnitTest {
 
     /** Builds a standalone {@link Ending}; targets carry it by reference only. */
     private static Ending newEnding() {
-        return new Ending(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
+        return new Ending(crotchet(), crotchet());
     }
 
     /** Builds a standalone {@link Hairpin}; targets carry it by reference only. */
     private static Hairpin newHairpin() {
-        return new Crescendo(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
+        return new Crescendo(crotchet(), crotchet());
     }
 
     /** A press at the layout-space origin, where {@link #givenClickableAtOrigin} puts its region. */
@@ -523,7 +529,7 @@ class LineSelectionHandlerTest extends UnitTest {
             var song = new Song();
             var newLine = song.getLine(0);
             song.withoutMutationTracking(() -> {
-                newLine.addElement(ElementType.CROTCHET.newInstance());
+                newLine.addElement(crotchet());
                 newLine.removeElement(0);
             });
             return newLine;
@@ -1670,9 +1676,9 @@ class LineSelectionHandlerTest extends UnitTest {
             song.setLineWidthSs(UNCONSTRAINED_LINE_WIDTH_SS);
             line = song.getLine(0);
 
-            var anchorBarline = ElementType.SINGLE_BARLINE.newInstance();
-            var split = ElementType.REPEAT_RIGHT.newInstance();
-            var endBarline = ElementType.SINGLE_BARLINE.newInstance();
+            var anchorBarline = singleBarline();
+            var split = repeatRight();
+            var endBarline = singleBarline();
             sourceNote = noteAt(0);
             // A different staff position than sourceNote: the layout and render passes register
             // no geometry for a glissando between two notes at the same pitch (Line.isSamePitchAsFollower).
@@ -1744,7 +1750,7 @@ class LineSelectionHandlerTest extends UnitTest {
 
         /** A stem-up crotchet at the given staff position, so its column extents are deterministic. */
         private static StaffElement noteAt(int staffPosition) {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(staffPosition);
             return note;
@@ -1752,7 +1758,7 @@ class LineSelectionHandlerTest extends UnitTest {
 
         /** A stem-up quaver at the given staff position — beamable, unlike {@link #noteAt}. */
         private static StaffElement quaverAt(int staffPosition) {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             note.setUpper(true);
             note.setStaffPosition(staffPosition);
             return note;
@@ -1831,8 +1837,8 @@ class LineSelectionHandlerTest extends UnitTest {
             var song = new Song();
             song.setLineWidthSs(UNCONSTRAINED_LINE_WIDTH_SS);
             var line = song.getLine(0);
-            graceNote = ElementType.GRACE_QUAVER.newInstance();
-            var hostNote = ElementType.CROTCHET.newInstance();
+            graceNote = graceQuaver();
+            var hostNote = crotchet();
             // A different staff position than graceNote: the layout and render passes register
             // no geometry for a glissando between two notes at the same pitch (Line.isSamePitchAsFollower).
             hostNote.setStaffPosition(4);
@@ -2215,8 +2221,8 @@ class LineSelectionHandlerTest extends UnitTest {
             firstLine = song.getLine(FIRST_LINE_INDEX);
             secondLine = new Line(song);
             song.withoutMutationTracking(() -> {
-                firstLine.addElement(ElementType.CROTCHET_REST.newInstance());
-                secondLine.addElement(ElementType.CROTCHET_REST.newInstance());
+                firstLine.addElement(crotchetRest());
+                secondLine.addElement(crotchetRest());
             });
             song.addLine(secondLine);
 
@@ -2265,7 +2271,7 @@ class LineSelectionHandlerTest extends UnitTest {
         @Test
         void testSelectingOnTheAlreadyActiveLineDoesNotRepaintIt() {
             when(mockScoreView.getLineComponent(SECOND_LINE_INDEX)).thenReturn(lc);
-            song.withoutMutationTracking(() -> secondLine.addElement(ElementType.CROTCHET_REST.newInstance()));
+            song.withoutMutationTracking(() -> secondLine.addElement(crotchetRest()));
             coordinator.selectSingleElement(SECOND_LINE_INDEX, 0);
 
             handler.selectElementAtIndex(1);

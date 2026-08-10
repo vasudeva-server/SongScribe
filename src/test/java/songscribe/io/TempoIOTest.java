@@ -23,6 +23,7 @@ package songscribe.io;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -38,7 +39,6 @@ import org.xml.sax.SAXException;
 
 import songscribe.UnitTest;
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
@@ -291,7 +291,7 @@ class TempoIOTest extends UnitTest {
             var description = "Vivace";
             var original = new Tempo(visibleTempo, Duration.MINIM, description, false);
 
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addAttachment(new TempoChangeAttachment(note, original));
 
             var line = new Song().getLine(0);

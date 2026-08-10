@@ -27,6 +27,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import module java.desktop;
 
@@ -192,7 +194,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
      */
     private static Line lineWithTerminal(int crotchetCount, Song song) {
         var line = lineWithCrotchets(crotchetCount, song);
-        var terminal = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+        var terminal = finalDoubleBarline();
         var xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, terminal, null, null);
         terminal.setXOffsetPx(ScaleContext.ssToRoundedPx(xSs));
         line.addElement(terminal);
@@ -214,7 +216,7 @@ class InsertionSpacingCalculatorTest extends UnitTest {
 
     private static Line lineWithGraceAtIndex(int numCrotchetsBefore, Line line) {
         lineWithCrotchets(numCrotchetsBefore, line);
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         var xSs = InsertionSpacingCalculator.calculateAppendPositionSs(line, grace, null, null);
         grace.setXOffsetPx(ScaleContext.ssToRoundedPx(xSs));
         line.addElement(grace);

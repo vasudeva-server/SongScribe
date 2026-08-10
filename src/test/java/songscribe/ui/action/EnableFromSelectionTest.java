@@ -22,13 +22,13 @@ package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import module java.desktop;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.ui.Mode;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -312,7 +312,7 @@ class EnableFromSelectionTest extends MainFrameMockTest {
     private SelectionCoordinator selectTerminal() {
         var song = new Song();
         var line = song.getLine(0);
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(crotchet()));
 
         when(mockEnv().score().getMode()).thenReturn(Mode.SELECT);
 

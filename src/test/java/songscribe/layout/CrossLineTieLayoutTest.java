@@ -21,6 +21,7 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import module java.desktop;
 
@@ -96,8 +97,8 @@ class CrossLineTieLayoutTest extends UnitTest {
             var song = new Song();
             var firstLine = song.getLine(0);
             var secondLine = new Line(song);
-            var anchor = ElementType.CROTCHET.newInstance();
-            var end = ElementType.CROTCHET.newInstance();
+            var anchor = crotchet();
+            var end = crotchet();
             var tie = new Tie(anchor, end);
 
             song.withoutMutationTracking(() -> {
@@ -109,13 +110,13 @@ class CrossLineTieLayoutTest extends UnitTest {
                 firstLine.removeElement(0);
 
                 for (var i = 0; i < notesBeforeAnchor; i++) {
-                    firstLine.addElement(ElementType.CROTCHET.newInstance());
+                    firstLine.addElement(crotchet());
                 }
 
                 firstLine.addElement(anchor);
                 song.addLine(secondLine);
                 secondLine.addElement(end);
-                secondLine.addElement(ElementType.CROTCHET.newInstance());
+                secondLine.addElement(crotchet());
                 firstLine.addTie(tie);
 
                 if (trailingType != null) {

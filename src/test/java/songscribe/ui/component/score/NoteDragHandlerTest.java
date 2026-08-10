@@ -31,6 +31,8 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import module java.desktop;
 // Disambiguates from org.w3c.dom.events.MouseEvent (java.xml module)
@@ -337,11 +339,11 @@ class NoteDragHandlerTest extends UnitTest {
         void testRemovesGraceNoteDraggedToHostPitch() {
             // [grace@0, crotchet@4] — drag grace note to position 4 (matches host)
             var line = detachedLine();
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setStaffPosition(0);
             line.addElement(grace);
 
-            var host = ElementType.CROTCHET.newInstance();
+            var host = crotchet();
             host.setStaffPosition(4);
             line.addElement(host);
             when(lc.getLine()).thenReturn(line);
@@ -359,11 +361,11 @@ class NoteDragHandlerTest extends UnitTest {
         void testRemovesGraceNoteWhenHostDraggedToGracePitch() {
             // [grace@4, crotchet@0] — drag host note to position 4 (matches grace)
             var line = detachedLine();
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setStaffPosition(4);
             line.addElement(grace);
 
-            var host = ElementType.CROTCHET.newInstance();
+            var host = crotchet();
             host.setStaffPosition(0);
             line.addElement(host);
             when(lc.getLine()).thenReturn(line);
@@ -399,7 +401,7 @@ class NoteDragHandlerTest extends UnitTest {
             var realSong = new Song();
             realLine = realSong.getLine(0);
 
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(ORIGINAL_POSITION_SP);
             // An accidental is written for the staff position it sits on, so a dragged note gives
             // it up. Without one here nothing observes that clearing: the ACCIDENTAL tag on the
@@ -488,7 +490,7 @@ class NoteDragHandlerTest extends UnitTest {
         }
 
         private static StaffElement sharpNote(int staffPosition) {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(staffPosition);
             note.setAccidental(StaffElement.Accidental.SHARP);
             return note;
@@ -600,8 +602,8 @@ class NoteDragHandlerTest extends UnitTest {
 
         private Line firstLine = detachedLine();
         private Line secondLine = detachedLine();
-        private StaffElement anchor = ElementType.CROTCHET.newInstance();
-        private StaffElement tieEnd = ElementType.CROTCHET.newInstance();
+        private StaffElement anchor = crotchet();
+        private StaffElement tieEnd = crotchet();
         private final LineComponent firstLineComponent = mock(LineComponent.class);
 
         @BeforeEach
@@ -634,7 +636,7 @@ class NoteDragHandlerTest extends UnitTest {
         }
 
         private static StaffElement sharpNote() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(ORIGINAL_POSITION_SP);
             note.setAccidental(StaffElement.Accidental.SHARP);
             return note;
@@ -755,7 +757,7 @@ class NoteDragHandlerTest extends UnitTest {
         private HitTarget noteHeadHit() {
             // A standalone note: every guard below refuses before the target's element is
             // ever resolved against a line, so it needs no line to sit on.
-            return new HitTarget.Element(ElementType.CROTCHET.newInstance());
+            return new HitTarget.Element(crotchet());
         }
 
         @Test
@@ -798,7 +800,7 @@ class NoteDragHandlerTest extends UnitTest {
          */
         @Test
         void testLyricHitReturnsFalse() {
-            var lyricHit = new HitTarget.Lyric(ElementType.CROTCHET.newInstance(), Lyric.FIRST_VERSE);
+            var lyricHit = new HitTarget.Lyric(crotchet(), Lyric.FIRST_VERSE);
 
             var result = handler.handlePress(pressEvent(), lyricHit);
 
@@ -817,7 +819,7 @@ class NoteDragHandlerTest extends UnitTest {
         var line = detachedLine();
 
         for (var sp : staffPositions) {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(sp);
             line.addElement(note);
         }

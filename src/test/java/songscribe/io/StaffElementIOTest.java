@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -84,7 +85,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testDoubleSharpRoundTrips() throws Exception {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setAccidental(Accidental.DOUBLE_SHARP);
             var output = writeNote(note);
             assertThat(output).contains("<prefix>DOUBLE_SHARP</prefix>");
@@ -136,7 +137,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testAnnotationBlockAbsentWithoutAttachment() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
 
             var output = writeNote(note);
 
@@ -145,7 +146,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testAnnotationBlockPresentWithAttachment() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addAttachment(new AnnotationAttachment(new Annotation("dolce")));
 
             var output = writeNote(note);
@@ -160,7 +161,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testAccentEmitsForceArticulationTag() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addArticulation(new Articulation(ArticulationType.ACCENT));
 
             var output = writeNote(note);
@@ -170,7 +171,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testStaccatoEmitsDurationArticulationTag() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addArticulation(new Articulation(ArticulationType.STACCATO));
 
             var output = writeNote(note);
@@ -194,7 +195,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testBeatChangeTagAbsentWithoutAttachment() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
 
             var output = writeNote(note);
 
@@ -203,7 +204,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testBeatChangeTagEmitsBothAttributes() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addAttachment(new BeatChangeAttachment(
                 note,
                 new BeatChange(Duration.CROTCHET, Duration.QUAVER)
@@ -333,7 +334,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testDottedAbsentWhenZeroDots() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setDotCount(0);
 
             var output = writeNote(note);
@@ -343,7 +344,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testDottedPresentForOneDot() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setDotCount(1);
 
             var output = writeNote(note);
@@ -353,7 +354,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testDottedPresentForTwoDots() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setDotCount(2);
 
             var output = writeNote(note);
@@ -369,7 +370,7 @@ class StaffElementIOTest extends UnitTest {
         // T30: Write note with DynamicAttachment → XML contains <dynamic type="..."/>
         @Test
         void testWritesDynamicElement() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addAttachment(new DynamicAttachment(note, DynamicType.FORTE));
 
             var output = writeNote(note);
@@ -459,7 +460,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testFermataTagAbsentWithoutAttachment() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
 
             var output = writeNote(note);
 
@@ -468,7 +469,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testFermataTagPresentWithAttachment() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addAttachment(new FermataAttachment(note));
 
             var output = writeNote(note);
@@ -490,7 +491,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testGlissandoTypeIsEmitted() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setGlissando();
 
             var output = writeNote(note);
@@ -597,7 +598,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testSyllabicSingleEmitsSingle() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.lyrics.add(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 
             var output = writeNote(note);
@@ -607,7 +608,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testSyllabicBeginEmitsBegin() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.lyrics.add(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.BEGIN, false));
 
             var output = writeNote(note);
@@ -617,7 +618,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testSyllabicMiddleEmitsMiddle() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.lyrics.add(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.MIDDLE, false));
 
             var output = writeNote(note);
@@ -627,7 +628,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testSyllabicEndEmitsEnd() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.lyrics.add(new Lyric(1, "la", Lyric.Extend.NONE, Lyric.Syllabic.END, false));
 
             var output = writeNote(note);
@@ -697,7 +698,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testVerseOneEmitsNumberAttributeOne() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.lyrics.add(new Lyric(VERSE_ONE, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 
             var output = writeNote(note);
@@ -707,7 +708,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testVerseTwoEmitsNumberAttributeTwo() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.lyrics.add(new Lyric(VERSE_ONE, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
             note.lyrics.add(new Lyric(VERSE_TWO, "la", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
 
@@ -773,7 +774,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testPrefixInParenthesisAbsentWhenFalse() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setAccidental(Accidental.SHARP);
             note.setAccidentalInParentheses(false);
 
@@ -784,7 +785,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testPrefixInParenthesisPresentWhenTrue() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setAccidental(Accidental.SHARP);
             note.setAccidentalInParentheses(true);
 
@@ -800,7 +801,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testPrefixAbsentWhenAccidentalNull() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setAccidental(null);
 
             var output = writeNote(note);
@@ -810,7 +811,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testPrefixContainsAccidentalName() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setAccidental(Accidental.SHARP);
 
             var output = writeNote(note);
@@ -833,7 +834,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testStaffPositionAlwaysEmitted() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(4);
 
             var output = writeNote(note);
@@ -848,7 +849,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testStemDirectionAutoTagAbsentWhenAutoTrue() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStemDirectionAuto(true);
 
             var output = writeNote(note);
@@ -858,7 +859,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testStemDirectionAutoTagPresentWhenAutoFalse() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStemDirectionAuto(false);
 
             var output = writeNote(note);
@@ -880,7 +881,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testTempoBlockAbsentWithoutAttachment() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
 
             var output = writeNote(note);
 
@@ -889,7 +890,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testTempoBlockPresentWithAttachment() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addAttachment(new TempoChangeAttachment(note, new Tempo()));
 
             var output = writeNote(note);
@@ -1018,7 +1019,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testUpperTagAbsentWhenFalse() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(false);
 
             var output = writeNote(note);
@@ -1028,7 +1029,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testUpperTagPresentWhenTrue() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
 
             var output = writeNote(note);
@@ -1043,7 +1044,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testXPosAbsentWhenZero() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setXOffsetPx(0);
 
             var output = writeNote(note);
@@ -1053,7 +1054,7 @@ class StaffElementIOTest extends UnitTest {
 
         @Test
         void testXPosPresentWhenNonZero() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setXOffsetPx(10);
 
             var output = writeNote(note);

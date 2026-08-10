@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.Collections;
 import java.util.List;
@@ -39,7 +40,6 @@ import songscribe.UnitTest;
 import songscribe.layout.NoteGeometry;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
 import songscribe.dom.Song;
@@ -115,9 +115,9 @@ class PasteReconciliationUndoTest extends UnitTest {
     /** Fills the line with three quavers, untracked, and returns them. */
     private List<StaffElement> threeQuavers() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver()
         );
 
         song.withoutMutationTracking(() -> notes.forEach(line::addElement));
@@ -137,7 +137,7 @@ class PasteReconciliationUndoTest extends UnitTest {
     private void pasteOneQuaverInside(
         Function<? super StaffElement, ? extends List<Span>> spansOver
     ) {
-        var pastedNote = ElementType.QUAVER.newInstance();
+        var pastedNote = quaver();
         var clipboardManager = new ClipboardManager();
         clipboardManager.setFragment(
             new Fragment(

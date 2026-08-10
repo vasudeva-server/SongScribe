@@ -30,7 +30,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
@@ -52,6 +51,7 @@ import static org.assertj.core.data.Offset.offset;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * Unit tests for {@link SongSettingsDialog}'s package-private static helpers,
@@ -838,7 +838,7 @@ class SongSettingsDialogTest extends UnitTest {
                     }
 
                     for (var j = 0; j < elementCounts[i]; j++) {
-                        var element = ElementType.CROTCHET.newInstance();
+                        var element = crotchet();
                         element.setLyricForVerse(
                             Lyric.FIRST_VERSE, Lyric.Syllabic.SINGLE, false, SYLLABLE, Lyric.Extend.NONE
                         );

@@ -22,6 +22,7 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.util.List;
 
@@ -69,7 +70,7 @@ class DetachedLyricRunTest extends UnitTest {
 
     /** A grace note carrying the connecting glissando that pairs it with the next note. */
     private static StaffElement pairedGraceNote() {
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         return grace;
     }

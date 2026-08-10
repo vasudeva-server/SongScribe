@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.semibreve;
 
 import module java.desktop;
 
@@ -36,6 +37,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementFactory;
 import songscribe.engraving.Staff;
 
 /**
@@ -132,7 +134,7 @@ class LineHeightTest extends UnitTest {
     }
 
     private static StaffElement crotchet(int staffPosition) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = StaffElementFactory.crotchet();
         note.setStaffPosition(staffPosition);
         return note;
     }
@@ -264,7 +266,7 @@ class LineHeightTest extends UnitTest {
     void testALineWithNothingBelowTheStaffInsetsItsLyricRow() {
         var song = new Song();
         var line = song.getLine(0);
-        var note = ElementType.SEMIBREVE.newInstance();
+        var note = semibreve();
         note.setStaffPosition(SECOND_SPACE_SP);
         note.lyrics.add(
             new Lyric(Lyric.FIRST_VERSE, "Āñ", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));

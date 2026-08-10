@@ -22,11 +22,11 @@ package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Ending;
 import songscribe.hit.HitTarget;
@@ -65,11 +65,11 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
         var lineA = new Line(song);
-        lineA.addElement(ElementType.CROTCHET.newInstance());
+        lineA.addElement(crotchet());
         coordinator.registerLine(LINE_0, lineA);
 
         var lineB = new Line(song);
-        lineB.addElement(ElementType.CROTCHET.newInstance());
+        lineB.addElement(crotchet());
         coordinator.registerLine(LINE_1, lineB);
 
         coordinator.activateLine(LINE_0);
@@ -220,7 +220,7 @@ class SelectionCoordinatorQueryGuardsTest extends UnitTest {
      * identity, so the ending does not need to be attached to a line for these tests.
      */
     private static Ending newEnding() {
-        return new Ending(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
+        return new Ending(crotchet(), crotchet());
     }
 
     /**

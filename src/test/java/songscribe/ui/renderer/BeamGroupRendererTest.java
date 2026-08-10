@@ -25,6 +25,9 @@ import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import module java.desktop;
 
@@ -138,9 +141,9 @@ class BeamGroupRendererTest extends UnitTest {
     void testIsNoteTypeInLevel_graceNoteChecksSurroundingNeighbors_bothQuavers_returnsTrue() {
         // Grace note checks neighbours: quaver, grace, quaver — all at level 0
         var line = detachedLine();
-        var note0 = ElementType.QUAVER.newInstance();
-        var graceNote = ElementType.GRACE_QUAVER.newInstance();
-        var note2 = ElementType.QUAVER.newInstance();
+        var note0 = quaver();
+        var graceNote = graceQuaver();
+        var note2 = quaver();
         line.addElement(note0);
         line.addElement(graceNote);
         line.addElement(note2);
@@ -153,9 +156,9 @@ class BeamGroupRendererTest extends UnitTest {
     void testIsNoteTypeInLevel_graceNoteChecksNeighbors_onlyQuavers_falseAtLevel1() {
         // Quaver neighbors don't qualify at level 1, so grace note returns false
         var line = detachedLine();
-        line.addElement(ElementType.QUAVER.newInstance());
-        line.addElement(ElementType.GRACE_QUAVER.newInstance());
-        line.addElement(ElementType.QUAVER.newInstance());
+        line.addElement(quaver());
+        line.addElement(graceQuaver());
+        line.addElement(quaver());
 
         assertThat(RENDERER.isNoteTypeInLevel(line, 1, 1)).isFalse();
     }
@@ -166,10 +169,10 @@ class BeamGroupRendererTest extends UnitTest {
         // Line: [quaver(0), grace(1), grace(2), quaver(3)]
         // Target index=2: begin walks back past grace(1) to quaver(0), end goes to quaver(3).
         var line = detachedLine();
-        line.addElement(ElementType.QUAVER.newInstance());
-        line.addElement(ElementType.GRACE_QUAVER.newInstance());
-        line.addElement(ElementType.GRACE_QUAVER.newInstance());
-        line.addElement(ElementType.QUAVER.newInstance());
+        line.addElement(quaver());
+        line.addElement(graceQuaver());
+        line.addElement(graceQuaver());
+        line.addElement(quaver());
 
         assertThat(RENDERER.isNoteTypeInLevel(line, 2, 0)).isTrue();
     }
@@ -180,10 +183,10 @@ class BeamGroupRendererTest extends UnitTest {
         // Target index=2: begin=1 is a quaver (not grace) so the backward while exits immediately;
         // forward while also exits immediately; outer neighbors are quavers → level 0 = true.
         var line = detachedLine();
-        line.addElement(ElementType.QUAVER.newInstance());
-        line.addElement(ElementType.QUAVER.newInstance());
-        line.addElement(ElementType.GRACE_QUAVER.newInstance());
-        line.addElement(ElementType.QUAVER.newInstance());
+        line.addElement(quaver());
+        line.addElement(quaver());
+        line.addElement(graceQuaver());
+        line.addElement(quaver());
 
         assertThat(RENDERER.isNoteTypeInLevel(line, 2, 0)).isTrue();
     }
@@ -194,10 +197,10 @@ class BeamGroupRendererTest extends UnitTest {
         // Forward scan: end=2 is grace → end advances to 3 (quaver).
         // Both outer neighbors are quavers → level 0 = true.
         var line = detachedLine();
-        line.addElement(ElementType.QUAVER.newInstance());
-        line.addElement(ElementType.GRACE_QUAVER.newInstance());
-        line.addElement(ElementType.GRACE_QUAVER.newInstance());
-        line.addElement(ElementType.QUAVER.newInstance());
+        line.addElement(quaver());
+        line.addElement(graceQuaver());
+        line.addElement(graceQuaver());
+        line.addElement(quaver());
 
         assertThat(RENDERER.isNoteTypeInLevel(line, 1, 0)).isTrue();
     }
@@ -206,8 +209,8 @@ class BeamGroupRendererTest extends UnitTest {
     void testIsNoteTypeInLevel_graceNoteAtStart_noLeftNeighbor_returnsFalse() {
         // Line: [grace(0), quaver(1)], target=0: begin=-1 → begin < 0 → false.
         var line = detachedLine();
-        line.addElement(ElementType.GRACE_QUAVER.newInstance());
-        line.addElement(ElementType.QUAVER.newInstance());
+        line.addElement(graceQuaver());
+        line.addElement(quaver());
 
         assertThat(RENDERER.isNoteTypeInLevel(line, 0, 0)).isFalse();
     }
@@ -216,8 +219,8 @@ class BeamGroupRendererTest extends UnitTest {
     void testIsNoteTypeInLevel_graceNoteAtEnd_noRightNeighbor_returnsFalse() {
         // Line: [quaver(0), grace(1)], target=1: end=2 >= elementCount(2) → false.
         var line = detachedLine();
-        line.addElement(ElementType.QUAVER.newInstance());
-        line.addElement(ElementType.GRACE_QUAVER.newInstance());
+        line.addElement(quaver());
+        line.addElement(graceQuaver());
 
         assertThat(RENDERER.isNoteTypeInLevel(line, 1, 0)).isFalse();
     }
@@ -227,9 +230,9 @@ class BeamGroupRendererTest extends UnitTest {
         // Line: [quaver(0), grace(1), crotchet(2)], target=1.
         // Left neighbor qualifies; right neighbor is crotchet (non-beamable) → false.
         var line = detachedLine();
-        line.addElement(ElementType.QUAVER.newInstance());
-        line.addElement(ElementType.GRACE_QUAVER.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(quaver());
+        line.addElement(graceQuaver());
+        line.addElement(crotchet());
 
         assertThat(RENDERER.isNoteTypeInLevel(line, 1, 0)).isFalse();
     }
@@ -241,7 +244,7 @@ class BeamGroupRendererTest extends UnitTest {
     @Test
     void testStemTipYSsOffset_withLayout_stemUp_returnsTopYSs() {
         var layout = new LayoutResult.StemLayout(-3.5, 0.5, 0.0, 0.0, false, 0);
-        var element = ElementType.QUAVER.newInstance();
+        var element = quaver();
 
         var result = BeamGroupRenderer.stemTipYSsOffset(layout, StaffElement.Direction.UP, element);
 
@@ -251,7 +254,7 @@ class BeamGroupRendererTest extends UnitTest {
     @Test
     void testStemTipYSsOffset_withLayout_stemDown_returnsBottomYSs() {
         var layout = new LayoutResult.StemLayout(-3.5, 0.5, 0.0, 0.0, false, 0);
-        var element = ElementType.QUAVER.newInstance();
+        var element = quaver();
 
         var result = BeamGroupRenderer.stemTipYSsOffset(layout, StaffElement.Direction.DOWN, element);
 
@@ -261,7 +264,7 @@ class BeamGroupRendererTest extends UnitTest {
     @Test
     void testStemTipYSsOffset_nullLayout_stemUp_usesStaffPositionMinusStemLength() {
         // staffPos=4 → elementYSs = 4 * 0.5 = 2.0; upper tip = 2.0 - STEM_LENGTH_SS
-        var element = ElementType.QUAVER.newInstance();
+        var element = quaver();
         element.setStaffPosition(4);
         var expectedYSs = Staff.spToSs(4) - SMuFLConstants.STEM_LENGTH_SS;
 
@@ -272,7 +275,7 @@ class BeamGroupRendererTest extends UnitTest {
 
     @Test
     void testStemTipYSsOffset_nullLayout_stemDown_usesStaffPositionPlusStemLength() {
-        var element = ElementType.QUAVER.newInstance();
+        var element = quaver();
         element.setStaffPosition(-2);
         var expectedYSs = Staff.spToSs(-2) + SMuFLConstants.STEM_LENGTH_SS;
 

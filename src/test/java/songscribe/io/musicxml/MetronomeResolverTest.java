@@ -21,13 +21,13 @@
 package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.TempoChangeAttachment;
 
@@ -49,7 +49,7 @@ class MetronomeResolverTest extends UnitTest {
     // -------------------------------------------------------------------------
 
     private static StaffElement newNote() {
-        return ElementType.CROTCHET.newInstance();
+        return crotchet();
     }
 
     private static void addMetronomeNote(MetronomeResolver resolver, String token) {

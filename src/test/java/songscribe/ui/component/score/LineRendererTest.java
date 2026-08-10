@@ -29,6 +29,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
@@ -261,9 +263,9 @@ class LineRendererTest extends UnitTest {
             firstLine = song.getLine(0);
             secondLine = new Line(song);
 
-            var unrelated = ElementType.CROTCHET.newInstance();
-            var anchor = ElementType.CROTCHET.newInstance();
-            var end = ElementType.CROTCHET.newInstance();
+            var unrelated = crotchet();
+            var anchor = crotchet();
+            var end = crotchet();
             tie = new Tie(anchor, end);
 
             song.withoutMutationTracking(() -> {
@@ -462,7 +464,7 @@ class LineRendererTest extends UnitTest {
         @Test
         void testPendingCancelElementReturnsRed() {
             var line = detachedLine();
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             line.addElement(element);
 
             var invariants = seededBuilder()
@@ -486,7 +488,7 @@ class LineRendererTest extends UnitTest {
         @Test
         void testNonPendingCancelBlackElementReturnsBlack() {
             var line = detachedLine();
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             line.addElement(element);
 
             var invariants = seededBuilder()
@@ -523,7 +525,7 @@ class LineRendererTest extends UnitTest {
          */
         @Test
         void testOverrideAppliedWhenIndexAtOrAfterBoundary() {
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             // Use a mock LayoutResult to control getElementXSs without needing package-private setXSs
             var layoutResult = mock(LayoutResult.class);
             when(layoutResult.getElementXSs(element)).thenReturn(ELEMENT_X_SS);
@@ -548,7 +550,7 @@ class LineRendererTest extends UnitTest {
          */
         @Test
         void testNoOverrideWhenIndexBeforeBoundary() {
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             var layoutResult = LayoutResult.builder().build();
             var frame = ElementFrame.lineLevelWithPreviewShift(FROM_INDEX, SHIFT_SS);
 
@@ -565,7 +567,7 @@ class LineRendererTest extends UnitTest {
          */
         @Test
         void testNoOverrideWhenFrameHasNoPreviewShift() {
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             var layoutResult = LayoutResult.builder().build();
 
             var result = LineRenderer.computeOverrideXSs(ElementFrame.LINE_LEVEL, FROM_INDEX, element, layoutResult);
@@ -581,7 +583,7 @@ class LineRendererTest extends UnitTest {
          */
         @Test
         void testNoOverrideForFinalDoubleBarline() {
-            var element = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+            var element = finalDoubleBarline();
             var layoutResult = LayoutResult.builder().build();
             var frame = ElementFrame.lineLevelWithPreviewShift(FROM_INDEX, SHIFT_SS);
 

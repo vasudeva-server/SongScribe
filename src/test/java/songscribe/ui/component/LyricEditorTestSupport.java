@@ -41,11 +41,11 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementFactory;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.layout.LyricRenderMetrics;
@@ -111,11 +111,11 @@ abstract class LyricEditorTestSupport extends UnitTest {
     protected MockedStatic<MessageCenter> messageCenterMock;
 
     protected static StaffElement crotchet() {
-        return ElementType.CROTCHET.newInstance();
+        return StaffElementFactory.crotchet();
     }
 
     protected static StaffElement crotchetRest() {
-        return ElementType.CROTCHET_REST.newInstance();
+        return StaffElementFactory.crotchetRest();
     }
 
     protected static void setMainLyric(StaffElement element, String text) {

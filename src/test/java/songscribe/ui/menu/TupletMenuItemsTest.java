@@ -22,6 +22,7 @@ package songscribe.ui.menu;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.Arrays;
 import java.util.List;
@@ -34,7 +35,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Tuplet;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.TupletAction;
@@ -148,7 +148,7 @@ class TupletMenuItemsTest extends MainFrameMockTest {
 
     private static Tuplet tupletOfGrade(int grade) {
         return Tuplet.withUnresolvedRatio(
-            ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance(), grade);
+            crotchet(), crotchet(), grade);
     }
 
     /** The grade items only — the disabled placeholder is a plain item, not a grade. */

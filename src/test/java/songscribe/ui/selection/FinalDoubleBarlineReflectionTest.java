@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 
@@ -119,7 +120,7 @@ class FinalDoubleBarlineReflectionTest extends MainFrameMockTest {
      */
     private Line lineEndingInTerminal() {
         var line = song.getLine(0);
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(crotchet()));
 
         return line;
     }

@@ -22,6 +22,8 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.util.Collections;
 import java.util.List;
@@ -189,7 +191,7 @@ class LyricLiftTest extends UnitTest {
     /** A grace column bearing a lyric, with the given notehead right extent and comfortable gap. */
     private static ElementColumn graceColumn(double rightExtentSs, double syllableWidthSs, double minGapSs) {
         var graceColumn = new ElementColumn(
-            ElementType.GRACE_QUAVER.newInstance(), Collections.emptyList(),
+            graceQuaver(), Collections.emptyList(),
             0.0, rightExtentSs, 0.0, 0.0, SYLLABLE_LYRIC, syllableWidthSs, false);
         graceColumn.setMinGapToNextSyllableSs(minGapSs);
         return graceColumn;
@@ -198,7 +200,7 @@ class LyricLiftTest extends UnitTest {
     /** A grace's host column: bears no syllable of its own (the grace carries the lyric). */
     private static ElementColumn hostColumn(double rightExtentSs) {
         return new ElementColumn(
-            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            crotchet(), Collections.emptyList(),
             0.0, rightExtentSs, 0.0, 0.0, null, NO_SYLLABLE_WIDTH_SS, false);
     }
 
@@ -207,7 +209,7 @@ class LyricLiftTest extends UnitTest {
         double rightExtentSs, double syllableWidthSs, double minGapSs) {
 
         var syllableColumn = new ElementColumn(
-            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            crotchet(), Collections.emptyList(),
             0.0, rightExtentSs, 0.0, 0.0, SYLLABLE_LYRIC, syllableWidthSs, false);
         syllableColumn.setMinGapToNextSyllableSs(minGapSs);
         return syllableColumn;

@@ -26,6 +26,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 
@@ -34,7 +35,6 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.Tie;
@@ -55,8 +55,8 @@ class TieRendererTest extends UnitTest {
      */
     private static Tie makeTie() {
         var line = detachedLine();
-        var anchorNote = ElementType.CROTCHET.newInstance();
-        var endNote = ElementType.CROTCHET.newInstance();
+        var anchorNote = crotchet();
+        var endNote = crotchet();
         line.addElement(anchorNote);
         line.addElement(endNote);
         return new Tie(anchorNote, endNote);

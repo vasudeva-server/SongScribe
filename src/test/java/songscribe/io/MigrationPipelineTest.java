@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -155,7 +156,7 @@ class MigrationPipelineTest extends UnitTest {
         void testEffectAppliesFinalBarline() {
             var c = ctx(2, 3);
             var line = detachedLine();
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             c.lines.add(line);
 
             stage(StageId.FINAL_TERMINAL).apply().accept(c);
@@ -191,7 +192,7 @@ class MigrationPipelineTest extends UnitTest {
         void testEffectMigratesTempoChangeYPosToAttachmentOffset() {
             var c = ctx(1, 5);
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             line.addElement(note);
             note.addAttachment(new TempoChangeAttachment(note, new Tempo()));
             c.legacyLineOffsets.put(line, new LegacyLineOffsets(TEMPO_CHANGE_Y_POS_PX,
@@ -242,7 +243,7 @@ class MigrationPipelineTest extends UnitTest {
             var c = ctx(2, MigrationPipeline.PER_NOTE_LYRIC_VERSION - 1);
             var song = mock(Song.class);
             var line = detachedLine();
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             var songLines = new ArrayList<Line>();
             songLines.add(line);
             when(song.getLines()).thenReturn(songLines);
@@ -365,8 +366,8 @@ class MigrationPipelineTest extends UnitTest {
         void testEffectNormalizesStaleSyllabicMarkers() {
             var c = ctx(2, 5);
             var line = detachedLine();
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             // Both notes carry BEGIN — the stale value a legacy read path would produce.

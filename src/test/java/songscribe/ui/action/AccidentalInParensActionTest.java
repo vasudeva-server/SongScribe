@@ -21,12 +21,13 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 
 class AccidentalInParensActionTest extends MainFrameMockTest {
@@ -40,7 +41,7 @@ class AccidentalInParensActionTest extends MainFrameMockTest {
 
     @Test
     void testApplyToNoteAppliesParentheses() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
         action.applyToElement(note, true);
         assertThat(note.isAccidentalInParentheses()).isTrue();
@@ -48,7 +49,7 @@ class AccidentalInParensActionTest extends MainFrameMockTest {
 
     @Test
     void testApplyToNoteRemovesParentheses() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidentalInParentheses(true);
         action.applyToElement(note, false);
         assertThat(note.isAccidentalInParentheses()).isFalse();
@@ -57,7 +58,7 @@ class AccidentalInParensActionTest extends MainFrameMockTest {
     // M16: matchesNote returns false when accidental is not in parentheses
     @Test
     void testDoesNotMatchWhenNotInParentheses() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
 
         assertThat(action.matchesElement(note)).isFalse();
     }
@@ -65,7 +66,7 @@ class AccidentalInParensActionTest extends MainFrameMockTest {
     // M15: matchesNote returns true when accidental is in parentheses
     @Test
     void testMatchesWhenInParentheses() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         // Must set a non-NONE accidental first; setter is a no-op otherwise
         note.setAccidental(StaffElement.Accidental.SHARP);
         note.setAccidentalInParentheses(true);
@@ -75,7 +76,7 @@ class AccidentalInParensActionTest extends MainFrameMockTest {
 
     @Test
     void testApplyToNoteWithNoAccidentalIsNoOp() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         // note has no accidental; StaffElement.setAccidentalInParentheses guards on getAccidental() != null
         action.applyToElement(note, true);
         assertThat(note.isAccidentalInParentheses()).isFalse();
@@ -83,14 +84,14 @@ class AccidentalInParensActionTest extends MainFrameMockTest {
 
     @Test
     void testAppliesToReturnsFalseForNoteWithNoAccidental() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
 
         assertThat(action.appliesTo(note)).isFalse();
     }
 
     @Test
     void testAppliesToReturnsTrueForNoteWithAccidental() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
         assertThat(action.appliesTo(note)).isTrue();
@@ -98,7 +99,7 @@ class AccidentalInParensActionTest extends MainFrameMockTest {
 
     @Test
     void testAppliesToReturnsFalseForNonNoteElement() {
-        var rest = ElementType.CROTCHET_REST.newInstance();
+        var rest = crotchetRest();
 
         assertThat(action.appliesTo(rest)).isFalse();
     }

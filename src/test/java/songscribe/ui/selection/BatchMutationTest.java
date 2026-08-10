@@ -28,6 +28,11 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.quaverRest;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.util.List;
 
@@ -98,9 +103,9 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testAccidentalSkipsRests() {
         var notes = List.of(
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET_REST.newInstance(),
-            ElementType.CROTCHET.newInstance()
+            crotchet(),
+            crotchetRest(),
+            crotchet()
         );
         var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -118,9 +123,9 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testApplyFermataToSelection() {
         var notes = List.of(
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance()
+            crotchet(),
+            crotchet(),
+            crotchet()
         );
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -141,9 +146,9 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testBeamDissolvedWhenAllNonBeamable() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -158,8 +163,8 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testBeamDissolvedWhenSubgroupTooSmall() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -175,10 +180,10 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testBeamShrunkFromEnd() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -197,10 +202,10 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testBeamShrunkFromStart() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -219,11 +224,11 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testBeamKilledWhenInteriorElementBecomesNonBeamable() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -240,7 +245,7 @@ class BatchMutationTest extends MainFrameMockTest {
 
     @Test
     void testSongBracketOpened() {
-        var notes = List.of(ElementType.CROTCHET.newInstance());
+        var notes = List.of(crotchet());
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectNote(coordinator, 0);
 
@@ -254,7 +259,7 @@ class BatchMutationTest extends MainFrameMockTest {
 
     @Test
     void testDurationChangePreservesAttributes() {
-        var note = ElementType.QUAVER.newInstance();
+        var note = quaver();
         note.addAttachment(new FermataAttachment(note));
         note.setAccidental(StaffElement.Accidental.SHARP);
 
@@ -272,9 +277,9 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testDurationChangePreservesNoteRestKind() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER_REST.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaverRest(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -290,8 +295,8 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testDurationChangeReplacesNotes() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -308,9 +313,9 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testDurationChangeSkipsBarlines() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.SINGLE_BARLINE.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            singleBarline(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -328,8 +333,8 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testDurationUnApplyIsNoOp() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -345,7 +350,7 @@ class BatchMutationTest extends MainFrameMockTest {
 
     @Test
     void testNoSelectionIsNoOp() {
-        var notes = List.of(ElementType.CROTCHET.newInstance());
+        var notes = List.of(crotchet());
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
 
         // No selection set -- should not throw
@@ -360,7 +365,7 @@ class BatchMutationTest extends MainFrameMockTest {
     void testNoSelectionDoesNotOpenModificationBracket() {
         // applyActionToSelection returns immediately when getSelection() == null,
         // so withModification must never be called at all.
-        var notes = List.of(ElementType.CROTCHET.newInstance());
+        var notes = List.of(crotchet());
         var songMock = createSongMock();
         var coordinator = ReflectionTestHelper.createCoordinator(notes, List.of(FERMATA_ACTION), songMock);
 
@@ -378,9 +383,9 @@ class BatchMutationTest extends MainFrameMockTest {
         // Applying QUARTER_ACTION (ElementReplaceable) with selected=false must leave every
         // element unchanged — contrast with the ElementModifiable path that DOES process false.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -398,9 +403,9 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testRemoveFermataFromSelection() {
         var notes = List.of(
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance()
+            crotchet(),
+            crotchet(),
+            crotchet()
         );
 
         for (var note : notes) {
@@ -427,8 +432,8 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testSelectionRemainsActiveAfterMutation() {
         var notes = List.of(
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance()
+            crotchet(),
+            crotchet()
         );
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -453,8 +458,8 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testTieUntouchedByDurationChange() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -479,9 +484,9 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testTupletDissolvedWhenContainsNonDuration() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.SINGLE_BARLINE.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            singleBarline(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -496,11 +501,11 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testOverlappingTupletFlatRemovedNoSubSpans() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -515,11 +520,11 @@ class BatchMutationTest extends MainFrameMockTest {
     @Test
     void testNonOverlappingTupletPreserved() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);

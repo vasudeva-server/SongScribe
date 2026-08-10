@@ -21,6 +21,7 @@
 package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 
@@ -29,7 +30,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Song;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 
@@ -210,7 +210,7 @@ class LegacyLyricsImporterTest extends UnitTest {
 
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < count; i++) {
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             }
         });
 

@@ -22,6 +22,7 @@ package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -30,7 +31,6 @@ import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.message.mutation.ElementDeletion;
@@ -269,7 +269,7 @@ class SelectionRangeSpliceTest extends UnitTest {
     }
 
     private static StaffElement newElement() {
-        return ElementType.CROTCHET.newInstance();
+        return crotchet();
     }
 
     private static ElementInsertion insertionAt(Line line, int index) {

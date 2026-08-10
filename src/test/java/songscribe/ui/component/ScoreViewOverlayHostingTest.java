@@ -22,6 +22,7 @@ package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.awt.BorderLayout;
 import java.awt.Component;
@@ -41,7 +42,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.message.MessageCenter;
@@ -162,7 +162,7 @@ class ScoreViewOverlayHostingTest extends UnitTest {
      */
     private static LyricEditor registerLyricEditor(ScoreView scoreView) {
         var line = detachedLine();
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         line.addElement(element);
 
         var editor = new LyricEditor(scoreView, line, element);

@@ -21,6 +21,9 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,7 +53,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** BREATH_MARK preview at index 0 must be blocked — there is no preceding element. */
         @Test
         void testBreathMarkAtIndexZeroIsBlocked() {
-            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var breathMark = breathMark();
             var line = lineWith(ElementType.CROTCHET);
 
             assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 0, line, false))
@@ -61,7 +64,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** BREATH_MARK preview after a non-grace note is allowed. */
         @Test
         void testBreathMarkAfterNonGraceNoteIsNotBlocked() {
-            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var breathMark = breathMark();
             var line = lineWith(ElementType.CROTCHET);
 
             assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, false))
@@ -72,7 +75,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** BREATH_MARK preview after a rest is allowed. */
         @Test
         void testBreathMarkAfterRestIsNotBlocked() {
-            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var breathMark = breathMark();
             var line = lineWith(ElementType.CROTCHET_REST);
 
             assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, false))
@@ -83,7 +86,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** BREATH_MARK preview directly after a grace note must be blocked. */
         @Test
         void testBreathMarkAfterGraceNoteIsBlocked() {
-            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var breathMark = breathMark();
             var line = lineWith(ElementType.GRACE_QUAVER);
 
             assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, false))
@@ -94,7 +97,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** BREATH_MARK preview directly after another breath mark must be blocked. */
         @Test
         void testBreathMarkAfterBreathMarkIsBlocked() {
-            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var breathMark = breathMark();
             var line = lineWith(ElementType.CROTCHET, ElementType.BREATH_MARK);
 
             assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 2, line, false))
@@ -105,7 +108,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** BREATH_MARK preview directly before an existing breath mark must be blocked. */
         @Test
         void testBreathMarkBeforeBreathMarkIsBlocked() {
-            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var breathMark = breathMark();
             var line = lineWith(ElementType.CROTCHET, ElementType.BREATH_MARK);
 
             assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, false))
@@ -119,7 +122,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
          */
         @Test
         void testBreathMarkOverExistingElementIsBlocked() {
-            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var breathMark = breathMark();
             var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
 
             assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, true))
@@ -130,7 +133,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** A non-breath-mark type at index 0 must not be blocked. */
         @Test
         void testNonBreathMarkAtIndexZeroIsNotBlocked() {
-            var crotchet = ElementType.CROTCHET.newInstance();
+            var crotchet = crotchet();
             var line = lineWith(ElementType.CROTCHET);
 
             assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(crotchet, 0, line, false))
@@ -141,7 +144,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
         /** A non-breath-mark type over an existing element is not blocked (it may replace). */
         @Test
         void testNonBreathMarkOverExistingElementIsNotBlocked() {
-            var crotchet = ElementType.CROTCHET.newInstance();
+            var crotchet = crotchet();
             var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
 
             assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(crotchet, 1, line, true))
@@ -165,7 +168,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
          */
         @Test
         void testBreathMarkAfterGlissandoConnectedNoteIsBlocked() {
-            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var breathMark = breathMark();
             var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
             line.getElement(0).setGlissando();
 
@@ -180,7 +183,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
          */
         @Test
         void testBreathMarkBetweenTwoNotesIsNotBlocked() {
-            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var breathMark = breathMark();
             var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
 
             assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(breathMark, 1, line, false))
@@ -195,7 +198,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
          */
         @Test
         void testBreathMarkAppendedAtEndIsNotBlocked() {
-            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var breathMark = breathMark();
             var line = lineWith(ElementType.CROTCHET, ElementType.CROTCHET);
 
             assertThat(PreviewElementManager.isBreathMarkInsertionBlocked(
@@ -312,7 +315,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
          */
         @Test
         void testRestSnapsToDefaultPosition() {
-            var rest = ElementType.CROTCHET_REST.newInstance();
+            var rest = crotchetRest();
             var defaultSp = rest.getType().getDefaultStaffPosition();
 
             PreviewElementManager.applyStaffPosition(rest, MOUSE_SP);
@@ -327,7 +330,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
          */
         @Test
         void testPitchedNoteUsesMousePosition() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
 
             PreviewElementManager.applyStaffPosition(note, MOUSE_SP);
 
@@ -342,7 +345,7 @@ class PreviewElementManagerStaticMethodsTest extends UnitTest {
          */
         @Test
         void testRestDefaultPositionDiffersFromMousePosition() {
-            var rest = ElementType.CROTCHET_REST.newInstance();
+            var rest = crotchetRest();
             assertThat(rest.getType().getDefaultStaffPosition())
                 .as("test pre-condition: rest default sp differs from mouse sp used in other tests")
                 .isNotEqualTo(MOUSE_SP);

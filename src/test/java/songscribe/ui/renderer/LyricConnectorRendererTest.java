@@ -30,6 +30,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static songscribe.layout.LyricConnectorLayout.NO_SOURCE_ELEMENT_INDEX;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -165,7 +166,7 @@ class LyricConnectorRendererTest extends UnitTest {
     }
 
     private static StaffElement note() {
-        return ElementType.CROTCHET.newInstance();
+        return crotchet();
     }
 
     @Test

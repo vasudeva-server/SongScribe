@@ -25,11 +25,11 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.ui.action.Actions;
 import songscribe.ui.action.UIAction;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * Tests for {@link SelectionCoordinator#restoreSelectedActionStates()}.
@@ -47,7 +47,7 @@ class RestoreSelectedActionStatesTest extends MainFrameMockTest {
 
     private SelectionCoordinator coordinatorManaging(UIAction... managedActions) {
         return ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of(),
             List.of(managedActions)
         );

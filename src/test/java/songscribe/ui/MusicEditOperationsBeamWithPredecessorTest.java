@@ -95,10 +95,6 @@ class MusicEditOperationsBeamWithPredecessorTest extends UnitTest {
     // Fixture helpers
     // -----------------------------------------------------------------------
 
-    private static StaffElement semiquaver() {
-        return ElementType.SEMIQUAVER.newInstance();
-    }
-
     /**
      * Builds a line holding {@code elements} and attaches it to the song, then starts
      * mocking {@link MessageCenter} so the operation's own batch is the only thing observed.

@@ -33,13 +33,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
+import static songscribe.dom.StaffElementFactory.crotchet;
+
 import songscribe.UnitTest;
 import songscribe.message.MessageCenter;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementFactory;
 import songscribe.engraving.SMuFLConstants;
 
 /**
@@ -142,13 +144,9 @@ class LyricLayoutBuilderGraceNoteTest extends UnitTest {
     }
 
     private static StaffElement graceQuaver() {
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = StaffElementFactory.graceQuaver();
         grace.setGlissando();
         return grace;
-    }
-
-    private static StaffElement crotchet() {
-        return ElementType.CROTCHET.newInstance();
     }
 
     private static void setLyric(

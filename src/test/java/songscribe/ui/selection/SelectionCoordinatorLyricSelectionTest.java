@@ -21,11 +21,11 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.hit.HitTarget;
 
 class SelectionCoordinatorLyricSelectionTest extends UnitTest {
@@ -33,8 +33,8 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
     @Test
     void testSelectLyricClearsElementSelection() {
         var line = detachedLine();
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         line.addElement(first);
         line.addElement(second);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -49,8 +49,8 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
     @Test
     void testElementSelectionClearsLyricSelection() {
         var line = detachedLine();
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         line.addElement(first);
         line.addElement(second);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -69,7 +69,7 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
     @Test
     void testActivateLineClearsLyricSelection() {
         var line = detachedLine();
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         line.addElement(element);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
         coordinator.selectLyric(element, 1);
@@ -88,7 +88,7 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
     @Test
     void testClearSelectionClearsLyricSelection() {
         var line = detachedLine();
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         line.addElement(element);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
         coordinator.selectLyric(element, 1);
@@ -113,7 +113,7 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
 
         // Build a fresh, unregistered line with an element.
         var unregisteredLine = detachedLine();
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         unregisteredLine.addElement(element);
 
         coordinator.selectLyric(element, 1);
@@ -135,8 +135,8 @@ class SelectionCoordinatorLyricSelectionTest extends UnitTest {
     @Test
     void testSelectLyricOnAnElementInNoLineLeavesTheExistingSelectionAlone() {
         var line = detachedLine();
-        var kept = ElementType.CROTCHET.newInstance();
-        var removed = ElementType.CROTCHET.newInstance();
+        var kept = crotchet();
+        var removed = crotchet();
         line.addElement(kept);
         line.addElement(removed);
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);

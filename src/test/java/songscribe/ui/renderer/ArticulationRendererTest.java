@@ -30,6 +30,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +43,6 @@ import org.mockito.ArgumentCaptor;
 import songscribe.UnitTest;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.hit.HitTarget;
 import songscribe.smufl.SMuFLGlyph;
@@ -74,7 +74,7 @@ class ArticulationRendererTest extends UnitTest {
     private Graphics2D renderAndSpy(boolean upper, Articulation... articulations) {
         var g2Spy = spy(RenderContextTestHelper.realG2());
         var invariants = RenderContextTestHelper.newContext(new Song()).build();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setUpper(upper);
 
         for (var a : articulations) {
@@ -125,7 +125,7 @@ class ArticulationRendererTest extends UnitTest {
         // the `if (layout == null) continue;` skip branch — render() must not draw or throw.
         var g2Spy = spy(RenderContextTestHelper.realG2());
         var invariants = RenderContextTestHelper.newContext(new Song()).build();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addArticulation(new Articulation(ArticulationType.STACCATO));
 
         var frame = ElementFrame.LINE_LEVEL.withElement(0, Double.NaN);
@@ -202,7 +202,7 @@ class ArticulationRendererTest extends UnitTest {
         Articulation accent,
         Articulation selected
     ) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addArticulation(staccato);
         note.addArticulation(accent);
 

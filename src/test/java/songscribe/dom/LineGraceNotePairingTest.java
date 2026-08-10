@@ -25,6 +25,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -53,10 +55,10 @@ class LineGraceNotePairingTest extends UnitTest {
     /** Builds a line: [grace+CONNECTED glissando, host crotchet]. Index 0 is a paired grace. */
     private Line pairedGraceLine() {
         var line = detachedLine();
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         line.addElement(grace);
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         return line;
     }
 
@@ -66,19 +68,19 @@ class LineGraceNotePairingTest extends UnitTest {
      */
     private Line graceHostPairAfterANote() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        line.addElement(crotchet());
+        var grace = graceQuaver();
         grace.setGlissando();
         line.addElement(grace);
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         return line;
     }
 
     /** Builds a line: [grace (no glissando), crotchet]. Index 0 is an unpaired grace. */
     private Line unpairedGraceLine() {
         var line = detachedLine();
-        line.addElement(ElementType.GRACE_QUAVER.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(graceQuaver());
+        line.addElement(crotchet());
         return line;
     }
 
@@ -103,8 +105,8 @@ class LineGraceNotePairingTest extends UnitTest {
     @Test
     void testNonGraceAtPrecedingIndexReturnsFalse() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         assertThat(line.isHostOfPairedGraceNote(1)).isFalse();
     }
 
@@ -137,7 +139,7 @@ class LineGraceNotePairingTest extends UnitTest {
     void testIsInsideGraceHostPairAtIndexTwoReturnsFalse() {
         // Build: [grace+CONNECTED, host, crotchet]. Index 2 is past the pair.
         var line = pairedGraceLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         assertThat(line.isInsideGraceHostPair(2)).isFalse();
     }
 
@@ -201,8 +203,8 @@ class LineGraceNotePairingTest extends UnitTest {
     void testPrecedingGraceNoteIndexWhenPrecedingIsNoteReturnsMinusOne() {
         // Build: [crotchet, crotchet]. Index 1 has a non-grace preceding it.
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         assertThat(line.precedingGraceNoteIndex(1)).isEqualTo(-1);
     }
 
@@ -388,7 +390,7 @@ class LineGraceNotePairingTest extends UnitTest {
     void testSyncLeavesAHostThatCarriesTheChainOnward() {
         // A longer melisma already runs across the host, so the host keeps its CONTINUE.
         var line = pairedGraceLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         setSyllable(line, GRACE, VERSE, SYLLABLE);
         setCarrier(line, HOST, VERSE, Lyric.Extend.CONTINUE);
         setCarrier(line, HOST + 1, VERSE, Lyric.Extend.STOP);
@@ -431,7 +433,7 @@ class LineGraceNotePairingTest extends UnitTest {
     @Test
     void testSyncAtTheLastElementIsANoOp() {
         var line = detachedLine();
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         line.addElement(grace);
         setSyllable(line, GRACE, VERSE, SYLLABLE);
@@ -463,10 +465,10 @@ class LineGraceNotePairingTest extends UnitTest {
         // it so any emission reaches the song.
         var songMock = minimalSongMock();
         var line = new Line(songMock);
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         line.addElement(grace);
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
 
         when(songMock.isMutationTrackingSuspended()).thenReturn(false);
         when(songMock.isModifying()).thenReturn(true);
@@ -649,7 +651,7 @@ class LineGraceNotePairingTest extends UnitTest {
     @Test
     void testRepairIgnoresATrailingGraceWithNoHost() {
         var line = detachedLine();
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         line.addElement(grace);
         setSyllable(line, GRACE, VERSE, SYLLABLE);

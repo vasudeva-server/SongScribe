@@ -27,6 +27,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.awt.Color;
 import java.awt.Shape;
@@ -39,7 +40,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
-import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -235,8 +235,8 @@ class HairpinRendererTest extends UnitTest {
 
     private Line twoNoteLine() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         return line;
     }
 

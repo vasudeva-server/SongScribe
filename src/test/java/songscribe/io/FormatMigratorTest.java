@@ -21,6 +21,7 @@
 package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 import java.util.Map;
@@ -246,8 +247,8 @@ class FormatMigratorTest extends UnitTest {
         @Test
         void testTupletNonZeroVerticalPositionDividedByPps() {
             var line = detachedLine();
-            var anchor = ElementType.CROTCHET.newInstance();
-            var end = ElementType.CROTCHET.newInstance();
+            var anchor = crotchet();
+            var end = crotchet();
             line.addElement(anchor);
             line.addElement(end);
             var tuplet = Tuplet.withUnresolvedRatio(anchor, end, TUPLET_GRADE);
@@ -266,8 +267,8 @@ class FormatMigratorTest extends UnitTest {
         @Test
         void testTupletZeroVerticalPositionIsNoOp() {
             var line = detachedLine();
-            var anchor = ElementType.CROTCHET.newInstance();
-            var end = ElementType.CROTCHET.newInstance();
+            var anchor = crotchet();
+            var end = crotchet();
             line.addElement(anchor);
             line.addElement(end);
             var tuplet = Tuplet.withUnresolvedRatio(anchor, end, TUPLET_GRADE);
@@ -283,8 +284,8 @@ class FormatMigratorTest extends UnitTest {
         @Test
         void testHairpinShiftsDividedByPps() {
             var line = detachedLine();
-            var anchor = ElementType.CROTCHET.newInstance();
-            var end = ElementType.CROTCHET.newInstance();
+            var anchor = crotchet();
+            var end = crotchet();
             line.addElement(anchor);
             line.addElement(end);
             var hairpin = new Crescendo(anchor, end);
@@ -305,7 +306,7 @@ class FormatMigratorTest extends UnitTest {
         @Test
         void testAttachmentUserYOffsetSsDividedByPps() {
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             line.addElement(note);
             var attachment = new DynamicAttachment(note, DynamicAttachment.DynamicType.FORTE);
             attachment.setUserYOffsetSs(NON_ZERO_ATTACHMENT_USER_Y_OFFSET_SS);
@@ -322,7 +323,7 @@ class FormatMigratorTest extends UnitTest {
         @Test
         void testNoteXOffsetPxResetToZero() {
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             line.addElement(note);
             note.setXOffsetPx(NON_ZERO_NOTE_X_OFFSET_PX);
 
@@ -335,8 +336,8 @@ class FormatMigratorTest extends UnitTest {
         @Test
         void testEndingYPositionSsDividedByPps() {
             var line = detachedLine();
-            var anchor = ElementType.CROTCHET.newInstance();
-            var end = ElementType.CROTCHET.newInstance();
+            var anchor = crotchet();
+            var end = crotchet();
             line.addElement(anchor);
             line.addElement(end);
             var ending = new Ending(anchor, end);
@@ -355,7 +356,7 @@ class FormatMigratorTest extends UnitTest {
         @Test
         void testTrillYPositionSsDividedByPps() {
             var line = detachedLine();
-            var anchor = ElementType.CROTCHET.newInstance();
+            var anchor = crotchet();
             line.addElement(anchor);
             var trill = new Trill(anchor);
             trill.setYPositionSs(NON_ZERO_TRILL_Y_POSITION_SS);
@@ -468,7 +469,7 @@ class FormatMigratorTest extends UnitTest {
     /** Creates a line containing a single crotchet with a BeatChangeAttachment. */
     private static Line buildLineWithBeatChange() {
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
         note.addAttachment(
             new BeatChangeAttachment(note, new BeatChange(Duration.CROTCHET, Duration.CROTCHET))

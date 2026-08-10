@@ -26,6 +26,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,7 +43,6 @@ import songscribe.message.mutation.TupletAddition;
 import songscribe.message.mutation.TupletRemoval;
 import songscribe.dom.Beam;
 import songscribe.dom.Song;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.DotAction;
 import songscribe.dom.Tuplet;
@@ -109,9 +110,9 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // with a sixteenth keeps every element beamable, so the beam is
         // untouched.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(SIXTEENTH_ACTION));
         var selection = coordinator.getActiveLine();
@@ -134,9 +135,9 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // with a quarter trims the beam from the left end, producing one
         // BeamingRemoval + one BeamingAddition for the truncated [1..2] span.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var selection = coordinator.getActiveLine();
@@ -165,9 +166,9 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // with a quarter trims the beam from the right end, producing one
         // BeamingRemoval + one BeamingAddition for the truncated [0..1] span.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var selection = coordinator.getActiveLine();
@@ -196,11 +197,11 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // with a quarter punctures the interior — the beam is killed outright,
         // not split, per the Phase 4 trim-and-kill rule.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var selection = coordinator.getActiveLine();
@@ -229,9 +230,9 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // Beam over [0..2] with a grace note at index 1; replacing the last element with a
         // sixteenth keeps every real member beamable, so the beam must be left alone.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.GRACE_QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            graceQuaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(SIXTEENTH_ACTION));
         var selection = coordinator.getActiveLine();
@@ -256,8 +257,8 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // quarter leaves a single beamable element, which cannot form a beam
         // on its own — the beam is killed with no addition.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var selection = coordinator.getActiveLine();
@@ -289,11 +290,11 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // the full range [0..4] overlaps both, so both trigger a TupletRemoval
         // when the replaceable action is applied.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var selection = coordinator.getActiveLine();
@@ -321,11 +322,11 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // Five eighths with a tuplet at [3..4] — entirely outside the selected
         // index 0. The replacement emits no TupletRemoval records.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var selection = coordinator.getActiveLine();
@@ -349,9 +350,9 @@ class SelectionCoordinatorValidateSpansTest extends MainFrameMockTest {
         // a TupletRemoval directly — independent of validateSpans.
         var dotAction = DotAction.createDotAction(mainFrame());
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(dotAction));
         var selection = coordinator.getActiveLine();

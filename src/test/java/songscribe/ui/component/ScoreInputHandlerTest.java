@@ -32,6 +32,9 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.awt.Component;
 import java.awt.Window;
@@ -56,7 +59,6 @@ import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -718,9 +720,9 @@ class ScoreInputHandlerTest extends UnitTest {
 
         private List<StaffElement> threeCrotchets() {
             return List.of(
-                ElementType.CROTCHET.newInstance(),
-                ElementType.CROTCHET.newInstance(),
-                ElementType.CROTCHET.newInstance()
+                crotchet(),
+                crotchet(),
+                crotchet()
             );
         }
     }
@@ -736,8 +738,8 @@ class ScoreInputHandlerTest extends UnitTest {
         var line = song.getLine(0);
 
         song.withoutMutationTracking(() -> {
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
+            line.addElement(crotchet());
         });
 
         return line;
@@ -778,7 +780,7 @@ class ScoreInputHandlerTest extends UnitTest {
             final var originalPositionSp = 4;
             var song = new Song();
             var line = song.getLine(0);
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(originalPositionSp);
             // An accidental is written for the staff position it sits on, so a note that leaves
             // that position gives it up. The fixture needs one for that clearing to be observable
@@ -808,7 +810,7 @@ class ScoreInputHandlerTest extends UnitTest {
             final var originalPositionSp = 4;
             var song = new Song();
             var line = song.getLine(0);
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(originalPositionSp);
             // See the Up test: without an accidental on the fixture, nothing observes the clear.
             note.setAccidental(StaffElement.Accidental.FLAT);
@@ -840,10 +842,10 @@ class ScoreInputHandlerTest extends UnitTest {
             final var sharedPositionSp = 4;
             var song = new Song();
             var line = song.getLine(0);
-            var movedNote = ElementType.CROTCHET.newInstance();
+            var movedNote = crotchet();
             movedNote.setStaffPosition(sharedPositionSp);
             movedNote.setAccidental(StaffElement.Accidental.SHARP);
-            var inheritingNote = ElementType.CROTCHET.newInstance();
+            var inheritingNote = crotchet();
             inheritingNote.setStaffPosition(sharedPositionSp);
             song.withoutMutationTracking(() -> {
                 line.addElement(movedNote);
@@ -872,9 +874,9 @@ class ScoreInputHandlerTest extends UnitTest {
             final var secondPositionSp = 2;
             var song = new Song();
             var line = song.getLine(0);
-            var firstNote = ElementType.CROTCHET.newInstance();
+            var firstNote = crotchet();
             firstNote.setStaffPosition(firstPositionSp);
-            var secondNote = ElementType.CROTCHET.newInstance();
+            var secondNote = crotchet();
             secondNote.setStaffPosition(secondPositionSp);
             song.withoutMutationTracking(() -> {
                 line.addElement(firstNote);
@@ -894,7 +896,7 @@ class ScoreInputHandlerTest extends UnitTest {
         void testUpAtUpperBoundaryClampsAndRecordsNoMutation() {
             var song = new Song();
             var line = song.getLine(0);
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(Staff.MIN_STAFF_POSITION_SP);
             song.withoutMutationTracking(() -> line.addElement(note));
 
@@ -911,7 +913,7 @@ class ScoreInputHandlerTest extends UnitTest {
         void testDownAtLowerBoundaryClampsAndRecordsNoMutation() {
             var song = new Song();
             var line = song.getLine(0);
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(Staff.MAX_STAFF_POSITION_SP);
             song.withoutMutationTracking(() -> line.addElement(note));
 
@@ -928,7 +930,7 @@ class ScoreInputHandlerTest extends UnitTest {
         void testUpOnSelectedRestIsNoOp() {
             var song = new Song();
             var line = song.getLine(0);
-            var rest = ElementType.CROTCHET_REST.newInstance();
+            var rest = crotchetRest();
             song.withoutMutationTracking(() -> line.addElement(rest));
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -945,11 +947,11 @@ class ScoreInputHandlerTest extends UnitTest {
             final var gracePositionSp = 4;
             var song = new Song();
             var line = song.getLine(0);
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setStaffPosition(gracePositionSp);
-            var host = ElementType.CROTCHET.newInstance();
+            var host = crotchet();
             host.setStaffPosition(gracePositionSp - 1);
-            var extra = ElementType.CROTCHET.newInstance();
+            var extra = crotchet();
             extra.setStaffPosition(gracePositionSp - 3);
             song.withoutMutationTracking(() -> {
                 line.addElement(grace);
@@ -1148,9 +1150,9 @@ class ScoreInputHandlerTest extends UnitTest {
 
         private List<StaffElement> threeCrotchets() {
             return List.of(
-                ElementType.CROTCHET.newInstance(),
-                ElementType.CROTCHET.newInstance(),
-                ElementType.CROTCHET.newInstance()
+                crotchet(),
+                crotchet(),
+                crotchet()
             );
         }
     }
@@ -1451,7 +1453,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < firstLineNoteCount; i++) {
-                firstLine.addElement(ElementType.CROTCHET.newInstance());
+                firstLine.addElement(crotchet());
             }
         });
 
@@ -1459,7 +1461,7 @@ class ScoreInputHandlerTest extends UnitTest {
 
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < secondLineNoteCount; i++) {
-                secondLine.addElement(ElementType.CROTCHET.newInstance());
+                secondLine.addElement(crotchet());
             }
         });
 

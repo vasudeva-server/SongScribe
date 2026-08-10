@@ -21,6 +21,8 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -62,7 +64,7 @@ class ParentLinePropagationTest extends UnitTest {
 
         @Test
         void testArticulationParentLineSetByAddElement() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             var articulation = new Articulation(note, ArticulationType.STACCATO);
             note.addArticulation(articulation);
 
@@ -75,7 +77,7 @@ class ParentLinePropagationTest extends UnitTest {
 
         @Test
         void testAttachmentParentLineSetByAddElement() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             var attachment = new AnnotationAttachment("test");
             note.addAttachment(attachment);
 
@@ -97,7 +99,7 @@ class ParentLinePropagationTest extends UnitTest {
 
         @Test
         void testAttachmentInheritsParentLineFromElement() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             addToLine(line, note);
 
             var attachment = new AnnotationAttachment("test");
@@ -119,8 +121,8 @@ class ParentLinePropagationTest extends UnitTest {
         void testParentLineFollowsAttachmentToNewElement() {
             var line2 = new Line(song);
 
-            var note1 = ElementType.QUAVER.newInstance();
-            var note2 = ElementType.QUAVER.newInstance();
+            var note1 = quaver();
+            var note2 = quaver();
             var attachment = new AnnotationAttachment("test");
 
             addToLine(line, note1);
@@ -145,7 +147,7 @@ class ParentLinePropagationTest extends UnitTest {
 
         @Test
         void testRemoveElementDetaches() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             addToLine(line, note);
 
             song.withoutMutationTracking(() -> line.removeElement(line.getElementIndex(note)));
@@ -155,10 +157,10 @@ class ParentLinePropagationTest extends UnitTest {
 
         @Test
         void testRemoveRangeDetachesEveryElementInTheRange() {
-            var first = ElementType.QUAVER.newInstance();
-            var middle = ElementType.QUAVER.newInstance();
-            var last = ElementType.QUAVER.newInstance();
-            var survivor = ElementType.QUAVER.newInstance();
+            var first = quaver();
+            var middle = quaver();
+            var last = quaver();
+            var survivor = quaver();
             addToLine(line, first);
             addToLine(line, middle);
             addToLine(line, last);
@@ -174,9 +176,9 @@ class ParentLinePropagationTest extends UnitTest {
 
         @Test
         void testSetElementDetachesTheReplacedElementAndAttachesTheReplacement() {
-            var replaced = ElementType.QUAVER.newInstance();
+            var replaced = quaver();
             addToLine(line, replaced);
-            var replacement = ElementType.CROTCHET.newInstance();
+            var replacement = crotchet();
 
             song.withoutMutationTracking(() -> line.setElement(0, replacement));
 
@@ -188,7 +190,7 @@ class ParentLinePropagationTest extends UnitTest {
         void testSetElementReplacingAnElementWithItselfLeavesItAttached() {
             // Detach-first ordering: attach-then-detach would clear the pointer of an
             // element that is still in the line.
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             addToLine(line, note);
 
             song.withoutMutationTracking(() -> line.setElement(0, note));
@@ -201,7 +203,7 @@ class ParentLinePropagationTest extends UnitTest {
             // The `!= this` guard in detach: a re-parent that attached to line2 first must
             // survive the removal from the original line.
             var line2 = new Line(song);
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             addToLine(line, note);
 
             addToLine(line2, note);
@@ -212,7 +214,7 @@ class ParentLinePropagationTest extends UnitTest {
 
         @Test
         void testArticulationsAndAttachmentsFollowTheElementInBothDirections() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             var articulation = new Articulation(note, ArticulationType.STACCATO);
             var attachment = new AnnotationAttachment("test");
             note.addArticulation(articulation);
@@ -247,8 +249,8 @@ class ParentLinePropagationTest extends UnitTest {
 
         @BeforeEach
         void addSpanEndpoints() {
-            anchor = ElementType.QUAVER.newInstance();
-            end = ElementType.QUAVER.newInstance();
+            anchor = quaver();
+            end = quaver();
             addToLine(line, anchor);
             addToLine(line, end);
         }
@@ -337,7 +339,7 @@ class ParentLinePropagationTest extends UnitTest {
 
         @Test
         void testCloneIsDetachedIncludingItsChildren() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
             note.addAttachment(new AnnotationAttachment("test"));
             addToLine(line, note);
@@ -355,7 +357,7 @@ class ParentLinePropagationTest extends UnitTest {
         void testCopyStateFromLeavesTheTargetsOwnParentLineIntact() {
             // Undo replay restores a live element from a detached snapshot; the snapshot's
             // null pointer must not travel with the state.
-            var live = ElementType.QUAVER.newInstance();
+            var live = quaver();
             live.addArticulation(new Articulation(live, ArticulationType.STACCATO));
             addToLine(line, live);
 

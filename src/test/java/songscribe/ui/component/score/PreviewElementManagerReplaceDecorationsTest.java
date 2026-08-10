@@ -21,13 +21,13 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.DynamicAttachment;
-import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Lyric;
 import songscribe.dom.StaffElement;
@@ -64,7 +64,7 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
      * natural accidental, accent and staccato articulations.
      */
     private static StaffElement decoratedPreview() {
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         preview.setAccidental(StaffElement.Accidental.NATURAL);
         preview.addArticulation(new Articulation(preview, ArticulationType.ACCENT));
         preview.addArticulation(new Articulation(preview, ArticulationType.STACCATO));
@@ -91,7 +91,7 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
     void testReplacementInheritsAllPreviewDecorations() {
         song.setLineWidthSs(WIDE_LINE_SS);
 
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(crotchet()));
 
         replaceElementAt0With(decoratedPreview());
 
@@ -110,9 +110,9 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
     void testReplacementInheritsPreviewDotCount() {
         song.setLineWidthSs(WIDE_LINE_SS);
 
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(crotchet()));
 
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         preview.setDotCount(PREVIEW_DOT_COUNT);
         replaceElementAt0With(preview);
 
@@ -131,12 +131,12 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
         song.setLineWidthSs(WIDE_LINE_SS);
 
         song.withoutMutationTracking(() -> {
-            var existing = ElementType.CROTCHET.newInstance();
+            var existing = crotchet();
             existing.addArticulation(new Articulation(existing, ArticulationType.STACCATO));
             line.addElement(existing);
         });
 
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         preview.addArticulation(new Articulation(preview, ArticulationType.ACCENT));
         replaceElementAt0With(preview);
 
@@ -156,12 +156,12 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
         song.setLineWidthSs(WIDE_LINE_SS);
 
         song.withoutMutationTracking(() -> {
-            var existing = ElementType.CROTCHET.newInstance();
+            var existing = crotchet();
             existing.addArticulation(new Articulation(existing, ArticulationType.ACCENT));
             line.addElement(existing);
         });
 
-        replaceElementAt0With(ElementType.CROTCHET.newInstance());
+        replaceElementAt0With(crotchet());
 
         var replacement = line.getElement(0);
 
@@ -180,7 +180,7 @@ class PreviewElementManagerReplaceDecorationsTest extends PreviewElementManagerT
         song.setLineWidthSs(WIDE_LINE_SS);
 
         song.withoutMutationTracking(() -> {
-            var existing = ElementType.CROTCHET.newInstance();
+            var existing = crotchet();
             existing.addAttachment(
                 new DynamicAttachment(existing, DynamicAttachment.DynamicType.FORTE));
             existing.setLyricForVerse(

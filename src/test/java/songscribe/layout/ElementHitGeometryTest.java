@@ -23,6 +23,7 @@ package songscribe.layout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.awt.geom.Rectangle2D;
 
@@ -78,7 +79,7 @@ class ElementHitGeometryTest extends UnitTest {
 
     /** A crotchet on the middle line, so its layout-space Y is its notehead top offset alone. */
     private static StaffElement middleLineCrotchet() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(0);
         return note;
     }

@@ -24,6 +24,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
 
 import java.util.HashMap;
 import java.util.List;
@@ -34,7 +36,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tuplet;
 import songscribe.engraving.LineThickness;
@@ -61,7 +62,7 @@ class StructuralStackerTest extends UnitTest {
         column -> List.of();
 
     private static ElementColumn mockColumn(double xSs, double absoluteTopYSs, int staffPosition) {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.setStaffPosition(staffPosition);
 
         var column = mock(ElementColumn.class);
@@ -356,10 +357,10 @@ class StructuralStackerTest extends UnitTest {
         @Test
         void testLeadingAndTrailingRestsAreSkipped() {
             var line = detachedLine();
-            var leadingRest = ElementType.CROTCHET_REST.newInstance();
-            var noteA = ElementType.CROTCHET.newInstance();
-            var noteB = ElementType.CROTCHET.newInstance();
-            var trailingRest = ElementType.CROTCHET_REST.newInstance();
+            var leadingRest = crotchetRest();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            var trailingRest = crotchetRest();
             line.addElement(leadingRest);
             line.addElement(noteA);
             line.addElement(noteB);

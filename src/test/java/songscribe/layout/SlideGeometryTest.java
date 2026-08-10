@@ -22,13 +22,13 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import module java.desktop;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.font.DocumentFonts;
@@ -108,7 +108,7 @@ class SlideGeometryTest extends UnitTest {
     }
 
     private static StaffElement note() {
-        return ElementType.CROTCHET.newInstance();
+        return crotchet();
     }
 
     // ======================================================================
@@ -257,7 +257,7 @@ class SlideGeometryTest extends UnitTest {
         var line = detachedLine();
 
         for (var staffPosition : staffPositions) {
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             element.setUpper(true);
             element.setStaffPosition(staffPosition);
             line.addElement(element);

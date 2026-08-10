@@ -27,6 +27,10 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import javax.swing.JOptionPane;
 
@@ -86,7 +90,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
             song.setLineWidthSs(WIDE_LINE_SS);
             addNotes(2, ElementType.CROTCHET);
 
-            setPreviewElement(ElementType.CROTCHET.newInstance());
+            setPreviewElement(crotchet());
             PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setXPosSsMatchesElement(true);
 
@@ -106,7 +110,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
         void testNormalClickModifiesInPlaceWhenXMatches() {
             addNotes(2, ElementType.CROTCHET);
 
-            setPreviewElement(ElementType.QUAVER.newInstance());
+            setPreviewElement(quaver());
             PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setXPosSsMatchesElement(true);
 
@@ -132,7 +136,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
             song.setLineWidthSs(0);
             addNotes(2, ElementType.CROTCHET);
 
-            setPreviewElement(ElementType.CROTCHET.newInstance());
+            setPreviewElement(crotchet());
             PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setXPosSsMatchesElement(true);
 
@@ -169,7 +173,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
         void testBreathMarkOverExistingElementDoesNotReplaceOrInsert() {
             addNotes(2, ElementType.CROTCHET);
 
-            setPreviewElement(ElementType.BREATH_MARK.newInstance());
+            setPreviewElement(breathMark());
             PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setXPosSsMatchesElement(true);
 
@@ -200,9 +204,9 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
          */
         @Test
         void testClickOverGraceNoteIsIgnored() {
-            song.withoutMutationTracking(() -> line.addElement(ElementType.GRACE_QUAVER.newInstance()));
+            song.withoutMutationTracking(() -> line.addElement(graceQuaver()));
 
-            setPreviewElement(ElementType.CROTCHET.newInstance());
+            setPreviewElement(crotchet());
             PreviewElementManager.setCurrentXIndex(0);
             PreviewElementManager.setXPosSsMatchesElement(true);
 
@@ -277,7 +281,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
         }
 
         private StaffElement note(int staffPosition, StaffElement.@Nullable Accidental accidental) {
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             element.setStaffPosition(staffPosition);
             element.setAccidental(accidental);
             return element;
@@ -415,7 +419,7 @@ class PreviewElementManagerHandleClickTest extends PreviewElementManagerTestBase
 
         // Preview element is a different type; clicking on the existing note would
         // normally replace it — but elementWasModified will block that.
-        setPreviewElement(ElementType.QUAVER.newInstance());
+        setPreviewElement(quaver());
         PreviewElementManager.setCurrentXIndex(0);
         PreviewElementManager.setXPosSsMatchesElement(true);
 

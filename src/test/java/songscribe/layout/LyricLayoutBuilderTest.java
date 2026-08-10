@@ -23,6 +23,9 @@ package songscribe.layout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.semibreve;
 
 import java.awt.Font;
 import java.util.ArrayList;
@@ -113,11 +116,11 @@ class LyricLayoutBuilderTest extends UnitTest {
     }
 
     private static StaffElement note() {
-        return ElementType.CROTCHET.newInstance();
+        return crotchet();
     }
 
     private static StaffElement rest() {
-        return ElementType.CROTCHET_REST.newInstance();
+        return crotchetRest();
     }
 
     /** Places {@code element} in a column at the given X with notehead-width right extent. */
@@ -303,7 +306,7 @@ class LyricLayoutBuilderTest extends UnitTest {
     // the one the layout actually computes.
     @Test
     void testWholeNoteLyricBoxIsCenteredOnTheWholeNotehead() {
-        var wholeNote = ElementType.SEMIBREVE.newInstance();
+        var wholeNote = semibreve();
         var syllableText = "heart";
         wholeNote.lyrics.add(
             new Lyric(Lyric.FIRST_VERSE, syllableText, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
@@ -330,7 +333,7 @@ class LyricLayoutBuilderTest extends UnitTest {
     // disagreed by 0.254 ss on a whole note before #694.
     @Test
     void testWholeNoteColumnAndElementNoteheadCentersAgree() {
-        var wholeNote = ElementType.SEMIBREVE.newInstance();
+        var wholeNote = semibreve();
         addToLine(wholeNote);
 
         var noteXSs = 10.0;

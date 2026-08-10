@@ -24,6 +24,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import org.junit.jupiter.api.Test;
 
@@ -88,7 +93,7 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testRangeRejectsAnEmptyOrReversedSpan() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
 
         assertThatThrownBy(() -> new Selection.Range(line, -1, -1, -1))
             .as("an empty range")
@@ -102,8 +107,8 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testSingleBuildsAOneElementRangeAnchoredOnIt() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
 
         var range = Selection.Range.single(line, 1);
 
@@ -118,9 +123,9 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testSizeCountsBothEndpoints() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
 
         assertThat(rangeOver(line, 0, 2).size()).isEqualTo(3);
     }
@@ -130,9 +135,9 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testToElementSelectionCarriesTheLineAndBothEndpoints() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
 
         assertThat(rangeOver(line, 1, 2).toElementSelection())
             .satisfies(selection -> {
@@ -147,9 +152,9 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testContainsIsTrueWithinTheInclusiveRange() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
 
         var range = rangeOver(line, 0, 1);
 
@@ -239,8 +244,8 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testSingleElementIsNullForAMultiElementRange() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
 
         assertThat(rangeOver(line, 0, 1).singleElement()).isNull();
     }
@@ -309,9 +314,9 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testTupletCoverageIgnoresTrailingGraceNote() {
         var line = withQuarterBeat(detachedLine());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.GRACE_QUAVER.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(graceQuaver());
         line.addTuplet(Tuplet.withUnresolvedRatio(
             line.getElement(0), line.getElement(1), TupletAction.Tuplet.TRIPLET.getSize()));
 
@@ -328,8 +333,8 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testTwoPitchedNotesNoTupletCanToggle() {
         var line = withQuarterBeat(detachedLine());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
 
         var info = RangeQueries.canToggleTuplet(rangeOver(line, 0, 1));
 
@@ -341,9 +346,9 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testFullCoverageOfTripletReportsCoversExisting() {
         var line = withQuarterBeat(detachedLine());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         line.addTuplet(Tuplet.withUnresolvedRatio(
             line.getElement(0), line.getElement(2), TupletAction.Tuplet.TRIPLET.getSize()));
 
@@ -360,9 +365,9 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testPartialCoverageOfTripletCannotToggleButStillReportsTheTuplet() {
         var line = withQuarterBeat(detachedLine());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         line.addTuplet(Tuplet.withUnresolvedRatio(
             line.getElement(0), line.getElement(2), TupletAction.Tuplet.TRIPLET.getSize()));
 
@@ -389,9 +394,9 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testValidGradesNamesOnlyTheGradesTheSpanCanBecome() {
         var line = withQuarterBeat(detachedLine());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
 
         var info = RangeQueries.canToggleTuplet(rangeOver(line, 0, 2));
 
@@ -411,7 +416,7 @@ class RangeQueriesTest extends UnitTest {
         var line = withQuarterBeat(detachedLine());
 
         for (var i = 0; i < QUINTUPLET_NOTE_COUNT; i++) {
-            line.addElement(ElementType.QUAVER.newInstance());
+            line.addElement(quaver());
         }
 
         var info = RangeQueries.canToggleTuplet(rangeOver(line, 0, QUINTUPLET_NOTE_COUNT - 1));
@@ -429,9 +434,9 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testValidGradesCountsARestAsPartOfTheSpan() {
         var line = withQuarterBeat(detachedLine());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET_REST.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchetRest());
+        line.addElement(crotchet());
 
         var info = RangeQueries.canToggleTuplet(rangeOver(line, 0, 2));
 
@@ -444,10 +449,10 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testRangeSpanningTwoDifferentTupletsCannotToggle() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         line.addTuplet(Tuplet.withUnresolvedRatio(
             line.getElement(0), line.getElement(1), TupletAction.Tuplet.DUPLET.getSize()));
         line.addTuplet(Tuplet.withUnresolvedRatio(
@@ -463,8 +468,8 @@ class RangeQueriesTest extends UnitTest {
     @Test
     void testRangeContainingRestCanToggleTuplet() {
         var line = withQuarterBeat(detachedLine());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET_REST.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchetRest());
 
         var info = RangeQueries.canToggleTuplet(rangeOver(line, 0, 1));
 
@@ -487,8 +492,8 @@ class RangeQueriesTest extends UnitTest {
         var line = song.getLine(0);
 
         song.withoutMutationTracking(() -> {
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
+            line.addElement(crotchet());
         });
 
         assertThat(song.lineCount())
@@ -522,9 +527,9 @@ class RangeQueriesTest extends UnitTest {
     void testCanToggleTieWithPitchMismatchIsFalse() {
         // Two notes at different staff positions → different pitches.
         var line = detachedLine();
-        var note0 = ElementType.CROTCHET.newInstance();
+        var note0 = crotchet();
         note0.setStaffPosition(0);
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setStaffPosition(1);
         line.addElement(note0);
         line.addElement(note1);
@@ -636,12 +641,12 @@ class RangeQueriesTest extends UnitTest {
     void testCanToggleTieAcrossBarlineWithPitchMismatchIsFalse() {
         // A separator does not excuse the pitch rule: tied notes must share a pitch.
         var line = detachedLine();
-        var note0 = ElementType.CROTCHET.newInstance();
+        var note0 = crotchet();
         note0.setStaffPosition(0);
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setStaffPosition(1);
         line.addElement(note0);
-        line.addElement(ElementType.SINGLE_BARLINE.newInstance());
+        line.addElement(singleBarline());
         line.addElement(note2);
 
         assertThat(RangeQueries.canToggleTie(rangeOver(line, 0, 2))).isFalse();
@@ -652,10 +657,10 @@ class RangeQueriesTest extends UnitTest {
         // tie1 spans notes 0-1, tie2 spans notes 2-3.
         // Selecting notes 1 and 2 chains a new tie between the two existing ties.
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         line.addTie(new Tie(line.getElement(0), line.getElement(1)));
         line.addTie(new Tie(line.getElement(2), line.getElement(3)));
 

@@ -30,10 +30,10 @@ import java.util.List;
 
 import net.engio.mbassy.listener.Handler;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
+import songscribe.dom.StaffElementFactory;
 import songscribe.font.DocumentFonts;
 import songscribe.io.SongIO;
 import songscribe.message.MessageCenter;
@@ -180,12 +180,12 @@ public final class UndoTestSupport {
     public static void addCrotchets(Song song, Line line, int count) {
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < count; i++) {
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             }
         });
     }
 
     static StaffElement crotchet() {
-        return ElementType.CROTCHET.newInstance();
+        return StaffElementFactory.crotchet();
     }
 }

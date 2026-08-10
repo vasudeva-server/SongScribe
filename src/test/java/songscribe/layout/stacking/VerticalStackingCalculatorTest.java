@@ -23,6 +23,9 @@ package songscribe.layout.stacking;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.List;
 
@@ -31,7 +34,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.StaffElement.Accidental;
 import songscribe.dom.Tuplet;
@@ -75,7 +77,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
 
     @Test
     void testSeedAccidentalsDoesNotAffectAreaPastNotehead() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(Accidental.SHARP);
 
         var structural = new StaffExtents(LINE_WIDTH_SS);
@@ -90,7 +92,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
 
     @Test
     void testSeedAccidentalsIgnoresColumnsWithoutAccidental() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         var structural = new StaffExtents(LINE_WIDTH_SS);
 
         VerticalStackingCalculator.seedAccidentalsIntoStructural(
@@ -102,7 +104,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
 
     @Test
     void testSeedAccidentalsIgnoresGraceNotes() {
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setAccidental(Accidental.SHARP);
         var structural = new StaffExtents(LINE_WIDTH_SS);
 
@@ -114,7 +116,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
 
     @Test
     void testSeedAccidentalsReservesSpaceAtAccidentalXForSharp() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(Accidental.SHARP);
 
         var bounds = require(NoteGeometry.getAccidentalBoundsSs(note), "sharp bounds");
@@ -142,7 +144,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         // had its accidental bounds seeded in note-relative coordinates, so the seeded
         // top was near y=0 instead of being well above the staff. The bug was invisible
         // at staff position 0 (centerYSs = 0); only non-zero positions exposed it.
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(TOP_STAFF_POSITION);
         note.setAccidental(Accidental.FLAT);
 
@@ -166,7 +168,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         // the default STAFF_HEIGHT_SS floor, so the seeded value wins and we can pin
         // the exact absolute Y. This verifies that centerYSs is added to botSs (same
         // formula as topSs), not omitted.
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(BOTTOM_STAFF_POSITION);
         note.setAccidental(Accidental.SHARP);
 
@@ -206,7 +208,7 @@ class VerticalStackingCalculatorTest extends UnitTest {
         final var stemBotSs = 5.0;
         final var expectedBelowContentSs = stemBotSs - Staff.STAFF_HALF_SS;
 
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         // Staff position 0 keeps centerYSs = 0, so notehead bot << STAFF_HALF_SS;
         // the stem tip at stemBotSs wins in max(stemLayout.bottomYSs(), noteheadBotSs).
 
@@ -244,8 +246,8 @@ class VerticalStackingCalculatorTest extends UnitTest {
         final var slopeDySs = 1.5;
         final var dragOffsetSs = -2;
 
-        var anchor = ElementType.QUAVER.newInstance();
-        var end = ElementType.QUAVER.newInstance();
+        var anchor = quaver();
+        var end = quaver();
         var line = detachedLine();
         line.addElement(anchor);
         line.addElement(end);

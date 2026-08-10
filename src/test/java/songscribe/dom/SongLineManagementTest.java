@@ -27,6 +27,9 @@ import songscribe.UnitTest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.doubleBarline;
+import static songscribe.dom.StaffElementFactory.repeatRight;
 
 /**
  * Tests for {@link Song} line management: {@code addLine}, {@code removeLine},
@@ -96,7 +99,7 @@ class SongLineManagementTest extends UnitTest {
             var song = new Song();
             song.withoutMutationTracking(() -> {
                 var line = song.getLine(0);
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 note.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "hello", Lyric.Extend.NONE);
             });
@@ -110,7 +113,7 @@ class SongLineManagementTest extends UnitTest {
             var song = new Song();
             song.withoutMutationTracking(() -> {
                 var line = song.getLine(0);
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 note.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "hel", Lyric.Extend.NONE);
             });
@@ -124,7 +127,7 @@ class SongLineManagementTest extends UnitTest {
             var song = new Song();
             song.withoutMutationTracking(() -> {
                 var line = song.getLine(0);
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 note.setLyricForVerse(1, Lyric.Syllabic.MIDDLE, false, "mid", Lyric.Extend.NONE);
             });
@@ -138,7 +141,7 @@ class SongLineManagementTest extends UnitTest {
             var song = new Song();
             song.withoutMutationTracking(() -> {
                 var line = song.getLine(0);
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 note.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "flow", Lyric.Extend.START);
             });
@@ -152,7 +155,7 @@ class SongLineManagementTest extends UnitTest {
             var song = new Song();
             song.withoutMutationTracking(() -> {
                 var line = song.getLine(0);
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 note.setLyricForVerse(1, Lyric.Syllabic.BEGIN, true, "joy", Lyric.Extend.NONE);
             });
@@ -166,13 +169,13 @@ class SongLineManagementTest extends UnitTest {
             var song = new Song();
             song.withoutMutationTracking(() -> {
                 var line0 = song.getLine(0);
-                var note0 = ElementType.CROTCHET.newInstance();
+                var note0 = crotchet();
                 line0.addElement(note0);
                 note0.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "one", Lyric.Extend.NONE);
 
                 var line1 = new Line(song);
                 song.addLine(line1);
-                var note1 = ElementType.CROTCHET.newInstance();
+                var note1 = crotchet();
                 line1.addElement(note1);
                 note1.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "two", Lyric.Extend.NONE);
             });
@@ -205,7 +208,7 @@ class SongLineManagementTest extends UnitTest {
             var song = new Song();
             song.withoutMutationTracking(() -> {
                 var line = song.getLine(0);
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
             });
 
@@ -342,7 +345,7 @@ class SongLineManagementTest extends UnitTest {
 
             var firstLine = song.getLine(0);
             song.withoutMutationTracking(
-                () -> firstLine.addElement(ElementType.DOUBLE_BARLINE.newInstance()));
+                () -> firstLine.addElement(doubleBarline()));
 
             var displaced = firstLine.getElement(firstLine.elementCount() - 1);
             displaced.addAttachment(
@@ -477,12 +480,12 @@ class SongLineManagementTest extends UnitTest {
                 var line0 = song.getLine(0);
                 // Remove the existing terminal and leave a plain note instead.
                 line0.removeElement(line0.elementCount() - 1);
-                line0.addElement(ElementType.CROTCHET.newInstance());
+                line0.addElement(crotchet());
             });
 
             // Build new last line ending in REPEAT_RIGHT.
             var newLine = new Line(song);
-            song.withoutMutationTracking(() -> newLine.addElement(ElementType.REPEAT_RIGHT.newInstance()));
+            song.withoutMutationTracking(() -> newLine.addElement(repeatRight()));
 
             // addLine: outgoingTerminalType(line0, newLine) → null (line0 ends in CROTCHET).
             // terminalTypeToInstall → REPEAT_RIGHT (from the new line's last element).

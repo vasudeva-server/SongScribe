@@ -22,6 +22,12 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import module java.desktop;
 
@@ -32,7 +38,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
-import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -126,7 +131,7 @@ class ElementInkBoundsTest extends UnitTest {
          */
         @Test
         void testHorizontalBoundsMatchNoteheadMetadata() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(MIDDLE_STAFF_POSITION);
             note.setDirection(StaffElement.Direction.UP);
 
@@ -152,7 +157,7 @@ class ElementInkBoundsTest extends UnitTest {
          */
         @Test
         void testUpStemTopIsExactlyStemLength() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(MIDDLE_STAFF_POSITION);
             note.setDirection(StaffElement.Direction.UP);
 
@@ -166,7 +171,7 @@ class ElementInkBoundsTest extends UnitTest {
         /** Mirrors {@link #testUpStemTopIsExactlyStemLength} for a down stem. */
         @Test
         void testDownStemBottomIsExactlyStemLength() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(MIDDLE_STAFF_POSITION);
             note.setDirection(StaffElement.Direction.DOWN);
 
@@ -187,11 +192,11 @@ class ElementInkBoundsTest extends UnitTest {
          */
         @Test
         void testAccidentalExtendsBoundsLeftOfPlainNote() {
-            var plain = ElementType.CROTCHET.newInstance();
+            var plain = crotchet();
             plain.setStaffPosition(MIDDLE_STAFF_POSITION);
             plain.setDirection(StaffElement.Direction.UP);
 
-            var withAccidental = ElementType.CROTCHET.newInstance();
+            var withAccidental = crotchet();
             withAccidental.setStaffPosition(MIDDLE_STAFF_POSITION);
             withAccidental.setDirection(StaffElement.Direction.UP);
             withAccidental.setAccidental(StaffElement.Accidental.SHARP);
@@ -215,7 +220,7 @@ class ElementInkBoundsTest extends UnitTest {
          */
         @Test
         void testLedgerLinesWidenBoundsBeyondNoteheadWidth() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(ABOVE_LEDGER_STAFF_POSITION);
             note.setDirection(StaffElement.Direction.DOWN);
 
@@ -230,7 +235,7 @@ class ElementInkBoundsTest extends UnitTest {
         /** A note within the staff (no ledger lines needed) has bounds no wider than the notehead. */
         @Test
         void testNoLedgerLinesWhenWithinStaff() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(MIDDLE_STAFF_POSITION);
             note.setDirection(StaffElement.Direction.DOWN);
 
@@ -255,7 +260,7 @@ class ElementInkBoundsTest extends UnitTest {
          */
         @Test
         void testGraceStemIsShorterThanFullSizeStem() {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setStaffPosition(MIDDLE_STAFF_POSITION);
 
             var bounds = requireInkBounds(grace);
@@ -281,11 +286,11 @@ class ElementInkBoundsTest extends UnitTest {
          */
         @Test
         void testAccentPathExtendsBoundsBeyondNoteAlone() {
-            var noteOnly = ElementType.CROTCHET.newInstance();
+            var noteOnly = crotchet();
             noteOnly.setStaffPosition(MIDDLE_STAFF_POSITION);
             noteOnly.setDirection(StaffElement.Direction.DOWN);
 
-            var withAccent = ElementType.CROTCHET.newInstance();
+            var withAccent = crotchet();
             withAccent.setStaffPosition(MIDDLE_STAFF_POSITION);
             withAccent.setDirection(StaffElement.Direction.DOWN);
             withAccent.addArticulation(new Articulation(ArticulationType.ACCENT));
@@ -305,11 +310,11 @@ class ElementInkBoundsTest extends UnitTest {
         /** A fermata is drawn above the note, extending the topmost ink upward. */
         @Test
         void testFermataExtendsBoundsAboveNoteAlone() {
-            var noteOnly = ElementType.CROTCHET.newInstance();
+            var noteOnly = crotchet();
             noteOnly.setStaffPosition(MIDDLE_STAFF_POSITION);
             noteOnly.setDirection(StaffElement.Direction.DOWN);
 
-            var withFermata = ElementType.CROTCHET.newInstance();
+            var withFermata = crotchet();
             withFermata.setStaffPosition(MIDDLE_STAFF_POSITION);
             withFermata.setDirection(StaffElement.Direction.DOWN);
             withFermata.addAttachment(new FermataAttachment());
@@ -336,7 +341,7 @@ class ElementInkBoundsTest extends UnitTest {
          */
         @Test
         void testRestBoundsMatchRestGlyphMetadata() {
-            var rest = ElementType.CROTCHET_REST.newInstance();
+            var rest = crotchetRest();
 
             var bounds = requireInkBounds(rest);
             var restBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.REST_QUARTER);
@@ -355,7 +360,7 @@ class ElementInkBoundsTest extends UnitTest {
          */
         @Test
         void testSingleBarLineBoundsMatchThinBarlineThickness() {
-            var barLine = ElementType.SINGLE_BARLINE.newInstance();
+            var barLine = singleBarline();
 
             var bounds = requireInkBounds(barLine);
 
@@ -371,8 +376,8 @@ class ElementInkBoundsTest extends UnitTest {
          */
         @Test
         void testRepeatBoundsAreWiderThanSingleBarLine() {
-            var barLine = ElementType.SINGLE_BARLINE.newInstance();
-            var repeat = ElementType.REPEAT_LEFT.newInstance();
+            var barLine = singleBarline();
+            var repeat = repeatLeft();
 
             var barLineBounds = requireInkBounds(barLine);
             var repeatBounds = requireInkBounds(repeat);
@@ -388,7 +393,7 @@ class ElementInkBoundsTest extends UnitTest {
          */
         @Test
         void testBreathMarkBoundsMatchGlyphMetadata() {
-            var breathMark = ElementType.BREATH_MARK.newInstance();
+            var breathMark = breathMark();
 
             var bounds = requireInkBounds(breathMark);
             var breathBBox = SMuFLMetadata.requireBBox(SMuFLGlyph.BREATH_MARK_COMMA);

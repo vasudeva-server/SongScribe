@@ -32,13 +32,13 @@ import songscribe.MainFrameMockTest;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
 import songscribe.prefs.Prefs;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * Unit tests for {@link BeatChangeDialog}: populateControls null/existing,
@@ -101,7 +101,7 @@ class BeatChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeSkipsWhenDurationComboIsNull() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         dialog.durationCombo.setModel(new DefaultComboBoxModel<>());
 
         dialog.applyChange(element);
@@ -113,7 +113,7 @@ class BeatChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeSkipsWhenBeatComboIsNull() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         dialog.beatCombo.setModel(new DefaultComboBoxModel<>());
 
         dialog.applyChange(element);
@@ -127,7 +127,7 @@ class BeatChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeUpdatesExistingAttachment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var original = new BeatChangeAttachment(element, new BeatChange(Duration.CROTCHET, Duration.CROTCHET));
         element.addAttachment(original);
 
@@ -147,7 +147,7 @@ class BeatChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeAddsNewAttachmentWhenNoneExists() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
 
         dialog.durationCombo.setSelectedItem(Duration.CROTCHET_DOTTED);
         dialog.beatCombo.setSelectedItem(Duration.CROTCHET);
@@ -166,7 +166,7 @@ class BeatChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testGetExistingChangeReturnsBeatChangeWhenAttachmentPresent() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var beatChange = new BeatChange(Duration.MINIM, Duration.CROTCHET);
         element.addAttachment(new BeatChangeAttachment(element, beatChange));
 
@@ -177,7 +177,7 @@ class BeatChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testGetExistingChangeReturnsNullWhenNoAttachment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
 
         assertThat(dialog.getExistingChange(element))
             .as("getExistingChange returns null when no BeatChangeAttachment is present")
@@ -188,7 +188,7 @@ class BeatChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testClearChangeRemovesExistingAttachment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.addAttachment(new BeatChangeAttachment(element, new BeatChange(Duration.MINIM, Duration.CROTCHET)));
 
         dialog.clearChange(element);
@@ -200,7 +200,7 @@ class BeatChangeDialogTest extends MainFrameMockTest {
 
     @Test
     void testClearChangeIsNoOpWhenNoAttachment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
 
         dialog.clearChange(element);
 

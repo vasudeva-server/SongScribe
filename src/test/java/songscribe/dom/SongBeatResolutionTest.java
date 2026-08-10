@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
@@ -49,7 +50,7 @@ class SongBeatResolutionTest extends UnitTest {
      * mutation tracking suspended.
      */
     private static StaffElement addPlainNote(Line line) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
         return note;
     }

@@ -21,6 +21,10 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.minim;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -63,13 +67,13 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
     void testInsertElementProducesCorrectTypeAndPitch() {
         song.setLineWidthSs(WIDE_LINE_SS);
 
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(crotchet()));
 
         var countBefore = line.effectiveElementCount();
 
         // Insert a MINIM at staff position 2 before the existing CROTCHET (index 0).
         // Staff position must be pre-set on the preview element; insertElement uses it directly.
-        var preview = ElementType.MINIM.newInstance();
+        var preview = minim();
         preview.setStaffPosition(2);
         setPreviewElement(preview);
         PreviewElementManager.setCurrentXIndex(0);
@@ -107,8 +111,8 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         song.setLineWidthSs(WIDE_LINE_SS);
 
         song.withoutMutationTracking(() -> {
-            line.addElement(ElementType.CROTCHET.newInstance());  // index 0
-            var minim = ElementType.MINIM.newInstance();
+            line.addElement(crotchet());  // index 0
+            var minim = minim();
             minim.setStaffPosition(2);
             line.addElement(minim);  // index 1
         });
@@ -117,7 +121,7 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
 
         // Insert a new CROTCHET at staff position 4 before the MINIM (index 1).
         // Staff position must be pre-set on the preview element.
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         preview.setStaffPosition(4);
         setPreviewElement(preview);
         PreviewElementManager.setCurrentXIndex(1);
@@ -153,13 +157,13 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         song.setLineWidthSs(WIDE_LINE_SS);
 
         // First quaver, inserted at index 0 on an empty line.
-        setPreviewElement(ElementType.QUAVER.newInstance());
+        setPreviewElement(quaver());
         PreviewElementManager.setCurrentXIndex(0);
         PreviewElementManager.setXPosSsMatchesElement(false);
         PreviewElementManager.handleClick(lc);
 
         // Second quaver, inserted immediately after the first at index 1.
-        setPreviewElement(ElementType.QUAVER.newInstance());
+        setPreviewElement(quaver());
         PreviewElementManager.setCurrentXIndex(1);
         PreviewElementManager.setXPosSsMatchesElement(false);
         PreviewElementManager.handleClick(lc);
@@ -188,10 +192,10 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
             song.setLineWidthSs(WIDE_LINE_SS);
 
             song.withoutMutationTracking(() -> {
-                var noteA = ElementType.CROTCHET.newInstance();
+                var noteA = crotchet();
                 noteA.setGlissando();
                 line.addElement(noteA);  // index 0
-                line.addElement(ElementType.CROTCHET.newInstance());  // index 1
+                line.addElement(crotchet());  // index 1
             });
 
             var noteA = line.getElement(0);
@@ -218,16 +222,16 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
             song.setLineWidthSs(WIDE_LINE_SS);
 
             song.withoutMutationTracking(() -> {
-                var noteA = ElementType.CROTCHET.newInstance();
+                var noteA = crotchet();
                 noteA.setGlissando();
                 line.addElement(noteA);  // index 0
-                line.addElement(ElementType.CROTCHET.newInstance());  // index 1
+                line.addElement(crotchet());  // index 1
             });
 
             var noteA = line.getElement(0);
             var countBefore = line.effectiveElementCount();
 
-            setPreviewElement(ElementType.BREATH_MARK.newInstance());
+            setPreviewElement(breathMark());
             PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setXPosSsMatchesElement(false);
 
@@ -290,15 +294,15 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
             song.setLineWidthSs(WIDE_LINE_SS);
 
             song.withoutMutationTracking(() -> {
-                var noteA = ElementType.CROTCHET.newInstance();
+                var noteA = crotchet();
                 noteA.setFall();
                 line.addElement(noteA);
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             });
 
             var noteA = line.getElement(0);
 
-            setPreviewElement(ElementType.BREATH_MARK.newInstance());
+            setPreviewElement(breathMark());
             PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setXPosSsMatchesElement(false);
 
@@ -319,13 +323,13 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
             song.setLineWidthSs(WIDE_LINE_SS);
 
             song.withoutMutationTracking(() -> {
-                line.addElement(ElementType.CROTCHET.newInstance());
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
+                line.addElement(crotchet());
             });
 
             var noteA = line.getElement(0);
 
-            setPreviewElement(ElementType.BREATH_MARK.newInstance());
+            setPreviewElement(breathMark());
             PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setXPosSsMatchesElement(false);
 
@@ -356,7 +360,7 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         @Test
         void testClickOnExistingNoteReplacesTypeAndPitch() {
             song.withoutMutationTracking(() -> {
-                var note = ElementType.MINIM.newInstance();
+                var note = minim();
                 note.setStaffPosition(2);
                 line.addElement(note);
             });
@@ -365,7 +369,7 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
 
             // Preview: CROTCHET at staff position -6 (different type and pitch)
             PreviewElementManager.setCurrentStaffPosition(-6);
-            setPreviewElement(ElementType.CROTCHET.newInstance());
+            setPreviewElement(crotchet());
             PreviewElementManager.setCurrentXIndex(0);
             PreviewElementManager.setXPosSsMatchesElement(true);
 
@@ -389,7 +393,7 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         @Test
         void testSameTypeClickUpdatesPitchOnly() {
             song.withoutMutationTracking(() -> {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 note.setStaffPosition(0);
                 line.addElement(note);
             });
@@ -397,7 +401,7 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
             var countBefore = line.effectiveElementCount();
 
             PreviewElementManager.setCurrentStaffPosition(-4);
-            setPreviewElement(ElementType.CROTCHET.newInstance());
+            setPreviewElement(crotchet());
             PreviewElementManager.setCurrentXIndex(0);
             PreviewElementManager.setXPosSsMatchesElement(true);
 
@@ -423,11 +427,11 @@ class PreviewElementManagerInsertVerifyTest extends PreviewElementManagerTestBas
         @Test
         void testNoBeamCreatedWhenCrotchetIsReplacedByQuaverNextToQuaver() {
             song.withoutMutationTracking(() -> {
-                line.addElement(ElementType.CROTCHET.newInstance());  // index 0, to be replaced
-                line.addElement(ElementType.QUAVER.newInstance());  // index 1
+                line.addElement(crotchet());  // index 0, to be replaced
+                line.addElement(quaver());  // index 1
             });
 
-            setPreviewElement(ElementType.QUAVER.newInstance());
+            setPreviewElement(quaver());
             PreviewElementManager.setCurrentXIndex(0);
             PreviewElementManager.setXPosSsMatchesElement(true);
 

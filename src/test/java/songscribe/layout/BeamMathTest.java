@@ -21,6 +21,7 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.semiquaver;
 
 import org.junit.jupiter.api.Test;
 
@@ -61,7 +62,7 @@ class BeamMathTest extends UnitTest {
         var line = detachedLine();
 
         for (var i = 0; i < leadingNotes; i++) {
-            line.addElement(ElementType.SEMIQUAVER.newInstance());
+            line.addElement(semiquaver());
         }
 
         for (var type : types) {

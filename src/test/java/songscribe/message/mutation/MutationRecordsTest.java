@@ -22,6 +22,8 @@ package songscribe.message.mutation;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
 import static org.assertj.core.api.Assertions.assertThatNoException;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import module java.desktop;
 
@@ -71,7 +73,7 @@ class MutationRecordsTest extends UnitTest {
         @Test
         void testElementDeletionExposesFields() {
             var line = detachedLine();
-            var deleted = ElementType.CROTCHET.newInstance();
+            var deleted = crotchet();
             var mutation = new ElementDeletion(line, 4, deleted);
 
             assertThat(mutation.line()).isSameAs(line);
@@ -83,7 +85,7 @@ class MutationRecordsTest extends UnitTest {
         @Test
         void testElementInsertionExposesFields() {
             var line = detachedLine();
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             var mutation = new ElementInsertion(line, 2, element);
 
             assertThat(mutation.line()).isSameAs(line);
@@ -95,8 +97,8 @@ class MutationRecordsTest extends UnitTest {
         @Test
         void testElementModificationExposesFields() {
             var line = detachedLine();
-            var beforeClone = ElementType.CROTCHET.newInstance();
-            var afterClone = ElementType.CROTCHET.newInstance();
+            var beforeClone = crotchet();
+            var afterClone = crotchet();
             var fields = EnumSet.of(ElementField.PITCH);
             var mutation = new ElementModification(line, 1, fields, beforeClone, afterClone);
 
@@ -111,8 +113,8 @@ class MutationRecordsTest extends UnitTest {
         @Test
         void testElementRangeDeletionExposesFields() {
             var line = detachedLine();
-            var first = ElementType.CROTCHET.newInstance();
-            var second = ElementType.QUAVER.newInstance();
+            var first = crotchet();
+            var second = quaver();
             var deleted = List.of(first, second);
             var mutation = new ElementRangeDeletion(line, 2, 3, deleted);
 
@@ -130,8 +132,8 @@ class MutationRecordsTest extends UnitTest {
 
         static Stream<Arguments> spanMutations() {
             var line = detachedLine();
-            var e0 = ElementType.CROTCHET.newInstance();
-            var e1 = ElementType.CROTCHET.newInstance();
+            var e0 = crotchet();
+            var e1 = crotchet();
             line.addElement(e0);
             line.addElement(e1);
             var beam1 = new Beam(e0, e1);
@@ -197,14 +199,14 @@ class MutationRecordsTest extends UnitTest {
         @Test
         void testElementMutationsAreLineScoped() {
             var line = detachedLine();
-            assertThat(new ElementInsertion(line, 0, ElementType.CROTCHET.newInstance()))
+            assertThat(new ElementInsertion(line, 0, crotchet()))
                 .isInstanceOf(LineScopedMutation.class);
-            assertThat(new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance()))
+            assertThat(new ElementDeletion(line, 0, crotchet()))
                 .isInstanceOf(LineScopedMutation.class);
-            assertThat(new ElementRangeDeletion(line, 0, 0, List.of(ElementType.CROTCHET.newInstance())))
+            assertThat(new ElementRangeDeletion(line, 0, 0, List.of(crotchet())))
                 .isInstanceOf(LineScopedMutation.class);
             assertThat(new ElementModification(line, 0, EnumSet.of(ElementField.PITCH),
-                    ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance()))
+                    crotchet(), crotchet()))
                 .isInstanceOf(LineScopedMutation.class);
         }
     }
@@ -352,8 +354,8 @@ class MutationRecordsTest extends UnitTest {
         void testSpanAdditionExposesFields() {
             var line = detachedLine();
             Span element = new Ending(
-                ElementType.CROTCHET.newInstance(),
-                ElementType.CROTCHET.newInstance()
+                crotchet(),
+                crotchet()
             );
             var mutation = new SpanAddition(line, element);
 
@@ -366,8 +368,8 @@ class MutationRecordsTest extends UnitTest {
         void testSpanRemovalExposesFields() {
             var line = detachedLine();
             Span element = new Ending(
-                ElementType.CROTCHET.newInstance(),
-                ElementType.CROTCHET.newInstance()
+                crotchet(),
+                crotchet()
             );
             var mutation = new SpanRemoval(line, element);
 

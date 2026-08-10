@@ -22,6 +22,12 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.demiSemiquaver;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.semiquaver;
 
 import module java.desktop;
 
@@ -584,7 +590,7 @@ class LayoutEngineTest extends UnitTest {
             var line = detachedLine();
 
             for (var i = 0; i < noteCount; i++) {
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             }
 
             return engine().layout(line, false).overflowsStaffWidth();
@@ -596,7 +602,7 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testLeadingLyricContinuationEmitsExtenderFromLineStart() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET_REST.newInstance());
+        line.addElement(crotchetRest());
 
         var result = require(engine().layout(line, false, true), "LayoutResult");
         var connectors = result.getLyricConnectors();
@@ -612,7 +618,7 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testUnbeamedNoteWithPositiveSPGetsStemUp() {
         var line = detachedLine();
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.setStaffPosition(SP_BELOW_MIDDLE);
         line.addElement(element);
 
@@ -628,7 +634,7 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testUnbeamedNoteWithNegativeSPGetsStemDown() {
         var line = detachedLine();
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.setStaffPosition(SP_ABOVE_MIDDLE);
         line.addElement(element);
 
@@ -644,7 +650,7 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testGraceNoteAlwaysGetsStemUpWithGraceLength() {
         var line = detachedLine();
-        var element = ElementType.GRACE_QUAVER.newInstance();
+        var element = graceQuaver();
         element.setStaffPosition(SP_ABOVE_MIDDLE_GRACE);
         line.addElement(element);
 
@@ -660,7 +666,7 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testManualStemOverrideNotAutoCorrected() {
         var line = detachedLine();
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.setStaffPosition(SP_BELOW_MIDDLE_MANUAL);
         element.setStemDirectionAuto(false);
         element.setUpper(false);
@@ -683,9 +689,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testBeamedGroupAutoDirectionAboveMidlineGetsStemsDown() {
         var line = detachedLine();
-        var note1 = ElementType.QUAVER.newInstance();
+        var note1 = quaver();
         note1.setStaffPosition(SP_BEAM_ABOVE_1);
-        var note2 = ElementType.QUAVER.newInstance();
+        var note2 = quaver();
         note2.setStaffPosition(SP_BEAM_ABOVE_2);
         line.addElement(note1);
         line.addElement(note2);
@@ -702,9 +708,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testBeamedGroupAutoDirectionBelowMidlineGetsStemsUp() {
         var line = detachedLine();
-        var note1 = ElementType.QUAVER.newInstance();
+        var note1 = quaver();
         note1.setStaffPosition(SP_BEAM_BELOW_1);
-        var note2 = ElementType.QUAVER.newInstance();
+        var note2 = quaver();
         note2.setStaffPosition(SP_BEAM_BELOW_2);
         line.addElement(note1);
         line.addElement(note2);
@@ -721,11 +727,11 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testBeamedGroupFirstNoteManualOverrideWinsForStemsUp() {
         var line = detachedLine();
-        var note1 = ElementType.QUAVER.newInstance();
+        var note1 = quaver();
         note1.setStaffPosition(SP_BEAM_ABOVE_1);
         note1.setStemDirectionAuto(false);
         note1.setUpper(true);           // manual: force stems up
-        var note2 = ElementType.QUAVER.newInstance();
+        var note2 = quaver();
         note2.setStaffPosition(SP_BEAM_ABOVE_2); // auto would contribute to stemsDown
         line.addElement(note1);
         line.addElement(note2);
@@ -742,9 +748,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testBeamSlopeWithLargePitchDifferenceIsDampened() {
         var line = detachedLine();
-        var note1 = ElementType.QUAVER.newInstance();
+        var note1 = quaver();
         note1.setStaffPosition(SP_SLOPE_EXTREME_LOW); // very low (far below middle line)
-        var note2 = ElementType.QUAVER.newInstance();
+        var note2 = quaver();
         note2.setStaffPosition(0);                    // middle line (sp=0)
         line.addElement(note1);
         line.addElement(note2);
@@ -774,11 +780,11 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testBeamedGroupAllStemsAtLeastMinimumStemLength() {
         var line = detachedLine();
-        var note1 = ElementType.QUAVER.newInstance();
+        var note1 = quaver();
         note1.setStaffPosition(SP_CONTOUR_FIRST);
-        var note2 = ElementType.QUAVER.newInstance();
+        var note2 = quaver();
         note2.setStaffPosition(SP_CONTOUR_MIDDLE);
-        var note3 = ElementType.QUAVER.newInstance();
+        var note3 = quaver();
         note3.setStaffPosition(SP_CONTOUR_LAST);
         line.addElement(note1);
         line.addElement(note2);
@@ -812,9 +818,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testFlatBeamCenterLandsOnAQuant() {
         var line = detachedLine();
-        var note1 = ElementType.QUAVER.newInstance();
+        var note1 = quaver();
         note1.setStaffPosition(SP_FLAT_BEAM);
-        var note2 = ElementType.QUAVER.newInstance();
+        var note2 = quaver();
         note2.setStaffPosition(SP_FLAT_BEAM);
         line.addElement(note1);
         line.addElement(note2);
@@ -854,9 +860,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testSlopedBeamHasThickeningInBoundedRange() {
         var line = detachedLine();
-        var note1 = ElementType.QUAVER.newInstance();
+        var note1 = quaver();
         note1.setStaffPosition(SP_BEAM_BELOW_1);   // below middle → stemsUp
-        var note2 = ElementType.QUAVER.newInstance();
+        var note2 = quaver();
         note2.setStaffPosition(SP_BEAM_ABOVE_1);   // above middle → different sp → non-zero slope
         line.addElement(note1);
         line.addElement(note2);
@@ -878,9 +884,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testBeamStubDirectionOfSemiquaverAtGroupStartIsRight() {
         var line = detachedLine();
-        var semiquaver = ElementType.SEMIQUAVER.newInstance();
+        var semiquaver = semiquaver();
         semiquaver.setStaffPosition(SP_STUB_NOTE);
-        var quaver = ElementType.QUAVER.newInstance();
+        var quaver = quaver();
         quaver.setStaffPosition(SP_STUB_NOTE);
         line.addElement(semiquaver);   // beamStart → stub goes right
         line.addElement(quaver);
@@ -903,7 +909,7 @@ class LayoutEngineTest extends UnitTest {
         var notes = new ArrayList<StaffElement>();
 
         for (var i = 0; i < FRENCH_GROUP_SIZE; i++) {
-            var semiquaver = ElementType.SEMIQUAVER.newInstance();
+            var semiquaver = semiquaver();
             semiquaver.setStaffPosition(SP_STUB_NOTE);
             line.addElement(semiquaver);
             notes.add(semiquaver);
@@ -1176,9 +1182,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testTieEndpointXSsAttachAtFacingEdgeForEdgeSeat() {
         var line = detachedLine();
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setStaffPosition(SP_TIE_NOTE);
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setStaffPosition(SP_TIE_NOTE);
         line.addElement(note1);
         line.addElement(note2);
@@ -1231,9 +1237,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testTieSpaceNotePushedPastLineSeatsAtCenterAttach() {
         var line = detachedLine();
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setStaffPosition(SP_TIE_SPACE_CENTER);
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setStaffPosition(SP_TIE_SPACE_CENTER);
         line.addElement(note1);
         line.addElement(note2);
@@ -1280,9 +1286,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testTieDirectionStemUpNoteArcBulgesDown() {
         var line = detachedLine();
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setStaffPosition(SP_TIE_NOTE);  // sp > 0 → stem up → direction=+1
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setStaffPosition(SP_TIE_NOTE);
         line.addElement(note1);
         line.addElement(note2);
@@ -1305,9 +1311,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testTieDirectionStemDownNoteArcBulgesUpAndIsAboveAgrees() {
         var line = detachedLine();
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setStaffPosition(SP_TIE_NOTE_STEM_DOWN);  // sp < 0 → stem down → direction=-1
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setStaffPosition(SP_TIE_NOTE_STEM_DOWN);
         line.addElement(note1);
         line.addElement(note2);
@@ -1332,9 +1338,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testTieOnLineNoteSeatsClearanceIntoAdjacentSpace() {
         var line = detachedLine();
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setStaffPosition(SP_TIE_LINE_DOWN_ARC);
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setStaffPosition(SP_TIE_LINE_DOWN_ARC);
         line.addElement(note1);
         line.addElement(note2);
@@ -1561,9 +1567,9 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testTieTipOnStaffLineClearedByExactTipClearanceForUpwardArc() {
         var line = detachedLine();
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setStaffPosition(SP_TIE_LINE_UP_ARC);
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setStaffPosition(SP_TIE_LINE_UP_ARC);
         line.addElement(note1);
         line.addElement(note2);
@@ -1604,10 +1610,10 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testDownStemDottedNoteLiftsTieByDotRowNudge() {
         var line = detachedLine();
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setStaffPosition(SP_TIE_NOTE_STEM_DOWN);
         note1.setDotCount(1);
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setStaffPosition(SP_TIE_NOTE_STEM_DOWN);
         line.addElement(note1);
         line.addElement(note2);
@@ -1643,10 +1649,10 @@ class LayoutEngineTest extends UnitTest {
     @Test
     void testUpStemDottedNoteTieNotLiftedByDotRowNudge() {
         var line = detachedLine();
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setStaffPosition(SP_TIE_NOTE);
         note1.setDotCount(1);
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setStaffPosition(SP_TIE_NOTE);
         line.addElement(note1);
         line.addElement(note2);
@@ -1691,13 +1697,13 @@ class LayoutEngineTest extends UnitTest {
     // T30: beamCount → flag levels per note type (QUAVER 1, SEMIQUAVER 2, DEMI_SEMIQUAVER 3)
     @Test
     void testBeamCountReturnsFlagLevelPerNoteType() {
-        assertThat(LayoutEngine.beamCount(ElementType.QUAVER.newInstance()))
+        assertThat(LayoutEngine.beamCount(quaver()))
             .describedAs("QUAVER has one flag")
             .isEqualTo(QUAVER_BEAMS);
-        assertThat(LayoutEngine.beamCount(ElementType.SEMIQUAVER.newInstance()))
+        assertThat(LayoutEngine.beamCount(semiquaver()))
             .describedAs("SEMIQUAVER has two flags")
             .isEqualTo(SEMIQUAVER_BEAMS);
-        assertThat(LayoutEngine.beamCount(ElementType.DEMI_SEMIQUAVER.newInstance()))
+        assertThat(LayoutEngine.beamCount(demiSemiquaver()))
             .describedAs("DEMI_SEMIQUAVER has three flags")
             .isEqualTo(DEMI_SEMIQUAVER_BEAMS);
     }
@@ -1900,7 +1906,7 @@ class LayoutEngineTest extends UnitTest {
         @Test
         void testNoteWithinStaffHasNoLengthening() {
             var line = detachedLine();
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             element.setStaffPosition(SP_BELOW_MIDDLE);
             line.addElement(element);
 
@@ -1916,7 +1922,7 @@ class LayoutEngineTest extends UnitTest {
         @Test
         void testDownStemTwoLedgerLinesAboveHasLengthening() {
             var line = detachedLine();
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             element.setStaffPosition(SP_LEDGER_ABOVE_2);
             line.addElement(element);
 
@@ -1935,7 +1941,7 @@ class LayoutEngineTest extends UnitTest {
         @Test
         void testDownStemThreeLedgerLinesAboveHasLengthening() {
             var line = detachedLine();
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             element.setStaffPosition(SP_LEDGER_ABOVE_3);
             line.addElement(element);
 
@@ -1954,7 +1960,7 @@ class LayoutEngineTest extends UnitTest {
         @Test
         void testUpStemTwoLedgerLinesBelowHasLengthening() {
             var line = detachedLine();
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             element.setStaffPosition(SP_LEDGER_BELOW_2);
             line.addElement(element);
 
@@ -1973,7 +1979,7 @@ class LayoutEngineTest extends UnitTest {
         @Test
         void testGraceNoteAtLedgerLineHasNoLengthening() {
             var line = detachedLine();
-            var element = ElementType.GRACE_QUAVER.newInstance();
+            var element = graceQuaver();
             element.setStaffPosition(SP_LEDGER_ABOVE_2);
             line.addElement(element);
 
@@ -1998,7 +2004,7 @@ class LayoutEngineTest extends UnitTest {
         @Test
         void testNoteAtThresholdHasNoLengthening() {
             var line = detachedLine();
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             element.setStaffPosition(SP_LENGTHENING_THRESHOLD);
             line.addElement(element);
 
@@ -2014,7 +2020,7 @@ class LayoutEngineTest extends UnitTest {
         @Test
         void testManualStemAwayFromCenterIsNotLengthened() {
             var line = detachedLine();
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             element.setStaffPosition(SP_LEDGER_ABOVE_2);
             element.setStemDirectionAuto(false);
             element.setUpper(true);

@@ -23,6 +23,9 @@ package songscribe.layout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -50,7 +53,7 @@ class NoteGeometryTest extends UnitTest {
     }
 
     private static StaffElement crotchetWithAccidental(Accidental accidental) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(accidental);
         return note;
     }
@@ -92,7 +95,7 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testNoAccidentalReturnsZero() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             assertThat(NoteGeometry.getAccidentalWidthSs(note)).isEqualTo(0f);
         }
 
@@ -118,7 +121,7 @@ class NoteGeometryTest extends UnitTest {
             // therefore strictly smaller, which also guards the scale factor against regressing to >= 1.
             var regularWidthSs = NoteGeometry.getAccidentalWidthSs(crotchetWithAccidental(Accidental.SHARP));
 
-            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var graceNote = graceQuaver();
             graceNote.setAccidental(Accidental.SHARP);
             var graceWidthSs = NoteGeometry.getAccidentalWidthSs(graceNote);
 
@@ -138,7 +141,7 @@ class NoteGeometryTest extends UnitTest {
             regular.setAccidentalInParentheses(true);
             var regularParenWidthSs = NoteGeometry.getAccidentalWidthSs(regular);
 
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setAccidental(Accidental.DOUBLE_SHARP);
             grace.setAccidentalInParentheses(true);
 
@@ -170,12 +173,12 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testNullForNoAccidental() {
-            assertThat(NoteGeometry.getAccidentalBoundsSs(ElementType.CROTCHET.newInstance())).isNull();
+            assertThat(NoteGeometry.getAccidentalBoundsSs(crotchet())).isNull();
         }
 
         @Test
         void testNullForGraceNote() {
-            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var graceNote = graceQuaver();
             graceNote.setAccidental(Accidental.SHARP);
             assertThat(NoteGeometry.getAccidentalBoundsSs(graceNote)).isNull();
         }
@@ -242,28 +245,28 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testInStaffBoundaryPositionReturnsFalse() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(IN_STAFF_BOUNDARY_SP);
             assertThat(NoteGeometry.noteNeedsLedgerLines(note)).isFalse();
         }
 
         @Test
         void testInStaffNegativeBoundaryPositionReturnsFalse() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(-IN_STAFF_BOUNDARY_SP);
             assertThat(NoteGeometry.noteNeedsLedgerLines(note)).isFalse();
         }
 
         @Test
         void testAboveStaffReturnsTrue() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(OUT_OF_STAFF_SP);
             assertThat(NoteGeometry.noteNeedsLedgerLines(note)).isTrue();
         }
 
         @Test
         void testBelowStaffReturnsTrue() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(-OUT_OF_STAFF_SP);
             assertThat(NoteGeometry.noteNeedsLedgerLines(note)).isTrue();
         }
@@ -271,7 +274,7 @@ class NoteGeometryTest extends UnitTest {
         @Test
         void testBreathMarkReturnsFalseEvenOutOfStaff() {
             // BREATH_MARK.drawStaveLongitude() == false → always false regardless of position
-            var note = ElementType.BREATH_MARK.newInstance();
+            var note = breathMark();
             note.setStaffPosition(OUT_OF_STAFF_SP);
             assertThat(NoteGeometry.noteNeedsLedgerLines(note)).isFalse();
         }
@@ -323,7 +326,7 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testStemUpCrotchetExtentIsProportional() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(LEDGER_POSITION_SP);
 
@@ -335,14 +338,14 @@ class NoteGeometryTest extends UnitTest {
         void testStemDownCrotchetExtentMatchesStemUp() {
             // Noteheads are no longer shifted by stem direction, so the ledger extent is identical
             // for stem-down and stem-up.
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(false);
             note.setStaffPosition(LEDGER_POSITION_SP);
 
             var actual = NoteGeometry.getLedgerLineBaseExtentSs(note);
             assertProportionalExtent(actual, ElementType.CROTCHET, StaffElement.Direction.DOWN);
 
-            var stemUpNote = ElementType.CROTCHET.newInstance();
+            var stemUpNote = crotchet();
             stemUpNote.setUpper(true);
             stemUpNote.setStaffPosition(LEDGER_POSITION_SP);
             assertThat(actual.leftSs())
@@ -352,7 +355,7 @@ class NoteGeometryTest extends UnitTest {
         @Test
         void testGraceNoteExtentIsProportionalAndStemUp() {
             // Grace notes always treat upper=true; offset=0 since isGraceNote() forces stem-up logic
-            var note = ElementType.GRACE_QUAVER.newInstance();
+            var note = graceQuaver();
             note.setStaffPosition(LEDGER_POSITION_SP);
 
             assertProportionalExtent(
@@ -401,7 +404,7 @@ class NoteGeometryTest extends UnitTest {
             // With Bravura metrics: accRight ≈ −ACCIDENTAL_PADDING_SS, headLeft = 0,
             // midpoint ≈ −ACCIDENTAL_PADDING_SS/2, which sits right of ledgerLeft
             // (≈ −lf·headRight), so the max returns midpoint (shortening applies).
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(ONE_LEDGER_BELOW_SP);
             note.setAccidental(Accidental.SHARP);
@@ -441,7 +444,7 @@ class NoteGeometryTest extends UnitTest {
             // Three ledgers below staff; the farthest ledger Y (spToSs(-5) = -2.5 in Y-down)
             // falls above the typical sharp bbox top (≈ -1.5), placing it outside the accidental's
             // vertical extent → no shortening; result equals base extent.
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(THREE_LEDGERS_BELOW_SP);
             note.setAccidental(Accidental.SHARP);
@@ -471,7 +474,7 @@ class NoteGeometryTest extends UnitTest {
             // is NOT the no-shortening guard: what matters is (accRight + headLeft)/2 vs ledgerLeft.
             // Here midpoint ≈ accRight/2 ≈ -0.17, which is RIGHT of ledgerLeft (-0.30), so the
             // max returns midpoint and shortening DOES apply even though accRight < ledgerLeft.
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(ONE_LEDGER_BELOW_SP);
             note.setAccidental(Accidental.SHARP);
@@ -505,7 +508,7 @@ class NoteGeometryTest extends UnitTest {
             // A flat draws a single glyph, so the component nearest the notehead is the accidental
             // itself: the closest-component bounds and the full bounds must coincide, and ledger
             // shortening measured from either is the same.
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(ONE_LEDGER_BELOW_SP);
             note.setAccidental(Accidental.FLAT);
@@ -545,7 +548,7 @@ class NoteGeometryTest extends UnitTest {
         void testParenthesizedAccidentalChecksRightParenOnly() {
             // The right parenthesis is the rightmost glyph, so for a parenthesized accidental it is
             // the glyph nearest the notehead and the only one the ledger can collide with.
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(ONE_LEDGER_BELOW_SP);
             note.setAccidental(Accidental.SHARP);
@@ -575,7 +578,7 @@ class NoteGeometryTest extends UnitTest {
         void testNoAccidentalReturnsBaseExtent() {
             // A note with no accidental has no closest-component bounds, so getLedgerLineExtentSs must
             // return the base extent for any ledger Y (the accidentalBounds == null branch).
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(ONE_LEDGER_BELOW_SP);
 
@@ -737,7 +740,7 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testGraceNoteStoredDownStillResolvesUp() {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setDirection(StaffElement.Direction.DOWN);
 
             assertThat(NoteGeometry.effectiveDirection(grace)).isEqualTo(StaffElement.Direction.UP);
@@ -745,7 +748,7 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testNonGraceNoteUsesOwnStoredDirection() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setDirection(StaffElement.Direction.DOWN);
 
             assertThat(NoteGeometry.effectiveDirection(note)).isEqualTo(StaffElement.Direction.DOWN);
@@ -1001,7 +1004,7 @@ class NoteGeometryTest extends UnitTest {
 
         @Test
         void testGraceAccidentalUsesScaledPadding() {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setAccidental(Accidental.SHARP);
             var rightEdgeSs = NoteGeometry.getAccidentalStartXSs(grace) + NoteGeometry.getAccidentalWidthSs(grace);
 

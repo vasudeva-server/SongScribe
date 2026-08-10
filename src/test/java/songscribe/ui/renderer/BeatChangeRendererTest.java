@@ -27,6 +27,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +40,6 @@ import songscribe.UnitTest;
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
@@ -66,7 +66,7 @@ class BeatChangeRendererTest extends UnitTest {
      */
     private static List<Color> renderedGlyphColors(boolean selected) {
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
 
         var attachment = new BeatChangeAttachment(

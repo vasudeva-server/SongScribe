@@ -21,6 +21,9 @@
 package songscribe.ui.clipboard;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.minim;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -34,7 +37,6 @@ import org.junit.jupiter.api.Test;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.ClipboardDidChangeNotification;
 
@@ -74,7 +76,7 @@ class ClipboardManagerTest extends UnitTest {
 
     @Test
     void testSetFragmentReplacesTheCurrentFragment() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         var fragment = new Fragment(List.of(note), Collections.singletonList(null), List.of());
 
         clipboardManager.setFragment(fragment);
@@ -87,10 +89,10 @@ class ClipboardManagerTest extends UnitTest {
     @Test
     void testSetFragmentAgainReplacesThePreviousOne() {
         var first = new Fragment(
-            List.of(ElementType.CROTCHET.newInstance()), Collections.singletonList(null), List.of()
+            List.of(crotchet()), Collections.singletonList(null), List.of()
         );
         var second = new Fragment(
-            List.of(ElementType.QUAVER.newInstance(), ElementType.MINIM.newInstance()),
+            List.of(quaver(), minim()),
             Arrays.asList(null, null), List.of()
         );
 
@@ -105,7 +107,7 @@ class ClipboardManagerTest extends UnitTest {
     void testClearEmptiesTheClipboard() {
         clipboardManager.setFragment(
             new Fragment(
-                List.of(ElementType.CROTCHET.newInstance()), Collections.singletonList(null), List.of()
+                List.of(crotchet()), Collections.singletonList(null), List.of()
             )
         );
 
@@ -120,7 +122,7 @@ class ClipboardManagerTest extends UnitTest {
     void testSetFragmentPostsClipboardDidChangeNotificationExactlyOnce() {
         clipboardManager.setFragment(
             new Fragment(
-                List.of(ElementType.CROTCHET.newInstance()), Collections.singletonList(null), List.of()
+                List.of(crotchet()), Collections.singletonList(null), List.of()
             )
         );
 
@@ -133,7 +135,7 @@ class ClipboardManagerTest extends UnitTest {
     void testClearPostsClipboardDidChangeNotificationExactlyOnce() {
         clipboardManager.setFragment(
             new Fragment(
-                List.of(ElementType.CROTCHET.newInstance()), Collections.singletonList(null), List.of()
+                List.of(crotchet()), Collections.singletonList(null), List.of()
             )
         );
         // Discard the notification from the setFragment above so only clear()'s post is counted.

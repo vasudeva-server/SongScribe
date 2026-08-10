@@ -28,7 +28,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
-import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
@@ -37,6 +36,8 @@ import songscribe.util.GraphicUtils;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 class AnnotationAttachmentTest extends UnitTest {
 
@@ -48,8 +49,8 @@ class AnnotationAttachmentTest extends UnitTest {
 
         @Test
         void testCopyReturnsDistinctInstanceWithNewOwnerAndPreservesAnnotation() {
-            var originalOwner = ElementType.CROTCHET.newInstance();
-            var newOwner = ElementType.QUAVER.newInstance();
+            var originalOwner = crotchet();
+            var newOwner = quaver();
             var annotation = new Annotation("dolce");
             var original = new AnnotationAttachment(originalOwner, annotation);
 
@@ -74,7 +75,7 @@ class AnnotationAttachmentTest extends UnitTest {
         void testUsesProvidedFont() {
             var song = new Song();
             var line = song.getLine(0);
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             var attachment = new AnnotationAttachment("test");
             note.addAttachment(attachment);
             song.withoutMutationTracking(() -> line.addElement(note));

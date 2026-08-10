@@ -21,6 +21,7 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static songscribe.dom.StaffElementFactory.semiquaver;
 
 import java.util.List;
 
@@ -515,7 +516,7 @@ class TupletValidatorConstraintsTest extends UnitTest {
                 song.addLine(secondLine);
 
                 for (var i = 0; i < GRADE_TRIPLET; i++) {
-                    secondLine.addElement(ElementType.SEMIQUAVER.newInstance());
+                    secondLine.addElement(semiquaver());
                 }
             });
 

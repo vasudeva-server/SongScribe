@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -44,8 +45,8 @@ class ToggleConflictTest extends UnitTest {
     @BeforeEach
     void setUp() {
         line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
 
         range = new Selection.Range(line, 0, 1, 0);
     }

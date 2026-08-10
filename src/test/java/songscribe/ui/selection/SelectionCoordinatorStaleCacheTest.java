@@ -21,13 +21,14 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.message.mutation.ElementDeletion;
 import songscribe.message.notification.SongDidChangeNotification;
@@ -53,12 +54,12 @@ class SelectionCoordinatorStaleCacheTest extends MainFrameMockTest {
      * it, reports the deletion, then selects the note that took its index.
      */
     private Fixture noteSelectedWhereTheDeletedBarlineWas() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
         var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.SINGLE_BARLINE.newInstance(), note),
+            List.of(singleBarline(), note),
             List.of(action)
         );
 

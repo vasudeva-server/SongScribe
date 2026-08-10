@@ -26,7 +26,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.RestModeDidChangeNotification;
 
@@ -35,6 +34,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 class RestModeActionTest extends MainFrameMockTest {
 
@@ -131,19 +133,19 @@ class RestModeActionTest extends MainFrameMockTest {
 
     @Test
     void testAppliesToReturnsTrueForDurationElement() {
-        var quarterNote = ElementType.CROTCHET.newInstance();
+        var quarterNote = crotchet();
         assertThat(action.appliesTo(quarterNote)).isTrue();
     }
 
     @Test
     void testAppliesToReturnsFalseForBarlineElement() {
-        var barline = ElementType.SINGLE_BARLINE.newInstance();
+        var barline = singleBarline();
         assertThat(action.appliesTo(barline)).isFalse();
     }
 
     @Test
     void testAppliesToReturnsTrueForRestElement() {
-        var rest = ElementType.CROTCHET_REST.newInstance();
+        var rest = crotchetRest();
         assertThat(action.appliesTo(rest)).isTrue();
     }
 
@@ -151,13 +153,13 @@ class RestModeActionTest extends MainFrameMockTest {
 
     @Test
     void testMatchesElementReturnsTrueForRestElement() {
-        var rest = ElementType.CROTCHET_REST.newInstance();
+        var rest = crotchetRest();
         assertThat(action.matchesElement(rest)).isTrue();
     }
 
     @Test
     void testMatchesElementReturnsFalseForNoteElement() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         assertThat(action.matchesElement(note)).isFalse();
     }
 }

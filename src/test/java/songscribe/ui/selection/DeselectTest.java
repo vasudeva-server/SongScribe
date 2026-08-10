@@ -21,13 +21,15 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.minim;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 
 class DeselectTest extends UnitTest {
 
@@ -35,9 +37,9 @@ class DeselectTest extends UnitTest {
     void testClearSelectionRemovesAllSelectedElements() {
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(
-                ElementType.CROTCHET.newInstance(),
-                ElementType.QUAVER.newInstance(),
-                ElementType.MINIM.newInstance()
+                crotchet(),
+                quaver(),
+                minim()
             ),
             List.of()
         );
@@ -56,7 +58,7 @@ class DeselectTest extends UnitTest {
     @Test
     void testClearSelectionOnSingleElement() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of()
         );
 
@@ -70,7 +72,7 @@ class DeselectTest extends UnitTest {
     @Test
     void testClearSelectionWhenNothingSelected() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of()
         );
 

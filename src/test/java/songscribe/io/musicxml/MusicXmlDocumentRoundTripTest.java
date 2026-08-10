@@ -22,6 +22,7 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.awt.Component;
 import java.util.regex.Pattern;
@@ -31,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -195,7 +195,7 @@ class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
                 line.setKeyType(Song.DEFAULT_KEY_TYPE);
                 line.setKeyAccidentalCount(Song.DEFAULT_KEY_ACCIDENTAL_COUNT);
 
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 note.addAttachment(new TempoChangeAttachment(note, baseTempo));
                 note.lyrics.add(new Lyric(FIRST_VERSE, FIRST_LINE_LYRIC, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
@@ -205,7 +205,7 @@ class MusicXmlDocumentRoundTripTest extends MusicXmlRoundTripSupport {
                 line.setKeyType(KeyType.SHARPS);
                 line.setKeyAccidentalCount(MID_SONG_KEY_ACCIDENTAL_COUNT);
 
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 note.lyrics.add(new Lyric(FIRST_VERSE, SECOND_LINE_LYRIC, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
                 note.addAttachment(new AnnotationAttachment(note, belowAnnotation()));

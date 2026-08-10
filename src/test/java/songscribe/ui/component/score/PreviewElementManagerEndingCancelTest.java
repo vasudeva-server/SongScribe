@@ -25,6 +25,10 @@ import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -81,13 +85,13 @@ class PreviewElementManagerEndingCancelTest extends PreviewElementManagerTestBas
     void buildLine() {
         song.withoutMutationTracking(() -> {
             song.setLineWidthSs(WIDE_LINE_SS);
-            line.addElement(ElementType.REPEAT_LEFT.newInstance());
-            line.addElement(ElementType.QUAVER.newInstance());
-            line.addElement(ElementType.REPEAT_RIGHT.newInstance());
-            line.addElement(ElementType.QUAVER.newInstance());
-            line.addElement(ElementType.QUAVER.newInstance());
-            line.addElement(ElementType.QUAVER.newInstance());
-            line.addElement(ElementType.SINGLE_BARLINE.newInstance());
+            line.addElement(repeatLeft());
+            line.addElement(quaver());
+            line.addElement(repeatRight());
+            line.addElement(quaver());
+            line.addElement(quaver());
+            line.addElement(quaver());
+            line.addElement(singleBarline());
         });
 
         ending = new Ending(line.getElement(ANCHOR_INDEX), line.getElement(ENDING_END_INDEX));
@@ -109,7 +113,7 @@ class PreviewElementManagerEndingCancelTest extends PreviewElementManagerTestBas
     private void clickRightRepeatOnEndNote(int confirmResult) {
         PreviewElementManager.setXPosSsMatchesElement(true);
         PreviewElementManager.setCurrentXIndex(ENDING_END_INDEX);
-        setPreviewElement(ElementType.REPEAT_RIGHT.newInstance());
+        setPreviewElement(repeatRight());
 
         try (var dialogs = mockStatic(OptionDialogs.class)) {
             dialogs.when(() -> OptionDialogs.showOptionDialog(

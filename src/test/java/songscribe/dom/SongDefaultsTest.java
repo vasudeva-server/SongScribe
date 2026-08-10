@@ -22,6 +22,7 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,7 @@ class SongDefaultsTest extends UnitTest {
      * which must already belong to song and have mutation tracking suspended.
      */
     private static StaffElement addNoteWithTempo(Song song, Line line, int bpm) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
         var attachmentTempo = new Tempo();
         attachmentTempo.setVisibleTempo(bpm);
@@ -142,7 +143,7 @@ class SongDefaultsTest extends UnitTest {
             song.addLine(line1);
             addNoteWithTempo(song, line1, LINE_1_TEMPO_BPM); // index 0 on line 1
             // Plain note (no attachment) at index 1 on line 1.
-            line1.addElement(ElementType.CROTCHET.newInstance());
+            line1.addElement(crotchet());
         });
 
         // Walked back from (line=1, note=1): plain note has none, noteB(index 0) has 100.
@@ -185,7 +186,7 @@ class SongDefaultsTest extends UnitTest {
             // Second line carries no tempo change anywhere.
             var line1 = new Line(song);
             song.addLine(line1);
-            line1.addElement(ElementType.CROTCHET.newInstance());
+            line1.addElement(crotchet());
         });
 
         // Walk from (line=1, note=0): plain note has none → cross to line 0 → noteA (80).

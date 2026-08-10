@@ -22,11 +22,11 @@ package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.Tie;
@@ -64,8 +64,8 @@ class CrossLineTieSelectionTest extends UnitTest {
             var song = new Song();
             var firstLine = song.getLine(0);
             var secondLine = new Line(song);
-            var anchor = ElementType.CROTCHET.newInstance();
-            var end = ElementType.CROTCHET.newInstance();
+            var anchor = crotchet();
+            var end = crotchet();
             var tie = new Tie(anchor, end);
 
             song.withoutMutationTracking(() -> {
@@ -148,7 +148,7 @@ class CrossLineTieSelectionTest extends UnitTest {
 
         // A mutation on the second line — not the active line the tie was selected from.
         fixture.secondLine().getSong().withoutMutationTracking(
-            () -> fixture.secondLine().addElement(ElementType.CROTCHET.newInstance()));
+            () -> fixture.secondLine().addElement(crotchet()));
 
         assertThat(fixture.coordinator().revalidateDecorationSelection())
             .as("the selection was cleared as stale")

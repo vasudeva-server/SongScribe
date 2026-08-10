@@ -32,6 +32,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 
@@ -80,7 +81,7 @@ class TrillRendererTest extends UnitTest {
      */
     private static Color renderedTrillColor(boolean selected) {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         var anchor = line.getElement(0);
         var trill = new Trill(anchor, anchor);
         line.addTrill(trill);
@@ -188,7 +189,7 @@ class TrillRendererTest extends UnitTest {
         // is not NaN, so for a single-note trill there should be NO WIGGLE_TRILL_FASTER drawString
         // call — only the ORNAMENT_TRILL glyph.
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        var anchor = ElementType.CROTCHET.newInstance();
+        var anchor = crotchet();
         var layoutResult = LayoutResult.builder().build();
 
         RENDERER.renderTrillAtPosition(
@@ -214,8 +215,8 @@ class TrillRendererTest extends UnitTest {
         // renderTrill is called with a valid endXSs, so drawWavyLine runs and
         // WIGGLE_TRILL_FASTER glyph strings appear when endXSs > wavyStartX.
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        var anchor = ElementType.CROTCHET.newInstance();
-        var endNote = ElementType.CROTCHET.newInstance();
+        var anchor = crotchet();
+        var endNote = crotchet();
 
         // Use a mock LayoutResult so we can control the endNote X position.
         // END_ELEMENT_X_SS is large enough that endXSs > wavyStartX = ANCHOR_LAYOUT_X_SS + TRILL_ADVANCE_WIDTH_SS.
@@ -269,7 +270,7 @@ class TrillRendererTest extends UnitTest {
      */
     private static double wavyLineLengthSs(ElementType endType) {
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        var anchor = ElementType.CROTCHET.newInstance();
+        var anchor = crotchet();
         var endNote = endType.newInstance();
 
         var layoutResult = mock(LayoutResult.class);
@@ -299,7 +300,7 @@ class TrillRendererTest extends UnitTest {
     void testRenderTrillAtPositionEndNoteEqualToAnchorIsSingleNotePath() {
         // endNote == anchor → treated as single-note trill (no wavy line)
         var g2Spy = spy(RenderContextTestHelper.realG2());
-        var anchor = ElementType.CROTCHET.newInstance();
+        var anchor = crotchet();
         var layoutResult = LayoutResult.builder().build();
 
         RENDERER.renderTrillAtPosition(

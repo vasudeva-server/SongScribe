@@ -22,6 +22,8 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.util.Collections;
 import java.util.List;
@@ -143,13 +145,13 @@ class OpticalSpacingTest extends UnitTest {
 
     private static ElementColumn barlineColumn() {
         return new ElementColumn(
-            ElementType.SINGLE_BARLINE.newInstance(), Collections.emptyList(),
+            singleBarline(), Collections.emptyList(),
             NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS, NEUTRAL_STEM_TOP_SS, NEUTRAL_STEM_BOTTOM_SS, null, 0.0, false);
     }
 
     private static ElementColumn restColumn() {
         return new ElementColumn(
-            ElementType.CROTCHET_REST.newInstance(), Collections.emptyList(),
+            crotchetRest(), Collections.emptyList(),
             NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS, NEUTRAL_STEM_TOP_SS, NEUTRAL_STEM_BOTTOM_SS, null, 0.0, false);
     }
 
@@ -165,7 +167,7 @@ class OpticalSpacingTest extends UnitTest {
      */
     private static ElementColumn stemLikeRestColumn(StaffElement.Direction direction, double stemBottomSs) {
         var column = new ElementColumn(
-            ElementType.CROTCHET_REST.newInstance(), Collections.emptyList(),
+            crotchetRest(), Collections.emptyList(),
             NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS, NEUTRAL_STEM_TOP_SS, stemBottomSs, null, 0.0, false);
         column.getElement().setDirection(direction);
 

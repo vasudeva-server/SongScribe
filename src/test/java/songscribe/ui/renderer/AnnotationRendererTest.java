@@ -30,6 +30,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 
@@ -40,7 +41,6 @@ import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
 import songscribe.dom.AnnotationAttachment;
-import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
@@ -101,7 +101,7 @@ class AnnotationRendererTest extends UnitTest {
     @Test
     void testRender_baselineYCombinesMiddleLineAndDecorationYAndFontAscent() {
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
 
         // Attach the annotation to the note
@@ -154,7 +154,7 @@ class AnnotationRendererTest extends UnitTest {
     @Test
     void testRender_noDecorationLayout_throwsIllegalStateException() {
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
 
         // Attach the annotation but do NOT add any DecorationLayout to the result
@@ -183,7 +183,7 @@ class AnnotationRendererTest extends UnitTest {
      */
     private static Color renderedTextColor(boolean selected) {
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
 
         var attachment = new AnnotationAttachment(ANNOTATION_TEXT);

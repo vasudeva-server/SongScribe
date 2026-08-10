@@ -22,6 +22,9 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.minimRest;
+import static songscribe.dom.StaffElementFactory.semibreveRest;
 
 import org.junit.jupiter.api.Test;
 
@@ -89,7 +92,7 @@ class RestRendererTest extends UnitTest {
 
     @Test
     void testCalculateRestYSsForSemibreveRestUsesFixedOffset() {
-        var note = ElementType.SEMIBREVE_REST.newInstance();
+        var note = semibreveRest();
         var expected = MIDDLE_Y_SS + Staff.spToSs(RestRenderer.SEMIBREVE_REST_Y_OFFSET);
 
         assertThat(RestRenderer.getInstance().calculateRestYSs(note, MIDDLE_Y_SS))
@@ -98,7 +101,7 @@ class RestRendererTest extends UnitTest {
 
     @Test
     void testCalculateRestYSsForMinimRestUsesFixedOffset() {
-        var note = ElementType.MINIM_REST.newInstance();
+        var note = minimRest();
         var expected = MIDDLE_Y_SS + Staff.spToSs(RestRenderer.MINIM_REST_Y_OFFSET);
 
         assertThat(RestRenderer.getInstance().calculateRestYSs(note, MIDDLE_Y_SS))
@@ -109,7 +112,7 @@ class RestRendererTest extends UnitTest {
     void testCalculateRestYSsForOtherRestUsesTypeDefaultStaffPosition() {
         // StructuralElement.getStaffPosition() returns the type's default staff position,
         // not a settable value — so the branch uses ElementType.getDefaultStaffPosition().
-        var note = ElementType.CROTCHET_REST.newInstance();
+        var note = crotchetRest();
         var expected = MIDDLE_Y_SS + Staff.spToSs(note.getType().getDefaultStaffPosition());
 
         assertThat(RestRenderer.getInstance().calculateRestYSs(note, MIDDLE_Y_SS))

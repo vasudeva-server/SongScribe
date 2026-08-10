@@ -22,13 +22,13 @@ package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.ui.component.ScoreView;
 
@@ -51,7 +51,7 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
     @Test
     void testSelectingARangeDisplacesTheTargetSelection() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of()
         );
 
@@ -77,7 +77,7 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
     @Test
     void testUnregisterLineRemovesItFromTheRegistry() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of()
         );
 
@@ -168,10 +168,10 @@ class SelectionCoordinatorRegistryTest extends UnitTest {
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
         var lineA = new Line(song);
-        lineA.addElement(ElementType.CROTCHET.newInstance());
+        lineA.addElement(crotchet());
 
         var lineB = new Line(song);
-        lineB.addElement(ElementType.CROTCHET.newInstance());
+        lineB.addElement(crotchet());
 
         coordinator.registerLine(0, lineA);
         coordinator.registerLine(1, lineB);

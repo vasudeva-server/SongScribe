@@ -23,6 +23,9 @@ package songscribe.undo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.awt.Font;
 
@@ -145,7 +148,7 @@ class MutationReplayerRoundTripTest extends UnitTest {
         void testElementReplacementRoundTrips() {
             var song = songWithNotes(3);
             var line = song.getLine(0);
-            assertRoundTrip(song, () -> line.setElement(1, ElementType.QUAVER.newInstance()));
+            assertRoundTrip(song, () -> line.setElement(1, quaver()));
         }
 
         /**
@@ -199,7 +202,7 @@ class MutationReplayerRoundTripTest extends UnitTest {
             var line = song.getLine(0);
             UndoTestSupport.addCrotchets(song, line, 3);
             song.withoutMutationTracking(() -> {
-                line.addElement(ElementType.CROTCHET_REST.newInstance());
+                line.addElement(crotchetRest());
                 line.addCrescendo(new Crescendo(line.getElement(0), line.getElement(2)));
             });
 
@@ -306,7 +309,7 @@ class MutationReplayerRoundTripTest extends UnitTest {
         void testUndoRestoresTheHyphenTheGraceNoteInsertionBroke() {
             var song = songWithNotes(NOTE_COUNT);
             var line = song.getLine(0);
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
 
             song.withoutMutationTracking(() -> {
                 setSyllable(line, 0, Lyric.Syllabic.BEGIN, FIRST_SYLLABLE);
@@ -357,7 +360,7 @@ class MutationReplayerRoundTripTest extends UnitTest {
         void testUndoRestoresTheMelismaTheGraceNoteInsertionBroke() {
             var song = songWithNotes(NOTE_COUNT);
             var line = song.getLine(0);
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
 
             song.withoutMutationTracking(() -> {
                 line.getElement(0).setLyricForVerse(
@@ -413,8 +416,8 @@ class MutationReplayerRoundTripTest extends UnitTest {
         void testUndoRestoresTheGlissandoTheGraceNoteInsertionBroke() {
             var song = songWithNotes(NOTE_COUNT);
             var line = song.getLine(0);
-            var pairedGrace = ElementType.GRACE_QUAVER.newInstance();
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var pairedGrace = graceQuaver();
+            var grace = graceQuaver();
 
             song.withoutMutationTracking(() -> {
                 pairedGrace.setGlissando();
@@ -983,7 +986,7 @@ class MutationReplayerRoundTripTest extends UnitTest {
             var song = songWithNotes(3);
             var line = song.getLine(0);
             var replaced = line.getElement(1);
-            var replacement = ElementType.QUAVER.newInstance();
+            var replacement = quaver();
 
             var batch = UndoTestSupport.captureBatch(song, () -> line.setElement(1, replacement));
             assertThat(replaced.getParentLine()).isNull();

@@ -22,6 +22,8 @@ package songscribe.ui.action;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.util.List;
 
@@ -30,7 +32,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
 import songscribe.Strings;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tuplet;
 import songscribe.ui.selection.TupletToggleInfo;
@@ -86,7 +87,7 @@ class DynamicOpNameOverrideTest extends MainFrameMockTest {
         @Test
         void testBarlineSelectedNamesChangeBarline() {
             var action = singleBarlineAction();
-            selectElements(List.of(ElementType.SINGLE_BARLINE.newInstance()));
+            selectElements(List.of(singleBarline()));
 
             assertThat(action.getUndoOpName())
                 .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_BARLINE));
@@ -95,7 +96,7 @@ class DynamicOpNameOverrideTest extends MainFrameMockTest {
         @Test
         void testRepeatSelectedNamesChangeRepeat() {
             var action = singleBarlineAction();
-            selectElements(List.of(ElementType.REPEAT_LEFT.newInstance()));
+            selectElements(List.of(repeatLeft()));
 
             assertThat(action.getUndoOpName())
                 .isEqualTo(Strings.get(Strings.ACTION_EDIT_OP_CHANGE_REPEAT));

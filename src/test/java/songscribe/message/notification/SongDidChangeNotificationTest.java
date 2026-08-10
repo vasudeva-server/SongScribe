@@ -21,6 +21,7 @@ package songscribe.message.notification;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 
@@ -41,7 +42,6 @@ import songscribe.message.mutation.MetadataField;
 import songscribe.message.mutation.Mutation;
 import songscribe.dom.Song;
 import songscribe.dom.SongMetadata;
-import songscribe.dom.ElementType;
 
 class SongDidChangeNotificationTest extends UnitTest {
 
@@ -75,7 +75,7 @@ class SongDidChangeNotificationTest extends UnitTest {
         void testLineScopedPlusSongScopedReturnsLine() {
             var line = detachedLine();
             var notification = makeNotification(
-                new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance()),
+                new ElementDeletion(line, 0, crotchet()),
                 attributionChange()
             );
             assertThat(notification.getLine()).isSameAs(line);
@@ -86,8 +86,8 @@ class SongDidChangeNotificationTest extends UnitTest {
             var lineA = detachedLine();
             var lineB = detachedLine();
             var notification = makeNotification(
-                new ElementDeletion(lineA, 0, ElementType.CROTCHET.newInstance()),
-                new ElementInsertion(lineB, 0, ElementType.CROTCHET.newInstance())
+                new ElementDeletion(lineA, 0, crotchet()),
+                new ElementInsertion(lineB, 0, crotchet())
             );
             assertThat(notification.getLine()).isNull();
         }
@@ -96,8 +96,8 @@ class SongDidChangeNotificationTest extends UnitTest {
         void testMultipleLineScopedSameLineReturnsLine() {
             var line = detachedLine();
             var notification = makeNotification(
-                new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance()),
-                new ElementInsertion(line, 1, ElementType.CROTCHET.newInstance())
+                new ElementDeletion(line, 0, crotchet()),
+                new ElementInsertion(line, 1, crotchet())
             );
             assertThat(notification.getLine()).isSameAs(line);
         }
@@ -106,7 +106,7 @@ class SongDidChangeNotificationTest extends UnitTest {
         void testRepeatedCallsReturnSameInstance() {
             var line = detachedLine();
             var notification = makeNotification(
-                new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance())
+                new ElementDeletion(line, 0, crotchet())
             );
 
             var first = notification.getLine();
@@ -122,7 +122,7 @@ class SongDidChangeNotificationTest extends UnitTest {
         void testSingleLineScopedReturnsLine() {
             var line = detachedLine();
             var notification = makeNotification(
-                new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance())
+                new ElementDeletion(line, 0, crotchet())
             );
             assertThat(notification.getLine()).isSameAs(line);
         }
@@ -137,8 +137,8 @@ class SongDidChangeNotificationTest extends UnitTest {
             var lineA = detachedLine();
             var lineB = detachedLine();
             var notification = makeNotification(
-                new ElementDeletion(lineA, 0, ElementType.CROTCHET.newInstance()),
-                new ElementInsertion(lineB, 0, ElementType.CROTCHET.newInstance())
+                new ElementDeletion(lineA, 0, crotchet()),
+                new ElementInsertion(lineB, 0, crotchet())
             );
 
             // The case getLine() cannot report: it has no single line to name and so names none.
@@ -152,7 +152,7 @@ class SongDidChangeNotificationTest extends UnitTest {
             var line = detachedLine();
             var other = detachedLine();
             var notification = makeNotification(
-                new ElementDeletion(line, 0, ElementType.CROTCHET.newInstance())
+                new ElementDeletion(line, 0, crotchet())
             );
 
             assertThat(notification.touchesLine(other)).isFalse();

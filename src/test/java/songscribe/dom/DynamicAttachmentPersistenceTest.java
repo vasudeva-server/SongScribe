@@ -22,6 +22,7 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
@@ -67,9 +68,9 @@ class DynamicAttachmentPersistenceTest extends UnitTest {
         var line = song.getLine(0);
 
         song.withModification(() -> {
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
+            line.addElement(crotchet());
+            line.addElement(crotchet());
 
             var forteNote = line.getElement(FORTE_INDEX);
             forteNote.addAttachment(new DynamicAttachment(forteNote, DynamicType.FORTE));

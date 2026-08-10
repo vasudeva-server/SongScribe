@@ -23,6 +23,10 @@ package songscribe.ui.selection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.minim;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.util.List;
 
@@ -94,9 +98,9 @@ class ReflectionIntegrationTest extends UnitTest {
 
     @Test
     void testCrotchetAndCrotchetRest() {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setAccidental(StaffElement.Accidental.SHARP);
-        var rest = ElementType.CROTCHET_REST.newInstance();
+        var rest = crotchetRest();
 
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(note1, rest), allActions()
@@ -118,9 +122,9 @@ class ReflectionIntegrationTest extends UnitTest {
 
     @Test
     void testCrotchetAndMinimBothSharp() {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setAccidental(StaffElement.Accidental.SHARP);
-        var note2 = ElementType.MINIM.newInstance();
+        var note2 = minim();
         note2.setAccidental(StaffElement.Accidental.SHARP);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -143,7 +147,7 @@ class ReflectionIntegrationTest extends UnitTest {
 
     @Test
     void testSingleCrotchetSharpDottedFermata() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
         note.setDotCount(1);
         note.addAttachment(new FermataAttachment(note));
@@ -168,8 +172,8 @@ class ReflectionIntegrationTest extends UnitTest {
 
     @Test
     void testTwoCrotchetRests() {
-        var rest1 = ElementType.CROTCHET_REST.newInstance();
-        var rest2 = ElementType.CROTCHET_REST.newInstance();
+        var rest1 = crotchetRest();
+        var rest2 = crotchetRest();
 
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(rest1, rest2), allActions()
@@ -191,9 +195,9 @@ class ReflectionIntegrationTest extends UnitTest {
 
     @Test
     void testTwoCrotchetsSharpNoDot() {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setAccidental(StaffElement.Accidental.SHARP);
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setAccidental(StaffElement.Accidental.SHARP);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -216,8 +220,8 @@ class ReflectionIntegrationTest extends UnitTest {
 
     @Test
     void testTwoSingleBarlines() {
-        var barline1 = ElementType.SINGLE_BARLINE.newInstance();
-        var barline2 = ElementType.SINGLE_BARLINE.newInstance();
+        var barline1 = singleBarline();
+        var barline2 = singleBarline();
 
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(barline1, barline2), allActions()
@@ -255,7 +259,7 @@ class ReflectionIntegrationTest extends UnitTest {
      */
     private static Line lineEndingInTerminal(Song song) {
         var line = song.getLine(0);
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(crotchet()));
         return line;
     }
 
@@ -295,10 +299,10 @@ class ReflectionIntegrationTest extends UnitTest {
 
     @Test
     void testAccidentalInParensNotSelectedWhenOnlyOneParenthesized() {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setAccidental(StaffElement.Accidental.SHARP);
         note1.setAccidentalInParentheses(true);
-        var note2 = ElementType.MINIM.newInstance();
+        var note2 = minim();
         note2.setAccidental(StaffElement.Accidental.SHARP);
 
         var coordinator = ReflectionTestHelper.createCoordinator(
@@ -312,10 +316,10 @@ class ReflectionIntegrationTest extends UnitTest {
 
     @Test
     void testAccidentalInParensSelectedWhenAllParenthesized() {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setAccidental(StaffElement.Accidental.SHARP);
         note1.setAccidentalInParentheses(true);
-        var note2 = ElementType.MINIM.newInstance();
+        var note2 = minim();
         note2.setAccidental(StaffElement.Accidental.SHARP);
         note2.setAccidentalInParentheses(true);
 

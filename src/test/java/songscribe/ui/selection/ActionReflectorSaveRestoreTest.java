@@ -23,6 +23,7 @@ package songscribe.ui.selection;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 
@@ -31,7 +32,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.component.ScoreView;
@@ -76,7 +76,7 @@ class ActionReflectorSaveRestoreTest extends MainFrameMockTest {
 
     private SelectionCoordinator createCoordinator() {
         return ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance()),
+            List.of(crotchet(), crotchet()),
             allActions()
         );
     }
@@ -145,7 +145,7 @@ class ActionReflectorSaveRestoreTest extends MainFrameMockTest {
         void testEndingSelectionSavesRatherThanRestoresActionStates() {
             var coordinator = createCoordinator();
             var ending = new Ending(
-                ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
+                crotchet(), crotchet());
 
             fermataAction.setEnabled(true);
             fermataAction.setSelected(true);

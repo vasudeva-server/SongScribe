@@ -21,6 +21,7 @@
 package songscribe.io;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
@@ -28,7 +29,6 @@ import java.io.StringWriter;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 
 /**
@@ -118,7 +118,7 @@ class FallSerializationTest extends UnitTest {
 
     @Test
     void testFallIsEmittedAsFallTag() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setFall();
 
         var output = writeNote(note);

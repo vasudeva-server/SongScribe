@@ -22,6 +22,8 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +33,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
-import songscribe.dom.ElementType;
 import songscribe.dom.ScaleContext;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -51,8 +52,8 @@ class DynamicAttachmentTest extends UnitTest {
 
         @Test
         void testCopyReturnsDistinctInstanceWithNewOwnerAndPreservesType() {
-            var originalOwner = ElementType.CROTCHET.newInstance();
-            var newOwner = ElementType.QUAVER.newInstance();
+            var originalOwner = crotchet();
+            var newOwner = quaver();
             var original = new DynamicAttachment(originalOwner, DynamicType.FORTE);
 
             var copy = original.copy(newOwner);

@@ -23,6 +23,8 @@ package songscribe.ui.renderer;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.mock;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
 
 import module java.desktop;
 
@@ -30,7 +32,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -65,7 +66,7 @@ class FallRendererTest extends UnitTest {
     }
 
     private static StaffElement fallNote() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setUpper(true);
         note.setFall();
         return note;
@@ -128,7 +129,7 @@ class FallRendererTest extends UnitTest {
         var note = fallNote();
         var line = detachedLine();
         line.addElement(note);
-        line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());
+        line.addElement(finalDoubleBarline());
 
         var invariants = fallInvariants(line, fallLayout(note));
         var recorder = new RecordingGraphics2D();

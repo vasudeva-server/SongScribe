@@ -28,6 +28,10 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -166,7 +170,7 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     private static final int F_STAFF_POSITION = 3;
 
     private static StaffElement sharpNote() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(F_STAFF_POSITION);
         note.setAccidental(StaffElement.Accidental.SHARP);
         return note;
@@ -248,9 +252,9 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     @Test
     void testElementReplaceableEmitsOneReplacementPerSelectedElement() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -276,9 +280,9 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     @Test
     void testElementReplaceableSkipsInapplicableElements() {
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.SINGLE_BARLINE.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            singleBarline(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -299,10 +303,10 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         // a quarter trims the beam from the right end, producing one
         // BeamingRemoval + one BeamingAddition for the truncated [0..2] span.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -333,11 +337,11 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         // Five eighths with a tuplet over [0..4]; replacing any interior
         // element with a quarter removes the tuplet flatly (no split).
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -367,8 +371,8 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         // A tie over [0..1] with a duration change on both endpoints: the
         // dead tie-repair branch must stay dead — zero tie mutations.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
         var line = getLine(coordinator);
@@ -387,9 +391,9 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     @Test
     void testElementModifiableEmitsOneModificationPerAffectedElement() {
         var notes = List.of(
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance()
+            crotchet(),
+            crotchet(),
+            crotchet()
         );
         var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 2);
@@ -416,10 +420,10 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     void testElementModifiableSkipsInapplicableElements() {
         // Accidentals only apply to notes — rests and barlines are skipped.
         var notes = List.of(
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET_REST.newInstance(),
-            ElementType.SINGLE_BARLINE.newInstance(),
-            ElementType.CROTCHET.newInstance()
+            crotchet(),
+            crotchetRest(),
+            singleBarline(),
+            crotchet()
         );
         var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 3);
@@ -437,8 +441,8 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     @Test
     void testElementModifiableFermataUsesFermataField() {
         var notes = List.of(
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance()
+            crotchet(),
+            crotchet()
         );
         var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -458,8 +462,8 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
     @Test
     void testElementModifiableDotUsesDotCountField() {
         var notes = List.of(
-            ElementType.CROTCHET.newInstance(),
-            ElementType.CROTCHET.newInstance()
+            crotchet(),
+            crotchet()
         );
         var coordinator = createCoordinator(notes, List.of(DOT_ACTION));
         ReflectionTestHelper.selectRange(coordinator, 0, 1);
@@ -482,9 +486,9 @@ class ApplyActionToSelectionMutationTest extends MainFrameMockTest {
         // ElementModifiable action never triggers beam repair or tuplet
         // invalidation — it doesn't touch element type.
         var notes = List.of(
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance(),
-            ElementType.QUAVER.newInstance()
+            quaver(),
+            quaver(),
+            quaver()
         );
         var coordinator = createCoordinator(notes, List.of(SHARP_ACTION));
         var line = getLine(coordinator);

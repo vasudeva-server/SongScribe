@@ -23,6 +23,8 @@ package songscribe.layout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.awt.Font;
 import java.util.Collections;
@@ -619,8 +621,8 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
      */
     private static HairpinFixture hairpinFixture(boolean withHairpin, double endNoteheadWidthSs) {
         var line = detachedLine();
-        var anchor = ElementType.CROTCHET.newInstance();
-        var end = ElementType.CROTCHET.newInstance();
+        var anchor = crotchet();
+        var end = crotchet();
         line.addElement(anchor);
         line.addElement(end);
 
@@ -685,7 +687,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
     void testBuildSpringIgnoresTheHairpinFloorWhenTheFollowingColumnIsNotTheHairpinsEnd() {
         var fixture = hairpinFixture(true, END_NOTEHEAD_WIDTH_SS);
         var insertedColumn = columnFor(
-            ElementType.CROTCHET.newInstance(), NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS);
+            crotchet(), NO_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS);
         insertedColumn.setNoteheadWidthSs(END_NOTEHEAD_WIDTH_SS);
 
         var spring = hairpinSpring(fixture, insertedColumn);
@@ -1098,7 +1100,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
      */
     private static ElementColumn dottedColumn(double rightExtentSs) {
         return new ElementColumn(
-            ElementType.CROTCHET.newInstance(), Collections.emptyList(),
+            crotchet(), Collections.emptyList(),
             NO_LEFT_EXTENT_SS, rightExtentSs, HEAD_RIGHT_EXTENT_SS, 0.0, 0.0, null, 0.0, false);
     }
 
@@ -1214,7 +1216,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
      */
     @Test
     void testGraceGlissandoToAnAccidentalHostReservesGlissandoRoom() {
-        var graceElement = ElementType.GRACE_QUAVER.newInstance();
+        var graceElement = graceQuaver();
         graceElement.setGlissando();
         var graceColumn = new ElementColumn(
             graceElement, Collections.emptyList(),
@@ -1510,7 +1512,7 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
      */
     @Test
     void testGlissandoFromALedgerNoteReservesAgainstTheColumnExtentNotTheLedger() {
-        var ledgerElement = ElementType.CROTCHET.newInstance();
+        var ledgerElement = crotchet();
         ledgerElement.setGlissando();
         ledgerElement.setStaffPosition(TWO_LEDGERS_BELOW_SP);
 
@@ -1545,10 +1547,10 @@ class HorizontalSpacingCalculatorSpringTest extends UnitTest {
      */
     @Test
     void testGlissandoIntoALedgerNoteReservesAgainstTheColumnExtentNotTheLedger() {
-        var glissandoElement = ElementType.CROTCHET.newInstance();
+        var glissandoElement = crotchet();
         glissandoElement.setGlissando();
 
-        var ledgerElement = ElementType.CROTCHET.newInstance();
+        var ledgerElement = crotchet();
         ledgerElement.setStaffPosition(TWO_LEDGERS_BELOW_SP);
 
         // Left extents are negative; half the ledger base keeps the sign while making the floors

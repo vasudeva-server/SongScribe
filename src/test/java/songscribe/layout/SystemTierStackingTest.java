@@ -23,6 +23,8 @@ package songscribe.layout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static songscribe.dom.StaffElementFactory.createNote;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.semibreve;
 
 import java.util.List;
 
@@ -412,7 +414,7 @@ class SystemTierStackingTest extends UnitTest {
         @Test
         void testRightAlignedAnnotationOnAWholeNoteAnchorsToTheWholeNoteheadWidth() {
             var fonts = DocumentFonts.defaultFonts();
-            var wholeNote = ElementType.SEMIBREVE.newInstance();
+            var wholeNote = semibreve();
             var annotation = new AnnotationAttachment(wholeNote, new Annotation("Andante molto", 1.0f));
             wholeNote.addAttachment(annotation);
 
@@ -438,7 +440,7 @@ class SystemTierStackingTest extends UnitTest {
         void testAnnotationOnRepeatBarlineAnchorsToElementWidth() {
             // Repeats have no SMuFL glyph to measure, so the anchor falls back to
             // the element width (see issue #661 — legacy files with "fine" on a repeat).
-            var repeat = ElementType.REPEAT_RIGHT.newInstance();
+            var repeat = repeatRight();
             var annotation = new AnnotationAttachment(repeat, new Annotation("fine", 1.0f));
             repeat.addAttachment(annotation);
 

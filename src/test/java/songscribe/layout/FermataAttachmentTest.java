@@ -22,6 +22,8 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +31,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.ScaleContext;
 import songscribe.smufl.SMuFLGlyph;
@@ -102,8 +103,8 @@ class FermataAttachmentTest extends UnitTest {
 
         @Test
         void testCopyReturnsDistinctInstanceWithNewOwner() {
-            var originalOwner = ElementType.CROTCHET.newInstance();
-            var newOwner = ElementType.QUAVER.newInstance();
+            var originalOwner = crotchet();
+            var newOwner = quaver();
             var original = new FermataAttachment(originalOwner);
 
             var copy = original.copy(newOwner);

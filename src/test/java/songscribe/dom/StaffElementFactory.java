@@ -29,20 +29,48 @@ public final class StaffElementFactory {
         return ElementType.SEMIBREVE.newInstance();
     }
 
+    public static StaffElement semibreveRest() {
+        return ElementType.SEMIBREVE_REST.newInstance();
+    }
+
+    public static StaffElement minim() {
+        return ElementType.MINIM.newInstance();
+    }
+
+    public static StaffElement minimRest() {
+        return ElementType.MINIM_REST.newInstance();
+    }
+
     public static StaffElement crotchet() {
         return ElementType.CROTCHET.newInstance();
+    }
+
+    public static StaffElement crotchetRest() {
+        return ElementType.CROTCHET_REST.newInstance();
     }
 
     public static StaffElement quaver() {
         return ElementType.QUAVER.newInstance();
     }
 
+    public static StaffElement quaverRest() {
+        return ElementType.QUAVER_REST.newInstance();
+    }
+
+    public static StaffElement semiquaver() {
+        return ElementType.SEMIQUAVER.newInstance();
+    }
+
+    public static StaffElement demiSemiquaver() {
+        return ElementType.DEMI_SEMIQUAVER.newInstance();
+    }
+
     public static StaffElement graceQuaver() {
         return ElementType.GRACE_QUAVER.newInstance();
     }
 
-    public static StaffElement crotchetRest() {
-        return ElementType.CROTCHET_REST.newInstance();
+    public static StaffElement breathMark() {
+        return ElementType.BREATH_MARK.newInstance();
     }
 
     public static StaffElement repeatLeft() {

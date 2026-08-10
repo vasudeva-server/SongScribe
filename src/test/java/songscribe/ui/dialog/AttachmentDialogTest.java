@@ -56,6 +56,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * Unit tests for {@link AttachmentDialog} base-class behaviour:
@@ -87,7 +88,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
 
     @Test
     void testGetDataFetchesElementAndLineFromScoreWhenSelectedElementIsNull() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = lineWith(ElementType.CROTCHET);
         var song = mock(Song.class);
         when(song.getLine(anyInt())).thenReturn(line);
@@ -109,7 +110,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
 
     @Test
     void testGetDataDoesNotFetchFromScoreWhenSelectedElementAlreadySet() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = lineWith(ElementType.CROTCHET);
 
         var dialog = new ControlDialog(mainFrame(), /* existingChange= */ null);
@@ -192,7 +193,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
 
     @Test
     void testSetDataCallsModifyElementOnCorrectIndexWithCorrectField() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = spy(detachedLine());
         line.addElement(element);
 
@@ -213,7 +214,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
 
     @Test
     void testRemoveButtonCallsClearChangeAndHidesDialog() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = spy(detachedLine());
         line.addElement(element);
 
@@ -244,7 +245,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
     void testRemoveButtonVetoedByCanClearChangeMakesNoModification() {
         var song = new Song();
         var line = song.getLine(0);
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(crotchet()));
         song.setModified(false);
 
         var dialog = new VetoDialog(mainFrame());
@@ -280,7 +281,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
 
     @Test
     void testSetDataThrowsWhenSelectedLineIsNull() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var dialog = new ControlDialog(mainFrame(), null);
         dialog.selectedElement = element;
         // leave selectedLine null
@@ -299,7 +300,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
 
     @Test
     void testRemoveButtonThrowsWhenSelectedLineIsNull() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var dialog = new ControlDialog(mainFrame(), null);
         dialog.selectedElement = element;
         assertThatThrownBy(() -> fireRemoveAction(dialog))
@@ -316,7 +317,7 @@ class AttachmentDialogTest extends MainFrameMockTest {
      */
     @Test
     void testShowForSetsSelectedElementAndLineThenShows() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = detachedLine();
         line.addElement(element);
 

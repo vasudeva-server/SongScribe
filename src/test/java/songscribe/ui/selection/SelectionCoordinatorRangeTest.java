@@ -25,6 +25,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import javax.swing.JOptionPane;
 
@@ -91,7 +93,7 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         var line = detachedLine();
 
         for (var i = 0; i < count; i++) {
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
         }
 
         return line;
@@ -116,8 +118,8 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         var line = song.getLine(LINE_0);
 
         song.withoutMutationTracking(() -> {
-            line.addElement(0, ElementType.CROTCHET.newInstance());
-            line.addElement(1, ElementType.CROTCHET.newInstance());
+            line.addElement(0, crotchet());
+            line.addElement(1, crotchet());
         });
 
         return line;
@@ -544,7 +546,7 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         var coordinator = coordinatorOn(line);
         coordinator.selectRange(0, 1);
 
-        var insertedElement = ElementType.CROTCHET.newInstance();
+        var insertedElement = crotchet();
         var insertIndex = 2;
         line.addElement(insertIndex, insertedElement);
 
@@ -649,7 +651,7 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         var otherLine = crotchetLine(2);
         coordinator.registerLine(otherLineIndex, otherLine);
 
-        var insertedElement = ElementType.CROTCHET.newInstance();
+        var insertedElement = crotchet();
 
         coordinator.revalidateElementSelection(
             notificationFor(new ElementInsertion(otherLine, 0, insertedElement)));
@@ -848,11 +850,11 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         // the host and the extra note.
         var elementCountAfterCollapse = 3;
 
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setStaffPosition(sharedPositionSp);
-        var host = ElementType.CROTCHET.newInstance();
+        var host = crotchet();
         host.setStaffPosition(sharedPositionSp);
-        var extra = ElementType.CROTCHET.newInstance();
+        var extra = crotchet();
         extra.setStaffPosition(extraPositionSp);
 
         song.withoutMutationTracking(() -> {
@@ -939,8 +941,8 @@ class SelectionCoordinatorRangeTest extends UnitTest {
         song.replaceTerminal(ElementType.REPEAT_RIGHT);
 
         song.withoutMutationTracking(() -> {
-            line.addElement(0, ElementType.CROTCHET.newInstance());
-            line.addElement(1, ElementType.CROTCHET.newInstance());
+            line.addElement(0, crotchet());
+            line.addElement(1, crotchet());
         });
 
         assertThat(line.elementCount()).isEqualTo(3);
@@ -1044,8 +1046,8 @@ class SelectionCoordinatorRangeTest extends UnitTest {
 
         // firstLine is no longer the last line — its final barline has been transferred away.
         song.withoutMutationTracking(() -> {
-            firstLine.addElement(0, ElementType.CROTCHET.newInstance());
-            firstLine.addElement(1, ElementType.CROTCHET.newInstance());
+            firstLine.addElement(0, crotchet());
+            firstLine.addElement(1, crotchet());
         });
 
         var coordinator = coordinatorOn(firstLine);

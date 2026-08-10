@@ -28,6 +28,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.repeatRight;
 
 import java.util.ArrayList;
 import java.util.function.BiFunction;
@@ -129,10 +132,6 @@ class ScoreViewControllerDeleteTargetTest extends UnitTest {
         ActionsTestSupport.initializeActions();
     }
 
-    private static StaffElement crotchet() {
-        return ElementType.CROTCHET.newInstance();
-    }
-
     private static ScoreViewController buildController(
         SelectionCoordinator coordinator,
         ScoreView scoreMock
@@ -204,7 +203,7 @@ class ScoreViewControllerDeleteTargetTest extends UnitTest {
         // [G(paired, "om" START), H(text-less STOP carrier)] — delete G's glissando.
         var song = new Song();
         var line = song.getLine(0);
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         grace.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "om", Lyric.Extend.START);
         var host = crotchet();
@@ -245,7 +244,7 @@ class ScoreViewControllerDeleteTargetTest extends UnitTest {
         var song = new Song();
         var line = song.getLine(0);
         var noteA = crotchet();
-        var split = ElementType.REPEAT_RIGHT.newInstance();
+        var split = repeatRight();
         var noteB = crotchet();
 
         song.withoutMutationTracking(() -> {

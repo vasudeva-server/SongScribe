@@ -22,11 +22,11 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.dom.ElementLocation;
-import songscribe.dom.ElementType;
 
 /**
  * Tests for {@link PreviewElementManager#getHoveredElementLocation}, which returns the element a
@@ -53,7 +53,7 @@ class PreviewElementManagerHoverTest extends PreviewElementManagerTestBase {
         when(lc.getLineIndex()).thenReturn(LINE_INDEX);
         PreviewElementManager.setXPosSsMatchesElement(true);
         PreviewElementManager.setCurrentXIndex(X_INDEX);
-        setPreviewElement(ElementType.CROTCHET.newInstance());
+        setPreviewElement(crotchet());
 
         assertThat(PreviewElementManager.getHoveredElementLocation())
             .as("a replaceable element is highlighted at its location")

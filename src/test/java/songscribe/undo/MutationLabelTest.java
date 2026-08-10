@@ -37,7 +37,6 @@ import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
@@ -155,7 +154,7 @@ class MutationLabelTest extends UnitTest {
     void testElementReplacementLabelsReplaceNote() {
         var song = songWithNotes(2);
         var line = song.getLine(0);
-        assertThat(undoLabelAfter(song, () -> line.setElement(0, ElementType.QUAVER.newInstance())))
+        assertThat(undoLabelAfter(song, () -> line.setElement(0, quaver())))
             .isEqualTo(labeled(Strings.ACTION_EDIT_OP_REPLACE_NOTE));
     }
 

@@ -21,11 +21,12 @@
 package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -83,7 +84,7 @@ class MusicXmlLyricRoundTripTest extends MusicXmlRoundTripSupport {
     /** Adds a fresh crotchet carrying {@code lyrics} to {@code line} and returns it. */
     @SuppressWarnings("UnusedReturnValue")
     private static StaffElement addNote(Line line, Lyric... lyrics) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
         Collections.addAll(note.lyrics, lyrics);
         return note;
@@ -364,7 +365,7 @@ class MusicXmlLyricRoundTripTest extends MusicXmlRoundTripSupport {
 
     /** Grace note joined to the following note by a glissando, with the syllable on that host. */
     private static void addPairWithSyllableOnHost(Line line) {
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         line.addElement(grace);
         addNote(line, new Lyric(FIRST_VERSE, "glo", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
@@ -375,7 +376,7 @@ class MusicXmlLyricRoundTripTest extends MusicXmlRoundTripSupport {
      * lyric has {@code Extend.NONE} and the host has no lyric at all.
      */
     private static void addPairWithSyllableOnGrace(Line line) {
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         line.addElement(grace);
         grace.lyrics.add(new Lyric(FIRST_VERSE, "glo", Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));

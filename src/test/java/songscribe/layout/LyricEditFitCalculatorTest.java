@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.awt.Font;
 import java.io.File;
@@ -31,7 +32,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.font.SourceSans3Font;
@@ -72,7 +72,7 @@ class LyricEditFitCalculatorTest extends UnitTest {
         var line = detachedLine();
 
         for (var i = 0; i < count; i++) {
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
         }
 
         return line;

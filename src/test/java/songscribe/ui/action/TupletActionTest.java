@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.Arrays;
 import java.util.List;
@@ -41,7 +42,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.dom.Tuplet;
 import songscribe.message.MessageCenter;
@@ -253,8 +253,8 @@ class TupletActionTest extends MainFrameMockTest {
     }
 
     private static Tuplet makeTuplet(int grade) {
-        var anchor = ElementType.CROTCHET.newInstance();
-        var end = ElementType.CROTCHET.newInstance();
+        var anchor = crotchet();
+        var end = crotchet();
         return Tuplet.withUnresolvedRatio(anchor, end, grade);
     }
 }

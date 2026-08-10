@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 
@@ -37,7 +38,6 @@ import songscribe.shape.AccentShape;
 import songscribe.dom.Articulation;
 import songscribe.font.DocumentFonts;
 import songscribe.dom.ArticulationType;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.smufl.SMuFLGlyph;
 import songscribe.smufl.SMuFLMetadata;
@@ -113,7 +113,7 @@ class ArticulationStackingTest extends UnitTest {
      * Upper=true means stem up (note below middle), upper=false means stem down (note above middle).
      */
     private static StaffElement createNote(int staffPosition, boolean upper, ArticulationType... types) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(staffPosition);
         note.setUpper(upper);
 

@@ -64,6 +64,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * Base class for unit tests. Suppresses modal error dialogs
@@ -288,7 +289,7 @@ public abstract class UnitTest {
     /** Creates a line containing a single crotchet with the given annotation text. */
     protected static Line lineWithAnnotation(String text) {
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
         note.addAttachment(new AnnotationAttachment(note, new Annotation(text)));
         return line;

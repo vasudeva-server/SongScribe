@@ -30,11 +30,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Tempo;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 /**
  * Integration tests for slide MIDI generation using the {@code connections}
@@ -114,7 +115,7 @@ class SlideMidiIntegrationTest extends UnitTest {
         void testFallBendsDownward() throws Exception {
             // Isolate a single note with a fall so the bend events come only from the fall,
             // not the fixture's connecting glissandos (which can bend either direction).
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(PLAIN_NOTE_STAFF_POS);
             note.setFall();
             var fallLine = detachedLine();
@@ -154,7 +155,7 @@ class SlideMidiIntegrationTest extends UnitTest {
 
     @Test
     void testNoPitchBendEventsWhenNoGlissando() throws Exception {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(PLAIN_NOTE_STAFF_POS);
         var plainLine = detachedLine();
         plainLine.addElement(note);
@@ -171,9 +172,9 @@ class SlideMidiIntegrationTest extends UnitTest {
 
         @Test
         void testNoteOnCountMatchesNonGracePitchedNotes() throws Exception {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setGlissando();
-            var host = ElementType.CROTCHET.newInstance();
+            var host = crotchet();
             host.setStaffPosition(-2);
             var graceHostLine = detachedLine();
             graceHostLine.addElement(grace);

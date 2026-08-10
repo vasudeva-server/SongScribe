@@ -26,13 +26,15 @@ import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.awt.event.MouseEvent;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.layout.ColumnSpan;
 import songscribe.layout.LayoutResult;
@@ -172,16 +174,16 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
         // resolves one slot further on (index 3). That the real layout resolves the locked x
         // past a trailing breath mark is not exercised here.
         song.withoutMutationTracking(() -> {
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.GRACE_QUAVER.newInstance());
-            line.addElement(ElementType.BREATH_MARK.newInstance());
+            line.addElement(crotchet());
+            line.addElement(graceQuaver());
+            line.addElement(breathMark());
         });
 
         when(graceModeManager.isInProgress()).thenReturn(true);
         when(graceModeManager.getLockedInsertionXSs()).thenReturn(LOCKED_INSERTION_X_SS);
         when(graceModeManager.getHostInsertionIndex()).thenReturn(HOST_SLOT_X_INDEX);
         when(lc.getMiddleLineYSs()).thenReturn(0.0);
-        setPreviewElement(ElementType.CROTCHET.newInstance());
+        setPreviewElement(crotchet());
         stubLayout(PAST_BREATH_MARK_X_INDEX, -1);
         PreviewElementManager.setCurrentXIndex(PRESET_X_INDEX);
 
@@ -199,10 +201,10 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
         // unstubbed getHostInsertionIndex() answers Mockito's int default of 0 — so a zero here
         // would make the two sources indistinguishable and the grace-mode branch could be
         // dropped altogether without any test noticing.
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(crotchet()));
 
         when(lc.getMiddleLineYSs()).thenReturn(0.0);
-        setPreviewElement(ElementType.CROTCHET.newInstance());
+        setPreviewElement(crotchet());
         stubLayout(AFTER_CROTCHET_X_INDEX, -1);
         PreviewElementManager.setCurrentXIndex(PRESET_X_INDEX);
 
@@ -240,7 +242,7 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
         // A fresh song's line holds exactly the auto-maintained FINAL_DOUBLE_BARLINE terminal.
         var terminalIndex = line.elementCount() - 1;
         // A plain note cannot replace the terminal, so the position must stay blocked.
-        setPreviewElement(ElementType.CROTCHET.newInstance());
+        setPreviewElement(crotchet());
         stubLayout(terminalIndex, terminalIndex);
         PreviewElementManager.setCurrentXIndex(PRESET_X_INDEX);
 
@@ -257,10 +259,10 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
     /** Adds a paired grace note (index 0) and its host (index 1) to {@link #line}. */
     private void addPairedGraceAndHost() {
         song.withoutMutationTracking(() -> {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setGlissando();
             line.addElement(grace);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
         });
     }
 
@@ -271,7 +273,7 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
 
         when(lc.getMiddleLineYSs()).thenReturn(0.0);
         // A plain note, not a grace note — the suppression is not specific to grace previews.
-        setPreviewElement(ElementType.CROTCHET.newInstance());
+        setPreviewElement(crotchet());
         // Insertion at the host's index, not over an element head: the gap between the pair.
         stubLayout(1, -1);
         PreviewElementManager.setCurrentXIndex(PRESET_X_INDEX);
@@ -292,7 +294,7 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
         addPairedGraceAndHost();
 
         when(lc.getMiddleLineYSs()).thenReturn(0.0);
-        setPreviewElement(ElementType.CROTCHET.newInstance());
+        setPreviewElement(crotchet());
         // Insertion at the grace note's own index, not over an element head: before the pair.
         stubLayout(0, -1);
 
@@ -312,7 +314,7 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
         addPairedGraceAndHost();
 
         when(lc.getMiddleLineYSs()).thenReturn(0.0);
-        setPreviewElement(ElementType.CROTCHET.newInstance());
+        setPreviewElement(crotchet());
         // The mouse sits directly over the host's head, so it matches an element rather than
         // resolving to a bare gap.
         stubLayout(1, 1);
@@ -330,10 +332,10 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
     @Test
     void testHoveringGraceNoteHidesGhostPreview() {
         // Layout: [grace] [terminal]
-        song.withoutMutationTracking(() -> line.addElement(ElementType.GRACE_QUAVER.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(graceQuaver()));
 
         when(lc.getMiddleLineYSs()).thenReturn(0.0);
-        setPreviewElement(ElementType.CROTCHET.newInstance());
+        setPreviewElement(crotchet());
         // Mouse is directly over the grace note's head.
         stubLayout(0, 0);
 

@@ -21,11 +21,12 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.dom.DynamicAttachment;
@@ -63,13 +64,13 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
 
         @Test
         void testDynamicAttachmentPreserved() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             song.withoutMutationTracking(() -> {
                 note.addAttachment(new DynamicAttachment(note, DynamicType.FORTE));
                 line.addElement(note);
             });
 
-            replaceAt(0, ElementType.CROTCHET.newInstance());
+            replaceAt(0, crotchet());
 
             var dynamic = line.getElement(0).findAttachment(DynamicAttachment.class);
             assertThat(dynamic).as("dynamic attachment preserved").isNotNull();
@@ -79,13 +80,13 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
 
         @Test
         void testDynamicAttachmentPreservedAcrossDurationChange() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             song.withoutMutationTracking(() -> {
                 note.addAttachment(new DynamicAttachment(note, DynamicType.PIANO));
                 line.addElement(note);
             });
 
-            replaceAt(0, ElementType.QUAVER.newInstance());
+            replaceAt(0, quaver());
 
             var dynamic = line.getElement(0).findAttachment(DynamicAttachment.class);
             assertThat(dynamic).as("dynamic attachment survives duration change").isNotNull();
@@ -96,12 +97,12 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
         @Test
         void testTrillPreserved() {
             song.withoutMutationTracking(() -> {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 line.addSpan(new Trill(note));
             });
 
-            replaceAt(0, ElementType.CROTCHET.newInstance());
+            replaceAt(0, crotchet());
 
             // Trill span should remain attached to the replacement note at index 0
             var replacedNote = line.getElement(0);
@@ -113,9 +114,9 @@ class PreviewElementManagerAttachmentTest extends PreviewElementManagerTestBase 
 
         @Test
         void testNoteWithNoDecorationsRemainsClean() {
-            song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+            song.withoutMutationTracking(() -> line.addElement(crotchet()));
 
-            replaceAt(0, ElementType.QUAVER.newInstance());
+            replaceAt(0, quaver());
 
             var element = line.getElement(0);
             assertThat(element.findAttachment(DynamicAttachment.class))

@@ -22,11 +22,11 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
-import songscribe.dom.ElementType;
 
 /**
  * Tests for {@link Beam#getSpanWidthSs}.
@@ -53,8 +53,8 @@ class BeamTest extends UnitTest {
     private static final double DELTA = 1e-9;
 
     private static Beam createBeam() {
-        var anchor = ElementType.QUAVER.newInstance();
-        var end = ElementType.QUAVER.newInstance();
+        var anchor = quaver();
+        var end = quaver();
         return new Beam(anchor, end);
     }
 

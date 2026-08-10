@@ -23,6 +23,7 @@ package songscribe.dom;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 
@@ -204,7 +205,7 @@ class LyricTest extends UnitTest {
 
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < count; i++) {
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             }
         });
 

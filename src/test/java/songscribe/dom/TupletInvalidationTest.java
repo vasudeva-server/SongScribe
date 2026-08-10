@@ -21,6 +21,10 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,11 +78,11 @@ class TupletInvalidationTest extends UnitTest {
         line = song.getLine(0);
 
         song.withoutMutationTracking(() -> {
-            line.addElement(ElementType.QUAVER.newInstance());
-            line.addElement(ElementType.SINGLE_BARLINE.newInstance());
-            line.addElement(ElementType.QUAVER.newInstance());
-            line.addElement(ElementType.QUAVER.newInstance());
-            line.addElement(ElementType.QUAVER.newInstance());
+            line.addElement(quaver());
+            line.addElement(singleBarline());
+            line.addElement(quaver());
+            line.addElement(quaver());
+            line.addElement(quaver());
         });
 
         triplet = Tuplet.withUnresolvedRatio(
@@ -113,7 +117,7 @@ class TupletInvalidationTest extends UnitTest {
 
     @Test
     void testInnerNoteGainingDotInvalidates() {
-        var replacement = ElementType.QUAVER.newInstance();
+        var replacement = quaver();
         replacement.setDotCount(ONE_DOT);
 
         assertThat(outcomeForReplacing(triplet, INNER_NOTE_INDEX, replacement))
@@ -185,10 +189,10 @@ class TupletInvalidationTest extends UnitTest {
         // A tuplet whose anchor was never put in the line resolves the anchor to -1. Without
         // the guard, every index up to the end would read as inside the bracket.
         var detached = Tuplet.withUnresolvedRatio(
-            ElementType.QUAVER.newInstance(), line.getElement(END_INDEX), TRIPLET_SIZE);
+            quaver(), line.getElement(END_INDEX), TRIPLET_SIZE);
         song.withoutMutationTracking(() -> line.addTuplet(detached));
 
-        assertThat(outcomeForReplacing(detached, INNER_NOTE_INDEX, ElementType.CROTCHET.newInstance()))
+        assertThat(outcomeForReplacing(detached, INNER_NOTE_INDEX, crotchet()))
             .as("a tuplet with an unresolvable anchor contains nothing")
             .isSameAs(SpanOutcome.Simple.KEEP);
     }
@@ -200,7 +204,7 @@ class TupletInvalidationTest extends UnitTest {
     @Test
     void testSetElementDropsTheInvalidatedTuplet() {
         song.withoutMutationTracking(
-            () -> line.setElement(INNER_NOTE_INDEX, ElementType.CROTCHET.newInstance()));
+            () -> line.setElement(INNER_NOTE_INDEX, crotchet()));
 
         assertThat(line.findSpans(Tuplet.class))
             .as("setElement must drop the tuplet the replacement invalidated")
@@ -210,7 +214,7 @@ class TupletInvalidationTest extends UnitTest {
     @Test
     void testSetElementKeepsTheTupletAnUntimedSwapLeavesValid() {
         song.withoutMutationTracking(
-            () -> line.setElement(INNER_BARLINE_INDEX, ElementType.REPEAT_LEFT.newInstance()));
+            () -> line.setElement(INNER_BARLINE_INDEX, repeatLeft()));
 
         assertThat(line.findSpans(Tuplet.class))
             .as("swapping a barline for a repeat changes no duration, so the group stands")

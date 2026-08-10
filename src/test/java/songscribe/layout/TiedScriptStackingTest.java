@@ -22,6 +22,7 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import module java.desktop;
 
@@ -32,7 +33,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.Articulation;
 import songscribe.dom.ArticulationType;
-import songscribe.dom.ElementType;
 import songscribe.dom.Tie;
 import songscribe.engraving.Staff;
 import songscribe.layout.stacking.StackingUtils;
@@ -126,9 +126,9 @@ class TiedScriptStackingTest extends UnitTest {
          */
         private static double accentTopYSs(boolean tied) {
             var line = detachedLine();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note1 = crotchet();
             note1.setStaffPosition(BOTTOM_STAFF_LINE_SP);
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note2 = crotchet();
             note2.setStaffPosition(BOTTOM_STAFF_LINE_SP);
             line.addElement(note1);
             line.addElement(note2);
@@ -249,9 +249,9 @@ class TiedScriptStackingTest extends UnitTest {
         /** Lays out two same-pitch notes, the first carrying a staccato and an accent. */
         private static ScriptYSs scriptYSs(int staffPosition, boolean tied) {
             var line = detachedLine();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note1 = crotchet();
             note1.setStaffPosition(staffPosition);
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note2 = crotchet();
             note2.setStaffPosition(staffPosition);
             line.addElement(note1);
             line.addElement(note2);

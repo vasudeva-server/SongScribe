@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +36,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.message.MessageCenter;
 import songscribe.message.notification.GraceModeStateDidChangeNotification;
@@ -53,14 +53,14 @@ class FermataActionTest extends MainFrameMockTest {
 
     @Test
     void testApplyToNoteAppliesFermata() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         action.applyToElement(note, true);
         assertThat(note.findAttachment(FermataAttachment.class)).isNotNull();
     }
 
     @Test
     void testApplyToNoteRemovesFermata() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addAttachment(new FermataAttachment(note));
         action.applyToElement(note, false);
         assertThat(note.findAttachment(FermataAttachment.class)).isNull();
@@ -68,20 +68,20 @@ class FermataActionTest extends MainFrameMockTest {
 
     @Test
     void testDoesNotMatchWhenFermataFalse() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         assertThat(action.matchesElement(note)).isFalse();
     }
 
     @Test
     void testMatchesWhenFermataTrue() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addAttachment(new FermataAttachment(note));
         assertThat(action.matchesElement(note)).isTrue();
     }
 
     @Test
     void testApplyToNoteWithExistingFermataIsIdempotent() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         action.applyToElement(note, true);
         action.applyToElement(note, true);
         assertThat(note.getAttachments())
@@ -97,7 +97,7 @@ class FermataActionTest extends MainFrameMockTest {
         // not inside a hairpin) so DISABLE_IN_GRACE_MODE is the only thing in play.
         final var selectedElementIndex = 0;
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         var selection = new ElementSelection(line, selectedElementIndex, selectedElementIndex);
         var selectionSize = selectedElementIndex + 1;
 
@@ -138,7 +138,7 @@ class FermataActionTest extends MainFrameMockTest {
         @Test
         void testSinglePitchedNoteSelectionIsEnabled() {
             var line = detachedLine();
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             var selection = new ElementSelection(line, 0, 0);
 
             when(mockEnv().score().getSelectionSize()).thenReturn(1);
@@ -159,8 +159,8 @@ class FermataActionTest extends MainFrameMockTest {
             // unstubbed Reflectable check and pass even if the single-selection flag were removed.
             final var multiNoteSelectionSize = 2;
             var line = detachedLine();
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
+            line.addElement(crotchet());
             var selection = new ElementSelection(line, 0, multiNoteSelectionSize - 1);
 
             when(mockEnv().score().getSelectionSize()).thenReturn(multiNoteSelectionSize);

@@ -28,6 +28,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 import static songscribe.dom.StaffElementFactory.createNote;
 import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.util.List;
 import java.util.stream.IntStream;
@@ -42,7 +44,6 @@ import org.mockito.MockedStatic;
 
 import songscribe.Strings;
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -176,11 +177,11 @@ class SlideOperationsTest extends UnitTest {
         var line = new Line(song);
 
         song.withoutMutationTracking(() -> {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setGlissando();
             grace.setLyricForVerse(VERSE, Lyric.Syllabic.SINGLE, false, SYLLABLE, Lyric.Extend.NONE);
             line.addElement(grace);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.syncGraceHostMelisma(GRACE_INDEX);
 
             song.addLine(line);

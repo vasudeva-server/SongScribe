@@ -22,10 +22,10 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Song;
 
@@ -61,24 +61,24 @@ class MusicXmlKeyRoundTripTest extends MusicXmlRoundTripSupport {
             line -> {
                 line.setKeyType(Song.DEFAULT_KEY_TYPE);
                 line.setKeyAccidentalCount(Song.DEFAULT_KEY_ACCIDENTAL_COUNT);
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             },
             line -> {
                 line.setKeyType(KeyType.SHARPS);
                 line.setKeyAccidentalCount(MID_SONG_SHARP_COUNT);
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             },
             line -> {
                 line.setKeyType(KeyType.FLATS);
                 line.setKeyAccidentalCount(MID_SONG_FLAT_COUNT);
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             },
             line -> {
                 // Same key as line 3: the writer emits no <key> here, so the
                 // reader can only reconstruct it by carrying the running key.
                 line.setKeyType(KeyType.FLATS);
                 line.setKeyAccidentalCount(MID_SONG_FLAT_COUNT);
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
             }
         );
     }
@@ -114,7 +114,7 @@ class MusicXmlKeyRoundTripTest extends MusicXmlRoundTripSupport {
         var song = buildSong(line -> {
             line.setKeyType(KeyType.SHARPS);
             line.setKeyAccidentalCount(SONG_DEFAULT_SHARP_COUNT);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
         });
 
         song.withoutMutationTracking(() -> {

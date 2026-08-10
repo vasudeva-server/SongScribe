@@ -21,11 +21,11 @@
 package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -67,7 +67,7 @@ class LayoutHitTesterTest extends UnitTest {
     // HEAD excludes a leading accidental's ink; FULL_INK encloses it. Both share the same right bound.
     @Test
     void testHeadExcludesAccidentalFullInkIncludesIt() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = lineWithElements(element);
         var column = ElementColumnTestHelper.columnAt(
             element, ELEMENT_X_SS, ACCIDENTAL_LEFT_EXTENT_SS, HEAD_RIGHT_EXTENT_SS);
@@ -85,8 +85,8 @@ class LayoutHitTesterTest extends UnitTest {
     // An X in the gap between two columns' bounds finds no element, for either span.
     @Test
     void testGapBetweenColumnsReturnsMinusOne() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         var line = lineWithElements(first, second);
         var result = LayoutResult.builder()
             .putElementColumn(first, ElementColumnTestHelper.columnAt(first, FIRST_ELEMENT_X_SS, NO_LEFT_EXTENT_SS, FIRST_RIGHT_EXTENT_SS))
@@ -100,7 +100,7 @@ class LayoutHitTesterTest extends UnitTest {
     // An X past the last column's right edge finds no element.
     @Test
     void testPastLastColumnRightEdgeReturnsMinusOne() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = lineWithElements(element);
         var result = LayoutResult.builder()
             .putElementColumn(element, ElementColumnTestHelper.columnAt(element, FIRST_ELEMENT_X_SS, NO_LEFT_EXTENT_SS, FIRST_RIGHT_EXTENT_SS))
@@ -113,8 +113,8 @@ class LayoutHitTesterTest extends UnitTest {
     // An X inside the overlap resolves to the grace note — the lower index, first-match-wins.
     @Test
     void testGraceHostOverlapResolvesToGraceNote() {
-        var grace = ElementType.CROTCHET.newInstance();
-        var host = ElementType.CROTCHET.newInstance();
+        var grace = crotchet();
+        var host = crotchet();
         var line = lineWithElements(grace, host);
         var result = LayoutResult.builder()
             .putElementColumn(grace, ElementColumnTestHelper.columnAt(grace, GRACE_X_SS, NO_LEFT_EXTENT_SS, GRACE_RIGHT_EXTENT_SS))

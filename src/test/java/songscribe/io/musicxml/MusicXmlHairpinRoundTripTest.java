@@ -21,6 +21,8 @@
 package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.io.StringReader;
 import java.util.ArrayList;
@@ -36,7 +38,6 @@ import org.xml.sax.InputSource;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
 import songscribe.dom.DynamicAttachment;
-import songscribe.dom.ElementType;
 import songscribe.dom.Hairpin;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -135,8 +136,8 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testCrescendoRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addCrescendo(new Crescendo(note0, note1));
@@ -153,8 +154,8 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testCrescendoWithShiftsRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             var crescendo = new Crescendo(note0, note1);
@@ -183,8 +184,8 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testDiminuendoRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addDiminuendo(new Diminuendo(note0, note1));
@@ -201,8 +202,8 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testDiminuendoWithShiftsRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             var diminuendo = new Diminuendo(note0, note1);
@@ -237,8 +238,8 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
     void testCrescendoShiftsAreOnCorrectWedgesInOutput() throws Exception {
         // x1 → start wedge relative-x; x2 → stop wedge relative-x; y → start wedge relative-y.
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             var crescendo = new Crescendo(note0, note1);
@@ -291,10 +292,10 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
         // fixture therefore needs the raw addSpan to get two wedges into the
         // XML at all; what the round-trip asserts is that reading them merges them.
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
-            var note3 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
+            var note3 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -318,9 +319,9 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
         // Layout: note0(0) SINGLE_BARLINE(1) note1(2)
         // The crescendo spans across the barline: anchor in measure 1, end in measure 2.
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var barline = ElementType.SINGLE_BARLINE.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var barline = singleBarline();
+            var note1 = crotchet();
             line.addElement(note0);
             line.addElement(barline);
             line.addElement(note1);
@@ -341,9 +342,9 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
         // Layout: SINGLE_BARLINE(0) note0(1) note1(2)
         // The crescendo's anchor is the first note after the barline (start of measure 2).
         var song = buildSong(line -> {
-            var barline = ElementType.SINGLE_BARLINE.newInstance();
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var barline = singleBarline();
+            var note0 = crotchet();
+            var note1 = crotchet();
             line.addElement(barline);
             line.addElement(note0);
             line.addElement(note1);
@@ -445,7 +446,7 @@ class MusicXmlHairpinRoundTripTest extends MusicXmlRoundTripSupport {
             var notes = new ArrayList<StaffElement>();
 
             for (var i = 0; i < BACK_TO_BACK_NOTE_COUNT; i++) {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 notes.add(note);
             }

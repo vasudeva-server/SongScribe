@@ -25,6 +25,7 @@ import module java.desktop;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,7 +37,6 @@ import songscribe.MainFrameMockTest;
 import songscribe.message.MessageCenter;
 import songscribe.message.command.PasteboardOpCommand;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
-import songscribe.dom.ElementType;
 import songscribe.hit.HitTarget;
 import songscribe.ui.playback.PlaybackController;
 
@@ -61,7 +61,7 @@ class DeleteActionTest extends MainFrameMockTest {
 
     @Test
     void testDeleteEnabledForLyricSelection() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         when(mockEnv().coordinator().getSelectedTarget()).thenReturn(
             new HitTarget.Lyric(element, 1));
 

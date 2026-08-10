@@ -25,6 +25,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.util.List;
 
@@ -34,7 +36,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -111,14 +112,14 @@ class AccidentalRestatementsTest extends UnitTest {
     }
 
     private static StaffElement note(int staffPosition, StaffElement.Accidental accidental) {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.setStaffPosition(staffPosition);
         element.setAccidental(accidental);
         return element;
     }
 
     private static StaffElement note(int staffPosition) {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.setStaffPosition(staffPosition);
         return element;
     }
@@ -252,7 +253,7 @@ class AccidentalRestatementsTest extends UnitTest {
         // A grace note sits outside the accidental-context system — the reconciliation walk skips
         // everything that is not a full-size note — so its accidental never lent anything to a
         // later note and cannot have been restated. Editing one must not offer 1:2 or 2:0.
-        var graceNote = ElementType.GRACE_QUAVER.newInstance();
+        var graceNote = graceQuaver();
         graceNote.setStaffPosition(F_STAFF_POSITION);
         graceNote.setAccidental(StaffElement.Accidental.FLAT);
         firstLine.setElement(FIRST_NOTE, graceNote);

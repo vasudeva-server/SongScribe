@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.mockStatic;
 import static songscribe.midi.MidiSequenceBuilder.PPQ;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,7 +34,6 @@ import module java.desktop;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -111,10 +111,10 @@ class CrossLineTieReadingTest extends UnitTest {
             var song = new Song();
             var firstLine = song.getLine(0);
             var secondLine = new Line(song);
-            var unrelatedInFirstLine = ElementType.CROTCHET.newInstance();
-            var anchor = ElementType.CROTCHET.newInstance();
-            var end = ElementType.CROTCHET.newInstance();
-            var unrelatedInSecondLine = ElementType.CROTCHET.newInstance();
+            var unrelatedInFirstLine = crotchet();
+            var anchor = crotchet();
+            var end = crotchet();
+            var unrelatedInSecondLine = crotchet();
             var tie = new Tie(anchor, end);
 
             song.withoutMutationTracking(() -> {

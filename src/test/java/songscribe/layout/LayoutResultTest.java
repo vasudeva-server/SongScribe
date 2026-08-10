@@ -23,6 +23,10 @@ package songscribe.layout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.awt.geom.Point2D;
 import java.util.Collections;
@@ -81,7 +85,7 @@ class LayoutResultTest extends UnitTest {
     // T1: getLyricAnchor returns box-anchored geometry when a lyric box exists
     @Test
     void testGetLyricAnchorBoxAnchored() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var box = new LyricBoxLayout(ANCHOR_BOX_X_SS, ANCHOR_BOX_WIDTH_SS, 1, "do");
         var layoutResult = anchorLayoutBuilder().addLyricBox(element, box).build();
         var anchor = layoutResult.getLyricAnchor(element, testLyricMetrics());
@@ -94,7 +98,7 @@ class LayoutResultTest extends UnitTest {
     // T2: getLyricAnchor returns column-anchored geometry when no boxes
     @Test
     void testGetLyricAnchorColumnAnchored() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var column = testColumnAt(element, ANCHOR_COLUMN_X_SS);
         var layoutResult = anchorLayoutBuilder().putElementColumn(element, column).build();
         var anchor = layoutResult.getLyricAnchor(element, testLyricMetrics());
@@ -108,7 +112,7 @@ class LayoutResultTest extends UnitTest {
     // so the editor cursor on a dotted note matches where the committed lyric box lands (#451).
     @Test
     void testGetLyricAnchorColumnAnchoredIgnoresDots() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var column = testDottedColumnAt(element, ANCHOR_COLUMN_X_SS);
         var layoutResult = anchorLayoutBuilder().putElementColumn(element, column).build();
         var anchor = layoutResult.getLyricAnchor(element, testLyricMetrics());
@@ -122,7 +126,7 @@ class LayoutResultTest extends UnitTest {
     // T3: getLyricAnchor Y matches the line's lyric baseline exactly
     @Test
     void testGetLyricAnchorYMatchesVerseBaseline() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var box = new LyricBoxLayout(2.0, 1.0, 1, "re");
         var layoutResult = anchorLayoutBuilder().addLyricBox(element, box).build();
         var metrics = testLyricMetrics();
@@ -136,7 +140,7 @@ class LayoutResultTest extends UnitTest {
     // T4: getLyricAnchor throws IllegalStateException when neither boxes nor column exist
     @Test
     void testGetLyricAnchorThrowsWhenNoBoxOrColumn() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var layoutResult = LayoutResult.builder().build();
         var metrics = testLyricMetrics();
 
@@ -256,7 +260,7 @@ class LayoutResultTest extends UnitTest {
         var expectedBandSs = LineSpacing.LYRICS_ROW_MARGIN_SS + rowHeightSs;
 
         var noLyrics = LayoutResult.builder().build();
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var withLyric = LayoutResult.builder()
             .addLyricBox(element, new LyricBoxLayout(ANCHOR_BOX_X_SS, ANCHOR_BOX_WIDTH_SS, 1, "do"))
             .build();
@@ -350,7 +354,7 @@ class LayoutResultTest extends UnitTest {
     void testHitTestLyricHitsInsideBounds() {
         var song = new Song();
         var line = song.getLine(0);
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         song.withoutMutationTracking(() -> line.addElement(0, element));
         var box = new LyricBoxLayout(ANCHOR_BOX_X_SS, ANCHOR_BOX_WIDTH_SS, 1, "do");
         var lyricsFont = DocumentFonts.defaultFonts().getLyricsFont();
@@ -384,7 +388,7 @@ class LayoutResultTest extends UnitTest {
     void testHitTestLyricMissesOutsideBounds() {
         var song = new Song();
         var line = song.getLine(0);
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         song.withoutMutationTracking(() -> line.addElement(0, element));
         var box = new LyricBoxLayout(ANCHOR_BOX_X_SS, ANCHOR_BOX_WIDTH_SS, 1, "do");
         var layoutResult = anchorLayoutBuilder()
@@ -469,7 +473,7 @@ class LayoutResultTest extends UnitTest {
     // findSpanDecorationLayout returns the layout whose range matches anchor AND type.
     @Test
     void testFindSpanDecorationLayoutMatchesAnchorAndType() {
-        var anchor = ElementType.CROTCHET.newInstance();
+        var anchor = crotchet();
         var trill = new Trill(anchor);
         var layout = sampleDecorationLayout();
         var result = LayoutResult.builder()
@@ -482,8 +486,8 @@ class LayoutResultTest extends UnitTest {
     // A different anchor element finds no range decoration.
     @Test
     void testFindSpanDecorationLayoutReturnsNullForUnmatchedAnchor() {
-        var anchor = ElementType.CROTCHET.newInstance();
-        var otherAnchor = ElementType.CROTCHET.newInstance();
+        var anchor = crotchet();
+        var otherAnchor = crotchet();
         var trill = new Trill(anchor);
         var result = LayoutResult.builder()
             .putDecorationLayout(trill, sampleDecorationLayout())
@@ -495,7 +499,7 @@ class LayoutResultTest extends UnitTest {
     // A range type the stored element is not an instance of finds no decoration.
     @Test
     void testFindSpanDecorationLayoutReturnsNullForUnmatchedType() {
-        var anchor = ElementType.CROTCHET.newInstance();
+        var anchor = crotchet();
         var trill = new Trill(anchor);
         var result = LayoutResult.builder()
             .putDecorationLayout(trill, sampleDecorationLayout())
@@ -512,8 +516,8 @@ class LayoutResultTest extends UnitTest {
     // boundary edges are inclusive on both sides.
     @Test
     void testFindElementAtXSsReturnsIndexInsideHeadBounds() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         var line = lineWithElements(first, second);
         var result = LayoutResult.builder()
             .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
@@ -530,8 +534,8 @@ class LayoutResultTest extends UnitTest {
     // A mouse X in the gap between heads — or outside all heads — returns -1.
     @Test
     void testFindElementAtXSsReturnsMinusOneOutsideHeads() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         var line = lineWithElements(first, second);
         var result = LayoutResult.builder()
             .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
@@ -550,8 +554,8 @@ class LayoutResultTest extends UnitTest {
     // Hovering over an element head resolves to that element's index (replacement slot).
     @Test
     void testFindInsertionIndexReturnsElementIndexOverHead() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         var line = lineWithElements(first, second);
         var result = LayoutResult.builder()
             .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
@@ -565,8 +569,8 @@ class LayoutResultTest extends UnitTest {
     // A mouse X left of the first element head resolves to slot 0.
     @Test
     void testFindInsertionIndexReturnsZeroBeforeFirstElement() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         var line = lineWithElements(first, second);
         var result = LayoutResult.builder()
             .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
@@ -580,7 +584,7 @@ class LayoutResultTest extends UnitTest {
     // terminal is excluded, so a one-element line yields slot 1, not 2.
     @Test
     void testFindInsertionIndexReturnsEffectiveCountAfterLastElement() {
-        var first = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
         var line = lineWithElements(first);
         var result = LayoutResult.builder()
             .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
@@ -593,8 +597,8 @@ class LayoutResultTest extends UnitTest {
     // A mouse X in the gap between two heads resolves to the in-between slot.
     @Test
     void testFindInsertionIndexReturnsSlotBetweenElements() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         var line = lineWithElements(first, second);
         var result = LayoutResult.builder()
             .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
@@ -613,7 +617,7 @@ class LayoutResultTest extends UnitTest {
     @Test
     void testCalculateInsertionXSsEmptyLineUsesFirstElementPosition() {
         var line = lineWithElements();
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var result = LayoutResult.builder().build();
 
         var expected = HorizontalSpacingCalculator.calculateFirstElementXSs(line);
@@ -626,10 +630,10 @@ class LayoutResultTest extends UnitTest {
     // hovered element's own type is the same width, so centering leaves it exactly on the head.
     @Test
     void testCalculateInsertionXSsSnapsToElementHead() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         var line = lineWithElements(first, second);
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var result = LayoutResult.builder()
             .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
             .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
@@ -643,8 +647,8 @@ class LayoutResultTest extends UnitTest {
     // notehead, rather than aligned with the notehead's left edge (refs #689).
     @Test
     void testCalculateInsertionXSsCentersNarrowerPreviewOnElementHead() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         var line = lineWithElements(first, second);
         var previewType = ElementType.SINGLE_BARLINE;
         var preview = previewType.newInstance();
@@ -670,10 +674,10 @@ class LayoutResultTest extends UnitTest {
     // terminal's right edge (so a wider replacement does not overflow the staff).
     @Test
     void testCalculateInsertionXSsRightAlignsPreviewOverTerminal() {
-        var first = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
         var line = lineWithElements(first);
         var terminal = line.getElement(line.elementCount() - 1);
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var result = LayoutResult.builder()
             .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
             .putElementColumn(terminal, columnAt(terminal, TERMINAL_X_SS, TERMINAL_RIGHT_EXTENT_SS))
@@ -691,10 +695,10 @@ class LayoutResultTest extends UnitTest {
     // committed layout uses rather than snapped.
     @Test
     void testCalculateInsertionXSsAfterLastUsesSpacingCalculator() {
-        var first = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
         var line = lineWithElements(first);
         line.getSong().setLineWidthSs(WIDE_LINE_WIDTH_SS);
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
         var result = LayoutResult.builder()
             .putElementColumn(first, lastColumn)
@@ -723,13 +727,13 @@ class LayoutResultTest extends UnitTest {
      */
     @Test
     void testCalculateInsertionXSsAfterLastHonoursANonDefaultLineRest() {
-        var first = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
         var line = lineWithElements(first);
         var song = line.getSong();
         song.withoutMutationTracking(() -> song.setDefaultRestLengthSs(LOOSENED_LINE_REST_SS));
         song.setLineWidthSs(WIDE_LINE_WIDTH_SS);
 
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
         var result = LayoutResult.builder()
             .putElementColumn(first, lastColumn)
@@ -752,7 +756,7 @@ class LayoutResultTest extends UnitTest {
     // the margin (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastCentersAgainstMarginOnInteriorLine() {
-        var first = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
         var line = interiorLineWithElements(first);
         var song = line.getSong();
 
@@ -760,7 +764,7 @@ class LayoutResultTest extends UnitTest {
             .as("an interior line must have no auto-maintained terminal, leaving the margin as the boundary")
             .isEqualTo(line.elementCount());
 
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
         var result = LayoutResult.builder()
             .putElementColumn(first, lastColumn)
@@ -788,13 +792,13 @@ class LayoutResultTest extends UnitTest {
     // well short of the margin (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastCentersAgainstTerminalWhenLineHasOne() {
-        var first = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
         var line = lineWithElements(first);
         var terminal = line.getElement(line.elementCount() - 1);
         var song = line.getSong();
         song.setLineWidthSs(WIDE_LINE_WIDTH_SS);
 
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
 
         var previewColumn = previewColumnFor(preview);
@@ -823,7 +827,7 @@ class LayoutResultTest extends UnitTest {
     // (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastCentersOnlyTheNoteheadIgnoringFlagAccidentalAndDots() {
-        var first = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
         var line = lineWithElements(first);
         var terminal = line.getElement(line.elementCount() - 1);
         var song = line.getSong();
@@ -834,7 +838,7 @@ class LayoutResultTest extends UnitTest {
         // this test only asserts on the right side.
         NoteGeometry.initializeAccidentalWidths();
 
-        var preview = ElementType.QUAVER.newInstance();
+        var preview = quaver();
         preview.setAccidental(StaffElement.Accidental.SHARP);
         preview.setDotCount(1);
         var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
@@ -866,7 +870,7 @@ class LayoutResultTest extends UnitTest {
     // notehead bounding box — is what gets centered in the remaining room (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastCentersNonNotePreviewByElementWidth() {
-        var first = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
         var line = lineWithElements(first);
         var terminal = line.getElement(line.elementCount() - 1);
         var song = line.getSong();
@@ -900,13 +904,13 @@ class LayoutResultTest extends UnitTest {
     // amount, rather than being pinned to either side (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastStraddlesRoomNarrowerThanNotehead() {
-        var first = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
         var line = lineWithElements(first);
         var terminal = line.getElement(line.elementCount() - 1);
         var song = line.getSong();
         song.setLineWidthSs(WIDE_LINE_WIDTH_SS);
 
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
         var roomStartSs = drawnRightEdgeSs(first, FIRST_ELEMENT_X_SS);
 
@@ -932,13 +936,13 @@ class LayoutResultTest extends UnitTest {
     // (refs #608).
     @Test
     void testCalculateInsertionXSsAfterLastKeepsNaturalSpacingWhenPreviewExactlyMeetsBoundary() {
-        var first = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
         var line = lineWithElements(first);
         var terminal = line.getElement(line.elementCount() - 1);
         var song = line.getSong();
         song.setLineWidthSs(WIDE_LINE_WIDTH_SS);
 
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var lastColumn = columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS);
 
         var previewColumn = previewColumnFor(preview);
@@ -958,10 +962,10 @@ class LayoutResultTest extends UnitTest {
     // and the previous element's, leaving the preview visibly left of center (refs #689).
     @Test
     void testCalculateInsertionXSsBetweenElementsCentersPreviewInTheRoom() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         var line = lineWithElements(first, second);
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var result = LayoutResult.builder()
             .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
             .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
@@ -976,8 +980,8 @@ class LayoutResultTest extends UnitTest {
     // left edge — sits at the center of the room the two noteheads leave (refs #689).
     @Test
     void testCalculateInsertionXSsBetweenElementsCentersBarlinePreview() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         var line = lineWithElements(first, second);
         var previewType = ElementType.SINGLE_BARLINE;
         var preview = previewType.newInstance();
@@ -1003,10 +1007,10 @@ class LayoutResultTest extends UnitTest {
     // the room is measured from (refs #689).
     @Test
     void testCalculateInsertionXSsBetweenElementsMeasuresRoomFromThePreviousElement() {
-        var first = ElementType.SINGLE_BARLINE.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = singleBarline();
+        var second = crotchet();
         var line = lineWithElements(first, second);
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var result = LayoutResult.builder()
             .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
             .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
@@ -1031,8 +1035,8 @@ class LayoutResultTest extends UnitTest {
     // has no notehead, so the width the snap centers on comes from the element type itself.
     @Test
     void testCalculateInsertionXSsSnapsToNonNoteElementHead() {
-        var first = ElementType.CROTCHET_REST.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchetRest();
+        var second = crotchet();
         var line = lineWithElements(first, second);
         var previewType = ElementType.SINGLE_BARLINE;
         var preview = previewType.newInstance();
@@ -1061,10 +1065,10 @@ class LayoutResultTest extends UnitTest {
     // this file passes false, so the true branch was otherwise never exercised.
     @Test
     void testCalculateInsertionXSsBetweenElementsOnlySkipsElementHeadSnap() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.CROTCHET.newInstance();
+        var first = crotchet();
+        var second = crotchet();
         var line = lineWithElements(first, second);
-        var preview = ElementType.CROTCHET.newInstance();
+        var preview = crotchet();
         var result = LayoutResult.builder()
             .putElementColumn(first, columnAt(first, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
             .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
@@ -1087,7 +1091,7 @@ class LayoutResultTest extends UnitTest {
     // type, paired with their own layout.
     @Test
     void testGetDecorationLayoutsByTypeFiltersByClass() {
-        var anchor = ElementType.CROTCHET.newInstance();
+        var anchor = crotchet();
         var trill = new Trill(anchor);
         var fermata = new FermataAttachment(anchor);
         var trillLayout = sampleDecorationLayout();
@@ -1115,8 +1119,8 @@ class LayoutResultTest extends UnitTest {
     // getElementXSs returns the column X for a laid-out element and 0 for an unknown one.
     @Test
     void testGetElementXSsReturnsColumnXOrZero() {
-        var present = ElementType.CROTCHET.newInstance();
-        var absent = ElementType.CROTCHET.newInstance();
+        var present = crotchet();
+        var absent = crotchet();
         var result = LayoutResult.builder()
             .putElementColumn(present, columnAt(present, FIRST_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
             .build();

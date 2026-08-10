@@ -24,6 +24,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 
@@ -33,7 +34,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.message.MessageCenter;
@@ -74,8 +74,8 @@ class ScoreViewControllerLineRebuildTest extends UnitTest {
     @BeforeEach
     void setUp() {
         line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
 
         lineComponentMock = mock(LineComponent.class);
 

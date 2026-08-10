@@ -22,10 +22,10 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
@@ -93,7 +93,7 @@ class MusicXmlDefaultsRoundTripTest extends MusicXmlRoundTripSupport {
 
     /** A minimal one-note song — the writer needs one element to emit a part. */
     private static Song singleNoteSong() {
-        return buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        return buildSong(line -> line.addElement(crotchet()));
     }
 
     /** A one-note song carrying a non-default line width and row-height delta. */

@@ -22,6 +22,8 @@ package songscribe.layout;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.semibreve;
 
 import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
@@ -50,8 +52,8 @@ class TieTest extends UnitTest {
     private static final double END_X_ABOVE_FLOOR_SS = ANCHOR_X_SS + 3.0;
 
     private static Tie createTie() {
-        var anchor = ElementType.QUAVER.newInstance();
-        var end = ElementType.QUAVER.newInstance();
+        var anchor = quaver();
+        var end = quaver();
         return new Tie(anchor, end);
     }
 
@@ -117,13 +119,13 @@ class TieTest extends UnitTest {
     private static final int SP_ON_MIDDLE_LINE = 0;
 
     private static StaffElement noteWithStem(StaffElement.Direction direction) {
-        var note = ElementType.QUAVER.newInstance();
+        var note = quaver();
         note.setDirection(direction);
         return note;
     }
 
     private static StaffElement noteWithoutStem(int staffPosition) {
-        var note = ElementType.SEMIBREVE.newInstance();
+        var note = semibreve();
         note.setStaffPosition(staffPosition);
         return note;
     }

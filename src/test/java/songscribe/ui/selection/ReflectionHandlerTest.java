@@ -21,6 +21,8 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
 
 import java.util.List;
 
@@ -29,7 +31,6 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.ui.action.AccidentalAction;
 import songscribe.ui.action.FermataAction;
@@ -43,10 +44,10 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testAllApplicableAllMatchSelected() {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setAccidental(StaffElement.Accidental.SHARP);
 
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setAccidental(StaffElement.Accidental.SHARP);
 
         var action = AccidentalAction.createSharpAction(mainFrame());
@@ -65,10 +66,10 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testAllApplicableFirstMismatchDeselected() {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setAccidental(StaffElement.Accidental.FLAT);
 
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setAccidental(StaffElement.Accidental.SHARP);
 
         var action = AccidentalAction.createSharpAction(mainFrame());
@@ -87,10 +88,10 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testAllApplicableSecondMismatchDeselected() {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setAccidental(StaffElement.Accidental.SHARP);
 
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setAccidental(StaffElement.Accidental.FLAT);
 
         var action = AccidentalAction.createSharpAction(mainFrame());
@@ -109,8 +110,8 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testAllInapplicableDeselected() {
-        var rest1 = ElementType.CROTCHET_REST.newInstance();
-        var rest2 = ElementType.CROTCHET_REST.newInstance();
+        var rest1 = crotchetRest();
+        var rest2 = crotchetRest();
 
         var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
@@ -128,10 +129,10 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testChangedSelectionDoesNotResave() {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setAccidental(StaffElement.Accidental.SHARP);
 
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note2 = crotchet();
         note2.setAccidental(StaffElement.Accidental.FLAT);
 
         var action = AccidentalAction.createSharpAction(mainFrame());
@@ -163,7 +164,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testClearSelectionRestoresEnabledState() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
         var action = AccidentalAction.createSharpAction(mainFrame());
@@ -192,7 +193,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testClearSelectionRestoresSavedState() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.FLAT);
 
         var action = AccidentalAction.createSharpAction(mainFrame());
@@ -217,7 +218,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testNewSelectionSavesState() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
         var action = AccidentalAction.createSharpAction(mainFrame());
@@ -237,7 +238,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testNoSelectionNoSavedStateIsNoOp() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
         var action = AccidentalAction.createSharpAction(mainFrame());
@@ -256,10 +257,10 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testNoteAndRestNoteMatchesSelected() {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setAccidental(StaffElement.Accidental.SHARP);
 
-        var rest = ElementType.CROTCHET_REST.newInstance();
+        var rest = crotchetRest();
 
         var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
@@ -277,10 +278,10 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testNoteAndRestNoteMismatchDeselected() {
-        var note1 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
         note1.setAccidental(StaffElement.Accidental.FLAT);
 
-        var rest = ElementType.CROTCHET_REST.newInstance();
+        var rest = crotchetRest();
 
         var action = AccidentalAction.createSharpAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
@@ -300,7 +301,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testClearSavedActionStatesDoesNotRestoreAndEmptiesMap() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
 
         var action = FermataAction.createAction(mainFrame());
         var uiAction = (SelectableUIAction) action;
@@ -337,7 +338,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testRestoreWithFlagRestoresOnlyFlaggedActionAndClearsMap() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
 
         // flaggedAction carries DISABLE_IN_GRACE_MODE → should be restored
         var flaggedAction = RestModeAction.createAction(mainFrame());
@@ -398,7 +399,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testReflectionDoesNotForceEnable() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
         var action1 = AccidentalAction.createSharpAction(mainFrame());
@@ -424,7 +425,7 @@ class ReflectionHandlerTest extends MainFrameMockTest {
 
     @Test
     void testSaveRestoreRoundTripPreservesBothSelectedAndEnabled() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
         var action1 = AccidentalAction.createSharpAction(mainFrame());

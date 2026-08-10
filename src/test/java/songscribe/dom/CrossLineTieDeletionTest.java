@@ -21,6 +21,8 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.minim;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -74,7 +76,7 @@ class CrossLineTieDeletionTest extends UnitTest {
             // recognizing that barline as the terminal, and the notes would land behind it,
             // leaving the anchor mid-line with a note trailing it.
             for (var i = 0; i < NOTES_PER_LINE; i++) {
-                firstLine.addElement(ElementType.CROTCHET.newInstance());
+                firstLine.addElement(crotchet());
             }
 
             song.addLine(secondLine);
@@ -87,7 +89,7 @@ class CrossLineTieDeletionTest extends UnitTest {
             firstLine.removeElement(NOTES_PER_LINE);
 
             for (var i = 0; i < NOTES_PER_LINE; i++) {
-                secondLine.addElement(ElementType.CROTCHET.newInstance());
+                secondLine.addElement(crotchet());
             }
         });
 
@@ -201,6 +203,6 @@ class CrossLineTieDeletionTest extends UnitTest {
      * so only the written duration changes.
      */
     private static StaffElement sameSoundingNote() {
-        return ElementType.MINIM.newInstance();
+        return minim();
     }
 }

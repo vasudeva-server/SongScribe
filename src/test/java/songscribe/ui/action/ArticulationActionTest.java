@@ -21,13 +21,13 @@
 package songscribe.ui.action;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
 import songscribe.dom.ArticulationType;
-import songscribe.dom.ElementType;
 import songscribe.dom.Articulation;
 
 class ArticulationActionTest extends MainFrameMockTest {
@@ -43,14 +43,14 @@ class ArticulationActionTest extends MainFrameMockTest {
 
     @Test
     void testAccentAppliesArticulation() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         accentAction.applyToElement(note, true);
         assertThat(note.hasArticulation(ArticulationType.ACCENT)).isTrue();
     }
 
     @Test
     void testAccentRemovesArticulation() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
         accentAction.applyToElement(note, false);
         assertThat(note.hasArticulation(ArticulationType.ACCENT)).isFalse();
@@ -58,14 +58,14 @@ class ArticulationActionTest extends MainFrameMockTest {
 
     @Test
     void testAccentDoesNotMatchWhenArticulationNull() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
 
         assertThat(accentAction.matchesElement(note)).isFalse();
     }
 
     @Test
     void testAccentMatchesWhenArticulationPresent() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
 
         assertThat(accentAction.matchesElement(note)).isTrue();
@@ -73,14 +73,14 @@ class ArticulationActionTest extends MainFrameMockTest {
 
     @Test
     void testStaccatoAppliesArticulation() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         staccatoAction.applyToElement(note, true);
         assertThat(note.hasArticulation(ArticulationType.STACCATO)).isTrue();
     }
 
     @Test
     void testStaccatoRemovesArticulation() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
         staccatoAction.applyToElement(note, false);
         assertThat(note.hasArticulation(ArticulationType.STACCATO)).isFalse();
@@ -88,13 +88,13 @@ class ArticulationActionTest extends MainFrameMockTest {
 
     @Test
     void testStaccatoDoesNotMatchWhenArticulationNull() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         assertThat(staccatoAction.matchesElement(note)).isFalse();
     }
 
     @Test
     void testStaccatoMatchesWhenArticulationMatches() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
         assertThat(staccatoAction.matchesElement(note)).isTrue();
     }
@@ -106,7 +106,7 @@ class ArticulationActionTest extends MainFrameMockTest {
      */
     @Test
     void testStaccatoApplyLeavesAnExistingAccentAlone() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
 
         staccatoAction.applyToElement(note, true);
@@ -118,7 +118,7 @@ class ArticulationActionTest extends MainFrameMockTest {
 
     @Test
     void testStaccatoRemoveLeavesAnExistingAccentAlone() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
         note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
 
@@ -131,7 +131,7 @@ class ArticulationActionTest extends MainFrameMockTest {
 
     @Test
     void testStaccatoApplyReplacesDuplicateArticulation() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
         staccatoAction.applyToElement(note, true);
         assertThat(note.getArticulations())

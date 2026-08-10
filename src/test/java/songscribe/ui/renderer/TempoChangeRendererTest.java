@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +41,6 @@ import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
@@ -64,7 +64,7 @@ class TempoChangeRendererTest extends UnitTest {
      * list of strings drawn. The last entry is always the tempoBuilder content.
      */
     private List<String> renderAndCaptureStrings(Tempo tempo) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         var attachment = new TempoChangeAttachment(note, tempo);
         note.addAttachment(attachment);
 
@@ -137,7 +137,7 @@ class TempoChangeRendererTest extends UnitTest {
     private static Color renderedTempoColor(boolean selected) {
         final var description = "Andante";
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
 
         var tempo = new Tempo(0, Duration.CROTCHET, description, false);

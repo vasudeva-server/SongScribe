@@ -27,6 +27,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.doubleBarline;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.quaverRest;
+import static songscribe.dom.StaffElementFactory.semiquaver;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -129,9 +137,9 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
         @Test
         void testAccidentalAppliedToNotesOnlyInMixedSelection() {
-            var note = ElementType.CROTCHET.newInstance();
-            var rest = ElementType.CROTCHET_REST.newInstance();
-            var barline = ElementType.SINGLE_BARLINE.newInstance();
+            var note = crotchet();
+            var rest = crotchetRest();
+            var barline = singleBarline();
 
             var coordinator = createCoordinator(
                 List.of(note, rest, barline),
@@ -160,9 +168,9 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         // the second, which must be given an explicit flat or it would silently change pitch.
         @Test
         void testSharpeningOneNoteWritesTheDisplacedFlatOntoItsUnselectedSibling() {
-            var changedNote = ElementType.CROTCHET.newInstance();
+            var changedNote = crotchet();
             changedNote.setAccidental(StaffElement.Accidental.FLAT);
-            var inheritingNote = ElementType.CROTCHET.newInstance();
+            var inheritingNote = crotchet();
 
             var coordinator = createCoordinator(
                 List.of(changedNote, inheritingNote),
@@ -189,9 +197,9 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
         @Test
         void testAccidentalInParensAppliedToAccidentalNotesOnlyInMixedSelection() {
-            var accidentalNote = ElementType.CROTCHET.newInstance();
+            var accidentalNote = crotchet();
             accidentalNote.setAccidental(StaffElement.Accidental.SHARP);
-            var plainNote = ElementType.CROTCHET.newInstance();
+            var plainNote = crotchet();
 
             var coordinator = createCoordinator(
                 List.of(accidentalNote, plainNote),
@@ -212,8 +220,8 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testDurationChangeOnRestPreservesRestKind() {
             var notes = List.of(
-                ElementType.QUAVER.newInstance(),
-                ElementType.QUAVER_REST.newInstance()
+                quaver(),
+                quaverRest()
             );
             var coordinator = createCoordinator(notes, List.of(HALF_ACTION));
             var selection = coordinator.getActiveLine();
@@ -230,7 +238,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
         @Test
         void testDurationChangePreservesExistingAttributes() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             note.setAccidental(StaffElement.Accidental.SHARP);
             note.setDotCount(1);
             note.addAttachment(new FermataAttachment(note));
@@ -258,8 +266,8 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             // Grace notes are not durations — they are intimately tied to the
             // following note and have no standalone duration.
             var notes = List.of(
-                ElementType.GRACE_QUAVER.newInstance(),
-                ElementType.QUAVER.newInstance()
+                graceQuaver(),
+                quaver()
             );
             var coordinator = createCoordinator(notes, List.of(QUARTER_ACTION));
             var selection = coordinator.getActiveLine();
@@ -284,8 +292,8 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testSelectBarlinesClickBarlineTypeVerifyChanged() {
             var notes = List.of(
-                ElementType.SINGLE_BARLINE.newInstance(),
-                ElementType.SINGLE_BARLINE.newInstance()
+                singleBarline(),
+                singleBarline()
             );
             var coordinator = createCoordinator(notes, List.of(DOUBLE_BARLINE_ACTION));
             var selection = coordinator.getActiveLine();
@@ -306,9 +314,9 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testSelectNotesAndRestsClickDotVerifyBothGetDots() {
             var notes = List.of(
-                ElementType.CROTCHET.newInstance(),
-                ElementType.CROTCHET_REST.newInstance(),
-                ElementType.QUAVER.newInstance()
+                crotchet(),
+                crotchetRest(),
+                quaver()
             );
             var coordinator = createCoordinator(notes, List.of(DOT_ACTION));
             var selection = coordinator.getActiveLine();
@@ -330,8 +338,8 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
         @Test
         void testSelectNotesClickAccidentalVerifyApplied() {
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note1 = crotchet();
+            var note2 = crotchet();
             note2.setAccidental(StaffElement.Accidental.FLAT);
             var notes = List.of(note1, note2);
 
@@ -359,9 +367,9 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testSelectNotesClickDurationVerifyChanged() {
             var notes = List.of(
-                ElementType.QUAVER.newInstance(),
-                ElementType.SEMIQUAVER.newInstance(),
-                ElementType.QUAVER.newInstance()
+                quaver(),
+                semiquaver(),
+                quaver()
             );
             var actions = List.<UIAction.Reflectable>of(QUARTER_ACTION, HALF_ACTION);
             var coordinator = createCoordinator(notes, actions);
@@ -402,7 +410,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testBarlineOnlySelectionDisablesDurationActions() {
             var coordinator = createCoordinator(
-                List.of(ElementType.SINGLE_BARLINE.newInstance(), ElementType.DOUBLE_BARLINE.newInstance()),
+                List.of(singleBarline(), doubleBarline()),
                 List.of(QUARTER_ACTION, BARLINE_ACTION)
             );
 
@@ -419,7 +427,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testBarlineOnlySelectionEnablesBarlineActions() {
             var coordinator = createCoordinator(
-                List.of(ElementType.SINGLE_BARLINE.newInstance(), ElementType.DOUBLE_BARLINE.newInstance()),
+                List.of(singleBarline(), doubleBarline()),
                 List.of(QUARTER_ACTION, BARLINE_ACTION)
             );
 
@@ -436,7 +444,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
             // Mixed selection has durations, so they are enabled (the action applies to the notes).
             // The mutual exclusivity only fully disables when ALL elements are inapplicable.
             var coordinator = createCoordinator(
-                List.of(ElementType.CROTCHET.newInstance(), ElementType.SINGLE_BARLINE.newInstance()),
+                List.of(crotchet(), singleBarline()),
                 List.of(QUARTER_ACTION, BARLINE_ACTION)
             );
 
@@ -453,7 +461,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testNoteOnlySelectionDisablesBarlineActions() {
             var coordinator = createCoordinator(
-                List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER.newInstance()),
+                List.of(crotchet(), quaver()),
                 List.of(QUARTER_ACTION, BARLINE_ACTION)
             );
 
@@ -467,7 +475,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testNoteOnlySelectionEnablesDurationActions() {
             var coordinator = createCoordinator(
-                List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER.newInstance()),
+                List.of(crotchet(), quaver()),
                 List.of(QUARTER_ACTION, BARLINE_ACTION)
             );
 
@@ -485,7 +493,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         void testRestOnlySelectionDisablesNoteOnlyActions() {
             // AccidentalAction applies only to notes, not rests
             var coordinator = createCoordinator(
-                List.of(ElementType.CROTCHET_REST.newInstance(), ElementType.QUAVER_REST.newInstance()),
+                List.of(crotchetRest(), quaverRest()),
                 List.of(SHARP_ACTION, DOT_ACTION)
             );
 
@@ -502,7 +510,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testAccidentalFreeSelectionDisablesAccidentalInParensAction() {
             var coordinator = createCoordinator(
-                List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET_REST.newInstance()),
+                List.of(crotchet(), crotchetRest()),
                 List.of(ACCIDENTAL_IN_PARENS_ACTION)
             );
 
@@ -515,9 +523,9 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
         @Test
         void testMixedAccidentalSelectionEnablesAccidentalInParensAction() {
-            var accidentalNote = ElementType.CROTCHET.newInstance();
+            var accidentalNote = crotchet();
             accidentalNote.setAccidental(StaffElement.Accidental.SHARP);
-            var plainNote = ElementType.QUAVER.newInstance();
+            var plainNote = quaver();
 
             var coordinator = createCoordinator(
                 List.of(accidentalNote, plainNote),
@@ -541,8 +549,8 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testApplyDotThenChangeDurationPreservesDots() {
             var notes = List.of(
-                ElementType.QUAVER.newInstance(),
-                ElementType.QUAVER.newInstance()
+                quaver(),
+                quaver()
             );
             var coordinator = createCoordinator(notes, List.of(DOT_ACTION, QUARTER_ACTION));
             var selection = coordinator.getActiveLine();
@@ -570,8 +578,8 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testApplyMultipleAttributesInSequence() {
             var notes = List.of(
-                ElementType.QUAVER.newInstance(),
-                ElementType.QUAVER.newInstance()
+                quaver(),
+                quaver()
             );
             var actions = List.<UIAction.Reflectable>of(
                 QUARTER_ACTION, SHARP_ACTION, FERMATA_ACTION, STACCATO_ACTION
@@ -616,8 +624,8 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
         @Test
         void testApplyThenRemoveAttribute() {
             var notes = List.of(
-                ElementType.CROTCHET.newInstance(),
-                ElementType.CROTCHET.newInstance()
+                crotchet(),
+                crotchet()
             );
             var coordinator = createCoordinator(notes, List.of(FERMATA_ACTION));
             var selection = coordinator.getActiveLine();
@@ -647,7 +655,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
         @Test
         void testManagedActionsIncludeNonReflectableWithFlag() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
 
             var fermataAction = FermataAction.createAction(mainFrame());
             var flaggedAction = new UIAction(mainFrame(), "Beam", null, 0, "beam", "Toggle beam");
@@ -687,7 +695,7 @@ class SelectionApplyIntegrationTest extends MainFrameMockTest {
 
         @Test
         void testSaveReflectApplyClearRestoresState() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setAccidental(StaffElement.Accidental.FLAT);
 
             var sharpAction = AccidentalAction.createSharpAction(mainFrame());

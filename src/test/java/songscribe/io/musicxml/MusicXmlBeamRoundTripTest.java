@@ -21,6 +21,10 @@
 package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.demiSemiquaver;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.semiquaver;
 
 import java.io.StringReader;
 
@@ -32,7 +36,6 @@ import org.w3c.dom.Element;
 import org.xml.sax.InputSource;
 
 import songscribe.dom.Beam;
-import songscribe.dom.ElementType;
 
 class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
 
@@ -88,8 +91,8 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testTwoNoteBeamRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.QUAVER.newInstance();
-            var note1 = ElementType.QUAVER.newInstance();
+            var note0 = quaver();
+            var note1 = quaver();
             line.addElement(note0);
             line.addElement(note1);
             line.addBeaming(new Beam(note0, note1));
@@ -106,10 +109,10 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testFourNoteBeamRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.QUAVER.newInstance();
-            var note1 = ElementType.QUAVER.newInstance();
-            var note2 = ElementType.QUAVER.newInstance();
-            var note3 = ElementType.QUAVER.newInstance();
+            var note0 = quaver();
+            var note1 = quaver();
+            var note2 = quaver();
+            var note3 = quaver();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -130,10 +133,10 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
         // Two separate 2-note beam groups on the same line, at indices 0-1 and 2-3.
         // Both must survive the round-trip with their exact index pairs preserved.
         var song = buildSong(line -> {
-            var note0 = ElementType.QUAVER.newInstance();
-            var note1 = ElementType.QUAVER.newInstance();
-            var note2 = ElementType.QUAVER.newInstance();
-            var note3 = ElementType.QUAVER.newInstance();
+            var note0 = quaver();
+            var note1 = quaver();
+            var note2 = quaver();
+            var note3 = quaver();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -168,10 +171,10 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
     void testFourNoteBeamPrimaryValuesInOutput() throws Exception {
         // 4-note QUAVER beam: primary beam must emit begin/continue/continue/end.
         var song = buildSong(line -> {
-            var note0 = ElementType.QUAVER.newInstance();
-            var note1 = ElementType.QUAVER.newInstance();
-            var note2 = ElementType.QUAVER.newInstance();
-            var note3 = ElementType.QUAVER.newInstance();
+            var note0 = quaver();
+            var note1 = quaver();
+            var note2 = quaver();
+            var note3 = quaver();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -194,8 +197,8 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
         // stubRight returns true → <beam number="2">forward hook</beam>.
         // The QUAVER has only one beam level — no number="2" element.
         var song = buildSong(line -> {
-            var semi = ElementType.SEMIQUAVER.newInstance();
-            var quaver = ElementType.QUAVER.newInstance();
+            var semi = semiquaver();
+            var quaver = quaver();
             line.addElement(semi);
             line.addElement(quaver);
             line.addBeaming(new Beam(semi, quaver));
@@ -219,8 +222,8 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
         // stubRight returns false → <beam number="2">backward hook</beam>.
         // The QUAVER has only one beam level — no number="2" element.
         var song = buildSong(line -> {
-            var quaver = ElementType.QUAVER.newInstance();
-            var semi = ElementType.SEMIQUAVER.newInstance();
+            var quaver = quaver();
+            var semi = semiquaver();
             line.addElement(quaver);
             line.addElement(semi);
             line.addBeaming(new Beam(quaver, semi));
@@ -244,9 +247,9 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
         // neighbour is a QUAVER (rightBeams=1 < myBeams=2), which triggers the
         // rightBeams < myBeams branch → stubRight returns false → backward hook.
         var song = buildSong(line -> {
-            var quaver0 = ElementType.QUAVER.newInstance();
-            var semi = ElementType.SEMIQUAVER.newInstance();
-            var quaver2 = ElementType.QUAVER.newInstance();
+            var quaver0 = quaver();
+            var semi = semiquaver();
+            var quaver2 = quaver();
             line.addElement(quaver0);
             line.addElement(semi);
             line.addElement(quaver2);
@@ -273,9 +276,9 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
         // participates at the 16th level, so the secondary beam is a CONTINUOUS
         // run — number="2" begin/continue/end — not a forward/backward hook.
         var song = buildSong(line -> {
-            var note0 = ElementType.SEMIQUAVER.newInstance();
-            var note1 = ElementType.SEMIQUAVER.newInstance();
-            var note2 = ElementType.SEMIQUAVER.newInstance();
+            var note0 = semiquaver();
+            var note1 = semiquaver();
+            var note2 = semiquaver();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -303,9 +306,9 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
         // every level, so each level emits a continuous begin/continue/end run —
         // the only path that produces a number="3" element.
         var song = buildSong(line -> {
-            var note0 = ElementType.DEMI_SEMIQUAVER.newInstance();
-            var note1 = ElementType.DEMI_SEMIQUAVER.newInstance();
-            var note2 = ElementType.DEMI_SEMIQUAVER.newInstance();
+            var note0 = demiSemiquaver();
+            var note1 = demiSemiquaver();
+            var note2 = demiSemiquaver();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -339,9 +342,9 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
         // 16ths). The beam span must re-collapse to [0, 2] and the grace note must
         // survive in the interior slot.
         var song = buildSong(line -> {
-            var note0 = ElementType.SEMIQUAVER.newInstance();
-            var grace = ElementType.GRACE_QUAVER.newInstance();
-            var note2 = ElementType.SEMIQUAVER.newInstance();
+            var note0 = semiquaver();
+            var grace = graceQuaver();
+            var note2 = semiquaver();
             line.addElement(note0);
             line.addElement(grace);
             line.addElement(note2);
@@ -364,9 +367,9 @@ class MusicXmlBeamRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testGraceNoteInsideBeamGroupEmitsNoBeamElement() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.QUAVER.newInstance();
-            var grace = ElementType.GRACE_QUAVER.newInstance();
-            var note2 = ElementType.QUAVER.newInstance();
+            var note0 = quaver();
+            var grace = graceQuaver();
+            var note2 = quaver();
             line.addElement(note0);
             line.addElement(grace);
             line.addElement(note2);

@@ -22,11 +22,11 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
@@ -121,7 +121,7 @@ class PitchSpellingTest extends UnitTest {
     @Test
     void testSoundingAlterForWithExplicitSharpReturnsPositiveOne() {
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
         note.setAccidental(Accidental.SHARP);
 
@@ -133,7 +133,7 @@ class PitchSpellingTest extends UnitTest {
     @Test
     void testSoundingAlterForWithExplicitFlatReturnsNegativeOne() {
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
         note.setAccidental(Accidental.FLAT);
 
@@ -164,7 +164,7 @@ class PitchSpellingTest extends UnitTest {
             line.setKeyType(KeyType.SHARPS);
             line.setKeyAccidentalCount(1);
 
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(fSharpStaffPosition);
             line.addElement(note);
             song.addLine(line);
@@ -191,7 +191,7 @@ class PitchSpellingTest extends UnitTest {
             line.setKeyType(KeyType.FLATS);
             line.setKeyAccidentalCount(1);
 
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(bFlatStaffPosition);
             line.addElement(note);
             song.addLine(line);

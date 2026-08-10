@@ -22,6 +22,8 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -591,21 +593,21 @@ class ElementTypeTest extends UnitTest {
 
         @Test
         void testElementGetContentCenterXReturnsPx() {
-            var element = ElementType.QUAVER.newInstance();
+            var element = quaver();
             var expectedPx = ScaleContext.ssToPx(ElementType.QUAVER.getFullElementCenterXSs());
             assertThat(element.getContentCenterX()).isCloseTo(expectedPx, within(1e-9));
         }
 
         @Test
         void testElementGetContentHeightReturnsPx() {
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             var expectedPx = ScaleContext.ssToPx(ElementType.CROTCHET.getElementHeightSs(element.getDirection()));
             assertThat(element.getContentHeightPx()).isCloseTo(expectedPx, within(1e-9));
         }
 
         @Test
         void testElementGetContentWidthReturnsPx() {
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             var expectedPx = ScaleContext.ssToPx(ElementType.CROTCHET.getFullElementWidthSs());
             assertThat(element.getContentWidthPx()).isCloseTo(expectedPx, within(1e-9));
         }

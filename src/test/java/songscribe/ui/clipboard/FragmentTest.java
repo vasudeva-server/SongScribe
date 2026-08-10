@@ -29,6 +29,12 @@ import java.util.function.BiFunction;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+
 import songscribe.UnitTest;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
@@ -56,12 +62,8 @@ class FragmentTest extends UnitTest {
     private static final int TRIPLET_NORMAL_NOTES = 2;
     private static final int NO_DOTS = 0;
 
-    private static StaffElement crotchet() {
-        return ElementType.CROTCHET.newInstance();
-    }
-
     private static StaffElement pairedGraceNote() {
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         return grace;
     }
@@ -455,7 +457,7 @@ class FragmentTest extends UnitTest {
             // since it is positionally attached to A.
             var line = detachedLine();
             var noteA = crotchet();
-            var breath = ElementType.BREATH_MARK.newInstance();
+            var breath = breathMark();
             line.addElement(noteA);
             line.addElement(breath);
 
@@ -488,7 +490,7 @@ class FragmentTest extends UnitTest {
         void testFinalDoubleBarlineIsNormalizedToDoubleBarlineWithoutMutatingTheOriginal() {
             var line = detachedLine();
             var noteA = crotchet();
-            var finalBarline = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+            var finalBarline = finalDoubleBarline();
             line.addElement(noteA);
             line.addElement(finalBarline);
 
@@ -508,7 +510,7 @@ class FragmentTest extends UnitTest {
             // original line's element must be untouched.
             var line = detachedLine();
             var noteA = crotchet();
-            var repeatRight = ElementType.REPEAT_RIGHT.newInstance();
+            var repeatRight = repeatRight();
             line.addElement(noteA);
             line.addElement(repeatRight);
 
@@ -829,7 +831,7 @@ class FragmentTest extends UnitTest {
             sharpF.setStaffPosition(F_STAFF_POSITION);
             sharpF.setAccidental(StaffElement.Accidental.SHARP);
             line.addElement(sharpF);
-            line.addElement(ElementType.BREATH_MARK.newInstance());
+            line.addElement(breathMark());
 
             var fragment = Fragment.capture(line, 0, 0);
 

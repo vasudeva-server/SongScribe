@@ -29,6 +29,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import module java.desktop;
 
@@ -36,7 +37,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Song;
 import songscribe.hit.HitTarget;
 import songscribe.engraving.Staff;
@@ -84,7 +84,7 @@ class LyricTextRendererTest extends UnitTest {
 
     @Test
     void testDrawsSingleBoxAtVerseBaseline() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var box = new LyricBoxLayout(3.25, 2.0, 1, "do");
         var layoutResult = layoutBuilder().addLyricBox(element, box).build();
 
@@ -112,7 +112,7 @@ class LyricTextRendererTest extends UnitTest {
     // not a second row, so it lands exactly where a first-verse syllable would.
     @Test
     void testDrawsANonFirstVerseOnTheSameBaseline() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var box = new LyricBoxLayout(2.0, 1.5, SECOND_VERSE, "un");
         var layoutResult = layoutBuilder().addLyricBox(element, box).build();
 
@@ -135,7 +135,7 @@ class LyricTextRendererTest extends UnitTest {
 
     @Test
     void testNoBoxesIsNoOp() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var layoutResult = layoutBuilder().build();
 
         var invariants = RenderContextTestHelper.newContext(new Song())
@@ -152,7 +152,7 @@ class LyricTextRendererTest extends UnitTest {
     @Test
     void testDrawStringWidth() {
         // Sanity check that drawString receives the correct text argument irrespective of font scaling.
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var box = new LyricBoxLayout(0.0, 1.0, 1, "re");
         var layoutResult = layoutBuilder().addLyricBox(element, box).build();
 
@@ -172,8 +172,8 @@ class LyricTextRendererTest extends UnitTest {
     // T28
     @Test
     void testSkipsActivelyEditedElementButRendersOthers() {
-        var activeElement = ElementType.CROTCHET.newInstance();
-        var otherElement = ElementType.CROTCHET.newInstance();
+        var activeElement = crotchet();
+        var otherElement = crotchet();
 
         var activeBox = new LyricBoxLayout(1.0, 1.5, 1, "la");
         var otherBox = new LyricBoxLayout(3.0, 1.5, 1, "sol");
@@ -208,7 +208,7 @@ class LyricTextRendererTest extends UnitTest {
 
     @Test
     void testSelectedLyricPaintsInSelectionColor() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");
         var layoutResult = layoutBuilder().addLyricBox(element, box).build();
         var selectionProvider = mock(LineComponent.SelectionProvider.class);
@@ -231,7 +231,7 @@ class LyricTextRendererTest extends UnitTest {
 
     @Test
     void testSelectedElementPaintsLyricInSelectionColor() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var line = detachedLine();
         line.addElement(element);
         var box = new LyricBoxLayout(2.0, 1.5, 1, "v1");

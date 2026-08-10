@@ -39,6 +39,12 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.singleBarline;
+
 import songscribe.UnitTest;
 import songscribe.dom.Beam;
 import songscribe.dom.Crescendo;
@@ -83,10 +89,6 @@ class PasteSpanReconciliationTest extends UnitTest {
     private static final int INTERIOR_INDEX = 2;
 
     private static final int FIXTURE_NOTE_COUNT = 6;
-
-    private static StaffElement crotchet() {
-        return ElementType.CROTCHET.newInstance();
-    }
 
     /** A six-note line with no spans yet. Spans are added per test over [1, 4]. */
     private Line sixNoteLine() {
@@ -198,7 +200,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             line.addSpan(tie);
 
             var insertion = ElementChange.forInsertion(
-                line, INTERIOR_INDEX, ElementType.SINGLE_BARLINE.newInstance());
+                line, INTERIOR_INDEX, singleBarline());
 
             assertThat(tie.outcomeFor(insertion, line))
                 .as("drawing a barline in between the tied notes leaves the tie")
@@ -206,7 +208,7 @@ class PasteSpanReconciliationTest extends UnitTest {
 
             var result = PasteSpanReconciliation.reconcile(
                 line, INTERIOR_INDEX, null,
-                List.of(ElementType.SINGLE_BARLINE.newInstance()), List.of());
+                List.of(singleBarline()), List.of());
 
             assertThat(result.targetSpansToRemove())
                 .as("so pasting that same barline must leave it too")
@@ -221,7 +223,7 @@ class PasteSpanReconciliationTest extends UnitTest {
 
             var result = PasteSpanReconciliation.reconcile(
                 line, INTERIOR_INDEX, null,
-                List.of(ElementType.SINGLE_BARLINE.newInstance(), crotchet()), List.of());
+                List.of(singleBarline(), crotchet()), List.of());
 
             assertThat(result.targetSpansToRemove())
                 .as("one sounding note between the tied notes is enough to break the tie")
@@ -236,7 +238,7 @@ class PasteSpanReconciliationTest extends UnitTest {
 
             var result = PasteSpanReconciliation.reconcile(
                 line, INTERIOR_INDEX, null,
-                List.of(ElementType.FINAL_DOUBLE_BARLINE.newInstance()), List.of());
+                List.of(finalDoubleBarline()), List.of());
 
             assertThat(result.targetSpansToRemove())
                 .as("the one barline a tie may not cross, per Tie.isLegalSeparator")
@@ -777,7 +779,7 @@ class PasteSpanReconciliationTest extends UnitTest {
         private Line firstLine = song.getLine(0);
         private Line secondLine = new Line(song);
         private Tie crossLineTie =
-            new Tie(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
+            new Tie(crotchet(), crotchet());
 
         /**
          * Two lines joined by a tie, shaped so the endpoints cannot be compared by luck: the
@@ -798,7 +800,7 @@ class PasteSpanReconciliationTest extends UnitTest {
                 }
 
                 for (var i = 0; i < SECOND_LINE_SEPARATOR_COUNT; i++) {
-                    secondLine.addElement(ElementType.SINGLE_BARLINE.newInstance());
+                    secondLine.addElement(singleBarline());
                 }
 
                 secondLine.addElement(crotchet());
@@ -885,7 +887,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = new ArrayList<StaffElement>(TRIPLET_NOTE_COUNT);
 
             for (var i = 0; i < TRIPLET_NOTE_COUNT; i++) {
-                notes.add(ElementType.QUAVER.newInstance());
+                notes.add(quaver());
             }
 
             return notes;
@@ -967,7 +969,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = new ArrayList<>(tripletQuavers());
             var tuplet = new Tuplet(notes.getFirst(), notes.getLast(), TRIPLET_GRADE,
                 TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
-            notes.add(1, ElementType.BREATH_MARK.newInstance());
+            notes.add(1, breathMark());
 
             var result = song.withModificationResult(
                 () -> paste(line, EMPTY_LINE_PASTE_INDEX, notes, List.of(tuplet)));
@@ -1005,7 +1007,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var tuplet = new Tuplet(notes.getFirst(), notes.getLast(), TRIPLET_GRADE,
                 TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
             var beam = new Beam(notes.getFirst(), notes.getLast());
-            notes.add(1, ElementType.BREATH_MARK.newInstance());
+            notes.add(1, breathMark());
 
             var result = song.withModificationResult(
                 () -> paste(line, EMPTY_LINE_PASTE_INDEX, notes, List.of(tuplet, beam)));
@@ -1053,7 +1055,7 @@ class PasteSpanReconciliationTest extends UnitTest {
             var notes = new ArrayList<>(tripletQuavers());
             var tuplet = new Tuplet(notes.getFirst(), notes.getLast(), TRIPLET_GRADE,
                 TRIPLET_NORMAL_NOTES, ElementType.QUAVER, NO_DOTS);
-            notes.add(1, ElementType.BREATH_MARK.newInstance());
+            notes.add(1, breathMark());
 
             var result = song.withModificationResult(() -> {
                 var holder = new PasteSpanReconciliation[1];

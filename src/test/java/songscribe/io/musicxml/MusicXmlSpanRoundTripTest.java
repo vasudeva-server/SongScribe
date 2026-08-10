@@ -21,6 +21,11 @@
 package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.semiquaver;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.io.StringReader;
 
@@ -180,8 +185,8 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testTwoNoteTieRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addTie(new Tie(note0, note1));
@@ -201,9 +206,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         // ties; the reader closes the stop/start pair for each and produces two distinct
         // Tie spans — tie ranges never coalesce.
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -232,9 +237,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testTripletRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -255,9 +260,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testDottedNoteValueRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.QUAVER.newInstance();
-            var note1 = ElementType.QUAVER.newInstance();
-            var note2 = ElementType.QUAVER.newInstance();
+            var note0 = quaver();
+            var note1 = quaver();
+            var note2 = quaver();
             note0.setDotCount(ONE_DOT);
             note1.setDotCount(ONE_DOT);
             note2.setDotCount(ONE_DOT);
@@ -290,7 +295,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
             var notes = new StaffElement[SEPTUPLET_GRADE];
 
             for (var i = 0; i < SEPTUPLET_GRADE; i++) {
-                notes[i] = ElementType.SEMIQUAVER.newInstance();
+                notes[i] = semiquaver();
                 line.addElement(notes[i]);
             }
 
@@ -317,10 +322,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testTupletMemberDurationIsPerformedAndOutsiderIsNot() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
-            var outsider = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
+            var outsider = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -347,9 +352,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testDottedTupletMemberDurationIsPerformed() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.QUAVER.newInstance();
-            var note1 = ElementType.QUAVER.newInstance();
-            var note2 = ElementType.QUAVER.newInstance();
+            var note0 = quaver();
+            var note1 = quaver();
+            var note2 = quaver();
             note0.setDotCount(ONE_DOT);
             note1.setDotCount(ONE_DOT);
             note2.setDotCount(ONE_DOT);
@@ -447,9 +452,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testTripletWithVerticalPositionRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -471,10 +476,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testGraceNoteInsideTupletSpanTakesNoTimeModification() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var grace = ElementType.GRACE_QUAVER.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
-            var note3 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var grace = graceQuaver();
+            var note2 = crotchet();
+            var note3 = crotchet();
             line.addElement(note0);
             line.addElement(grace);
             line.addElement(note2);
@@ -502,11 +507,11 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testQuintupletRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
-            var note3 = ElementType.CROTCHET.newInstance();
-            var note4 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
+            var note3 = crotchet();
+            var note4 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -528,11 +533,11 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testQuintupletWithVerticalPositionRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
-            var note3 = ElementType.CROTCHET.newInstance();
-            var note4 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
+            var note3 = crotchet();
+            var note4 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -554,9 +559,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testTripletTimeModificationInOutput() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -582,11 +587,11 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testQuintupletTimeModificationInOutput() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
-            var note3 = ElementType.CROTCHET.newInstance();
-            var note4 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
+            var note3 = crotchet();
+            var note4 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -619,7 +624,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     void testSingleNoteTrillRoundTrips() throws Exception {
         // anchor == end: the single-note constructor Trill(anchor) is equivalent.
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
             line.addElement(note0);
             line.addSpan(new Trill(note0));
         });
@@ -635,9 +640,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testMultiNoteTrillRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -655,7 +660,7 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testSingleNoteTrillWithYPositionRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
             line.addElement(note0);
             var trill = new Trill(note0);
             trill.setYPositionSs(TRILL_Y_POSITION_SS);
@@ -673,8 +678,8 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testMultiNoteTrillWithYPositionRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             var trill = new Trill(note0, note1);
@@ -707,10 +712,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         // Indices:   0      1            2          3
         // The trill covers only [1, 2]; notes 0 and 3 must not be included.
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
-            var note3 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
+            var note3 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -733,9 +738,9 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         // (in measure 1) and the stop on note1 (in measure 2).  The reader
         // must re-collapse to Tie[0, 2].
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var barline = ElementType.SINGLE_BARLINE.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var barline = singleBarline();
+            var note1 = crotchet();
             line.addElement(note0);
             line.addElement(barline);
             line.addElement(note1);
@@ -763,10 +768,10 @@ class MusicXmlSpanRoundTripTest extends MusicXmlRoundTripSupport {
         // quarters would state a written value of 192 / 3 = 64 ticks, which is not
         // notatable — the tuplet would be dropped for a reason unrelated to the test.
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var barline = ElementType.SINGLE_BARLINE.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var barline = singleBarline();
+            var note1 = crotchet();
+            var note2 = crotchet();
             line.addElement(note0);
             line.addElement(barline);
             line.addElement(note1);

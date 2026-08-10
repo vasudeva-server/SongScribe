@@ -25,6 +25,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.awt.Font;
 import java.awt.geom.Rectangle2D;
@@ -36,7 +38,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -125,10 +126,10 @@ class GraceGlissandoPreviewOverlayTest extends UnitTest {
 
         // A leading note so the grace note is not at index 0: the source index the overlay draws
         // from then has to come from grace mode rather than from a hardcoded first element.
-        var leadingNote = ElementType.CROTCHET.newInstance();
+        var leadingNote = crotchet();
         leadingNote.setStaffPosition(LEADING_STAFF_POSITION);
 
-        graceNote = ElementType.GRACE_QUAVER.newInstance();
+        graceNote = graceQuaver();
         graceNote.setStaffPosition(GRACE_STAFF_POSITION);
         song.withModification(() -> {
             domLine.addElement(leadingNote);
@@ -157,7 +158,7 @@ class GraceGlissandoPreviewOverlayTest extends UnitTest {
             + graceColumn.getRightExtentSs()
             + HorizontalSpacingCalculator.GRACE_HOST_REST_SS;
 
-        previewElement = ElementType.CROTCHET.newInstance();
+        previewElement = crotchet();
         previewElement.setStaffPosition(HOST_STAFF_POSITION_ABOVE);
 
         graceModeManagerMock = mock(GraceModeManager.class);

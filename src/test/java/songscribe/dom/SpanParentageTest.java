@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -54,15 +55,15 @@ class SpanParentageTest extends UnitTest {
         song = new Song();
         firstLine = song.getLine(0);
         secondLine = new Line(song);
-        anchorNote = ElementType.CROTCHET.newInstance();
-        endNote = ElementType.CROTCHET.newInstance();
+        anchorNote = crotchet();
+        endNote = crotchet();
 
         song.withoutMutationTracking(() -> {
-            firstLine.addElement(ElementType.CROTCHET.newInstance());
+            firstLine.addElement(crotchet());
             firstLine.addElement(anchorNote);
             song.addLine(secondLine);
             secondLine.addElement(endNote);
-            secondLine.addElement(ElementType.CROTCHET.newInstance());
+            secondLine.addElement(crotchet());
         });
     }
 
@@ -134,7 +135,7 @@ class SpanParentageTest extends UnitTest {
     void testTieWithDetachedEndpointsIsInNoLineYetStaysInTheListItWasAddedTo() {
         // The invariant is one-directional — isIn(L) implies L.spans holds the span, not the
         // converse — so a span whose endpoints are in no line stays where it was put.
-        var tie = new Tie(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance());
+        var tie = new Tie(crotchet(), crotchet());
 
         song.withoutMutationTracking(() -> firstLine.addTie(tie));
 

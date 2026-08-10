@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.awt.Font;
 import java.util.List;
@@ -36,7 +37,6 @@ import org.mockito.MockedStatic;
 import songscribe.UnitTest;
 import songscribe.dom.ScaleContext;
 import songscribe.message.MessageCenter;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Lyric;
 import songscribe.dom.Song;
@@ -77,7 +77,7 @@ class LyricRenderMetricsTest extends UnitTest {
     @Test
     void testLyricBoxWidthSsMatchesLayoutBoxWidth() {
         var text = "do";
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.lyrics.add(new Lyric(Lyric.FIRST_VERSE, text, Lyric.Extend.NONE, Lyric.Syllabic.SINGLE, false));
         song.withoutMutationTracking(() -> line.addElement(element));
 

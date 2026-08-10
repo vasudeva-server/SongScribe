@@ -25,6 +25,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.awt.Panel;
 import java.awt.Toolkit;
@@ -34,7 +36,6 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.StaffElement;
 import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.ui.Mode;
@@ -104,7 +105,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
 
     @Test
     void testMusicSelectionDidChangeHandlerIsNoOpWhenSelectionUnchanged() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
         var action = AccidentalAction.createSharpAction(mainFrame());
@@ -141,7 +142,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
 
     @Test
     void testTriggerReflectionIsNoOpWhenSelectionUnchanged() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
 
         var action = AccidentalAction.createSharpAction(mainFrame());
@@ -194,7 +195,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
         );
 
         // A crotchet with SHARP accidental: sharpAction should match, flatAction should not.
-        var sharpNote = ElementType.CROTCHET.newInstance();
+        var sharpNote = crotchet();
         sharpNote.setAccidental(StaffElement.Accidental.SHARP);
 
         coordinator.getActionReflector().reflectElement(sharpNote);
@@ -264,8 +265,8 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
     @Test
     void testTriggerReflectionEnablesGraceNoteActionWhenGraceNoteInSelection() {
         // Build a selection that contains a grace note.
-        var gracNote = ElementType.GRACE_QUAVER.newInstance();
-        var regularNote = ElementType.CROTCHET.newInstance();
+        var gracNote = graceQuaver();
+        var regularNote = crotchet();
 
         // A sentinel reflectable action is required so the inner element loop
         // (which sets hasGraceNote) is actually reached during triggerReflection.
@@ -287,8 +288,8 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
     @Test
     void testTriggerReflectionDisablesGraceNoteActionWhenNoGraceNoteInSelection() {
         // Build a selection with no grace notes.
-        var note1 = ElementType.CROTCHET.newInstance();
-        var note2 = ElementType.CROTCHET.newInstance();
+        var note1 = crotchet();
+        var note2 = crotchet();
 
         // A sentinel reflectable action is required so the inner element loop runs.
         var sentinelAction = AccidentalAction.createSharpAction(mainFrame());

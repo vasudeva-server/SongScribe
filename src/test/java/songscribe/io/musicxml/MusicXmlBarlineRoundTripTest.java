@@ -22,6 +22,12 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static songscribe.dom.StaffElementFactory.doubleBarline;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatLeftRight;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -131,9 +137,9 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testMultiLineWithAssortedBarlinesRoundTrips() throws Exception {
         var song = buildSong(
-            line -> line.addElement(ElementType.SINGLE_BARLINE.newInstance()),
-            line -> line.addElement(ElementType.DOUBLE_BARLINE.newInstance()),
-            line -> line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance())
+            line -> line.addElement(singleBarline()),
+            line -> line.addElement(doubleBarline()),
+            line -> line.addElement(finalDoubleBarline())
         );
 
         var song2 = roundTrip(song);
@@ -143,9 +149,9 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testMultiLineWithAssortedBarlinesWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(
-            line -> line.addElement(ElementType.SINGLE_BARLINE.newInstance()),
-            line -> line.addElement(ElementType.DOUBLE_BARLINE.newInstance()),
-            line -> line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance())
+            line -> line.addElement(singleBarline()),
+            line -> line.addElement(doubleBarline()),
+            line -> line.addElement(finalDoubleBarline())
         );
 
         var xml = writeToString(song);
@@ -163,10 +169,10 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
         // the terminal of the last line, so the reader's pending-hold logic flushes
         // it cleanly at </part> without any cross-line bleed.
         var song = buildSong(
-            line -> line.addElement(ElementType.REPEAT_LEFT_RIGHT.newInstance()),
+            line -> line.addElement(repeatLeftRight()),
             line -> {
-                line.addElement(ElementType.REPEAT_LEFT.newInstance());
-                line.addElement(ElementType.REPEAT_RIGHT.newInstance());
+                line.addElement(repeatLeft());
+                line.addElement(repeatRight());
             }
         );
 
@@ -177,10 +183,10 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testRepeatsWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(
-            line -> line.addElement(ElementType.REPEAT_LEFT_RIGHT.newInstance()),
+            line -> line.addElement(repeatLeftRight()),
             line -> {
-                line.addElement(ElementType.REPEAT_LEFT.newInstance());
-                line.addElement(ElementType.REPEAT_RIGHT.newInstance());
+                line.addElement(repeatLeft());
+                line.addElement(repeatRight());
             }
         );
 
@@ -197,8 +203,8 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
         // last line must end in a terminal for the song to be valid music.
         var song = buildSong(
             line -> {},
-            line -> line.addElement(ElementType.SINGLE_BARLINE.newInstance()),
-            line -> line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance())
+            line -> line.addElement(singleBarline()),
+            line -> line.addElement(finalDoubleBarline())
         );
 
         var song2 = roundTrip(song);
@@ -209,7 +215,7 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     void testLineBreakWithNoBarlineWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(
             line -> {},
-            line -> line.addElement(ElementType.SINGLE_BARLINE.newInstance()),
+            line -> line.addElement(singleBarline()),
             line -> {}
         );
 
@@ -229,10 +235,10 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
         // line 2's REPEAT_LEFT into a spurious REPEAT_LEFT_RIGHT). The barline must
         // stay on line 1.
         var song = buildSong(
-            line -> line.addElement(ElementType.REPEAT_RIGHT.newInstance()),
+            line -> line.addElement(repeatRight()),
             line -> {
-                line.addElement(ElementType.REPEAT_LEFT.newInstance());
-                line.addElement(ElementType.REPEAT_RIGHT.newInstance());
+                line.addElement(repeatLeft());
+                line.addElement(repeatRight());
             }
         );
 
@@ -307,9 +313,9 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     void testMidLineTwoBarlineRoundTrips() throws Exception {
         var song = buildSong(
             line -> {
-                line.addElement(ElementType.SINGLE_BARLINE.newInstance());
-                line.addElement(ElementType.DOUBLE_BARLINE.newInstance());
-                line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());
+                line.addElement(singleBarline());
+                line.addElement(doubleBarline());
+                line.addElement(finalDoubleBarline());
             }
         );
 
@@ -321,8 +327,8 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     void testMidLineTwoBarlineWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(
             line -> {
-                line.addElement(ElementType.SINGLE_BARLINE.newInstance());
-                line.addElement(ElementType.DOUBLE_BARLINE.newInstance());
+                line.addElement(singleBarline());
+                line.addElement(doubleBarline());
             }
         );
 
@@ -348,9 +354,9 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     void testHeldRepeatFollowedByNonLeftRoundTrips() throws Exception {
         var song = buildSong(
             line -> {
-                line.addElement(ElementType.REPEAT_RIGHT.newInstance());
-                line.addElement(ElementType.SINGLE_BARLINE.newInstance());
-                line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance());
+                line.addElement(repeatRight());
+                line.addElement(singleBarline());
+                line.addElement(finalDoubleBarline());
             }
         );
 
@@ -368,8 +374,8 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     void testHeldRepeatFollowedByNonLeftWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(
             line -> {
-                line.addElement(ElementType.REPEAT_RIGHT.newInstance());
-                line.addElement(ElementType.SINGLE_BARLINE.newInstance());
+                line.addElement(repeatRight());
+                line.addElement(singleBarline());
             }
         );
 
@@ -418,7 +424,7 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testKeySignatureWithSharpsRoundTrips() throws Exception {
         final var sharpCount = 3;
-        var song = buildSong(line -> line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance()));
+        var song = buildSong(line -> line.addElement(finalDoubleBarline()));
         song.withoutMutationTracking(() -> {
             song.setDefaultKeyType(KeyType.SHARPS);
             song.setDefaultKeyAccidentalCount(sharpCount);
@@ -431,7 +437,7 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testKeySignatureWithFlatsRoundTrips() throws Exception {
         final var flatCount = 2;
-        var song = buildSong(line -> line.addElement(ElementType.FINAL_DOUBLE_BARLINE.newInstance()));
+        var song = buildSong(line -> line.addElement(finalDoubleBarline()));
         song.withoutMutationTracking(() -> {
             song.setDefaultKeyType(KeyType.FLATS);
             song.setDefaultKeyAccidentalCount(flatCount);
@@ -445,10 +451,10 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testRepeatRightAtLineEndDoesNotBleedIntoNextLineWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(
-            line -> line.addElement(ElementType.REPEAT_RIGHT.newInstance()),
+            line -> line.addElement(repeatRight()),
             line -> {
-                line.addElement(ElementType.REPEAT_LEFT.newInstance());
-                line.addElement(ElementType.REPEAT_RIGHT.newInstance());
+                line.addElement(repeatLeft());
+                line.addElement(repeatRight());
             }
         );
 

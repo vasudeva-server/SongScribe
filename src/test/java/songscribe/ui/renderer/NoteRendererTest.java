@@ -32,6 +32,10 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.semiquaver;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -172,7 +176,7 @@ class NoteRendererTest extends UnitTest {
     @Test
     void testBreathMarkIsDrawnAtTheYItsStaffPositionImplies() {
         var line = detachedLine();
-        var breathMark = ElementType.BREATH_MARK.newInstance();
+        var breathMark = breathMark();
         line.addElement(breathMark);
 
         var invariants = RenderContextTestHelper.newContext(new Song())
@@ -330,7 +334,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testNoDotCountProducesNoDots() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setDotCount(0);
             note.setStaffPosition(IN_SPACE_STAFF_POSITION);
 
@@ -396,7 +400,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testOnLinePositionShiftsYUp() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setDotCount(1);
             note.setStaffPosition(ON_LINE_STAFF_POSITION);
 
@@ -407,7 +411,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testInSpacePositionHasZeroYOffset() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setDotCount(1);
             note.setStaffPosition(IN_SPACE_STAFF_POSITION);
 
@@ -418,7 +422,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testMultipleDotsSpacedByDotSpacing() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setDotCount(2);
             note.setStaffPosition(IN_SPACE_STAFF_POSITION);
 
@@ -462,7 +466,7 @@ class NoteRendererTest extends UnitTest {
             StaffElement note, LayoutResult.StemLayout stemLayout
         ) {
             var line = detachedLine();
-            var beamPartner = ElementType.QUAVER.newInstance();
+            var beamPartner = quaver();
             line.addElement(note);
             line.addElement(beamPartner);
             line.addBeaming(new Beam(note, beamPartner));
@@ -504,7 +508,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testForcedUpStemDrawsShorterByForcedShorteningSs() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(0);
             var forcedShorteningSs = 0.3;
@@ -518,7 +522,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testNaturalUpStemDrawsAtFullNaturalLength() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(0);
             var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, 0.0, false, 0);
@@ -530,7 +534,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testForcedShorteningCombinesWithLengtheningInTheRenderedStem() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(0);
             var lengtheningSs = 0.8;
@@ -545,7 +549,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testForcedDownStemDrawsShorterByForcedShorteningSs() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(false);
             note.setStaffPosition(0);
             var forcedShorteningSs = 0.3;
@@ -559,7 +563,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testNaturalDownStemDrawsAtFullNaturalLength() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(false);
             note.setStaffPosition(0);
             var stemLayout = new LayoutResult.StemLayout(0.0, 0.0, 0.0, 0.0, false, 0);
@@ -571,7 +575,7 @@ class NoteRendererTest extends UnitTest {
 
         @Test
         void testStemLengthClampsToForcedStemFloorWhenForcedShorteningExceedsIt() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStaffPosition(0);
             var outOfRangeForcedShorteningSs = SMuFLConstants.STEM_LENGTH_SS;
@@ -616,7 +620,7 @@ class NoteRendererTest extends UnitTest {
         // that half of the contract.
         @Test
         void testBeamedStemBelowTheForcedStemFloorIsNotClampedUp() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             note.setUpper(true);
             note.setStaffPosition(0);
             var stemLayout =
@@ -635,7 +639,7 @@ class NoteRendererTest extends UnitTest {
         // above the floor still shortens by exactly what the layout asked for.
         @Test
         void testBeamedStemAboveTheForcedStemFloorStillHonorsForcedShortening() {
-            var note = ElementType.QUAVER.newInstance();
+            var note = quaver();
             note.setUpper(true);
             note.setStaffPosition(0);
             var forcedShorteningSs = 0.3;
@@ -683,10 +687,10 @@ class NoteRendererTest extends UnitTest {
             boolean upper, int frenchShorteningLevels, double thickeningSs
         ) {
             var line = detachedLine();
-            var note = ElementType.SEMIQUAVER.newInstance();
+            var note = semiquaver();
             note.setUpper(upper);
             note.setStaffPosition(ON_LINE_STAFF_POSITION);
-            var beamPartner = ElementType.SEMIQUAVER.newInstance();
+            var beamPartner = semiquaver();
             line.addElement(note);
             line.addElement(beamPartner);
             var beam = new Beam(note, beamPartner);
@@ -797,7 +801,7 @@ class NoteRendererTest extends UnitTest {
             NoteGeometry.initializeAccidentalWidths();
 
             var line = detachedLine();
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setAccidental(StaffElement.Accidental.SHARP);
             line.addElement(note);
 

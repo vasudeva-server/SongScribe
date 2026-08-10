@@ -22,6 +22,7 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
@@ -30,7 +31,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import songscribe.dom.BeatChange;
 import songscribe.dom.BeatChangeAttachment;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 
@@ -78,7 +78,7 @@ class MusicXmlMetricModulationRoundTripTest extends MusicXmlRoundTripSupport {
     private Song buildBeatChangeSong(BeatChange beatChange) {
         return buildSong(line -> {
             for (var i = 0; i < NOTE_COUNT; i++) {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
 
                 if (i == MARKED_INDEX) {
@@ -131,9 +131,9 @@ class MusicXmlMetricModulationRoundTripTest extends MusicXmlRoundTripSupport {
         var beatChange = BeatChange.fromLegacyName(DOTTED_CROCHET_EQUALS_MINIM);
 
         var song = buildSong(
-            line -> line.addElement(ElementType.CROTCHET.newInstance()),
+            line -> line.addElement(crotchet()),
             line -> {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 note.addAttachment(new BeatChangeAttachment(note, beatChange));
             }

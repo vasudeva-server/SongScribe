@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.List;
 
@@ -36,7 +37,6 @@ import org.mockito.MockedStatic;
 import net.engio.mbassy.listener.Handler;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.message.Message;
@@ -155,13 +155,13 @@ class UndoStaleSelectionTest extends UnitTest {
     private SelectionCoordinator selectEverythingOverAnUndoableInsertion() {
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < BASE_NOTE_COUNT; i++) {
-                line.addElement(ElementType.QUAVER.newInstance());
+                line.addElement(quaver());
             }
         });
 
         song.withModification(() -> {
             for (var i = 0; i < INSERTED_NOTE_COUNT; i++) {
-                line.addElement(ElementType.QUAVER.newInstance());
+                line.addElement(quaver());
             }
         });
 
@@ -245,7 +245,7 @@ class UndoStaleSelectionTest extends UnitTest {
 
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < rangeNoteCount; i++) {
-                line.addElement(ElementType.QUAVER.newInstance());
+                line.addElement(quaver());
             }
         });
 
@@ -253,7 +253,7 @@ class UndoStaleSelectionTest extends UnitTest {
 
         song.withModification(() -> {
             for (var i = 0; i < precedingInsertionCount; i++) {
-                line.addElement(i, ElementType.QUAVER.newInstance());
+                line.addElement(i, quaver());
             }
         });
 
@@ -284,15 +284,15 @@ class UndoStaleSelectionTest extends UnitTest {
         final var insertedNoteIndex = 1;
         final var rangeEndBeforeUndo = 2;
 
-        var noteA = ElementType.QUAVER.newInstance();
-        var noteB = ElementType.QUAVER.newInstance();
+        var noteA = quaver();
+        var noteB = quaver();
         song.withoutMutationTracking(() -> {
             line.addElement(noteA);
             line.addElement(noteB);
         });
 
         song.withModification(
-            () -> line.addElement(insertedNoteIndex, ElementType.QUAVER.newInstance()));
+            () -> line.addElement(insertedNoteIndex, quaver()));
 
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
         buildController(coordinator);
@@ -320,15 +320,15 @@ class UndoStaleSelectionTest extends UnitTest {
         final var insertedNoteIndex = 1;
         final var anchor = 2;
 
-        var noteA = ElementType.QUAVER.newInstance();
-        var noteB = ElementType.QUAVER.newInstance();
+        var noteA = quaver();
+        var noteB = quaver();
         song.withoutMutationTracking(() -> {
             line.addElement(noteA);
             line.addElement(noteB);
         });
 
         song.withModification(
-            () -> line.addElement(insertedNoteIndex, ElementType.QUAVER.newInstance()));
+            () -> line.addElement(insertedNoteIndex, quaver()));
 
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
         buildController(coordinator);
@@ -363,11 +363,11 @@ class UndoStaleSelectionTest extends UnitTest {
 
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < rangeNoteCount; i++) {
-                line.addElement(ElementType.QUAVER.newInstance());
+                line.addElement(quaver());
             }
         });
 
-        song.withModification(() -> otherLine.addElement(ElementType.QUAVER.newInstance()));
+        song.withModification(() -> otherLine.addElement(quaver()));
 
         var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
         buildController(coordinator);

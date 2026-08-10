@@ -28,6 +28,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.awt.Font;
 import java.awt.Point;
@@ -40,7 +41,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
@@ -160,7 +160,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         editModeManagerMock.when(EditModeManager::isPreviewElementVisible).thenReturn(true);
         editModeManagerMock.when(() -> EditModeManager.elementWasModified(any(), anyInt())).thenReturn(false);
         editModeManagerMock.when(EditModeManager::getPreviewElement)
-            .thenReturn(ElementType.CROTCHET.newInstance());
+            .thenReturn(crotchet());
 
         PreviewElementManager.installOverlay(host);
 
@@ -418,7 +418,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
     void testXIndexOnlyChangeRepositionsWithoutChangingHeight() {
         // A second, real element so xIndex=1 lands before the terminal rather than on the
         // always-blocked append-after-terminal slot (elementCount would otherwise be 1).
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(crotchet()));
         when(layoutResult.findInsertionIndex(anyDouble(), eq(line))).thenReturn(0);
         PreviewElementManager.trackMouse(lc, mouseEvent(0, ON_STAFF_Y_PX, false));
         var overlay = PreviewElementManager.getOverlay();
@@ -467,7 +467,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         // move reports a changed index with an unchanged configuration. The visibility flag the
         // restore flipped is not one of the fields configurationChanged tracks, so if the move
         // path did not drive this overlay nothing would.
-        song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+        song.withoutMutationTracking(() -> line.addElement(crotchet()));
         when(layoutResult.findInsertionIndex(anyDouble(), eq(line))).thenReturn(0);
         PreviewElementManager.trackMouse(lc, mouseEvent(0, ON_STAFF_Y_PX, false));
 

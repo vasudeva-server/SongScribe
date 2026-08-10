@@ -21,6 +21,7 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -521,7 +522,7 @@ class TupletValidatorCoreTest extends UnitTest {
                 Tempo.DEFAULT_DESCRIPTION, Tempo.DEFAULT_SHOW_TEMPO));
 
             for (var i = 0; i < count; i++) {
-                var note = ElementType.QUAVER.newInstance();
+                var note = quaver();
                 note.setDotCount(ONE_DOT);
                 line.addElement(note);
             }

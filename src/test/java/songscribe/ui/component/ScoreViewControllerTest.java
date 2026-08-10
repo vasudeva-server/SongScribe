@@ -31,6 +31,12 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -132,7 +138,7 @@ class ScoreViewControllerTest extends UnitTest {
         void testDeleteRemovesSelectedLyricAndClearsLyricSelection() {
             var song = new Song();
             var line = song.getLine(0);
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "om", Lyric.Extend.NONE);
             song.withoutMutationTracking(() -> line.addElement(element));
 
@@ -171,7 +177,7 @@ class ScoreViewControllerTest extends UnitTest {
             // arrives. There is no index to delete at, so only the selection is cleared.
             var song = new Song();
             var line = song.getLine(0);
-            var element = ElementType.CROTCHET.newInstance();
+            var element = crotchet();
             element.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "om", Lyric.Extend.NONE);
             song.withoutMutationTracking(() -> line.addElement(element));
 
@@ -210,10 +216,6 @@ class ScoreViewControllerTest extends UnitTest {
     @SuppressWarnings("PackageVisibleInnerClass")
     @Nested
     class HandleDelete {
-
-        private static StaffElement crotchet() {
-            return ElementType.CROTCHET.newInstance();
-        }
 
         private static ScoreViewController buildController(
             Song song,
@@ -347,7 +349,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = song.getLine(0);
             var noteA = crotchet();
             noteA.setXOffsetPx(0);
-            var breath = ElementType.BREATH_MARK.newInstance();
+            var breath = breathMark();
             breath.setXOffsetPx(10);
             var noteB = crotchet();
             noteB.setXOffsetPx(20);
@@ -381,7 +383,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = song.getLine(0);
             var noteA = crotchet();
             var noteB = crotchet();
-            var breath = ElementType.BREATH_MARK.newInstance();
+            var breath = breathMark();
 
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
@@ -413,7 +415,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = song.getLine(0);
             var noteA = crotchet();
             var noteB = crotchet();
-            var breath = ElementType.BREATH_MARK.newInstance();
+            var breath = breathMark();
             var noteC = crotchet();
 
             song.withoutMutationTracking(() -> {
@@ -446,7 +448,7 @@ class ScoreViewControllerTest extends UnitTest {
             var song = new Song();
             var line = song.getLine(0);
             var noteA = crotchet();
-            var breath = ElementType.BREATH_MARK.newInstance();
+            var breath = breathMark();
 
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
@@ -475,7 +477,7 @@ class ScoreViewControllerTest extends UnitTest {
             var line = song.getLine(0);
             var noteA = crotchet();
             // Paired grace note: GRACE_QUAVER with CONNECTED glissando
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setGlissando();
             var noteB = crotchet();
             var noteC = crotchet();
@@ -512,10 +514,10 @@ class ScoreViewControllerTest extends UnitTest {
             var song = new Song();
             var line = song.getLine(0);
             var noteA = crotchet();
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setGlissando();
             var noteB = crotchet();
-            var breath = ElementType.BREATH_MARK.newInstance();
+            var breath = breathMark();
 
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
@@ -662,7 +664,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             song.withoutMutationTracking(() -> {
                 for (var i = 0; i < NOTE_COUNT; i++) {
-                    line.addElement(ElementType.CROTCHET.newInstance());
+                    line.addElement(crotchet());
                 }
             });
 
@@ -817,9 +819,9 @@ class ScoreViewControllerTest extends UnitTest {
             // the selected range into the ClipboardManager.
             var song = new Song();
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
-            var noteB = ElementType.CROTCHET.newInstance();
-            var noteC = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            var noteC = crotchet();
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
                 line.addElement(noteB);
@@ -914,9 +916,9 @@ class ScoreViewControllerTest extends UnitTest {
             // and then delete those elements from the line.
             var song = new Song();
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
-            var noteB = ElementType.CROTCHET.newInstance();
-            var noteC = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            var noteC = crotchet();
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
                 line.addElement(noteB);
@@ -962,8 +964,8 @@ class ScoreViewControllerTest extends UnitTest {
         void testHandleCutLeavesClipboardAndScoreUntouchedWhenEndingInvalidationIsDeclined() {
             var song = new Song();
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
-            var noteB = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
+            var noteB = crotchet();
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
                 line.addElement(noteB);
@@ -1006,8 +1008,8 @@ class ScoreViewControllerTest extends UnitTest {
         void testHandlePasteLeavesScoreAndClipboardUntouchedWhenEndingInvalidationIsDeclined() {
             var song = new Song();
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
-            var noteB = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
+            var noteB = crotchet();
             var ending = new Ending(noteA, noteB);
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
@@ -1018,7 +1020,7 @@ class ScoreViewControllerTest extends UnitTest {
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
             ReflectionTestHelper.selectRange(coordinator, 0, 1);
 
-            var pastedNote = ElementType.CROTCHET.newInstance();
+            var pastedNote = crotchet();
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(List.of(pastedNote), Collections.singletonList(null), List.of()));
 
@@ -1088,7 +1090,7 @@ class ScoreViewControllerTest extends UnitTest {
         }
 
         private static StaffElement sharpNote() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(F_STAFF_POSITION);
             note.setAccidental(StaffElement.Accidental.SHARP);
             return note;
@@ -1187,7 +1189,7 @@ class ScoreViewControllerTest extends UnitTest {
             // A paste over a selection deletes what it covers, so it asks the same question. Cancel
             // must leave the line exactly as it was, the way a too-narrow line already does.
             var clipboardManager = new ClipboardManager();
-            var pastedNote = ElementType.CROTCHET.newInstance();
+            var pastedNote = crotchet();
             clipboardManager.setFragment(
                 new Fragment(List.of(pastedNote), Collections.singletonList(null), List.of()));
 
@@ -1208,7 +1210,7 @@ class ScoreViewControllerTest extends UnitTest {
         @Test
         void testPasteReplaceAcceptedClearsTheRestatement() {
             var clipboardManager = new ClipboardManager();
-            var pastedNote = ElementType.CROTCHET.newInstance();
+            var pastedNote = crotchet();
             clipboardManager.setFragment(
                 new Fragment(List.of(pastedNote), Collections.singletonList(null), List.of()));
 
@@ -1244,12 +1246,12 @@ class ScoreViewControllerTest extends UnitTest {
             // Set up a song with one line and one note, and pre-load the clipboard.
             var song = new Song();
             var line = song.getLine(0);
-            var existingNote = ElementType.CROTCHET.newInstance();
+            var existingNote = crotchet();
             song.withoutMutationTracking(() -> line.addElement(existingNote));
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(
-                new Fragment(List.of(ElementType.QUAVER.newInstance()), Collections.singletonList(null), List.of())
+                new Fragment(List.of(quaver()), Collections.singletonList(null), List.of())
             );
 
             var scoreMock = mock(ScoreView.class);
@@ -1299,7 +1301,7 @@ class ScoreViewControllerTest extends UnitTest {
             // methods must be invoked — verified by checking the clipboard stays empty.
             var song = new Song();
             var line = song.getLine(0);
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             song.withoutMutationTracking(() -> line.addElement(note));
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -1328,7 +1330,7 @@ class ScoreViewControllerTest extends UnitTest {
             // Row 25 (COPY branch): COPY operation is dispatched — clipboard receives content.
             var song = new Song();
             var line = song.getLine(0);
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             song.withoutMutationTracking(() -> line.addElement(note));
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -1356,8 +1358,8 @@ class ScoreViewControllerTest extends UnitTest {
             // Row 25 (DELETE branch): routes to handleDelete — element is removed from line.
             var song = new Song();
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
-            var noteB = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
+            var noteB = crotchet();
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
                 line.addElement(noteB);
@@ -1454,7 +1456,7 @@ class ScoreViewControllerTest extends UnitTest {
 
         @Test
         void testDeleteNoteDoesNotRemoveUnpairedGraceNote() {
-            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var graceNote = graceQuaver();
             var line = lineWith(crotchet(), graceNote, crotchet());
             var removed = ScoreViewController.deleteNote(2, line);
 
@@ -1701,18 +1703,10 @@ class ScoreViewControllerTest extends UnitTest {
             assertThat(line.getElement(0)).isSameAs(noteAfter);
         }
 
-        private StaffElement crotchet() {
-            return ElementType.CROTCHET.newInstance();
-        }
-
         private StaffElement pairedGraceNote() {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setGlissando();
             return grace;
-        }
-
-        private StaffElement breathMark() {
-            return ElementType.BREATH_MARK.newInstance();
         }
 
         private Line lineWith(StaffElement... elements) {
@@ -1740,8 +1734,8 @@ class ScoreViewControllerTest extends UnitTest {
             // state.selectAll() and then notify the score via selectionChanged() + repaint().
             var song = new Song();
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
-            var noteB = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
+            var noteB = crotchet();
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
                 line.addElement(noteB);
@@ -1777,8 +1771,8 @@ class ScoreViewControllerTest extends UnitTest {
             var song = new Song();
             var line = song.getLine(0);
             song.withoutMutationTracking(() -> {
-                line.addElement(ElementType.CROTCHET.newInstance());
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(crotchet());
+                line.addElement(crotchet());
             });
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -2030,8 +2024,8 @@ class ScoreViewControllerTest extends UnitTest {
         @BeforeEach
         void setUp() {
             line = detachedLine();
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
+            line.addElement(crotchet());
             lineComponentMock = mock(LineComponent.class);
 
             var linePanelMock = mock(LinePanel.class);
@@ -2160,8 +2154,8 @@ class ScoreViewControllerTest extends UnitTest {
             // The setUp wires scoreMock → mainPanel → staffPanel → empty linePanels,
             // so no line component is invalidated and viewChanged() must not be called.
             var line = detachedLine();
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
+            line.addElement(crotchet());
 
             fire(new BeamingRemoval(line, new Beam(line.getElement(0), line.getElement(1))));
             verify(scoreMock, never()).viewChanged();
@@ -2188,12 +2182,12 @@ class ScoreViewControllerTest extends UnitTest {
             scoreMock = mock(ScoreView.class);
 
             targetLine = detachedLine();
-            targetLine.addElement(ElementType.CROTCHET.newInstance());
-            targetLine.addElement(ElementType.CROTCHET.newInstance());
+            targetLine.addElement(crotchet());
+            targetLine.addElement(crotchet());
 
             otherLine = detachedLine();
-            otherLine.addElement(ElementType.CROTCHET.newInstance());
-            otherLine.addElement(ElementType.CROTCHET.newInstance());
+            otherLine.addElement(crotchet());
+            otherLine.addElement(crotchet());
 
             targetLineComponentMock = mock(LineComponent.class);
             otherLineComponentMock = mock(LineComponent.class);
@@ -2529,10 +2523,10 @@ class ScoreViewControllerTest extends UnitTest {
 
             var sourceSong = wideSong();
             var sourceLine = sourceSong.getLine(0);
-            var sharpenedNote = ElementType.CROTCHET.newInstance();
+            var sharpenedNote = crotchet();
             sharpenedNote.setStaffPosition(sharedPositionSp);
             sharpenedNote.setAccidental(StaffElement.Accidental.SHARP);
-            var copiedNote = ElementType.CROTCHET.newInstance();
+            var copiedNote = crotchet();
             copiedNote.setStaffPosition(sharedPositionSp);
             sourceSong.withoutMutationTracking(() -> {
                 sourceLine.addElement(sharpenedNote);
@@ -2546,7 +2540,7 @@ class ScoreViewControllerTest extends UnitTest {
             // the pasted note an accidental and the key signature leaves its pitch alone.
             var destinationSong = wideSong();
             var destinationLine = destinationSong.getLine(0);
-            var unrelatedNote = ElementType.CROTCHET.newInstance();
+            var unrelatedNote = crotchet();
             unrelatedNote.setStaffPosition(unrelatedPositionSp);
             destinationSong.withoutMutationTracking(() -> destinationLine.addElement(unrelatedNote));
 
@@ -2572,9 +2566,9 @@ class ScoreViewControllerTest extends UnitTest {
             // and turn middle/end into a new, independently valid 2-syllable word.
             var song = wideSong();
             var line = song.getLine(0);
-            var begin = ElementType.CROTCHET.newInstance();
-            var middle = ElementType.CROTCHET.newInstance();
-            var end = ElementType.CROTCHET.newInstance();
+            var begin = crotchet();
+            var middle = crotchet();
+            var end = crotchet();
             begin.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "be", Lyric.Extend.NONE);
             middle.setLyricForVerse(1, Lyric.Syllabic.MIDDLE, false, "gin", Lyric.Extend.NONE);
             end.setLyricForVerse(1, Lyric.Syllabic.END, false, "ning", Lyric.Extend.NONE);
@@ -2586,7 +2580,7 @@ class ScoreViewControllerTest extends UnitTest {
             });
 
             var clipboardManager = new ClipboardManager();
-            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), Collections.singletonList(null), List.of()));
+            clipboardManager.setFragment(new Fragment(List.of(quaver()), Collections.singletonList(null), List.of()));
             var controller = buildController(song, clipboardManager);
 
             song.withModification(() -> controller.tryInsertFragment(line, 1, null));
@@ -2617,9 +2611,9 @@ class ScoreViewControllerTest extends UnitTest {
             // CONTINUE/STOP — the whole remaining chain collapses to plain notes.
             var song = wideSong();
             var line = song.getLine(0);
-            var start = ElementType.CROTCHET.newInstance();
-            var continueEl = ElementType.CROTCHET.newInstance();
-            var stop = ElementType.CROTCHET.newInstance();
+            var start = crotchet();
+            var continueEl = crotchet();
+            var stop = crotchet();
             start.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
             continueEl.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
             stop.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
@@ -2631,7 +2625,7 @@ class ScoreViewControllerTest extends UnitTest {
             });
 
             var clipboardManager = new ClipboardManager();
-            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), Collections.singletonList(null), List.of()));
+            clipboardManager.setFragment(new Fragment(List.of(quaver()), Collections.singletonList(null), List.of()));
             var controller = buildController(song, clipboardManager);
 
             song.withModification(() -> controller.tryInsertFragment(line, 1, null));
@@ -2655,8 +2649,8 @@ class ScoreViewControllerTest extends UnitTest {
         void testRepeatedPastesShareNoElementOrSpanInstancesAndAnchorToTheirOwnClones() {
             var song = wideSong();
             var line = song.getLine(0);
-            var anchorSource = ElementType.CROTCHET.newInstance();
-            var endSource = ElementType.CROTCHET.newInstance();
+            var anchorSource = crotchet();
+            var endSource = crotchet();
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
@@ -2692,11 +2686,11 @@ class ScoreViewControllerTest extends UnitTest {
         void testPastedSpanIndicesResolveAgainstTheDestinationLine() {
             var song = wideSong();
             var line = song.getLine(0);
-            var existing = ElementType.CROTCHET.newInstance();
+            var existing = crotchet();
             song.withoutMutationTracking(() -> line.addElement(existing));
 
-            var anchorSource = ElementType.CROTCHET.newInstance();
-            var endSource = ElementType.CROTCHET.newInstance();
+            var anchorSource = crotchet();
+            var endSource = crotchet();
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(anchorSource, endSource),
@@ -2719,7 +2713,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             song.withoutMutationTracking(() -> {
                 for (var i = 0; i < count; i++) {
-                    var note = ElementType.CROTCHET.newInstance();
+                    var note = crotchet();
                     notes.add(note);
                     line.addElement(note);
                 }
@@ -2736,10 +2730,10 @@ class ScoreViewControllerTest extends UnitTest {
             // where the grace note was, leaving no dead gap at the head of the line.
             var song = wideSong();
             var line = song.getLine(0);
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setGlissando();
-            var host = ElementType.CROTCHET.newInstance();
-            var tail = ElementType.CROTCHET.newInstance();
+            var host = crotchet();
+            var tail = crotchet();
 
             song.withoutMutationTracking(() -> {
                 line.addElement(grace);
@@ -2747,7 +2741,7 @@ class ScoreViewControllerTest extends UnitTest {
                 line.addElement(tail);
             });
 
-            var pasted = ElementType.CROTCHET.newInstance();
+            var pasted = crotchet();
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(List.of(pasted), Collections.singletonList(null), List.of()));
             var controller = buildController(song, clipboardManager);
@@ -2765,10 +2759,10 @@ class ScoreViewControllerTest extends UnitTest {
             // cascade is not allowed to leak a gap into the spacing.
             var referenceSong = wideSong();
             var referenceLine = referenceSong.getLine(0);
-            var referenceTail = ElementType.CROTCHET.newInstance();
+            var referenceTail = crotchet();
             referenceSong.withoutMutationTracking(() -> referenceLine.addElement(referenceTail));
 
-            var referencePasted = ElementType.CROTCHET.newInstance();
+            var referencePasted = crotchet();
             var referenceClipboard = new ClipboardManager();
             referenceClipboard.setFragment(new Fragment(List.of(referencePasted), Collections.singletonList(null), List.of()));
             var referenceController = buildController(referenceSong, referenceClipboard);
@@ -2795,8 +2789,8 @@ class ScoreViewControllerTest extends UnitTest {
 
             // Plain notes, so nothing invalidates the destination ending on content
             // grounds and the straddle rule is the only thing acting on the endings.
-            var pastedFirst = ElementType.CROTCHET.newInstance();
-            var pastedSecond = ElementType.CROTCHET.newInstance();
+            var pastedFirst = crotchet();
+            var pastedSecond = crotchet();
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(pastedFirst, pastedSecond),
@@ -2832,15 +2826,15 @@ class ScoreViewControllerTest extends UnitTest {
             var fixture = EndingLineFixture.primary(song);
             var line = fixture.line();
 
-            var pastedAnchor = ElementType.SINGLE_BARLINE.newInstance();
-            var pastedEnd = ElementType.SINGLE_BARLINE.newInstance();
+            var pastedAnchor = singleBarline();
+            var pastedEnd = singleBarline();
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(
                     pastedAnchor,
-                    ElementType.CROTCHET.newInstance(),
-                    ElementType.REPEAT_RIGHT.newInstance(),
-                    ElementType.CROTCHET.newInstance(),
+                    crotchet(),
+                    repeatRight(),
+                    crotchet(),
                     pastedEnd
                 ),
                 Arrays.asList(null, null, null, null, null),
@@ -2873,7 +2867,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
-                List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance()),
+                List.of(crotchet(), crotchet()),
                 Arrays.asList(null, null),
                 List.of()
             ));
@@ -2907,7 +2901,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
-                List.of(ElementType.SINGLE_BARLINE.newInstance()),
+                List.of(singleBarline()),
                 Collections.singletonList(null),
                 List.of()
             ));
@@ -2937,7 +2931,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
-                List.of(ElementType.CROTCHET.newInstance(), ElementType.REPEAT_RIGHT.newInstance()),
+                List.of(crotchet(), repeatRight()),
                 Arrays.asList(null, null),
                 List.of()
             ));
@@ -2968,7 +2962,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
-                List.of(ElementType.CROTCHET.newInstance(), ElementType.REPEAT_RIGHT.newInstance()),
+                List.of(crotchet(), repeatRight()),
                 Arrays.asList(null, null),
                 List.of()
             ));
@@ -3000,7 +2994,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
-                List.of(ElementType.SINGLE_BARLINE.newInstance()),
+                List.of(singleBarline()),
                 Collections.singletonList(null),
                 List.of()
             ));
@@ -3039,7 +3033,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
-                List.of(ElementType.CROTCHET.newInstance()),
+                List.of(crotchet()),
                 Collections.singletonList(null),
                 List.of()
             ));
@@ -3065,7 +3059,7 @@ class ScoreViewControllerTest extends UnitTest {
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
-                List.of(ElementType.SINGLE_BARLINE.newInstance()),
+                List.of(singleBarline()),
                 Collections.singletonList(null),
                 List.of()
             ));
@@ -3115,8 +3109,8 @@ class ScoreViewControllerTest extends UnitTest {
             var destinationBeam = new Beam(notes.get(1), notes.get(4));
             song.withoutMutationTracking(() -> line.addSpan(destinationBeam));
 
-            var pastedFirst = ElementType.QUAVER.newInstance();
-            var pastedSecond = ElementType.QUAVER.newInstance();
+            var pastedFirst = quaver();
+            var pastedSecond = quaver();
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(pastedFirst, pastedSecond),
@@ -3159,8 +3153,8 @@ class ScoreViewControllerTest extends UnitTest {
             var notes = fillLine(song, line, DESTINATION_NOTE_COUNT);
             song.withoutMutationTracking(() -> line.addSpan(new Beam(notes.get(1), notes.get(4))));
 
-            var pastedFirst = ElementType.QUAVER.newInstance();
-            var pastedSecond = ElementType.QUAVER.newInstance();
+            var pastedFirst = quaver();
+            var pastedSecond = quaver();
             var pastedBeam = new Beam(pastedFirst, pastedSecond);
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
@@ -3185,9 +3179,9 @@ class ScoreViewControllerTest extends UnitTest {
             // survive, so it silently stretches over the pasted notes.
             var song = wideSong();
             var line = song.getLine(0);
-            var beamStart = ElementType.QUAVER.newInstance();
-            var beamMiddle = ElementType.QUAVER.newInstance();
-            var beamEnd = ElementType.QUAVER.newInstance();
+            var beamStart = quaver();
+            var beamMiddle = quaver();
+            var beamEnd = quaver();
             var destinationBeam = new Beam(beamStart, beamEnd);
 
             song.withoutMutationTracking(() -> {
@@ -3197,8 +3191,8 @@ class ScoreViewControllerTest extends UnitTest {
                 line.addSpan(destinationBeam);
             });
 
-            var pastedFirst = ElementType.QUAVER.newInstance();
-            var pastedSecond = ElementType.QUAVER.newInstance();
+            var pastedFirst = quaver();
+            var pastedSecond = quaver();
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(pastedFirst, pastedSecond),
@@ -3218,9 +3212,9 @@ class ScoreViewControllerTest extends UnitTest {
         void testPasteInsideAHairpinKeepsTheDestinationHairpinAndDropsThePastedOne() {
             var song = wideSong();
             var line = song.getLine(0);
-            var hairpinStart = ElementType.CROTCHET.newInstance();
-            var hairpinMiddle = ElementType.CROTCHET.newInstance();
-            var hairpinEnd = ElementType.CROTCHET.newInstance();
+            var hairpinStart = crotchet();
+            var hairpinMiddle = crotchet();
+            var hairpinEnd = crotchet();
             var destinationHairpin = new Crescendo(hairpinStart, hairpinEnd);
 
             song.withoutMutationTracking(() -> {
@@ -3230,8 +3224,8 @@ class ScoreViewControllerTest extends UnitTest {
                 line.addSpan(destinationHairpin);
             });
 
-            var pastedFirst = ElementType.CROTCHET.newInstance();
-            var pastedSecond = ElementType.CROTCHET.newInstance();
+            var pastedFirst = crotchet();
+            var pastedSecond = crotchet();
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(new Fragment(
                 List.of(pastedFirst, pastedSecond),
@@ -3260,8 +3254,8 @@ class ScoreViewControllerTest extends UnitTest {
             var song = wideSong();
             var firstLine = song.getLine(0);
             var secondLine = new Line(song);
-            var anchorNote = ElementType.CROTCHET.newInstance();
-            var endNote = ElementType.CROTCHET.newInstance();
+            var anchorNote = crotchet();
+            var endNote = crotchet();
             var crossLineTie = new Tie(anchorNote, endNote);
 
             song.withoutMutationTracking(() -> {
@@ -3282,7 +3276,7 @@ class ScoreViewControllerTest extends UnitTest {
             var sourceSong = wideSong();
             var sourceLine = sourceSong.getLine(0);
             sourceSong.withoutMutationTracking(
-                () -> sourceLine.addElement(ElementType.CROTCHET.newInstance()));
+                () -> sourceLine.addElement(crotchet()));
 
             var clipboardManager = new ClipboardManager();
             clipboardManager.setFragment(Fragment.capture(sourceLine, 0, 0));
@@ -3314,10 +3308,10 @@ class ScoreViewControllerTest extends UnitTest {
             // compose into a faithful round trip — not just that each half works alone.
             var song = wideSong();
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
-            var noteB = ElementType.CROTCHET.newInstance();
-            var noteC = ElementType.CROTCHET.newInstance();
-            var noteD = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
+            var noteB = crotchet();
+            var noteC = crotchet();
+            var noteD = crotchet();
             noteA.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "la", Lyric.Extend.NONE);
 
             song.withoutMutationTracking(() -> {
@@ -3412,8 +3406,8 @@ class ScoreViewControllerTest extends UnitTest {
                 .as("precondition: the destination line is genuinely empty")
                 .isEqualTo(0);
 
-            var pastedAnchor = ElementType.CROTCHET.newInstance();
-            var pastedEnd = ElementType.CROTCHET.newInstance();
+            var pastedAnchor = crotchet();
+            var pastedEnd = crotchet();
             pastedAnchor.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "be", Lyric.Extend.NONE);
             pastedEnd.setLyricForVerse(1, Lyric.Syllabic.END, false, "gin", Lyric.Extend.NONE);
             var pastedElements = List.of(pastedAnchor, pastedEnd);
@@ -3511,8 +3505,8 @@ class ScoreViewControllerTest extends UnitTest {
             var song = new Song();
             song.withoutMutationTracking(() -> song.setLineWidthSs(WIDE_LINE_WIDTH_SS));
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
-            var noteB = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
+            var noteB = crotchet();
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
                 line.addElement(noteB);
@@ -3522,7 +3516,7 @@ class ScoreViewControllerTest extends UnitTest {
             ReflectionTestHelper.selectRange(coordinator, 0, 0); // select noteA
 
             var clipboardManager = new ClipboardManager();
-            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), Collections.singletonList(null), List.of()));
+            clipboardManager.setFragment(new Fragment(List.of(quaver()), Collections.singletonList(null), List.of()));
 
             var controller = buildController(song, coordinator, mock(ScoreView.class), clipboardManager);
 
@@ -3540,14 +3534,14 @@ class ScoreViewControllerTest extends UnitTest {
             var song = new Song();
             song.withoutMutationTracking(() -> song.setLineWidthSs(NARROW_LINE_WIDTH_SS));
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
             song.withoutMutationTracking(() -> line.addElement(noteA));
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
             ReflectionTestHelper.selectRange(coordinator, 0, 0);
 
             var clipboardManager = new ClipboardManager();
-            clipboardManager.setFragment(new Fragment(List.of(ElementType.QUAVER.newInstance()), Collections.singletonList(null), List.of()));
+            clipboardManager.setFragment(new Fragment(List.of(quaver()), Collections.singletonList(null), List.of()));
 
             var controller = buildController(song, coordinator, mock(ScoreView.class), clipboardManager);
 
@@ -3564,7 +3558,7 @@ class ScoreViewControllerTest extends UnitTest {
         void testHandlePasteWithNullFragmentIsNoOp() {
             var song = new Song();
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
             song.withoutMutationTracking(() -> line.addElement(noteA));
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);
@@ -3583,7 +3577,7 @@ class ScoreViewControllerTest extends UnitTest {
         void testHandlePasteWithEmptyFragmentIsNoOp() {
             var song = new Song();
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
             song.withoutMutationTracking(() -> line.addElement(noteA));
 
             var coordinator = ReflectionTestHelper.createCoordinatorForLine(line);

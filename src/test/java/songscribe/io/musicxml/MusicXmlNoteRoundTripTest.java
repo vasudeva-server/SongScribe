@@ -21,6 +21,10 @@
 package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.minim;
 
 import java.io.StringReader;
 import java.util.List;
@@ -214,11 +218,11 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
         // Set upper=true, stemDirectionAuto=false on the expected note so assertNoteEquals passes
         // when compared to the round-tripped note (which gets stemDirectionAuto=false from the reader).
         var song = buildSong(line -> {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setUpper(true);
             grace.setStemDirectionAuto(false);
             line.addElement(grace);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
         });
 
         var song2 = roundTrip(song);
@@ -238,7 +242,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
         for (var dotCount = 0; dotCount <= NoteTypeMapping.MAX_DOT_COUNT; dotCount++) {
             var finalDotCount = dotCount;
             var song = buildSong(line -> {
-                var note = ElementType.MINIM.newInstance();
+                var note = minim();
                 note.setDotCount(finalDotCount);
                 line.addElement(note);
             });
@@ -278,7 +282,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
 
         for (var accidental : accidentals) {
             var song = buildSong(line -> {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 note.setAccidental(accidental);
                 line.addElement(note);
             });
@@ -293,7 +297,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testParenthesizedAccidentalRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setAccidental(StaffElement.Accidental.SHARP);
             note.setAccidentalInParentheses(true);
             line.addElement(note);
@@ -309,7 +313,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testManualStemUpRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(true);
             note.setStemDirectionAuto(false);
             line.addElement(note);
@@ -325,7 +329,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testManualStemDownRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setUpper(false);
             note.setStemDirectionAuto(false);
             line.addElement(note);
@@ -341,7 +345,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testAutoStemDirectionRoundTrips() throws Exception {
         // Default new instance has stemDirectionAuto=true; verify it survives round-trip.
-        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        var song = buildSong(line -> line.addElement(crotchet()));
         var song2 = roundTrip(song);
         assertNoteEquals(
             song.getLine(0).getElement(0),
@@ -352,7 +356,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testNoteXOffsetRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setXOffsetPx(X_OFFSET_PX);
             line.addElement(note);
         });
@@ -369,7 +373,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testFermataRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             line.addElement(note);
             note.addAttachment(new FermataAttachment(note));
         });
@@ -384,7 +388,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testDynamicsRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             line.addElement(note);
             note.addAttachment(new DynamicAttachment(note, DynamicAttachment.DynamicType.FORTE));
         });
@@ -399,7 +403,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testAccentArticulationRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             line.addElement(note);
             note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
         });
@@ -414,7 +418,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testStaccatoArticulationRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             line.addElement(note);
             note.addArticulation(new Articulation(note, ArticulationType.STACCATO));
         });
@@ -430,10 +434,10 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     void testGlissandoRoundTrips() throws Exception {
         // The glissando is stored on the start note; the stop note carries nothing.
         var song = buildSong(line -> {
-            var startNote = ElementType.CROTCHET.newInstance();
+            var startNote = crotchet();
             startNote.setGlissando();
             line.addElement(startNote);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
         });
 
         var song2 = roundTrip(song);
@@ -451,7 +455,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testFallRoundTrips() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setFall();
             line.addElement(note);
         });
@@ -469,8 +473,8 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
         // <notations> and skipped as a standalone element by the writer.
         // The reader appends a new BREATH_MARK element after the note.
         var song = buildSong(line -> {
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.BREATH_MARK.newInstance());
+            line.addElement(crotchet());
+            line.addElement(breathMark());
         });
 
         var song2 = roundTrip(song);
@@ -500,7 +504,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
         var song = buildSong(line -> {
             line.setKeyType(KeyType.SHARPS);
             line.setKeyAccidentalCount(G_MAJOR_SHARP_COUNT);
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(F4_STAFF_POSITION);
             // No explicit accidental — the key makes it F#.
             line.addElement(note);
@@ -522,7 +526,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
         var song = buildSong(line -> {
             line.setKeyType(KeyType.SHARPS);
             line.setKeyAccidentalCount(G_MAJOR_SHARP_COUNT);
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(F4_STAFF_POSITION);
             line.addElement(note);
         });
@@ -555,7 +559,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
         var song = buildSong(line -> {
             line.setKeyType(KeyType.SHARPS);
             line.setKeyAccidentalCount(G_MAJOR_SHARP_COUNT);
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(F4_STAFF_POSITION);
             note.setAccidental(StaffElement.Accidental.NATURAL);
             line.addElement(note);
@@ -577,7 +581,7 @@ class MusicXmlNoteRoundTripTest extends MusicXmlRoundTripSupport {
         var song = buildSong(line -> {
             line.setKeyType(KeyType.SHARPS);
             line.setKeyAccidentalCount(G_MAJOR_SHARP_COUNT);
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(F4_STAFF_POSITION);
             note.setAccidental(StaffElement.Accidental.NATURAL);
             line.addElement(note);

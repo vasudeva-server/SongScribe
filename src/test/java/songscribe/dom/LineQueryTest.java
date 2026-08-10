@@ -21,6 +21,8 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -41,8 +43,8 @@ class LineQueryTest extends UnitTest {
         void testExtendsPastATrailingBreathMark() {
             var song = new Song();
             var line = song.getLine(0);
-            var note = ElementType.CROTCHET.newInstance();
-            var breath = ElementType.BREATH_MARK.newInstance();
+            var note = crotchet();
+            var breath = breathMark();
             song.withoutMutationTracking(() -> {
                 line.addElement(note);
                 line.addElement(breath);
@@ -57,8 +59,8 @@ class LineQueryTest extends UnitTest {
         void testLeavesANonBreathMarkSuccessorAlone() {
             var song = new Song();
             var line = song.getLine(0);
-            var noteA = ElementType.CROTCHET.newInstance();
-            var noteB = ElementType.CROTCHET.newInstance();
+            var noteA = crotchet();
+            var noteB = crotchet();
             song.withoutMutationTracking(() -> {
                 line.addElement(noteA);
                 line.addElement(noteB);
@@ -73,7 +75,7 @@ class LineQueryTest extends UnitTest {
         void testHandlesEndAtTheLastElement() {
             var song = new Song();
             var line = song.getLine(0);
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             song.withoutMutationTracking(() -> line.addElement(note));
 
             assertThat(line.effectiveDeleteEnd(0))
@@ -85,8 +87,8 @@ class LineQueryTest extends UnitTest {
         void testMutatesNothing() {
             var song = new Song();
             var line = song.getLine(0);
-            var note = ElementType.CROTCHET.newInstance();
-            var breath = ElementType.BREATH_MARK.newInstance();
+            var note = crotchet();
+            var breath = breathMark();
             song.withoutMutationTracking(() -> {
                 line.addElement(note);
                 line.addElement(breath);

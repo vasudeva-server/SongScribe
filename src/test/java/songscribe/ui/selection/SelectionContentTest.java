@@ -26,6 +26,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.quaverRest;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.util.List;
 
@@ -51,7 +56,7 @@ class SelectionContentTest extends MainFrameMockTest {
         // AccidentalAction does not apply to barlines
         var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.SINGLE_BARLINE.newInstance()),
+            List.of(singleBarline()),
             List.of(action)
         );
 
@@ -64,7 +69,7 @@ class SelectionContentTest extends MainFrameMockTest {
     void testApplicableActionWithApplicableNotesReturnsTrue() {
         var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of(action)
         );
 
@@ -78,7 +83,7 @@ class SelectionContentTest extends MainFrameMockTest {
         // AccidentalAction applies to the note but not the rest
         var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET_REST.newInstance()),
+            List.of(crotchet(), crotchetRest()),
             List.of(action)
         );
 
@@ -92,7 +97,7 @@ class SelectionContentTest extends MainFrameMockTest {
         // AccidentalAction applies only to notes, not rests
         var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET_REST.newInstance()),
+            List.of(crotchetRest()),
             List.of(action)
         );
 
@@ -106,7 +111,7 @@ class SelectionContentTest extends MainFrameMockTest {
         // DotAction applies to both notes and rests (durations)
         var action = DotAction.createDotAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET_REST.newInstance()),
+            List.of(crotchetRest()),
             List.of(action)
         );
 
@@ -119,7 +124,7 @@ class SelectionContentTest extends MainFrameMockTest {
     void testNoSelectionIsNotApplicable() {
         var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of(action)
         );
 
@@ -131,7 +136,7 @@ class SelectionContentTest extends MainFrameMockTest {
     @Test
     void testNoSelectionReturnsNoActiveSelection() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of()
         );
 
@@ -143,7 +148,7 @@ class SelectionContentTest extends MainFrameMockTest {
     @Test
     void testNoSelectionHasDurationsReturnsFalse() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of()
         );
 
@@ -153,7 +158,7 @@ class SelectionContentTest extends MainFrameMockTest {
     @Test
     void testSelectionWithMixedContentHasDurations() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance(), ElementType.SINGLE_BARLINE.newInstance()),
+            List.of(crotchet(), singleBarline()),
             List.of()
         );
 
@@ -165,7 +170,7 @@ class SelectionContentTest extends MainFrameMockTest {
     @Test
     void testSelectionWithOnlyDurationsHasDurations() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER_REST.newInstance()),
+            List.of(crotchet(), quaverRest()),
             List.of()
         );
 
@@ -177,7 +182,7 @@ class SelectionContentTest extends MainFrameMockTest {
     @Test
     void testSelectionWithOnlyNonDurationsHasNoDurations() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.SINGLE_BARLINE.newInstance()),
+            List.of(singleBarline()),
             List.of()
         );
 
@@ -189,7 +194,7 @@ class SelectionContentTest extends MainFrameMockTest {
     @Test
     void testWithSelectionReturnsActiveSelection() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of()
         );
 
@@ -203,7 +208,7 @@ class SelectionContentTest extends MainFrameMockTest {
     @Test
     void testNoSelectionHasRestsReturnsFalse() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET_REST.newInstance()),
+            List.of(crotchetRest()),
             List.of()
         );
 
@@ -213,7 +218,7 @@ class SelectionContentTest extends MainFrameMockTest {
     @Test
     void testSelectionContainingRestHasRests() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET_REST.newInstance()),
+            List.of(crotchet(), crotchetRest()),
             List.of()
         );
 
@@ -228,7 +233,7 @@ class SelectionContentTest extends MainFrameMockTest {
     void testNoteOnlySelectionHasNoRests() {
         // AccidentalAction does not matter here; the key is that only notes are selected
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance(), ElementType.QUAVER.newInstance()),
+            List.of(crotchet(), quaver()),
             List.of()
         );
 
@@ -247,7 +252,7 @@ class SelectionContentTest extends MainFrameMockTest {
         // so isApplicableToSelection returns true (not the stale false from range A).
         var action = AccidentalAction.createSharpAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.SINGLE_BARLINE.newInstance(), ElementType.CROTCHET.newInstance()),
+            List.of(singleBarline(), crotchet()),
             List.of(action)
         );
 
@@ -274,7 +279,7 @@ class SelectionContentTest extends MainFrameMockTest {
         // applyActionToSelection would return the stale false instead of recomputed true.
         var action = new NoteToRestAction(mainFrame());
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of(action),
             createSongMockForApply()
         );

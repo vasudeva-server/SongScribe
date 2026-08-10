@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import javax.swing.JOptionPane;
 
@@ -32,7 +33,6 @@ import java.util.ArrayList;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -63,7 +63,7 @@ class CrossLinePitchShiftTest extends UnitTest {
     private static final int LOWER_ONE_POSITION = 1;
 
     private static StaffElement crotchetAt(int staffPositionSp) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(staffPositionSp);
         return note;
     }

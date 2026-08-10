@@ -23,6 +23,13 @@ package songscribe.io.musicxml;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.Mockito.mock;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatRight;
 
 import java.io.PrintWriter;
 import java.io.StringReader;
@@ -314,7 +321,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      * the schema-valid gate.
      */
     private static Song buildCreditMatrixSong() {
-        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        var song = buildSong(line -> line.addElement(crotchet()));
 
         song.setMetadata(new SongMetadata(
             CREDIT_TEST_TITLE,
@@ -349,8 +356,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     @Test
     void testGraceNoteOutputHasNoStealTimeFollowingAndNoDuration() throws Exception {
         var song = buildSong(line -> {
-            line.addElement(ElementType.GRACE_QUAVER.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(graceQuaver());
+            line.addElement(crotchet());
         });
 
         var xml = writeToString(song);
@@ -387,7 +394,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     @Test
     void testNoteXOffsetIsWrittenAsRelativeXAndDefaultXIsBase() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setXOffsetPx(X_OFFSET_PX);
             line.addElement(note);
         });
@@ -460,10 +467,10 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     @Test
     void testGraceNoteGlissandoWritesBothSlideStartAndStop() throws Exception {
         var song = buildSong(line -> {
-            var graceNote = ElementType.GRACE_QUAVER.newInstance();
+            var graceNote = graceQuaver();
             graceNote.setGlissando();
             line.addElement(graceNote);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
         });
 
         var xml = writeToString(song);
@@ -518,7 +525,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     @Test
     void testSingleNoteWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(
-            line -> line.addElement(ElementType.CROTCHET.newInstance())
+            line -> line.addElement(crotchet())
         );
 
         var xml = writeToString(song);
@@ -533,7 +540,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     @Test
     void testRestWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(
-            line -> line.addElement(ElementType.CROTCHET_REST.newInstance())
+            line -> line.addElement(crotchetRest())
         );
 
         var xml = writeToString(song);
@@ -547,8 +554,8 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     void testGraceNoteWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(
             line -> {
-                line.addElement(ElementType.GRACE_QUAVER.newInstance());
-                line.addElement(ElementType.CROTCHET.newInstance());
+                line.addElement(graceQuaver());
+                line.addElement(crotchet());
             }
         );
 
@@ -562,7 +569,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     @Test
     void testDottedNoteWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setDotCount(1);
             line.addElement(note);
         });
@@ -577,7 +584,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     @Test
     void testNoteWithAccidentalWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setAccidental(StaffElement.Accidental.SHARP);
             line.addElement(note);
         });
@@ -595,7 +602,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     @Test
     void testWriterEmitsB4ForOriginStaffPosition() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(B4_STAFF_POSITION);
             line.addElement(note);
         });
@@ -608,7 +615,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     @Test
     void testWriterEmitsC4ForC4StaffPosition() throws Exception {
         var song = buildSong(line -> {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(C4_STAFF_POSITION);
             line.addElement(note);
         });
@@ -650,11 +657,11 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         StaffElement.@Nullable Accidental targetAccidental) {
 
         return buildSong(line -> {
-            var startNote = ElementType.CROTCHET.newInstance();
+            var startNote = crotchet();
             startNote.setStaffPosition(sourceStaffPosition);
             startNote.setGlissando();
 
-            var endNote = ElementType.CROTCHET.newInstance();
+            var endNote = crotchet();
             endNote.setStaffPosition(targetStaffPosition);
             endNote.setAccidental(targetAccidental);
 
@@ -732,16 +739,16 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     @Test
     void testAllSpansWriterOutputIsSchemaValid() throws Exception {
         var song = buildSong(line -> {
-            var endingAnchor = ElementType.REPEAT_LEFT.newInstance();
-            var quaver0 = ElementType.QUAVER.newInstance();
-            var quaver1 = ElementType.QUAVER.newInstance();
-            var crotchet0 = ElementType.CROTCHET.newInstance();
-            var crotchet1 = ElementType.CROTCHET.newInstance();
-            var split = ElementType.REPEAT_RIGHT.newInstance();
-            var triplet0 = ElementType.CROTCHET.newInstance();
-            var triplet1 = ElementType.CROTCHET.newInstance();
-            var triplet2 = ElementType.CROTCHET.newInstance();
-            var endingEnd = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+            var endingAnchor = repeatLeft();
+            var quaver0 = quaver();
+            var quaver1 = quaver();
+            var crotchet0 = crotchet();
+            var crotchet1 = crotchet();
+            var split = repeatRight();
+            var triplet0 = crotchet();
+            var triplet1 = crotchet();
+            var triplet2 = crotchet();
+            var endingEnd = finalDoubleBarline();
 
             line.addElement(endingAnchor);
             line.addElement(quaver0);
@@ -780,9 +787,9 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      */
     private static Song buildTiedSong(StaffElement.Direction startDirection, StaffElement.Direction endDirection) {
         return buildSong(line -> {
-            var crotchet0 = ElementType.CROTCHET.newInstance();
+            var crotchet0 = crotchet();
             crotchet0.setDirection(startDirection);
-            var crotchet1 = ElementType.CROTCHET.newInstance();
+            var crotchet1 = crotchet();
             crotchet1.setDirection(endDirection);
 
             line.addElement(crotchet0);
@@ -839,11 +846,11 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
         StaffElement.Direction note2Direction) {
 
         return buildSong(line -> {
-            var crotchet0 = ElementType.CROTCHET.newInstance();
+            var crotchet0 = crotchet();
             crotchet0.setDirection(note0Direction);
-            var crotchet1 = ElementType.CROTCHET.newInstance();
+            var crotchet1 = crotchet();
             crotchet1.setDirection(note1Direction);
-            var crotchet2 = ElementType.CROTCHET.newInstance();
+            var crotchet2 = crotchet();
             crotchet2.setDirection(note2Direction);
 
             line.addElement(crotchet0);
@@ -887,27 +894,27 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      */
     private static Song buildLyricMatrixSong() {
         return buildSong(line -> {
-            var plainSyllable = ElementType.CROTCHET.newInstance();
+            var plainSyllable = crotchet();
             plainSyllable.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "Ky", Lyric.Extend.NONE);
             line.addElement(plainSyllable);
 
-            var compoundSyllable = ElementType.CROTCHET.newInstance();
+            var compoundSyllable = crotchet();
             compoundSyllable.setLyricForVerse(1, Lyric.Syllabic.BEGIN, true, "self", Lyric.Extend.NONE);
             line.addElement(compoundSyllable);
 
-            var extenderStart = ElementType.CROTCHET.newInstance();
+            var extenderStart = crotchet();
             extenderStart.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "oh", Lyric.Extend.START);
             line.addElement(extenderStart);
 
-            var stopCarrier = ElementType.CROTCHET.newInstance();
+            var stopCarrier = crotchet();
             stopCarrier.setLyricForVerse(1, null, false, null, Lyric.Extend.STOP);
             line.addElement(stopCarrier);
 
-            var continueCarrier = ElementType.CROTCHET.newInstance();
+            var continueCarrier = crotchet();
             continueCarrier.setLyricForVerse(1, null, false, null, Lyric.Extend.CONTINUE);
             line.addElement(continueCarrier);
 
-            var multiVerse = ElementType.CROTCHET.newInstance();
+            var multiVerse = crotchet();
             multiVerse.setLyricForVerse(1, Lyric.Syllabic.SINGLE, false, "one", Lyric.Extend.NONE);
             multiVerse.setLyricForVerse(2, Lyric.Syllabic.SINGLE, false, "two", Lyric.Extend.NONE);
             line.addElement(multiVerse);
@@ -997,7 +1004,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      */
     @Test
     void testNoteWithoutLyricsEmitsNoLyricElement() throws Exception {
-        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        var song = buildSong(line -> line.addElement(crotchet()));
         var xml = writeToString(song);
         var doc = DocumentBuilderFactory.newInstance()
             .newDocumentBuilder()
@@ -1179,7 +1186,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      */
     @Test
     void testBlankCreditFieldsEmitNoCredit() throws Exception {
-        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        var song = buildSong(line -> line.addElement(crotchet()));
         var xml = writeToString(song);
 
         assertThat(creditTypesPresent(xml))
@@ -1201,7 +1208,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
      */
     @Test
     void testLyricsDateEqualToCompositionDateIsOmitted() throws Exception {
-        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        var song = buildSong(line -> line.addElement(crotchet()));
 
         song.setMetadata(new SongMetadata(
             CREDIT_TEST_TITLE,
@@ -1267,7 +1274,7 @@ class MusicXmlWriterOutputTest extends MusicXmlRoundTripSupport {
     @ParameterizedTest
     @ValueSource(doubles = { 0, NEGATIVE_LINE_WIDTH_SS })
     void testNonPositiveLineWidthIsWrittenAsTheFallbackWidth(double lineWidthSs) throws Exception {
-        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        var song = buildSong(line -> line.addElement(crotchet()));
         song.setLineWidthSs(lineWidthSs);
 
         var xml = writeToString(song);

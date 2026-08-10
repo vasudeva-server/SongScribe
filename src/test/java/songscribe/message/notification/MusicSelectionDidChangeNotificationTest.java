@@ -22,12 +22,12 @@ package songscribe.message.notification;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.jetbrains.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.hit.HitTarget;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -47,7 +47,7 @@ class MusicSelectionDidChangeNotificationTest extends UnitTest {
 
     @Test
     void testHasLyricSelectionReturnsTrueWhenALyricIsTheSelectedTarget() {
-        var lyric = new HitTarget.Lyric(ElementType.CROTCHET.newInstance(), VERSE);
+        var lyric = new HitTarget.Lyric(crotchet(), VERSE);
         var scoreView = mockScoreView(lyric);
 
         var notification = new MusicSelectionDidChangeNotification(scoreView);

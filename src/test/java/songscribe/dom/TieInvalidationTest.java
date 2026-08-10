@@ -22,6 +22,8 @@ package songscribe.dom;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
@@ -129,7 +131,7 @@ class TieInvalidationTest extends UnitTest {
     private Tie buildDetachedAnchorTie() {
         buildLine(THREE_NOTES);
 
-        return tieBetween(ElementType.CROTCHET.newInstance(), line.getElement(AFTER_END_INDEX));
+        return tieBetween(crotchet(), line.getElement(AFTER_END_INDEX));
     }
 
     /** Two tied notes separated by a single barline. */
@@ -356,7 +358,7 @@ class TieInvalidationTest extends UnitTest {
 
         @Test
         void testEndpointChangingStaffPositionInvalidates() {
-            var replacement = ElementType.CROTCHET.newInstance();
+            var replacement = crotchet();
             replacement.setStaffPosition(DIFFERENT_STAFF_POSITION);
 
             assertThat(TieInvalidationTest.this.outcomeForReplacing(tie, END_INDEX, replacement))
@@ -366,7 +368,7 @@ class TieInvalidationTest extends UnitTest {
 
         @Test
         void testEndpointGainingAccidentalInvalidates() {
-            var replacement = ElementType.CROTCHET.newInstance();
+            var replacement = crotchet();
             replacement.setAccidental(StaffElement.Accidental.SHARP);
 
             assertThat(TieInvalidationTest.this.outcomeForReplacing(tie, END_INDEX, replacement))
@@ -427,7 +429,7 @@ class TieInvalidationTest extends UnitTest {
         // tie, and turning one of them into a rest would wrongly remove it.
         var tie = buildDetachedAnchorTie();
 
-        assertThat(outcomeForReplacing(tie, END_INDEX, ElementType.CROTCHET_REST.newInstance()))
+        assertThat(outcomeForReplacing(tie, END_INDEX, crotchetRest()))
             .as("a tie with an unresolvable anchor contains nothing")
             .isSameAs(SpanOutcome.Simple.KEEP);
     }
@@ -726,7 +728,7 @@ class TieInvalidationTest extends UnitTest {
 
         @Test
         void testReplacingAnchorWithDifferentStaffPositionRemovesTieFromBothLines() {
-            var replacement = ElementType.CROTCHET.newInstance();
+            var replacement = crotchet();
             replacement.setStaffPosition(DIFFERENT_STAFF_POSITION);
 
             song.withModification(() -> line.setElement(CROSS_LINE_ANCHOR_INDEX, replacement));
@@ -736,7 +738,7 @@ class TieInvalidationTest extends UnitTest {
 
         @Test
         void testReplacingEndWithDifferentStaffPositionRemovesTieFromBothLines() {
-            var replacement = ElementType.CROTCHET.newInstance();
+            var replacement = crotchet();
             replacement.setStaffPosition(DIFFERENT_STAFF_POSITION);
 
             song.withModification(() -> secondLine.setElement(CROSS_LINE_END_INDEX, replacement));

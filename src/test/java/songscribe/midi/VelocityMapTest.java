@@ -26,7 +26,6 @@ import org.junit.jupiter.api.Test;
 import songscribe.UnitTest;
 import songscribe.dom.ArticulationType;
 import songscribe.dom.Song;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Articulation;
@@ -179,7 +178,7 @@ class VelocityMapTest extends UnitTest {
     // -- Helpers --
 
     private static StaffElement accentedNote() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addArticulation(new Articulation(note, ArticulationType.ACCENT));
         return note;
     }
@@ -206,7 +205,7 @@ class VelocityMapTest extends UnitTest {
     }
 
     private static StaffElement noteWithDynamic(DynamicType type) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.addAttachment(new DynamicAttachment(note, type));
         return note;
     }

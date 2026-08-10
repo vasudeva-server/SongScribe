@@ -21,12 +21,15 @@
 package songscribe.ui.component;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 
 /**
@@ -55,14 +58,14 @@ class LyricEditorEligibilityTest extends UnitTest {
     @BeforeEach
     void setUp() {
         line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
 
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         line.addElement(grace);
 
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
     }
 
     // ---- isLyricTargetEligible ----
@@ -142,7 +145,7 @@ class LyricEditorEligibilityTest extends UnitTest {
     void testResolveTargetOnRestStaysOnRest() {
         // A rest can carry a lyric, so every gesture resolves to it rather than declining.
         var restIndex = line.elementCount();
-        line.addElement(ElementType.CROTCHET_REST.newInstance());
+        line.addElement(crotchetRest());
 
         assertThat(LyricTargetResolver.resolveLyricTarget(line, restIndex)).isEqualTo(restIndex);
     }
@@ -150,7 +153,7 @@ class LyricEditorEligibilityTest extends UnitTest {
     @Test
     void testResolveTargetOnNonDurationElementHasNoTarget() {
         var barIndex = line.elementCount();
-        line.addElement(ElementType.SINGLE_BARLINE.newInstance());
+        line.addElement(singleBarline());
 
         assertThat(LyricTargetResolver.resolveLyricTarget(line, barIndex)).isEqualTo(NO_TARGET);
     }

@@ -26,6 +26,9 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import module java.desktop;
 
@@ -131,7 +134,7 @@ class TerminalTypeActionTest extends MainFrameMockTest {
     // belonging to no line is not the terminal — and this entry applies to nothing else.
     @Test
     void testUnparentedFinalDoubleBarlineIsNotTreatedAsTheTerminal() {
-        var unparented = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+        var unparented = finalDoubleBarline();
 
         assertThat(finalDoubleBarlineAction.appliesTo(unparented)).isFalse();
     }
@@ -190,7 +193,7 @@ class TerminalTypeActionTest extends MainFrameMockTest {
     @Test
     void testEntriesAreDisabledWhenAnOrdinaryNoteIsSelected() {
         var line = song.getLine(0);
-        song.withModification(() -> line.addElement(0, ElementType.CROTCHET.newInstance()));
+        song.withModification(() -> line.addElement(0, crotchet()));
         selectElement(line, 0);
 
         assertThat(finalDoubleBarlineAction.updateEnabledState()).isFalse();
@@ -330,7 +333,7 @@ class TerminalTypeActionTest extends MainFrameMockTest {
     /** Adds a barline at the head of the first line, where it can never be the terminal. */
     private StaffElement addOrdinaryBarline() {
         var line = song.getLine(0);
-        song.withModification(() -> line.addElement(0, ElementType.SINGLE_BARLINE.newInstance()));
+        song.withModification(() -> line.addElement(0, singleBarline()));
         return line.getElement(0);
     }
 

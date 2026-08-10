@@ -22,11 +22,11 @@ package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.hit.HitTarget;
@@ -62,11 +62,11 @@ class IsSelectedForLyricTest extends UnitTest {
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
         var lineA = new Line(song);
-        lineA.addElement(ElementType.CROTCHET.newInstance());
+        lineA.addElement(crotchet());
         coordinator.registerLine(LINE_0, lineA);
 
         var lineB = new Line(song);
-        lineB.addElement(ElementType.CROTCHET.newInstance());
+        lineB.addElement(crotchet());
         coordinator.registerLine(LINE_1, lineB);
 
         coordinator.activateLine(LINE_0);
@@ -178,7 +178,7 @@ class IsSelectedForLyricTest extends UnitTest {
         var lineA = line;
         var elementA = lineA.getElement(0);
         // Add a second element to line A so we have a distinct reference.
-        lineA.addElement(ElementType.CROTCHET.newInstance());
+        lineA.addElement(crotchet());
         var elementB = lineA.getElement(1);
 
         coordinator.selectLyric(elementA, VERSE_2);

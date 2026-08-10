@@ -21,6 +21,7 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 
@@ -28,7 +29,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.hit.HitTarget;
 import songscribe.message.mutation.CrescendoAddition;
@@ -55,7 +55,7 @@ class SelectionCoordinatorHairpinRevalidationTest extends UnitTest {
      */
     private static Fixture selectedHairpinOnActiveLine() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance(), ElementType.CROTCHET.newInstance()),
+            List.of(crotchet(), crotchet()),
             List.of()
         );
 

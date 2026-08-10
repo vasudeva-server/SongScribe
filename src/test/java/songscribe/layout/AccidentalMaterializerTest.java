@@ -28,13 +28,13 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -61,14 +61,14 @@ class AccidentalMaterializerTest extends UnitTest {
     private static final int TWO_CHANGES = 2;
 
     private static StaffElement note(int staffPosition, StaffElement.Accidental accidental) {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.setStaffPosition(staffPosition);
         element.setAccidental(accidental);
         return element;
     }
 
     private static StaffElement note(int staffPosition) {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.setStaffPosition(staffPosition);
         return element;
     }

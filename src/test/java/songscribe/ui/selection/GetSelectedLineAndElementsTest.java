@@ -21,13 +21,15 @@
 package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.minim;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.hit.HitTarget;
 
 /**
@@ -54,7 +56,7 @@ class GetSelectedLineAndElementsTest extends UnitTest {
     @Test
     void testGetSelectedLineReturnsActiveLineIndexWhenLineSelected() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of()
         );
         coordinator.select(new HitTarget.StaffLine());
@@ -71,7 +73,7 @@ class GetSelectedLineAndElementsTest extends UnitTest {
     @Test
     void testGetSelectedLineReturnsMinusOneWhenLineNotLineSelected() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of()
         );
         // Active line is registered but not line-selected.
@@ -91,7 +93,7 @@ class GetSelectedLineAndElementsTest extends UnitTest {
     @Test
     void testGetSelectedElementsReturnsEmptyListWhenNoSelection() {
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(ElementType.CROTCHET.newInstance()),
+            List.of(crotchet()),
             List.of()
         );
         // Nothing selected.
@@ -112,9 +114,9 @@ class GetSelectedLineAndElementsTest extends UnitTest {
      */
     @Test
     void testGetSelectedElementsReturnsCorrectElementsInOrder() {
-        var first = ElementType.CROTCHET.newInstance();
-        var second = ElementType.QUAVER.newInstance();
-        var third = ElementType.MINIM.newInstance();
+        var first = crotchet();
+        var second = quaver();
+        var third = minim();
 
         var coordinator = ReflectionTestHelper.createCoordinator(
             List.of(first, second, third),
@@ -144,10 +146,10 @@ class GetSelectedLineAndElementsTest extends UnitTest {
      */
     @Test
     void testGetSelectedElementsReturnsSingletonListForSingleElementSelection() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
 
         var coordinator = ReflectionTestHelper.createCoordinator(
-            List.of(note, ElementType.QUAVER.newInstance()),
+            List.of(note, quaver()),
             List.of()
         );
         ReflectionTestHelper.selectNote(coordinator, ELEMENT_0);

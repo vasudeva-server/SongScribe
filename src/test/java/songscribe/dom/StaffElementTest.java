@@ -22,6 +22,8 @@ package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -451,7 +453,7 @@ class StaffElementTest extends UnitTest {
 
     @Test
     void testDefaultDirectionReturnsUpWhenStaffPositionIsPositive() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(1);
 
         assertThat(StaffElement.defaultDirection(note)).isEqualTo(StaffElement.Direction.UP);
@@ -460,7 +462,7 @@ class StaffElementTest extends UnitTest {
     @Test
     void testDefaultDirectionReturnsDownWhenStaffPositionIsZeroAndNotGrace() {
         // staffPosition == 0 and a non-grace type → stem should point down.
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(0);
 
         assertThat(StaffElement.defaultDirection(note)).isEqualTo(StaffElement.Direction.DOWN);
@@ -469,7 +471,7 @@ class StaffElementTest extends UnitTest {
     @Test
     void testDefaultDirectionReturnsUpForGraceNoteRegardlessOfStaffPosition() {
         // Grace notes always return UP regardless of staff position.
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setStaffPosition(0);
 
         assertThat(StaffElement.defaultDirection(grace)).isEqualTo(StaffElement.Direction.UP);
@@ -1083,7 +1085,7 @@ class StaffElementTest extends UnitTest {
 
     @Test
     void testGetLedgerLineCountAboveStaff() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
 
         note.setStaffPosition(-ONE_LEDGER_EVEN_DIST);
         assertThat(note.getLedgerLineCount()).isEqualTo(1);
@@ -1100,7 +1102,7 @@ class StaffElementTest extends UnitTest {
 
     @Test
     void testGetLedgerLineCountBelowStaff() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
 
         note.setStaffPosition(ONE_LEDGER_EVEN_DIST);
         assertThat(note.getLedgerLineCount()).isEqualTo(1);
@@ -1117,7 +1119,7 @@ class StaffElementTest extends UnitTest {
 
     @Test
     void testGetLedgerLineCountOnStaff() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
 
         // All positions within the staff (|sp| <= INNER_STAFF_EXTENT) require no ledger lines
         for (var sp = -INNER_STAFF_EXTENT; sp <= INNER_STAFF_EXTENT; sp++) {

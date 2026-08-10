@@ -22,6 +22,11 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.minim;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -75,11 +80,11 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
      */
     private void addPairedGraceCarryingSyllable() {
         song.withoutMutationTracking(() -> {
-            var grace = ElementType.GRACE_QUAVER.newInstance();
+            var grace = graceQuaver();
             grace.setGlissando();
             grace.setLyricForVerse(VERSE, Lyric.Syllabic.SINGLE, false, SYLLABLE, Lyric.Extend.NONE);
             line.addElement(grace);
-            line.addElement(ElementType.MINIM.newInstance());
+            line.addElement(minim());
             line.syncGraceHostMelisma(GRACE_INDEX);
         });
     }
@@ -87,11 +92,11 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
     /** Builds {@code ["hel" BEGIN, "lo" END]} — one word split across two notes. */
     private void addHyphenatedPair() {
         song.withoutMutationTracking(() -> {
-            var note0 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
             note0.setLyricForVerse(VERSE, Lyric.Syllabic.BEGIN, false, "hel", Lyric.Extend.NONE);
             line.addElement(note0);
 
-            var note1 = ElementType.CROTCHET.newInstance();
+            var note1 = crotchet();
             note1.setLyricForVerse(VERSE, Lyric.Syllabic.END, false, "lo", Lyric.Extend.NONE);
             line.addElement(note1);
         });
@@ -124,10 +129,10 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
         @Test
         void testGraceNoteRemovedWhenHostReplacedWithRest() {
             song.withoutMutationTracking(() -> {
-                var grace = ElementType.GRACE_QUAVER.newInstance();
+                var grace = graceQuaver();
                 grace.setGlissando();
                 line.addElement(grace);
-                line.addElement(ElementType.CROTCHET.newInstance()); // host at index 1
+                line.addElement(crotchet()); // host at index 1
             });
 
             assertThat(line.isHostOfPairedGraceNote(1))
@@ -136,7 +141,7 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
 
             var countBefore = line.elementCount();
 
-            setPreviewElement(ElementType.CROTCHET_REST.newInstance());
+            setPreviewElement(crotchetRest());
             PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setXPosSsMatchesElement(true);
             PreviewElementManager.handleClick(lc);
@@ -179,7 +184,7 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
 
             var countBefore = line.elementCount();
 
-            setPreviewElement(ElementType.CROTCHET_REST.newInstance());
+            setPreviewElement(crotchetRest());
             PreviewElementManager.setCurrentXIndex(HOST_INDEX);
             PreviewElementManager.setXPosSsMatchesElement(true);
             PreviewElementManager.handleClick(lc);
@@ -207,15 +212,15 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
         @Test
         void testGraceNotePreservedWhenHostReplacedWithPitchedNote() {
             song.withoutMutationTracking(() -> {
-                var grace = ElementType.GRACE_QUAVER.newInstance();
+                var grace = graceQuaver();
                 grace.setGlissando();
                 line.addElement(grace);
-                line.addElement(ElementType.CROTCHET.newInstance()); // host at index 1
+                line.addElement(crotchet()); // host at index 1
             });
 
             var countBefore = line.elementCount();
 
-            setPreviewElement(ElementType.QUAVER.newInstance());
+            setPreviewElement(quaver());
             PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setXPosSsMatchesElement(true);
             PreviewElementManager.handleClick(lc);
@@ -257,7 +262,7 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
             song.setLineWidthSs(WIDE_LINE_SS);
             addHyphenatedPair();
 
-            setPreviewElement(ElementType.CROTCHET.newInstance());
+            setPreviewElement(crotchet());
             PreviewElementManager.setCurrentXIndex(INSERTION_INDEX);
             PreviewElementManager.setXPosSsMatchesElement(false);
             PreviewElementManager.handleClick(lc);
@@ -289,7 +294,7 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
             try (var graceModeMock = mockStatic(GraceModeManager.class)) {
                 graceModeMock.when(GraceModeManager::deferInsertionRepairs).thenReturn(true);
 
-                setPreviewElement(ElementType.GRACE_QUAVER.newInstance());
+                setPreviewElement(graceQuaver());
                 PreviewElementManager.setCurrentXIndex(INSERTION_INDEX);
                 PreviewElementManager.setXPosSsMatchesElement(false);
                 PreviewElementManager.handleClick(lc);
@@ -319,7 +324,7 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
             song.setLineWidthSs(WIDE_LINE_SS);
             addPairedGraceCarryingSyllable();
 
-            setPreviewElement(ElementType.GRACE_QUAVER.newInstance());
+            setPreviewElement(graceQuaver());
             PreviewElementManager.setCurrentXIndex(HOST_INDEX);
             PreviewElementManager.setXPosSsMatchesElement(false);
             PreviewElementManager.handleClick(lc);
@@ -342,7 +347,7 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
             try (var graceModeMock = mockStatic(GraceModeManager.class)) {
                 graceModeMock.when(GraceModeManager::deferInsertionRepairs).thenReturn(true);
 
-                setPreviewElement(ElementType.GRACE_QUAVER.newInstance());
+                setPreviewElement(graceQuaver());
                 PreviewElementManager.setCurrentXIndex(HOST_INDEX);
                 PreviewElementManager.setXPosSsMatchesElement(false);
                 PreviewElementManager.handleClick(lc);
@@ -362,16 +367,16 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
             song.setLineWidthSs(WIDE_LINE_SS);
 
             song.withoutMutationTracking(() -> {
-                var note0 = ElementType.CROTCHET.newInstance();
+                var note0 = crotchet();
                 note0.setLyricForVerse(1, Lyric.Syllabic.BEGIN, false, "a", Lyric.Extend.NONE);
                 line.addElement(note0);
 
-                var note1 = ElementType.CROTCHET.newInstance();
+                var note1 = crotchet();
                 note1.setLyricForVerse(1, Lyric.Syllabic.MIDDLE, false, "b", Lyric.Extend.NONE);
                 line.addElement(note1);
             });
 
-            setPreviewElement(ElementType.CROTCHET.newInstance());
+            setPreviewElement(crotchet());
             PreviewElementManager.setCurrentXIndex(1);
             PreviewElementManager.setXPosSsMatchesElement(false);
             PreviewElementManager.handleClick(lc);
@@ -414,7 +419,7 @@ class PreviewElementManagerModifyInsertTest extends PreviewElementManagerTestBas
 
             var countBefore = line.effectiveElementCount();
 
-            setPreviewElement(ElementType.CROTCHET.newInstance());
+            setPreviewElement(crotchet());
             PreviewElementManager.setCurrentXIndex(HOST_INDEX);
             PreviewElementManager.setXPosSsMatchesElement(false);
             PreviewElementManager.handleClick(lc);

@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -67,21 +68,21 @@ class CrossLineTieLineStructureTest extends UnitTest {
         secondLine = new Line(song);
         unrelatedLine = new Line(song);
 
-        var anchorNote = ElementType.CROTCHET.newInstance();
-        var endNote = ElementType.CROTCHET.newInstance();
-        var unrelatedAnchorNote = ElementType.CROTCHET.newInstance();
-        var unrelatedEndNote = ElementType.CROTCHET.newInstance();
+        var anchorNote = crotchet();
+        var endNote = crotchet();
+        var unrelatedAnchorNote = crotchet();
+        var unrelatedEndNote = crotchet();
 
         crossLineTie = new Tie(anchorNote, endNote);
         sameLineTie = new Tie(unrelatedAnchorNote, unrelatedEndNote);
 
         song.withoutMutationTracking(() -> {
-            firstLine.addElement(ElementType.CROTCHET.newInstance());
+            firstLine.addElement(crotchet());
             firstLine.addElement(anchorNote);
 
             song.addLine(secondLine);
             secondLine.addElement(endNote);
-            secondLine.addElement(ElementType.CROTCHET.newInstance());
+            secondLine.addElement(crotchet());
 
             song.addLine(unrelatedLine);
             unrelatedLine.addElement(unrelatedAnchorNote);

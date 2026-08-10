@@ -30,13 +30,13 @@ import org.mockito.MockedStatic;
 import songscribe.MainFrameMockTest;
 import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
-import songscribe.dom.ElementType;
 import songscribe.prefs.Prefs;
 import songscribe.util.UIUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * Unit tests for {@link AnnotationDialog}: populateControls null/existing,
@@ -143,7 +143,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeEmptyTextRemovesExistingAttachment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var attachment = new AnnotationAttachment(element, new Annotation("old"));
         element.addAttachment(attachment);
 
@@ -157,7 +157,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeNullTextIsNoOpWhenNoAttachment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
 
         dialog.annotationCombo.setSelectedItem(null);
         // no attachment present — should not throw
@@ -172,7 +172,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeCenterRadioSelectedWritesCenterAlignment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
 
         dialog.annotationCombo.setSelectedItem("test");
         dialog.centerRadio.setSelected(true);
@@ -191,7 +191,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeRightRadioSelectedWritesRightAlignment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
 
         dialog.annotationCombo.setSelectedItem("test");
         dialog.rightRadio.setSelected(true);
@@ -210,7 +210,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeLeftRadioSelectedWritesLeftAlignment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
 
         dialog.annotationCombo.setSelectedItem("dolce");
         dialog.leftRadio.setSelected(true);
@@ -231,7 +231,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeUpdatesExistingAttachment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var original = new AnnotationAttachment(element, new Annotation("old"));
         element.addAttachment(original);
 
@@ -253,7 +253,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @Test
     void testApplyChangeAddsNewAttachmentWhenNoneExists() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         // no pre-existing attachment
 
         dialog.annotationCombo.setSelectedItem("fine");
@@ -274,7 +274,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @Test
     void testClearChangeRemovesExistingAttachment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.addAttachment(new AnnotationAttachment(element, new Annotation("fine")));
 
         dialog.clearChange(element);
@@ -286,7 +286,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @Test
     void testClearChangeIsNoOpWhenNoAttachment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         // no attachment — clearChange should not throw
 
         dialog.clearChange(element);
@@ -300,7 +300,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @Test
     void testGetExistingChangeReturnsAnnotationWhenAttachmentPresent() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var annotation = new Annotation("forte");
         element.addAttachment(new AnnotationAttachment(element, annotation));
 
@@ -311,7 +311,7 @@ class AnnotationDialogTest extends MainFrameMockTest {
 
     @Test
     void testGetExistingChangeReturnsNullWhenNoAttachment() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
 
         assertThat(dialog.getExistingChange(element))
             .as("getExistingChange returns null when no AnnotationAttachment is present")

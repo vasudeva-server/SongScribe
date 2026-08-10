@@ -25,6 +25,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import java.util.List;
 
@@ -79,9 +81,9 @@ class LineInvariantsTest extends UnitTest {
 
     private static Line tiedLine() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         line.addSpan(new Tie(line.getElement(0), line.getElement(2)));
         return line;
     }
@@ -198,8 +200,8 @@ class LineInvariantsTest extends UnitTest {
      */
     private static List<HitTarget> everyTargetVariant() {
         var line = detachedLine();
-        line.addElement(ElementType.QUAVER.newInstance());
-        line.addElement(ElementType.QUAVER.newInstance());
+        line.addElement(quaver());
+        line.addElement(quaver());
         var first = line.getElement(0);
         var second = line.getElement(1);
 
@@ -396,7 +398,7 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testGetLyricConnectorColorAnchorPlayingReturnsPlayingColor() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
 
         var invariants = seededBuilder()
             .setCurrentLine(line)
@@ -504,7 +506,7 @@ class LineInvariantsTest extends UnitTest {
     void testIsLyricSpanPlayingFalseWhenPlayingPastSpanEnd() {
         var line = beginMiddleLine();
         // Add a third element with a new syllable, terminating the span at index 1
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         var thirdElement = line.getElement(2);
         thirdElement.setLyricForVerse(1, Lyric.Syllabic.END, false, "do", Lyric.Extend.NONE);
 
@@ -525,8 +527,8 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testIsLyricSpanPlayingFalseWhenNoLyricOnAnchor() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
 
         var element = line.getElement(0);
         // element has no lyric at verse 1
@@ -562,9 +564,9 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testIsLyricSpanPlayingForMelismaContinueCarrier() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
         line.getElement(1).setLyricForVerse(
@@ -594,8 +596,8 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testIsLyricSpanPlayingForMiddleSyllable() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.MIDDLE, false, "lo", Lyric.Extend.NONE);
         // index 1 intentionally left without a lyric
@@ -615,7 +617,7 @@ class LineInvariantsTest extends UnitTest {
     @Test
     void testIsLyricSpanPlayingFalseForSingleSyllableWithPlayingAfter() {
         var line = lyricLine(); // SINGLE syllable at index 0
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
 
         var element = line.getElement(0);
 
@@ -634,8 +636,8 @@ class LineInvariantsTest extends UnitTest {
         // Place the BEGIN anchor at index 1; playing note is at 0 (before the anchor).
         // isLyricSpanPlaying guards playingNoteIndex > anchorIndex, so returns false.
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         line.getElement(1).setLyricForVerse(
             1, Lyric.Syllabic.BEGIN, false, "hi", Lyric.Extend.NONE);
 
@@ -672,8 +674,8 @@ class LineInvariantsTest extends UnitTest {
      */
     private static Line melismaLine() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
         line.getElement(1).setLyricForVerse(
@@ -688,11 +690,11 @@ class LineInvariantsTest extends UnitTest {
      */
     private static Line multiCarrierMelismaLine() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.SINGLE, false, "ah", Lyric.Extend.START);
         line.getElement(1).setLyricForVerse(
@@ -712,8 +714,8 @@ class LineInvariantsTest extends UnitTest {
      */
     private static Line beginMiddleLine() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.BEGIN, false, "hel", Lyric.Extend.NONE);
         // index 1 intentionally left without a lyric
@@ -725,7 +727,7 @@ class LineInvariantsTest extends UnitTest {
      */
     private static Line lyricLine() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         line.getElement(0).setLyricForVerse(
             1, Lyric.Syllabic.SINGLE, false, "la", Lyric.Extend.NONE);
         return line;

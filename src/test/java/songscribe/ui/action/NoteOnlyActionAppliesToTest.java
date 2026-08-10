@@ -21,12 +21,15 @@
 package songscribe.ui.action;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 class NoteOnlyActionAppliesToTest extends MainFrameMockTest {
 
@@ -41,28 +44,28 @@ class NoteOnlyActionAppliesToTest extends MainFrameMockTest {
     // A7: appliesTo returns true for notes
     @Test
     void testAppliesToNote() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         assertThat(action.appliesTo(note)).isTrue();
     }
 
     // A9: appliesTo returns false for barlines
     @Test
     void testDoesNotApplyToBarline() {
-        var note = ElementType.SINGLE_BARLINE.newInstance();
+        var note = singleBarline();
         assertThat(action.appliesTo(note)).isFalse();
     }
 
     // A8: appliesTo returns false for rests
     @Test
     void testDoesNotApplyToRest() {
-        var note = ElementType.CROTCHET_REST.newInstance();
+        var note = crotchetRest();
         assertThat(action.appliesTo(note)).isFalse();
     }
 
     // A10: appliesTo returns true for grace notes (isNote() == true; no DISABLE_IN_GRACE_MODE flag)
     @Test
     void testAppliesToGraceNote() {
-        var note = ElementType.GRACE_QUAVER.newInstance();
+        var note = graceQuaver();
         assertThat(action.appliesTo(note)).isTrue();
     }
 }

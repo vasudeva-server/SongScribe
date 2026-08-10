@@ -21,6 +21,8 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.repeatRight;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -57,7 +59,7 @@ class PreviewElementManagerTerminalRoutingTest extends PreviewElementManagerTest
         @Test
         void testDirectClickReplacesTerminalWithRepeatRight() {
             editModeManagerMock.when(EditModeManager::getPreviewElement)
-                .thenReturn(ElementType.REPEAT_RIGHT.newInstance());
+                .thenReturn(repeatRight());
 
             var termIdx = terminalIndex();
             PreviewElementManager.setXPosSsMatchesElement(true);
@@ -81,7 +83,7 @@ class PreviewElementManagerTerminalRoutingTest extends PreviewElementManagerTest
         @Test
         void testDirectClickWithNonTerminalTypeIsBlocked() {
             editModeManagerMock.when(EditModeManager::getPreviewElement)
-                .thenReturn(ElementType.CROTCHET.newInstance());
+                .thenReturn(crotchet());
 
             var termIdx = terminalIndex();
             PreviewElementManager.setXPosSsMatchesElement(true);
@@ -116,7 +118,7 @@ class PreviewElementManagerTerminalRoutingTest extends PreviewElementManagerTest
         @Test
         void testAlwaysBlockedAtAppendSlotPastTerminal() {
             editModeManagerMock.when(EditModeManager::getPreviewElement)
-                .thenReturn(ElementType.REPEAT_RIGHT.newInstance());
+                .thenReturn(repeatRight());
 
             // xIndex one past the last element
             PreviewElementManager.setXPosSsMatchesElement(false);

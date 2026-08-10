@@ -43,13 +43,13 @@ import songscribe.UnitTest;
 import songscribe.font.DocumentFonts;
 import songscribe.font.FontKey;
 import songscribe.dom.Song;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.prefs.Prefs;
 import songscribe.prefs.SystemPrefsKey;
 import songscribe.util.MyFontUtils;
 
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 @SuppressWarnings("SameReturnValue")
 class ViewIOTest extends UnitTest {
@@ -445,7 +445,7 @@ class ViewIOTest extends UnitTest {
 
     private static void addNote(Song song) {
         var line = new Line(song);
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(0);
         song.withoutMutationTracking(() -> line.addElement(note));
         song.addLine(line);

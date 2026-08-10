@@ -25,6 +25,8 @@ import static org.assertj.core.api.Assertions.assertThatNoException;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -1662,9 +1664,9 @@ class LineMutationTest extends UnitTest {
 
         @BeforeEach
         void buildPairCarryingASyllable() {
-            grace = ElementType.GRACE_QUAVER.newInstance();
+            grace = graceQuaver();
             grace.setGlissando();
-            host = ElementType.CROTCHET.newInstance();
+            host = crotchet();
 
             song.withoutMutationTracking(() -> {
                 line.addElement(grace);

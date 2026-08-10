@@ -24,6 +24,13 @@ import module java.desktop;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mockStatic;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.crotchetRest;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
+import static songscribe.dom.StaffElementFactory.minim;
+import static songscribe.dom.StaffElementFactory.minimRest;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -54,7 +61,7 @@ class ElementTypeActionTest extends MainFrameMockTest {
     // CR2: createReplacement preserves note kind (note stays note)
     @Test
     void testCreateReplacementPreservesNoteKind() {
-        var element = ElementType.MINIM.newInstance();
+        var element = minim();
         var replacement = durationAction.createReplacement(element, true);
         assertThat(replacement).isNotNull();
         assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET);
@@ -63,7 +70,7 @@ class ElementTypeActionTest extends MainFrameMockTest {
     // CR3: createReplacement preserves rest kind (rest stays rest)
     @Test
     void testCreateReplacementPreservesRestKind() {
-        var element = ElementType.MINIM_REST.newInstance();
+        var element = minimRest();
         var replacement = durationAction.createReplacement(element, true);
         assertThat(replacement).isNotNull();
         assertThat(replacement.getType()).isEqualTo(ElementType.CROTCHET_REST);
@@ -73,7 +80,7 @@ class ElementTypeActionTest extends MainFrameMockTest {
     @Test
     void testCreateReplacementWithGraceNote() {
         var graceAction = ElementTypeAction.createGraceEighthNoteAction(mainFrame());
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         var replacement = graceAction.createReplacement(element, true);
         assertThat(replacement).isNotNull();
         assertThat(replacement.getType()).isEqualTo(ElementType.GRACE_QUAVER);
@@ -82,35 +89,35 @@ class ElementTypeActionTest extends MainFrameMockTest {
     // M2: matchesElement returns false when ElementType differs
     @Test
     void testDoesNotMatchElementWhenTypeDiffers() {
-        var element = ElementType.MINIM.newInstance();
+        var element = minim();
         assertThat(durationAction.matchesElement(element)).isFalse();
     }
 
     // A1: DURATION action applies to notes
     @Test
     void testDurationAppliesToNote() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         assertThat(durationAction.appliesTo(element)).isTrue();
     }
 
     // A2: DURATION action applies to rests
     @Test
     void testDurationAppliesToRest() {
-        var element = ElementType.CROTCHET_REST.newInstance();
+        var element = crotchetRest();
         assertThat(durationAction.appliesTo(element)).isTrue();
     }
 
     // A3: DURATION action does not apply to barlines
     @Test
     void testDurationDoesNotApplyToBarline() {
-        var element = ElementType.SINGLE_BARLINE.newInstance();
+        var element = singleBarline();
         assertThat(durationAction.appliesTo(element)).isFalse();
     }
 
     // A3b: DURATION action does not apply to grace notes
     @Test
     void testDurationDoesNotApplyToGraceNote() {
-        var element = ElementType.GRACE_QUAVER.newInstance();
+        var element = graceQuaver();
         assertThat(durationAction.appliesTo(element)).isFalse();
     }
 
@@ -125,14 +132,14 @@ class ElementTypeActionTest extends MainFrameMockTest {
     // M1: matchesElement returns true when ElementType matches
     @Test
     void testMatchesElementWhenTypeMatches() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         assertThat(durationAction.matchesElement(element)).isTrue();
     }
 
     // A6: NON_DURATION action applies to barlines
     @Test
     void testNonDurationAppliesToBarline() {
-        var element = ElementType.SINGLE_BARLINE.newInstance();
+        var element = singleBarline();
         assertThat(nonDurationAction.appliesTo(element)).isTrue();
     }
 
@@ -142,14 +149,14 @@ class ElementTypeActionTest extends MainFrameMockTest {
     // A4: NON_DURATION action does not apply to notes
     @Test
     void testNonDurationDoesNotApplyToNote() {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         assertThat(nonDurationAction.appliesTo(element)).isFalse();
     }
 
     // A5: NON_DURATION action does not apply to rests
     @Test
     void testNonDurationDoesNotApplyToRest() {
-        var element = ElementType.CROTCHET_REST.newInstance();
+        var element = crotchetRest();
         assertThat(nonDurationAction.appliesTo(element)).isFalse();
     }
 
@@ -164,13 +171,13 @@ class ElementTypeActionTest extends MainFrameMockTest {
     // Row 7: BREATH_MARK appliesTo — applies only to BREATH_MARK elements, not barlines
     @Test
     void testBreathMarkAppliesToBreathMark() {
-        var element = ElementType.BREATH_MARK.newInstance();
+        var element = breathMark();
         assertThat(breathMarkAction.appliesTo(element)).isTrue();
     }
 
     @Test
     void testBreathMarkDoesNotApplyToBarline() {
-        var element = ElementType.SINGLE_BARLINE.newInstance();
+        var element = singleBarline();
         assertThat(breathMarkAction.appliesTo(element)).isFalse();
     }
 

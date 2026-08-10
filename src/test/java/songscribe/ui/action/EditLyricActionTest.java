@@ -27,7 +27,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
 import songscribe.RequiresDisplay;
-import songscribe.dom.ElementType;
 import songscribe.ui.component.LyricEditor;
 import songscribe.util.UIUtils;
 
@@ -36,6 +35,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 class EditLyricActionTest extends MainFrameMockTest {
 
@@ -63,7 +64,7 @@ class EditLyricActionTest extends MainFrameMockTest {
     @Test
     void testActionPerformedOpensEditorForSelectedElement() {
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
         when(mockEnv().coordinator().getSingleSelectedElement()).thenReturn(note);
 
@@ -82,10 +83,10 @@ class EditLyricActionTest extends MainFrameMockTest {
     @Test
     void testActionPerformedOnGraceHostOpensEditorOnTheGraceNote() {
         var line = detachedLine();
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         line.addElement(grace);
-        var host = ElementType.CROTCHET.newInstance();
+        var host = crotchet();
         line.addElement(host);
         when(mockEnv().coordinator().getSingleSelectedElement()).thenReturn(host);
 
@@ -104,7 +105,7 @@ class EditLyricActionTest extends MainFrameMockTest {
     @Test
     void testActionPerformedDoesNothingWhenTheSelectedElementIsInNoLine() {
         var line = detachedLine();
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         line.addElement(note);
         line.removeElement(line.getElementIndex(note));
         when(mockEnv().coordinator().getSingleSelectedElement()).thenReturn(note);

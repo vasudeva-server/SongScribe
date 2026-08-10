@@ -27,13 +27,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.StaffElement;
 import songscribe.prefs.Prefs;
@@ -53,14 +53,14 @@ class AccidentalActionTest extends MainFrameMockTest {
 
     @Test
     void testApplyToNoteAppliesAccidental() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         action.applyToElement(note, true);
         assertThat(note.getAccidental()).isEqualTo(StaffElement.Accidental.SHARP);
     }
 
     @Test
     void testApplyToNoteRemovesAccidental() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
         action.applyToElement(note, false);
         assertThat(note.getAccidental()).isNull();
@@ -68,14 +68,14 @@ class AccidentalActionTest extends MainFrameMockTest {
 
     @Test
     void testDoesNotMatchWhenAccidentalDiffers() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.FLAT);
         assertThat(action.matchesElement(note)).isFalse();
     }
 
     @Test
     void testMatchesWhenAccidentalMatches() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setAccidental(StaffElement.Accidental.SHARP);
         assertThat(action.matchesElement(note)).isTrue();
     }

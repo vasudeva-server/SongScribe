@@ -34,7 +34,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -45,6 +44,11 @@ import songscribe.ui.playback.MidiMetaMessageTypes;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static songscribe.midi.MidiSequenceBuilder.PPQ;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatLeftRight;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 class MidiSequenceBuilderTest extends UnitTest {
 
@@ -143,14 +147,14 @@ class MidiSequenceBuilderTest extends UnitTest {
 
     /** Creates a crotchet at the given staff position. */
     private static StaffElement crotchetAt(int staffPosition) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(staffPosition);
         return note;
     }
 
     /** One-crotchet, one-line song at default tempo. */
     private static Song singleNoteSong() {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setStaffPosition(STAFF_POS_A);
         var line = detachedLine();
         line.addElement(note);
@@ -282,9 +286,9 @@ class MidiSequenceBuilderTest extends UnitTest {
             // buildFromNoteToEnd(0, 1) must use the 180 BPM tempo for the initial SET_TEMPO
             // event, not the song's 120 BPM default.
             var fastTempo = new Tempo(BPM_FAST, Duration.CROTCHET, "", false);
-            var noteAtStart = ElementType.CROTCHET.newInstance();
+            var noteAtStart = crotchet();
             noteAtStart.setStaffPosition(STAFF_POS_A);
-            var noteWithTempo = ElementType.CROTCHET.newInstance();
+            var noteWithTempo = crotchet();
             noteWithTempo.setStaffPosition(STAFF_POS_B);
             noteWithTempo.addAttachment(new TempoChangeAttachment(fastTempo));
             var line = detachedLine();
@@ -459,11 +463,11 @@ class MidiSequenceBuilderTest extends UnitTest {
             // Line: [note], [REPEAT_RIGHT]
             // No explicit REPEAT_LEFT → backward search exhausts → jumps to start of song.
             // Expected: the single pitched note produces REPEAT_PLAY_COUNT NOTE_ON events.
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(STAFF_POS_A);
             var line = detachedLine();
             line.addElement(note);
-            line.addElement(ElementType.REPEAT_RIGHT.newInstance());
+            line.addElement(repeatRight());
             var song = songWith(line);
 
             var track = buildFirstTrack(song, SETTINGS_WITH_REPEATS);
@@ -537,11 +541,11 @@ class MidiSequenceBuilderTest extends UnitTest {
      */
     private static Line primaryEndingLine() {
         var noteCommon = crotchetAt(STAFF_POS_A);
-        var startBarline = ElementType.SINGLE_BARLINE.newInstance();
+        var startBarline = singleBarline();
         var note1st = crotchetAt(STAFF_POS_B);
-        var repeatRight = ElementType.REPEAT_RIGHT.newInstance();
+        var repeatRight = repeatRight();
         var note2nd = crotchetAt(STAFF_POS_C);
-        var endBarline = ElementType.SINGLE_BARLINE.newInstance();
+        var endBarline = singleBarline();
 
         var line = detachedLine();
         line.addElement(noteCommon);   // index 0
@@ -563,11 +567,11 @@ class MidiSequenceBuilderTest extends UnitTest {
      * </pre>
      */
     private static Line leftRightSplitLine() {
-        var repeatLeft = ElementType.REPEAT_LEFT.newInstance();
+        var repeatLeft = repeatLeft();
         var note1st = crotchetAt(STAFF_POS_A);
-        var repeatLeftRight = ElementType.REPEAT_LEFT_RIGHT.newInstance();
+        var repeatLeftRight = repeatLeftRight();
         var note2nd = crotchetAt(STAFF_POS_B);
-        var repeatRight = ElementType.REPEAT_RIGHT.newInstance();
+        var repeatRight = repeatRight();
 
         var line = detachedLine();
         line.addElement(repeatLeft);      // index 0 (anchor)
@@ -590,14 +594,14 @@ class MidiSequenceBuilderTest extends UnitTest {
      */
     private static Line multiNoteEndingLine() {
         var common = crotchetAt(STAFF_POS_A);
-        var startBarline = ElementType.SINGLE_BARLINE.newInstance();
+        var startBarline = singleBarline();
         var note1stA = crotchetAt(STAFF_POS_B);
         var note1stB = crotchetAt(STAFF_POS_C);
-        var repeatRight = ElementType.REPEAT_RIGHT.newInstance();
+        var repeatRight = repeatRight();
         var note2ndA = crotchetAt(STAFF_POS_B);
         var note2ndB = crotchetAt(STAFF_POS_C);
         var note2ndC = crotchetAt(STAFF_POS_A);
-        var endBarline = ElementType.SINGLE_BARLINE.newInstance();
+        var endBarline = singleBarline();
 
         var line = detachedLine();
         line.addElement(common);        // index 0
@@ -626,17 +630,17 @@ class MidiSequenceBuilderTest extends UnitTest {
      */
     private static Line twoEndingsLine() {
         var commonStart = crotchetAt(STAFF_POS_A);
-        var barlineA = ElementType.SINGLE_BARLINE.newInstance();
+        var barlineA = singleBarline();
         var note1stA = crotchetAt(STAFF_POS_B);
-        var repeatRightA = ElementType.REPEAT_RIGHT.newInstance();
+        var repeatRightA = repeatRight();
         var note2ndA = crotchetAt(STAFF_POS_C);
-        var barlineAEnd = ElementType.SINGLE_BARLINE.newInstance();
+        var barlineAEnd = singleBarline();
         var commonMid = crotchetAt(STAFF_POS_A);
-        var barlineB = ElementType.SINGLE_BARLINE.newInstance();
+        var barlineB = singleBarline();
         var note1stB = crotchetAt(STAFF_POS_B);
-        var repeatRightB = ElementType.REPEAT_RIGHT.newInstance();
+        var repeatRightB = repeatRight();
         var note2ndB = crotchetAt(STAFF_POS_C);
-        var barlineBEnd = ElementType.SINGLE_BARLINE.newInstance();
+        var barlineBEnd = singleBarline();
 
         var line = detachedLine();
         line.addElement(commonStart);  // index 0

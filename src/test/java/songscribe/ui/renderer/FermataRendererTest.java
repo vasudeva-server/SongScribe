@@ -29,6 +29,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -39,7 +40,6 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.FermataAttachment;
 import songscribe.dom.Song;
 import songscribe.hit.HitTarget;
@@ -78,7 +78,7 @@ class FermataRendererTest extends UnitTest {
         // center. Reverting the renderer to centeredGlyphX (which re-applies the centering the
         // stored x already carries) shifts the drawn glyph by noteheadCenter - width/2 and this
         // assertion catches it — no other test guards the drawn x.
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         var fermata = new FermataAttachment(note);
         note.addAttachment(fermata);
 
@@ -110,7 +110,7 @@ class FermataRendererTest extends UnitTest {
      * glyph draw.
      */
     private static List<Color> drawColorsFor(boolean selected) {
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         var fermata = new FermataAttachment(note);
         note.addAttachment(fermata);
 

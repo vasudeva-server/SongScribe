@@ -34,6 +34,7 @@ import songscribe.smufl.SMuFLMetadata;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static songscribe.dom.StaffElementFactory.createNote;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import org.junit.jupiter.api.Nested;
 
@@ -51,8 +52,8 @@ class TupletTest extends UnitTest {
     private static final int QUINTUPLET_GRADE = 5;
 
     private static Tuplet createTuplet() {
-        var anchor = ElementType.QUAVER.newInstance();
-        var end = ElementType.QUAVER.newInstance();
+        var anchor = quaver();
+        var end = quaver();
         return Tuplet.withUnresolvedRatio(anchor, end, TRIPLET_GRADE);
     }
 
@@ -322,8 +323,8 @@ class TupletTest extends UnitTest {
         @Test
         void testCopyCarriesEveryField() {
             var original = new Tuplet(
-                ElementType.QUAVER.newInstance(),
-                ElementType.QUAVER.newInstance(),
+                quaver(),
+                quaver(),
                 QUINTUPLET_GRADE,
                 COPIED_NORMAL_NOTES,
                 ElementType.CROTCHET,
@@ -331,7 +332,7 @@ class TupletTest extends UnitTest {
             original.setVerticalPositionSs(COPIED_VERTICAL_POSITION_SS);
 
             var copy = (Tuplet) original.copy(
-                ElementType.QUAVER.newInstance(), ElementType.QUAVER.newInstance());
+                quaver(), quaver());
 
             assertThat(copy.getGrade()).isEqualTo(QUINTUPLET_GRADE);
             assertThat(copy.getNormalNotes()).isEqualTo(COPIED_NORMAL_NOTES);
@@ -343,12 +344,12 @@ class TupletTest extends UnitTest {
         @Test
         void testCopyOfUnresolvedTupletIsUnresolved() {
             var original = Tuplet.withUnresolvedRatio(
-                ElementType.QUAVER.newInstance(),
-                ElementType.QUAVER.newInstance(),
+                quaver(),
+                quaver(),
                 TRIPLET_GRADE);
 
             var copy = (Tuplet) original.copy(
-                ElementType.QUAVER.newInstance(), ElementType.QUAVER.newInstance());
+                quaver(), quaver());
 
             assertThat(copy.isResolved()).isFalse();
             assertThat(copy.getNormalNotes()).isEqualTo(Tuplet.UNRESOLVED_NORMAL_NOTES);

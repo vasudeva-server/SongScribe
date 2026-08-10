@@ -25,6 +25,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import javax.swing.JOptionPane;
 
@@ -33,7 +35,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -55,7 +56,7 @@ class PitchShifterTest extends UnitTest {
 
     private static Line lineWithGraceAt(int graceStaffPosition) {
         var line = detachedLine();
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setStaffPosition(graceStaffPosition);
         line.addElement(grace);
         return line;
@@ -78,7 +79,7 @@ class PitchShifterTest extends UnitTest {
     void testGraceNoteIncludedAlongsidePitchedNotes() {
         // [grace@3, crotchet@5] — both notes belong to the group.
         var line = lineWithGraceAt(GRACE_POSITION_SP);
-        var pitched = ElementType.CROTCHET.newInstance();
+        var pitched = crotchet();
         pitched.setStaffPosition(PITCHED_POSITION_SP);
         line.addElement(pitched);
 
@@ -116,7 +117,7 @@ class PitchShifterTest extends UnitTest {
         }
 
         private static StaffElement sharpNote() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(ORIGINAL_POSITION_SP);
             note.setAccidental(StaffElement.Accidental.SHARP);
             return note;
@@ -202,7 +203,7 @@ class PitchShifterTest extends UnitTest {
         }
 
         private static StaffElement noteAt(int staffPositionSp) {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.setStaffPosition(staffPositionSp);
             return note;
         }

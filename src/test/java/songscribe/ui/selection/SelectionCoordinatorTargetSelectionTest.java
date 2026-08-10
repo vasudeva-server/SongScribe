@@ -22,6 +22,7 @@ package songscribe.ui.selection;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import java.util.List;
 import java.util.function.Function;
@@ -92,8 +93,8 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
      */
     private Line twoNoteLine() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
         return line;
     }
 
@@ -469,12 +470,12 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
         var lineA = new Line(song);
-        lineA.addElement(ElementType.CROTCHET.newInstance());
-        lineA.addElement(ElementType.CROTCHET.newInstance());
+        lineA.addElement(crotchet());
+        lineA.addElement(crotchet());
         coordinator.registerLine(LINE_0, lineA);
 
         var lineB = new Line(song);
-        lineB.addElement(ElementType.CROTCHET.newInstance());
+        lineB.addElement(crotchet());
         coordinator.registerLine(LINE_1, lineB);
 
         coordinator.activateLine(LINE_0);
@@ -502,12 +503,12 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
         var coordinator = new SelectionCoordinator(mock(ScoreView.class));
 
         var lineA = new Line(song);
-        lineA.addElement(ElementType.CROTCHET.newInstance());
-        lineA.addElement(ElementType.CROTCHET.newInstance());
+        lineA.addElement(crotchet());
+        lineA.addElement(crotchet());
         coordinator.registerLine(LINE_0, lineA);
 
         var lineB = new Line(song);
-        var lyricNote = ElementType.CROTCHET.newInstance();
+        var lyricNote = crotchet();
         lineB.addElement(lyricNote);
         coordinator.registerLine(LINE_1, lineB);
 
@@ -542,7 +543,7 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
     @Test
     void testRevalidateDecorationSelectionKeepsSlideWhenElementStillHasSlide() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         line.getElement(0).setGlissando();
         var coordinator = coordinatorFor(line);
         coordinator.select(new HitTarget.Slide(line.getElement(0)));
@@ -561,7 +562,7 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
     @Test
     void testRevalidateDecorationSelectionKeepsSlideWhenOnlyTheSlideWasRemoved() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         line.getElement(0).setGlissando();
         var note = line.getElement(0);
         var coordinator = coordinatorFor(line);
@@ -576,7 +577,7 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
     @Test
     void testRevalidateDecorationSelectionClearsSlideWhenOwningElementLeavesTheLine() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         line.getElement(0).setGlissando();
         var coordinator = coordinatorFor(line);
         coordinator.select(new HitTarget.Slide(line.getElement(0)));
@@ -735,7 +736,7 @@ class SelectionCoordinatorTargetSelectionTest extends UnitTest {
     @Test
     void testRevalidateDecorationSelectionKeepsALiveTargetThroughAnUnrelatedMutation() {
         var line = twoNoteLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
         var note = line.getElement(0);
         var articulation = new Articulation(note, ArticulationType.STACCATO);
         note.addArticulation(articulation);

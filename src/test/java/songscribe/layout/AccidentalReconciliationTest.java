@@ -23,6 +23,10 @@ package songscribe.layout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatIllegalArgumentException;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.breathMark;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import java.util.Arrays;
 import java.util.List;
@@ -35,7 +39,6 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
 import songscribe.dom.Crescendo;
-import songscribe.dom.ElementType;
 import songscribe.dom.KeyType;
 import songscribe.dom.Line;
 import songscribe.dom.Span;
@@ -78,7 +81,7 @@ class AccidentalReconciliationTest extends UnitTest {
     private static final int ONE_SHARP = 1;
 
     private static StaffElement note(int staffPosition, StaffElement.@Nullable Accidental accidental) {
-        var element = ElementType.CROTCHET.newInstance();
+        var element = crotchet();
         element.setStaffPosition(staffPosition);
         element.setAccidental(accidental);
         return element;
@@ -523,7 +526,7 @@ class AccidentalReconciliationTest extends UnitTest {
             // the sharp cannot change it.
             var line = lineOf(
                 note(F_STAFF_POSITION, StaffElement.Accidental.SHARP), note(G_STAFF_POSITION),
-                ElementType.SINGLE_BARLINE.newInstance(), note(A_STAFF_POSITION), note(F_STAFF_POSITION));
+                singleBarline(), note(A_STAFF_POSITION), note(F_STAFF_POSITION));
 
             var accidentalChanges = AccidentalReconciliation.reconcileModification(
                 line, toggle(FIRST_NOTE, null, F_STAFF_POSITION));
@@ -538,7 +541,7 @@ class AccidentalReconciliationTest extends UnitTest {
             var line = fixtureB();
 
             var accidentalChanges = AccidentalReconciliation.reconcile(
-                insert(line, FOURTH_NOTE, ElementType.SINGLE_BARLINE.newInstance()));
+                insert(line, FOURTH_NOTE, singleBarline()));
 
             assertThat(accidentalChanges)
                 .containsExactly(change(line, FOURTH_NOTE, StaffElement.Accidental.SHARP));
@@ -549,7 +552,7 @@ class AccidentalReconciliationTest extends UnitTest {
             var line = fixtureB();
 
             var accidentalChanges = AccidentalReconciliation.reconcile(
-                insert(line, FOURTH_NOTE, ElementType.REPEAT_LEFT.newInstance()));
+                insert(line, FOURTH_NOTE, repeatLeft()));
 
             assertThat(accidentalChanges)
                 .containsExactly(change(line, FOURTH_NOTE, StaffElement.Accidental.SHARP));
@@ -562,7 +565,7 @@ class AccidentalReconciliationTest extends UnitTest {
             var line = fixtureB();
 
             var accidentalChanges = AccidentalReconciliation.reconcile(
-                insert(line, FOURTH_NOTE, ElementType.BREATH_MARK.newInstance()));
+                insert(line, FOURTH_NOTE, breathMark()));
 
             assertThat(accidentalChanges).isEmpty();
         }
@@ -658,7 +661,7 @@ class AccidentalReconciliationTest extends UnitTest {
         void testATieCrossingABarlineStillNeedsNothingWrittenOnTheTiedNote() {
             var first = note(A_STAFF_POSITION, StaffElement.Accidental.FLAT);
             var second = note(A_STAFF_POSITION);
-            var line = lineOf(first, ElementType.SINGLE_BARLINE.newInstance(), second);
+            var line = lineOf(first, singleBarline(), second);
             line.addSpan(new Tie(first, second));
 
             var accidentalChanges = AccidentalReconciliation.reconcileModification(
@@ -699,7 +702,7 @@ class AccidentalReconciliationTest extends UnitTest {
 
             var accidentalChanges = AccidentalReconciliation.reconcile(pasteWithSpans(
                 line, FIRST_NOTE,
-                List.of(pastedFlatA, ElementType.SINGLE_BARLINE.newInstance(), pastedTiedA),
+                List.of(pastedFlatA, singleBarline(), pastedTiedA),
                 priors(StaffElement.Accidental.FLAT, null, StaffElement.Accidental.FLAT),
                 List.of(new Tie(pastedFlatA, pastedTiedA))));
 
@@ -720,7 +723,7 @@ class AccidentalReconciliationTest extends UnitTest {
 
             var accidentalChanges = AccidentalReconciliation.reconcile(pasteWithSpans(
                 line, FIRST_NOTE,
-                List.of(pastedFlatA, ElementType.SINGLE_BARLINE.newInstance(), pastedUntiedA),
+                List.of(pastedFlatA, singleBarline(), pastedUntiedA),
                 priors(StaffElement.Accidental.FLAT, null, StaffElement.Accidental.FLAT),
                 List.of(new Crescendo(pastedFlatA, pastedUntiedA))));
 

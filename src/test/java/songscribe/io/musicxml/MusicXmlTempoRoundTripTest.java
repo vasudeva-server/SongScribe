@@ -22,12 +22,13 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.Test;
 
 import songscribe.dom.Duration;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.Song;
 import songscribe.dom.StaffElement;
@@ -109,8 +110,8 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
      */
     private Song buildSongWithTempo(Tempo tempo) {
         var song = buildSong(line -> {
-            line.addElement(ElementType.CROTCHET.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
+            line.addElement(crotchet());
         });
 
         song.withoutMutationTracking(() -> song.setTempo(tempo));
@@ -152,7 +153,7 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
     void testDefaultTempoIsWrittenAndRoundTrips() throws Exception {
         // Song.tempo is non-null and seeded with Tempo's defaults, so even a
         // song whose tempo was never touched still emits and recovers one.
-        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        var song = buildSong(line -> line.addElement(crotchet()));
 
         var xml = writeToString(song);
         assertThat(xml).as("default tempo <sound tempo> is written").contains("<" + MusicXmlTags.SOUND + " " + MusicXmlTags.ATTR_TEMPO);
@@ -184,9 +185,9 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
         var perNoteTempo = new Tempo(PER_NOTE_TEMPO_BPM, Duration.MINIM, NO_DESCRIPTION, true);
 
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);
@@ -247,9 +248,9 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
         var perNoteTempo = new Tempo(PER_NOTE_TEMPO_BPM, Duration.MINIM, NO_DESCRIPTION, true);
 
         var song = buildSong(
-            line -> line.addElement(ElementType.CROTCHET.newInstance()),
+            line -> line.addElement(crotchet()),
             line -> {
-                var note = ElementType.CROTCHET.newInstance();
+                var note = crotchet();
                 line.addElement(note);
                 attachTempo(note, perNoteTempo);
             }
@@ -272,8 +273,8 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
         var baseTempo = new Tempo(BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
 
         var song = buildSong(line -> {
-            line.addElement(ElementType.GRACE_QUAVER.newInstance());
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(graceQuaver());
+            line.addElement(crotchet());
         });
         song.withoutMutationTracking(() -> song.setTempo(baseTempo));
 
@@ -297,7 +298,7 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
 
         var song = buildSong(
             line -> { },
-            line -> line.addElement(ElementType.CROTCHET.newInstance())
+            line -> line.addElement(crotchet())
         );
         song.withoutMutationTracking(() -> song.setTempo(baseTempo));
 
@@ -318,7 +319,7 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
     @Test
     void testSongTempoIsTheFirstChildOfTheFirstMeasure() throws Exception {
         var tempo = new Tempo(BASE_TEMPO_BPM, Duration.CROTCHET, NO_DESCRIPTION, true);
-        var song = buildSong(line -> line.addElement(ElementType.CROTCHET.newInstance()));
+        var song = buildSong(line -> line.addElement(crotchet()));
         song.withoutMutationTracking(() -> song.setTempo(tempo));
 
         var xml = writeToString(song);
@@ -400,9 +401,9 @@ class MusicXmlTempoRoundTripTest extends MusicXmlRoundTripSupport {
         var dottedTempo = new Tempo(DOTTED_TEMPO_BPM, Duration.CROTCHET_DOTTED, NO_DESCRIPTION, true);
 
         var song = buildSong(line -> {
-            var note0 = ElementType.CROTCHET.newInstance();
-            var note1 = ElementType.CROTCHET.newInstance();
-            var note2 = ElementType.CROTCHET.newInstance();
+            var note0 = crotchet();
+            var note1 = crotchet();
+            var note2 = crotchet();
             line.addElement(note0);
             line.addElement(note1);
             line.addElement(note2);

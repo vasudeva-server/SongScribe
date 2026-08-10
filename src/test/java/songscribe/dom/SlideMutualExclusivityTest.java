@@ -21,6 +21,7 @@
 package songscribe.dom;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.Test;
 
@@ -33,7 +34,7 @@ import songscribe.UnitTest;
 class SlideMutualExclusivityTest extends UnitTest {
 
     private static StaffElement newNote() {
-        return ElementType.CROTCHET.newInstance();
+        return crotchet();
     }
 
     @Test

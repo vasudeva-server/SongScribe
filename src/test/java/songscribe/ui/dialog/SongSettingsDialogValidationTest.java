@@ -31,7 +31,6 @@ import org.mockito.verification.VerificationMode;
 
 import songscribe.MainFrameMockTest;
 import songscribe.Strings;
-import songscribe.dom.ElementType;
 import songscribe.dom.Lyric;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
@@ -52,6 +51,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 /**
  * Unit tests for the parts of {@link SongSettingsDialog} that only exist once the dialog is
@@ -109,7 +109,7 @@ class SongSettingsDialogValidationTest extends MainFrameMockTest {
         var line = song.getLine(0);
         song.withoutMutationTracking(() -> {
             for (var i = 0; i < LINE_ELEMENT_COUNT; i++) {
-                var element = ElementType.CROTCHET.newInstance();
+                var element = crotchet();
                 element.setLyricForVerse(
                     Lyric.FIRST_VERSE, Lyric.Syllabic.SINGLE, false, SYLLABLE, Lyric.Extend.NONE
                 );

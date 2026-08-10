@@ -1485,7 +1485,7 @@ class MusicEditOperationsMutationTest extends UnitTest {
         // Selection already starts with a single barline [barline, n1, n2, n3].
         // Result: NONE action at index 0, ending over [0..3].
         // No barline should be inserted — only the Ending span is added.
-        var env = setupEnv(ElementType.SINGLE_BARLINE.newInstance(), crotchet(), crotchet(), crotchet());
+        var env = setupEnv(singleBarline(), crotchet(), crotchet(), crotchet());
         ReflectionTestHelper.selectNote(env.coordinator(), 0);
         var result = EndingValidationResult.valid(EndingValidationResult.PrecedingAction.NONE, 0, 3);
         env.operations().makeFirstSecondEnding(result);

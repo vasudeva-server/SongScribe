@@ -22,13 +22,13 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
-import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.engraving.SMuFLConstants;
 import songscribe.engraving.Staff;
@@ -161,7 +161,7 @@ class InsertionMarkerOverlayTest extends UnitTest {
 
             assertThat(secondDomLine).as("test setup did not attach a line").isNotNull();
 
-            secondDomLine.addElement(ElementType.CROTCHET.newInstance());
+            secondDomLine.addElement(crotchet());
             overlay.setTarget(secondLine, TARGET_INDEX + 1);
             var secondBounds = overlay.getInkBoundsSs();
 

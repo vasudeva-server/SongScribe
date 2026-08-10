@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import module java.desktop;
 
@@ -36,7 +37,6 @@ import songscribe.MainFrameMockTest;
 import songscribe.dom.StaffElementFactory;
 import songscribe.dom.Crescendo;
 import songscribe.dom.Diminuendo;
-import songscribe.dom.ElementType;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.DynamicAttachment.DynamicType;
 import songscribe.dom.Line;
@@ -59,7 +59,7 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
 
         @Test
         void testAddDynamicToNoteWithNone() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             FORTE_ACTION.applyToElement(note, true);
 
             var attachment = note.findAttachment(DynamicAttachment.class);
@@ -69,14 +69,14 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
 
         @Test
         void testNoOpWhenNotSelectedAndNoDynamic() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             FORTE_ACTION.applyToElement(note, false);
             assertThat(note.findAttachment(DynamicAttachment.class)).isNull();
         }
 
         @Test
         void testReplaceDifferentType() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addAttachment(new DynamicAttachment(note, DynamicType.PIANO));
             FORTE_ACTION.applyToElement(note, true);
 
@@ -87,7 +87,7 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
 
         @Test
         void testToggleOffSameType() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addAttachment(new DynamicAttachment(note, DynamicType.FORTE));
             FORTE_ACTION.applyToElement(note, true);
             assertThat(note.findAttachment(DynamicAttachment.class)).isNull();
@@ -99,7 +99,7 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
         // so the note ends up with no dynamic.
         @Test
         void testRemovesDynamicWhenNotSelectedAndSameTypeExists() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addAttachment(new DynamicAttachment(note, DynamicType.FORTE));
             FORTE_ACTION.applyToElement(note, false);
             assertThat(note.findAttachment(DynamicAttachment.class)).isNull();
@@ -112,21 +112,21 @@ class DynamicMarkingActionTest extends MainFrameMockTest {
 
         @Test
         void testMatchesWhenNoteHasMatchingType() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addAttachment(new DynamicAttachment(note, DynamicType.FORTE));
             assertThat(FORTE_ACTION.matchesElement(note)).isTrue();
         }
 
         @Test
         void testNoMatchWhenNoteHasDifferentType() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             note.addAttachment(new DynamicAttachment(note, DynamicType.PIANO));
             assertThat(FORTE_ACTION.matchesElement(note)).isFalse();
         }
 
         @Test
         void testNoMatchWhenNoteHasNoDynamic() {
-            var note = ElementType.CROTCHET.newInstance();
+            var note = crotchet();
             assertThat(FORTE_ACTION.matchesElement(note)).isFalse();
         }
     }

@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -396,7 +397,7 @@ class TrillActionTest extends UnitTest {
 
             song.withoutMutationTracking(() -> {
                 for (var i = 0; i < elementCount; i++) {
-                    line.addElement(ElementType.CROTCHET.newInstance());
+                    line.addElement(crotchet());
                 }
             });
 
@@ -496,7 +497,7 @@ class TrillActionTest extends UnitTest {
 
             song.withoutMutationTracking(() -> {
                 for (var i = 0; i < elementCount; i++) {
-                    line.addElement(ElementType.CROTCHET.newInstance());
+                    line.addElement(crotchet());
                 }
 
                 line.addSpan(

@@ -23,12 +23,13 @@ package songscribe.ui.action;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.graceQuaver;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import songscribe.MainFrameMockTest;
-import songscribe.dom.ElementType;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.selection.Selection;
 import songscribe.ui.selection.SelectionCoordinator;
@@ -53,13 +54,13 @@ class EditLyricActionGraceNoteTest extends MainFrameMockTest {
         var line = detachedLine();
 
         for (var i = 0; i < graceIndex; i++) {
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
         }
 
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         line.addElement(grace);
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
 
         when(mockCoordinator.getRange())
             .thenReturn(Selection.Range.single(line, graceIndex));
@@ -69,13 +70,13 @@ class EditLyricActionGraceNoteTest extends MainFrameMockTest {
         var line = detachedLine();
 
         for (var i = 0; i < hostIndex - 1; i++) {
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
         }
 
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         grace.setGlissando();
         line.addElement(grace);
-        var host = ElementType.CROTCHET.newInstance();
+        var host = crotchet();
         line.addElement(host);
 
         when(mockCoordinator.getRange())
@@ -100,9 +101,9 @@ class EditLyricActionGraceNoteTest extends MainFrameMockTest {
 @Test
     void testEnabledForUnpairedGraceNote() {
         var line = detachedLine();
-        var grace = ElementType.GRACE_QUAVER.newInstance();
+        var grace = graceQuaver();
         line.addElement(grace);
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
 
         when(mockCoordinator.getRange())
             .thenReturn(Selection.Range.single(line, 0));
@@ -119,8 +120,8 @@ class EditLyricActionGraceNoteTest extends MainFrameMockTest {
     @Test
     void testDisabledWhenMoreThanOneElementSelected() {
         var line = detachedLine();
-        line.addElement(ElementType.CROTCHET.newInstance());
-        line.addElement(ElementType.CROTCHET.newInstance());
+        line.addElement(crotchet());
+        line.addElement(crotchet());
 
         when(mockCoordinator.getRange()).thenReturn(new Selection.Range(line, 0, 1, 0));
 

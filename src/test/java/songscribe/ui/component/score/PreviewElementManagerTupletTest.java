@@ -21,6 +21,8 @@
 package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.quaver;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -83,7 +85,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.setXPosSsMatchesElement(true);
             PreviewElementManager.setCurrentXIndex(1);
-            setPreviewElement(ElementType.CROTCHET.newInstance());
+            setPreviewElement(crotchet());
 
             PreviewElementManager.handleClick(lc);
 
@@ -99,7 +101,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
             addNotes(3, ElementType.QUAVER);
             addTriplet(0, 2);
 
-            var dottedQuaver = ElementType.QUAVER.newInstance();
+            var dottedQuaver = quaver();
             dottedQuaver.setDotCount(1);
 
             PreviewElementManager.setXPosSsMatchesElement(true);
@@ -121,7 +123,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.setXPosSsMatchesElement(true);
             PreviewElementManager.setCurrentXIndex(1);
-            setPreviewElement(ElementType.QUAVER.newInstance());
+            setPreviewElement(quaver());
 
             PreviewElementManager.handleClick(lc);
 
@@ -150,7 +152,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.setXPosSsMatchesElement(false);
             PreviewElementManager.setCurrentXIndex(1);
-            setPreviewElement(ElementType.QUAVER.newInstance());
+            setPreviewElement(quaver());
 
             PreviewElementManager.handleClick(lc);
 
@@ -169,7 +171,7 @@ class PreviewElementManagerTupletTest extends PreviewElementManagerTestBase {
 
             PreviewElementManager.setXPosSsMatchesElement(false);
             PreviewElementManager.setCurrentXIndex(3);
-            setPreviewElement(ElementType.QUAVER.newInstance());
+            setPreviewElement(quaver());
 
             PreviewElementManager.handleClick(lc);
 

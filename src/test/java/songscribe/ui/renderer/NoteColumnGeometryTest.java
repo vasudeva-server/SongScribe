@@ -22,6 +22,10 @@ package songscribe.ui.renderer;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.minim;
+import static songscribe.dom.StaffElementFactory.quaver;
+import static songscribe.dom.StaffElementFactory.semibreve;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -54,7 +58,7 @@ class NoteColumnGeometryTest extends UnitTest {
     void testCrotchetUpStem_rightSsEqualsStemRightEdge() {
         // A plain crotchet (stem up) ends at the stem's right edge, which Bravura places flush
         // with the notehead's right edge (see testStemOuterEdgesAreFlushWithNoteheadOuterEdges).
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setUpper(true);
 
         var extent = NoteColumnGeometry.extentSs(note, false);
@@ -74,7 +78,7 @@ class NoteColumnGeometryTest extends UnitTest {
         // The expectation is read straight from the font metadata rather than from
         // noteheadWidthSs, which is the very lookup the production path uses — deriving both
         // sides from it would hide a whole-note-specific error in that lookup.
-        var note = ElementType.SEMIBREVE.newInstance();
+        var note = semibreve();
         note.setUpper(true);
 
         var extent = NoteColumnGeometry.extentSs(note, false);
@@ -89,7 +93,7 @@ class NoteColumnGeometryTest extends UnitTest {
         // A minim (half note) has a stem but no flag. The stem's right edge is flush with the
         // notehead's (see testStemOuterEdgesAreFlushWithNoteheadOuterEdges), so this pins the
         // shared value rather than proving the stem widened anything.
-        var note = ElementType.MINIM.newInstance();
+        var note = minim();
         note.setUpper(true);
 
         var extent = NoteColumnGeometry.extentSs(note, false);
@@ -105,10 +109,10 @@ class NoteColumnGeometryTest extends UnitTest {
 
     @Test
     void testCrotchetDownStem_leftSsMatchesUpStemAtNoteheadLeft() {
-        var upStemNote = ElementType.CROTCHET.newInstance();
+        var upStemNote = crotchet();
         upStemNote.setUpper(true);
 
-        var downStemNote = ElementType.CROTCHET.newInstance();
+        var downStemNote = crotchet();
         downStemNote.setUpper(false);
 
         var upExtent = NoteColumnGeometry.extentSs(upStemNote, false);
@@ -182,10 +186,10 @@ class NoteColumnGeometryTest extends UnitTest {
 
     @Test
     void testDottedNote_rightSsGreaterThanPlain() {
-        var plain = ElementType.CROTCHET.newInstance();
+        var plain = crotchet();
         plain.setUpper(true);
 
-        var dotted = ElementType.CROTCHET.newInstance();
+        var dotted = crotchet();
         dotted.setUpper(true);
         dotted.setDotCount(1);
 
@@ -197,10 +201,10 @@ class NoteColumnGeometryTest extends UnitTest {
 
     @Test
     void testAccidentalNote_leftSsLessThanPlain() {
-        var plain = ElementType.CROTCHET.newInstance();
+        var plain = crotchet();
         plain.setUpper(true);
 
-        var withAccidental = ElementType.CROTCHET.newInstance();
+        var withAccidental = crotchet();
         withAccidental.setUpper(true);
         withAccidental.setAccidental(StaffElement.Accidental.SHARP);
 
@@ -214,11 +218,11 @@ class NoteColumnGeometryTest extends UnitTest {
     void testLedgerNote_extentIgnoresLedgerLines() {
         // Ledger lines are excluded from the column extent; a ledger note and an on-staff note
         // of the same type and stem direction must produce identical extents.
-        var onStaff = ElementType.CROTCHET.newInstance();
+        var onStaff = crotchet();
         onStaff.setUpper(true);
         onStaff.setStaffPosition(0);
 
-        var ledger = ElementType.CROTCHET.newInstance();
+        var ledger = crotchet();
         ledger.setUpper(true);
         ledger.setStaffPosition(TWO_LEDGERS_BELOW_SP);
 
@@ -233,11 +237,11 @@ class NoteColumnGeometryTest extends UnitTest {
     void testLedgerNote_extentMatchesNoteheadStemExtentForBothStemDirections() {
         // With ledger lines excluded, the extent matches the plain notehead/stem geometry for
         // both stem-up and stem-down, and does not equal getLedgerLineBaseExtentSs.
-        var stemUpNote = ElementType.CROTCHET.newInstance();
+        var stemUpNote = crotchet();
         stemUpNote.setUpper(true);
         stemUpNote.setStaffPosition(TWO_LEDGERS_BELOW_SP);
 
-        var stemUpOnStaff = ElementType.CROTCHET.newInstance();
+        var stemUpOnStaff = crotchet();
         stemUpOnStaff.setUpper(true);
         stemUpOnStaff.setStaffPosition(0);
 
@@ -254,11 +258,11 @@ class NoteColumnGeometryTest extends UnitTest {
             .as("ledger-excluded extent must not include the ledger overhang")
             .isGreaterThan(stemUpLedgerBase.leftSs());
 
-        var stemDownNote = ElementType.CROTCHET.newInstance();
+        var stemDownNote = crotchet();
         stemDownNote.setUpper(false);
         stemDownNote.setStaffPosition(TWO_LEDGERS_BELOW_SP);
 
-        var stemDownOnStaff = ElementType.CROTCHET.newInstance();
+        var stemDownOnStaff = crotchet();
         stemDownOnStaff.setUpper(false);
         stemDownOnStaff.setStaffPosition(0);
 
@@ -273,7 +277,7 @@ class NoteColumnGeometryTest extends UnitTest {
     void testFlag_doesNotChangeRightSs_betweenUnbeamedAndBeamed() {
         // The flag is excluded from the static column extent; rightSs is the same
         // whether the note is beamed or not.
-        var note = ElementType.QUAVER.newInstance();
+        var note = quaver();
         note.setUpper(true);
 
         var unbeamedExtent = NoteColumnGeometry.extentSs(note, false);
@@ -290,7 +294,7 @@ class NoteColumnGeometryTest extends UnitTest {
     void testGlissandoAttachExtent_upStemCrotchet_rightSsEqualsNoteheadRight() {
         // The stem-free attach extent's right edge is the notehead right (augmentation dots
         // aside, not the stem). The stem is excluded regardless of whether it adds visual width.
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setUpper(true);
 
         var attachExtent = NoteColumnGeometry.glissandoAttachExtentSs(note, false);
@@ -307,7 +311,7 @@ class NoteColumnGeometryTest extends UnitTest {
         // inward, so it no longer protrudes past the notehead. The stem-free attach extent's left is
         // the notehead left edge (notehead X offset + glyph left bbox), and (a) the full extent's
         // left coincides with it because the stem adds no leftward width.
-        var note = ElementType.CROTCHET.newInstance();
+        var note = crotchet();
         note.setUpper(false);
 
         var fullExtent = NoteColumnGeometry.extentSs(note, false);
@@ -327,10 +331,10 @@ class NoteColumnGeometryTest extends UnitTest {
     @Test
     void testGlissandoAttachExtent_dottedNote_rightSsGreaterThanPlain() {
         // Augmentation dots extend the right attach edge, just as they extend the full extent.
-        var plain = ElementType.CROTCHET.newInstance();
+        var plain = crotchet();
         plain.setUpper(true);
 
-        var dotted = ElementType.CROTCHET.newInstance();
+        var dotted = crotchet();
         dotted.setUpper(true);
         dotted.setDotCount(1);
 
@@ -343,10 +347,10 @@ class NoteColumnGeometryTest extends UnitTest {
     @Test
     void testGlissandoAttachExtent_accidentalNote_leftSsLessThanPlain() {
         // An accidental extends the left attach edge leftward (more negative).
-        var plain = ElementType.CROTCHET.newInstance();
+        var plain = crotchet();
         plain.setUpper(true);
 
-        var withAccidental = ElementType.CROTCHET.newInstance();
+        var withAccidental = crotchet();
         withAccidental.setUpper(true);
         withAccidental.setAccidental(StaffElement.Accidental.SHARP);
 
