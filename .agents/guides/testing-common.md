@@ -10,7 +10,8 @@
 A test's value is its ability to fail when the production code is wrong. Coverage
 that executes a line without asserting on its behavior proves nothing. For every
 test, the governing question is: *what bug would this catch, and could it actually
-catch it?* The `check-tests` skill audits tests against the principles below.
+catch it?* The `check` skill audits tests against the principles below whenever
+tests are in scope, and `check --tests-only` audits them alone.
 
 ### Correctness — is the test itself trustworthy?
 
@@ -64,7 +65,7 @@ bytecode — flips a `<`, swaps a `+`, returns `null` — and reruns the coverin
 tests. A surviving mutant is a change to production code that no test detected:
 a concrete hole. Mutation testing is the slow path, so it stays scoped to
 pure-logic classes and unit tests only (it excludes `songscribe.e2e` and Swing/UI
-by default). `check-tests --mutation` folds surviving mutants into its correctness
+by default). `check --mutation` folds surviving mutants into its correctness
 findings.
 
 ## Choosing the level: unit vs. e2e vs. none
