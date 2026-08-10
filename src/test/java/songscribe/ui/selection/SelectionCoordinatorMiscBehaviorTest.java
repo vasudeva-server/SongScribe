@@ -62,7 +62,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
     // -------------------------------------------------------------------------
 
     @Test
-    void testGlobalMouseReleasedListenerClearsDragRectangleAndNullsDraggingLine() throws Exception {
+    void testGlobalMouseReleasedListenerClearsSelectionBandAndNullsDraggingLine() throws Exception {
         var mockToolkit = mock(Toolkit.class);
 
         try (var toolkitStatic = mockStatic(Toolkit.class)) {
@@ -90,7 +90,7 @@ class SelectionCoordinatorMiscBehaviorTest extends MainFrameMockTest {
             listener.eventDispatched(mouseReleasedEvent);
 
             // Both cleanup effects must be observable.
-            verify(mockLine).clearDragRectangle();
+            verify(mockLine).clearSelectionBand();
             assertThat(coordinator.getDragTracker().getDraggingLine())
                 .as("draggingLine nulled after MOUSE_RELEASED")
                 .isNull();

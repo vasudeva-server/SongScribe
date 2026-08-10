@@ -22,6 +22,7 @@ package songscribe.ui.component.score;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.description;
@@ -38,7 +39,9 @@ import java.awt.event.InputEvent;
 import java.awt.event.MouseEvent;
 // Disambiguates from java.awt.List (java.desktop module)
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -62,6 +65,7 @@ import songscribe.dom.StaffElement;
 import songscribe.dom.Tie;
 import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
+import songscribe.engraving.Staff;
 import songscribe.font.DocumentFonts;
 import songscribe.hit.HitPriority;
 import songscribe.hit.HitRegion;
@@ -70,6 +74,9 @@ import org.jspecify.annotations.Nullable;
 import songscribe.hit.HitRegistry;
 import songscribe.ui.selection.Selection;
 import songscribe.hit.HitTarget;
+import songscribe.layout.ColumnSpan;
+import songscribe.layout.ElementColumn;
+import songscribe.layout.ElementColumnTestHelper;
 import songscribe.layout.HorizontalSpacingCalculator;
 import songscribe.layout.LayoutEngine;
 import songscribe.layout.LayoutResult;
@@ -78,6 +85,7 @@ import songscribe.ui.Mode;
 import songscribe.ui.OptionDialogs;
 import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.score.LineSelectionHandler.SelectionBand;
 import songscribe.ui.playback.MidiController;
 import songscribe.ui.selection.SelectionCoordinator;
 
@@ -93,7 +101,7 @@ import songscribe.ui.selection.SelectionCoordinator;
  * <p>{@code calculateLineSelectionFromDrag} is tested through
  * {@link LineSelectionHandler#handleDrag} (its only caller), using a real {@link Song} /
  * {@link Line}, with mouse coordinates built from staff spaces through {@link #viewPx} so the
- * drag-rect/element-rect intersection can be verified numerically.
+ * band/column-span overlap can be verified numerically.
  *
  * <p>Unless a test calls {@link #givenZoomedView}, the component reports
  * {@link ViewScale#IDENTITY} — 100% zoom, where the zoom factor is 1.0 and therefore invisible
@@ -448,54 +456,82 @@ class LineSelectionHandlerTest extends UnitTest {
     }
 
     // -------------------------------------------------------------------------
-    // calculateLineSelectionFromDrag — tested through handleDrag
+    // The band drag path — shared fixture
     // -------------------------------------------------------------------------
 
-    @SuppressWarnings("PackageVisibleInnerClass")
-    @Nested
-    class CalculateLineSelectionFromDrag {
-
-        // Three notes assigned distinct X positions via a mocked LayoutResult.
-        // The drag rect spans X=[0,DRAG_TARGET_SS], Y=[0,DRAG_TARGET_SS] before the midline
-        // shift. Only element 0 at X=10 falls within; X=50 and X=90 do not.
-        private static final double ELEMENT_0_X_SS = 10;
-        private static final double ELEMENT_1_X_SS = 50;
-        private static final double ELEMENT_2_X_SS = 90;
-
-        /** Both elements of the two-element fixture, at X positions inside the drag rect. */
-        private static final double NEAR_X_SS = 5;
-        private static final double FAR_X_SS = 15;
+    /**
+     * The fixture every band-drag test runs on: a registered line, a real
+     * {@link SelectionCoordinator}, and a mocked layout whose columns the test positions itself.
+     * <p>
+     * A base class rather than a helper object because JUnit's {@code @Nested} classes cannot
+     * share instance state any other way, and the band tests are split across several of them —
+     * the drag path's sweep, its geometry, its hit basis and its arming each read the same
+     * fixture and would otherwise each rebuild it.
+     */
+    abstract class DragFixture {
 
         /**
-         * A drag corner between {@link #NEAR_X_SS} and {@link #FAR_X_SS}, for the zoomed drag
-         * below: a sweep that reaches exactly this far catches the near element and not the far
-         * one, so a conversion that ignored the zoom factor would visibly over-reach.
+         * How far a positioned column's right edge sits past its X — a real, non-zero width, so
+         * the band's snap-to-column-extent behavior (spec §3) has something to snap to. Small
+         * next to the gaps between the fixtures' element X positions, so no two columns overlap.
          */
-        private static final double BETWEEN_ELEMENTS_X_SS = 10;
+        static final double ELEMENT_RIGHT_EXTENT_SS = 2;
 
-        private static final int COMPONENT_SIZE_PX = 1000;
+        /** The left extent of a column with no leading accidental: its left edge is its X. */
+        static final double NO_ACCIDENTAL_SS = 0;
 
-        private Line line = new Song().getLine(0);
-        private SelectionCoordinator coordinator = new SelectionCoordinator(mock(ScoreView.class));
+        static final int COMPONENT_SIZE_PX = 1000;
+
+        Line line = new Song().getLine(0);
+        SelectionCoordinator coordinator = new SelectionCoordinator(mock(ScoreView.class));
+
+        /**
+         * The columns {@link #positionElement} has stubbed, tracked here rather than read back
+         * off {@code mockLayout} — calling a mock method from inside another mock method's
+         * {@code thenAnswer} would re-enter Mockito's stubbing machinery, not just answer a
+         * plain query.
+         */
+        private final Map<StaffElement, ElementColumn> positionedColumns = new HashMap<>();
 
         @BeforeEach
         void registerTheDefaultTwoNoteLine() {
             register(givenLine());
         }
 
-        private Line threeNoteLine() {
+        /** A fresh song's first line, holding one element of each given type. */
+        Line lineOf(ElementType... types) {
             var song = new Song();
             var newLine = song.getLine(0);
             song.withoutMutationTracking(() -> {
-                newLine.addElement(ElementType.CROTCHET.newInstance());
-                newLine.addElement(ElementType.CROTCHET.newInstance());
-                newLine.addElement(ElementType.CROTCHET.newInstance());
+                for (var type : types) {
+                    newLine.addElement(type.newInstance());
+                }
             });
             return newLine;
         }
 
-        private void register(Line lineToRegister) {
+        Line threeNoteLine() {
+            return lineOf(ElementType.CROTCHET, ElementType.CROTCHET, ElementType.CROTCHET);
+        }
+
+        /**
+         * A line holding nothing but the song's auto-maintained terminal. Built by adding a note
+         * — which is what appends the terminal — and taking it away again, since the terminal
+         * cannot be added directly and a line that never held a note never grows one.
+         */
+        Line terminalOnlyLine() {
+            var song = new Song();
+            var newLine = song.getLine(0);
+            song.withoutMutationTracking(() -> {
+                newLine.addElement(ElementType.CROTCHET.newInstance());
+                newLine.removeElement(0);
+            });
+            return newLine;
+        }
+
+        void register(Line lineToRegister) {
             line = lineToRegister;
+            positionedColumns.clear();
             // A real coordinator, since the drag path's whole output is the range it assigns.
             coordinator = new SelectionCoordinator(mock(ScoreView.class));
             coordinator.registerLine(0, line);
@@ -506,10 +542,43 @@ class LineSelectionHandlerTest extends UnitTest {
             when(lc.getWidth()).thenReturn(COMPONENT_SIZE_PX);
             when(lc.getHeight()).thenReturn(COMPONENT_SIZE_PX);
             when(mockScoreView.getSelectionCoordinator()).thenReturn(coordinator);
+
+            // Mirrors LayoutHitTester.findElementAtXSs against whatever positionElement has
+            // stubbed on mockLayout.getElementColumn, so the handler's own columnAt lookup
+            // resolves the same column a real layout would. The requested span is honored
+            // rather than ignored, so a handler that asked for the wrong one is caught here.
+            when(mockLayout.findElementAtXSs(anyDouble(), any(), any()))
+                .thenAnswer(invocation -> elementIndexAtXSs(
+                    invocation.getArgument(0), invocation.getArgument(2)));
+        }
+
+        /**
+         * The lowest-index element among {@code line}'s whose positioned column contains
+         * {@code xSs} under {@code span}, or -1 — the same first-match-wins tie-break
+         * {@link songscribe.layout.LayoutHitTester#findElementAtXSs} uses.
+         */
+        private int elementIndexAtXSs(double xSs, ColumnSpan span) {
+            for (var elementIndex = 0; elementIndex < line.elementCount(); elementIndex++) {
+                var column = positionedColumns.get(line.getElement(elementIndex));
+
+                if (column == null) {
+                    continue;
+                }
+
+                var leftBoundSs = span == ColumnSpan.HEAD
+                    ? column.getXSs()
+                    : column.getLeftEdgeXSs();
+
+                if (xSs >= leftBoundSs && xSs <= column.getRightEdgeXSs()) {
+                    return elementIndex;
+                }
+            }
+
+            return -1;
         }
 
         /** The range the drag left behind, failing rather than returning null. */
-        private Selection.Range selectedRange() {
+        Selection.Range selectedRange() {
             var range = coordinator.getRange();
 
             assertThat(range).as("the drag selected no range").isNotNull();
@@ -517,9 +586,118 @@ class LineSelectionHandlerTest extends UnitTest {
             return range;
         }
 
-        private void positionElement(int elementIndex, double xSs) {
-            when(mockLayout.getElementXSs(line.getElement(elementIndex))).thenReturn(xSs);
+        /**
+         * Stubs {@code element}'s column at {@code xSs} with a real, non-zero right extent
+         * ({@link #ELEMENT_RIGHT_EXTENT_SS}), so the band has a column to snap out to instead
+         * of the zero-width point {@link ElementColumnTestHelper}'s simplest overload builds.
+         */
+        void positionElement(int elementIndex, double xSs) {
+            positionElement(elementIndex, xSs, NO_ACCIDENTAL_SS);
         }
+
+        /**
+         * Stubs {@code element}'s column at {@code xSs} reaching {@code leftExtentSs} to the left
+         * of it, as a column with a leading accidental does. Left extents are negative, so the
+         * column's left ink edge lands at {@code xSs + leftExtentSs} while its glyph body still
+         * starts at {@code xSs} — the one case where the two column spans differ.
+         */
+        void positionElement(int elementIndex, double xSs, double leftExtentSs) {
+            var element = line.getElement(elementIndex);
+            var column = ElementColumnTestHelper.columnAt(
+                element, xSs, leftExtentSs, ELEMENT_RIGHT_EXTENT_SS);
+            when(mockLayout.getElementColumn(element)).thenReturn(column);
+            positionedColumns.put(element, column);
+        }
+
+        /** The right edge of the column {@link #positionElement} placed at {@code xSs}. */
+        static double rightEdgeOfColumnAt(double xSs) {
+            return xSs + ELEMENT_RIGHT_EXTENT_SS;
+        }
+
+        /**
+         * The leftmost x the band's leading edge can reach on the registered line: clear of the
+         * staff header, whose own press selects the staff lines instead of sweeping.
+         */
+        double sweepLeftLimitSs() {
+            return HorizontalSpacingCalculator.calculateHeaderRightEdgeSs(line) + headerGapSs();
+        }
+
+        /** The end of the staff, which the band reaches when no terminal stops it sooner. */
+        double staffEndXSs() {
+            return line.getSong().getLineWidthSs();
+        }
+
+        /** {@link LineSelectionHandler#HEADER_GAP_PX} in staff spaces. */
+        static double headerGapSs() {
+            return ScaleContext.pxToSs(LineSelectionHandler.HEADER_GAP_PX);
+        }
+
+        /**
+         * Presses at {@code xSs} where nothing is clickable — an empty registry — so the press
+         * is not handled and the drag that follows is free to sweep a band.
+         */
+        void pressAtSs(double xSs) {
+            pressAtSs(xSs, MIDLINE_Y_PX);
+        }
+
+        /** {@link #pressAtSs(double)} at an explicit view-pixel Y, which nothing should consult. */
+        void pressAtSs(double xSs, int yPx) {
+            pressAt(pressEvent(viewPx(xSs), yPx));
+        }
+
+        void dragToSs(double xSs) {
+            dragToSs(xSs, MIDLINE_Y_PX);
+        }
+
+        /** {@link #dragToSs(double)} at an explicit view-pixel Y, which nothing should consult. */
+        void dragToSs(double xSs, int yPx) {
+            handler.handleDrag(dragEvent(viewPx(xSs), yPx));
+        }
+
+        /**
+         * The band {@code getSelectionBand} must report for a drag covering
+         * {@code [leftSs, rightSs]}.
+         * <p>
+         * Staff spaces rather than pixels, because that is what the handler publishes: the band
+         * names an interval of music, and only the renderer turns it into a rectangle. The
+         * vertical extent is not the band's at all — it is the staff's, so the mouse's Y cannot
+         * reach it (spec §6).
+         */
+        static SelectionBand expectedBand(double leftSs, double rightSs) {
+            return new SelectionBand(leftSs, rightSs);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // calculateLineSelectionFromDrag — tested through handleDrag
+    // -------------------------------------------------------------------------
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class CalculateLineSelectionFromDrag extends DragFixture {
+
+        // Three notes assigned distinct X positions via mocked ElementColumns (positionElement).
+        // The band spans X=[0, DRAG_TARGET_SS]. Only element 0 at X=10 falls within it —
+        // X=50 and X=90 do not.
+        private static final double ELEMENT_0_X_SS = 10;
+        private static final double ELEMENT_1_X_SS = 50;
+        private static final double ELEMENT_2_X_SS = 90;
+
+        /**
+         * Both elements of the two-element fixture, at X positions inside the band. Both sit
+         * clear of the staff header, as a real layout places them and as the band's leading edge
+         * needs them to be: it cannot reach into the header, so a column parked there would never
+         * be swept from the right.
+         */
+        private static final double NEAR_X_SS = 12;
+        private static final double FAR_X_SS = 22;
+
+        /**
+         * A drag corner between {@link #NEAR_X_SS} and {@link #FAR_X_SS}, for the zoomed drag
+         * below: a sweep that reaches exactly this far catches the near element and not the far
+         * one, so a conversion that ignored the zoom factor would visibly over-reach.
+         */
+        private static final double BETWEEN_ELEMENTS_X_SS = 17;
 
         /**
          * Presses where nothing is clickable — an empty registry — so the press is not handled
@@ -556,26 +734,6 @@ class LineSelectionHandlerTest extends UnitTest {
             assertThat(range.anchor())
                 .as("the band anchors at the first element it caught")
                 .isEqualTo(0);
-        }
-
-        /**
-         * The default two-note fixture's terminal sits right after the two notes, geometrically
-         * inside the drag rect the corner-drag sweeps — a rubber band must exclude it regardless
-         * (issue #713).
-         */
-        @Test
-        void testDragRectCoveringTheTerminalExcludesItFromTheSelection() {
-            var terminalIndex = line.elementCount() - 1;
-            positionElement(0, NEAR_X_SS);
-            positionElement(1, FAR_X_SS);
-            when(mockLayout.getElementXSs(line.getElement(terminalIndex))).thenReturn(FAR_X_SS);
-
-            pressThenDragToCorner();
-
-            assertThat(selectedRange().begin()).isEqualTo(0);
-            assertThat(selectedRange().end())
-                .as("the terminal, though inside the drag rect, is never selected")
-                .isEqualTo(1);
         }
 
         /**
@@ -622,82 +780,628 @@ class LineSelectionHandlerTest extends UnitTest {
             assertThat(range.end()).as("end").isEqualTo(1);
             assertThat(range.anchor()).as("anchor").isEqualTo(0);
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Band geometry — snap on entry, hold inside, track through gaps, reverse
+    // -------------------------------------------------------------------------
+
+    /**
+     * Three evenly spaced columns with real gaps between them, which is what the anchor/lead
+     * contribution rule of spec §3 needs to be observable: the band's edge has somewhere to snap
+     * out to and somewhere to track continuously through.
+     * <p>
+     * The band itself is read back through {@link LineSelectionHandler#getSelectionBand}, the
+     * only thing that publishes it. Asserting on that rather than on the selection alone is what
+     * separates "the right elements ended up selected" from "the band has the right extent" —
+     * several distinct bands select the same elements.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class BandGeometry extends DragFixture {
+
+        private static final double COLUMN_0_X_SS = 10;
+        private static final double COLUMN_1_X_SS = 20;
+        private static final double COLUMN_2_X_SS = 30;
+
+        /** A point in the gap between column 0 and column 1, well clear of both. */
+        private static final double IN_GAP_BEFORE_COLUMN_1_SS = 15;
+
+        /** A second gap point further right, so a drag can move within the gap alone. */
+        private static final double FURTHER_IN_GAP_SS = 17;
+
+        /** A point in the gap between column 1 and column 2. */
+        private static final double IN_GAP_AFTER_COLUMN_1_SS = 26;
+
+        /** Two points inside column 1, so a drag can move without leaving it. */
+        private static final double INSIDE_COLUMN_1_SS = 20.5;
+        private static final double FURTHER_INSIDE_COLUMN_1_SS = 21.5;
+
+        /** A point just past column 1's right edge — the first x that is out of it again. */
+        private static final double JUST_PAST_COLUMN_1_SS = 22.5;
+
+        /** Two points inside column 0, so a press inside a column can be followed by a nudge. */
+        private static final double INSIDE_COLUMN_0_SS = 11;
+        private static final double FURTHER_INSIDE_COLUMN_0_SS = 11.5;
+
+        /** A point inside column 2, for the drag that reverses back across the anchor. */
+        private static final double INSIDE_COLUMN_2_SS = 31;
+
+        @BeforeEach
+        void positionThreeSpacedColumns() {
+            register(threeNoteLine());
+            positionElement(0, COLUMN_0_X_SS);
+            positionElement(1, COLUMN_1_X_SS);
+            positionElement(2, COLUMN_2_X_SS);
+        }
 
         /**
-         * What the press landed on has no say in the anchor, even when it names an element the
-         * band went on to sweep.
-         * <p>
-         * The band catches both elements here, and the press is stubbed to resolve to the
-         * second of them rather than the first. The two answers come from deliberately
-         * different geometry — the sweep tests each element's true drawn bounds, while the hit
-         * registry pads anything narrower or shorter than a minimum size so it stays clickable
-         * — so a press really can name an element other than the one the band starts at.
-         * <p>
-         * This is the case that separates the current rule from reading the press point, which
-         * is how the anchor used to be chosen: that would anchor on element 1, and the user's
-         * first Shift+Right afterwards would shrink the selection to 1..1 instead of growing it
-         * to 0..2 (issue #748).
-         * <p>
-         * Shift is held because that is the one gesture that can rubber-band from an element at
-         * all. An unmodified press on one is consumed before any drag can begin — on a note it
-         * starts a pitch drag, on anything else it selects the element and counts as handled.
+         * While the band is entirely in dead space both contributions are bare points, so it is
+         * drawn from the press x to the mouse and selects nothing (spec §5).
          */
         @Test
-        void testTheElementUnderTheDragStartIsNotTheAnchor() {
-            positionElement(0, NEAR_X_SS);
-            positionElement(1, FAR_X_SS);
-            givenClickableAtOrigin(
-                new HitTarget.Element(line.getElement(1)), HitPriority.ELEMENT, false);
+        void testADragThatStaysWithinAGapSelectsNothing() {
+            pressAtSs(IN_GAP_BEFORE_COLUMN_1_SS);
+            dragToSs(FURTHER_IN_GAP_SS);
 
-            pressAt(shiftPressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
-            handler.handleDrag(dragEvent(DRAG_TARGET_X, DRAG_TARGET_Y));
+            assertThat(coordinator.getRange())
+                .as("a band still in dead space selects nothing")
+                .isNull();
+            assertThat(handler.getSelectionBand())
+                .as("the band tracks the mouse point for point")
+                .isEqualTo(expectedBand(IN_GAP_BEFORE_COLUMN_1_SS, FURTHER_IN_GAP_SS));
+        }
+
+        /**
+         * The instant the mouse enters a column the leading contribution becomes that column's
+         * whole span, so the band jumps out to its far extent rather than stopping at the
+         * mouse — the text-selection feel goal 3 asks for.
+         */
+        @Test
+        void testEnteringAColumnSnapsTheBandToItsFarExtent() {
+            pressAtSs(IN_GAP_BEFORE_COLUMN_1_SS);
+            dragToSs(INSIDE_COLUMN_1_SS);
+
+            assertThat(handler.getSelectionBand())
+                .as("the band reaches the column's right edge, not the mouse")
+                .isEqualTo(expectedBand(
+                    IN_GAP_BEFORE_COLUMN_1_SS, rightEdgeOfColumnAt(COLUMN_1_X_SS)));
+
+            var range = selectedRange();
+            assertThat(range.begin()).as("begin").isEqualTo(1);
+            assertThat(range.end()).as("end").isEqualTo(1);
+        }
+
+        /**
+         * Having snapped, the band holds while the mouse wanders inside the column. Without this
+         * the edge would creep with the mouse and the snap would read as a glitch rather than as
+         * the column being taken whole.
+         */
+        @Test
+        void testMovingWithinAColumnLeavesTheBandAndSelectionUnchanged() {
+            pressAtSs(IN_GAP_BEFORE_COLUMN_1_SS);
+            dragToSs(INSIDE_COLUMN_1_SS);
+
+            var bandOnEntry = handler.getSelectionBand();
+            var rangeOnEntry = selectedRange();
+
+            dragToSs(FURTHER_INSIDE_COLUMN_1_SS);
+
+            assertThat(handler.getSelectionBand()).as("band").isEqualTo(bandOnEntry);
+            assertThat(selectedRange()).as("selection").isEqualTo(rangeOnEntry);
+        }
+
+        /**
+         * On the way out the leading contribution reverts to the mouse point, which is already
+         * past the column's edge — so the band resumes tracking continuously without ever
+         * shrinking back over the column it just took, and that column stays selected.
+         */
+        @Test
+        void testLeavingAColumnResumesContinuousTrackingWithoutGivingItBack() {
+            pressAtSs(IN_GAP_BEFORE_COLUMN_1_SS);
+            dragToSs(INSIDE_COLUMN_1_SS);
+            dragToSs(JUST_PAST_COLUMN_1_SS);
+
+            assertThat(handler.getSelectionBand())
+                .as("the band picks the mouse up where the column's edge left it")
+                .isEqualTo(expectedBand(IN_GAP_BEFORE_COLUMN_1_SS, JUST_PAST_COLUMN_1_SS));
+
+            dragToSs(IN_GAP_AFTER_COLUMN_1_SS);
+
+            assertThat(handler.getSelectionBand())
+                .as("and keeps tracking through the gap")
+                .isEqualTo(expectedBand(IN_GAP_BEFORE_COLUMN_1_SS, IN_GAP_AFTER_COLUMN_1_SS));
+
+            var range = selectedRange();
+            assertThat(range.begin()).as("begin").isEqualTo(1);
+            assertThat(range.end()).as("end").isEqualTo(1);
+        }
+
+        /**
+         * A press inside a column makes the anchor contribution that column's whole span, so the
+         * band covers it from the very first movement. There is no mid-notehead edge to see.
+         */
+        @Test
+        void testPressingInsideAColumnCoversItOnTheFirstMovement() {
+            pressAtSs(INSIDE_COLUMN_0_SS);
+            dragToSs(FURTHER_INSIDE_COLUMN_0_SS);
+
+            assertThat(handler.getSelectionBand())
+                .as("the band spans the whole column, not the two mouse points")
+                .isEqualTo(expectedBand(COLUMN_0_X_SS, rightEdgeOfColumnAt(COLUMN_0_X_SS)));
 
             var range = selectedRange();
             assertThat(range.begin()).as("begin").isEqualTo(0);
-            assertThat(range.end()).as("end").isEqualTo(1);
-            assertThat(range.anchor())
-                .as("the anchor is the first element swept, not the one under the press")
-                .isEqualTo(0);
+            assertThat(range.end()).as("end").isEqualTo(0);
         }
 
         /**
-         * Dragging straight along the staff, with Y never changing, still sweeps.
-         * <p>
-         * Held exactly constant the rectangle would have no height, and a rectangle with no
-         * height overlaps nothing whatever it is tested against — so the sweep would find no
-         * elements and clear the selection rather than making one. Dragging along a staff line
-         * is an ordinary gesture, and it only takes a mouse that reports the same Y twice.
+         * The anchor column is always fully enclosed, so the edge it contributes flips of its own
+         * accord when the drag crosses back over it: press in column 1, sweep right to column 2,
+         * then back left to column 0, and the band encloses columns 0–1 with column 1 still whole.
          */
         @Test
-        void testPerfectlyHorizontalDragStillSelectsTheElementsItSweeps() {
-            positionElement(0, NEAR_X_SS);
-            positionElement(1, FAR_X_SS);
+        void testReversingPastTheAnchorColumnKeepsItEnclosed() {
+            pressAtSs(INSIDE_COLUMN_1_SS);
+            dragToSs(INSIDE_COLUMN_2_SS);
+
+            assertThat(handler.getSelectionBand())
+                .as("rightward, the band runs from the anchor column's left edge")
+                .isEqualTo(expectedBand(COLUMN_1_X_SS, rightEdgeOfColumnAt(COLUMN_2_X_SS)));
+
+            var rightward = selectedRange();
+            assertThat(rightward.begin()).as("begin, rightward").isEqualTo(1);
+            assertThat(rightward.end()).as("end, rightward").isEqualTo(2);
+
+            dragToSs(INSIDE_COLUMN_0_SS);
+
+            assertThat(handler.getSelectionBand())
+                .as("reversed, it runs to the anchor column's right edge")
+                .isEqualTo(expectedBand(COLUMN_0_X_SS, rightEdgeOfColumnAt(COLUMN_1_X_SS)));
+
+            var reversed = selectedRange();
+            assertThat(reversed.begin()).as("begin, reversed").isZero();
+            assertThat(reversed.end()).as("end, reversed").isEqualTo(1);
+            assertThat(reversed.anchor())
+                .as("the range still anchors at its first element (#748)")
+                .isZero();
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // What the band sweeps — X only, clamped to the sweepable columns
+    // -------------------------------------------------------------------------
+
+    /**
+     * The hit basis itself: which elements a given band takes, and which x values it can reach.
+     * Vertical position is not consulted anywhere in the new model (spec §6), and the leading
+     * edge is clamped to the sweepable content range (spec §3).
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class BandHitBasis extends DragFixture {
+
+        private static final double COLUMN_0_X_SS = 10;
+        private static final double COLUMN_1_X_SS = 20;
+        private static final double COLUMN_2_X_SS = 30;
+
+        /** Where the auto-maintained terminal's own column sits, past all three notes. */
+        private static final double TERMINAL_X_SS = 40;
+
+        /** A press point in the gap before the first column, and a lead point inside column 1. */
+        private static final double BEFORE_COLUMN_0_SS = 5;
+        private static final double INSIDE_COLUMN_1_SS = 21;
+
+        /**
+         * How far a leading accidental reaches to the left of its note's X. Negative, as left
+         * extents are, and small enough to stay clear of the column before it.
+         */
+        private static final double ACCIDENTAL_LEFT_EXTENT_SS = -3;
+
+        /**
+         * An x inside column 1's accidental but left of its notehead — inside the column's full
+         * ink, outside its glyph body. The only place the two spans disagree.
+         */
+        private static final double INSIDE_COLUMN_1S_ACCIDENTAL_SS = COLUMN_1_X_SS - 2;
+
+        /** A lead point far to the right of the last column, still inside the component. */
+        private static final double PAST_THE_LAST_COLUMN_SS = 60;
+
+        /** A second lead point further into the right margin, to show the clamp does not move. */
+        private static final double FURTHER_INTO_THE_MARGIN_SS = 100;
+
+        /** A view-pixel Y far above the staff, outside the component's bounds entirely. */
+        private static final int FAR_ABOVE_THE_STAFF_PX = -5000;
+
+        /** A view-pixel Y far below the lyric rows, likewise outside the component. */
+        private static final int FAR_BELOW_THE_LYRICS_PX = 5000;
+
+        /** A view-pixel Y at the very top of the component. */
+        private static final int TOP_OF_THE_COMPONENT_PX = 0;
+
+        /** The Y values one and the same horizontal drag is repeated at. */
+        private static final List<Integer> WILDLY_DIFFERENT_Y_PX = List.of(
+            FAR_ABOVE_THE_STAFF_PX, TOP_OF_THE_COMPONENT_PX, MIDLINE_Y_PX,
+            FAR_BELOW_THE_LYRICS_PX);
+
+        /** A staff position several ledger lines above the staff. */
+        private static final int HIGH_LEDGER_LINE_SP = Staff.MIN_STAFF_POSITION_SP;
+
+        private void positionThreeSpacedColumns() {
+            positionElement(0, COLUMN_0_X_SS);
+            positionElement(1, COLUMN_1_X_SS);
+            positionElement(2, COLUMN_2_X_SS);
+        }
+
+        /**
+         * The same x swept at four wildly different Y values produces the same band and the same
+         * selection. This is goal 1: the gesture the user makes is horizontal, and the vertical
+         * excursion that used to decide whether a tall note was caught no longer says anything.
+         */
+        @Test
+        void testTheMousesYNeverAffectsTheBandOrTheSelection() {
+            register(threeNoteLine());
+            positionThreeSpacedColumns();
+
+            var bands = new ArrayList<SelectionBand>();
+            var ranges = new ArrayList<Selection.Range>();
+
+            for (var yPx : WILDLY_DIFFERENT_Y_PX) {
+                pressAtSs(BEFORE_COLUMN_0_SS, yPx);
+                dragToSs(INSIDE_COLUMN_1_SS, yPx);
+                bands.add(handler.getSelectionBand());
+                ranges.add(selectedRange());
+                handler.handleRelease();
+            }
+
+            assertThat(bands)
+                .as("the same band at every y")
+                .containsOnly(bands.getFirst());
+            assertThat(ranges)
+                .as("the same selection at every y")
+                .containsOnly(ranges.getFirst());
+        }
+
+        /**
+         * A note several ledger lines above the staff, a rest and a barline are three heights
+         * that the old element hit rect measured differently — the note's box excluded its stem,
+         * the barline's spanned the staff. One band takes all three alike now.
+         */
+        @Test
+        void testANoteOnALedgerLineARestAndABarlineAreAllSweptAlike() {
+            register(lineOf(
+                ElementType.CROTCHET, ElementType.CROTCHET_REST, ElementType.SINGLE_BARLINE));
+            line.getElement(0).setStaffPosition(HIGH_LEDGER_LINE_SP);
+            positionThreeSpacedColumns();
+
+            pressAtSs(BEFORE_COLUMN_0_SS);
+            dragToSs(PAST_THE_LAST_COLUMN_SS);
+
+            var range = selectedRange();
+            assertThat(range.begin()).as("begin").isZero();
+            assertThat(range.end())
+                .as("the note, the rest and the barline are all in the range")
+                .isEqualTo(2);
+        }
+
+        /**
+         * The leading edge stops at the auto-maintained terminal's left ink edge, so dragging on
+         * into the right margin adds nothing and the terminal stays unreachable (issue #713).
+         * Two lead points past the terminal are used, since a clamp that merely lagged would
+         * still look right at the first of them.
+         * <p>
+         * The band does reach the bare staff between the last note and the terminal — the clamp
+         * is the terminal, not the last column's right edge.
+         * <p>
+         * Two things keep the terminal out of the selection independently: this clamp (spec §3),
+         * and the scan being bounded to {@code effectiveElementCount() - 1} whatever the band
+         * covers (spec §4). Positioning the terminal at all — rather than leaving it unstubbed —
+         * is what makes this a test of both, instead of one that passes because there was never
+         * anything there to select.
+         */
+        @Test
+        void testTheLeadingEdgeClampsAtTheTerminal() {
+            register(threeNoteLine());
+            positionThreeSpacedColumns();
+            var terminalIndex = line.elementCount() - 1;
+            positionElement(terminalIndex, TERMINAL_X_SS);
+
+            pressAtSs(BEFORE_COLUMN_0_SS);
+            dragToSs(PAST_THE_LAST_COLUMN_SS);
+
+            var clampedBand = expectedBand(BEFORE_COLUMN_0_SS, TERMINAL_X_SS);
+            assertThat(handler.getSelectionBand()).as("band").isEqualTo(clampedBand);
+
+            var range = selectedRange();
+            assertThat(range.begin()).as("begin").isZero();
+            assertThat(range.end())
+                .as("the last real element is the rightmost one a band can reach")
+                .isEqualTo(2)
+                .isNotEqualTo(terminalIndex);
+
+            dragToSs(FURTHER_INTO_THE_MARGIN_SS);
+
+            assertThat(handler.getSelectionBand())
+                .as("dragging further into the margin changes nothing")
+                .isEqualTo(clampedBand);
+            assertThat(selectedRange()).as("selection").isEqualTo(range);
+        }
+
+        /**
+         * With nothing marking the end of the music — no terminal, or none the layout gave a
+         * column — the leading edge runs all the way to the end of the staff rather than stopping
+         * at the last note, so the band can sweep the bare staff past the final element.
+         */
+        @Test
+        void testWithNoTerminalColumnTheLeadingEdgeReachesTheEndOfTheStaff() {
+            register(threeNoteLine());
+            positionThreeSpacedColumns();
+
+            pressAtSs(BEFORE_COLUMN_0_SS);
+            dragToSs(FURTHER_INTO_THE_MARGIN_SS);
+
+            assertThat(handler.getSelectionBand())
+                .as("band")
+                .isEqualTo(expectedBand(BEFORE_COLUMN_0_SS, staffEndXSs()));
+            assertThat(selectedRange().end())
+                .as("every real element is swept")
+                .isEqualTo(2);
+        }
+
+        /**
+         * The leading edge cannot enter the staff header, whose own press selects the staff lines.
+         * Dragging left past it holds the band's left edge one document pixel clear of it.
+         */
+        @Test
+        void testTheLeadingEdgeClampsClearOfTheStaffHeader() {
+            register(threeNoteLine());
+            positionThreeSpacedColumns();
+
+            pressAtSs(rightEdgeOfColumnAt(COLUMN_0_X_SS));
+            dragToSs(0);
+
+            assertThat(handler.getSelectionBand())
+                .as("band")
+                .isEqualTo(expectedBand(sweepLeftLimitSs(), rightEdgeOfColumnAt(COLUMN_0_X_SS)));
+        }
+
+        /**
+         * A column's span is its full drawn ink, so a note's leading accidental is part of it.
+         * A band whose leading edge reaches only the accidental — never the notehead itself —
+         * still takes the note.
+         * <p>
+         * This is the one behavior that tells the two column spans apart. Were the handler to
+         * ask for the glyph body instead of the full ink, the accidental would sit outside every
+         * column, the drag below would land in what the hit test called a gap, and the note the
+         * user visibly swept would not be selected.
+         */
+        @Test
+        void testABandReachingOnlyANotesAccidentalStillTakesTheNote() {
+            register(threeNoteLine());
+            positionElement(0, COLUMN_0_X_SS);
+            positionElement(1, COLUMN_1_X_SS, ACCIDENTAL_LEFT_EXTENT_SS);
+            positionElement(2, COLUMN_2_X_SS);
+
+            pressAtSs(INSIDE_COLUMN_1S_ACCIDENTAL_SS);
+            dragToSs(INSIDE_COLUMN_1S_ACCIDENTAL_SS);
+
+            var range = selectedRange();
+            assertThat(range.begin()).as("begin").isEqualTo(1);
+            assertThat(range.end()).as("the accidental's own note alone").isEqualTo(1);
+            assertThat(handler.getSelectionBand())
+                .as("and the band covers the whole column, accidental included")
+                .isEqualTo(expectedBand(
+                    COLUMN_1_X_SS + ACCIDENTAL_LEFT_EXTENT_SS,
+                    rightEdgeOfColumnAt(COLUMN_1_X_SS)));
+        }
+
+        /**
+         * A grace note is an ordinary sweepable column with no special-case skip: a band that
+         * covers its span selects it exactly as it would any other element.
+         */
+        @Test
+        void testAGraceNoteIsSweptLikeAnyOtherColumn() {
+            register(lineOf(
+                ElementType.CROTCHET, ElementType.GRACE_QUAVER, ElementType.CROTCHET));
+            positionThreeSpacedColumns();
+
+            pressAtSs(INSIDE_COLUMN_1_SS);
+            dragToSs(INSIDE_COLUMN_1_SS);
+
+            var range = selectedRange();
+            assertThat(range.begin()).as("begin").isEqualTo(1);
+            assertThat(range.end()).as("the grace note alone is selected").isEqualTo(1);
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // What arms a band, and what a band does with nothing to sweep
+    // -------------------------------------------------------------------------
+
+    /**
+     * The branches around the band rather than inside it: which presses arm one at all
+     * (spec §2), what happens on a line with no sweepable columns (spec §3), and what a zoom
+     * mid-drag does to the rectangle the band is published as (spec §7).
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class BandArming extends DragFixture {
+
+        private static final double COLUMN_0_X_SS = 10;
+        private static final double COLUMN_1_X_SS = 20;
+
+        /** A lead point past both columns, far enough that a band would sweep them both. */
+        private static final double PAST_BOTH_COLUMNS_SS = 25;
+
+        /**
+         * Where column 0 lands after a re-layout under a live drag: still left of column 1, but
+         * far enough from {@link #COLUMN_0_X_SS} that the press x is now in a gap.
+         */
+        private static final double RELAID_OUT_COLUMN_0_X_SS = 14;
+
+        /** A press point in the gap between the two columns, and a lead point past them both. */
+        private static final double RAW_BAND_LEFT_SS = 15;
+        private static final double RAW_BAND_RIGHT_SS = 25;
+
+        /** Asserts that the drag that just ran never became a band. */
+        private void assertNoBand() {
+            assertThat(handler.isDragging())
+                .as("no band drag started")
+                .isFalse();
+            assertThat(handler.getSelectionBand())
+                .as("no band is published for painting")
+                .isNull();
+        }
+
+        /**
+         * Shift on an element extends the selection on the click that follows (#748), so the
+         * press deliberately leaves {@code pressHandled} false — but it must not arm a band with
+         * it. Sweeping here would replace the range the user asked to grow.
+         */
+        @Test
+        void testShiftPressingAnElementNeverArmsABand() {
+            positionElement(0, COLUMN_0_X_SS);
+            positionElement(1, COLUMN_1_X_SS);
+            coordinator.activateLine(0);
+            coordinator.selectRange(0, 1);
+            var rangeBeforeThePress = selectedRange();
+            givenClickableAtOrigin(
+                new HitTarget.Element(line.getElement(0)), HitPriority.ELEMENT, false);
+
+            pressAt(shiftPressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
+            dragToSs(PAST_BOTH_COLUMNS_SS);
+
+            assertNoBand();
+            assertThat(coordinator.getRange())
+                .as("the range the Shift press was extending is untouched")
+                .isEqualTo(rangeBeforeThePress);
+        }
+
+        /**
+         * A plain press on an element selects it and is eligible for a pitch drag, so no band is
+         * armed there either. Rests, whose press never spawns a playback thread, stand in for
+         * elements generally.
+         */
+        @Test
+        void testPlainPressingAnElementNeverArmsABand() {
+            register(lineOf(ElementType.CROTCHET_REST, ElementType.CROTCHET_REST));
+            positionElement(0, COLUMN_0_X_SS);
+            positionElement(1, COLUMN_1_X_SS);
+            givenClickableAtOrigin(
+                new HitTarget.Element(line.getElement(0)), HitPriority.ELEMENT, false);
 
             pressAt(pressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
-            handler.handleDrag(dragEvent(DRAG_TARGET_X, MIDLINE_Y_PX));
+            dragToSs(PAST_BOTH_COLUMNS_SS);
 
-            assertThat(selectedRange().begin()).isEqualTo(0);
-            assertThat(selectedRange().end()).isEqualTo(1);
+            assertNoBand();
+
+            var range = selectedRange();
+            assertThat(range.begin()).as("begin").isZero();
+            assertThat(range.end())
+                .as("the pressed element alone stays selected")
+                .isZero();
         }
 
         /**
-         * The vertical counterpart: a drag straight down a single X, which has no width for the
-         * same reason. Run down the X of element 0, it sweeps that element and no other.
+         * An empty line — the state every line of a new song is in — has nothing to sweep, so the
+         * press never arms and the drag is a no-op. Painting a band over bare staff that could
+         * not select anything only tells the user a lie about what the gesture is doing.
          */
         @Test
-        void testPerfectlyVerticalDragStillSelectsTheElementUnderIt() {
-            register(threeNoteLine());
-            positionElement(0, ELEMENT_0_X_SS);
-            positionElement(1, ELEMENT_1_X_SS);
-            positionElement(2, ELEMENT_2_X_SS);
+        void testAnEmptyLineNeverArmsABand() {
+            register(new Song().getLine(0));
 
-            var elementColumnXPx = viewPx(ELEMENT_0_X_SS);
+            assertThat(line.effectiveElementCount())
+                .as("the fixture line has no sweepable columns")
+                .isZero();
 
-            pressAt(pressEvent(elementColumnXPx, 0));
-            handler.handleDrag(dragEvent(elementColumnXPx, DRAG_TARGET_Y));
+            pressAtSs(RAW_BAND_LEFT_SS);
+            dragToSs(RAW_BAND_RIGHT_SS);
 
-            assertThat(selectedRange().begin()).isEqualTo(0);
-            assertThat(selectedRange().end()).isEqualTo(0);
+            assertNoBand();
+            assertThat(coordinator.getRange()).as("selection").isNull();
+        }
+
+        /** A line holding only the auto-maintained terminal behaves as an empty one does. */
+        @Test
+        void testATerminalOnlyLineNeverArmsABand() {
+            register(terminalOnlyLine());
+
+            assertThat(line.elementCount())
+                .as("the fixture line holds the terminal and nothing else")
+                .isEqualTo(1);
+            assertThat(line.effectiveElementCount())
+                .as("the terminal is not a sweepable column")
+                .isZero();
+
+            pressAtSs(RAW_BAND_LEFT_SS);
+            dragToSs(RAW_BAND_RIGHT_SS);
+
+            assertNoBand();
+            assertThat(coordinator.getRange()).as("selection").isNull();
+        }
+
+        /**
+         * No column is resolved once and remembered. The press's own column is looked up afresh
+         * on every drag event, so a re-layout under a live drag — an element inserted elsewhere,
+         * a spacing pass rerunning — is picked up rather than answered from a column that has
+         * since moved.
+         * <p>
+         * Here the anchor's column is moved out from under the drag between two events. A
+         * handler that had cached it on press would keep reporting the band over the column's
+         * old position, painting a selection where the note no longer is.
+         */
+        @Test
+        void testAColumnMovedMidDragIsPickedUpRatherThanRememberedFromThePress() {
+            positionElement(0, COLUMN_0_X_SS);
+            positionElement(1, COLUMN_1_X_SS);
+
+            pressAtSs(COLUMN_0_X_SS);
+            dragToSs(COLUMN_0_X_SS);
+
+            assertThat(handler.getSelectionBand())
+                .as("the band covers the anchor's column where it started")
+                .isEqualTo(expectedBand(COLUMN_0_X_SS, rightEdgeOfColumnAt(COLUMN_0_X_SS)));
+
+            positionElement(0, RELAID_OUT_COLUMN_0_X_SS);
+            dragToSs(COLUMN_0_X_SS);
+
+            assertThat(handler.getSelectionBand())
+                .as("after the re-layout the press x is in a gap, so the band is a bare point")
+                .isEqualTo(expectedBand(COLUMN_0_X_SS, COLUMN_0_X_SS));
+            assertThat(coordinator.getRange())
+                .as("and the column that moved away is no longer swept")
+                .isNull();
+        }
+
+        /**
+         * Nothing pixel-valued is stored or published: the band names an interval of music, so a
+         * zoom mid-drag leaves it untouched (goal 4). The pixels move, the music does not.
+         * <p>
+         * This is the handler's half of that guarantee. The renderer's half — that the same
+         * interval draws at scaled pixels — is
+         * {@code LineRendererTest.RenderSelectionBand.testTheSameBandIsDrawnAtScaledPixelsWhenTheZoomChanges}.
+         * A handler that cached a rectangle would fail here; one that cached staff spaces
+         * correctly but painted them stale would fail there.
+         */
+        @Test
+        void testAZoomMidDragLeavesTheBandsStaffSpaceEndpointsAlone() {
+            positionElement(0, COLUMN_0_X_SS);
+            positionElement(1, COLUMN_1_X_SS);
+
+            pressAtSs(RAW_BAND_LEFT_SS);
+            dragToSs(PAST_BOTH_COLUMNS_SS);
+
+            var bandAtDefaultZoom = expectedBand(RAW_BAND_LEFT_SS, PAST_BOTH_COLUMNS_SS);
+            assertThat(handler.getSelectionBand())
+                .as("band at 100%")
+                .isEqualTo(bandAtDefaultZoom);
+
+            givenZoomedView();
+
+            assertThat(handler.getSelectionBand())
+                .as("the same music after the zoom, with no mouse movement to change it")
+                .isEqualTo(bandAtDefaultZoom);
         }
     }
 
@@ -817,6 +1521,25 @@ class LineSelectionHandlerTest extends UnitTest {
 
             verify(coordinator).select(new HitTarget.StaffLine());
             verify(mockScoreView).selectionChanged();
+        }
+
+        /**
+         * A press that selects the staff lines must be marked handled, so a rubber-band drag
+         * does not start and immediately replace that selection.
+         * <p>
+         * The staff-line region is the header column — the clef and key signature — so this is
+         * what keeps a drag begun in the header from sweeping. Nothing in the drag path checks
+         * for the header itself; the whole guarantee rests on this press being handled.
+         */
+        @Test
+        void testPressOnStaffLineSuppressesRubberBandDrag() {
+            givenClickableAtOrigin(new HitTarget.StaffLine(), HitPriority.STAFF_LINE, false);
+
+            pressAt(pressEvent(ORIGIN_X_PX, MIDLINE_Y_PX));
+            handler.handleDrag(dragEvent(DRAG_TARGET_X, DRAG_TARGET_Y));
+
+            verify(coordinator).select(new HitTarget.StaffLine());
+            assertNoRangeSelected();
         }
 
         @Test

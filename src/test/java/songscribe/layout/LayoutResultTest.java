@@ -520,11 +520,11 @@ class LayoutResultTest extends UnitTest {
             .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
             .build();
 
-        assertThat(result.findElementAtXSs(MOUSE_OVER_FIRST_HEAD_SS, line)).isEqualTo(0);
-        assertThat(result.findElementAtXSs(MOUSE_OVER_SECOND_HEAD_SS, line)).isEqualTo(1);
+        assertThat(result.findElementAtXSs(MOUSE_OVER_FIRST_HEAD_SS, line, ColumnSpan.HEAD)).isEqualTo(0);
+        assertThat(result.findElementAtXSs(MOUSE_OVER_SECOND_HEAD_SS, line, ColumnSpan.HEAD)).isEqualTo(1);
         // Both edges of the head span are inclusive hits.
-        assertThat(result.findElementAtXSs(FIRST_ELEMENT_X_SS, line)).isEqualTo(0);
-        assertThat(result.findElementAtXSs(FIRST_ELEMENT_X_SS + HEAD_RIGHT_EXTENT_SS, line)).isEqualTo(0);
+        assertThat(result.findElementAtXSs(FIRST_ELEMENT_X_SS, line, ColumnSpan.HEAD)).isEqualTo(0);
+        assertThat(result.findElementAtXSs(FIRST_ELEMENT_X_SS + HEAD_RIGHT_EXTENT_SS, line, ColumnSpan.HEAD)).isEqualTo(0);
     }
 
     // A mouse X in the gap between heads — or outside all heads — returns -1.
@@ -538,9 +538,9 @@ class LayoutResultTest extends UnitTest {
             .putElementColumn(second, columnAt(second, SECOND_ELEMENT_X_SS, HEAD_RIGHT_EXTENT_SS))
             .build();
 
-        assertThat(result.findElementAtXSs(MOUSE_IN_GAP_SS, line)).isEqualTo(-1);
-        assertThat(result.findElementAtXSs(MOUSE_BEFORE_FIRST_SS, line)).isEqualTo(-1);
-        assertThat(result.findElementAtXSs(MOUSE_AFTER_LAST_SS, line)).isEqualTo(-1);
+        assertThat(result.findElementAtXSs(MOUSE_IN_GAP_SS, line, ColumnSpan.HEAD)).isEqualTo(-1);
+        assertThat(result.findElementAtXSs(MOUSE_BEFORE_FIRST_SS, line, ColumnSpan.HEAD)).isEqualTo(-1);
+        assertThat(result.findElementAtXSs(MOUSE_AFTER_LAST_SS, line, ColumnSpan.HEAD)).isEqualTo(-1);
     }
 
     // ==========================================================================

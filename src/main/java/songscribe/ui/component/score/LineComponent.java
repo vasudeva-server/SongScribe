@@ -254,6 +254,25 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
+     * Returns the Y coordinate of the top staff line in staff-space units.
+     * <p>
+     * The staff's own vertical extent, which anything drawn to straddle it — the selection band
+     * above all — takes from here rather than re-deriving from the midline.
+     */
+    public double getStaffTopYSs() {
+        return getMiddleLineYSs() - Staff.STAFF_HALF_SS;
+    }
+
+    /**
+     * Returns the Y coordinate of the bottom staff line in staff-space units.
+     *
+     * @see #getStaffTopYSs
+     */
+    public double getStaffBottomYSs() {
+        return getMiddleLineYSs() + Staff.STAFF_HALF_SS;
+    }
+
+    /**
      * Returns the Y coordinate of the middle staff line in pixels.
      * <p>
      * Bridge method for callers not yet converted to staff-space units.
@@ -545,7 +564,7 @@ public class LineComponent extends ScoreComponent
 
         // Drag rectangle is a pixel-space UI overlay — render after restoring the transform
         // so it is not affected by the staff-space scale.
-        lineRenderer.renderDragRectangle(g2);
+        lineRenderer.renderSelectionBand(g2);
     }
 
     @Override
@@ -1158,10 +1177,10 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Clears any active rubber-band drag rectangle on this line.
+     * Ends any live selection band on this line.
      * Called from ScoreView when a window-level mouseReleased catches an orphaned drag.
      */
-    public void clearDragRectangle() {
+    public void clearSelectionBand() {
         selectionHandler.handleRelease();
     }
 
@@ -1180,9 +1199,10 @@ public class LineComponent extends ScoreComponent
     }
 
     /**
-     * Returns the current drag rectangle.
+     * Returns the live selection band's horizontal extent, or {@code null} when no drag is in
+     * progress.
      */
-    Rectangle getDragRectangle() {
-        return selectionHandler.getDragRectangle();
+    LineSelectionHandler.@Nullable SelectionBand getSelectionBand() {
+        return selectionHandler.getSelectionBand();
     }
 }

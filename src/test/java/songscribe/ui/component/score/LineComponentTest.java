@@ -933,21 +933,38 @@ class LineComponentTest extends UnitTest {
             when(mockScoreView.getMode()).thenReturn(Mode.SELECT);
             lc.setScoreView(mockScoreView);
 
-            // A non-null line is the other half of the selection-active gate.
+            // A non-null line is the other half of the selection-active gate, and it needs an
+            // element on it: a line with nothing to sweep never arms a band, so the drag would
+            // bail before reaching the paste guard these tests are about.
             var song = new Song();
+            var line = song.getLine(0);
+            song.withoutMutationTracking(() -> line.addElement(ElementType.CROTCHET.newInstance()));
             lc.song = song;
-            lc.setLine(song.getLine(0), 0);
+            lc.setLine(line, 0);
 
             // The drag clamps to the component bounds, which a zero-sized component
             // inverts into an empty range.
             lc.setSize(DRAG_COMPONENT_SIZE);
         }
 
-        /** Runs {@code mouseDragged} with paste mode reporting the given in-progress state. */
+        /**
+         * Arms a band with a press on empty staff, then runs {@code mouseDragged} with paste mode
+         * reporting the given in-progress state.
+         *
+         * <p>Only an armed band reaches the paste guard — a drag with nothing armed bails first,
+         * which would let both tests pass for the wrong reason. The press is delivered straight to
+         * the selection handler rather than through {@code LineComponent.mousePressed}, whose hit
+         * cascade lays the line out and needs loaded fonts this fixture has no use for. Arming
+         * before paste mode starts is also the scenario the drag guard exists for: a band armed by
+         * an earlier press, with paste mode starting before the mouse moves.
+         */
         private void dragWithPasteInProgress(boolean inProgress) {
             var graceMock = mock(GraceModeManager.class);
             var pasteMock = mock(PasteModeManager.class);
             when(pasteMock.isInProgress()).thenReturn(inProgress);
+
+            // A null hit target is a genuine miss, which is exactly what arms a band.
+            lc.getSelectionHandler().handlePress(mouseEvent(MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1), null);
 
             try (var emm = mockStatic(EditModeManager.class)) {
                 emm.when(EditModeManager::getGraceModeManager).thenReturn(graceMock);

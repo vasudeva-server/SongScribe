@@ -26,6 +26,7 @@ import module java.desktop;
 import songscribe.error.RuntimeError;
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.dom.Ss;
 import songscribe.dom.Tie;
 import songscribe.hit.HitTarget;
 import songscribe.layout.LayoutResult;
@@ -33,6 +34,7 @@ import songscribe.engraving.LineThickness;
 import songscribe.layout.NoteGeometry;
 import songscribe.ui.FlatLafKey;
 import songscribe.ui.FlatLafProps;
+import songscribe.ui.ViewScale;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.GraceModeManager;
 import songscribe.dom.AnnotationAttachment;
@@ -85,6 +87,9 @@ class LineRenderer {
 
     /** Corner arc diameter for the rubber-band selection rectangle at 100% zoom, in pixels. */
     private static final double SELECTION_RECT_ARC_PX = 2.0;
+
+    /** Minimum drawn width of the selection band, so a zero-width band still renders. */
+    private static final double MIN_BAND_WIDTH_PX = 1.0;
 
     // ==========================================================================
     // Instance Fields
@@ -634,53 +639,64 @@ class LineRenderer {
     // ==========================================================================
 
     /**
-     * Renders the drag rectangle during a selection drag on this line.
+     * Renders the selection band during a drag on this line, or nothing when no drag is in
+     * progress.
      *
      * @param g2 Graphics context
      */
-    void renderDragRectangle(Graphics2D g2) {
-        if (!lc.isDraggingSelection()) {
-            return;
-        }
+    void renderSelectionBand(Graphics2D g2) {
+        var band = lc.getSelectionBand();
 
-        var dragRectangle = lc.getDragRectangle();
-
-        if (dragRectangle.isEmpty()) {
+        if (band == null) {
             return;
         }
 
         // This rectangle is a pixel-space overlay drawn outside the Ss transform (see
         // LineComponent.render), so the border must be scaled by the zoom factor explicitly
         // rather than relying on the transform to do it, unlike Ss-space engraved lines.
-        var factor = lc.getViewScale().factor();
+        var viewScale = lc.getViewScale();
+        var factor = viewScale.factor();
         var arcPx = SELECTION_RECT_ARC_PX * factor;
         var strokeWidthPx = SELECTION_RECT_STROKE_WIDTH_PX * factor;
         var halfStrokeWidthPx = strokeWidthPx / 2;
 
         // The stroke is centered on the rectangle's path, so it extends halfStrokeWidthPx
         // beyond each edge. Swing clips painting at the line's own bounds, so a drag that
-        // reaches the top or bottom of the line (see issue #643) would otherwise have its
-        // border cut off there. Keep the drawn path inset by that half-width so the full
-        // stroke always lands inside the line.
+        // reaches the left or right of the line (see issue #643) would otherwise have its
+        // border cut off there. Keep the drawn path inset horizontally by that half-width so
+        // the full stroke always lands inside the line.
         var minX = halfStrokeWidthPx;
-        var minY = halfStrokeWidthPx;
         var maxX = lc.getWidth() - 1 - halfStrokeWidthPx;
-        var maxY = lc.getHeight() - 1 - halfStrokeWidthPx;
 
-        var left = Math.max(dragRectangle.x, minX);
-        var top = Math.max(dragRectangle.y, minY);
-        var right = Math.min(dragRectangle.x + dragRectangle.width, maxX);
-        var bottom = Math.min(dragRectangle.y + dragRectangle.height, maxY);
+        var left = Math.max(toViewPx(viewScale, band.leftSs()), minX);
+        var right = Math.min(toViewPx(viewScale, band.rightSs()), maxX);
+        var width = Math.max(MIN_BAND_WIDTH_PX, right - left);
+
+        // The band's vertical extent is the staff's own, not the drag's: it straddles the top
+        // and bottom staff lines however the mouse moves. Unlike the horizontal edges, those
+        // are well inside the component, so no inset is needed to keep the stroke from clipping.
+        var top = toViewPx(viewScale, lc.getStaffTopYSs());
+        var bottom = toViewPx(viewScale, lc.getStaffBottomYSs());
 
         var roundRect = new RoundRectangle2D.Double(
-                left, top,
-                Math.max(0, right - left), Math.max(0, bottom - top),
-                arcPx, arcPx);
+                left, top, width, bottom - top, arcPx, arcPx);
 
         try (var _ = GraphicsState.save(g2, GraphicsState.Property.STROKE, GraphicsState.Property.COLOR)) {
             g2.setStroke(new BasicStroke((float) strokeWidthPx));
             g2.setColor(ScoreView.getSelectionColor());
             g2.draw(roundRect);
         }
+    }
+
+    /**
+     * A line-local staff-space position as a view-pixel distance at the given zoom.
+     * <p>
+     * The selection band is the one thing this renderer draws outside the staff-space transform,
+     * so it is also the one thing that has to convert for itself. Sub-pixel on purpose: the
+     * shape drawn is a {@link RoundRectangle2D.Double}, and rounding the edges would make the
+     * band's two axes disagree about where they sit.
+     */
+    private static double toViewPx(ViewScale viewScale, double ss) {
+        return viewScale.toViewPx(new Ss(ss)).value();
     }
 }

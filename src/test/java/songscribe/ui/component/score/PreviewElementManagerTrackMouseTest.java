@@ -23,6 +23,7 @@ package songscribe.ui.component.score;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -33,6 +34,7 @@ import org.junit.jupiter.api.Test;
 
 import songscribe.dom.ElementType;
 import songscribe.dom.Line;
+import songscribe.layout.ColumnSpan;
 import songscribe.layout.LayoutResult;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.edit.GraceModeManager;
@@ -111,7 +113,7 @@ class PreviewElementManagerTrackMouseTest extends PreviewElementManagerTestBase 
     private void stubLayout(int insertionIndex, int elementAtX) {
         var layout = mock(LayoutResult.class);
         when(layout.findInsertionIndex(anyDouble(), any(Line.class))).thenReturn(insertionIndex);
-        when(layout.findElementAtXSs(anyDouble(), any(Line.class))).thenReturn(elementAtX);
+        when(layout.findElementAtXSs(anyDouble(), any(Line.class), eq(ColumnSpan.HEAD))).thenReturn(elementAtX);
         when(lc.getLayoutResult()).thenReturn(layout);
     }
 

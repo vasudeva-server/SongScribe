@@ -186,29 +186,52 @@ class SelectionTest extends E2ETest {
             );
         }
 
-        /**
-         * How far left of and above the first note the rubber-band press starts, in pixels.
-         * Small on purpose, unlike {@link #DRAG_OVERSHOOT_PX}: QUARTER_TEMPO's tempo marking
-         * sits above and just left of that note and is independently clickable, and a press
-         * landing on it selects the marking instead of starting a drag, so the drag never
-         * begins.
-         */
-        private static final int DRAG_START_INSET_PX = 5;
-
-        /** How far past the last note the rubber band is dragged, in pixels. */
-        private static final int DRAG_OVERSHOOT_PX = 20;
-
         /** WHOLE, HALF and QUARTER — the three elements {@link #dragSelectFirstThreeNotes} sweeps. */
         private static final int DRAGGED_SELECTION_SIZE = 3;
+
+        /**
+         * Returns the screen-relative pixel position of the midpoint of the column gap
+         * between two adjacent elements on a line, at the staff midline.
+         * <p>
+         * Under the column-band drag model, the mouse's Y never affects what a drag selects
+         * (see docs/selection.md), so the midline is as good a Y as any and needs no per-note
+         * adjustment to dodge a neighboring hit target the way a fixed pixel inset would.
+         */
+        private Point gapMidpointScreenPosition(int lineIndex, int beforeIndex, int afterIndex) {
+            var result = GuiActionRunner.execute(() -> {
+                var lineComponent = scoreView().getLineComponent(lineIndex);
+                assertThat(lineComponent).isNotNull();
+                var line = lineComponent.getLine();
+                assertThat(line).isNotNull();
+
+                var layoutResult = lineComponent.getLayoutResult();
+                assertThat(layoutResult).isNotNull();
+
+                var beforeColumn = layoutResult.getElementColumn(line.getElement(beforeIndex));
+                var afterColumn = layoutResult.getElementColumn(line.getElement(afterIndex));
+                assertThat(beforeColumn).isNotNull();
+                assertThat(afterColumn).isNotNull();
+
+                var midpointXSs =
+                    (beforeColumn.getRightEdgeXSs() + afterColumn.getLeftEdgeXSs()) / 2;
+
+                var locationOnScreen = lineComponent.getLocationOnScreen();
+                return new Point(
+                    locationOnScreen.x + ScaleContext.ssToRoundedPx(midpointXSs),
+                    locationOnScreen.y + ScaleContext.ssToRoundedPx(lineComponent.getMiddleLineYSs())
+                );
+            });
+            assertThat(result).isNotNull();
+
+            return result;
+        }
 
         /** Rubber-bands across the first three notes, leaving WHOLE..QUARTER selected. */
         private void dragSelectFirstThreeNotes() {
             enterSelectMode();
-            var note1Pos = noteScreenPosition(0, Sel1.WHOLE.index);
-            var note3Pos = noteScreenPosition(0, Sel1.QUARTER.index);
             var dragStart =
-                new Point(note1Pos.x - DRAG_START_INSET_PX, note1Pos.y - DRAG_START_INSET_PX);
-            var dragEnd = new Point(note3Pos.x + DRAG_OVERSHOOT_PX, note3Pos.y + DRAG_OVERSHOOT_PX);
+                gapMidpointScreenPosition(0, Sel1.QUARTER_TEMPO.index, Sel1.WHOLE.index);
+            var dragEnd = gapMidpointScreenPosition(0, Sel1.QUARTER.index, Sel1.EIGHTH.index);
             robot.pressMouse(dragStart, LEFT_BUTTON);
             pause();
             robot.moveMouse(dragEnd);

@@ -734,8 +734,8 @@ public final class LayoutResult {
     /**
      * Delegates to {@link LayoutHitTester#findElementAtXSs}.
      */
-    public int findElementAtXSs(double mouseXSs, Line line) {
-        return hitTester.findElementAtXSs(mouseXSs, line);
+    public int findElementAtXSs(double mouseXSs, Line line, ColumnSpan span) {
+        return hitTester.findElementAtXSs(mouseXSs, line, span);
     }
 
     /**

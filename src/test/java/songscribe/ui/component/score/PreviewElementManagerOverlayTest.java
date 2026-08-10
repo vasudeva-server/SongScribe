@@ -44,6 +44,7 @@ import songscribe.dom.ElementType;
 import songscribe.dom.Line;
 import songscribe.dom.ScaleContext;
 import songscribe.dom.Song;
+import songscribe.layout.ColumnSpan;
 import songscribe.layout.LayoutResult;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.engraving.Staff;
@@ -134,7 +135,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         lc.setLine(line, 0);
 
         layoutResult = mock(LayoutResult.class);
-        when(layoutResult.findElementAtXSs(anyDouble(), eq(line))).thenReturn(-1);
+        when(layoutResult.findElementAtXSs(anyDouble(), eq(line), eq(ColumnSpan.HEAD))).thenReturn(-1);
         // Tied to the actual xIndex argument (rather than a fixed call-order sequence) so it
         // stays correct regardless of how many times an unrelated overlay re-derives its X.
         when(layoutResult.calculateInsertionXSs(anyInt(), anyDouble(), any(), eq(line), eq(false)))
@@ -258,7 +259,7 @@ class PreviewElementManagerOverlayTest extends UnitTest {
         otherLc.setLine(otherLine, 1);
 
         var otherLayoutResult = mock(LayoutResult.class);
-        when(otherLayoutResult.findElementAtXSs(anyDouble(), eq(otherLine))).thenReturn(-1);
+        when(otherLayoutResult.findElementAtXSs(anyDouble(), eq(otherLine), eq(ColumnSpan.HEAD))).thenReturn(-1);
         when(otherLayoutResult.findInsertionIndex(anyDouble(), eq(otherLine))).thenReturn(0);
         when(otherLayoutResult.calculateInsertionXSs(anyInt(), anyDouble(), any(), eq(otherLine), eq(false)))
             .thenReturn(FIRST_INSERTION_X_SS);

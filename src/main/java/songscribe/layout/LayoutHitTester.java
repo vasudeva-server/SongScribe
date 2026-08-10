@@ -84,16 +84,29 @@ public final class LayoutHitTester {
     // ==========================================================================
 
     /**
-     * Returns the index of the element whose head contains {@code mouseXSs}, or {@code -1} if none.
+     * Returns the index of the element whose column contains {@code mouseXSs}, or {@code -1} if
+     * none.
      * <p>
-     * Only the horizontal (X) dimension is checked; Y position is ignored.
-     * The hit zone is the actual element head body: {@code [xSs, xSs + rightExtentSs]}.
+     * Only the horizontal (X) dimension is checked; Y position is ignored. The left bound of the
+     * hit zone depends on {@code span}: {@link ColumnSpan#HEAD} starts at the glyph body
+     * ({@link ElementColumn#getXSs()}), excluding a leading accidental; {@link ColumnSpan#FULL_INK}
+     * starts at the column's full drawn ink ({@link ElementColumn#getLeftEdgeXSs()}), enclosing the
+     * accidental. Both spans share the same right bound, {@link ElementColumn#getRightEdgeXSs()}.
+     * <p>
+     * Columns are checked in element order and the first match wins, so on an overlap — a grace
+     * note's column can overlap its host's when the host's flag is discounted (refs #560) — the
+     * lower index (the grace note, which always precedes its host) is returned.
+     * <p>
+     * The spacing solver assigns each column's X as a running sum of non-negative gaps, so left
+     * bounds never decrease as the index grows. Once one is past {@code mouseXSs}, no later
+     * column can contain it and the scan stops.
      *
      * @param mouseXSs Mouse X coordinate in staff-space units
      * @param line     The line containing the elements
-     * @return Element index, or {@code -1} if mouseXSs is not within any element head's horizontal bounds
+     * @param span     Which horizontal slice of each column counts as a hit
+     * @return Element index, or {@code -1} if mouseXSs is not within any element column's bounds
      */
-    public int findElementAtXSs(double mouseXSs, Line line) {
+    public int findElementAtXSs(double mouseXSs, Line line, ColumnSpan span) {
         for (var i = 0; i < line.elementCount(); i++) {
             var element = line.getElement(i);
             var column = layoutResult.getElementColumn(element);
@@ -102,9 +115,13 @@ public final class LayoutHitTester {
                 continue;
             }
 
-            var elementX = column.getXSs();
+            var leftBoundSs = span == ColumnSpan.HEAD ? column.getXSs() : column.getLeftEdgeXSs();
 
-            if (mouseXSs >= elementX && mouseXSs <= elementX + column.getRightExtentSs()) {
+            if (mouseXSs < leftBoundSs) {
+                break;
+            }
+
+            if (mouseXSs <= column.getRightEdgeXSs()) {
                 return i;
             }
         }
@@ -139,7 +156,7 @@ public final class LayoutHitTester {
         }
 
         // Check each element to see if mouse is within its head bounds
-        var elementAtX = findElementAtXSs(mouseXSs, line);
+        var elementAtX = findElementAtXSs(mouseXSs, line, ColumnSpan.HEAD);
 
         if (elementAtX >= 0 && elementAtX < elementCount) {
             return elementAtX;

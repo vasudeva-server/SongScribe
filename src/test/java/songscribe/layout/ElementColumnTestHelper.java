@@ -36,6 +36,9 @@ public final class ElementColumnTestHelper {
     /** Left extent for a column whose left edge sits exactly at its X. */
     private static final double NO_LEFT_EXTENT_SS = 0.0;
 
+    /** Right extent for a column whose right edge sits exactly at its X (a zero-width point). */
+    private static final double NO_RIGHT_EXTENT_SS = 0.0;
+
     private ElementColumnTestHelper() {
     }
 
@@ -51,10 +54,27 @@ public final class ElementColumnTestHelper {
      * Left extents are negative, so the resulting left edge is {@code xSs + leftExtentSs}. Pass a
      * non-zero extent to tell the left edge apart from the column's other edges, which all
      * collapse onto {@code xSs} when every extent is zero.
+     * <p>
+     * Delegates to {@link #columnAt(StaffElement, double, double, double)} with a zero right
+     * extent, which preserves this overload's original zero-width-point behavior.
      */
     public static ElementColumn columnAt(StaffElement element, double xSs, double leftExtentSs) {
+        return columnAt(element, xSs, leftExtentSs, NO_RIGHT_EXTENT_SS);
+    }
+
+    /**
+     * Returns a column holding {@code element} at {@code xSs} that reaches {@code leftExtentSs}
+     * to the left of that position and {@code rightExtentSs} to the right, so tests can build a
+     * column with real width instead of the zero-width point the other overload returns.
+     * <p>
+     * Left extents are negative, right extents are non-negative — the resulting bounds are
+     * {@code [xSs + leftExtentSs, xSs + rightExtentSs]}.
+     */
+    public static ElementColumn columnAt(
+        StaffElement element, double xSs, double leftExtentSs, double rightExtentSs) {
+
         var column = new ElementColumn(
-            element, Collections.emptyList(), leftExtentSs, 0.0,
+            element, Collections.emptyList(), leftExtentSs, rightExtentSs,
             0.0, 0.0, null, 0.0, false);
         column.setXSs(xSs);
         return column;

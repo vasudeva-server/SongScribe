@@ -59,7 +59,7 @@ public final class SelectionDragTracker {
         if (event instanceof MouseEvent me && me.getID() == MouseEvent.MOUSE_RELEASED) {
             if (draggingLine != null) {
                 if (draggingLine.isDraggingSelection()) {
-                    draggingLine.clearDragRectangle();
+                    draggingLine.clearSelectionBand();
                 }
 
                 draggingLine = null;
