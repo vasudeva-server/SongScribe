@@ -88,6 +88,52 @@ start); `appendStaffElement` assembles them into a `StaffElement` at `</note>`.
 
 ---
 
+## Pending annotation and the deferred `REPEAT_RIGHT` hold
+
+`AnnotationResolver` holds **exactly one** pending slot, built at `</direction>` and
+normally bound to the next-appended element. `BarlineParser`'s deferred `REPEAT_RIGHT`
+(held while it might turn out to be the backward half of a straddling
+`REPEAT_LEFT_RIGHT` pair) complicates this: the barline is not appended at parse time,
+so the pending annotation must ride along with the hold instead of waiting in the
+resolver's single slot, or a later element's `<direction>` would overwrite it.
+
+```
+              <direction placement=…>  ──▶ AnnotationResolver.pendingAnnotation
+                                                    │
+      ┌─────────────────────┬──────────────────────┴───────────────┐
+      │                     │                                       │
+ <barline> = REPEAT_RIGHT   <barline> = other                  </note>
+      │                     │                                       │
+ appendOrHold: HOLD    appendOrHold: APPEND              finishNote
+  ├ pendingRepeatRight=true  ├ append element             ├ flushPendingRepeatRight
+  ├ take endings             └ annotations.resolveAnnotation  │   ├ append REPEAT_RIGHT
+  └ take annotation             (element)                     │   └ attachHeldRepeatRight
+      │                                                        ├ append note
+      │                                                        └ annotations.resolveAnnotation(note)
+ next <barline> = REPEAT_LEFT@left
+      │
+ MERGE (processBarline): append REPEAT_LEFT_RIGHT
+  ├ attachHeldRepeatRight (backward half: held endings + held annotation)
+  └ endings.attachBarlineEndings (forward half: current barline's endings)
+```
+
+Two invariants fall out of this shape:
+
+- **One pending slot.** `AnnotationResolver.takePendingAnnotation()` clears the slot on
+  read, so only one `<direction>` can be in flight — the writer never emits two
+  annotation directions back to back without an intervening bound element, and the
+  reader relies on that.
+- **Flush and merge attach only the *held* annotation, never the pending one.**
+  `attachHeldRepeatRight` (used by both `flushPendingRepeatRight` and the
+  `REPEAT_LEFT_RIGHT` merge branch of `processBarline`) reads
+  `pendingRepeatRightAnnotation`, not `AnnotationResolver`'s slot. A resolver-pending
+  annotation at flush time belongs to an element that has not been appended yet — the
+  `REPEAT_LEFT` whose forward-left barline is still ahead — and falling back to it
+  would steal that element's annotation instead of leaving it pending for its own
+  append.
+
+---
+
 ## Credit routing (`MusicXmlHeaderReader.dispatchCredit`)
 
 The writer emits the same value (composer, dates, place) in **both** the head

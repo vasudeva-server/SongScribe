@@ -251,6 +251,10 @@ public final class MusicXmlWriter {
                     // measure with an invisible right barline to preserve the
                     // line boundary, then open the new measure. An ending anchored
                     // (or ended) on the REPEAT_LEFT rides on the forward-left barline.
+                    // The <direction> must precede the invisible right barline: a
+                    // forward-left barline is required to be its measure's first
+                    // child, so nothing can be emitted between the two barlines.
+                    writeElementAnnotation(pw, element);
                     MusicXmlMeasureWriter.writeInvisibleRightBarline(pw);
                     measureNumber = MusicXmlMeasureWriter.openForwardRepeatMeasure(pw, measureNumber, markers.endingLeftBarlineMarkers());
 
@@ -262,6 +266,10 @@ public final class MusicXmlWriter {
                     // For an ending split here, <ending number="1" type="stop">
                     // rides on the backward-right barline and <ending number="2"
                     // type="start"> on the forward-left barline.
+                    // The <direction> must precede the backward-right barline: a
+                    // forward-left barline is required to be its measure's first
+                    // child, so nothing can be emitted between the two barlines.
+                    writeElementAnnotation(pw, element);
                     MusicXmlMeasureWriter.writeBackwardRepeatRightBarline(pw, markers.endingRightBarlineMarkers());
                     measureNumber = MusicXmlMeasureWriter.openForwardRepeatMeasure(pw, measureNumber, markers.endingLeftBarlineMarkers());
 
@@ -279,10 +287,6 @@ public final class MusicXmlWriter {
                         continue;
                     }
 
-                    // REPEAT_LEFT and REPEAT_LEFT_RIGHT take the two branches above and
-                    // still drop an annotation — a pre-existing gap for ordinary barlines,
-                    // out of scope for issue #713 because the terminal can never be either
-                    // type. Tracked by issue #734.
                     writeElementAnnotation(pw, element);
                     MusicXmlMeasureWriter.writeBarline(pw, entry, markers.endingRightBarlineMarkers());
                     MusicXmlMeasureWriter.closeMeasure(pw);

@@ -164,16 +164,36 @@ final class AnnotationResolver {
     // -------------------------------------------------------------------------
 
     /**
+     * Returns the pending annotation and clears the slot, transferring ownership
+     * to the caller. Used by callers that must hold an annotation across a
+     * deferred append (see {@code BarlineParser}'s deferred REPEAT_RIGHT) rather
+     * than binding it to an element now.
+     */
+    @Nullable
+    Annotation takePendingAnnotation() {
+        var annotation = pendingAnnotation;
+        pendingAnnotation = null;
+        return annotation;
+    }
+
+    /**
+     * Attaches {@code annotation} to {@code element} as an
+     * {@link AnnotationAttachment}. No-op when {@code annotation} is null.
+     */
+    void attachAnnotation(StaffElement element, @Nullable Annotation annotation) {
+        if (annotation == null) {
+            return;
+        }
+
+        element.addAttachment(new AnnotationAttachment(element, annotation));
+    }
+
+    /**
      * Binds a finished annotation to {@code element} by attaching an
      * {@link AnnotationAttachment}. No-op when no annotation is pending.
      */
     void resolveAnnotation(StaffElement element) {
-        if (pendingAnnotation == null) {
-            return;
-        }
-
-        element.addAttachment(new AnnotationAttachment(element, pendingAnnotation));
-        pendingAnnotation = null;
+        attachAnnotation(element, takePendingAnnotation());
     }
 
     /**

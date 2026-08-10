@@ -25,7 +25,9 @@ import java.util.List;
 import org.jspecify.annotations.Nullable;
 import org.xml.sax.SAXException;
 
+import songscribe.dom.Annotation;
 import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 
 /**
  * Accumulates one {@code <barline>}'s in-progress state ({@code <bar-style>},
@@ -42,10 +44,12 @@ final class BarlineParser {
 
     private final MusicXmlReader reader;
     private final EndingResolver endings;
+    private final AnnotationResolver annotations;
 
-    BarlineParser(MusicXmlReader reader, EndingResolver endings) {
+    BarlineParser(MusicXmlReader reader, EndingResolver endings, AnnotationResolver annotations) {
         this.reader = reader;
         this.endings = endings;
+        this.annotations = annotations;
     }
 
     // -------------------------------------------------------------------------
@@ -69,10 +73,14 @@ final class BarlineParser {
     // appended — see EndingResolver.attachBarlineEndings.
     private final List<EndingResolver.EndingMarker> currentBarlineEndings = new ArrayList<>();
 
-    // <ending> markers held alongside a deferred REPEAT_RIGHT (pendingRepeatRight):
-    // a REPEAT_RIGHT is not appended at parse time, so its ending markers wait here
-    // until the element is created (flushed or merged into REPEAT_LEFT_RIGHT).
+    // State held alongside a deferred REPEAT_RIGHT (pendingRepeatRight): a
+    // REPEAT_RIGHT is not appended at parse time, so its ending markers and its
+    // annotation wait here until the element is created (flushed or merged into
+    // REPEAT_LEFT_RIGHT). Both are released together by attachHeldRepeatRight.
     private List<EndingResolver.EndingMarker> pendingRepeatRightEndings = List.of();
+
+    @Nullable
+    private Annotation pendingRepeatRightAnnotation = null;
 
     // -------------------------------------------------------------------------
     // Package API
@@ -151,11 +159,8 @@ final class BarlineParser {
                 // Both halves' ending markers attach to that single element: the
                 // held backward-right markers (volta-1 stop / ending end) first,
                 // then this forward-left barline's (volta-2 start / ending anchor).
-                pendingRepeatRight = false;
-                var heldEndings = pendingRepeatRightEndings;
-                pendingRepeatRightEndings = List.of();
                 var element = reader.appendToCurrentLine(ElementType.REPEAT_LEFT_RIGHT);
-                endings.attachBarlineEndings(element, heldEndings);
+                attachHeldRepeatRight(element);
                 endings.attachBarlineEndings(element, currentBarlineEndings);
             } else {
                 // The pending REPEAT_RIGHT was not followed by a REPEAT_LEFT —
@@ -172,31 +177,58 @@ final class BarlineParser {
      * Either holds {@code elementType} as {@link #pendingRepeatRight} (for
      * deferred REPEAT_LEFT_RIGHT pair detection) or appends it immediately,
      * attaching {@code endingMarkers} to the resulting barline element. A held
-     * REPEAT_RIGHT carries its ending markers in {@link #pendingRepeatRightEndings}
-     * until the element is created (flushed or merged).
+     * REPEAT_RIGHT carries its ending markers and its annotation with it until the
+     * element is created (flushed or merged).
      */
     private void appendOrHold(ElementType elementType, List<EndingResolver.EndingMarker> endingMarkers) throws SAXException {
         if (elementType == ElementType.REPEAT_RIGHT) {
-            // Defer: the next barline may be the forward half of a pair.
+            // Defer: the next barline may be the forward half of a pair. The
+            // annotation must come out of the pending slot now — the next element
+            // to be appended is not this barline, and would otherwise steal it.
             pendingRepeatRight = true;
             pendingRepeatRightEndings = new ArrayList<>(endingMarkers);
+            pendingRepeatRightAnnotation = annotations.takePendingAnnotation();
         } else {
             var element = reader.appendToCurrentLine(elementType);
             endings.attachBarlineEndings(element, endingMarkers);
+            annotations.resolveAnnotation(element);
         }
     }
 
     /**
      * Flushes a held {@link #pendingRepeatRight} as a standalone element,
-     * attaching the ending markers held with it.
+     * releasing the state held with it.
      */
     void flushPendingRepeatRight() throws SAXException {
         if (pendingRepeatRight) {
             var element = reader.appendToCurrentLine(ElementType.REPEAT_RIGHT);
-            var heldEndings = pendingRepeatRightEndings;
-            pendingRepeatRightEndings = List.of();
-            pendingRepeatRight = false;
-            endings.attachBarlineEndings(element, heldEndings);
+            attachHeldRepeatRight(element);
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Private
+    // -------------------------------------------------------------------------
+
+    /**
+     * Releases the whole deferred-REPEAT_RIGHT hold onto {@code element}: its held
+     * ending markers and its held annotation, clearing the hold.
+     *
+     * <p>Only the <i>held</i> annotation is attached — never the resolver's
+     * pending one. An annotation still pending at this point belongs to an element
+     * that has not been appended yet (the REPEAT_LEFT whose forward-left barline is
+     * still ahead), so binding it here would steal it.
+     *
+     * <p>Held endings are attached first, ahead of any the caller goes on to attach
+     * from the current barline: they belong to the backward half of the pair.
+     */
+    private void attachHeldRepeatRight(StaffElement element) {
+        var heldEndings = pendingRepeatRightEndings;
+        var heldAnnotation = pendingRepeatRightAnnotation;
+        pendingRepeatRightEndings = List.of();
+        pendingRepeatRightAnnotation = null;
+        pendingRepeatRight = false;
+        endings.attachBarlineEndings(element, heldEndings);
+        annotations.attachAnnotation(element, heldAnnotation);
     }
 }

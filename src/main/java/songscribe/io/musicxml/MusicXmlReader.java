@@ -133,7 +133,7 @@ public final class MusicXmlReader extends DefaultHandler {
 
     // Parses <barline> elements (bar-style/repeat/ending accumulation and the
     // REPEAT_LEFT_RIGHT straddling pair) — see BarlineParser.
-    private final BarlineParser barlines = new BarlineParser(this, endings);
+    private final BarlineParser barlines = new BarlineParser(this, endings, annotations);
 
     // -------------------------------------------------------------------------
     // Line-reconstruction state
@@ -803,11 +803,24 @@ public final class MusicXmlReader extends DefaultHandler {
      * <p>Package-private (not private): {@link BarlineParser} appends barline
      * elements through this reader rather than duplicating line ownership.
      *
-     * <p>Resolves any pending annotation onto the appended element. This is safe
-     * for this method's other caller, {@link #finishNote}, which appends a
-     * {@code BREATH_MARK} through it: by that point {@code finishNote} has
-     * already resolved the pending annotation onto the note itself, so nothing
-     * is left to steal.
+     * <p><b>Callers own annotation resolution.</b> This method deliberately does
+     * not touch the pending annotation, because appending is not the same event
+     * as binding: a deferred REPEAT_RIGHT is appended long after its own
+     * {@code <direction>} was parsed, so an implicit resolve here would let it
+     * steal a later element's annotation. The call sites are:
+     *
+     * <ul>
+     *   <li>{@code BarlineParser.appendOrHold} (append path) — resolves the
+     *       pending annotation onto the barline it just appended.</li>
+     *   <li>{@code BarlineParser.appendOrHold} (hold path) — appends nothing and
+     *       takes the pending annotation into the REPEAT_RIGHT hold.</li>
+     *   <li>{@code BarlineParser.flushPendingRepeatRight} and the
+     *       REPEAT_LEFT_RIGHT merge — attach the <i>held</i> annotation, never the
+     *       pending one.</li>
+     *   <li>The {@code BREATH_MARK} append in {@link #finishNote} — resolves
+     *       nothing, because {@code finishNote} has already bound the pending
+     *       annotation to the note itself.</li>
+     * </ul>
      */
     StaffElement appendToCurrentLine(ElementType elementType) throws SAXException {
         if (currentLine == null) {
@@ -818,7 +831,6 @@ public final class MusicXmlReader extends DefaultHandler {
 
         var element = elementType.newInstance();
         currentLine.addElement(element);
-        annotations.resolveAnnotation(element);
         return element;
     }
 

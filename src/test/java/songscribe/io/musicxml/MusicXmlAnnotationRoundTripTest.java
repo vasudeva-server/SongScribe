@@ -22,6 +22,10 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatLeftRight;
+import static songscribe.dom.StaffElementFactory.repeatRight;
 
 import java.awt.Component;
 import java.util.List;
@@ -32,6 +36,7 @@ import songscribe.dom.Annotation;
 import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Duration;
 import songscribe.dom.ElementType;
+import songscribe.dom.Ending;
 import songscribe.dom.StaffElement;
 import songscribe.dom.Tempo;
 import songscribe.dom.TempoChangeAttachment;
@@ -72,6 +77,24 @@ class MusicXmlAnnotationRoundTripTest extends MusicXmlRoundTripSupport {
 
     // The mid-line barline in the note/barline/note fixture.
     private static final int ORDINARY_BARLINE_INDEX = 1;
+
+    // The mid-line REPEAT_LEFT / REPEAT_LEFT_RIGHT in the note/repeat/note fixture.
+    private static final int REPEAT_LEFT_INDEX = 1;
+    private static final int REPEAT_LEFT_RIGHT_INDEX = 1;
+
+    // The REPEAT_LEFT starting line 2 in the two-line line-start fixture.
+    private static final int LINE_TWO_REPEAT_LEFT_INDEX = 0;
+
+    // The stray REPEAT_RIGHT in the note/REPEAT_RIGHT/note and
+    // note/REPEAT_RIGHT/repeat/note fixtures, and the element that follows it.
+    private static final int STRAY_REPEAT_RIGHT_INDEX = 1;
+    private static final int NOTE_AFTER_REPEAT_RIGHT_INDEX = 2;
+    private static final int REPEAT_AFTER_STRAY_REPEAT_RIGHT_INDEX = 2;
+
+    // Anchor / split / end indices in the REPEAT_LEFT_RIGHT-split ending fixture.
+    private static final int ENDING_ANCHOR_INDEX = 0;
+    private static final int ENDING_SPLIT_INDEX = 2;
+    private static final int ENDING_END_INDEX = 4;
 
     /**
      * One annotation's round-trippable fields: text, horizontal alignment,
@@ -327,5 +350,257 @@ class MusicXmlAnnotationRoundTripTest extends MusicXmlRoundTripSupport {
             .as("the annotated element is still the mid-line barline, not the terminal")
             .isEqualTo(ElementType.SINGLE_BARLINE);
         assertAnnotationEquals(barline, annotationCase, "annotation on an ordinary barline");
+    }
+
+    // -------------------------------------------------------------------------
+    // REPEAT_LEFT / REPEAT_LEFT_RIGHT annotations (issue #734)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testAnnotationOnRepeatLeftRoundTrips() throws Exception {
+        var annotationCase = new AnnotationCase(
+            TEXT_ABOVE_LEFT, Component.LEFT_ALIGNMENT, Annotation.Placement.ABOVE, Y_OFFSET_ABOVE_LEFT_SS);
+
+        var song = buildSong(line -> {
+            line.addElement(crotchet());
+            var element = repeatLeft();
+            line.addElement(element);
+            attachAnnotation(element, annotationCase);
+            line.addElement(crotchet());
+        });
+
+        var reloaded = roundTrip(song);
+        var line = reloaded.getLine(0);
+        var element = line.getElement(REPEAT_LEFT_INDEX);
+
+        assertThat(element.getType()).as("element type").isEqualTo(ElementType.REPEAT_LEFT);
+        assertAnnotationEquals(element, annotationCase, "annotation on REPEAT_LEFT");
+    }
+
+    @Test
+    void testAnnotationOnRepeatLeftRightRoundTrips() throws Exception {
+        var annotationCase = new AnnotationCase(
+            TEXT_BELOW_RIGHT, Component.RIGHT_ALIGNMENT, Annotation.Placement.BELOW, Y_OFFSET_BELOW_RIGHT_SS);
+
+        var song = buildSong(line -> {
+            line.addElement(crotchet());
+            var element = repeatLeftRight();
+            line.addElement(element);
+            attachAnnotation(element, annotationCase);
+            line.addElement(crotchet());
+        });
+
+        var reloaded = roundTrip(song);
+        var line = reloaded.getLine(0);
+        var element = line.getElement(REPEAT_LEFT_RIGHT_INDEX);
+
+        assertThat(element.getType()).as("element type").isEqualTo(ElementType.REPEAT_LEFT_RIGHT);
+        assertAnnotationEquals(element, annotationCase, "annotation on REPEAT_LEFT_RIGHT");
+    }
+
+    @Test
+    void testAnnotationOnRepeatLeftAtLineStartRoundTrips() throws Exception {
+        var annotationCase = new AnnotationCase(
+            TEXT_ABOVE_CENTER, Component.CENTER_ALIGNMENT, Annotation.Placement.ABOVE, Y_OFFSET_ABOVE_CENTER_SS);
+
+        var song = buildSong(
+            line -> line.addElement(crotchet()),
+            line -> {
+                var element = repeatLeft();
+                line.addElement(element);
+                attachAnnotation(element, annotationCase);
+                line.addElement(crotchet());
+            }
+        );
+
+        var reloaded = roundTrip(song);
+        var lineOne = reloaded.getLine(0);
+        var lineTwo = reloaded.getLine(1);
+        var element = lineTwo.getElement(LINE_TWO_REPEAT_LEFT_INDEX);
+
+        assertThat(element.getType()).as("element type").isEqualTo(ElementType.REPEAT_LEFT);
+        assertAnnotationEquals(element, annotationCase, "annotation on line-starting REPEAT_LEFT");
+
+        assertThat(lineOne.getElement(FIRST_NOTE_INDEX).findAttachment(AnnotationAttachment.class))
+            .as("line 1's note carries no annotation")
+            .isNull();
+    }
+
+    @Test
+    void testRepeatAnnotationDirectionsValidateAgainstSchema() throws Exception {
+        var repeatLeftCase = new AnnotationCase(
+            TEXT_ABOVE_LEFT, Component.LEFT_ALIGNMENT, Annotation.Placement.ABOVE, Y_OFFSET_ABOVE_LEFT_SS);
+        var repeatLeftRightCase = new AnnotationCase(
+            TEXT_BELOW_RIGHT, Component.RIGHT_ALIGNMENT, Annotation.Placement.BELOW, Y_OFFSET_BELOW_RIGHT_SS);
+
+        var song = buildSong(line -> {
+            line.addElement(crotchet());
+            var repeatLeftElement = repeatLeft();
+            line.addElement(repeatLeftElement);
+            attachAnnotation(repeatLeftElement, repeatLeftCase);
+            line.addElement(crotchet());
+            var repeatLeftRightElement = repeatLeftRight();
+            line.addElement(repeatLeftRightElement);
+            attachAnnotation(repeatLeftRightElement, repeatLeftRightCase);
+            line.addElement(crotchet());
+        });
+
+        var xml = writeToString(song);
+        var validator = new MusicXmlSchemaValidator();
+
+        assertThatCode(() -> validator.validate(xml))
+            .as("annotated REPEAT_LEFT and REPEAT_LEFT_RIGHT output validates against the MusicXML 4.0 schema")
+            .doesNotThrowAnyException();
+    }
+
+    // -------------------------------------------------------------------------
+    // Deferred REPEAT_RIGHT hold does not steal another element's annotation (issue #734)
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testAnnotationOnNoteAfterRepeatRightStaysOnTheNote() throws Exception {
+        var annotationCase = new AnnotationCase(
+            TEXT_BELOW_CENTER, Component.CENTER_ALIGNMENT, Annotation.Placement.BELOW, Y_OFFSET_BELOW_CENTER_SS);
+
+        var song = buildSong(line -> {
+            line.addElement(crotchet());
+            line.addElement(repeatRight());
+            var note = crotchet();
+            line.addElement(note);
+            attachAnnotation(note, annotationCase);
+        });
+
+        var reloaded = roundTrip(song);
+        var line = reloaded.getLine(0);
+
+        var strayRepeatRight = line.getElement(STRAY_REPEAT_RIGHT_INDEX);
+        assertThat(strayRepeatRight.getType()).as("stray element type").isEqualTo(ElementType.REPEAT_RIGHT);
+        assertThat(strayRepeatRight.findAttachment(AnnotationAttachment.class))
+            .as("stray REPEAT_RIGHT carries no annotation")
+            .isNull();
+
+        var note = line.getElement(NOTE_AFTER_REPEAT_RIGHT_INDEX);
+        assertThat(note.getType()).as("note type").isEqualTo(ElementType.CROTCHET);
+        assertAnnotationEquals(note, annotationCase, "annotation on note after a stray REPEAT_RIGHT");
+    }
+
+    @Test
+    void testAnnotatedRepeatRightAndAnnotatedNextNoteBothSurvive() throws Exception {
+        var repeatRightCase = new AnnotationCase(
+            TEXT_ABOVE_LEFT, Component.LEFT_ALIGNMENT, Annotation.Placement.ABOVE, Y_OFFSET_ABOVE_LEFT_SS);
+        var noteCase = new AnnotationCase(
+            TEXT_BELOW_RIGHT, Component.RIGHT_ALIGNMENT, Annotation.Placement.BELOW, Y_OFFSET_BELOW_RIGHT_SS);
+
+        var song = buildSong(line -> {
+            line.addElement(crotchet());
+            var repeatRightElement = repeatRight();
+            line.addElement(repeatRightElement);
+            attachAnnotation(repeatRightElement, repeatRightCase);
+            var note = crotchet();
+            line.addElement(note);
+            attachAnnotation(note, noteCase);
+        });
+
+        var reloaded = roundTrip(song);
+        var line = reloaded.getLine(0);
+
+        var repeatRightElement = line.getElement(STRAY_REPEAT_RIGHT_INDEX);
+        assertThat(repeatRightElement.getType()).as("REPEAT_RIGHT type").isEqualTo(ElementType.REPEAT_RIGHT);
+        assertAnnotationEquals(repeatRightElement, repeatRightCase, "annotation on annotated REPEAT_RIGHT");
+
+        var note = line.getElement(NOTE_AFTER_REPEAT_RIGHT_INDEX);
+        assertAnnotationEquals(note, noteCase, "annotation on the note following the annotated REPEAT_RIGHT");
+    }
+
+    @Test
+    void testStrayRepeatRightBeforeAnnotatedRepeatLeftDoesNotStealIt() throws Exception {
+        var annotationCase = new AnnotationCase(
+            TEXT_ABOVE_CENTER, Component.CENTER_ALIGNMENT, Annotation.Placement.ABOVE, Y_OFFSET_ABOVE_CENTER_SS);
+
+        var song = buildSong(line -> {
+            line.addElement(crotchet());
+            line.addElement(repeatRight());
+            var element = repeatLeft();
+            line.addElement(element);
+            attachAnnotation(element, annotationCase);
+            line.addElement(crotchet());
+        });
+
+        var reloaded = roundTrip(song);
+        var line = reloaded.getLine(0);
+
+        assertThat(line.getElement(STRAY_REPEAT_RIGHT_INDEX).findAttachment(AnnotationAttachment.class))
+            .as("stray REPEAT_RIGHT carries no annotation")
+            .isNull();
+
+        var element = line.getElement(REPEAT_AFTER_STRAY_REPEAT_RIGHT_INDEX);
+        assertThat(element.getType()).as("element type").isEqualTo(ElementType.REPEAT_LEFT);
+        assertAnnotationEquals(element, annotationCase, "annotation on REPEAT_LEFT after a stray REPEAT_RIGHT");
+    }
+
+    @Test
+    void testStrayRepeatRightBeforeAnnotatedRepeatLeftRightDoesNotStealIt() throws Exception {
+        var annotationCase = new AnnotationCase(
+            TEXT_BELOW_LEFT, Component.LEFT_ALIGNMENT, Annotation.Placement.BELOW, Y_OFFSET_BELOW_LEFT_SS);
+
+        var song = buildSong(line -> {
+            line.addElement(crotchet());
+            line.addElement(repeatRight());
+            var element = repeatLeftRight();
+            line.addElement(element);
+            attachAnnotation(element, annotationCase);
+            line.addElement(crotchet());
+        });
+
+        var reloaded = roundTrip(song);
+        var line = reloaded.getLine(0);
+
+        assertThat(line.getElement(STRAY_REPEAT_RIGHT_INDEX).findAttachment(AnnotationAttachment.class))
+            .as("stray REPEAT_RIGHT carries no annotation")
+            .isNull();
+
+        var element = line.getElement(REPEAT_AFTER_STRAY_REPEAT_RIGHT_INDEX);
+        assertThat(element.getType()).as("element type").isEqualTo(ElementType.REPEAT_LEFT_RIGHT);
+        assertAnnotationEquals(element, annotationCase, "annotation on REPEAT_LEFT_RIGHT after a stray REPEAT_RIGHT");
+    }
+
+    @Test
+    void testAnnotatedRepeatLeftRightKeepsBothHalvesEndingMarkers() throws Exception {
+        // Line layout:
+        //   REPEAT_LEFT(0) | C(1) | REPEAT_LEFT_RIGHT(2, annotated) | C(3) | REPEAT_RIGHT(4)
+        // Ending: anchor=REPEAT_LEFT, split=REPEAT_LEFT_RIGHT, end=REPEAT_RIGHT.
+        // The split element straddles the merge in BarlineParser.processBarline, so it
+        // carries both the held (backward) ending half and the current (forward) ending
+        // half, plus the held annotation — attachHeldRepeatRight must release all three.
+        var annotationCase = new AnnotationCase(
+            TEXT_ABOVE_RIGHT, Component.RIGHT_ALIGNMENT, Annotation.Placement.ABOVE, Y_OFFSET_ABOVE_RIGHT_SS);
+
+        var song = buildSong(line -> {
+            var anchorElement = repeatLeft();
+            var splitElement = repeatLeftRight();
+            var endElement = repeatRight();
+            line.addElement(anchorElement);
+            line.addElement(crotchet());
+            line.addElement(splitElement);
+            attachAnnotation(splitElement, annotationCase);
+            line.addElement(crotchet());
+            line.addElement(endElement);
+            line.addSpan(new Ending(anchorElement, endElement));
+        });
+
+        var reloaded = roundTrip(song);
+        var line = reloaded.getLine(0);
+        var endings = line.findEndings();
+
+        assertThat(endings).as("ending count").hasSize(1);
+        var ending = endings.getFirst();
+        assertSpanEquals(ending, ENDING_ANCHOR_INDEX, ENDING_END_INDEX, "annotated REPEAT_LEFT_RIGHT-split ending");
+        assertThat(ending.getSplitIndex(line))
+            .as("split index: annotated REPEAT_LEFT_RIGHT must be at index " + ENDING_SPLIT_INDEX)
+            .isEqualTo(ENDING_SPLIT_INDEX);
+
+        var splitElement = line.getElement(ENDING_SPLIT_INDEX);
+        assertThat(splitElement.getType()).as("split element type").isEqualTo(ElementType.REPEAT_LEFT_RIGHT);
+        assertAnnotationEquals(splitElement, annotationCase, "annotation on the ending-split REPEAT_LEFT_RIGHT");
     }
 }
