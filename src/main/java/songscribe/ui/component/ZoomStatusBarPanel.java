@@ -44,7 +44,9 @@ import songscribe.util.UIUtils;
  * the discrete stops. The two zoom buttons are driven by the shared
  * {@code ZOOM_OUT}/{@code ZOOM_IN} actions, so their icon, tooltip, and enabled
  * state track the actions automatically; this panel only keeps the slider,
- * percent label, and menu check marks in sync with the current zoom.
+ * percent label, and menu check marks in sync with the current zoom. Menu items
+ * for stops that have a {@code ZoomLevelAction} also display that action's
+ * accelerator.
  */
 public final class ZoomStatusBarPanel extends JPanel {
 
@@ -100,6 +102,14 @@ public final class ZoomStatusBarPanel extends JPanel {
             var levelPercent = levelPercents[i];
             var item = new JCheckBoxMenuItem(Strings.get(Strings.STATUS_ZOOM_PERCENT, levelPercent));
             item.addActionListener(event -> ZoomController.setZoomPercent(levelPercent));
+
+            // Advertise the stop's shortcut where the stop itself is chosen. The keystroke
+            // is bound on the root pane by the action, not by this item.
+            Actions.ZOOM_LEVEL_ACTIONS.stream()
+                .filter(action -> action.getZoomPercent() == levelPercent)
+                .findFirst()
+                .ifPresent(action -> item.setAccelerator(action.getAccelerator()));
+
             levelItems[i] = item;
             percentMenu.add(item);
         }

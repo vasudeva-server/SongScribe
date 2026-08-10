@@ -182,7 +182,7 @@ public final class Actions {
     //
     public static ZoomAction ZOOM_IN_ACTION;
     public static ZoomAction ZOOM_OUT_ACTION;
-    public static ResetZoomAction RESET_ZOOM_ACTION;
+    public static List<ZoomLevelAction> ZOOM_LEVEL_ACTIONS;
 
     // Strong reference prevents GC (mbassy uses weak references)
     private static final ResetHandler RESET_HANDLER = new ResetHandler();
@@ -360,7 +360,7 @@ public final class Actions {
         //
         ZOOM_IN_ACTION = ZoomAction.createZoomInAction(mainFrame);
         ZOOM_OUT_ACTION = ZoomAction.createZoomOutAction(mainFrame);
-        RESET_ZOOM_ACTION = ResetZoomAction.createAction(mainFrame);
+        ZOOM_LEVEL_ACTIONS = ZoomLevelAction.createActions(mainFrame);
 
         // Cmd+Shift+= is a secondary accelerator for zoom-in (alongside Cmd+=), matching
         // the common "=" / "+" key ambiguity across keyboard layouts.
