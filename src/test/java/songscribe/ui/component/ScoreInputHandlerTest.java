@@ -63,6 +63,7 @@ import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.ToggleBeamWithPreviousCommand;
 import songscribe.message.command.ToggleFallOnLastInsertionCommand;
 import songscribe.message.command.ToggleGlissandoWithPreviousCommand;
+import songscribe.message.command.ToggleTieWithPreviousCommand;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.ElementModification;
 import songscribe.message.mutation.Mutation;
@@ -1159,8 +1160,8 @@ class ScoreInputHandlerTest extends UnitTest {
             var bindings = handler.installKeyBindings(component);
 
             // 7 plain KEY_CODES bindings + shift-Left/Right extension bindings
-            // + the three last-insertion bindings: plain B, shift-G and plain F.
-            final var expectedBindingCount = 12;
+            // + the four last-insertion bindings: plain B, shift-G, plain F and plain T.
+            final var expectedBindingCount = 13;
             assertThat(bindings).hasSize(expectedBindingCount);
 
             var inputMap = component.getInputMap(JComponent.WHEN_FOCUSED);
@@ -1498,6 +1499,110 @@ class ScoreInputHandlerTest extends UnitTest {
 
                 assertThat(consumed).as("binding handled the key").isFalse();
                 mc.verify(() -> MessageCenter.post(any(ToggleFallOnLastInsertionCommand.class)), never());
+            }
+        }
+    }
+
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    class TieKeyBinding {
+
+        private static final KeyStroke PLAIN_T = KeyStroke.getKeyStroke(KeyEvent.VK_T, 0);
+
+        @Test
+        void testInstallKeyBindingsRegistersPlainTButNotModifiedVariants() {
+            var callback = mock(InputHandlerCallback.class);
+            var handler = new ScoreInputHandler(callback);
+            var component = new JPanel();
+
+            var bindings = handler.installKeyBindings(component);
+
+            assertThat(bindings).containsKey(PLAIN_T);
+            assertThat(bindings).doesNotContainKey(
+                KeyStroke.getKeyStroke(KeyEvent.VK_T, UIUtils.MENU_SHORTCUT_MASK));
+            assertThat(bindings).doesNotContainKey(
+                KeyStroke.getKeyStroke(KeyEvent.VK_T, InputEvent.SHIFT_DOWN_MASK));
+            assertThat(bindings).doesNotContainKey(
+                KeyStroke.getKeyStroke(KeyEvent.VK_T, InputEvent.ALT_DOWN_MASK));
+        }
+
+        @Test
+        void testPlainTInEditModeConsumesTheKeyAndPostsToggleTieWithPreviousCommand() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                var consumed = pressLastInsertionKey(callback, PLAIN_T);
+
+                assertThat(consumed).as("binding handled the key").isTrue();
+                mc.verify(() -> MessageCenter.post(any(ToggleTieWithPreviousCommand.class)));
+            }
+        }
+
+        @Test
+        void testPlainTInSelectModeLeavesTheKeyForTheToggleTieAccelerator() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.SELECT);
+
+            try (var mc = mockStatic(MessageCenter.class)) {
+                var consumed = pressLastInsertionKey(callback, PLAIN_T);
+
+                assertThat(consumed)
+                    .as("binding must not swallow t outside edit mode")
+                    .isFalse();
+                mc.verify(() -> MessageCenter.post(any(ToggleTieWithPreviousCommand.class)), never());
+            }
+        }
+
+        @Test
+        void testPlainTWhileGraceModeInProgressLeavesTheKeyUnconsumed() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            when(graceModeManager.isInProgress()).thenReturn(true);
+            var pasteModeManager = mock(PasteModeManager.class);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                var consumed = pressLastInsertionKey(callback, PLAIN_T);
+
+                assertThat(consumed).as("binding handled the key").isFalse();
+                mc.verify(() -> MessageCenter.post(any(ToggleTieWithPreviousCommand.class)), never());
+            }
+        }
+
+        @Test
+        void testPlainTWhilePasteModeInProgressLeavesTheKeyUnconsumed() {
+            var callback = mock(InputHandlerCallback.class);
+            when(callback.getMode()).thenReturn(Mode.EDIT);
+            var graceModeManager = mock(GraceModeManager.class);
+            var pasteModeManager = mock(PasteModeManager.class);
+            when(pasteModeManager.isInProgress()).thenReturn(true);
+
+            try (
+                var emm = mockStatic(EditModeManager.class);
+                var mc = mockStatic(MessageCenter.class)
+            ) {
+                emm.when(EditModeManager::getGraceModeManager).thenReturn(graceModeManager);
+                emm.when(EditModeManager::getPasteModeManager).thenReturn(pasteModeManager);
+
+                var consumed = pressLastInsertionKey(callback, PLAIN_T);
+
+                assertThat(consumed).as("binding handled the key").isFalse();
+                mc.verify(() -> MessageCenter.post(any(ToggleTieWithPreviousCommand.class)), never());
             }
         }
     }

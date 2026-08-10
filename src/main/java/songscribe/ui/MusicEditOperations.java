@@ -50,6 +50,7 @@ import songscribe.dom.TupletValidator;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.ui.edit.EditModeManager;
 import songscribe.ui.selection.RangeQueries;
+import songscribe.ui.selection.Selection;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
 
@@ -237,6 +238,10 @@ public final class MusicEditOperations {
             return;
         }
 
+        toggleTieInRange(range);
+    }
+
+    public static void toggleTieInRange(Selection.Range range) {
         var line = range.line();
 
         // A tie spans the selection itself: its endpoints are the two notes, and any
@@ -263,6 +268,36 @@ public final class MusicEditOperations {
     }
 
     /**
+     * Toggles a tie between the element at {@code elementIndex} and the note before it, and
+     * returns whether the line was modified (#706).
+     *
+     * <p>Static and taking the line explicitly because the operation does not go through the
+     * selection coordinator — the caller looks up the state.
+     *
+     * <p>Which pair that is — adjacent, separated by a barline, or across a line break — is
+     * {@link RangeQueries#tieCandidateWithPredecessor}'s question, along with every rule that
+     * decides whether the pair may be tied at all.
+     *
+     * <p>{@code armInsertion} re-arms {@code elementIndex} as the insertion target so the
+     * commit notification promotes the same target straight back rather than disarming the key
+     * the instant the toggle succeeded. It stays on the committing path, after the gate: the
+     * refusing path opens no modification bracket, so nothing would arrive to consume an arm
+     * made ahead of it and the next unrelated edit would adopt it.
+     */
+    public static boolean toggleTieWithPredecessor(Line line, int elementIndex) {
+        var range = RangeQueries.tieCandidateWithPredecessor(line, elementIndex);
+
+        if (range == null) {
+            return false;
+        }
+
+        EditModeManager.armInsertion(line, elementIndex);
+        toggleTieInRange(range);
+
+        return true;
+    }
+
+    /**
      * Toggles the cross-line tie candidate at {@code index} in {@code line}, if any (#493).
      * <p>
      * {@code Span.exactly}/{@code findExactTie} can never match a cross-line half — only an
@@ -273,7 +308,7 @@ public final class MusicEditOperations {
      * the boundary note (a chained tie) for the boundary tie itself: such a tie's elements
      * never equal {@code boundaryTie}'s.
      */
-    private void toggleBoundaryTie(Line line, int index) {
+    private static void toggleBoundaryTie(Line line, int index) {
         var boundaryTie = RangeQueries.boundaryTieAt(line, index);
 
         if (boundaryTie == null) {

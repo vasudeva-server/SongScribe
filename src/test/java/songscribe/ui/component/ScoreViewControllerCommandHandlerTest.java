@@ -53,6 +53,7 @@ import songscribe.message.command.ToggleFallOnLastInsertionCommand;
 import songscribe.message.command.ToggleGlissandoCommand;
 import songscribe.message.command.ToggleGlissandoWithPreviousCommand;
 import songscribe.message.command.ToggleTieCommand;
+import songscribe.message.command.ToggleTieWithPreviousCommand;
 import songscribe.message.command.ToggleTupletCommand;
 import songscribe.message.mutation.BeamingAddition;
 import songscribe.message.mutation.CrescendoAddition;
@@ -637,6 +638,128 @@ class ScoreViewControllerCommandHandlerTest extends UnitTest {
                 .thenReturn(false);
 
             controller.handleToggleBeamWithPrevious(new ToggleBeamWithPreviousCommand());
+
+            uiUtils.verify(UIUtils::beep);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // handleToggleTieWithPrevious
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testHandleToggleTieWithPreviousBeepsAndDoesNothingWhilePlaying() {
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(true);
+
+            controller.handleToggleTieWithPrevious(new ToggleTieWithPreviousCommand());
+
+            uiUtils.verify(UIUtils::beep);
+            editModeManager.verify(EditModeManager::getLastInsertion, never());
+        }
+    }
+
+    @Test
+    void testHandleToggleTieWithPreviousBeepsWhenNoLastInsertion() {
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(null);
+
+            controller.handleToggleTieWithPrevious(new ToggleTieWithPreviousCommand());
+
+            uiUtils.verify(UIUtils::beep);
+        }
+    }
+
+    /**
+     * The handler hands the remembered target to the toggle and must not arm anything
+     * itself. Arming belongs to the toggle's two modifying branches, because the handler
+     * cannot know in advance whether the toggle will change the line: every refusing path
+     * opens no modification bracket, so an arm made here would sit unclaimed until some
+     * later unrelated edit adopted it as its own placement.
+     */
+    @Test
+    void testHandleToggleTieWithPreviousTogglesTheTargetWithoutArmingItself() {
+        var line = new Line(new Song());
+        var elementIndex = 2;
+        var insertion = new EditModeManager.Insertion(line, elementIndex);
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var operations = mockStatic(MusicEditOperations.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(insertion);
+            operations.when(() -> MusicEditOperations.toggleTieWithPredecessor(line, elementIndex))
+                .thenReturn(true);
+
+            controller.handleToggleTieWithPrevious(new ToggleTieWithPreviousCommand());
+
+            operations.verify(() -> MusicEditOperations.toggleTieWithPredecessor(line, elementIndex));
+            editModeManager.verify(() -> EditModeManager.armInsertion(any(), anyInt()), never());
+            uiUtils.verify(UIUtils::beep, never());
+        }
+    }
+
+    /**
+     * A toggle that refuses — the note before the target is a different pitch, a grace note
+     * sits between the pair, and so on — has to be audible. Without this the key would fail
+     * silently and the user would have no way to tell the press registered at all.
+     */
+    @Test
+    void testHandleToggleTieWithPreviousBeepsWhenTheToggleRefuses() {
+        var line = new Line(new Song());
+        var elementIndex = 2;
+        var insertion = new EditModeManager.Insertion(line, elementIndex);
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class);
+            var operations = mockStatic(MusicEditOperations.class);
+            var uiUtils = mockStatic(UIUtils.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion).thenReturn(insertion);
+            operations.when(() -> MusicEditOperations.toggleTieWithPredecessor(line, elementIndex))
+                .thenReturn(false);
+
+            controller.handleToggleTieWithPrevious(new ToggleTieWithPreviousCommand());
 
             uiUtils.verify(UIUtils::beep);
         }

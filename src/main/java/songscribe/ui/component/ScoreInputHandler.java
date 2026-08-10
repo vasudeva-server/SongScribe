@@ -40,6 +40,7 @@ import songscribe.message.command.DeselectCommand;
 import songscribe.message.command.ToggleBeamWithPreviousCommand;
 import songscribe.message.command.ToggleFallOnLastInsertionCommand;
 import songscribe.message.command.ToggleGlissandoWithPreviousCommand;
+import songscribe.message.command.ToggleTieWithPreviousCommand;
 import songscribe.util.UIUtils;
 
 /**
@@ -209,6 +210,8 @@ public final class ScoreInputHandler extends KeyAdapter
             KeyStroke.getKeyStroke(KeyEvent.VK_G, InputEvent.SHIFT_DOWN_MASK), ToggleGlissandoWithPreviousCommand::new);
         registerLastInsertionBinding(bindings, inputMap, actionMap,
             KeyStroke.getKeyStroke(KeyEvent.VK_F, 0), ToggleFallOnLastInsertionCommand::new);
+        registerLastInsertionBinding(bindings, inputMap, actionMap,
+            KeyStroke.getKeyStroke(KeyEvent.VK_T, 0), ToggleTieWithPreviousCommand::new);
 
         return bindings;
     }

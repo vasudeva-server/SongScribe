@@ -273,6 +273,72 @@ public final class RangeQueries {
     }
 
     /**
+     * Returns the range a tie toggle on the element at {@code index} would act on, or
+     * {@code null} when no pair qualifies (#706).
+     *
+     * <p>This proposes shapes and lets {@link #canToggleTie} judge them; it restates no tie
+     * rule of its own. The shapes, in order: the adjacent pair ending at {@code index}, the
+     * same pair with one element between them (a barline, repeat or breath mark — refs #527),
+     * and finally {@code index} alone, read as a cross-line tie (#493).
+     *
+     * <p>Order is what keeps the separator rule unstated here. A barline at {@code index - 1}
+     * is not a pitched note, so the adjacent pair fails inside {@code canToggleTie} and the
+     * separator shape is reached only when the adjacent one is genuinely ineligible; the
+     * separator shape's own size-3 branch then decides whether what sits between is legal. A
+     * wrong-pitch <em>note</em> at {@code index - 1} fails both, because a note is not a legal
+     * separator — a refusal, which is what the user should get.
+     *
+     * <p>There is no widen-or-break branch, unlike the beam side: ties never coalesce, since
+     * {@link Line#addTie} does no span merging and holds one tie per pair, so the toggle is a
+     * plain add or remove of the exact tie over the pair.
+     *
+     * <p>Grace notes are not transparent here, though they are for beams. A tie is invalidated
+     * the moment a grace note appears between its notes, and a grace note is refused at either
+     * endpoint, so nothing walks past one (refs #592).
+     *
+     * <p>The single-element shape is accepted only when the boundary tie it would create runs
+     * <em>backward</em> into {@code index} — {@link #boundaryTieAt} returns the forward
+     * candidate when {@code index} is the line's tie-exit element, and tying forward would join
+     * the note to one on the next line that the user has not reached yet.
+     */
+    public static Selection.@Nullable Range tieCandidateWithPredecessor(Line line, int index) {
+        if (index < 0 || index >= line.elementCount()) {
+            return null;
+        }
+
+        var adjacentBegin = index - (TIE_SELECTION_SIZE_WITHOUT_SEPARATOR - 1);
+
+        // Ranges with a negative begin index cannot be constructed at all, so the shapes that
+        // run off the front of the line are skipped rather than built and rejected.
+        if (adjacentBegin >= 0) {
+            var adjacent = new Selection.Range(line, adjacentBegin, index, index);
+
+            if (canToggleTie(adjacent)) {
+                return adjacent;
+            }
+        }
+
+        var separatedBegin = index - (TIE_SELECTION_SIZE_WITH_SEPARATOR - 1);
+
+        if (separatedBegin >= 0) {
+            var separated = new Selection.Range(line, separatedBegin, index, index);
+
+            if (canToggleTie(separated)) {
+                return separated;
+            }
+        }
+
+        var boundaryTie = boundaryTieAt(line, index);
+
+        //noinspection ObjectEquality
+        if (boundaryTie != null && boundaryTie.end() == line.getElement(index)) {
+            return Selection.Range.single(line, index);
+        }
+
+        return null;
+    }
+
+    /**
      * Returns the index of the element a glissando toggle would act on, or -1 when the range
      * is ineligible.
      *

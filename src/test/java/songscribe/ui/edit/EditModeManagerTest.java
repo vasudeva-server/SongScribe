@@ -924,6 +924,61 @@ class EditModeManagerTest extends UnitTest {
                 .isNull();
         }
 
+        /**
+         * A tie toggle that goes through re-arms its target, so the key stays live and the
+         * same pair can be untied by pressing it again.
+         */
+        @Test
+        void testSuccessfulTieToggleKeepsTheTargetArmed() {
+            var first = ElementType.CROTCHET.newInstance();
+            var second = ElementType.CROTCHET.newInstance();
+
+            song.withoutMutationTracking(() -> line.addElement(first));
+
+            song.withModification(() -> {
+                line.addElement(second);
+                EditModeManager.previewElementDidChange(line, indexOf(second));
+            });
+
+            var target = requireLastInsertion();
+
+            assertThat(MusicEditOperations.toggleTieWithPredecessor(line, target.elementIndex()))
+                .as("pre-condition: two same-pitch crotchets can be tied")
+                .isTrue();
+
+            assertArmedElementIs(second);
+        }
+
+        /**
+         * A tie toggle that refuses changes nothing, so it posts nothing, so it must arm
+         * nothing. An arm made ahead of a refusal would linger in the pending slot and be
+         * promoted by whatever edit came next, however unrelated.
+         */
+        @Test
+        void testRefusedTieToggleLeavesNoStaleTargetForTheNextEdit() {
+            var rest = ElementType.CROTCHET_REST.newInstance();
+            var note = ElementType.CROTCHET.newInstance();
+
+            song.withoutMutationTracking(() -> line.addElement(rest));
+
+            song.withModification(() -> {
+                line.addElement(note);
+                EditModeManager.previewElementDidChange(line, indexOf(note));
+            });
+
+            var target = requireLastInsertion();
+
+            assertThat(MusicEditOperations.toggleTieWithPredecessor(line, target.elementIndex()))
+                .as("pre-condition: a rest cannot be tied, so the toggle refuses")
+                .isFalse();
+
+            song.withModification(() -> line.addElement(ElementType.CROTCHET.newInstance()));
+
+            assertThat(EditModeManager.getLastInsertion())
+                .as("the refused toggle left nothing for the unrelated edit to adopt")
+                .isNull();
+        }
+
         /** Places a quaver at the end of the line and commits, the way the append path does. */
         private void placeNoteAtEnd() {
             var note = ElementType.QUAVER.newInstance();

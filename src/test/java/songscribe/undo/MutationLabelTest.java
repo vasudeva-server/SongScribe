@@ -21,8 +21,11 @@
 package songscribe.undo;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.junit.jupiter.api.Test;
 
@@ -43,12 +46,20 @@ import songscribe.dom.Trill;
 import songscribe.dom.Tuplet;
 import songscribe.font.DocumentFonts;
 import songscribe.message.MessageCenter;
+import songscribe.message.command.ToggleBeamWithPreviousCommand;
+import songscribe.message.command.ToggleTieWithPreviousCommand;
 import songscribe.message.mutation.ElementField;
 import songscribe.message.mutation.FontChange;
 import songscribe.message.mutation.Mutation;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.MusicEditOperations;
+import songscribe.ui.clipboard.ClipboardManager;
+import songscribe.ui.component.ScoreView;
+import songscribe.ui.component.ScoreViewController;
+import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.playback.PlaybackController;
 import songscribe.ui.selection.ReflectionTestHelper;
+import songscribe.ui.selection.SelectionCoordinator;
 
 /**
  * Verifies {@link UndoController#undoLabel()} derives the Edit-menu op-name from a
@@ -200,6 +211,72 @@ class MutationLabelTest extends UnitTest {
         var line = song.getLine(0);
         assertThat(undoLabelAfter(song, () -> line.addTie(new Tie(line.getElement(0), line.getElement(1)))))
             .isEqualTo(labeled(Strings.ACTION_EDIT_OP_TIE));
+    }
+
+    // -----------------------------------------------------------------------
+    // Tier-A labels on the last-insertion keys
+    //
+    // The two cases above prove the mutation-kind fallback, which is what a tie or beam
+    // mutation gets when nothing declares an op-name. The keys must not land there: they
+    // perform the same edit as the menu action and have to read the same in the Edit menu.
+    // -----------------------------------------------------------------------
+
+    /** Drives one real last-insertion handler over a two-quaver line and returns the undo label. */
+    private static String undoLabelAfterKeyCommand(Consumer<? super ScoreViewController> handler) {
+        var song = new Song();
+        var line = song.getLine(0);
+
+        // Quavers, not crotchets: the same pair has to be both tieable and beamable, and a
+        // crotchet has no flag to beam.
+        song.withoutMutationTracking(() -> {
+            line.addElement(ElementType.QUAVER.newInstance());
+            line.addElement(ElementType.QUAVER.newInstance());
+        });
+
+        var controller = new ScoreViewController(
+            mock(ScoreView.class),
+            mock(MusicEditOperations.class),
+            mock(SelectionCoordinator.class),
+            mock(ClipboardManager.class)
+        );
+
+        // MusicEditOperations is deliberately left unmocked: the label comes from the real
+        // mutation reaching the real UndoController, which is what the assertion is about.
+        try (
+            var playback = mockStatic(PlaybackController.class);
+            var editModeManager = mockStatic(EditModeManager.class)
+        ) {
+            playback.when(PlaybackController::isPlaying).thenReturn(false);
+            editModeManager.when(EditModeManager::getLastInsertion)
+                .thenReturn(new EditModeManager.Insertion(line, 1));
+
+            UndoController.resetForTest();
+            handler.accept(controller);
+
+            return UndoController.undoLabel();
+        }
+    }
+
+    /**
+     * The last-insertion keys post their commands straight from {@code ScoreInputHandler},
+     * bypassing the {@code UIAction} template that otherwise sets the Tier-A op-name. Without
+     * {@code ScoreViewController.handleLastInsertionCommand} setting it, the step falls through
+     * to {@link UndoController#opNameKey} and the key labels the very same edit differently from
+     * the menu action that also performs it — "Undo Tie" against the menu's "Undo Toggle Tie".
+     */
+    @Test
+    void testTieKeyLabelsTheUndoStepTheSameWayTheMenuActionDoes() {
+        assertThat(undoLabelAfterKeyCommand(controller ->
+            controller.handleToggleTieWithPrevious(new ToggleTieWithPreviousCommand())))
+            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_TOGGLE_TIE));
+    }
+
+    /** The beam key carries the same obligation, and read "Undo Beaming" before it did. */
+    @Test
+    void testBeamKeyLabelsTheUndoStepTheSameWayTheMenuActionDoes() {
+        assertThat(undoLabelAfterKeyCommand(controller ->
+            controller.handleToggleBeamWithPrevious(new ToggleBeamWithPreviousCommand())))
+            .isEqualTo(labeled(Strings.ACTION_EDIT_OP_TOGGLE_BEAM));
     }
 
     @Test

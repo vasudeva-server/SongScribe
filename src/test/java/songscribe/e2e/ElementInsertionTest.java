@@ -783,6 +783,141 @@ class ElementInsertionTest extends E2ETest {
     }
 
 
+    /**
+     * The {@code t} key that ties the last placed note to its predecessor.
+     * <p>
+     * These are e2e tests because the risk is the integration itself: {@code t} is the
+     * accelerator of {@link Actions#TOGGLE_TIE_ACTION}, which is registered on the main
+     * frame's root pane and stays <em>disabled</em> in edit mode. The key only reaches the
+     * score because {@code ScoreInputHandler} binds it {@code WHEN_FOCUSED} on the score
+     * view, which resolves ahead of the root-pane binding regardless of any action's enabled
+     * state. Nothing below the real Swing dispatch can demonstrate that.
+     */
+    @SuppressWarnings("PackageVisibleInnerClass")
+    @Nested
+    @Order(7)
+    @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+    class TieKey {
+
+        /** Staff position of the notes these tests place, on the middle staff line. */
+        private static final int TIE_NOTE_STAFF_POSITION = 0;
+
+        private static final String LYRIC_SYLLABLE = "la";
+
+        /**
+         * Reloads the fixture so each test starts from a known, non-empty line. Non-empty
+         * matters: tying needs a predecessor note already in place to tie the newly placed
+         * note with.
+         */
+        @BeforeEach
+        void reloadFixture() {
+            resetSong();
+            loadFixture("insertion");
+        }
+
+        @Test
+        void testTieKeyTogglesTheTieOnTheLastTwoPlacedNotes() {
+            var firstIndex = song().getLine(0).effectiveElementCount();
+            var secondIndex = firstIndex + 1;
+
+            selectDuration(Actions.EIGHTH_NOTE_ACTION);
+            clickAt(insertionPoint(0, TIE_NOTE_STAFF_POSITION));
+            performLayout(0);
+            clickAt(insertionPoint(0, TIE_NOTE_STAFF_POSITION));
+            performLayout(0);
+
+            pressKey(KeyEvent.VK_T, 0);
+            performLayout(0);
+
+            assertAll(
+                () -> assertThat(isTied(0, firstIndex))
+                    .as("first note tied").isTrue(),
+                () -> assertThat(isTied(0, secondIndex))
+                    .as("second note tied").isTrue(),
+                // The tie action stays disabled in edit mode — which is exactly why its
+                // root-pane accelerator cannot carry the key and the WHEN_FOCUSED binding
+                // on the score view has to.
+                () -> assertThat(isActionEnabled(Actions.TOGGLE_TIE_ACTION))
+                    .as("tie action disabled in edit mode").isFalse()
+            );
+
+            pressKey(KeyEvent.VK_T, 0);
+            performLayout(0);
+
+            assertAll(
+                () -> assertThat(isTied(0, firstIndex))
+                    .as("first note untied").isFalse(),
+                () -> assertThat(isTied(0, secondIndex))
+                    .as("second note untied").isFalse()
+            );
+        }
+
+        /**
+         * A click on a line takes focus back from the lyric editor, so {@code t} ties
+         * instead of being typed into the lyric.
+         * <p>
+         * This covers the {@code requestFocusInWindow()} call at the top of
+         * {@code LineComponent.mousePressed}. Without it the editor keeps focus, the score's
+         * key bindings stay disabled for the duration of the text editing, and the key press
+         * lands in the lyric — a failure with no visible symptom other than the missing tie.
+         */
+        @Test
+        void testTieKeyWorksAfterTypingInTheLyricEditor() {
+            var firstIndex = song().getLine(0).effectiveElementCount();
+            var secondIndex = firstIndex + 1;
+
+            selectDuration(Actions.EIGHTH_NOTE_ACTION);
+            clickAt(insertionPoint(0, TIE_NOTE_STAFF_POSITION));
+            performLayout(0);
+
+            openLyricEditorOn(firstIndex);
+            typeIntoLyricEditor();
+
+            // Placing the second note is also the click that must hand focus back.
+            clickAt(insertionPoint(0, TIE_NOTE_STAFF_POSITION));
+            performLayout(0);
+
+            pressKey(KeyEvent.VK_T, 0);
+            performLayout(0);
+
+            var lyrics = song().getLine(0).getElement(firstIndex).getLyrics();
+
+            assertAll(
+                () -> assertThat(isTied(0, firstIndex))
+                    .as("first note tied").isTrue(),
+                () -> assertThat(isTied(0, secondIndex))
+                    .as("second note tied").isTrue(),
+                () -> assertThat(lyrics)
+                    .as("one syllable committed").hasSize(1),
+                () -> assertThat(lyrics.getFirst().text())
+                    .as("the t did not land in the lyric").isEqualTo(LYRIC_SYLLABLE)
+            );
+        }
+
+        private void openLyricEditorOn(int elementIndex) {
+            GuiActionRunner.execute(() ->
+                LyricEditor.deselectAndOpenOn(scoreView(), song().getLine(0), elementIndex));
+            // The editor defers its focus request, so let that run before typing.
+            pause();
+        }
+
+        /**
+         * Sets the editor's text rather than driving the robot, for the same reason
+         * {@code pressKey} dispatches synthetic events: the robot maps characters to
+         * physical keys, which types the wrong letters on a non-QWERTY layout. What the
+         * test needs from this step is only that the editor holds focus and has text in it.
+         */
+        private void typeIntoLyricEditor() {
+            var editor = GuiActionRunner.execute(() -> scoreView().getActiveLyricEditor());
+
+            assertThat(editor).as("the lyric editor did not open").isNotNull();
+
+            GuiActionRunner.execute(() -> editor.setText(LYRIC_SYLLABLE));
+            pause();
+        }
+    }
+
+
     // -- Grace note assertion helpers --
 
     private boolean isGraceModeActive() {
