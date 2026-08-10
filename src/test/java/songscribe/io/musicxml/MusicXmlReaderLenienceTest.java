@@ -28,9 +28,11 @@ import org.junit.jupiter.api.Test;
 import org.xml.sax.SAXException;
 
 import songscribe.Constants;
+import songscribe.dom.AnnotationAttachment;
 import songscribe.dom.Beam;
 import songscribe.dom.DynamicAttachment;
 import songscribe.dom.ElementType;
+import songscribe.dom.StaffElement;
 import songscribe.dom.Trill;
 
 /**
@@ -45,6 +47,10 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
     // anchor at the second begin, not the orphaned first one.
     private static final int SECOND_BEGIN_INDEX = 1;
     private static final int BEAM_END_INDEX = 2;
+
+    // Distinct annotation texts so a "which one survived" mix-up is caught.
+    private static final String FIRST_ANNOTATION_TEXT = "dolce";
+    private static final String SECOND_ANNOTATION_TEXT = "espressivo";
 
     /**
      * Wraps a single {@code <miscellaneous-field>} (the given name/value) in an
@@ -250,6 +256,41 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         assertThat(song.getLine(0).getElement(0).findAttachment(DynamicAttachment.class))
             .as("an unrecognised <dynamics> symbol must produce no DynamicAttachment")
             .isNull();
+    }
+
+    /**
+     * A {@code <barline>} with no {@code <bar-style>} child at all. MusicXML makes the child
+     * optional, so this is a legitimate foreign-file shape the writer never produces (it always
+     * emits a style, {@code none} included). The reader treats a missing style exactly like
+     * {@code none} — an invisible barline that contributes no element — rather than throwing or
+     * inserting a default barline the file never asked for.
+     */
+    @Test
+    void testBarlineWithoutBarStyleIsTreatedAsInvisible() throws Exception {
+        var xml = scoreWithMeasureBody(
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"/>
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
+        );
+
+        var song = parse(xml);
+
+        assertThat(song.lineCount()).as("parsing completes with one line").isEqualTo(1);
+        assertThat(song.getLine(0).getElements())
+            .as("a barline with no <bar-style> must insert no element between the two notes")
+            .extracting(StaffElement::getType)
+            .containsExactly(ElementType.CROTCHET, ElementType.CROTCHET, ElementType.FINAL_DOUBLE_BARLINE);
     }
 
     // -- Reader error paths: malformed documents must throw, not silently corrupt --
@@ -700,6 +741,112 @@ class MusicXmlReaderLenienceTest extends MusicXmlRoundTripSupport {
         assertThat(song.getLine(0).findEndings())
             .as("an ending stop with no matching start must build no span")
             .isEmpty();
+    }
+
+    // -------------------------------------------------------------------------
+    // Annotation <direction> shapes a SongScribe-written file never contains: the
+    // writer always gives an annotation direction a <words> child and always
+    // follows it with the element it binds to. A file from another program can
+    // break either rule, and neither may corrupt or silently lose the read.
+    // -------------------------------------------------------------------------
+
+    @Test
+    void testUnboundAnnotationAtPartEndIsDropped() throws Exception {
+        // The annotation direction is the last thing in the part, so no element is
+        // ever appended for it to bind to and AnnotationResolver drops it at
+        // part-end flush.
+        var xml = scoreWithMeasureBody(
+            """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
+            + annotationDirection(FIRST_ANNOTATION_TEXT)
+        );
+
+        var song = parse(xml);
+
+        assertThat(song.lineCount()).as("parsing completes with one line").isEqualTo(1);
+        assertThat(song.getLine(0).getElements())
+            .as("an annotation direction with no element after it must bind to nothing")
+            .allSatisfy(element ->
+                assertThat(element.findAttachment(AnnotationAttachment.class)).isNull());
+    }
+
+    @Test
+    void testAnnotationDirectionWithoutWordsBindsNothing() throws Exception {
+        // A placement makes this an annotation direction, but a <rehearsal> child
+        // leaves it with no text to build an Annotation from. The next note must
+        // come through unannotated rather than picking up an empty annotation.
+        var xml = scoreWithMeasureBody(
+            """
+                      <direction placement="above">
+                        <direction-type><rehearsal>A</rehearsal></direction-type>
+                      </direction>
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
+        );
+
+        var song = parse(xml);
+
+        assertThat(song.getLine(0).getElement(0).findAttachment(AnnotationAttachment.class))
+            .as("an annotation direction with no <words> must build no annotation")
+            .isNull();
+    }
+
+    @Test
+    void testSecondAnnotationDirectionReplacesTheUnboundFirst() throws Exception {
+        // Two annotation directions before one note. The resolver holds a single
+        // pending annotation, so the second replaces the first (logged, not
+        // silent) and the note ends up with exactly one — not two, and not the
+        // stale first.
+        var xml = scoreWithMeasureBody(
+            annotationDirection(FIRST_ANNOTATION_TEXT)
+            + annotationDirection(SECOND_ANNOTATION_TEXT)
+            + """
+                      <note>
+                        <pitch><step>B</step><octave>4</octave></pitch>
+                        <duration>480</duration>
+                        <type>quarter</type>
+                      </note>
+                      <barline location="right"><bar-style>light-heavy</bar-style></barline>
+                """
+        );
+
+        var song = parse(xml);
+        var note = song.getLine(0).getElement(0);
+
+        assertThat(note.getAttachments())
+            .as("the single pending slot can leave at most one annotation on the note")
+            .filteredOn(AnnotationAttachment.class::isInstance)
+            .hasSize(1);
+
+        var attachment = note.findAttachment(AnnotationAttachment.class);
+        assertThat(attachment).as("the note must carry the surviving annotation").isNotNull();
+        assertThat(attachment.getAnnotation().getAnnotation())
+            .as("the second direction replaces the first in the pending slot")
+            .isEqualTo(SECOND_ANNOTATION_TEXT);
+    }
+
+    /**
+     * An annotation {@code <direction>} carrying {@code text}, in the shape the
+     * writer emits: a placement plus a single {@code <words>} child.
+     */
+    private static String annotationDirection(String text) {
+        return
+            "      <direction placement=\"above\">\n" +
+            "        <direction-type>" +
+            "<words halign=\"left\" justify=\"left\" relative-y=\"0\">" + text + "</words>" +
+            "</direction-type>\n" +
+            "      </direction>\n";
     }
 
     // -------------------------------------------------------------------------

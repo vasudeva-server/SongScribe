@@ -194,10 +194,6 @@ public class StaffElement extends LineElement implements Cloneable {
         return type;
     }
 
-    void initType(ElementType noteType) {
-        type = noteType;
-    }
-
     @SuppressWarnings("MethodDoesntCallSuperMethod")
     @Override
     public StaffElement clone() {

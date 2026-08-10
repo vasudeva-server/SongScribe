@@ -222,7 +222,7 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
 
     @Test
     void testRepeatRightAtLineEndDoesNotBleedIntoNextLine() throws Exception {
-        // Regression: line 1 ends with REPEAT_RIGHT (held as pendingRepeatRight by
+        // Regression: line 1 ends with REPEAT_RIGHT (held as heldRepeatRight by
         // the reader), and line 2 also contains repeats. Before the fix, the held
         // REPEAT_RIGHT was not flushed when the new-system measure started line 2,
         // so it bled across the line boundary — landing on line 2 (or merging with
@@ -378,6 +378,40 @@ class MusicXmlBarlineRoundTripTest extends MusicXmlRoundTripSupport {
         assertThatCode(() -> validator.validate(xml))
             .as("held repeat + non-left song must be schema-valid")
             .doesNotThrowAnyException();
+    }
+
+    /**
+     * Only a forward repeat on the <em>left</em> side is the second half of a straddling
+     * REPEAT_LEFT_RIGHT pair. This covers the other side of that position test, which our own
+     * writer never produces: a foreign file may omit the {@code location} attribute, which
+     * MusicXML defines as {@code "right"}, so the forward repeat arrives at a non-left
+     * position while a REPEAT_RIGHT is held. Merging it anyway would collapse two repeat
+     * barlines into one and silently drop a repeat sign.
+     *
+     * <p>The two barlines share a measure because the reader resolves each {@code </barline>}
+     * as it closes, independently of measure boundaries — the held REPEAT_RIGHT reaches the
+     * forward repeat identically either way.
+     */
+    @Test
+    void testHeldRepeatFollowedByNonLeftForwardRepeatDoesNotMerge() throws Exception {
+        var xml = scoreWithMeasureBody(
+            """
+                      <barline location="right"><bar-style>light-heavy</bar-style>\
+            <repeat direction="backward"/></barline>
+                      <barline><bar-style>heavy-light</bar-style>\
+            <repeat direction="forward"/></barline>
+            """
+        );
+
+        var song = parse(xml);
+
+        // The trailing FINAL_DOUBLE_BARLINE is the song's auto-maintained terminal, added
+        // because the parsed line does not end in one. Merging the pair would leave
+        // [REPEAT_LEFT_RIGHT, FINAL_DOUBLE_BARLINE] here.
+        assertThat(barlineTypesOf(song.getLine(0)))
+            .as("a forward repeat at a non-left position stays a separate element")
+            .containsExactly(
+                ElementType.REPEAT_RIGHT, ElementType.REPEAT_LEFT, ElementType.FINAL_DOUBLE_BARLINE);
     }
 
     // TU6 — key signature round-trips

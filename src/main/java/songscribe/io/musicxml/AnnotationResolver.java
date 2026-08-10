@@ -144,11 +144,20 @@ final class AnnotationResolver {
      * and offset when this is an annotation direction; otherwise builds nothing.
      * Always clears the per-direction accumulation so the next direction starts
      * clean.
+     *
+     * <p>The slot holds one annotation, so a second annotation direction arriving
+     * before the first is bound replaces it. Files this reader writes never contain
+     * that shape; a file from another program can, and the loss is logged rather
+     * than silent.
      */
     void endDirection() {
         if (placement == null || words == null) {
             resetAccumulation();
             return;
+        }
+
+        if (pendingAnnotation != null) {
+            LOG.warn("Dropping unbound annotation <direction>: a second one arrived before an element to bind it to");
         }
 
         var annotation = new Annotation(words);

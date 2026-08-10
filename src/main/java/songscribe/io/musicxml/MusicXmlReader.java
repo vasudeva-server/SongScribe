@@ -574,7 +574,7 @@ public final class MusicXmlReader extends DefaultHandler {
             }
             case PART -> {
                 if (qName.equals(MusicXmlTags.PART)) {
-                    barlines.flushPendingRepeatRight();
+                    barlines.flushHeldRepeatRight();
                     spans.flushPendingSlideStart();
                     spans.flushPendingSpanStarts();
                     wedges.flushPendingWedge();
@@ -671,11 +671,11 @@ public final class MusicXmlReader extends DefaultHandler {
         // new-system one. So a REPEAT_RIGHT still pending at a line boundary is
         // a standalone barline belonging to the line that is now ending — flush
         // it there before the new line becomes current.
-        barlines.flushPendingRepeatRight();
+        barlines.flushHeldRepeatRight();
 
         // Hairpins and endings are intra-line range spans; flush any still open
         // against the line that is now ending, before the new line becomes current
-        // (the build/drop targets currentLine). flushPendingRepeatRight ran first so
+        // (the build/drop targets currentLine). flushHeldRepeatRight ran first so
         // a deferred REPEAT_RIGHT carrying an ending end marker is already appended.
         endings.flushPendingEnding();
         wedges.flushPendingWedge();
@@ -760,7 +760,7 @@ public final class MusicXmlReader extends DefaultHandler {
         // REPEAT_RIGHT still held pending here is a standalone backward repeat that
         // precedes this note. Flush it first so it lands ahead of the note in the
         // element order instead of being deferred past it to the next barline.
-        barlines.flushPendingRepeatRight();
+        barlines.flushHeldRepeatRight();
 
         var element = note.appendStaffElement(currentLine);
         var markers = note.spanMarkers();
@@ -814,7 +814,7 @@ public final class MusicXmlReader extends DefaultHandler {
      *       pending annotation onto the barline it just appended.</li>
      *   <li>{@code BarlineParser.appendOrHold} (hold path) — appends nothing and
      *       takes the pending annotation into the REPEAT_RIGHT hold.</li>
-     *   <li>{@code BarlineParser.flushPendingRepeatRight} and the
+     *   <li>{@code BarlineParser.flushHeldRepeatRight} and the
      *       REPEAT_LEFT_RIGHT merge — attach the <i>held</i> annotation, never the
      *       pending one.</li>
      *   <li>The {@code BREATH_MARK} append in {@link #finishNote} — resolves

@@ -65,22 +65,23 @@ final class BarlineParser {
     @Nullable
     private String repeatDirection = null;
 
-    // true while a REPEAT_RIGHT is held pending the next barline.
-    private boolean pendingRepeatRight = false;
-
     // <ending> markers collected while parsing the current <barline> (reset at
     // every <barline> start). Resolved to the barline's StaffElement once it is
     // appended — see EndingResolver.attachBarlineEndings.
     private final List<EndingResolver.EndingMarker> currentBarlineEndings = new ArrayList<>();
 
-    // State held alongside a deferred REPEAT_RIGHT (pendingRepeatRight): a
-    // REPEAT_RIGHT is not appended at parse time, so its ending markers and its
-    // annotation wait here until the element is created (flushed or merged into
-    // REPEAT_LEFT_RIGHT). Both are released together by attachHeldRepeatRight.
-    private List<EndingResolver.EndingMarker> pendingRepeatRightEndings = List.of();
+    /**
+     * The state a deferred REPEAT_RIGHT carries until its element exists: a
+     * REPEAT_RIGHT is not appended at parse time, so its ending markers and its
+     * annotation wait here until the element is created (flushed or merged into
+     * REPEAT_LEFT_RIGHT), at which point they are released together by
+     * {@link #attachHeldRepeatRight}.
+     */
+    private record HeldRepeatRight(List<EndingResolver.EndingMarker> endings, @Nullable Annotation annotation) {}
 
+    // Non-null while a REPEAT_RIGHT is held pending the next barline.
     @Nullable
-    private Annotation pendingRepeatRightAnnotation = null;
+    private HeldRepeatRight heldRepeatRight = null;
 
     // -------------------------------------------------------------------------
     // Package API
@@ -124,9 +125,9 @@ final class BarlineParser {
      * {@link ElementType} to the current line, or nothing for an invisible barline.
      *
      * <p>The REPEAT_LEFT_RIGHT straddling pair is handled here: a completed
-     * REPEAT_RIGHT is held as {@link #pendingRepeatRight}. If the very next
+     * REPEAT_RIGHT is held as {@link #heldRepeatRight}. If the very next
      * barline is a REPEAT_LEFT on the left side, both are merged into a single
-     * REPEAT_LEFT_RIGHT element. If not, the pending REPEAT_RIGHT is flushed
+     * REPEAT_LEFT_RIGHT element. If not, the held REPEAT_RIGHT is flushed
      * first, then the new barline is processed normally.
      */
     void processBarline() throws SAXException {
@@ -134,7 +135,7 @@ final class BarlineParser {
             // Invisible barline — line-break marker only; insert nothing.
             // A pending REPEAT_RIGHT is flushed because an invisible barline
             // can never be the forward half of a REPEAT_LEFT_RIGHT pair.
-            flushPendingRepeatRight();
+            flushHeldRepeatRight();
             // An invisible LEFT barline can still host a volta-2 <ending number="2"
             // type="start"> after a REPEAT_RIGHT split; that marker carries no
             // stored value (the split is recomputed live), so no element is needed.
@@ -146,12 +147,14 @@ final class BarlineParser {
 
         if (elementType == null) {
             // Unknown combination — silently skip rather than corrupt the model.
-            flushPendingRepeatRight();
+            flushHeldRepeatRight();
             endings.attachBarlineEndings(null, currentBarlineEndings);
             return;
         }
 
-        if (pendingRepeatRight) {
+        var held = heldRepeatRight;
+
+        if (held != null) {
             if (elementType == ElementType.REPEAT_LEFT
                     && BarlineStyleMapping.LOCATION_LEFT.equals(barlineLocation)) {
                 // This left-forward barline is the second half of a straddling
@@ -160,12 +163,12 @@ final class BarlineParser {
                 // held backward-right markers (volta-1 stop / ending end) first,
                 // then this forward-left barline's (volta-2 start / ending anchor).
                 var element = reader.appendToCurrentLine(ElementType.REPEAT_LEFT_RIGHT);
-                attachHeldRepeatRight(element);
+                attachHeldRepeatRight(held, element);
                 endings.attachBarlineEndings(element, currentBarlineEndings);
             } else {
-                // The pending REPEAT_RIGHT was not followed by a REPEAT_LEFT —
+                // The held REPEAT_RIGHT was not followed by a REPEAT_LEFT —
                 // flush it as a standalone element, then process the current one.
-                flushPendingRepeatRight();
+                flushHeldRepeatRight();
                 appendOrHold(elementType, currentBarlineEndings);
             }
         } else {
@@ -174,7 +177,7 @@ final class BarlineParser {
     }
 
     /**
-     * Either holds {@code elementType} as {@link #pendingRepeatRight} (for
+     * Either holds {@code elementType} as {@link #heldRepeatRight} (for
      * deferred REPEAT_LEFT_RIGHT pair detection) or appends it immediately,
      * attaching {@code endingMarkers} to the resulting barline element. A held
      * REPEAT_RIGHT carries its ending markers and its annotation with it until the
@@ -185,9 +188,7 @@ final class BarlineParser {
             // Defer: the next barline may be the forward half of a pair. The
             // annotation must come out of the pending slot now — the next element
             // to be appended is not this barline, and would otherwise steal it.
-            pendingRepeatRight = true;
-            pendingRepeatRightEndings = new ArrayList<>(endingMarkers);
-            pendingRepeatRightAnnotation = annotations.takePendingAnnotation();
+            heldRepeatRight = new HeldRepeatRight(List.copyOf(endingMarkers), annotations.takePendingAnnotation());
         } else {
             var element = reader.appendToCurrentLine(elementType);
             endings.attachBarlineEndings(element, endingMarkers);
@@ -196,13 +197,15 @@ final class BarlineParser {
     }
 
     /**
-     * Flushes a held {@link #pendingRepeatRight} as a standalone element,
-     * releasing the state held with it.
+     * Flushes a {@link #heldRepeatRight} as a standalone element, releasing the
+     * state held with it.
      */
-    void flushPendingRepeatRight() throws SAXException {
-        if (pendingRepeatRight) {
+    void flushHeldRepeatRight() throws SAXException {
+        var held = heldRepeatRight;
+
+        if (held != null) {
             var element = reader.appendToCurrentLine(ElementType.REPEAT_RIGHT);
-            attachHeldRepeatRight(element);
+            attachHeldRepeatRight(held, element);
         }
     }
 
@@ -211,8 +214,8 @@ final class BarlineParser {
     // -------------------------------------------------------------------------
 
     /**
-     * Releases the whole deferred-REPEAT_RIGHT hold onto {@code element}: its held
-     * ending markers and its held annotation, clearing the hold.
+     * Releases {@code held} onto {@code element}: its ending markers and its
+     * annotation, clearing {@link #heldRepeatRight}.
      *
      * <p>Only the <i>held</i> annotation is attached — never the resolver's
      * pending one. An annotation still pending at this point belongs to an element
@@ -222,13 +225,9 @@ final class BarlineParser {
      * <p>Held endings are attached first, ahead of any the caller goes on to attach
      * from the current barline: they belong to the backward half of the pair.
      */
-    private void attachHeldRepeatRight(StaffElement element) {
-        var heldEndings = pendingRepeatRightEndings;
-        var heldAnnotation = pendingRepeatRightAnnotation;
-        pendingRepeatRightEndings = List.of();
-        pendingRepeatRightAnnotation = null;
-        pendingRepeatRight = false;
-        endings.attachBarlineEndings(element, heldEndings);
-        annotations.attachAnnotation(element, heldAnnotation);
+    private void attachHeldRepeatRight(HeldRepeatRight held, StaffElement element) {
+        heldRepeatRight = null;
+        endings.attachBarlineEndings(element, held.endings());
+        annotations.attachAnnotation(element, held.annotation());
     }
 }

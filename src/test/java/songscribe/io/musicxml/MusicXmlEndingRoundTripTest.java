@@ -22,10 +22,15 @@ package songscribe.io.musicxml;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static songscribe.dom.StaffElementFactory.crotchet;
+import static songscribe.dom.StaffElementFactory.finalDoubleBarline;
+import static songscribe.dom.StaffElementFactory.repeatLeft;
+import static songscribe.dom.StaffElementFactory.repeatLeftRight;
+import static songscribe.dom.StaffElementFactory.repeatRight;
+import static songscribe.dom.StaffElementFactory.singleBarline;
 
 import org.junit.jupiter.api.Test;
 
-import songscribe.dom.ElementType;
 import songscribe.dom.Ending;
 
 // -------------------------------------------------------------------------
@@ -71,13 +76,13 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         // Reader recovers REPEAT_LEFT(0), C(1), REPEAT_RIGHT(2), C(3), FINAL(4):
         //   Ending(element0, element4); getSplitIndex scans [1,4) → 2
         var song = buildSong(line -> {
-            var anchorElement = ElementType.REPEAT_LEFT.newInstance();
-            var splitElement = ElementType.REPEAT_RIGHT.newInstance();
-            var endElement = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+            var anchorElement = repeatLeft();
+            var splitElement = repeatRight();
+            var endElement = finalDoubleBarline();
             line.addElement(anchorElement);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.addElement(splitElement);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.addElement(endElement);
             line.addSpan(new Ending(anchorElement, endElement));
         });
@@ -110,13 +115,13 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         //   REPEAT_RIGHT(4) (terminal REPEAT_RIGHT deferred until </part>):
         //   Ending(element0, element4); getSplitIndex scans [1,4) → 2
         var song = buildSong(line -> {
-            var anchorElement = ElementType.REPEAT_LEFT.newInstance();
-            var splitElement = ElementType.REPEAT_LEFT_RIGHT.newInstance();
-            var endElement = ElementType.REPEAT_RIGHT.newInstance();
+            var anchorElement = repeatLeft();
+            var splitElement = repeatLeftRight();
+            var endElement = repeatRight();
             line.addElement(anchorElement);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.addElement(splitElement);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.addElement(endElement);
             line.addSpan(new Ending(anchorElement, endElement));
         });
@@ -151,13 +156,13 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         // Reader recovers SINGLE_BARLINE(0), C(1), REPEAT_RIGHT(2), C(3), FINAL(4):
         //   Ending(element0, element4); getSplitIndex scans [1,4) → 2
         var song = buildSong(line -> {
-            var anchorElement = ElementType.SINGLE_BARLINE.newInstance();
-            var splitElement = ElementType.REPEAT_RIGHT.newInstance();
-            var endElement = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+            var anchorElement = singleBarline();
+            var splitElement = repeatRight();
+            var endElement = finalDoubleBarline();
             line.addElement(anchorElement);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.addElement(splitElement);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.addElement(endElement);
             line.addSpan(new Ending(anchorElement, endElement));
         });
@@ -182,10 +187,10 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         // A split-less ending is not a valid ending: the writer resolves its split via
         // getSplitIndex(), which throws because there is no REPEAT between anchor and end.
         var song = buildSong(line -> {
-            var anchorElement = ElementType.REPEAT_LEFT.newInstance();
-            var endElement = ElementType.FINAL_DOUBLE_BARLINE.newInstance();
+            var anchorElement = repeatLeft();
+            var endElement = finalDoubleBarline();
             line.addElement(anchorElement);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.addElement(endElement);
             line.addSpan(new Ending(anchorElement, endElement));
         });
@@ -245,11 +250,11 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         //   the discontinue binds to the line's last element (the note) →
         //   Ending(element0, element3); getSplitIndex scans [1,3) → 2
         var song = buildSong(line -> {
-            var anchorElement = ElementType.REPEAT_LEFT.newInstance();
-            var splitElement = ElementType.REPEAT_RIGHT.newInstance();
-            var endElement = ElementType.CROTCHET.newInstance();
+            var anchorElement = repeatLeft();
+            var splitElement = repeatRight();
+            var endElement = crotchet();
             line.addElement(anchorElement);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.addElement(splitElement);
             line.addElement(endElement);
             line.addSpan(new Ending(anchorElement, endElement));
@@ -283,11 +288,11 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         //   (C(0)); the [2 discontinue] binds to the last element (C(3)) →
         //   Ending(element0, element3); getSplitIndex scans [1,3) → 2
         var song = buildSong(line -> {
-            var anchorElement = ElementType.CROTCHET.newInstance();
-            var splitElement = ElementType.REPEAT_RIGHT.newInstance();
-            var endElement = ElementType.CROTCHET.newInstance();
+            var anchorElement = crotchet();
+            var splitElement = repeatRight();
+            var endElement = crotchet();
             line.addElement(anchorElement);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.addElement(splitElement);
             line.addElement(endElement);
             line.addSpan(new Ending(anchorElement, endElement));
@@ -320,14 +325,14 @@ class MusicXmlEndingRoundTripTest extends MusicXmlRoundTripSupport {
         //   the discontinue binds to the last element appended when it is parsed
         //   (C(3)) → Ending(element0, element3); getSplitIndex scans [1,3) → 2
         var song = buildSong(line -> {
-            var anchorElement = ElementType.REPEAT_LEFT.newInstance();
-            var splitElement = ElementType.REPEAT_RIGHT.newInstance();
-            var endElement = ElementType.CROTCHET.newInstance();
+            var anchorElement = repeatLeft();
+            var splitElement = repeatRight();
+            var endElement = crotchet();
             line.addElement(anchorElement);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.addElement(splitElement);
             line.addElement(endElement);
-            line.addElement(ElementType.CROTCHET.newInstance());
+            line.addElement(crotchet());
             line.addSpan(new Ending(anchorElement, endElement));
         });
 

@@ -233,6 +233,31 @@ class NoteTypeMappingTest extends UnitTest {
             .isNull();
     }
 
+    /**
+     * {@code MusicXmlWriter}'s element loop dispatches barlines, repeats and breath marks to
+     * their own branches and sends everything else down the {@code <note>} branch, where an
+     * element whose type has no {@code <type>} token is silently skipped — it simply does not
+     * reach the saved file. That skip is only safe while every type that gets there has a
+     * token. A new note-like {@link ElementType} added without a {@code FORWARD_MAP} entry
+     * would disappear on save with no error and no log line; this fails loudly instead.
+     */
+    @Test
+    void testEveryTypeWrittenAsANoteHasATypeToken() {
+        for (var type : ElementType.values()) {
+            // The IO aliases share their canonical type's prototype instance, so no element
+            // ever reports an alias as its type. Normalise to what the writer actually sees.
+            var elementType = type.newInstance().getType();
+
+            if (elementType.isBarLine() || elementType.isRepeat() || elementType.isBreathMark()) {
+                continue;
+            }
+
+            assertThat(NoteTypeMapping.typeToken(elementType))
+                .as("%s reaches the writer's <note> branch, so it must have a <type> token", elementType)
+                .isNotNull();
+        }
+    }
+
     @Test
     void testHasDurationTrueForNotesAndFalseForGrace() {
         assertThat(NoteTypeMapping.hasDuration(ElementType.CROTCHET))

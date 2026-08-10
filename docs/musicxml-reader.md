@@ -98,35 +98,40 @@ so the pending annotation must ride along with the hold instead of waiting in th
 resolver's single slot, or a later element's `<direction>` would overwrite it.
 
 ```
-              <direction placement=…>  ──▶ AnnotationResolver.pendingAnnotation
-                                                    │
-      ┌─────────────────────┬──────────────────────┴───────────────┐
-      │                     │                                       │
- <barline> = REPEAT_RIGHT   <barline> = other                  </note>
-      │                     │                                       │
- appendOrHold: HOLD    appendOrHold: APPEND              finishNote
-  ├ pendingRepeatRight=true  ├ append element             ├ flushPendingRepeatRight
-  ├ take endings             └ annotations.resolveAnnotation  │   ├ append REPEAT_RIGHT
-  └ take annotation             (element)                     │   └ attachHeldRepeatRight
-      │                                                        ├ append note
-      │                                                        └ annotations.resolveAnnotation(note)
+                 <direction placement=…> ──▶ AnnotationResolver.pendingAnnotation
+                                             │
+ ┌───────────────────────────┬───────────────┴────────────────┐
+ │                           │                                │
+ <barline> = REPEAT_RIGHT    <barline> = other                </note>
+ │                           │                                │
+ appendOrHold: HOLD          appendOrHold: APPEND             finishNote
+ ├ heldRepeatRight != null   ├ append element                 ├ flushHeldRepeatRight
+ ├ take endings              └ annotations                    │   ├ append REPEAT_RIGHT
+ └ take annotation               .resolveAnnotation(element)  │   └ attachHeldRepeatRight
+ │                                                            ├ append note
+ │                                                            └ annotations.resolveAnnotation(note)
  next <barline> = REPEAT_LEFT@left
-      │
+ │
  MERGE (processBarline): append REPEAT_LEFT_RIGHT
-  ├ attachHeldRepeatRight (backward half: held endings + held annotation)
-  └ endings.attachBarlineEndings (forward half: current barline's endings)
+ ├ attachHeldRepeatRight (backward half: held endings + held annotation)
+ └ endings.attachBarlineEndings (forward half: current barline's endings)
 ```
 
 Two invariants fall out of this shape:
 
-- **One pending slot.** `AnnotationResolver.takePendingAnnotation()` clears the slot on
-  read, so only one `<direction>` can be in flight — the writer never emits two
-  annotation directions back to back without an intervening bound element, and the
-  reader relies on that.
+- **One pending slot.** Only one `<direction>` is ever in flight, and what guarantees
+  that is the *writer*: it never emits two annotation directions back to back without
+  an intervening element to bind the first to. The reader does not enforce it —
+  `endDirection` writes into the single slot unconditionally, so a second annotation
+  direction arriving before the first is bound replaces it. That cannot happen in a
+  file this program wrote; a file from another program can contain it, and
+  `endDirection` logs the dropped annotation rather than losing it silently.
+  (`takePendingAnnotation()` clearing the slot on read is what keeps a *bound*
+  annotation from binding twice — a different guarantee.)
 - **Flush and merge attach only the *held* annotation, never the pending one.**
-  `attachHeldRepeatRight` (used by both `flushPendingRepeatRight` and the
-  `REPEAT_LEFT_RIGHT` merge branch of `processBarline`) reads
-  `pendingRepeatRightAnnotation`, not `AnnotationResolver`'s slot. A resolver-pending
+  `attachHeldRepeatRight` (used by both `flushHeldRepeatRight` and the
+  `REPEAT_LEFT_RIGHT` merge branch of `processBarline`) reads the annotation out of the
+  `HeldRepeatRight` record, not `AnnotationResolver`'s slot. A resolver-pending
   annotation at flush time belongs to an element that has not been appended yet — the
   `REPEAT_LEFT` whose forward-left barline is still ahead — and falling back to it
   would steal that element's annotation instead of leaving it pending for its own

@@ -40,6 +40,7 @@ public final class AnnotationAction extends UIAction {
             "annotation",
             Strings.get(Strings.ACTION_ANNOTATION_TOOLTIP),
             Flag.REQUIRES_SINGLE_SELECTION,
+            Flag.REQUIRES_ANNOTATABLE_ELEMENT,
             Flag.DISABLE_WHEN_PLAYING,
             Flag.DISABLE_WHEN_EDITING_TEXT,
             Flag.DISABLE_IN_GRACE_MODE,

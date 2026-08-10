@@ -103,7 +103,8 @@ public class UIAction extends AbstractAction {
         DISABLE_WHEN_MIDI_UNAVAILABLE(1 << 15),
         DISABLE_WHEN_LINE_SELECTED(1 << 16),
         DISABLE_WHEN_GRACE_DURATION_SELECTED(1 << 17),
-        ENABLE_WHEN_LINE_SELECTED(1 << 18);
+        ENABLE_WHEN_LINE_SELECTED(1 << 18),
+        REQUIRES_ANNOTATABLE_ELEMENT(1 << 19);
 
         private final int value;
 
@@ -651,9 +652,13 @@ public class UIAction extends AbstractAction {
             return coordinator.isApplicableToSelection(reflectable);
         }
 
-        //noinspection SimplifiableIfStatement
         if (hasFlag(Flag.DISABLE_WHEN_BAR_SELECTED)) {
             return coordinator.selectionHasDurations();
+        }
+
+        //noinspection SimplifiableIfStatement
+        if (hasFlag(Flag.REQUIRES_ANNOTATABLE_ELEMENT)) {
+            return coordinator.selectionCanCarryAnnotation();
         }
 
         return true;

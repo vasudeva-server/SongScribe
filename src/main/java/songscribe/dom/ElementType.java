@@ -452,6 +452,20 @@ public enum ElementType {
     }
 
     /**
+     * Whether an annotation attached to this element type survives a save/reload round trip.
+     * Every type can except a breath mark, which has no place in the file to put one: the writer
+     * stores a breath mark inside the preceding note's markup rather than as an item of its own,
+     * and on reading, the breath-mark element is created as a side effect of finishing that note —
+     * by which point the note has already taken the pending annotation.
+     *
+     * <p>Attaching one anyway would lose it silently on save, so the annotation action disables
+     * itself for such an element rather than let the user type text that cannot be stored.
+     */
+    public boolean canCarryAnnotation() {
+        return !isBreathMark();
+    }
+
+    /**
      * Returns a lowercase, user-facing category name for this element type, suitable for
      * substitution into a message such as "There isn’t enough room on this line for this {0}."
      */

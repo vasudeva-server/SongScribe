@@ -245,15 +245,18 @@ public final class MusicXmlWriter {
                 var type = element.getType();
                 var markers = spanIndex[i];
 
+                // Both repeat branches below write the element's <direction>
+                // before emitting any barline: a forward-left barline is required
+                // to be its measure's first child, so nothing may be emitted
+                // between a right barline and the forward-left barline after it.
                 if (type == ElementType.REPEAT_LEFT) {
                     // REPEAT_LEFT opens a new measure (the forward-repeat barline
                     // is a left barline, not a right barline). Close the current
                     // measure with an invisible right barline to preserve the
                     // line boundary, then open the new measure. An ending anchored
                     // (or ended) on the REPEAT_LEFT rides on the forward-left barline.
-                    // The <direction> must precede the invisible right barline: a
-                    // forward-left barline is required to be its measure's first
-                    // child, so nothing can be emitted between the two barlines.
+                    // The <direction> precedes the invisible right barline per the
+                    // barline-order rule above.
                     writeElementAnnotation(pw, element);
                     MusicXmlMeasureWriter.writeInvisibleRightBarline(pw);
                     measureNumber = MusicXmlMeasureWriter.openForwardRepeatMeasure(pw, measureNumber, markers.endingLeftBarlineMarkers());
@@ -266,9 +269,8 @@ public final class MusicXmlWriter {
                     // For an ending split here, <ending number="1" type="stop">
                     // rides on the backward-right barline and <ending number="2"
                     // type="start"> on the forward-left barline.
-                    // The <direction> must precede the backward-right barline: a
-                    // forward-left barline is required to be its measure's first
-                    // child, so nothing can be emitted between the two barlines.
+                    // The <direction> precedes the backward-right barline per the
+                    // barline-order rule above.
                     writeElementAnnotation(pw, element);
                     MusicXmlMeasureWriter.writeBackwardRepeatRightBarline(pw, markers.endingRightBarlineMarkers());
                     measureNumber = MusicXmlMeasureWriter.openForwardRepeatMeasure(pw, measureNumber, markers.endingLeftBarlineMarkers());

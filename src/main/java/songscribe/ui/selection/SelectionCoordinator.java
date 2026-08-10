@@ -830,6 +830,31 @@ public final class SelectionCoordinator {
     }
 
     /**
+     * Returns whether any element in the current selection can carry an annotation that survives
+     * a save — see {@link songscribe.dom.ElementType#canCarryAnnotation()}. "Any" rather than
+     * "every" matches {@link #isApplicableToSelection}: an action is applicable when at least
+     * one selected element accepts it.
+     * Returns {@code false} if there is no active selection.
+     */
+    public boolean selectionCanCarryAnnotation() {
+        var selection = getSelection();
+
+        if (selection == null) {
+            return false;
+        }
+
+        var line = selection.line();
+
+        for (var i = selection.begin(); i <= selection.end(); i++) {
+            if (line.getElement(i).getType().canCarryAnnotation()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Returns whether the given reflectable action is applicable to any element
      * in the current selection. Results are cached per selection.
      * Returns {@code false} if there is no active selection.
