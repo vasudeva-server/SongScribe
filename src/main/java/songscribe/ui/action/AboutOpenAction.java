@@ -20,22 +20,41 @@
 
 package songscribe.ui.action;
 
+import static songscribe.util.StringUtils.toKebabCase;
+
+import module java.desktop;
+
 import songscribe.Strings;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.dialog.AboutDialog;
 
-public class AboutOpenAction
-    extends DialogOpenAction<AboutDialog>
-    implements UIAction.AppMenuAction {
+/**
+ * Opens the About window.
+ *
+ * <p>Not a {@link DialogOpenAction}: that caches one {@code BaseDialog} instance and reopens
+ * it, whereas {@link AboutDialog} disposes itself on dismissal and is built fresh each time.
+ */
+public class AboutOpenAction extends UIAction implements UIAction.AppMenuAction {
 
     private static final String NATIVE_MENU_TITLE = "About";
 
     public AboutOpenAction(MainFrame mainFrame) {
-        super(mainFrame, Strings.get(Strings.ACTION_ABOUT), AboutDialog::new);
+        this(mainFrame, Strings.get(Strings.ACTION_ABOUT));
+    }
+
+    // The action command is derived from the name, so the name has to be computed
+    // before super() rather than inline in the public constructor.
+    private AboutOpenAction(MainFrame mainFrame, String name) {
+        super(mainFrame, name, toKebabCase(name), Flag.OPENS_DIALOG);
     }
 
     @Override
     public String getNativeMenuTitle() {
         return NATIVE_MENU_TITLE;
+    }
+
+    @Override
+    protected void performAction(ActionEvent e) {
+        AboutDialog.show(getMainFrame());
     }
 }

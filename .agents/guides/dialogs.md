@@ -13,9 +13,30 @@
 Both EXCLUSIVE and OPERATIONAL are "blocking": a single counter means any blocking dialog blocks any other blocking-dialog action while visible (category doesn't pair them off). `OptionDialogs` doesn't participate. Actions opening blocking dialogs must set `UIAction.Flag.OPENS_DIALOG` (`DialogOpenAction` does NOT auto-set it).
 
 Category precedent (pick by analogy):
-- INFORMATIONAL — `AboutDialog`, `HelpDialog`, `WhatsNewDialog`, `HTMLDialog`, `ProgressBarDialog`, `ReportBugDialog`, `DoNotShowMessage`
+- INFORMATIONAL — `HelpDialog`, `WhatsNewDialog`, `HTMLDialog`, `ProgressBarDialog`, `ReportBugDialog`, `DoNotShowMessage`
 - EXCLUSIVE — `PreferencesDialog`, `SongSettingsDialog`
 - OPERATIONAL — the default; everything else
+
+### Deliberate non-`BaseDialog` windows
+
+Two windows in this package extend `JDialog` directly. Both have a class comment
+explaining why; don't "fix" either back into `BaseDialog`.
+
+- `MigrationWindow` — a non-modal utility window the user leaves open beside the score, so it
+  must stay out of the blocking-dialog counter and has no OK/Cancel lifecycle.
+- `AboutDialog` — undecorated, so it can show the borderless splash pane
+  (`SplashWindow.createContentPanel`) without a title bar. Non-modal because it dismisses on a
+  click outside, which a modal window can never see (the modal event filter discards input
+  aimed at blocked windows before any listener runs). Also dismisses on a click inside, any
+  keypress, or the app going to the background.
+
+  It is **unfocusable** (`setFocusableWindowState(false)`) and nothing in it reads window
+  focus — a borderless window on macOS may never become the key window, so `windowLostFocus`
+  is not a dismissal signal you can build on. Triggers are a global `AWTEventListener` for
+  the outside press, a `KeyEventDispatcher` for keys, and
+  `ApplicationDidEnterBackgroundNotification` for app switches. It holds
+  `ActivationGate.armForOverlay()` while up so the dismissing click is swallowed rather than
+  also landing on the score.
 
 ### BaseDialog API surface
 

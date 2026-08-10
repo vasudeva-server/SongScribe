@@ -48,6 +48,11 @@ public class SplashWindow extends JWindow {
     }
 
     public static void loadSplashImage() {
+        // The About window rebuilds the content panel on every open; the image never changes.
+        if (splashImage != null) {
+            return;
+        }
+
         var image = GraphicUtils.readImageResource("/images/splash.jpg");
 
         if (image != null) {

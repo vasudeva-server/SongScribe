@@ -44,11 +44,18 @@ import songscribe.util.Debounce;
  * are the two ends of the background/foreground transition, so posting from here — rather than
  * from every {@code MainFrame} call site that triggers them — gives every listener one source of
  * truth for when the app actually entered the background and when it is actually usable again.
+ *
+ * <p>{@link #armForOverlay()} is the second, unrelated reason to raise the same glass pane: an
+ * overlay window is up over the frame and the click that dismisses it must not also land on the
+ * score. That is not a background transition, so it posts nothing. The two reasons are tracked
+ * separately and the pane is up while either holds.
  */
 public final class ActivationGate {
     private static final int CMD_TAB_DELAY_MS = 300;
     static @Nullable JPanel glassPane = null;
     static @Nullable Debounce cmdTabDebounce = null;
+    static boolean backgrounded = false;
+    static boolean overlayArmed = false;
 
     private ActivationGate() {
     }
@@ -64,6 +71,13 @@ public final class ActivationGate {
         glassPane.addMouseListener(new MouseAdapter() {
             @Override
             public void mousePressed(MouseEvent e) {
+                // Having a listener at all is what swallows the press. When an overlay armed
+                // the pane, the overlay is the one that lowers it — the app never left the
+                // foreground, so there is no reactivation to report.
+                if (overlayArmed) {
+                    return;
+                }
+
                 deactivate();
             }
         });
@@ -79,11 +93,26 @@ public final class ActivationGate {
      * Activates the glass pane so the next click is intercepted.
      */
     public static void activate() {
-        if (glassPane != null) {
-            glassPane.setVisible(true);
-        }
+        backgrounded = true;
+        updateGlassPane();
 
         MessageCenter.post(new ApplicationDidEnterBackgroundNotification());
+    }
+
+    /**
+     * Raises the glass pane for an overlay window that is up over the frame, so the click that
+     * dismisses the overlay is swallowed instead of also reaching the score. The caller must
+     * pair this with {@link #disarmForOverlay()} on every path that takes the overlay down.
+     */
+    public static void armForOverlay() {
+        overlayArmed = true;
+        updateGlassPane();
+    }
+
+    /** Releases the overlay's hold on the glass pane. */
+    public static void disarmForOverlay() {
+        overlayArmed = false;
+        updateGlassPane();
     }
 
     /**
@@ -102,10 +131,15 @@ public final class ActivationGate {
             cmdTabDebounce.cancel();
         }
 
-        if (glassPane != null) {
-            glassPane.setVisible(false);
-        }
+        backgrounded = false;
+        updateGlassPane();
 
         MessageCenter.post(new ApplicationDidBecomeActiveNotification());
+    }
+
+    private static void updateGlassPane() {
+        if (glassPane != null) {
+            glassPane.setVisible(backgrounded || overlayArmed);
+        }
     }
 }

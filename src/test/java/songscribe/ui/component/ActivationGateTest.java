@@ -37,6 +37,8 @@ import songscribe.UnitTest;
  *   <li>Row 48 — {@code activate()} makes glass pane visible;
  *       {@code deactivate()} hides it and cancels the debounce</li>
  *   <li>Row 49 — {@code appRaisedToForeground()} retriggers the cmd+Tab debounce</li>
+ *   <li>{@code armForOverlay()}/{@code disarmForOverlay()} — the second, independent hold on
+ *       the same glass pane, and that the two holds don't lower it out from under each other</li>
  * </ul>
  * These cases cover the wiring only — that the gate arms and cancels the debounce it owns.
  * Whether a trigger actually extends the deadline, and whether the action eventually runs, is
@@ -69,6 +71,8 @@ class ActivationGateTest extends UnitTest {
         // Reset static state so each test starts clean.
         ActivationGate.glassPane = null;
         ActivationGate.cmdTabDebounce = null;
+        ActivationGate.backgrounded = false;
+        ActivationGate.overlayArmed = false;
     }
 
     // -----------------------------------------------------------------------
@@ -123,6 +127,57 @@ class ActivationGateTest extends UnitTest {
         ActivationGate.appRaisedToForeground();
 
         assertThat(debounce.isArmed()).isTrue();
+    }
+
+    // -----------------------------------------------------------------------
+    // Overlay hold: an overlay window raises the same pane for an unrelated
+    // reason, so neither holder may lower it while the other still needs it.
+    // -----------------------------------------------------------------------
+
+    @Test
+    void testArmForOverlayMakesGlassPaneVisible() {
+        ActivationGate.armForOverlay();
+
+        var pane = ActivationGate.glassPane;
+        assertThat(pane).isNotNull();
+
+        assertThat(pane.isVisible()).isTrue();
+    }
+
+    @Test
+    void testDisarmForOverlayHidesGlassPane() {
+        ActivationGate.armForOverlay();
+        ActivationGate.disarmForOverlay();
+
+        var pane = ActivationGate.glassPane;
+        assertThat(pane).isNotNull();
+
+        assertThat(pane.isVisible()).isFalse();
+    }
+
+    @Test
+    void testDisarmForOverlayKeepsGlassPaneVisibleWhileBackgrounded() {
+        // Clicking a link in the overlay backgrounds the app and takes the overlay down with
+        // it. The pane must stay up for the click that brings the app back.
+        ActivationGate.armForOverlay();
+        ActivationGate.activate();
+        ActivationGate.disarmForOverlay();
+
+        var pane = ActivationGate.glassPane;
+        assertThat(pane).isNotNull();
+
+        assertThat(pane.isVisible()).isTrue();
+    }
+
+    @Test
+    void testDeactivateKeepsGlassPaneVisibleWhileOverlayArmed() {
+        ActivationGate.armForOverlay();
+        ActivationGate.deactivate();
+
+        var pane = ActivationGate.glassPane;
+        assertThat(pane).isNotNull();
+
+        assertThat(pane.isVisible()).isTrue();
     }
 
     @Test
