@@ -87,4 +87,6 @@ overlapping them.
 Follow **`reference/report-approve-fix.md`**. It carries both paths — `--fix`
 and interactive — the ordering of the unified report, the guides that must be
 read before any test is written, and the approval rule that applies to design
-findings in both paths.
+findings in both paths. In interactive mode, findings are written to
+`plans/findings.md` rather than displayed in chat, and the skill moves
+straight into clarifying questions.

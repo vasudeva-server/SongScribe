@@ -45,7 +45,8 @@ instead of, the two guides above.
 
 ## Path B: Interactive mode (default)
 
-1. **Present findings** in a single organized summary, in this order:
+1. **Write findings** to `plans/findings.md`, overwriting any existing content,
+   in a single organized document, in this order:
 
    - any concrete **production bug**, first;
    - **design findings**, each followed by the symptoms and tests it explains,
@@ -60,7 +61,7 @@ instead of, the two guides above.
    fixes become pointless if they approve the structural change, and which of
    them add debt if they don't.
 
-   Rewrite every agent finding in your own words before showing it. Do not pass
+   Rewrite every agent finding in your own words before writing it. Do not pass
    an agent's text through untouched — the agents write for other agents; you
    write for a person who has not read the code or the tests. Apply
    `findings.md` to each one: where it is, what the code does now, what's wrong
@@ -68,7 +69,9 @@ instead of, the two guides above.
    plainly, you do not understand it well enough to report it — either dig in
    until you can, or drop it.
 
-   Then add an empty line followed by "Ready for questions."
+   Once the file is written, tell the user it's ready at `plans/findings.md`
+   and move straight into clarifying questions below — do not also paste the
+   findings into chat.
 
 2. **Clarifying questions.** If any finding needs clarification — ambiguous code
    intent, unclear whether something is intentional, a test that never really
