@@ -33,8 +33,8 @@ import songscribe.message.notification.MusicSelectionDidChangeNotification;
 import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.ui.component.MainFrame;
 import songscribe.ui.component.ScoreView;
+import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.RangeQueries;
-import songscribe.ui.selection.Selection;
 
 /**
  * Checkable action that toggles a {@link Trill} over the current selection.
@@ -142,8 +142,10 @@ public final class TrillAction extends SelectableUIAction {
         });
     }
 
-    private static Selection.@Nullable Range selectedRangeOf(ScoreView scoreView) {
-        return scoreView.getSelectionCoordinator().getRange();
+    private static @Nullable ElementSelection selectedRangeOf(ScoreView scoreView) {
+        var range = scoreView.getSelectionCoordinator().getRange();
+
+        return (range != null) ? range.toElementSelection() : null;
     }
 
     private void addTrillSpanningSelection(Line line, int begin, int end) {

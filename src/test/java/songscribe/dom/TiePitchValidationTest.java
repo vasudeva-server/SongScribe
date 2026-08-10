@@ -27,8 +27,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import songscribe.UnitTest;
+import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.RangeQueries;
-import songscribe.ui.selection.Selection;
 
 /**
  * Unit tests for {@link RangeQueries#canToggleTie} pitch validation logic.
@@ -98,6 +98,6 @@ class TiePitchValidationTest extends UnitTest {
 
     private static boolean canTiePair(Note first, Note second) {
         return RangeQueries.canToggleTie(
-            new Selection.Range(line, first.ordinal(), second.ordinal(), first.ordinal()));
+            new ElementSelection(line, first.ordinal(), second.ordinal()));
     }
 }

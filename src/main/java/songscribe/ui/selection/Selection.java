@@ -119,7 +119,7 @@ public sealed interface Selection {
 
         /** The number of elements the range covers, never zero. */
         public int size() {
-            return (end - begin) + 1;
+            return toElementSelection().size();
         }
 
         /**

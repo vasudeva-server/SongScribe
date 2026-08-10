@@ -40,7 +40,7 @@ import songscribe.dom.Tie;
 class ToggleConflictTest extends UnitTest {
 
     private Line line;
-    private Selection.Range range;
+    private ElementSelection range;
 
     @BeforeEach
     void setUp() {
@@ -48,7 +48,7 @@ class ToggleConflictTest extends UnitTest {
         line.addElement(crotchet());
         line.addElement(crotchet());
 
-        range = new Selection.Range(line, 0, 1, 0);
+        range = new ElementSelection(line, 0, 1);
     }
 
     @Test

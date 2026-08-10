@@ -68,18 +68,23 @@ class RangeQueriesTest extends UnitTest {
     /**
      * Builds a detached line from {@code types} and returns a range covering all of it.
      */
-    private static Selection.Range rangeOverAllOf(ElementType... types) {
+    private static ElementSelection rangeOverAllOf(ElementType... types) {
         var line = withQuarterBeat(detachedLine());
 
         for (var type : types) {
             line.addElement(type.newInstance());
         }
 
-        return new Selection.Range(line, 0, types.length - 1, 0);
+        return new ElementSelection(line, 0, types.length - 1);
     }
 
-    /** A range over {@code begin..end} of {@code line}, anchored at {@code begin}. */
-    private static Selection.Range rangeOver(Line line, int begin, int end) {
+    /** A range over {@code begin..end} of {@code line}, as the queries take it. */
+    private static ElementSelection rangeOver(Line line, int begin, int end) {
+        return new ElementSelection(line, begin, end);
+    }
+
+    /** The same range as a {@link Selection.Range}, anchored at {@code begin}. */
+    private static Selection.Range anchoredRange(Line line, int begin, int end) {
         return new Selection.Range(line, begin, end, begin);
     }
 
@@ -127,7 +132,7 @@ class RangeQueriesTest extends UnitTest {
         line.addElement(crotchet());
         line.addElement(crotchet());
 
-        assertThat(rangeOver(line, 0, 2).size()).isEqualTo(3);
+        assertThat(anchoredRange(line, 0, 2).size()).isEqualTo(3);
     }
 
     // -- Range.toElementSelection --
@@ -139,7 +144,7 @@ class RangeQueriesTest extends UnitTest {
         line.addElement(crotchet());
         line.addElement(crotchet());
 
-        assertThat(rangeOver(line, 1, 2).toElementSelection())
+        assertThat(anchoredRange(line, 1, 2).toElementSelection())
             .satisfies(selection -> {
                 assertThat(selection.begin()).isEqualTo(1);
                 assertThat(selection.end()).isEqualTo(2);
@@ -156,7 +161,7 @@ class RangeQueriesTest extends UnitTest {
         line.addElement(crotchet());
         line.addElement(crotchet());
 
-        var range = rangeOver(line, 0, 1);
+        var range = anchoredRange(line, 0, 1);
 
         assertThat(range.contains(0)).isTrue();
         assertThat(range.contains(1)).isTrue();
@@ -184,7 +189,7 @@ class RangeQueriesTest extends UnitTest {
         var line = lineWith(
             ElementType.CROTCHET, ElementType.CROTCHET, ElementType.BREATH_MARK, ElementType.CROTCHET
         );
-        var range = rangeOver(line, 0, 1);
+        var range = anchoredRange(line, 0, 1);
 
         assertThat(range.contains(2)).as("breath mark after the range end").isTrue();
         assertThat(range.contains(3)).as("crotchet past the breath mark").isFalse();
@@ -247,7 +252,7 @@ class RangeQueriesTest extends UnitTest {
         line.addElement(crotchet());
         line.addElement(crotchet());
 
-        assertThat(rangeOver(line, 0, 1).singleElement()).isNull();
+        assertThat(anchoredRange(line, 0, 1).singleElement()).isNull();
     }
 
     // -- canToggleBeaming / canToggleTuplet with grace notes (refs #592) --
@@ -499,7 +504,7 @@ class RangeQueriesTest extends UnitTest {
         assertThat(song.lineCount())
             .as("the song must hold only this line, or a partner note would exist")
             .isEqualTo(1);
-        assertThat(RangeQueries.canToggleTie(Selection.Range.single(line, 0))).isFalse();
+        assertThat(RangeQueries.canToggleTie(ElementSelection.single(line, 0))).isFalse();
     }
 
     @Test

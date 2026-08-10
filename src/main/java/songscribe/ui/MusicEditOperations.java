@@ -48,8 +48,8 @@ import songscribe.dom.Tie;
 import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
 import songscribe.layout.LyricRenderMetrics;
+import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.RangeQueries;
-import songscribe.ui.selection.Selection;
 import songscribe.ui.selection.SelectionCoordinator;
 import songscribe.ui.selection.TupletToggleInfo;
 
@@ -78,15 +78,29 @@ public final class MusicEditOperations {
         this.song = song;
     }
 
+    /**
+     * The current selection in the form every query and edit below takes it, or {@code null}
+     * when nothing is selected.
+     *
+     * <p>The coordinator's range additionally carries the anchor a click or drag started from,
+     * which matters only while the user is extending the selection. Nothing from here down
+     * reads it, so it is dropped at the one point the selection crosses into the edit layer.
+     */
+    private @Nullable ElementSelection selectedRange() {
+        var range = coordinator.getRange();
+
+        return (range != null) ? range.toElementSelection() : null;
+    }
+
     // ========== Beaming Operations ==========
 
     public boolean canToggleBeaming() {
-        var range = coordinator.getRange();
+        var range = selectedRange();
         return (range != null) && RangeQueries.canToggleBeaming(range);
     }
 
     public void toggleBeaming() {
-        var range = coordinator.getRange();
+        var range = selectedRange();
 
         if (range == null) {
             return;
@@ -216,12 +230,12 @@ public final class MusicEditOperations {
     // ========== Tie Operations ==========
 
     public boolean canToggleTie() {
-        var range = coordinator.getRange();
+        var range = selectedRange();
         return (range != null) && RangeQueries.canToggleTie(range);
     }
 
     public void toggleTie() {
-        var range = coordinator.getRange();
+        var range = selectedRange();
 
         if (range == null) {
             return;
@@ -239,7 +253,7 @@ public final class MusicEditOperations {
      * <p>The single-element case is a cross-line tie, which can find no partner to toggle; every
      * other case changes the line, because the range names the two endpoints outright.
      */
-    private static boolean toggleTieInRange(Selection.Range range) {
+    private static boolean toggleTieInRange(ElementSelection range) {
         var line = range.line();
 
         // A tie spans the selection itself: its endpoints are the two notes, and any
@@ -317,12 +331,12 @@ public final class MusicEditOperations {
     // ========== Slide Operations ==========
 
     public boolean canToggleGlissando() {
-        var range = coordinator.getRange();
+        var range = selectedRange();
         return (range != null) && RangeQueries.canToggleGlissando(range);
     }
 
     public void toggleGlissando(@Nullable LyricRenderMetrics lyricRenderMetrics) {
-        var range = coordinator.getRange();
+        var range = selectedRange();
 
         if (range == null) {
             return;
@@ -340,12 +354,12 @@ public final class MusicEditOperations {
      * to answer a question the commit has to ask again anyway.
      */
     public boolean canToggleFall() {
-        var range = coordinator.getRange();
+        var range = selectedRange();
         return (range != null) && RangeQueries.canToggleFall(range);
     }
 
     public void toggleFall(@Nullable LyricRenderMetrics lyricRenderMetrics) {
-        var range = coordinator.getRange();
+        var range = selectedRange();
 
         if (range == null) {
             return;
@@ -357,7 +371,7 @@ public final class MusicEditOperations {
     // ========== Tuplet Operations ==========
 
     public TupletToggleInfo canToggleTuplet() {
-        var range = coordinator.getRange();
+        var range = selectedRange();
         return (range != null)
             ? RangeQueries.canToggleTuplet(range)
             : new TupletToggleInfo(false, null, false);
@@ -380,7 +394,7 @@ public final class MusicEditOperations {
      * via action enable state, so reaching them indicates a caller bug.
      */
     public void toggleTuplet(int tupletSize, TupletToggleInfo info) {
-        var range = coordinator.getRange();
+        var range = selectedRange();
 
         if (range == null) {
             return;
@@ -1057,7 +1071,7 @@ public final class MusicEditOperations {
     }
 
     public boolean canModifyStemDirection() {
-        var range = coordinator.getRange();
+        var range = selectedRange();
         return (range != null) && RangeQueries.canModifyStemDirection(range);
     }
 

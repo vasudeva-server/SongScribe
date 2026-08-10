@@ -317,7 +317,7 @@ class ScoreViewControllerTest extends UnitTest {
                         var range = coordinator.getRange();
 
                         if (range != null) {
-                            RangeQueries.canToggleTrill(range);
+                            RangeQueries.canToggleTrill(range.toElementSelection());
                         }
                     } catch (Exception e) {
                         caughtDuringNotification[0] = e;

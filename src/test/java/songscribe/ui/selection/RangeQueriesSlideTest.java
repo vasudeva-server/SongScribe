@@ -70,9 +70,9 @@ class RangeQueriesSlideTest extends UnitTest {
         return line;
     }
 
-    /** A range over {@code begin..end} of {@code line}, anchored at {@code begin}. */
-    private static Selection.Range rangeOver(Line line, int begin, int end) {
-        return new Selection.Range(line, begin, end, begin);
+    /** A range over {@code begin..end} of {@code line}. */
+    private static ElementSelection rangeOver(Line line, int begin, int end) {
+        return new ElementSelection(line, begin, end);
     }
 
     // -----------------------------------------------------------------------
@@ -86,7 +86,7 @@ class RangeQueriesSlideTest extends UnitTest {
         void testSingleSelectionResolvesTheSourceToThePrecedingElement() {
             var line = lineOf(lowerNote(), higherNote());
 
-            assertThat(RangeQueries.glissandoSourceIndex(Selection.Range.single(line, 1)))
+            assertThat(RangeQueries.glissandoSourceIndex(ElementSelection.single(line, 1)))
                 .as("one selected element reads as the glissando's target, whose source precedes it")
                 .isZero();
         }
@@ -113,7 +113,7 @@ class RangeQueriesSlideTest extends UnitTest {
         void testSelectionAtTheFirstElementHasNoPredecessor() {
             var line = lineOf(lowerNote(), higherNote());
 
-            assertThat(RangeQueries.glissandoSourceIndex(Selection.Range.single(line, 0)))
+            assertThat(RangeQueries.glissandoSourceIndex(ElementSelection.single(line, 0)))
                 .as("the source would be index -1")
                 .isEqualTo(-1);
         }
@@ -127,7 +127,7 @@ class RangeQueriesSlideTest extends UnitTest {
         void testRangeReachingPastTheEndOfTheLineIsRefused() {
             var line = lineOf(lowerNote(), higherNote());
 
-            assertThat(RangeQueries.glissandoSourceIndex(Selection.Range.single(line, line.elementCount())))
+            assertThat(RangeQueries.glissandoSourceIndex(ElementSelection.single(line, line.elementCount())))
                 .isEqualTo(-1);
         }
     }
@@ -215,7 +215,7 @@ class RangeQueriesSlideTest extends UnitTest {
             var line = lineOf(lowerNote(), higherNote());
             line.getElement(1).setGlissando();
 
-            assertThat(RangeQueries.glissandoSourceIndex(Selection.Range.single(line, line.elementCount())))
+            assertThat(RangeQueries.glissandoSourceIndex(ElementSelection.single(line, line.elementCount())))
                 .as("nothing follows the source, yet the glissando on it must still come off")
                 .isEqualTo(1);
         }
@@ -284,7 +284,7 @@ class RangeQueriesSlideTest extends UnitTest {
             assertThat(RangeQueries.canToggleFall(rangeOver(line, 0, 1)))
                 .as("one pitched note in the range is enough")
                 .isTrue();
-            assertThat(RangeQueries.canToggleFall(Selection.Range.single(line, 0)))
+            assertThat(RangeQueries.canToggleFall(ElementSelection.single(line, 0)))
                 .as("a lone rest is not")
                 .isFalse();
         }

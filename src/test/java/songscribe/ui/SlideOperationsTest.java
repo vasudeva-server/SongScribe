@@ -54,13 +54,13 @@ import songscribe.message.notification.SongDidChangeNotification;
 import songscribe.message.mutation.Mutation;
 import songscribe.ui.component.ScoreView;
 import songscribe.ui.edit.EditModeManager;
+import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.RangeQueries;
-import songscribe.ui.selection.Selection;
 import songscribe.undo.MutationReplayer;
 
 /**
  * Tests {@link SlideOperations}, the kernel both slide toggles run through: the select-mode
- * entry points that act on a {@link Selection.Range} and the edit-mode ones that act on the
+ * entry points that act on an {@link ElementSelection} and the edit-mode ones that act on the
  * last insertion.
  *
  * <p>The operations are static and take the line explicitly, so these tests run against a real
@@ -191,9 +191,9 @@ class SlideOperationsTest extends UnitTest {
         return line;
     }
 
-    /** A range over {@code begin..end} of {@code line}, anchored at {@code begin}. */
-    private static Selection.Range rangeOver(Line line, int begin, int end) {
-        return new Selection.Range(line, begin, end, begin);
+    /** A range over {@code begin..end} of {@code line}. */
+    private static ElementSelection rangeOver(Line line, int begin, int end) {
+        return new ElementSelection(line, begin, end);
     }
 
     /** Whether each element of {@code line}, in order, carries a fall. */
@@ -270,7 +270,7 @@ class SlideOperationsTest extends UnitTest {
         void testASingleSelectedNoteConnectsBackToItsPredecessor() {
             var line = lineOf(lowerNote(), higherNote());
 
-            assertThat(SlideOperations.toggleGlissando(Selection.Range.single(line, 1), null))
+            assertThat(SlideOperations.toggleGlissando(ElementSelection.single(line, 1), null))
                 .isEqualTo(EditResult.MODIFIED);
             assertThat(line.getElement(0).hasGlissando())
                 .as("the glissando lives on the source, which precedes the selected target")
@@ -459,7 +459,7 @@ class SlideOperationsTest extends UnitTest {
             var line = lineOf(lowerNote(), higherNote());
             song.withoutMutationTracking(() -> line.getElement(0).setGlissando());
 
-            assertThat(SlideOperations.toggleFall(Selection.Range.single(line, 0), null))
+            assertThat(SlideOperations.toggleFall(ElementSelection.single(line, 0), null))
                 .as("the source carries no fall yet, so this is the add branch")
                 .isEqualTo(EditResult.MODIFIED);
             assertThat(line.getElement(0).hasFall()).isTrue();

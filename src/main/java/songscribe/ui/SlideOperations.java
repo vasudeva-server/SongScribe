@@ -31,8 +31,8 @@ import songscribe.error.RuntimeError;
 import songscribe.layout.InsertionSpacingCalculator;
 import songscribe.layout.LyricRenderMetrics;
 import songscribe.message.mutation.ElementField;
+import songscribe.ui.selection.ElementSelection;
 import songscribe.ui.selection.RangeQueries;
-import songscribe.ui.selection.Selection;
 import songscribe.undo.OpNames;
 
 /**
@@ -40,8 +40,8 @@ import songscribe.undo.OpNames;
  * be placed: the select-mode toggle actions, which act on the current selection, and the
  * edit-mode keys, which act on the last insertion.
  *
- * <p>The select-mode entry points take a {@link Selection.Range} directly. The edit-mode entry
- * points wrap the last-inserted element in {@link Selection.Range#single} and hand that to the
+ * <p>The select-mode entry points take an {@link ElementSelection} directly. The edit-mode entry
+ * points wrap the last-inserted element in {@link ElementSelection#single} and hand that to the
  * same {@link RangeQueries} eligibility predicate, so the two modes can never disagree about
  * what is eligible.
  *
@@ -75,7 +75,7 @@ public final class SlideOperations {
      * @see RangeQueries#glissandoSourceIndex
      */
     public static EditResult toggleGlissando(
-        Selection.Range range, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+        ElementSelection range, @Nullable LyricRenderMetrics lyricRenderMetrics) {
 
         var sourceIndex = RangeQueries.glissandoSourceIndex(range);
 
@@ -105,7 +105,7 @@ public final class SlideOperations {
             return EditResult.REFUSED;
         }
 
-        var sourceIndex = RangeQueries.glissandoSourceIndex(Selection.Range.single(line, elementIndex));
+        var sourceIndex = RangeQueries.glissandoSourceIndex(ElementSelection.single(line, elementIndex));
 
         if (sourceIndex < 0) {
             return EditResult.REFUSED;
@@ -119,7 +119,7 @@ public final class SlideOperations {
      *
      * @see RangeQueries#fallIndices
      */
-    public static EditResult toggleFall(Selection.Range range, @Nullable LyricRenderMetrics lyricRenderMetrics) {
+    public static EditResult toggleFall(ElementSelection range, @Nullable LyricRenderMetrics lyricRenderMetrics) {
         return applySlides(range.line(), RangeQueries.fallIndices(range), SlideZone.FALL, lyricRenderMetrics);
     }
 
@@ -134,7 +134,7 @@ public final class SlideOperations {
             return EditResult.REFUSED;
         }
 
-        var range = Selection.Range.single(line, elementIndex);
+        var range = ElementSelection.single(line, elementIndex);
 
         return applySlides(line, RangeQueries.fallIndices(range), SlideZone.FALL, lyricRenderMetrics);
     }

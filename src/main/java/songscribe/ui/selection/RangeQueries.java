@@ -34,12 +34,14 @@ import songscribe.dom.Tuplet;
 import songscribe.dom.TupletValidator;
 
 /**
- * What a {@link Selection.Range} may become: whether it can be beamed, tied, tupleted,
+ * What an {@link ElementSelection} may become: whether it can be beamed, tied, tupleted,
  * trilled, or have its stem direction changed.
  * <p>
  * Every answer here is a pure function of {@code (line, begin, end)} and nothing else, which
- * is why they are static and why they no longer live beside the selection field. Asking one
- * neither reads nor writes what is currently selected — pass any range and get that range's
+ * is why they are static, why they no longer live beside the selection field, and why they take
+ * {@link ElementSelection} rather than {@link Selection.Range}: the anchor a {@code Range}
+ * additionally carries records where a click landed, and no answer here depends on it. Asking
+ * one neither reads nor writes what is currently selected — pass any range and get that range's
  * answer.
  */
 public final class RangeQueries {
@@ -169,7 +171,7 @@ public final class RangeQueries {
      * non-grace endpoints and any grace note in between stays outside the group, so a
      * grace/host pair may sit inside a beamed or tupleted range (refs #592).
      */
-    public static int nonGraceBegin(Selection.Range range) {
+    public static int nonGraceBegin(ElementSelection range) {
         var line = range.line();
 
         for (var i = range.begin(); i <= range.end(); i++) {
@@ -187,7 +189,7 @@ public final class RangeQueries {
      *
      * @see #nonGraceBegin
      */
-    public static int nonGraceEnd(Selection.Range range) {
+    public static int nonGraceEnd(ElementSelection range) {
         var line = range.line();
 
         for (var i = range.end(); i >= range.begin(); i--) {
@@ -202,7 +204,7 @@ public final class RangeQueries {
     /**
      * Returns whether the range can be beamed/unbeamed.
      */
-    public static boolean canToggleBeaming(Selection.Range range) {
+    public static boolean canToggleBeaming(ElementSelection range) {
         var line = range.line();
         var beginIndex = nonGraceBegin(range);
         var endIndex = nonGraceEnd(range);
@@ -237,7 +239,7 @@ public final class RangeQueries {
      * selected element to pair with, and the partner is found by
      * {@link #boundaryTieAt} rather than by looking inside {@code range}.
      */
-    public static boolean canToggleTie(Selection.Range range) {
+    public static boolean canToggleTie(ElementSelection range) {
         var selectionSize = range.size();
 
         // A single boundary element ties to the adjacent line's matching edge note, not to
@@ -301,7 +303,7 @@ public final class RangeQueries {
      * candidate when {@code index} is the line's tie-exit element, and tying forward would join
      * the note to one on the next line that the user has not reached yet.
      */
-    public static Selection.@Nullable Range tieCandidateWithPredecessor(Line line, int index) {
+    public static @Nullable ElementSelection tieCandidateWithPredecessor(Line line, int index) {
         if (!line.hasIndex(index)) {
             return null;
         }
@@ -322,7 +324,7 @@ public final class RangeQueries {
 
         //noinspection ObjectEquality
         if (boundaryTie != null && boundaryTie.end() == line.getElement(index)) {
-            return Selection.Range.single(line, index);
+            return ElementSelection.single(line, index);
         }
 
         return null;
@@ -332,17 +334,17 @@ public final class RangeQueries {
      * The {@code size}-element range ending at {@code index}, or {@code null} when it runs off
      * the front of the line or {@link #canToggleTie} refuses it.
      *
-     * <p>Ranges with a negative begin index cannot be constructed at all, so a shape that runs
-     * off the front is skipped rather than built and rejected.
+     * <p>A negative begin index names no element of the line, so a shape running off the front
+     * is skipped before it is built: {@link #canToggleTie} would fetch that element and fail.
      */
-    private static Selection.@Nullable Range tieCandidateEndingAt(Line line, int index, int size) {
+    private static @Nullable ElementSelection tieCandidateEndingAt(Line line, int index, int size) {
         var begin = index - (size - 1);
 
         if (begin < 0) {
             return null;
         }
 
-        var candidate = new Selection.Range(line, begin, index, index);
+        var candidate = new ElementSelection(line, begin, index);
 
         return canToggleTie(candidate) ? candidate : null;
     }
@@ -377,7 +379,7 @@ public final class RangeQueries {
      * must be in range with a successor, both it and its successor must be pitched notes, and
      * {@code isSamePitchAsFollower(source)} must be false. Failing any of those yields -1.
      */
-    public static int glissandoSourceIndex(Selection.Range range) {
+    public static int glissandoSourceIndex(ElementSelection range) {
         var line = range.line();
         int sourceIndex;
 
@@ -417,7 +419,7 @@ public final class RangeQueries {
      *
      * @see #glissandoSourceIndex
      */
-    public static boolean canToggleGlissando(Selection.Range range) {
+    public static boolean canToggleGlissando(ElementSelection range) {
         return glissandoSourceIndex(range) >= 0;
     }
 
@@ -433,7 +435,7 @@ public final class RangeQueries {
      * <p>The one statement of which notes a fall toggle applies to, so the predicate that
      * offers the toggle and the kernel that performs it cannot disagree.
      */
-    public static int[] fallIndices(Selection.Range range) {
+    public static int[] fallIndices(ElementSelection range) {
         var line = range.line();
 
         return IntStream.rangeClosed(range.begin(), range.end())
@@ -451,7 +453,7 @@ public final class RangeQueries {
      *
      * @see #fallIndices
      */
-    public static boolean canToggleFall(Selection.Range range) {
+    public static boolean canToggleFall(ElementSelection range) {
         return fallIndices(range).length > 0;
     }
 
@@ -466,7 +468,7 @@ public final class RangeQueries {
      * which it does by leaving the grade out of {@code validGrades}.
      */
     @SuppressWarnings("ObjectEquality")
-    public static TupletToggleInfo canToggleTuplet(Selection.Range range) {
+    public static TupletToggleInfo canToggleTuplet(ElementSelection range) {
         var line = range.line();
         var beginIndex = nonGraceBegin(range);
         var endIndex = nonGraceEnd(range);
@@ -536,7 +538,7 @@ public final class RangeQueries {
     /**
      * Returns whether the range can toggle trill.
      */
-    public static boolean canToggleTrill(Selection.Range range) {
+    public static boolean canToggleTrill(ElementSelection range) {
         return range.line()
             .getElements(range.begin(), range.end())
             .stream()
@@ -548,7 +550,7 @@ public final class RangeQueries {
      * or by restoring it to automatic. Only notes that actually carry a stem
      * qualify — rests and whole notes have none.
      */
-    public static boolean canModifyStemDirection(Selection.Range range) {
+    public static boolean canModifyStemDirection(ElementSelection range) {
         return range.line()
             .getElements(range.begin(), range.end())
             .stream()

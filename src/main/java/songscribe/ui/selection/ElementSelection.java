@@ -23,10 +23,26 @@ package songscribe.ui.selection;
 import songscribe.dom.Line;
 
 /**
- * Represents a selection of elements within a staff line.
+ * A run of elements within a staff line, named by index.
+ * <p>
+ * What every question about a run of elements is asked in terms of — {@link RangeQueries} and
+ * the edit operations take this rather than {@link Selection.Range}, because none of them reads
+ * the anchor a {@code Range} additionally carries. An operation reached from a key press has no
+ * anchor to give: nothing was clicked.
  *
  * @param line  The staff line containing the selection
  * @param begin The index of the first selected element
  * @param end   The index of the last selected element (inclusive)
  */
-public record ElementSelection(Line line, int begin, int end) {}
+public record ElementSelection(Line line, int begin, int end) {
+
+    /** The single element at {@code elementIndex}. */
+    public static ElementSelection single(Line line, int elementIndex) {
+        return new ElementSelection(line, elementIndex, elementIndex);
+    }
+
+    /** The number of elements the selection covers. */
+    public int size() {
+        return (end - begin) + 1;
+    }
+}
